@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Giljo Mascot - All Variants Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      background-color: #f5f5f5;
+      color: #333;
+      font-family: Arial, sans-serif;
+    }
+    
+    .theme-section {
+      margin-bottom: 60px;
+    }
+    
+    .theme-dark {
+      background-color: #0e1c2d;
+      color: #fff;
+      padding: 30px;
+      border-radius: 12px;
+    }
+    
+    .theme-light {
+      background-color: #ffffff;
+      color: #333;
+      padding: 30px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    h2 {
+      color: #0e1c2d;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #ffc300;
+    }
+    
+    .theme-dark h2 {
+      color: #ffc300;
+      border-bottom-color: #ffc300;
+    }
+    
+    .mascot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 30px;
+      margin-top: 20px;
+    }
+    
+    .mascot-item {
+      text-align: center;
+      padding: 20px;
+      background-color: rgba(0, 0, 0, 0.05);
+      border-radius: 8px;
+    }
+    
+    .theme-dark .mascot-item {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .mascot-item h3 {
+      margin-top: 15px;
+      margin-bottom: 5px;
+      font-size: 18px;
+    }
+    
+    .mascot-item p {
+      margin: 5px 0;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+    
+    .size-demo {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    
+    .size-item {
+      text-align: center;
+    }
+    
+    code {
+      background-color: rgba(0, 0, 0, 0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+    
+    .theme-dark code {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Giljo Mascot - Complete Variant Gallery</h1>
+  
+  <!-- Dark Theme Section -->
+  <div class="theme-section">
+    <div class="theme-dark">
+      <h2>Dark Theme Mascots (Yellow/White)</h2>
+      <p>For use on dark backgrounds (navy, black, dark gray)</p>
+      
+      <div class="mascot-grid">
+        <div class="mascot-item">
+          <iframe src="giljo_mascot_active.html" 
+                  width="150" 
+                  height="150" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <h3>Active</h3>
+          <p>Random blinks & side glances</p>
+          <code>giljo_mascot_active.html</code>
+        </div>
+        
+        <div class="mascot-item">
+          <iframe src="giljo_mascot_thinker.html" 
+                  width="150" 
+                  height="150" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <h3>Thinker</h3>
+          <p>Thoughtful eye movements</p>
+          <code>giljo_mascot_thinker.html</code>
+        </div>
+        
+        <div class="mascot-item">
+          <iframe src="giljo_mascot_loader_v2.html?size=120" 
+                  width="120" 
+                  height="150" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <h3>Loader</h3>
+          <p>Regular pattern with dots</p>
+          <code>giljo_mascot_loader_v2.html</code>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 40px; color: #ffc300;">Size Variations</h3>
+      <div class="size-demo">
+        <div class="size-item">
+          <iframe src="giljo_mascot_loader_v2.html?size=60" 
+                  width="60" 
+                  height="75" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <p>Small (60px)</p>
+        </div>
+        <div class="size-item">
+          <iframe src="giljo_mascot_loader_v2.html?size=100" 
+                  width="100" 
+                  height="115" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <p>Medium (100px)</p>
+        </div>
+        <div class="size-item">
+          <iframe src="giljo_mascot_loader_v2.html?size=150" 
+                  width="150" 
+                  height="165" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <p>Large (150px)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Light Theme Section -->
+  <div class="theme-section">
+    <div class="theme-light">
+      <h2>Light Theme Mascots (Blue/Yellow)</h2>
+      <p>For use on light backgrounds (white, light gray)</p>
+      
+      <div class="mascot-grid">
+        <div class="mascot-item">
+          <iframe src="giljo_mascot_active_blue.html" 
+                  width="150" 
+                  height="150" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <h3>Active Blue</h3>
+          <p>Random blinks & side glances</p>
+          <code>giljo_mascot_active_blue.html</code>
+        </div>
+        
+        <div class="mascot-item">
+          <iframe src="giljo_mascot_thinker_blue.html" 
+                  width="150" 
+                  height="150" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <h3>Thinker Blue</h3>
+          <p>Thoughtful eye movements</p>
+          <code>giljo_mascot_thinker_blue.html</code>
+        </div>
+        
+        <div class="mascot-item">
+          <iframe src="giljo_mascot_loader_blue_v2.html?size=120" 
+                  width="120" 
+                  height="150" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <h3>Loader Blue</h3>
+          <p>Blue dots for light theme</p>
+          <code>giljo_mascot_loader_blue_v2.html</code>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Usage Examples -->
+  <div class="theme-section">
+    <div class="theme-light" style="background-color: #f9f9f9;">
+      <h2>Common Use Cases</h2>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 30px;">
+        <!-- Chat Interface -->
+        <div style="background: #0e1c2d; padding: 20px; border-radius: 8px; color: white;">
+          <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+            <iframe src="giljo_mascot_thinker.html" 
+                    width="40" 
+                    height="40" 
+                    frameborder="0" 
+                    style="background: transparent;">
+            </iframe>
+            <span style="font-weight: bold;">Remi is thinking...</span>
+          </div>
+          <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px;">
+            <p style="margin: 0; font-size: 14px;">Analyzing your request...</p>
+          </div>
+        </div>
+        
+        <!-- Loading Modal -->
+        <div style="background: white; padding: 30px; border-radius: 8px; text-align: center; border: 2px solid #0e1c2d;">
+          <iframe src="giljo_mascot_loader_blue_v2.html?size=80" 
+                  width="80" 
+                  height="105" 
+                  frameborder="0" 
+                  style="background: transparent;">
+          </iframe>
+          <p style="margin: 10px 0 0 0; color: #333;">Processing files...</p>
+        </div>
+        
+        <!-- Inline Status -->
+        <div style="background: #121922; padding: 15px; border-radius: 8px; color: white;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <iframe src="giljo_mascot_active.html" 
+                      width="30" 
+                      height="30" 
+                      frameborder="0" 
+                      style="background: transparent;">
+              </iframe>
+              <span>System Status: Active</span>
+            </div>
+            <span style="color: #4caf50;">● Online</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Animation Timing Info -->
+  <div class="theme-section">
+    <div class="theme-light" style="background-color: #fff;">
+      <h2>Animation Specifications</h2>
+      
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+          <tr style="background-color: #f5f5f5;">
+            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Variant</th>
+            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Blink Interval</th>
+            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Special Features</th>
+            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Use Case</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Active</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">2.5-7.5s (random)</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">12% peek right, 20% double blink</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">General UI presence</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Thinker</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">2-5s (random)</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">35% thinking sequence</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">Processing/AI states</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Loader</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">600ms (fixed cycle)</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">Pulsing dots, predictable</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">Loading indicators</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

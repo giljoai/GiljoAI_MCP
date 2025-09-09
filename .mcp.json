@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "ake-mcp-v2": {
+      "command": "F:\\AKE-MCP\\venv\\Scripts\\python.exe",
+      "args": [
+        "F:\\AKE-MCP\\server.py"
+      ],
+      "env": {
+        "ACTIVE_PRODUCT": "GiljoAI-MCP Coding Orchestrator"
+      }
+    },
+    "serena-giljo": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena-mcp-server",
+        "--context",
+        "giljo-mcp-orchestrator",
+        "--project",
+        "F:\\GiljoAI_MCP"
+      ]
+    }
+  }
+}

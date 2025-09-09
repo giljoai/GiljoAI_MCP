@@ -1,0 +1,72 @@
+project:
+  name: "GiljoAI MCP Coding Orchestrator"
+  description: "Multi-agent orchestration system using AKE-MCP server to orchestrate its own development through 20 focused projects over 4 weeks"
+  version: "0.1.0"
+  
+context:
+  name: "giljo-mcp-orchestrator"
+  description: "Orchestrator context for GiljoAI MCP development"
+  
+tracking:
+  directories:
+    - path: "."
+      recursive: true
+      exclude:
+        - "node_modules"
+        - "__pycache__"
+        - ".git"
+        - ".venv"
+        - "*.pyc"
+        - "*.pyo"
+        - "*.pyd"
+        - ".pytest_cache"
+        - ".ruff_cache"
+        - "dist"
+        - "build"
+        - "*.egg-info"
+  
+  file_patterns:
+    include:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.vue"
+      - "*.json"
+      - "*.yaml"
+      - "*.yml"
+      - "*.md"
+      - "*.sql"
+      - "*.sh"
+      - "*.dockerfile"
+      - "Dockerfile"
+    exclude:
+      - "*.log"
+      - "*.tmp"
+      - "*.bak"
+      - ".DS_Store"
+      - "Thumbs.db"
+
+memory:
+  enabled: true
+  path: ".serena/memories"
+  retention_days: 90
+  
+cache:
+  enabled: true
+  path: ".serena/cache"
+  max_size_mb: 500
+  
+features:
+  auto_indexing: true
+  vision_chunking: true
+  cross_reference: true
+  semantic_search: false  # Can be enabled later if needed
+  
+metadata:
+  tags:
+    - "orchestrator"
+    - "mcp"
+    - "multi-agent"
+    - "ai-development"
+  team: "GiljoAI"
+  created: "2025-01-09"

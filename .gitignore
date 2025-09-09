@@ -1,0 +1,94 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.ruff_cache/
+*.log
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Node/Vue
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.yarn-integrity
+
+# Vue build
+frontend/dist/
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Serena cache (keep memories)
+.serena/cache/
+.serena/*.tmp
+.serena/*.log
+
+# MCP
+.mcp/cache/
+*.mcp.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.orig
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Docker
+docker/data/
+*.pid

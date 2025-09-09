@@ -1,0 +1,21 @@
+Wesite colors
+
+Darkest blue #0e1c2d
+Almost as dark blue #182739
+A hue lighter dark blue #1e3147
+Med blue #315074
+Lightest blue #8f97b7
+
+White gray #e1e1e1
+
+Yellow #ffc300
+
+Green #67bd6d
+
+Pink red #c6298c 
+
+Light theme
+
+Dark gray #363636
+
+purple # #8b5cf6

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "F:\\AKE-MCP",
+      "F:\\Assistant",
+      "F:\\"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "ake-mcp-v2"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "serena-giljo": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena-mcp-server",
+        "--context",
+        "giljo-mcp-orchestrator",
+        "--project",
+        "F:\\GiljoAI_MCP"
+      ]
+    }
+  }
+}
