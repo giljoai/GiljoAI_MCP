@@ -9,17 +9,9 @@
         "ACTIVE_PRODUCT": "GiljoAI-MCP Coding Orchestrator"
       }
     },
-    "serena-giljo": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena-mcp-server",
-        "--context",
-        "giljo-mcp-orchestrator",
-        "--project",
-        "F:\\GiljoAI_MCP"
-      ]
+    "serena-mcp": {
+      "command": "C:\\Program Files\\Python311\\Scripts\\serena-mcp-server.exe",
+      "args": ["--project", "F:\\GiljoAI_MCP"]
     }
   }
 }
