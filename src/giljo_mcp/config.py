@@ -1,8 +1,16 @@
 """
-Configuration management for GiljoAI MCP.
+Configuration module for GiljoAI MCP.
 
-Handles environment variables, config files, and database settings.
+DEPRECATED: This module is deprecated. Please use config_manager.py instead.
 """
+
+import warnings
+warnings.warn(
+    "config.py is deprecated. Use config_manager.py instead. "
+    "Import get_config() from giljo_mcp.config_manager",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 import os
 from pathlib import Path
@@ -61,6 +69,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra environment variables
     
     def get_database_url(self) -> str:
         """

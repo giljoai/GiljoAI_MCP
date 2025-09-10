@@ -15,6 +15,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.tenant import TenantManager
 from giljo_mcp.models import (
     Base, Project, Agent, Message, Task, 
     Session, Vision, Configuration, Job

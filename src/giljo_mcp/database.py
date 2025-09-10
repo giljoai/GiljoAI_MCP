@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker, Session, scoped_session
 from sqlalchemy.pool import NullPool, QueuePool
 
 from .models import Base
+from .tenant import TenantManager
 
 
 class DatabaseManager:
@@ -297,6 +298,117 @@ class DatabaseManager:
             Filter dictionary for SQLAlchemy queries
         """
         return {"tenant_key": tenant_key}
+
+    def apply_tenant_filter(self, query: Any, model: Any, tenant_key: Optional[str] = None) -> Any:
+        """
+        Apply tenant filtering to a query using TenantManager.
+        
+        Args:
+            query: SQLAlchemy query object
+            model: Model class being queried
+            tenant_key: Specific tenant key or None to use current context
+            
+        Returns:
+            Query with tenant filter applied
+        """
+        return TenantManager.apply_tenant_filter(query, model, tenant_key)
+    
+    def ensure_tenant_isolation(self, entity: Any, tenant_key: Optional[str] = None) -> None:
+        """
+        Ensure entity belongs to the correct tenant.
+        
+        Args:
+            entity: Entity to check
+            tenant_key: Expected tenant key (uses current context if None)
+            
+        Raises:
+            PermissionError: If entity belongs to different tenant
+        """
+        TenantManager.ensure_tenant_isolation(entity, tenant_key)
+    
+    def with_tenant(self, tenant_key: str):
+        """
+        Context manager for tenant-scoped operations.
+        
+        Usage:
+            with db_manager.with_tenant("tk_abc123..."):
+                # All database operations use this tenant
+                session = db_manager.get_session()
+        """
+        return TenantManager.with_tenant(tenant_key)
+    
+    @contextmanager
+    def get_tenant_session(self, tenant_key: str):
+        """
+        Get a session with automatic tenant filtering.
+        
+        Args:
+            tenant_key: Tenant key for this session
+            
+        Yields:
+            Session configured with tenant context
+        """
+        with TenantManager.with_tenant(tenant_key):
+            with self.get_session() as session:
+                # Add tenant key to session info for reference
+                session.info['tenant_key'] = tenant_key
+                yield session
+    
+    @asynccontextmanager
+    async def get_tenant_session_async(self, tenant_key: str):
+        """
+        Get an async session with automatic tenant filtering.
+        
+        Args:
+            tenant_key: Tenant key for this session
+            
+        Yields:
+            AsyncSession configured with tenant context
+        """
+        with TenantManager.with_tenant(tenant_key):
+            async with self.get_session_async() as session:
+                # Add tenant key to session info for reference
+                session.info['tenant_key'] = tenant_key
+                yield session
+    
+    def query_with_tenant(self, session: Session, model: Any, tenant_key: Optional[str] = None):
+        """
+        Create a query with automatic tenant filtering.
+        
+        Args:
+            session: Database session
+            model: Model to query
+            tenant_key: Tenant key (uses current context if None)
+            
+        Returns:
+            Query with tenant filter pre-applied
+        """
+        query = session.query(model)
+        return self.apply_tenant_filter(query, model, tenant_key)
+    
+    def validate_tenant_key(self, tenant_key: Optional[str]) -> bool:
+        """
+        Validate a tenant key using TenantManager.
+        
+        Args:
+            tenant_key: Key to validate
+            
+        Returns:
+            True if valid, False otherwise
+        """
+        return TenantManager.validate_tenant_key(tenant_key)
+    
+    def generate_tenant_key(self, project_name: Optional[str] = None) -> str:
+        """
+        Generate a new tenant key for a project.
+        
+        Args:
+            project_name: Optional project name for metadata
+            
+        Returns:
+            New tenant key
+        """
+        return TenantManager.generate_tenant_key(project_name)
 
 
 # Global instance for convenience (can be overridden)

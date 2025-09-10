@@ -10,7 +10,7 @@
       }
     },
     "serena-mcp": {
-      "command": "C:\\Program Files\\Python311\\Scripts\\serena-mcp-server.exe",
+      "command": "serena-mcp-server",
       "args": ["--project", "F:\\GiljoAI_MCP"]
     }
   }
