@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any, List
 from uuid import uuid4
 from sqlalchemy import (
     Column, String, Text, DateTime, Boolean, Integer, Float,
-    ForeignKey, JSON, Index, UniqueConstraint, CheckConstraint
+    ForeignKey, JSON, Index, UniqueConstraint, CheckConstraint, ARRAY
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
@@ -49,6 +49,8 @@ class Project(Base):
     tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
     sessions = relationship("Session", back_populates="project", cascade="all, delete-orphan")
     visions = relationship("Vision", back_populates="project", cascade="all, delete-orphan")
+    context_indexes = relationship("ContextIndex", back_populates="project", cascade="all, delete-orphan")
+    document_indexes = relationship("LargeDocumentIndex", back_populates="project", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index("idx_project_tenant", "tenant_key"),
@@ -112,6 +114,13 @@ class Message(Base):
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     meta_data = Column(JSON, default=dict)
+    
+    # New fields for MessageQueue system
+    processing_started_at = Column(DateTime(timezone=True), nullable=True)
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=3)
+    backoff_seconds = Column(Integer, default=60)
+    circuit_breaker_status = Column(String(20), nullable=True)
     
     # Relationships
     project = relationship("Project", back_populates="messages")
@@ -213,6 +222,12 @@ class Vision(Base):
     content = Column(Text, nullable=False)
     tokens = Column(Integer, nullable=True)
     version = Column(String(50), default="1.0.0")
+    # New fields for enhanced chunking
+    char_start = Column(Integer, nullable=True)
+    char_end = Column(Integer, nullable=True)
+    boundary_type = Column(String(20), nullable=True)  # document, section, paragraph, line, sentence, word, forced
+    keywords = Column(JSON, default=list)  # List of keywords extracted from chunk
+    headers = Column(JSON, default=list)  # List of headers found in chunk
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     meta_data = Column(JSON, default=dict)
@@ -250,6 +265,94 @@ class Configuration(Base):
         UniqueConstraint("tenant_key", "key", name="uq_config_tenant_key"),
         Index("idx_config_tenant", "tenant_key"),
         Index("idx_config_category", "category"),
+    )
+
+class DiscoveryConfig(Base):
+    """
+    Discovery Configuration model - stores dynamic path overrides and discovery settings.
+    Enables per-project customization of discovery behavior.
+    """
+    __tablename__ = "discovery_config"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    path_key = Column(String(50), nullable=False)  # vision, sessions, docs, etc.
+    path_value = Column(Text, nullable=False)  # Resolved path
+    priority = Column(Integer, default=0)  # Higher priority overrides lower
+    enabled = Column(Boolean, default=True)
+    settings = Column(JSON, default=dict)  # Additional settings (renamed from metadata)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    project = relationship("Project", backref="discovery_configs")
+    
+    __table_args__ = (
+        UniqueConstraint("project_id", "path_key", name="uq_discovery_path"),
+        Index("idx_discovery_tenant", "tenant_key"),
+        Index("idx_discovery_project", "project_id"),
+    )
+
+
+class ContextIndex(Base):
+    """
+    Context Index model - provides fast navigation for chunked documents.
+    Enables O(1) chunk retrieval and document discovery.
+    """
+    __tablename__ = "context_index"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    index_type = Column(String(50), nullable=False)  # vision, document, session
+    document_name = Column(String(255), nullable=False)
+    section_name = Column(String(255), nullable=True)
+    chunk_numbers = Column(JSON, default=list)  # Array of chunk numbers this appears in
+    summary = Column(Text, nullable=True)
+    token_count = Column(Integer, nullable=True)
+    keywords = Column(JSON, default=list)  # Array of keywords
+    full_path = Column(Text, nullable=True)
+    content_hash = Column(String(32), nullable=True)
+    version = Column(Integer, default=1)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    project = relationship("Project", back_populates="context_indexes")
+    
+    __table_args__ = (
+        UniqueConstraint("project_id", "document_name", "section_name", name="uq_context_index"),
+        Index("idx_context_tenant", "tenant_key"),
+        Index("idx_context_type", "index_type"),
+        Index("idx_context_doc", "document_name"),
+    )
+
+
+class LargeDocumentIndex(Base):
+    """
+    Large Document Index model - tracks documents requiring chunking.
+    Provides metadata and navigation for documents over 50K tokens.
+    """
+    __tablename__ = "large_document_index"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    document_path = Column(Text, nullable=False)
+    document_type = Column(String(50), nullable=True)  # markdown, yaml, text
+    total_size = Column(Integer, nullable=True)  # Total characters
+    total_tokens = Column(Integer, nullable=True)  # Estimated total tokens
+    chunk_count = Column(Integer, nullable=True)
+    meta_data = Column(JSON, default=dict)  # Changed from metadata to avoid SQLAlchemy conflict
+    indexed_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    project = relationship("Project", back_populates="document_indexes")
+    
+    __table_args__ = (
+        UniqueConstraint("project_id", "document_path", name="uq_large_doc_path"),
+        Index("idx_large_doc_tenant", "tenant_key"),
     )
 
 

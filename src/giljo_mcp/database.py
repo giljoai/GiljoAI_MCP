@@ -134,9 +134,9 @@ class DatabaseManager:
             )
         elif self.is_postgresql:
             # PostgreSQL async optimizations
+            # Note: AsyncEngine handles pooling internally, don't specify poolclass
             engine = create_async_engine(
                 async_url,
-                poolclass=QueuePool,
                 pool_size=20,
                 max_overflow=40,
                 pool_pre_ping=True,
@@ -145,9 +145,9 @@ class DatabaseManager:
             )
         else:
             # Generic async database
+            # Let SQLAlchemy choose the appropriate pool for async
             engine = create_async_engine(
                 async_url,
-                poolclass=QueuePool,
                 pool_pre_ping=True,
                 echo=False
             )

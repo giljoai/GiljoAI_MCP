@@ -491,6 +491,7 @@ create_project(
 - **Week 2**: Complete MCP + Orchestration (Projects 2.3-3.4)
 - **Week 3**: User Interface (Projects 4.1-4.4)
 - **Week 4**: Deployment + Polish (Projects 5.1-5.4)
+- **Week 5**: Integrations (Projects 6.1-6.4)
 
 ## Notes on Setup Scripts
 
@@ -501,8 +502,97 @@ We'll build setup incrementally:
 3. **Project 3.1**: Add product/project initialization
 4. **Project 4.2**: Add setup status to dashboard
 5. **Project 5.2**: Full GUI wizard option
+6. **Project 6.1**: Add Serena optimization config
 
 This ensures the setup experience improves with the product, and we're always testing the onboarding flow.
+
+## Phase 6: Integrations
+
+### 6.1 Serena MCP Optimization Layer
+
+**Objective**: Implement token-efficient Serena MCP integration
+
+**Agents**: architect, implementer, tester
+
+**Deliverables**:
+- SerenaOptimizer class with symbolic operation enforcement
+- Auto-injection of optimization rules into agent missions
+- Tool call interceptor for max_answer_chars limits
+- Token usage monitoring dashboard
+- Configuration system for optimization thresholds
+
+**Technical Requirements**:
+- Enforce find_symbol over read_file patterns
+- Set default max_answer_chars to 1000
+- Track token usage per agent/operation
+- Alert on inefficient operations
+- Support dynamic rule updates via messages
+
+**Success Criteria**:
+- 90% reduction in token usage
+- No operations exceed 5K tokens
+- All agents use symbolic operations
+- Dashboard shows real-time metrics
+
+### 6.2 External Tool Integrations
+
+**Objective**: Connect with development ecosystem tools
+
+**Agents**: integrator, implementer, documenter
+
+**Deliverables**:
+- GitHub integration (issues, PRs, webhooks)
+- Slack/Discord notification systems
+- Jira connector for enterprise
+- Monitoring tool adapters (Prometheus/Grafana)
+- Generic webhook system
+
+**Technical Requirements**:
+- Respect tenant isolation
+- Async event handling
+- Configurable per-tenant
+- Rate limiting support
+- Fallback mechanisms
+
+### 6.3 AI Model Adapters
+
+**Objective**: Support multiple LLM providers
+
+**Agents**: architect, implementer, tester
+
+**Deliverables**:
+- OpenAI GPT-4/GPT-4o adapters
+- Anthropic Claude native MCP support
+- Google Gemini connector
+- Local LLM support (Ollama/LlamaCpp)
+- Model routing system
+
+**Technical Requirements**:
+- Serena optimization per model
+- Cost tracking per tenant/model
+- Fallback chains for reliability
+- Model-specific prompt optimization
+- Token counting accuracy
+
+### 6.4 Enterprise Connectors
+
+**Objective**: Enterprise-grade features and compliance
+
+**Agents**: security_expert, implementer, compliance_auditor
+
+**Deliverables**:
+- LDAP/Active Directory auth
+- SAML/SSO support
+- Audit logging system
+- RBAC implementation
+- Backup/restore capabilities
+
+**Technical Requirements**:
+- SOC2/GDPR compliance paths
+- Data retention policies
+- High availability support
+- Encrypted data at rest
+- Multi-tenant security
 
 ---
 

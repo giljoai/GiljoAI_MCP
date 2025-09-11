@@ -8,40 +8,68 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
 
 ### 📁 Root Files
 - **README.md** - Main project documentation and quick start guide
-- **requirements.txt** - Python dependencies
-- **.mcp.json** - MCP configuration file
+- **CLAUDE.md** - AI assistant instructions and project context
+- **requirements.txt** - Python dependencies list
+- **config.yaml** - Project configuration settings
+- **.mcp.json** - MCP server configuration (AKE-MCP integration)
 
-### 📁 `/docs/` - Core Documentation
-All critical documentation for the project:
+### 📁 `/Docs/` - Core Documentation Hub
 
-- **📁 `/docs/Vision/`** - Vision documents (HIGHEST PRIORITY for orchestrator)
-  - `VISION_DOCUMENT.md` - Main vision and roadmap
+#### 📁 Vision Documents (HIGHEST PRIORITY)
+- **📁 `/Docs/Vision/`**
+  - `VISION_DOCUMENT.md` - Complete vision, roadmap, and strategic goals
   
-- **📁 `/docs/Sessions/`** - Development session memories
-  - `session_001_initial_setup.md` - Initial configuration decisions
-  - `session_002_configuration_and_assets.md` - Asset integration and AKE-MCP config
-  - `First Memory.md` - Original planning session
+#### 📁 Reference Manuals
+- **📁 `/Docs/manuals/`**
+  - `README.md` - Index of all manuals
+  - `MCP_TOOLS_MANUAL.md` - Complete reference for 20+ MCP tools
+  - `MISSION_TEMPLATES_TESTING_GUIDE.md` - Test suite documentation for mission templates
   
-- **📁 `/docs/devlog/`** - Development logs (track progress here)
-  - `2025-01-09_project_inception.md` - Initial project setup
-  - Daily development logs will be added as work progresses
+#### 📄 Project Planning Documents
+- `PROJECT_ORCHESTRATION_PLAN.md` - Master plan for 20-project development strategy
+- `PROJECT_CARDS.md` - Ready-to-use mission cards for orchestrator projects
+- `PROJECT_FLOW_VISUAL.md` - Visual timeline and project dependencies
   
-- **Project Planning Documents**:
-  - `PROJECT_CARDS.md` - Ready-to-use missions for orchestrator projects
-  - `PROJECT_FLOW_VISUAL.md` - Visual timeline and dependencies
-  - `PROJECT_ORCHESTRATION_PLAN.md` - Complete 20-project development strategy
+#### 📄 Technical Documentation
+- `TECHNICAL_ARCHITECTURE.md` - System design with OS-neutral requirements
+- `PRODUCT_PROPOSAL.md` - Business case and market positioning
+- `PROVEN_FEATURES_TO_PRESERVE.md` - Critical features from AKE-MCP to maintain
+- `MESSAGE_QUEUE_GUIDE.md` - Message queue system documentation
+- `AGENT_INSTRUCTIONS.md` - Agent behavior and coordination guidelines
   
-- **Technical Documents**:
-  - `TECHNICAL_ARCHITECTURE.md` - System design with OS-neutral requirements
-  - `PRODUCT_PROPOSAL.md` - Business case and market positioning
-  - `PROVEN_FEATURES_TO_PRESERVE.md` - Critical features from AKE-MCP
-  - **`color_themes.md`** - 🎨 **MANDATORY UI color palette and theme specifications**
-  - `README_FIRST.md` - This navigation index
+#### 🎨 UI/UX Resources
+- `color_themes.md` - **MANDATORY** color palette and theme specifications
+- `Website colors.txt` - Additional color reference
+  
+#### 📄 Navigation
+- `README_FIRST.md` - This index file (you are here)
 
-### 📁 `/src/` - Source Code (TO BE CREATED)
-Will contain:
-- `/giljo_mcp/` - Main application code
-- Python modules for orchestration, database, tools
+#### 📁 Development Tracking (Not Indexed)
+- **📁 `/Docs/Sessions/`** - Agent session memories and project handoffs
+- **📁 `/Docs/devlog/`** - Development logs and project completion reports
+
+### 📁 `/src/` - Source Code
+- **📁 `/src/giljo_mcp/`** - Core application
+  - `__init__.py`, `__main__.py` - Package initialization and entry point
+  - `server.py` - FastMCP server implementation
+  - `models.py` - SQLAlchemy database models
+  - `database.py` - Database connection manager
+  - `orchestrator.py` - Project and agent orchestration
+  - `mission_templates.py` - Dynamic mission generation system
+  - `config.py`, `config_manager.py` - Configuration handling
+  - `auth.py` - Authentication system
+  - `tenant.py` - Multi-tenant isolation
+  - `queue.py` - Message queue implementation
+  - `discovery.py` - Dynamic context discovery
+  - **📁 `/tools/`** - MCP tool implementations
+    - `project.py` - Project management tools
+    - `agent.py` - Agent management tools
+    - `message.py` - Messaging tools
+    - `context.py` - Context discovery tools
+    - `chunking.py` - Vision document chunking
+### 📁 `/tests/` - Test Suite
+- Unit tests and integration tests for all modules
+- Test fixtures and data
 
 ### 📁 `/api/` - API Layer (TO BE CREATED)
 Will contain:
@@ -80,8 +108,9 @@ Will contain:
 
 ## 🚀 Current Status
 
-**Development Phase**: Pre-Foundation
-**Next Step**: Create Project 1.1 in AKE-MCP orchestrator
+**Development Phase**: Phase 2 - MCP Integration (Project 2.2 Complete)
+**Completed**: Projects 1.1-1.4 (Foundation) and 2.1-2.2 (MCP Tools)
+**Next Step**: Project 2.3 - Orchestration Core
 
 We're about to begin building this system using the AKE-MCP orchestrator to manage its own development through 20 focused projects.
 

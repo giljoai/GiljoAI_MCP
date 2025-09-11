@@ -376,6 +376,80 @@ Agents: analyzer, tester, implementer
 
 ---
 
+## 📦 Phase 6: Integrations
+
+### ✔️ Project 6.1: Serena MCP Optimization Layer
+
+**Create Project Command**:
+```
+Name: GiljoAI Serena Optimizer
+Mission: Implement Serena MCP optimization layer to prevent token exhaustion. Create SerenaOptimizer class managing symbolic operations, add auto-injection of optimization rules into agent missions, implement tool call interceptor adding max_answer_chars limits, create monitoring dashboard showing token usage metrics, add configuration for optimization thresholds, test with 10K+ line codebases ensuring <5K tokens per operation. Focus on find_symbol over read_file patterns.
+Agents: architect, implementer, tester
+```
+
+**Success Criteria**:
+- [ ] SerenaOptimizer class created
+- [ ] Auto-injection working
+- [ ] Token limits enforced
+- [ ] Metrics dashboard live
+- [ ] 90% reduction in token usage
+
+---
+
+### ✔️ Project 6.2: External Tool Integrations
+
+**Create Project Command**:
+```
+Name: GiljoAI External Tools
+Mission: Integrate external development tools and services. Add GitHub integration for issue tracking and PRs, implement Jira connector for enterprise workflows, create Slack notifications for agent status, add Discord bot for community support, integrate monitoring tools (Prometheus/Grafana), create webhook system for custom integrations, and document all integration APIs. Ensure all integrations respect tenant isolation.
+Agents: integrator, implementer, documenter
+```
+
+**Success Criteria**:
+- [ ] GitHub integration working
+- [ ] Slack notifications live
+- [ ] Webhook system functional
+- [ ] APIs documented
+- [ ] Tenant isolation maintained
+
+---
+
+### ✔️ Project 6.3: AI Model Adapters
+
+**Create Project Command**:
+```
+Name: GiljoAI Model Adapters
+Mission: Create adapters for multiple AI model providers. Implement OpenAI GPT-4 adapter, add Anthropic Claude adapter with MCP native support, create Google Gemini connector, add local LLM support (Ollama/LlamaCpp), implement model routing based on task type, add cost tracking per model/tenant, create fallback chains for reliability, and test model-specific optimizations. Ensure Serena symbolic operations work across all models.
+Agents: architect, implementer, tester
+```
+
+**Success Criteria**:
+- [ ] 3+ model providers working
+- [ ] Model routing intelligent
+- [ ] Cost tracking accurate
+- [ ] Fallbacks functional
+- [ ] Serena optimized for each
+
+---
+
+### ✔️ Project 6.4: Enterprise Connectors
+
+**Create Project Command**:
+```
+Name: GiljoAI Enterprise Suite
+Mission: Build enterprise-grade connectors and compliance features. Add LDAP/Active Directory authentication, implement SAML/SSO support, create audit logging with compliance reports, add data retention policies, implement role-based access control (RBAC), create backup/restore system, add high availability support, and ensure SOC2/GDPR compliance paths. All features must support multi-tenant architecture.
+Agents: security_expert, implementer, compliance_auditor
+```
+
+**Success Criteria**:
+- [ ] SSO authentication working
+- [ ] Audit logs comprehensive
+- [ ] RBAC implemented
+- [ ] Backup system reliable
+- [ ] Compliance documented
+
+---
+
 ## Orchestration Tips
 
 ### Creating Projects in Order:
@@ -383,18 +457,21 @@ Agents: analyzer, tester, implementer
 2. Each phase builds on the previous
 3. Some projects within a phase can run in parallel
 4. Use handoffs to pass context between projects
+5. Phase 6 can begin after Phase 3 (requires orchestration engine)
 
 ### Managing Context:
 - Break large projects into smaller ones if needed
 - Use project completion notes for handoffs
 - Document decisions in session memories
 - Keep vision document updated
+- Monitor token usage with Serena optimizer
 
 ### Monitoring Progress:
 - Check dashboard regularly
 - Review agent messages
 - Validate deliverables
 - Test incrementally
+- Track token consumption metrics
 
 ---
 

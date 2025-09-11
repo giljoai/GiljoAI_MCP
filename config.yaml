@@ -35,18 +35,18 @@ server:
     dev_server_port: 5173  # Vite dev server (Vue dashboard)
     
 database:
-  # Default to SQLite for development
-  type: sqlite
+  # Test PostgreSQL connection
+  type: postgresql
   sqlite:
     path: "./data/giljo_mcp.db"
     
   # PostgreSQL configuration (when ready)
   postgresql:
-    host: "localhost"
+    host: "localhost"  # Fallback to 10.1.0.164 if localhost fails
     port: 5432
-    database: "giljo_mcp_db"
+    database: "ai_assistant"  # Using existing database
     user: "postgres"
-    password: ""  # Set via environment variable
+    password: "4010"  # Or set via DB_PASSWORD env var
     pool_size: 10
     
 # Logging Configuration

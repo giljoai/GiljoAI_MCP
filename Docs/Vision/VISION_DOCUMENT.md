@@ -151,6 +151,32 @@ Claude CLI only        →  API agents support   →  Universal orchestration
 - Enterprise features (SSO, audit, compliance)
 - White-label options for enterprises
 
+### Technical Architecture - Serena Integration
+
+#### Token Optimization Layer
+The system includes a sophisticated Serena MCP optimization layer that dramatically reduces token consumption:
+
+**SerenaOptimizer Class**:
+- Enforces symbolic operations over file reads
+- Auto-injects optimization rules into agent missions
+- Intercepts tool calls to add max_answer_chars limits
+- Monitors token usage in real-time
+- Achieves 90% reduction in token consumption
+
+**Symbolic Operation Patterns**:
+- `find_symbol()` for specific functions/classes
+- `replace_symbol_body()` for precise edits
+- `max_answer_chars=1000` default limit
+- Dynamic rule updates via messaging
+
+**Integration Points**:
+- Agent mission templates include Serena rules
+- Tool interceptor enforces limits automatically
+- Dashboard displays token metrics
+- Configurable thresholds per tenant
+
+This integration ensures that even with 50K+ token vision documents and complex codebases, the system remains efficient and cost-effective.
+
 ### Design Philosophy
 
 #### For Developers, By Developers

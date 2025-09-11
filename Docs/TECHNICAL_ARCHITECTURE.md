@@ -238,6 +238,10 @@ Characteristics:
 - **Framework**: FastAPI (async, WebSockets, OpenAPI)
 - **ORM**: SQLAlchemy 2.0 (async support)
 - **Database**: SQLite (local), PostgreSQL (server)
+- **Database Drivers**: 
+  - psycopg2-binary (PostgreSQL sync operations)
+  - asyncpg (PostgreSQL async operations - high performance)
+  - aiosqlite (SQLite async operations)
 - **Queue**: Built-in (local), Redis (scale option)
 - **Process**: uvicorn (ASGI server)
 

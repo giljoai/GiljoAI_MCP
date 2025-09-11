@@ -163,7 +163,8 @@
   • FastMCP - Model Context Protocol server framework
   • Flask 3.0+ - Web API and dashboard framework• Flask-CORS - Cross-origin resource sharing
   • PostgreSQL 12+ - Primary database (AKE_MCP_DB, conversation_history)
-  • psycopg2-binary - PostgreSQL adapter
+  • psycopg2-binary - PostgreSQL adapter (sync operations)
+  • asyncpg - PostgreSQL adapter (async operations) 
   • SQLAlchemy 2.0+ - ORM and database toolkit
   • Alembic - Database migration tool
   • Pydantic 2.0+ - Data validation and settings management
