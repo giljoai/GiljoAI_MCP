@@ -1,12 +1,15 @@
 {
   "permissions": {
+    "allow": [
+      "mcp__serena-mcp__read_file",
+      "Bash(cat:*)",
+      "Bash(sed:*)",
+      "Bash(git checkout:*)"
+    ],
     "additionalDirectories": [
       "F:\\AKE-MCP",
       "F:\\Assistant",
       "F:\\"
-    ],
-    "allow": [
-      "mcp__serena-mcp__read_file"
     ]
   },
   "enableAllProjectMcpServers": true,
