@@ -4,10 +4,14 @@
       "F:\\AKE-MCP",
       "F:\\Assistant",
       "F:\\"
+    ],
+    "allow": [
+      "mcp__serena-mcp__read_file"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "ake-mcp-v2"
+    "ake-mcp-v2",
+    "serena-mcp"
   ]
 }

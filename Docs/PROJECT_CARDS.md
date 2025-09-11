@@ -228,6 +228,82 @@ Agents: analyzer, implementer, documenter
 
 ---
 
+### 🧪 Project 3.5: Integration Testing & Validation
+
+**Create Project Command**:
+```
+Name: GiljoAI Integration Testing & Validation
+Mission: Comprehensive integration testing and validation of all Phase 1-3 components to ensure system reliability before UI development. Focus on end-to-end workflows, database operations, multi-tenant isolation, and performance under load. Address the 30% testing gap identified in Project 3.4.
+Agents: orchestrator, analyzer, implementer, validator
+```
+
+**Success Criteria**:
+- [ ] 90%+ code coverage on critical paths
+- [ ] All E2E workflow tests passing
+- [ ] Zero multi-tenant data leaks
+- [ ] Performance within target metrics
+- [ ] Both SQLite and PostgreSQL validated
+- [ ] CI/CD pipeline configured
+
+---
+
+### 🔧 Project 3.6: Quick Integration Fixes
+
+**Create Project Command**:
+```
+Name: GiljoAI Quick Integration Fixes
+Mission: Quick fixes for configuration imports, async methods, and encoding issues identified during integration testing. These are low-risk, high-impact fixes that will immediately improve test pass rates. Fix configuration import paths (config vs config_manager), correct async method names (init_db → create_tables_async), remove Unicode characters causing Windows encoding issues, and add proper UTF-8 encoding to file operations.
+Agents: analyzer, fixer, validator
+```
+
+**Success Criteria**:
+- [ ] All configuration imports corrected
+- [ ] All async method calls updated
+- [ ] Zero Unicode encoding errors
+- [ ] 30-40% of tests now passing
+- [ ] No regression in working tests
+- [ ] Changes documented and committed
+
+---
+
+### 🌉 Project 3.7: Tool-API Integration Bridge
+
+**Create Project Command**:
+```
+Name: GiljoAI Tool-API Integration Bridge
+Mission: Build the critical integration layer between MCP tools and API endpoints to enable full system functionality. This addresses the root cause of test failures where API endpoints cannot properly call MCP tool functions. Create adapter layer that bridges MCP-registered tools with FastAPI endpoints, ensure database manager and tenant context are properly passed, test integration with both SQLite and PostgreSQL.
+Agents: analyzer, architect, implementer, validator
+```
+
+**Success Criteria**:
+- [ ] All API endpoints can call MCP tools
+- [ ] No 500 errors from missing tool functions
+- [ ] Database context properly maintained
+- [ ] Tenant isolation preserved
+- [ ] Performance within 100ms target
+- [ ] 80%+ of integration tests passing
+
+---
+
+### ✅ Project 3.8: Final Integration Validation
+
+**Create Project Command**:
+```
+Name: GiljoAI Final Integration Validation
+Mission: Complete integration testing and validation after addressing all gaps identified in Project 3.5 and fixed in Projects 3.6-3.7. This final validation ensures the system is production-ready before Phase 4 UI development begins. Re-run all 110+ tests, execute end-to-end workflow tests, validate database operations with both SQLite and PostgreSQL, test multi-tenant isolation under concurrent load, and create go/no-go recommendation for Phase 4.
+Agents: orchestrator, executor, analyzer, reporter
+```
+
+**Success Criteria**:
+- [ ] 90%+ of all tests passing
+- [ ] Zero multi-tenant data leaks
+- [ ] All performance metrics within vision targets
+- [ ] Both SQLite and PostgreSQL fully validated
+- [ ] E2E workflows functioning correctly
+- [ ] Production readiness confirmed
+
+---
+
 ## PHASE 4: USER INTERFACE PROJECTS
 
 ### 🌐 Project 4.1: API Endpoints

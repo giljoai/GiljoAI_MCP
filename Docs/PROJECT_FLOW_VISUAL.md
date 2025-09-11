@@ -85,6 +85,22 @@ Week 4: Deployment & Polish
 │  ║ TEMPLATES         ║     • Detailed missions                      │
 │  ╚═══════════════════╝     • Vision guardian role                  │
 │     ↓                                                                │
+│  ╔═══════════════════╗                                             │
+│  ║ 3.5 INTEGRATION   ║ ←── Validate Phase 1-3                      │
+│  ║ TESTING          ║     • Find critical gaps                      │
+│  ╚═══════════════════╝     • 110+ tests created                     │
+│     ↓                                                                │
+│  ╔═══════════════════╗     ╔═══════════════════╗                  │
+│  ║ 3.6 QUICK FIXES   ║ ←→  ║ 3.7 TOOL-API     ║                  │
+│  ║ • Config imports  ║     ║ BRIDGE           ║                  │
+│  ║ • Async methods   ║     ║ • MCP adapters   ║                  │
+│  ╚═══════════════════╝     ╚═══════════════════╝                  │
+│     ↓                           ↓                                   │
+│  ╔═══════════════════════════════╗                                │
+│  ║ 3.8 FINAL VALIDATION          ║ ←── Production ready?          │
+│  ║ • 90%+ tests passing          ║     • Go/no-go for UI          │
+│  ╚═══════════════════════════════╝                                │
+│     ↓                                                                │
 └─────┼────────────────────────────────────────────────────────────┘
       ↓
 ┌─────────────────────────────── WEEK 3 ───────────────────────────────┐

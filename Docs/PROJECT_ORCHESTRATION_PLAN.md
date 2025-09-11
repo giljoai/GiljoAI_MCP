@@ -249,19 +249,95 @@ PHASE 5: DEPLOYMENT & POLISH (Week 4)
 ---
 
 #### Project 3.4: Orchestrator Mission Templates
-**Mission**: Create comprehensive mission generation system for orchestrators.
+**Mission**: Create comprehensive mission generation system for orchestrators and agents.
 
 **Tasks**:
 - Port orchestrator mission template
-- Add vision guardian instructions
-- Include scope sheriff rules
-- Add chunked reading instructions
-- Create agent-specific missions
+- Add vision chunking instructions
+- Create role-specific agent missions
+- Ensure consistent behavior
+- Include dynamic discovery guidance
 
 **Deliverables**:
 - Mission generation system
-- Comprehensive templates
-- Consistent orchestrator behavior
+- Role-specific templates
+- Consistent instructions
+
+---
+
+#### Project 3.5: Integration Testing & Validation
+**Mission**: Comprehensive integration testing and validation of all Phase 1-3 components to ensure system reliability before UI development.
+
+**Tasks**:
+- Audit existing 45+ test files
+- Build end-to-end workflow tests
+- Test database operations (SQLite & PostgreSQL)
+- Validate multi-tenant isolation
+- Run performance benchmarks
+- Create CI/CD pipeline
+
+**Deliverables**:
+- Integration test suite
+- Performance benchmark report
+- Bug priority list
+- Test coverage report (>90% target)
+- CI/CD configuration
+
+---
+
+#### Project 3.6: Quick Integration Fixes
+**Mission**: Fix simple integration issues identified in Project 3.5 for immediate test improvements.
+
+**Tasks**:
+- Fix configuration import paths
+- Correct async method names
+- Remove Unicode encoding issues
+- Add UTF-8 encoding to file operations
+- Verify no regression in working tests
+
+**Deliverables**:
+- Updated test files with correct imports
+- Fixed async method calls
+- Windows-compatible output
+- 30-40% test pass rate improvement
+
+---
+
+#### Project 3.7: Tool-API Integration Bridge
+**Mission**: Build critical integration layer between MCP tools and API endpoints.
+
+**Tasks**:
+- Analyze MCP tool registration patterns
+- Design adapter pattern for integration
+- Create wrapper functions for tools
+- Update API endpoints
+- Ensure context properly passed
+- Test with both databases
+
+**Deliverables**:
+- Tool adapter module
+- Updated API endpoints
+- Integration architecture docs
+- 80%+ integration tests passing
+
+---
+
+#### Project 3.8: Final Integration Validation
+**Mission**: Complete validation after fixing all issues from Projects 3.5-3.7 before Phase 4.
+
+**Tasks**:
+- Re-run all 110+ tests
+- Execute E2E workflow tests
+- Validate both databases
+- Test multi-tenant isolation
+- Run performance benchmarks
+- Create go/no-go recommendation
+
+**Deliverables**:
+- Complete test report (90%+ passing)
+- Performance analysis
+- Production readiness assessment
+- Go/no-go for Phase 4
 
 ---
 
