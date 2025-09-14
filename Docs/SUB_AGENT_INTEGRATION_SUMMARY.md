@@ -64,19 +64,43 @@ All original documents backed up to `docs/backup_pre_subagent/` with:
 
 #### Critical Projects
 1. **5.1.a** - Sub-Agent Integration Foundation
-2. **5.1.b** - Orchestrator Templates v2
+2. **5.1.b** - Orchestrator Templates v2 with Template Management
 
 #### High Priority
-3. **5.1.c** - Dashboard Sub-Agent Visualization
+3. **5.1.c** - Dashboard Sub-Agent Visualization with Template Manager UI
 4. **5.1.d** - Quick Fixes Bundle
 5. **5.1.e** - Product/Task Isolation
+6. **5.1.i** - Agent Template Management System (NEW)
 
 #### Medium Priority
-6. **5.1.f** - Token Efficiency System
-7. **5.1.g** - Git Integration Hooks
-8. **5.1.h** - Task-to-Project UI
+7. **5.1.f** - Token Efficiency System
+8. **5.1.g** - Git Integration Hooks
+9. **5.1.h** - Task-to-Project UI
 
 ## Technical Implementation
+
+### Agent Template Management
+```python
+# Product-specific templates with archiving
+@mcp_tool
+def list_agent_templates(product_id: str):
+    """Show available templates for the product"""
+    
+@mcp_tool
+def get_agent_template(name: str, augmentations: str = None):
+    """Retrieve template with optional task-specific augmentations"""
+    
+@mcp_tool
+def create_agent_template(name: str, category: str, mission: str):
+    """Orchestrator creates new specialist templates"""
+
+# Base Templates (5 defaults)
+- Orchestrator: Project management
+- Analyzer: Code analysis
+- Implementer: Development
+- Tester: QA and validation
+- Documenter: Documentation
+```
 
 ### Hybrid Control Pattern
 ```python

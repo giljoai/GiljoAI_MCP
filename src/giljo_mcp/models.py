@@ -391,3 +391,43 @@ class Job(Base):
         Index("idx_job_agent", "agent_id"),
         Index("idx_job_status", "status"),
     )
+
+
+class AgentInteraction(Base):
+    """
+    Agent Interaction model - tracks sub-agent spawning and completion.
+    Enables hybrid orchestration with Claude Code's native sub-agent capabilities.
+    """
+    __tablename__ = "agent_interactions"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    parent_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
+    sub_agent_name = Column(String(100), nullable=False)
+    interaction_type = Column(String(20), nullable=False)  # SPAWN, COMPLETE, ERROR
+    mission = Column(Text, nullable=False)
+    start_time = Column(DateTime(timezone=True), server_default=func.now())
+    end_time = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+    tokens_used = Column(Integer, nullable=True)
+    result = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    meta_data = Column(JSON, default=dict)
+    
+    # Relationships
+    project = relationship("Project", backref="agent_interactions")
+    parent_agent = relationship("Agent", backref="sub_agent_interactions")
+    
+    __table_args__ = (
+        Index("idx_interaction_tenant", "tenant_key"),
+        Index("idx_interaction_project", "project_id"),
+        Index("idx_interaction_parent", "parent_agent_id"),
+        Index("idx_interaction_type", "interaction_type"),
+        Index("idx_interaction_created", "created_at"),
+        CheckConstraint(
+            "interaction_type IN ('SPAWN', 'COMPLETE', 'ERROR')",
+            name="ck_interaction_type"
+        ),
+    )

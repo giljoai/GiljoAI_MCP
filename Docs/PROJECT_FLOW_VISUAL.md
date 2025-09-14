@@ -22,21 +22,21 @@
 │                                                               │
 │     DAY 1-2: FOUNDATION SPRINT                               │
 │  ┌─────────────────────────────────────┐                    │
-│  │  5.1.a SUB-AGENT INTEGRATION        │ CRITICAL           │
+│  │  3.9.a SUB-AGENT INTEGRATION        │ CRITICAL           │
 │  │  • Hybrid control + logging         │ 4 hours           │
 │  │  • Database schema updates          │                    │
 │  │  • MCP tool additions               │                    │
 │  └──────────────┬──────────────────────┘                    │
 │                 ↓                                            │
 │  ┌─────────────────────────────────────┐                    │
-│  │  5.1.d QUICK FIXES BUNDLE          │ HIGH               │
+│  │  3.9.d QUICK FIXES BUNDLE          │ HIGH               │
 │  │  • Serena integration fixes        │ 2 hours           │
 │  │  • Path normalization              │                    │
 │  │  • Field naming cleanup            │                    │
 │  └──────────────┬──────────────────────┘                    │
 │                 ↓                                            │
 │  ┌─────────────────────────────────────┐                    │
-│  │  5.1.e PRODUCT ISOLATION           │ HIGH               │
+│  │  3.9.e PRODUCT ISOLATION           │ HIGH               │
 │  │  • Task product_id field           │ 3 hours           │
 │  │  • Dashboard context filtering     │                    │
 │  │  • Product switcher UI             │                    │
@@ -44,32 +44,41 @@
 │                 ↓                                            │
 │     DAY 3-4: TEMPLATE & VISIBILITY                          │
 │  ┌─────────────────────────────────────┐                    │
-│  │  5.1.b ORCHESTRATOR TEMPLATES V2   │ CRITICAL          │
-│  │  • Sub-agent mission patterns      │ 4 hours           │
-│  │  • Hybrid communication model      │                    │
-│  │  • Sub-agent type templates        │                    │
+│  │  3.9.b ORCHESTRATOR TEMPLATES V2   │ CRITICAL          │
+│  │  • Template management system      │ 4 hours           │
+│  │  • Product-specific templates      │                    │
+│  │  • Archive versioning system       │                    │
+│  │  • Base templates (5 defaults)     │                    │
 │  └────────┬─────────────────────────────┘                   │
 │           ├──────────────┐                                  │
 │           ↓              ↓                                  │
 │  ┌──────────────┐  ┌──────────────────┐                   │
-│  │ 5.1.c        │  │ 5.1.f TOKEN      │                   │
-│  │ DASHBOARD    │  │ EFFICIENCY       │ PARALLEL          │
-│  │ • Tree view  │  │ • Usage tracking │ EXECUTION         │
+│  │ 3.9.c DASHBOARD │  │ 3.9.f TOKEN      │                   │
+│  │ + TEMPLATES    │  │ EFFICIENCY       │ PARALLEL          │
+│  │ • Tree view    │  │ • Usage tracking │ EXECUTION         │
+│  │ • Template UI  │  │ • Smart routing  │                   │
 │  └──────────────┘  └──────────────────┘                   │
 │           ↓              ↓                                  │
 │           └──────┬───────┘                                  │
 │                  ↓                                           │
 │     DAY 5-6: ENHANCEMENTS                                   │
 │  ┌─────────────────────────────────────┐                    │
-│  │  5.1.g GIT INTEGRATION              │ MEDIUM            │
+│  │  3.9.g GIT INTEGRATION              │ MEDIUM            │
 │  │  • Leverage Claude Code git         │ 3 hours          │
 │  │  • Auto-commit on completion        │                    │
 │  └──────────────┬──────────────────────┘                    │
 │                 ↓                                            │
 │  ┌─────────────────────────────────────┐                    │
-│  │  5.1.h TASK CONVERSION UI           │ MEDIUM            │
+│  │  3.9.h TASK CONVERSION UI           │ MEDIUM            │
 │  │  • Smooth task→project flow         │ 4 hours          │
 │  │  • Bulk conversion support          │                    │
+│  └──────────────┬──────────────────────┘                    │
+│                 ↓                                            │
+│  ┌─────────────────────────────────────┐                    │
+│  │  3.9.i TEMPLATE MANAGEMENT          │ HIGH              │
+│  │  • Database schema & archives       │ 4 hours          │
+│  │  • MCP tools for templates          │                    │
+│  │  • Usage statistics tracking        │                    │
 │  └──────────────┬──────────────────────┘                    │
 │                 ↓                                            │
 │         🎯 MVP READY STATE 🎯                               │
@@ -176,21 +185,23 @@ The sub-agent model eliminates most architectural risks!
 ## Dependency Graph
 
 ```
-                    5.1.a Sub-Agent Integration
+                    3.9.a Sub-Agent Integration
                     /            |            \
                    /             |             \
-            5.1.b Templates  5.1.c Dashboard  5.1.d Fixes
+            3.9.b Templates  3.9.c Dashboard  3.9.d Fixes
                    \             |             /
                     \            |            /
                      \           |           /
-                      5.1.e Product Isolation
+                      3.9.e Product Isolation
                               |
-                    5.1.f Token Efficiency
+                    3.9.f Token Efficiency
                          /        \
                         /          \
-              5.1.g Git      5.1.h Task UI
+              3.9.g Git      3.9.h Task UI
                         \          /
                          \        /
+                   3.9.i Template Management
+                              |
                           MVP READY
                               |
                      4.1 API → 4.2 Dashboard
@@ -244,9 +255,9 @@ Human → Claude Code (Orchestrator)
 ## Implementation Velocity
 
 ### Week 1 (Days 1-6): Sub-Agent Integration
-- Day 1-2: Foundation (5.1.a, d, e) ✅
-- Day 3-4: Templates & Visibility (5.1.b, c, f) ✅
-- Day 5-6: Enhancements (5.1.g, h) ✅
+- Day 1-2: Foundation (3.9.a, d, e) ✅
+- Day 3-4: Templates & Visibility (3.9.b, c, f) ✅
+- Day 5-6: Enhancements (3.9.g, h) ✅
 - **Result: MVP READY!**
 
 ### Week 2: Polish & Launch

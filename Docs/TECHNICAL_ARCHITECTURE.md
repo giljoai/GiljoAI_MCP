@@ -141,6 +141,8 @@ Task            # Task management
 Session         # Agent work sessions
 Vision          # Vision documents and chunks
 Configuration   # Product settings
+AgentTemplate   # Product-specific agent templates
+TemplateArchive # Version history for templates
 
 # Relationships
 Project ←→ Agent (1:many)
@@ -148,9 +150,11 @@ Project ←→ Task (1:many)
 Agent ←→ Message (many:many)
 Agent ←→ Session (1:many)
 Project ←→ Vision (1:1)
+Product ←→ AgentTemplate (1:many)
+AgentTemplate ←→ TemplateArchive (1:many)
 ```
 
-### Sub-Agent Architecture
+### Sub-Agent Architecture (Enhancement Added in Phase 3.9)
 
 The system leverages Claude Code's native sub-agent capabilities for elegant orchestration:
 

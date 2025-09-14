@@ -66,7 +66,7 @@ The discovery of Claude Code's native sub-agent capability fundamentally changes
 
 #### Day 1-2: Foundation
 
-**Project 5.1.a: Sub-Agent Integration Foundation**
+**Project 3.9.a: Sub-Agent Integration Foundation**
 
 **Objective**: Create hybrid control + logging architecture
 
@@ -120,7 +120,7 @@ CREATE TABLE agent_interactions (
 
 ---
 
-**Project 5.1.d: Quick Fixes Bundle**
+**Project 3.9.d: Quick Fixes Bundle**
 
 **Objective**: Fix all 5-minute blockers
 
@@ -149,7 +149,7 @@ class VisionChunk(Base):
 
 ---
 
-**Project 5.1.e: Product/Task Isolation**
+**Project 3.9.e: Product/Task Isolation**
 
 **Objective**: Complete multi-tenant isolation
 
@@ -178,9 +178,9 @@ def get_tasks(tenant_key: str, product_id: str):
 
 #### Day 3-4: Templates & Visibility
 
-**Project 5.1.b: Orchestrator Templates v2**
+**Project 3.9.b: Orchestrator Templates v2 with Template Management**
 
-**Objective**: Rewrite for sub-agent model
+**Objective**: Rewrite for sub-agent model with product-specific template management
 
 **New Orchestrator Template**:
 ```python
@@ -199,12 +199,16 @@ SUB-AGENT CAPABILITIES:
 
 WORKFLOW PATTERN:
 1. Receive task/mission
-2. Log intention: spawn_and_log_sub_agent(type, mission)
-3. Spawn actual sub-agent (immediate execution)
-4. Get results directly
-5. Log completion: log_sub_agent_completion(type, results)
-6. Make decisions based on results
-7. Spawn next sub-agent as needed
+2. Check available templates: list_agent_templates()
+3. Select or create template:
+   - Use existing: get_agent_template("analyzer")
+   - Augment: get_agent_template("analyzer", "focus on security")
+   - Create new: create_agent_template() if needed
+4. Log intention: spawn_and_log_sub_agent(type, mission)
+5. Spawn sub-agent with template (immediate execution)
+6. Get results directly
+7. Log completion: log_sub_agent_completion(type, results)
+8. Make decisions and spawn next agent as needed
 
 CRITICAL: Always log to MCP for visibility, but execute directly.
 This provides real-time dashboard updates while maintaining speed.
@@ -242,7 +246,7 @@ SUB_AGENT_TEMPLATES = {
 
 ---
 
-**Project 5.1.c: Dashboard Sub-Agent Visualization**
+**Project 3.9.c: Dashboard Sub-Agent Visualization**
 
 **Objective**: Show sub-agent interactions beautifully
 
@@ -290,7 +294,7 @@ SUB_AGENT_TEMPLATES = {
 
 ---
 
-**Project 5.1.f: Token Efficiency System**
+**Project 3.9.f: Token Efficiency System**
 
 **Objective**: Monitor and optimize token usage
 
@@ -328,7 +332,7 @@ ROUTING_RULES = {
 
 #### Day 5-6: Enhancements
 
-**Project 5.1.g: Git Integration**
+**Project 3.9.$1: Git Integration**
 
 **Objective**: Leverage Claude Code's native git
 
@@ -355,7 +359,7 @@ def generate_commit_message(project_name, completed_tasks):
 
 ---
 
-**Project 5.1.h: Task-to-Project UI**
+**Project 3.9.$1: Task-to-Project UI**
 
 **Objective**: Smooth conversion workflow
 
@@ -379,6 +383,59 @@ def generate_commit_message(project_name, completed_tasks):
   </div>
 </template>
 ```
+
+---
+
+**Project 3.9.$1: Template Management System**
+
+**Objective**: Create comprehensive template management with product-specific scope
+
+**Implementation**:
+```python
+# Database Schema
+CREATE TABLE agent_templates (
+    id UUID PRIMARY KEY,
+    product_id UUID REFERENCES products(id),
+    name VARCHAR(255),
+    category VARCHAR(50), -- analyzer, implementer, tester, documenter
+    base_mission TEXT,
+    created_at TIMESTAMP,
+    archived BOOLEAN DEFAULT false
+);
+
+CREATE TABLE template_archives (
+    id UUID PRIMARY KEY,
+    template_id UUID REFERENCES agent_templates(id),
+    version_number INTEGER,
+    mission_snapshot TEXT,
+    archived_at TIMESTAMP,
+    archived_by VARCHAR(255)
+);
+
+# MCP Tools
+@mcp_tool
+def list_agent_templates(product_id: str, include_archived=False):
+    """List available templates for the product"""
+    
+@mcp_tool
+def get_agent_template(name: str, augmentations: str = None):
+    """Get template with optional task-specific augmentations"""
+    
+@mcp_tool
+def create_agent_template(name: str, category: str, mission: str):
+    """Create new specialist template"""
+    
+@mcp_tool
+def archive_agent_template(template_id: str):
+    """Archive current version before modification"""
+```
+
+**Base Templates**:
+1. **Orchestrator** - Project management and coordination
+2. **Analyzer** - Code analysis and architecture review
+3. **Implementer** - Development and implementation
+4. **Tester** - QA and validation
+5. **Documenter** - Documentation and comments
 
 ---
 
@@ -464,9 +521,9 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 ## Timeline to MVP
 
 ### Week 1: Sub-Agent Integration (6 days)
-- Days 1-2: Foundation (5.1.a, d, e)
-- Days 3-4: Templates & Visibility (5.1.b, c, f)
-- Days 5-6: Enhancements (5.1.g, h)
+- Days 1-2: Foundation (3.9.$1, d, e)
+- Days 3-4: Templates & Visibility (3.9.$1, c, f)
+- Days 5-6: Enhancements (3.9.$1, h)
 - **Result: MVP Feature Complete**
 
 ### Week 2: Polish & Launch (6 days)
@@ -480,13 +537,13 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 ```mermaid
 graph TD
     subgraph "Phase 3.9: Sub-Agent Integration"
-        SA1[5.1.a Integration] --> SA2[5.1.b Templates]
-        SA1 --> SA3[5.1.c Dashboard]
-        SA1 --> SA4[5.1.d Quick Fixes]
-        SA1 --> SA5[5.1.e Isolation]
-        SA2 --> SA6[5.1.f Token]
-        SA3 --> SA7[5.1.g Git]
-        SA5 --> SA8[5.1.h Task UI]
+        SA1[3.9.$1 Integration] --> SA2[3.9.$1 Templates]
+        SA1 --> SA3[3.9.$1 Dashboard]
+        SA1 --> SA4[3.9.$1 Quick Fixes]
+        SA1 --> SA5[3.9.$1 Isolation]
+        SA2 --> SA6[3.9.$1 Token]
+        SA3 --> SA7[3.9.$1 Git]
+        SA5 --> SA8[3.9.$1 Task UI]
     end
     
     subgraph "Existing Phases"
