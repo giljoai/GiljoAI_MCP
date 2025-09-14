@@ -1,0 +1,251 @@
+version: '3.9'
+
+# Production override configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  # PostgreSQL - Production overrides
+  postgres:
+    # No exposed ports in production (internal only)
+    ports: []
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}  # Use secure password from environment
+      POSTGRES_INITDB_ARGS: "--auth-local=md5"  # Require password for all connections
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+        labels: "service=postgres,env=production"
+    # Production backups
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - postgres_backups:/backups
+
+  # Backend - Production overrides
+  backend:
+    build:
+      target: production  # Use optimized production stage
+      args:
+        INSTALL_DEV_DEPS: "false"
+    environment:
+      # Production settings
+      DEBUG: "false"
+      HOT_RELOAD: "false"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PYTHONUNBUFFERED: 1
+
+      # Security
+      GILJO_MCP_MODE: ${GILJO_MCP_MODE:-lan}
+      GILJO_MCP_API_KEY: ${GILJO_MCP_API_KEY}
+      GILJO_MCP_SECRET_KEY: ${GILJO_MCP_SECRET_KEY}
+
+      # Production database
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # Disable development features
+      ENABLE_SWAGGER: "false"
+      ENABLE_DEBUG_ENDPOINTS: "false"
+      ENABLE_PROFILING: "false"
+
+      # Performance tuning
+      WORKERS: ${WORKERS:-4}
+      WORKER_CONNECTIONS: ${WORKER_CONNECTIONS:-1000}
+      KEEPALIVE: ${KEEPALIVE:-5}
+    volumes:
+      # Production volumes (read-only where appropriate)
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./Docs/Vision:/app/Docs/Vision:ro
+      - ./config.yaml:/app/config.yaml:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    command: >
+      sh -c "
+        echo 'Running production database migrations...' &&
+        alembic upgrade head &&
+        echo 'Starting production server...' &&
+        gunicorn api.app:app \
+          --bind 0.0.0.0:6002 \
+          --workers ${WORKERS:-4} \
+          --worker-class uvicorn.workers.UvicornWorker \
+          --worker-connections ${WORKER_CONNECTIONS:-1000} \
+          --max-requests ${MAX_REQUESTS:-1000} \
+          --max-requests-jitter ${MAX_REQUESTS_JITTER:-50} \
+          --timeout ${TIMEOUT:-30} \
+          --keepalive ${KEEPALIVE:-5} \
+          --access-logfile /app/logs/access.log \
+          --error-logfile /app/logs/error.log \
+          --log-level ${LOG_LEVEL:-info}
+      "
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "20"
+        labels: "service=backend,env=production"
+
+  # Frontend - Production overrides
+  frontend:
+    build:
+      target: production
+      args:
+        NODE_ENV: production
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_WS_URL: ${VITE_WS_URL:-/ws}
+        VITE_APP_MODE: ${GILJO_MCP_MODE:-lan}
+    ports:
+      - "${GILJO_MCP_DASHBOARD_PORT:-6000}:80"
+    environment:
+      # Production environment
+      NODE_ENV: production
+    volumes: []  # No mounted volumes in production
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+        labels: "service=frontend,env=production"
+
+  # Optional: Nginx reverse proxy for SSL termination and load balancing
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: giljo-nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      - frontend
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    networks:
+      - giljo-net
+    profiles:
+      - proxy  # Only start when explicitly requested
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+        labels: "service=nginx-proxy,env=production"
+
+  # Optional: Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: giljo-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - giljo-net
+    profiles:
+      - monitoring  # Only start when explicitly requested
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: giljo-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS:-}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    depends_on:
+      - prometheus
+    networks:
+      - giljo-net
+    profiles:
+      - monitoring  # Only start when explicitly requested
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+# Additional production volumes
+volumes:
+  postgres_backups:
+    driver: local
+    name: giljo_postgres_backups
+  nginx_cache:
+    driver: local
+    name: giljo_nginx_cache
+  prometheus_data:
+    driver: local
+    name: giljo_prometheus_data
+  grafana_data:
+    driver: local
+    name: giljo_grafana_data

@@ -1,0 +1,139 @@
+version: '3.9'
+
+# Development override configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # PostgreSQL - Development overrides
+  postgres:
+    ports:
+      - "5432:5432"  # Expose PostgreSQL for debugging/management tools
+    environment:
+      POSTGRES_PASSWORD: dev_password_123  # Simple password for development
+      POSTGRES_INITDB_ARGS: "--auth-local=trust"  # Trust local connections
+    volumes:
+      # Additional development volumes
+      - ./backups:/backups  # For database dumps
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Backend - Development overrides
+  backend:
+    build:
+      target: development  # Use development stage with hot reload
+      args:
+        INSTALL_DEV_DEPS: "true"
+    environment:
+      # Development settings
+      DEBUG: "true"
+      HOT_RELOAD: "true"
+      LOG_LEVEL: DEBUG
+      PYTHONUNBUFFERED: 1
+
+      # Development database
+      DB_PASSWORD: dev_password_123
+
+      # Disable security in development
+      GILJO_MCP_MODE: local
+      GILJO_MCP_API_KEY: ""
+      GILJO_MCP_SECRET_KEY: "dev-secret-key-not-for-production"
+
+      # Development features
+      ENABLE_SWAGGER: "true"
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      ENABLE_PROFILING: "true"
+    volumes:
+      # Mount source code for hot reload
+      - ./src:/app/src
+      - ./api:/app/api
+      - ./tests:/app/tests
+      - ./scripts:/app/scripts
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+      - ./config.yaml:/app/config.yaml
+      - ./.env:/app/.env
+
+      # Development tools
+      - ./pytest.ini:/app/pytest.ini
+      - ./.coverage:/app/.coverage
+    command: >
+      sh -c "
+        echo 'Waiting for PostgreSQL...' &&
+        sleep 5 &&
+        echo 'Running database migrations...' &&
+        alembic upgrade head 2>/dev/null || echo 'No migrations to run' &&
+        echo 'Starting development server with hot reload...' &&
+        uvicorn api.app:app --host 0.0.0.0 --port 6002 --reload --reload-dir /app
+      "
+    stdin_open: true  # Support for pdb debugging
+    tty: true
+
+  # Frontend - Development overrides
+  frontend:
+    build:
+      target: development
+      args:
+        NODE_ENV: development
+    ports:
+      - "5173:5173"  # Vite dev server port
+      - "6000:80"    # Also expose nginx port for testing production build
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://localhost:6002
+      VITE_WS_URL: ws://localhost:6003
+      VITE_APP_MODE: local
+      VITE_ENABLE_DEVTOOLS: "true"
+      VITE_ENABLE_SOURCE_MAPS: "true"
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.js:/app/vite.config.js
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/.env.test:/app/.env.test
+
+      # Node modules volume for better performance
+      - frontend_node_modules:/app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+    stdin_open: true
+    tty: true
+
+  # Optional: Development database admin tool
+  adminer:
+    image: adminer:latest
+    container_name: giljo-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    depends_on:
+      - postgres
+    networks:
+      - giljo-net
+    profiles:
+      - tools  # Only start when explicitly requested
+
+  # Optional: Development mail catcher for testing emails
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: giljo-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - giljo-net
+    profiles:
+      - tools  # Only start when explicitly requested
+
+# Additional volumes for development
+volumes:
+  frontend_node_modules:
+    driver: local
+    name: giljo_frontend_node_modules
