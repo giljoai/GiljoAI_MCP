@@ -5,8 +5,6 @@
 
 GiljoAI MCP Coding Orchestrator is a sophisticated multi-agent orchestration system that transforms how developers work with AI coding assistants. It solves the fundamental limitation of context windows by orchestrating teams of specialized AI agents that work together on complex software projects, maintaining state across sessions, and enabling true collaborative AI development.
 
-**🚀 January 2025 Update**: With the discovery of Claude Code's native sub-agent capabilities, GiljoAI-MCP has evolved from a complex orchestration system to an elegant **"AI Team Memory"** platform. We now provide the persistent brain that survives session restarts, while Claude Code provides the execution engine through direct sub-agent spawning. This pivot reduces complexity by 70% while increasing reliability to 95%.
-
 ### The Problem
 
 Current AI coding assistants face critical limitations:
@@ -18,39 +16,30 @@ Current AI coding assistants face critical limitations:
 
 ### Our Solution
 
-GiljoAI MCP Coding Orchestrator introduces an **AI Team Memory** platform that:
+GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 
-1. **Leverages Sub-Agent Spawning**: Claude Code directly spawns specialized sub-agents (analyzer, developer, tester, reviewer) with synchronous control
-2. **Maintains Persistent State**: PostgreSQL/SQLite database preserves all work across sessions - the "brain" that survives restarts
+1. **Orchestrates Multiple Agents**: Spawns specialized agents (analyzer, developer, tester, reviewer) that collaborate like a real development team
+2. **Maintains Persistent State**: PostgreSQL/SQLite database preserves all work across sessions
 3. **Dynamic Context Discovery**: Agents explore and understand codebases on-demand, ensuring fresh, relevant context
 4. **Task-to-Project Pipeline**: Captures technical debt during coding, then orchestrates AI teams to systematically address it
 5. **Progressive Deployment**: Runs locally today, scales to team servers tomorrow, deploys globally when needed
-
-**The Beautiful Simplicity**: Instead of managing multiple terminals and complex message passing, a single Claude Code session spawns all necessary sub-agents while GiljoAI-MCP logs everything for visibility and persistence
 
 ### Product Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│     GiljoAI MCP (Persistent Brain)          │
+│        GiljoAI MCP Orchestrator             │
 ├─────────────────────────────────────────────┤
-│  • Project State & Memory                   │
-│  • Cross-Session Coordination               │
-│  • Task Management & Pipeline               │
-│  • Vision Documents & Context               │
-│  • Dashboard & Visibility                   │
+│  • Multi-Agent Orchestration Engine         │
+│  • Dynamic Context Discovery                │
+│  • Message Queue & Routing                  │
+│  • Task Management System                   │
+│  • Vision-Driven Development                │
 └──────────────┬──────────────────────────────┘
-               │ MCP Protocol
-               ↓
-┌─────────────────────────────────────────────┐
-│   Claude Code (Execution Engine)            │
-├─────────────────────────────────────────────┤
-│  Orchestrator (Project Manager)             │
-│      ├── Spawns Sub-Agent: Analyzer         │
-│      ├── Spawns Sub-Agent: Developer        │
-│      ├── Spawns Sub-Agent: Tester          │
-│      └── Spawns Sub-Agent: Reviewer        │
-└─────────────────────────────────────────────┘
+               │
+    ┌──────────┼──────────┐
+    ↓          ↓          ↓
+[Claude CLI] [API Agents] [Desktop App]
 ```
 
 ### Core Features

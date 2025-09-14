@@ -5,8 +5,6 @@
 
 GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system designed with a local-first, progressively scalable architecture. The system can run on a single developer machine, scale to team LAN servers, and ultimately deploy as a global cloud service without architectural changes.
 
-**🚀 Sub-Agent Architecture Update (January 2025)**: The discovery of Claude Code's native sub-agent capabilities has fundamentally simplified our architecture. Instead of complex multi-terminal orchestration, we now use elegant single-session delegation where GiljoAI-MCP serves as the persistent brain (memory, state, coordination) while Claude Code acts as the execution engine through direct sub-agent spawning.
-
 ### Core Architecture Principles
 
 1. **Local-First Design**: Optimized for single-machine performance with network capabilities
@@ -148,45 +146,6 @@ Project ←→ Task (1:many)
 Agent ←→ Message (many:many)
 Agent ←→ Session (1:many)
 Project ←→ Vision (1:1)
-```
-
-### Sub-Agent Architecture
-
-The system leverages Claude Code's native sub-agent capabilities for elegant orchestration:
-
-#### Before Sub-Agents (Complex)
-```
-Multiple Terminals → Message Queue → Coordination → Fragile
-```
-
-#### After Sub-Agents (Simple)
-```
-Claude Code (Orchestrator)
-    ├── Spawns Sub-Agent: Analyzer
-    ├── Spawns Sub-Agent: Developer  
-    ├── Spawns Sub-Agent: Tester
-    └── Spawns Sub-Agent: Reviewer
-         ↓
-    MCP Logging (for visibility)
-         ↓
-    Dashboard & Persistence
-```
-
-#### Hybrid Control Pattern
-- **Direct Control**: Orchestrator spawns and controls sub-agents synchronously
-- **MCP Logging**: All interactions logged to message queue for visibility
-- **Persistence**: GiljoAI-MCP maintains state across sessions
-- **Token Efficiency**: 70% reduction through direct control vs broadcasts
-
-#### New MCP Tools for Sub-Agents
-```python
-@mcp_tool
-def spawn_and_log_sub_agent(agent_type, mission, parent="orchestrator"):
-    """Log sub-agent spawn for dashboard visibility"""
-    
-@mcp_tool  
-def log_sub_agent_completion(agent_type, results, duration_seconds):
-    """Log sub-agent results and metrics"""
 ```
 
 ### Deployment Modes

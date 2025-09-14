@@ -76,20 +76,25 @@ Single developer              →  Small team             →  Global deployment
 
 ```
 giljo_mcp/
-├── docs/          # All documentation
+├── Docs/          # All documentation (centralized)
 │   ├── Vision/    # Vision documents (highest priority)
 │   ├── Sessions/  # Development session memories
-│   └── devlog/    # Development logs
+│   ├── devlog/    # Development logs
+│   ├── api/       # API documentation
+│   ├── docker/    # Docker setup and deployment guides
+│   ├── scripts/   # Scripts documentation
+│   ├── tests/     # Test reports and validation
+│   └── manuals/   # Reference manuals
 ├── frontend/      # Vue 3 dashboard
 │   └── public/    # Static assets (PROVIDED)
 │       ├── favicon.ico
 │       ├── icons/      # System icons
 │       └── mascot/     # Animated logo
-├── src/           # Core application code (TO BE CREATED)
-├── api/           # REST & WebSocket APIs (TO BE CREATED)
-├── tests/         # Test suite (TO BE CREATED)
-├── scripts/       # Setup and utilities (TO BE CREATED)
-└── docker/        # Container definitions (TO BE CREATED)
+├── src/           # Core application code
+├── api/           # REST & WebSocket APIs
+├── tests/         # Test suite code
+├── scripts/       # Setup and utilities
+└── docker/        # Container definitions
 ```
 
 ## Development Status
@@ -105,16 +110,27 @@ We're building GiljoAI MCP using the existing AKE-MCP orchestrator through 20 fo
 - [ ] Phase 5: Deployment & Polish
 - [ ] Phase 6: Integrations & Optimization
 
-See [PROJECT_ORCHESTRATION_PLAN.md](docs/PROJECT_ORCHESTRATION_PLAN.md) for details.
+See [PROJECT_ORCHESTRATION_PLAN.md](Docs/PROJECT_ORCHESTRATION_PLAN.md) for details.
 
 ## Documentation
 
-- [Vision Document](docs/Vision/VISION_DOCUMENT.md) - Product vision and roadmap
-- [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md) - System design
-- [Project Cards](docs/PROJECT_CARDS.md) - Development project descriptions
-- [Project Flow](docs/PROJECT_FLOW_VISUAL.md) - Visual timeline and dependencies
-- [Color Themes](docs/color_themes.md) - UI color palette specifications
-- [Navigation Guide](docs/README_FIRST.md) - Complete project index
+### Core Documentation
+- [Vision Document](Docs/Vision/VISION_DOCUMENT.md) - Product vision and roadmap
+- [Technical Architecture](Docs/TECHNICAL_ARCHITECTURE.md) - System design
+- [Project Cards](Docs/PROJECT_CARDS.md) - Development project descriptions
+- [Project Flow](Docs/PROJECT_FLOW_VISUAL.md) - Visual timeline and dependencies
+- [Color Themes](Docs/color_themes.md) - UI color palette specifications
+- [Navigation Guide](Docs/README_FIRST.md) - Complete project index
+
+### Implementation Guides
+- [API Implementation](Docs/api/api_implementation_guide.md) - REST API details
+- [Docker Setup](Docs/docker/docker_setup_guide.md) - Container configuration
+- [Docker Deployment](Docs/docker/docker_deployment_guide.md) - Production deployment
+- [Scripts Setup](Docs/scripts/scripts_setup_guide.md) - Utility scripts
+
+### Testing Documentation
+- [Test Documentation](Docs/tests/CONSOLIDATED_TEST_DOCUMENTATION.md) - Complete testing guide
+- [Docker Tests](Docs/docker/tests/) - Container testing reports
 
 ## Contributing
 
@@ -153,7 +169,7 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ## Support
 
-- Documentation: [/docs](docs/)
+- Documentation: [/Docs](Docs/)
 - Issues: [GitHub Issues](https://github.com/yourusername/giljo-mcp/issues)
 - Discussions: [GitHub Discussions](https://github.com/yourusername/giljo-mcp/discussions)
 

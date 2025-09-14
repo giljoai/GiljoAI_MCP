@@ -4,16 +4,6 @@
 
 This is the root directory for the **GiljoAI MCP Coding Orchestrator** project - a complete rewrite of AKE-MCP with multi-tenant architecture and enhanced capabilities.
 
-### 🚀 ARCHITECTURAL UPDATE: Sub-Agent Integration (January 2025)
-
-**Major Simplification**: We've discovered Claude Code's native sub-agent capabilities, which fundamentally simplifies our architecture:
-
-- **Before**: Complex multi-terminal orchestration requiring 4 weeks to MVP
-- **After**: Elegant sub-agent delegation requiring only 2 weeks to MVP
-- **Result**: 70% token reduction, 95% reliability, 30% less code
-
-GiljoAI-MCP now serves as the **persistent brain** for AI development teams, while Claude Code provides the **execution engine** through sub-agents.
-
 ## 🗂️ Directory Structure & Contents
 
 ### 📁 Root Files
@@ -38,11 +28,10 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
   - `MCP_TOOLS_MANUAL.md` - Complete reference for 20+ MCP tools
   - `MISSION_TEMPLATES_TESTING_GUIDE.md` - Test suite documentation for mission templates
   
-#### 📄 Project Planning Documents (✨ UPDATED FOR SUB-AGENTS)
-- `PROJECT_ORCHESTRATION_PLAN.md` - **REVISED**: Leverages Claude Code sub-agents for simplified architecture
-- `PROJECT_CARDS.md` - **UPDATED**: Includes Phase 3.9 sub-agent integration projects
-- `PROJECT_FLOW_VISUAL.md` - **REVISED**: Shows accelerated 2-week timeline to MVP
-- `PRODUCT_PROPOSAL_CONTINUED.MD` - **NEW**: Sub-agent discovery and architectural pivot
+#### 📄 Project Planning Documents
+- `PROJECT_ORCHESTRATION_PLAN.md` - Master plan for 20-project development strategy
+- `PROJECT_CARDS.md` - Ready-to-use mission cards for orchestrator projects
+- `PROJECT_FLOW_VISUAL.md` - Visual timeline and project dependencies
   
 #### 📄 Technical Documentation
 - `TECHNICAL_ARCHITECTURE.md` - System design with OS-neutral requirements

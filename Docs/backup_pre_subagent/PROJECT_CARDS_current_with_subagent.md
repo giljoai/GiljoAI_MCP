@@ -326,44 +326,41 @@ Agents: analyzer, architect, implementer, tester
 
 ---
 
-### 🔴 Project 5.1.b: Orchestrator Templates Rewrite with Template Management
+### 🔴 Project 5.1.b: Orchestrator Templates Rewrite
 
 **Create Project Command**:
 ```
 Name: GiljoAI Orchestrator Templates v2
-Mission: Completely rewrite orchestrator mission templates to leverage Claude Code sub-agents with product-specific template management. Create base templates for Orchestrator, Analyzer, Implementer, Tester, and Documenter stored in database. Implement template retrieval system where orchestrator can list_agent_templates(), get_agent_template() with optional augmentations, and create_agent_template() for new specialists. Include template archiving system with timestamps for version control. Templates are product-specific and can be augmented per-task without modifying base template. Ensure orchestrator knows to check template library before spawning sub-agents.
+Mission: Completely rewrite orchestrator mission templates to leverage Claude Code sub-agents. Replace complex multi-agent coordination with direct sub-agent spawning patterns. Create templates for orchestrator-as-project-manager model where it spawns analyzer, developer, tester, and reviewer sub-agents as needed. Include hybrid communication pattern: direct control for sub-agents, MCP messages for cross-session coordination. Add templates for each sub-agent type with focused missions. Ensure all templates include logging for dashboard visibility.
 Agents: analyzer, template_writer, validator
 ```
 
 **Success Criteria**:
-- [ ] Base templates created (Orchestrator, Analyzer, Implementer, Tester, Documenter)
-- [ ] Template retrieval MCP tools working (list, get, create)
-- [ ] Template augmentation system functional
-- [ ] Archive system with timestamps implemented
-- [ ] Templates stored as product-specific
-- [ ] Orchestrator uses template library before spawning
+- [ ] Master orchestrator template uses sub-agents
+- [ ] Individual sub-agent templates created
+- [ ] Hybrid communication pattern documented
+- [ ] Templates include MCP logging instructions
+- [ ] Vision document integration maintained
 
 **Priority**: CRITICAL - Core to new model
 
 ---
 
-### 📊 Project 5.1.c: Dashboard Sub-Agent Visualization with Template Manager
+### 📊 Project 5.1.c: Dashboard Sub-Agent Visualization
 
 **Create Project Command**:
 ```
 Name: GiljoAI Sub-Agent Dashboard
-Mission: Enhance dashboard to visualize sub-agent interactions and add Template Manager UI. Create timeline view showing orchestrator-to-subagent spawning and completion events. Implement tree visualization for parallel sub-agent execution. Add Template Manager interface in Product Settings with GUI for viewing, editing, and creating agent templates. Show template usage analytics and performance metrics. Include template archive viewer showing version history with timestamps. Add metrics for sub-agent performance including duration, token usage, and success rates. Create filtering to show only sub-agent interactions or full message flow. Apply theme colors from docs/color_themes.md to all new components.
+Mission: Enhance dashboard to visualize sub-agent interactions and hierarchies. Create timeline view showing orchestrator-to-subagent spawning and completion events. Implement tree visualization for parallel sub-agent execution. Add metrics for sub-agent performance including duration, token usage, and success rates. Create filtering to show only sub-agent interactions or full message flow. Use WebSocket for real-time sub-agent status updates. Apply theme colors from docs/color_themes.md to new components.
 Agents: designer, frontend_developer, implementer
 ```
 
 **Success Criteria**:
 - [ ] Timeline view of sub-agent interactions
 - [ ] Tree view for parallel execution
-- [ ] Template Manager UI in Product Settings
-- [ ] Template editing and creation GUI working
-- [ ] Template archive viewer with version history
-- [ ] Usage analytics and performance metrics displayed
 - [ ] Real-time status updates working
+- [ ] Performance metrics displayed
+- [ ] Filtering controls functional
 
 **Priority**: HIGH - Users need to see the new model
 
@@ -471,28 +468,6 @@ Agents: designer, frontend_developer, tester
 - [ ] Product context maintained
 
 **Priority**: MEDIUM - Improves usability significantly
-
----
-
-### 🧬 Project 5.1.i: Agent Template Management System
-
-**Create Project Command**:
-```
-Name: GiljoAI Template Management System
-Mission: Create comprehensive agent template management system with product-specific scope. Implement database schema for agent_templates and template_usage tables with archive support. Create MCP tools: list_agent_templates(), get_agent_template(name, augmentations), create_agent_template(), archive_agent_template(), and suggest_agent_for_task(). Build template versioning system where any modification creates timestamped archive. Implement base templates for Orchestrator, Analyzer, Implementer, Tester, and Documenter. Templates can be augmented per-task without modifying base. Add template performance tracking with usage statistics. Ensure templates are product-specific with proper isolation.
-Agents: architect, implementer, database_specialist
-```
-
-**Success Criteria**:
-- [ ] Database schema for templates and archives created
-- [ ] All template MCP tools implemented
-- [ ] Base templates loaded (5 defaults)
-- [ ] Archive system creates versions on any change
-- [ ] Template augmentation working without modifying base
-- [ ] Usage statistics tracked per template
-- [ ] Product-specific isolation verified
-
-**Priority**: HIGH - Enables intelligent agent spawning
 
 ---
 
