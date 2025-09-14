@@ -1,0 +1,8 @@
+{
+  "connection": true,
+  "ping_pong": true,
+  "latency_ms": 0.0,
+  "reconnection": true,
+  "api_integration": true,
+  "throughput": 0
+}

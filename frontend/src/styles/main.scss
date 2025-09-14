@@ -1,5 +1,46 @@
 @import './variables.scss';
 
+// CSS Variables for theme switching with smooth transitions
+:root {
+  // Dark theme (default)
+  --color-bg-primary: #0e1c2d;
+  --color-bg-secondary: #182739;
+  --color-bg-elevated: #1e3147;
+  --color-border: #315074;
+  --color-text-primary: #e1e1e1;
+  --color-text-secondary: #8f97b7;
+  
+  // Accent colors (same for both themes)
+  --color-accent-primary: #ffc300;
+  --color-accent-success: #67bd6d;
+  --color-accent-danger: #c6298c;
+  --color-accent-special: #8b5cf6;
+  
+  // Transition for smooth theme switching
+  --theme-transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+// Light theme override
+[data-theme="light"],
+.v-theme--light {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f5f5;
+  --color-bg-elevated: #ffffff;
+  --color-border: #e0e0e0;
+  --color-text-primary: #363636;
+  --color-text-secondary: #606060;
+}
+
+// Apply transitions to all theme-aware elements
+* {
+  transition: var(--theme-transition);
+}
+
+// Prevent transition on page load
+.no-transition * {
+  transition: none !important;
+}
+
 // Base styles
 html {
   overflow-y: auto;
@@ -124,6 +165,58 @@ body {
   }
 }
 
+// Touch target minimum size for mobile
+.v-btn {
+  min-height: 44px !important;
+  min-width: 44px !important;
+  
+  &.v-btn--size-small {
+    min-height: 36px !important;
+    min-width: 36px !important;
+  }
+  
+  &.v-btn--icon {
+    width: 44px !important;
+    height: 44px !important;
+    
+    &.v-btn--size-small {
+      width: 36px !important;
+      height: 36px !important;
+    }
+  }
+}
+
+// Ensure touch-friendly spacing on mobile
+@media (max-width: 600px) {
+  .v-btn {
+    margin: 4px;
+  }
+  
+  .v-chip {
+    min-height: 32px;
+    padding: 0 12px;
+  }
+  
+  .v-text-field {
+    .v-field__input {
+      min-height: 44px;
+    }
+  }
+  
+  .v-select {
+    .v-field__input {
+      min-height: 44px;
+    }
+  }
+  
+  // Make table rows touch-friendly
+  .v-data-table {
+    .v-data-table__tr {
+      min-height: 48px;
+    }
+  }
+}
+
 // Responsive utilities
 @media (max-width: 960px) {
   .hide-md-and-down {
@@ -134,5 +227,42 @@ body {
 @media (max-width: 600px) {
   .hide-sm-and-down {
     display: none !important;
+  }
+  
+  // Mobile-optimized tables
+  .v-data-table {
+    font-size: 0.875rem;
+    
+    .v-data-table__td {
+      padding: 8px 12px;
+    }
+    
+    // Make tables horizontally scrollable on mobile
+    overflow-x: auto;
+  }
+  
+  // Stack form fields on mobile
+  .v-row {
+    .v-col-12.md-6,
+    .v-col-12.md-4,
+    .v-col-12.md-3,
+    .v-col-12.md-2 {
+      padding: 4px 12px;
+    }
+  }
+  
+  // Mobile navigation drawer
+  .v-navigation-drawer {
+    width: 256px !important;
+  }
+  
+  // Mobile cards
+  .v-card {
+    margin: 8px 0;
+  }
+  
+  // Bigger tap targets for mobile
+  .v-list-item {
+    min-height: 48px;
   }
 }

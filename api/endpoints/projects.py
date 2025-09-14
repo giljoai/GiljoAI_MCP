@@ -55,7 +55,7 @@ async def create_project(project: ProjectCreate):
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to create project"))
         
-        return ProjectResponse(
+        response = ProjectResponse(
             id=result["project_id"],
             name=project.name,
             mission=project.mission,
@@ -67,6 +67,22 @@ async def create_project(project: ProjectCreate):
             agent_count=0,
             message_count=0
         )
+        
+        # Broadcast project creation
+        if state.api_state.websocket_manager:
+            await state.api_state.websocket_manager.broadcast_project_update(
+                project_id=result["project_id"],
+                update_type="created",
+                project_data={
+                    "name": project.name,
+                    "mission": project.mission,
+                    "status": "active",
+                    "context_budget": 150000,
+                    "context_used": 0
+                }
+            )
+        
+        return response
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -181,6 +197,17 @@ async def close_project(project_id: str, summary: str = Query(..., description="
         
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to close project"))
+        
+        # Broadcast project closure
+        if state.api_state.websocket_manager:
+            await state.api_state.websocket_manager.broadcast_project_update(
+                project_id=project_id,
+                update_type="closed",
+                project_data={
+                    "status": "closed",
+                    "summary": summary
+                }
+            )
         
         return {"success": True, "message": "Project closed successfully"}
     

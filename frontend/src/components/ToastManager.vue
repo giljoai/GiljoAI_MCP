@@ -1,0 +1,230 @@
+<template>
+  <v-snackbar-queue
+    v-model="toasts"
+    :location="position"
+    :timeout="defaultTimeout"
+    multi-line
+    class="toast-manager"
+  >
+    <template v-for="(toast, index) in toasts" :key="toast.id">
+      <v-snackbar
+        v-model="toast.show"
+        :color="toast.color"
+        :location="position"
+        :timeout="toast.timeout || defaultTimeout"
+        :multi-line="toast.multiLine"
+        @update:model-value="(val) => !val && removeToast(index)"
+      >
+        <div class="d-flex align-center">
+          <v-icon
+            v-if="toast.icon"
+            :icon="toast.icon"
+            class="mr-3"
+          />
+          <div class="flex-grow-1">
+            <div v-if="toast.title" class="font-weight-bold">{{ toast.title }}</div>
+            <div>{{ toast.message }}</div>
+          </div>
+        </div>
+        
+        <template v-slot:actions>
+          <v-btn
+            v-if="toast.action"
+            variant="text"
+            @click="handleAction(toast)"
+          >
+            {{ toast.action.label }}
+          </v-btn>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="toast.show = false"
+            aria-label="Close notification"
+          />
+        </template>
+      </v-snackbar>
+    </template>
+  </v-snackbar-queue>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
+
+// Props
+const props = defineProps({
+  position: {
+    type: String,
+    default: 'bottom-right',
+    validator: (value) => [
+      'top-left', 'top-center', 'top-right',
+      'bottom-left', 'bottom-center', 'bottom-right'
+    ].includes(value)
+  },
+  defaultTimeout: {
+    type: Number,
+    default: 5000
+  },
+  maxToasts: {
+    type: Number,
+    default: 5
+  }
+})
+
+// State
+const toasts = ref([])
+const toastId = ref(0)
+const settingsStore = useSettingsStore()
+
+// Toast types configuration
+const toastTypes = {
+  success: {
+    color: 'success',
+    icon: 'mdi-check-circle',
+    timeout: 4000
+  },
+  error: {
+    color: 'error',
+    icon: 'mdi-alert-circle',
+    timeout: 0 // No auto-dismiss for errors
+  },
+  warning: {
+    color: 'warning',
+    icon: 'mdi-alert',
+    timeout: 6000
+  },
+  info: {
+    color: 'info',
+    icon: 'mdi-information',
+    timeout: 5000
+  }
+}
+
+// Methods
+function showToast(options) {
+  // Get type configuration
+  const typeConfig = toastTypes[options.type] || {}
+  
+  // Create toast object
+  const toast = {
+    id: ++toastId.value,
+    show: true,
+    message: options.message || '',
+    title: options.title,
+    type: options.type || 'info',
+    color: options.color || typeConfig.color || 'grey',
+    icon: options.icon !== false ? (options.icon || typeConfig.icon) : null,
+    timeout: options.timeout !== undefined ? options.timeout : typeConfig.timeout,
+    multiLine: options.multiLine || false,
+    action: options.action
+  }
+  
+  // Limit number of toasts
+  if (toasts.value.length >= props.maxToasts) {
+    toasts.value.shift()
+  }
+  
+  toasts.value.push(toast)
+  
+  // Auto-remove after timeout if specified
+  if (toast.timeout > 0) {
+    setTimeout(() => {
+      const index = toasts.value.findIndex(t => t.id === toast.id)
+      if (index !== -1) {
+        toasts.value[index].show = false
+      }
+    }, toast.timeout)
+  }
+  
+  return toast.id
+}
+
+function removeToast(index) {
+  toasts.value.splice(index, 1)
+}
+
+function clearToasts() {
+  toasts.value = []
+}
+
+function handleAction(toast) {
+  if (toast.action && typeof toast.action.callback === 'function') {
+    toast.action.callback()
+  }
+  toast.show = false
+}
+
+// Event handlers for global toast events
+function handleToastEvent(event) {
+  showToast(event.detail)
+}
+
+// Expose methods for external use
+defineExpose({
+  showToast,
+  clearToasts
+})
+
+// Lifecycle
+onMounted(() => {
+  // Listen for global toast events
+  window.addEventListener('show-toast', handleToastEvent)
+  
+  // Register toast methods globally
+  window.$toast = {
+    show: showToast,
+    success: (message, options = {}) => showToast({ ...options, message, type: 'success' }),
+    error: (message, options = {}) => showToast({ ...options, message, type: 'error' }),
+    warning: (message, options = {}) => showToast({ ...options, message, type: 'warning' }),
+    info: (message, options = {}) => showToast({ ...options, message, type: 'info' }),
+    clear: clearToasts
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('show-toast', handleToastEvent)
+  delete window.$toast
+})
+</script>
+
+<style scoped>
+.toast-manager {
+  z-index: 9999;
+}
+
+:deep(.v-snackbar__wrapper) {
+  min-width: 300px;
+  max-width: 500px;
+}
+
+/* Slide animation based on position */
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.toast-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* For left-positioned toasts */
+.toast-manager[data-position*="left"] .toast-enter-from,
+.toast-manager[data-position*="left"] .toast-leave-to {
+  transform: translateX(-100%);
+}
+
+/* For top-positioned toasts */
+.toast-manager[data-position^="top"] .toast-enter-from {
+  transform: translateY(-100%);
+}
+
+.toast-manager[data-position^="top"] .toast-leave-to {
+  transform: translateY(-100%);
+}
+</style>

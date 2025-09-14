@@ -49,15 +49,16 @@ async def lifespan(app: FastAPI):
     logger.info("Starting GiljoAI MCP API...")
     
     # Initialize configuration
-    state.config = ConfigManager()
+    from src.giljo_mcp.config_manager import get_config
+    state.config = get_config()  # Use the singleton getter
     
     # Initialize database
-    db_url = state.config.get('database.url', 'sqlite:///giljo_mcp.db')
+    db_url = getattr(state.config.database, 'url', 'sqlite:///giljo_mcp.db')
     state.db_manager = DatabaseManager(db_url, is_async=True)
-    await state.db_manager.init_db()
+    await state.db_manager.create_tables_async()
     
     # Initialize tenant manager
-    state.tenant_manager = TenantManager(state.db_manager)
+    state.tenant_manager = TenantManager()  # TenantManager uses static methods
     
     # Initialize tool accessor
     state.tool_accessor = ToolAccessor(state.db_manager, state.tenant_manager)
@@ -67,6 +68,9 @@ async def lifespan(app: FastAPI):
     
     # Initialize WebSocket manager
     state.websocket_manager = WebSocketManager()
+    
+    # Start heartbeat task
+    heartbeat_task = asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
     
     logger.info("API startup complete")
     

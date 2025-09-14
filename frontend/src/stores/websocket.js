@@ -1,153 +1,230 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { io } from 'socket.io-client'
-import { API_CONFIG } from '@/config/api'
+import { ref, computed } from 'vue'
+import websocketService from '@/services/websocket'
+import { useProjectStore } from './projects'
+import { useAgentStore } from './agents'
+import { useMessageStore } from './messages'
+import { useTaskStore } from './tasks'
 
 export const useWebSocketStore = defineStore('websocket', () => {
-  // State
-  const socket = ref(null)
-  const connected = ref(false)
+  // Connection state
+  const connectionState = ref('disconnected')
   const connectionError = ref(null)
   const reconnectAttempts = ref(0)
+  const maxReconnectAttempts = ref(10)
+  const clientId = ref(null)
+  const messageQueueSize = ref(0)
   
-  // Event handlers registry
-  const eventHandlers = new Map()
-
+  // Current subscriptions
+  const subscriptions = ref(new Set())
+  
+  // Computed properties
+  const isConnected = computed(() => connectionState.value === 'connected')
+  const isConnecting = computed(() => connectionState.value === 'connecting')
+  const isReconnecting = computed(() => connectionState.value === 'reconnecting')
+  
   // Initialize WebSocket connection
-  function connect() {
-    if (socket.value?.connected) {
-      console.log('WebSocket already connected')
-      return
-    }
-
-    socket.value = io(API_CONFIG.WEBSOCKET.url, {
-      reconnection: API_CONFIG.WEBSOCKET.reconnection,
-      reconnectionDelay: API_CONFIG.WEBSOCKET.reconnectionDelay,
-      reconnectionDelayMax: API_CONFIG.WEBSOCKET.reconnectionDelayMax,
-      reconnectionAttempts: API_CONFIG.WEBSOCKET.reconnectionAttempts,
-      transports: ['websocket', 'polling']
-    })
-
-    // Connection events
-    socket.value.on('connect', () => {
-      console.log('WebSocket connected')
-      connected.value = true
-      connectionError.value = null
-      reconnectAttempts.value = 0
-    })
-
-    socket.value.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason)
-      connected.value = false
-    })
-
-    socket.value.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error)
+  async function connect(options = {}) {
+    try {
+      // Set up connection state listener
+      websocketService.onConnectionChange((event) => {
+        handleConnectionChange(event)
+      })
+      
+      // Set up message handlers
+      setupMessageHandlers()
+      
+      // Connect to WebSocket server
+      await websocketService.connect(options)
+      
+      return true
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error)
       connectionError.value = error.message
-      connected.value = false
-    })
-
-    socket.value.on('reconnect_attempt', (attemptNumber) => {
-      reconnectAttempts.value = attemptNumber
-    })
-
-    // Application events
-    socket.value.on('project:update', (data) => {
-      triggerHandlers('project:update', data)
-    })
-
-    socket.value.on('agent:status', (data) => {
-      triggerHandlers('agent:status', data)
-    })
-
-    socket.value.on('message:new', (data) => {
-      triggerHandlers('message:new', data)
-    })
-
-    socket.value.on('task:update', (data) => {
-      triggerHandlers('task:update', data)
-    })
-
-    socket.value.on('context:update', (data) => {
-      triggerHandlers('context:update', data)
-    })
-  }
-
-  // Disconnect WebSocket
-  function disconnect() {
-    if (socket.value) {
-      socket.value.disconnect()
-      socket.value = null
-      connected.value = false
-    }
-  }
-
-  // Emit event to server
-  function emit(event, data) {
-    if (!socket.value?.connected) {
-      console.error('WebSocket not connected')
       return false
     }
-    socket.value.emit(event, data)
-    return true
   }
-
-  // Subscribe to events
-  function subscribe(event, handler) {
-    if (!eventHandlers.has(event)) {
-      eventHandlers.set(event, new Set())
-    }
-    eventHandlers.get(event).add(handler)
+  
+  // Disconnect WebSocket
+  function disconnect() {
+    websocketService.disconnect()
+    subscriptions.value.clear()
+  }
+  
+  // Handle connection state changes
+  function handleConnectionChange(event) {
+    connectionState.value = event.state
     
-    // Return unsubscribe function
-    return () => {
-      const handlers = eventHandlers.get(event)
-      if (handlers) {
-        handlers.delete(handler)
-        if (handlers.size === 0) {
-          eventHandlers.delete(event)
+    switch (event.state) {
+      case 'connected':
+        connectionError.value = null
+        reconnectAttempts.value = 0
+        clientId.value = websocketService.clientId
+        
+        // Re-subscribe to previous subscriptions
+        resubscribeAll()
+        break
+        
+      case 'disconnected':
+        // Don't clear subscriptions, we'll re-subscribe on reconnect
+        break
+        
+      case 'reconnecting':
+        reconnectAttempts.value = event.attempt
+        maxReconnectAttempts.value = event.maxAttempts
+        break
+        
+      case 'connecting':
+        connectionError.value = null
+        break
+    }
+    
+    // Update message queue size
+    const info = websocketService.getConnectionInfo()
+    messageQueueSize.value = info.messageQueueSize
+  }
+  
+  // Set up message handlers for different types
+  function setupMessageHandlers() {
+    // Agent updates
+    websocketService.onMessage('agent_update', (data) => {
+      const agentsStore = useAgentStore()
+      if (agentsStore.handleRealtimeUpdate) {
+        agentsStore.handleRealtimeUpdate(data.data)
+      }
+    })
+    
+    // Message updates
+    websocketService.onMessage('message', (data) => {
+      const messagesStore = useMessageStore()
+      if (messagesStore.handleRealtimeUpdate) {
+        messagesStore.handleRealtimeUpdate(data.data)
+      }
+    })
+    
+    // Project updates
+    websocketService.onMessage('project_update', (data) => {
+      const projectsStore = useProjectStore()
+      if (projectsStore.handleRealtimeUpdate) {
+        projectsStore.handleRealtimeUpdate(data.data)
+      }
+    })
+    
+    // Task updates
+    websocketService.onMessage('entity_update', (data) => {
+      if (data.entity_type === 'task') {
+        const tasksStore = useTaskStore()
+        if (tasksStore.handleRealtimeUpdate) {
+          tasksStore.handleRealtimeUpdate(data.data)
         }
       }
+    })
+    
+    // Progress updates
+    websocketService.onMessage('progress', (data) => {
+      handleProgressUpdate(data.data)
+    })
+    
+    // Notifications
+    websocketService.onMessage('notification', (data) => {
+      handleNotification(data.data)
+    })
+  }
+  
+  // Subscribe to entity updates
+  function subscribe(entityType, entityId) {
+    const key = `${entityType}:${entityId}`
+    
+    if (subscriptions.value.has(key)) {
+      return // Already subscribed
+    }
+    
+    if (websocketService.subscribe(entityType, entityId)) {
+      subscriptions.value.add(key)
     }
   }
-
-  // Trigger handlers for an event
-  function triggerHandlers(event, data) {
-    const handlers = eventHandlers.get(event)
-    if (handlers) {
-      handlers.forEach(handler => {
-        try {
-          handler(data)
-        } catch (error) {
-          console.error(`Error in WebSocket handler for ${event}:`, error)
-        }
-      })
+  
+  // Unsubscribe from entity updates
+  function unsubscribe(entityType, entityId) {
+    const key = `${entityType}:${entityId}`
+    
+    if (!subscriptions.value.has(key)) {
+      return // Not subscribed
+    }
+    
+    if (websocketService.unsubscribe(entityType, entityId)) {
+      subscriptions.value.delete(key)
     }
   }
-
-  // Join a room (for project-specific updates)
-  function joinRoom(room) {
-    return emit('join', { room })
+  
+  // Re-subscribe to all previous subscriptions
+  function resubscribeAll() {
+    subscriptions.value.forEach(key => {
+      const [entityType, entityId] = key.split(':')
+      websocketService.subscribe(entityType, entityId)
+    })
   }
-
-  // Leave a room
-  function leaveRoom(room) {
-    return emit('leave', { room })
+  
+  // Subscribe to project updates
+  function subscribeToProject(projectId) {
+    subscribe('project', projectId)
   }
-
+  
+  // Subscribe to agent updates
+  function subscribeToAgent(projectId, agentName) {
+    subscribe('agent', `${projectId}:${agentName}`)
+  }
+  
+  // Handle progress updates
+  function handleProgressUpdate(data) {
+    // Could emit events or update a progress store
+    console.log('Progress update:', data)
+    
+    // Emit custom event for components to listen to
+    window.dispatchEvent(new CustomEvent('ws-progress', { detail: data }))
+  }
+  
+  // Handle notifications
+  function handleNotification(data) {
+    console.log('Notification:', data)
+    
+    // Emit custom event for notification system
+    window.dispatchEvent(new CustomEvent('ws-notification', { detail: data }))
+  }
+  
+  // Send message to server
+  function send(data) {
+    return websocketService.send(data)
+  }
+  
+  // Get connection info
+  function getConnectionInfo() {
+    return websocketService.getConnectionInfo()
+  }
+  
   return {
     // State
-    socket,
-    connected,
+    connectionState,
     connectionError,
     reconnectAttempts,
+    maxReconnectAttempts,
+    clientId,
+    messageQueueSize,
+    subscriptions,
+    
+    // Computed
+    isConnected,
+    isConnecting,
+    isReconnecting,
     
     // Actions
     connect,
     disconnect,
-    emit,
     subscribe,
-    joinRoom,
-    leaveRoom
+    unsubscribe,
+    subscribeToProject,
+    subscribeToAgent,
+    send,
+    getConnectionInfo
   }
 })

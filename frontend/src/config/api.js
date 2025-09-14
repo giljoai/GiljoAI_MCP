@@ -10,13 +10,14 @@ export const API_CONFIG = {
     }
   },
   WEBSOCKET: {
-    url: process.env.NODE_ENV === 'production'
-      ? 'ws://localhost:6003'
-      : 'ws://localhost:6003',
+    url: import.meta.env.VITE_WS_URL || (process.env.NODE_ENV === 'production'
+      ? 'ws://localhost:8000'
+      : 'ws://localhost:8000'),
     reconnection: true,
     reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    reconnectionAttempts: 5
+    reconnectionDelayMax: 30000,
+    reconnectionAttempts: 10,
+    debug: import.meta.env.VITE_WS_DEBUG === 'true' || false
   },
   ENDPOINTS: {
     // Project Management

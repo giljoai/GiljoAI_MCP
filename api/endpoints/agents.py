@@ -38,7 +38,7 @@ async def create_agent(agent: AgentCreate):
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to create agent"))
         
-        return AgentResponse(
+        response = AgentResponse(
             id=result.get("agent_id", agent.agent_name),
             name=agent.agent_name,
             project_id=agent.project_id,
@@ -47,6 +47,17 @@ async def create_agent(agent: AgentCreate):
             created_at=datetime.utcnow(),
             health={"status": "healthy", "context_used": 0}
         )
+        
+        # Broadcast agent creation/update
+        if state.api_state.websocket_manager:
+            await state.api_state.websocket_manager.broadcast_agent_update(
+                agent_name=agent.agent_name,
+                project_id=agent.project_id,
+                status="active",
+                additional_data={"health": response.health, "mission": agent.mission}
+            )
+        
+        return response
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -85,6 +96,15 @@ async def decommission_agent(
         
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to decommission agent"))
+        
+        # Broadcast agent decommission
+        if state.api_state.websocket_manager:
+            await state.api_state.websocket_manager.broadcast_agent_update(
+                agent_name=agent_name,
+                project_id=project_id,
+                status="decommissioned",
+                additional_data={"reason": reason}
+            )
         
         return {"success": True, "message": f"Agent {agent_name} decommissioned"}
     

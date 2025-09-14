@@ -32,6 +32,11 @@ class AuthManager:
         self.mode = self.config.server.mode
         self.jwt_secret = self._get_or_create_jwt_secret()
         self.api_keys: Dict[str, Dict[str, Any]] = {}
+    
+    def is_enabled(self) -> bool:
+        """Check if authentication is enabled based on deployment mode"""
+        # Authentication is disabled in LOCAL mode, enabled in LAN and WAN modes
+        return self.mode != DeploymentMode.LOCAL
         
     def _get_or_create_jwt_secret(self) -> str:
         """Get or create JWT secret for token signing"""

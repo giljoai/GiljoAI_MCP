@@ -1,7 +1,11 @@
 <template>
   <v-app>
+    <!-- Skip Navigation Links (Screen Reader Accessible) -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <a href="#navigation" class="skip-link">Skip to navigation</a>
     <!-- Navigation Drawer -->
     <v-navigation-drawer
+      id="navigation"
       v-model="drawer"
       :rail="rail"
       permanent
@@ -19,6 +23,7 @@
             variant="text"
             icon="mdi-chevron-left"
             @click.stop="rail = !rail"
+            :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
           ></v-btn>
         </template>
       </v-list-item>
@@ -59,40 +64,22 @@
       <v-app-bar-nav-icon
         @click="drawer = !drawer"
         v-if="mobile"
+        aria-label="Toggle navigation drawer"
       ></v-app-bar-nav-icon>
 
       <v-toolbar-title>{{ currentPageTitle }}</v-toolbar-title>
 
       <v-spacer></v-spacer>
 
-      <!-- Status Indicators -->
-      <v-chip
-        v-if="wsConnected"
-        color="success"
-        variant="tonal"
-        size="small"
-        class="mr-2"
-      >
-        <v-icon start size="x-small">mdi-wifi</v-icon>
-        Connected
-      </v-chip>
-      <v-chip
-        v-else
-        color="error"
-        variant="tonal"
-        size="small"
-        class="mr-2"
-      >
-        <v-icon start size="x-small">mdi-wifi-off</v-icon>
-        Disconnected
-      </v-chip>
+      <!-- WebSocket Connection Status -->
+      <ConnectionStatus class="mr-2" />
 
       <!-- Notifications -->
-      <v-btn icon="mdi-bell" variant="text"></v-btn>
+      <v-btn icon="mdi-bell" variant="text" aria-label="View notifications"></v-btn>
     </v-app-bar>
 
     <!-- Main Content -->
-    <v-main>
+    <v-main id="main-content">
       <v-container fluid>
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
@@ -114,6 +101,53 @@
         </v-col>
       </v-row>
     </v-footer>
+    
+    <!-- Keyboard Shortcuts Help Modal -->
+    <v-dialog
+      v-model="isHelpModalOpen"
+      max-width="600"
+      @click:outside="hideHelp"
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-keyboard</v-icon>
+          Keyboard Shortcuts
+          <v-spacer></v-spacer>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="hideHelp"
+          ></v-btn>
+        </v-card-title>
+        
+        <v-card-text>
+          <v-list density="compact">
+            <template v-for="(shortcut, index) in shortcuts" :key="index">
+              <v-list-item v-if="!shortcut.context || shortcut.context === route.name">
+                <template v-slot:prepend>
+                  <kbd class="keyboard-shortcut">{{ shortcut.key }}</kbd>
+                </template>
+                <v-list-item-title>{{ shortcut.description }}</v-list-item-title>
+              </v-list-item>
+            </template>
+          </v-list>
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="hideHelp"
+          >
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- Toast Notifications -->
+    <ToastManager ref="toastManager" position="bottom-right" />
   </v-app>
 </template>
 
@@ -122,18 +156,24 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTheme, useDisplay } from 'vuetify'
 import { useWebSocketStore } from '@/stores/websocket'
+import { useAgentStore } from '@/stores/agents'
+import { useMessageStore } from '@/stores/messages'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
+import ConnectionStatus from '@/components/ConnectionStatus.vue'
+import ToastManager from '@/components/ToastManager.vue'
 
 // Composables
 const route = useRoute()
 const theme = useTheme()
 const { mobile } = useDisplay()
 const wsStore = useWebSocketStore()
+const agentStore = useAgentStore()
+const messageStore = useMessageStore()
+const { isHelpModalOpen, hideHelp, shortcuts } = useKeyboardShortcuts()
 
 // State
 const drawer = ref(true)
 const rail = ref(false)
-const activeAgents = ref(0)
-const pendingMessages = ref(0)
 
 // Navigation items
 const navigationItems = [
@@ -147,34 +187,104 @@ const navigationItems = [
 
 // Computed
 const currentPageTitle = computed(() => route.meta.title || 'GiljoAI MCP')
-const wsConnected = computed(() => wsStore.connected)
+const wsConnected = computed(() => wsStore.isConnected)
+const activeAgents = computed(() => agentStore.activeAgents.length)
+const pendingMessages = computed(() => messageStore.pendingMessages.length)
 
 // Methods
 const toggleTheme = () => {
+  // Add transition class for smooth theme switching
+  document.documentElement.classList.remove('no-transition')
+  
+  // Toggle the theme
   theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
+  
+  // Update data-theme attribute for CSS variables
+  document.documentElement.setAttribute('data-theme', theme.global.name.value)
+  
+  // Store preference
+  localStorage.setItem('theme-preference', theme.global.name.value)
 }
 
 // Lifecycle
-onMounted(() => {
-  // Connect WebSocket
-  wsStore.connect()
+let messagePollingInterval = null
+
+onMounted(async () => {
+  // Prevent transitions on initial load
+  document.documentElement.classList.add('no-transition')
   
-  // Subscribe to WebSocket events
-  wsStore.subscribe('agent:status', (data) => {
-    // Update active agents count
-    console.log('Agent status update:', data)
-  })
+  // Restore theme preference
+  const savedTheme = localStorage.getItem('theme-preference')
+  if (savedTheme) {
+    theme.global.name.value = savedTheme
+    document.documentElement.setAttribute('data-theme', savedTheme)
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }
   
-  wsStore.subscribe('message:new', (data) => {
-    // Update pending messages count
-    console.log('New message:', data)
-  })
+  // Enable transitions after a short delay
+  setTimeout(() => {
+    document.documentElement.classList.remove('no-transition')
+  }, 100)
+  
+  // Connect WebSocket with optional authentication
+  // You can pass { apiKey: 'your-key' } or { token: 'your-token' } if needed
+  try {
+    await wsStore.connect()
+    console.log('WebSocket connected successfully')
+    
+    // Load initial data
+    await Promise.all([
+      agentStore.fetchAgents(),
+      messageStore.fetchMessages()
+    ])
+    
+    // Set up 10-second message polling interval
+    messagePollingInterval = setInterval(async () => {
+      try {
+        await messageStore.fetchMessages()
+        console.log('Messages refreshed at', new Date().toLocaleTimeString())
+      } catch (error) {
+        console.error('Failed to fetch messages:', error)
+      }
+    }, 10000) // Poll every 10 seconds
+    
+    // Subscribe to relevant updates for the whole app
+    // Individual views will subscribe to specific entities
+    
+    // Listen for notifications
+    window.addEventListener('ws-notification', handleNotification)
+    window.addEventListener('new-message', handleNewMessage)
+    
+  } catch (error) {
+    console.error('Failed to initialize WebSocket:', error)
+  }
 })
 
 onUnmounted(() => {
-  // Cleanup WebSocket connection
+  // Clear message polling interval
+  if (messagePollingInterval) {
+    clearInterval(messagePollingInterval)
+  }
+  
+  // Cleanup WebSocket connection and event listeners
   wsStore.disconnect()
+  window.removeEventListener('ws-notification', handleNotification)
+  window.removeEventListener('new-message', handleNewMessage)
 })
+
+// Event handlers
+const handleNotification = (event) => {
+  const notification = event.detail
+  console.log('Notification received:', notification)
+  // Could show a toast/snackbar here
+}
+
+const handleNewMessage = (event) => {
+  const message = event.detail
+  console.log('New message received:', message)
+  // Could show a notification or update UI
+}
 </script>
 
 <style scoped>
@@ -186,5 +296,35 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.keyboard-shortcut {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-right: 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  font-weight: 600;
+  min-width: 60px;
+  text-align: center;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+  top: 0;
 }
 </style>

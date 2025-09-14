@@ -135,6 +135,53 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
   }
 
+  // Handle real-time updates from WebSocket
+  function handleRealtimeUpdate(data) {
+    const { project_id, update_type, name, status, mission, context_used, context_budget } = data
+    
+    // Find project by ID
+    const projectIndex = projects.value.findIndex(p => p.id === project_id)
+    
+    if (update_type === 'created' && projectIndex === -1) {
+      // New project - add to list
+      projects.value.push({
+        id: project_id,
+        name,
+        status,
+        mission,
+        context_used: context_used || 0,
+        context_budget: context_budget || 150000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+    } else if (projectIndex !== -1) {
+      // Update existing project
+      const project = projects.value[projectIndex]
+      
+      if (update_type === 'closed') {
+        project.status = 'closed'
+      } else if (update_type === 'status_changed') {
+        project.status = status
+      }
+      
+      // Update other fields if provided
+      if (name) project.name = name
+      if (mission) project.mission = mission
+      if (context_used !== undefined) project.context_used = context_used
+      if (context_budget !== undefined) project.context_budget = context_budget
+      
+      project.updated_at = new Date().toISOString()
+      
+      // Update current project if it's the same
+      if (currentProject.value?.id === project_id) {
+        currentProject.value = { ...project }
+      }
+    } else if (project_id) {
+      // Unknown project - fetch updated list
+      fetchProjects()
+    }
+  }
+
   return {
     // State
     projects,
@@ -152,6 +199,7 @@ export const useProjectStore = defineStore('projects', () => {
     createProject,
     updateProject,
     deleteProject,
-    clearError
+    clearError,
+    handleRealtimeUpdate
   }
 })

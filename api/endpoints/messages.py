@@ -45,7 +45,7 @@ async def send_message(message: MessageSend):
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to send message"))
         
-        return MessageResponse(
+        response = MessageResponse(
             id=result["message_id"],
             from_agent=message.from_agent or "orchestrator",
             to_agents=message.to_agents,
@@ -55,6 +55,23 @@ async def send_message(message: MessageSend):
             status="pending",
             created_at=datetime.utcnow()
         )
+        
+        # Broadcast new message
+        if state.api_state.websocket_manager:
+            await state.api_state.websocket_manager.broadcast_message_update(
+                message_id=result["message_id"],
+                project_id=message.project_id,
+                update_type="new",
+                message_data={
+                    "from_agent": message.from_agent or "orchestrator",
+                    "to_agents": message.to_agents,
+                    "content": message.content,
+                    "priority": message.priority,
+                    "status": "pending"
+                }
+            )
+        
+        return response
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -111,6 +128,20 @@ async def acknowledge_message(
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to acknowledge message"))
         
+        # Broadcast message acknowledgment
+        if state.api_state.websocket_manager:
+            # Get message details to include project_id
+            # For now, we'll broadcast without project_id (could be enhanced)
+            await state.api_state.websocket_manager.broadcast_message_update(
+                message_id=message_id,
+                project_id=result.get("project_id", ""),
+                update_type="acknowledged",
+                message_data={
+                    "acknowledged_by": agent_name,
+                    "status": "acknowledged"
+                }
+            )
+        
         return {"success": True, "message": "Message acknowledged"}
     
     except Exception as e:
@@ -134,6 +165,19 @@ async def complete_message(
         
         if not complete_result.get("success"):
             raise HTTPException(status_code=400, detail=complete_result.get("error", "Failed to complete message"))
+        
+        # Broadcast message completion
+        if state.api_state.websocket_manager:
+            await state.api_state.websocket_manager.broadcast_message_update(
+                message_id=message_id,
+                project_id=complete_result.get("project_id", ""),
+                update_type="completed",
+                message_data={
+                    "completed_by": agent_name,
+                    "result": result,
+                    "status": "completed"
+                }
+            )
         
         return {"success": True, "message": "Message completed", "result": result}
     

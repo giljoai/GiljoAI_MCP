@@ -136,6 +136,45 @@ export const useAgentStore = defineStore('agents', () => {
     error.value = null
   }
 
+  // Handle real-time updates from WebSocket
+  function handleRealtimeUpdate(data) {
+    const { agent_name, project_id, status, health, active_jobs, context_used } = data
+    
+    // Find agent by name and project
+    const agent = agents.value.find(a => 
+      a.name === agent_name && a.project_id === project_id
+    )
+    
+    if (agent) {
+      // Update agent status
+      if (status) {
+        agent.status = status
+      }
+      
+      // Update health data if provided
+      if (health !== undefined) {
+        healthData.value[agent.id] = {
+          ...healthData.value[agent.id],
+          health,
+          context_used,
+          active_jobs,
+          last_updated: new Date().toISOString()
+        }
+      }
+      
+      // Update timestamp
+      agent.updated_at = new Date().toISOString()
+      
+      // If this is the current agent, update it too
+      if (currentAgent.value?.id === agent.id) {
+        currentAgent.value = { ...agent }
+      }
+    } else if (agent_name && project_id) {
+      // New agent appeared - fetch the updated list
+      fetchAgents(project_id)
+    }
+  }
+
   return {
     // State
     agents,
@@ -158,6 +197,7 @@ export const useAgentStore = defineStore('agents', () => {
     assignJob,
     decommissionAgent,
     updateAgentStatus,
-    clearError
+    clearError,
+    handleRealtimeUpdate
   }
 })

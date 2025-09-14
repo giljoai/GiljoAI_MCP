@@ -196,6 +196,72 @@ export const useTaskStore = defineStore('tasks', () => {
     error.value = null
   }
 
+  // Handle real-time updates from WebSocket
+  function handleRealtimeUpdate(data) {
+    const { 
+      task_id, 
+      project_id, 
+      update_type, 
+      title, 
+      description, 
+      status, 
+      assigned_to, 
+      priority,
+      progress,
+      completed_at 
+    } = data
+    
+    // Find task by ID
+    const taskIndex = tasks.value.findIndex(t => t.id === task_id)
+    
+    if (update_type === 'created' && taskIndex === -1) {
+      // New task - add to list
+      const newTask = {
+        id: task_id,
+        project_id,
+        title,
+        description,
+        status: status || TASK_STATUS.PENDING,
+        assigned_to,
+        priority: priority || 'medium',
+        progress: progress || 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      
+      tasks.value.push(newTask)
+      
+    } else if (taskIndex !== -1) {
+      // Update existing task
+      const task = tasks.value[taskIndex]
+      
+      if (update_type === 'status_changed' && status) {
+        task.status = status
+        if (status === TASK_STATUS.COMPLETED) {
+          task.completed_at = completed_at || new Date().toISOString()
+          task.progress = 100
+        }
+      }
+      
+      // Update other fields if provided
+      if (title) task.title = title
+      if (description) task.description = description
+      if (assigned_to !== undefined) task.assigned_to = assigned_to
+      if (priority) task.priority = priority
+      if (progress !== undefined) task.progress = progress
+      
+      task.updated_at = new Date().toISOString()
+      
+      // Update current task if it's the same
+      if (currentTask.value?.id === task_id) {
+        currentTask.value = { ...task }
+      }
+    } else if (task_id && update_type === 'created') {
+      // Unknown task - fetch updated list
+      fetchTasks({ project_id })
+    }
+  }
+
   return {
     // State
     tasks,
@@ -221,6 +287,7 @@ export const useTaskStore = defineStore('tasks', () => {
     changeTaskStatus,
     moveTask,
     updateTaskFromWebSocket,
-    clearError
+    clearError,
+    handleRealtimeUpdate
   }
 })

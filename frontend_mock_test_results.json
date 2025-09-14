@@ -1,0 +1,9 @@
+{
+  "connection": true,
+  "heartbeat": true,
+  "reconnection": true,
+  "message_queue": false,
+  "broadcast": false,
+  "latency_ms": 0.0,
+  "throughput": 0
+}

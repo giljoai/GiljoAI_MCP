@@ -718,6 +718,30 @@ class ConfigManager:
         """Context manager exit - stop file watcher."""
         self.stop_watching()
 
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Get configuration value by dotted key path
+        
+        Args:
+            key: Dotted path to config value (e.g. 'database.url', 'server.port')
+            default: Default value if key not found
+            
+        Returns:
+            Configuration value or default
+        """
+        parts = key.split('.')
+        value = self
+        
+        try:
+            for part in parts:
+                if hasattr(value, part):
+                    value = getattr(value, part)
+                else:
+                    return default
+            return value
+        except (AttributeError, TypeError):
+            return default
+
 
 # Global configuration instance
 _config_manager: Optional[ConfigManager] = None

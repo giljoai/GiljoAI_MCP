@@ -9,6 +9,15 @@
         </p>
       </v-col>
       <v-col cols="auto">
+        <v-btn-toggle
+          v-model="viewMode"
+          mandatory
+          density="compact"
+          class="mr-2"
+        >
+          <v-btn value="cards" icon="mdi-view-grid" aria-label="Card view" />
+          <v-btn value="table" icon="mdi-table" aria-label="Table view" />
+        </v-btn-toggle>
         <v-btn
           color="primary"
           prepend-icon="mdi-robot-happy"
@@ -35,7 +44,7 @@
     </v-row>
 
     <!-- Agent Cards Grid -->
-    <v-row>
+    <v-row v-if="viewMode === 'cards'">
       <v-col
         v-for="agent in filteredAgents"
         :key="agent.id"
@@ -191,6 +200,105 @@
       </v-col>
     </v-row>
 
+    <!-- Agent Table View -->
+    <v-card v-if="viewMode === 'table'" class="mb-4">
+      <v-data-table
+        :headers="tableHeaders"
+        :items="filteredAgents"
+        :loading="loading"
+        :items-per-page="10"
+        class="elevation-0"
+      >
+        <!-- Status Column -->
+        <template v-slot:item.status="{ item }">
+          <v-chip
+            :color="getStatusColor(item.status)"
+            size="small"
+            variant="flat"
+          >
+            <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
+            {{ item.status }}
+          </v-chip>
+        </template>
+
+        <!-- Name Column -->
+        <template v-slot:item.name="{ item }">
+          <div class="d-flex align-center">
+            <v-avatar size="32" class="mr-2">
+              <v-icon>mdi-robot</v-icon>
+            </v-avatar>
+            <div>
+              <div class="font-weight-medium">{{ item.name }}</div>
+              <div class="text-caption text-medium-emphasis">{{ item.role }}</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Context Usage Column -->
+        <template v-slot:item.context_usage="{ item }">
+          <div class="d-flex align-center">
+            <v-progress-linear
+              :model-value="item.context_percentage"
+              :color="getContextColor(item.context_percentage)"
+              height="20"
+              rounded
+              class="mr-2"
+              style="min-width: 100px;"
+            >
+              <template v-slot:default>
+                <span class="text-caption">{{ item.context_percentage }}%</span>
+              </template>
+            </v-progress-linear>
+          </div>
+        </template>
+
+        <!-- Health Column -->
+        <template v-slot:item.health="{ item }">
+          <v-icon :color="getHealthColor(item.health_score)">
+            {{ getHealthIcon(item.health_score) }}
+          </v-icon>
+        </template>
+
+        <!-- Messages Column -->
+        <template v-slot:item.messages="{ item }">
+          <div class="text-center">
+            <v-chip size="small" variant="outlined">
+              {{ item.pending_messages || 0 }}
+            </v-chip>
+          </div>
+        </template>
+
+        <!-- Actions Column -->
+        <template v-slot:item.actions="{ item }">
+          <v-btn
+            icon="mdi-eye"
+            size="small"
+            variant="text"
+            @click="viewAgentDetails(item)"
+            aria-label="View agent details"
+          />
+          <v-btn
+            v-if="item.status === 'active' || item.status === 'working'"
+            icon="mdi-pause"
+            size="small"
+            variant="text"
+            color="warning"
+            @click="pauseAgent(item)"
+            aria-label="Pause agent"
+          />
+          <v-btn
+            v-if="item.status !== 'decommissioned'"
+            icon="mdi-stop"
+            size="small"
+            variant="text"
+            color="error"
+            @click="decommissionAgent(item)"
+            aria-label="Decommission agent"
+          />
+        </template>
+      </v-data-table>
+    </v-card>
+
     <!-- Empty State -->
     <v-row v-if="filteredAgents.length === 0 && !loading">
       <v-col>
@@ -343,6 +451,21 @@ import { AGENT_STATUS, REFRESH_INTERVALS } from '@/utils/constants'
 
 // Stores
 const agentStore = useAgentStore()
+
+// View mode
+const viewMode = ref('cards')
+
+// Table headers
+const tableHeaders = [
+  { title: 'Status', key: 'status', width: '120' },
+  { title: 'Agent', key: 'name' },
+  { title: 'Role', key: 'role', width: '150' },
+  { title: 'Context Usage', key: 'context_usage', width: '180' },
+  { title: 'Health', key: 'health', width: '80', align: 'center' },
+  { title: 'Messages', key: 'messages', width: '100', align: 'center' },
+  { title: 'Last Active', key: 'last_active', width: '150' },
+  { title: 'Actions', key: 'actions', width: '150', sortable: false }
+]
 const wsStore = useWebSocketStore()
 
 // Reactive state
