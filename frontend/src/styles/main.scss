@@ -1,0 +1,138 @@
+@import './variables.scss';
+
+// Base styles
+html {
+  overflow-y: auto;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Custom scrollbar for dark theme
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $almost-dark-blue;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $med-blue;
+  border-radius: $radius-sm;
+  
+  &:hover {
+    background: $lightest-blue;
+  }
+}
+
+// Animation classes
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity $transition-base;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all $transition-base;
+}
+
+.slide-fade-leave-active {
+  transition: all $transition-fast;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(20px);
+  opacity: 0;
+}
+
+// Utility classes
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.no-select {
+  user-select: none;
+}
+
+// Custom card styles
+.stats-card {
+  background: linear-gradient(135deg, $almost-dark-blue 0%, $lighter-dark-blue 100%);
+  border: 1px solid rgba($lightest-blue, 0.1);
+  transition: transform $transition-fast, box-shadow $transition-fast;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-lg;
+  }
+}
+
+// Custom button styles
+.primary-action-btn {
+  background: linear-gradient(135deg, $yellow 0%, darken($yellow, 10%) 100%);
+  color: $darkest-blue;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba($yellow, 0.3);
+  }
+}
+
+// Status indicators
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  
+  &.online {
+    background-color: $green;
+    animation: pulse 2s infinite;
+  }
+  
+  &.offline {
+    background-color: $pink-red;
+  }
+  
+  &.pending {
+    background-color: $yellow;
+    animation: pulse 1.5s infinite;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+// Responsive utilities
+@media (max-width: 960px) {
+  .hide-md-and-down {
+    display: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .hide-sm-and-down {
+    display: none !important;
+  }
+}

@@ -68,7 +68,7 @@ async def test_message_acknowledgment():
         session.add_all([agent1, agent2, agent3])
         await session.commit()
         
-        print("✅ Test setup complete\n")
+        print("[PASS] Test setup complete\n")
         
         # Test 1: Create message with correct field names
         print("Test 1: Creating message with multi-agent support...")
@@ -86,7 +86,7 @@ async def test_message_acknowledgment():
         )
         session.add(message)
         await session.commit()
-        print(f"✅ Created message {message.id} to agents: {message.to_agents}\n")
+        print(f"[PASS] Created message {message.id} to agents: {message.to_agents}\n")
         
         # Test 2: Retrieve and auto-acknowledge
         print("Test 2: Testing auto-acknowledgment...")
@@ -111,7 +111,7 @@ async def test_message_acknowledgment():
                     "agent_name": "implementer",
                     "timestamp": datetime.utcnow().isoformat()
                 })
-                print(f"✅ Auto-acknowledged by implementer: {msg.acknowledged_by}\n")
+                print(f"[PASS] Auto-acknowledged by implementer: {msg.acknowledged_by}\n")
         
         await session.commit()
         
@@ -137,7 +137,7 @@ async def test_message_acknowledgment():
                     msg.meta_data = {}
                 msg.meta_data["result"] = "All message tools fixed and working"
                 
-                print(f"✅ Completed by implementer with notes: {msg.completed_by[-1]}\n")
+                print(f"[PASS] Completed by implementer with notes: {msg.completed_by[-1]}\n")
         
         await session.commit()
         
@@ -172,7 +172,7 @@ async def test_message_acknowledgment():
             assert "timestamp" in comp, "completion should have timestamp"
             assert "notes" in comp, "completion should have notes"
         
-        print("\n✅ All tests passed! Message acknowledgment system is working correctly.")
+        print("\n[PASS] All tests passed! Message acknowledgment system is working correctly.")
         
         # Cleanup
         await session.execute(Message.__table__.delete())

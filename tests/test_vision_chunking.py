@@ -349,7 +349,7 @@ class TestFixtures:
         # Document with special characters
         special = "# Special Characters Test\n\n"
         special += "Unicode: ñ é ü ß ∑ ∫ ∂ ∇\n\n"
-        special += "Emojis: 🚀 💻 📚 ✨\n\n"
+        special += "Emojis: [rocket] [computer] [books] [sparkles]\n\n"
         special += generator.generate_lorem_ipsum(10)
         
         return {

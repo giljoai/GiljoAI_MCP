@@ -35,7 +35,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Create a new project"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Generate unique tenant key
                 tenant_key = f"tk_{uuid4().hex[:12]}"
                 
@@ -61,7 +61,8 @@ class ToolAccessor:
                             name=agent_name,
                             project_id=project.id,
                             tenant_key=tenant_key,
-                            status="active"
+                            status="active",
+                            role=agent_name  # Use agent name as default role
                         )
                         session.add(agent)
                     await session.commit()
@@ -86,7 +87,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """List all projects with optional status filter"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 query = select(Project)
                 if status:
                     query = query.where(Project.status == status)
@@ -123,7 +124,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Get comprehensive project status"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Get project
                 query = select(Project)
                 if project_id:
@@ -185,7 +186,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Close a completed project with summary"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Update project status
                 result = await session.execute(
                     update(Project)
@@ -193,7 +194,7 @@ class ToolAccessor:
                     .values(
                         status="completed",
                         updated_at=datetime.utcnow(),
-                        metadata={"summary": summary}
+                        meta_data={"summary": summary}
                     )
                 )
                 
@@ -220,7 +221,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Update the mission field after orchestrator analysis"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 result = await session.execute(
                     update(Project)
                     .where(Project.id == project_id)
@@ -254,7 +255,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Ensure an agent exists for work on a project"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Get project
                 result = await session.execute(
                     select(Project).where(Project.id == project_id)
@@ -310,7 +311,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Check agent health and context usage"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 if agent_name:
                     result = await session.execute(
                         select(Agent).where(Agent.name == agent_name)
@@ -326,11 +327,12 @@ class ToolAccessor:
                 health_data = []
                 for agent in agents:
                     if agent:
+                        # Don't access relationships in async context
                         health_data.append({
                             "name": agent.name,
                             "status": agent.status,
-                            "context_used": agent.context_used,
-                            "message_count": agent.message_count
+                            "context_used": agent.context_used or 0,
+                            "message_count": 0  # Skip relationship access for now
                         })
                 
                 return {
@@ -350,7 +352,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Gracefully end an agent's work"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 result = await session.execute(
                     update(Agent)
                     .where(
@@ -359,7 +361,7 @@ class ToolAccessor:
                     )
                     .values(
                         status="decommissioned",
-                        metadata={"reason": reason}
+                        meta_data={"reason": reason}
                     )
                 )
                 
@@ -390,7 +392,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Send message to one or more agents"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Get project
                 result = await session.execute(
                     select(Project).where(Project.id == project_id)
@@ -404,7 +406,7 @@ class ToolAccessor:
                 message = Message(
                     project_id=project.id,
                     tenant_key=project.tenant_key,
-                    from_agent=from_agent or "orchestrator",
+                    from_agent_id=from_agent or "orchestrator",
                     to_agents=to_agents,
                     content=content,
                     message_type=message_type,
@@ -433,7 +435,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Retrieve pending messages for an agent"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 query = select(Message).where(
                     Message.status == "pending"
                 )
@@ -450,7 +452,7 @@ class ToolAccessor:
                     if agent_name in msg.to_agents or not msg.to_agents:
                         agent_messages.append({
                             "id": str(msg.id),
-                            "from": msg.from_agent,
+                            "from": msg.from_agent_id,
                             "content": msg.content,
                             "type": msg.message_type,
                             "priority": msg.priority,
@@ -475,7 +477,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Mark message as received by agent"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 result = await session.execute(
                     select(Message).where(Message.id == message_id)
                 )
@@ -510,7 +512,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Mark message as completed with result"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 msg_result = await session.execute(
                     select(Message).where(Message.id == message_id)
                 )
@@ -545,7 +547,7 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Broadcast message to all agents in project"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Get all agents in project
                 result = await session.execute(
                     select(Agent).where(Agent.project_id == project_id)
@@ -581,9 +583,29 @@ class ToolAccessor:
     ) -> Dict[str, Any]:
         """Quick task capture"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
+                # Get the first active project as context (or create a default one)
+                from sqlalchemy import select
+                stmt = select(Project).where(Project.status == "active").limit(1)
+                result = await session.execute(stmt)
+                project = result.scalar_one_or_none()
+                
+                if not project:
+                    # Create a default project for task logging
+                    project = Project(
+                        name="Default Tasks",
+                        mission="Default project for task logging",
+                        tenant_key=f"tk_{uuid4().hex[:12]}",
+                        status="active"
+                    )
+                    session.add(project)
+                    await session.flush()
+                
                 task = Task(
-                    content=content,
+                    tenant_key=project.tenant_key,
+                    project_id=str(project.id),
+                    title=content,  # Use content as title
+                    description=content,  # Also store as description
                     category=category,
                     priority=priority,
                     status="pending"

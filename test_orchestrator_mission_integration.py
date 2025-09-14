@@ -28,7 +28,7 @@ async def test_orchestrator_integration():
     
     # Initialize database
     db_manager = DatabaseManager()
-    await db_manager.init_db()
+    await db_manager.create_tables_async()
     
     # Create orchestrator
     orchestrator = ProjectOrchestrator()
@@ -156,7 +156,7 @@ async def test_orchestrator_integration():
     print("[OK] Handoff includes proper instructions")
     
     # Cleanup
-    await db_manager.close()
+    await db_manager.close_async()
     
     print("\n" + "="*80)
     print("[OK] ALL INTEGRATION TESTS PASSED!")

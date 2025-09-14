@@ -117,7 +117,7 @@ class Settings(BaseSettings):
         if not config_path.exists():
             return {}
         
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     
     def save_config_file(self, config: Dict[str, Any], config_path: Optional[Path] = None):
@@ -133,7 +133,7 @@ class Settings(BaseSettings):
         
         config_path.parent.mkdir(parents=True, exist_ok=True)
         
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=True)
 
 

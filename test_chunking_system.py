@@ -483,4 +483,4 @@ if __name__ == "__main__":
     test_file_type_detection()
     print("✓ File type detection passed")
     
-    print("\n✅ All tests passed successfully!")
+    print("\n[PASS] All tests passed successfully!")

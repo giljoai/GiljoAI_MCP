@@ -49,7 +49,7 @@ async def test_path_resolver():
     for key, path in all_paths.items():
         print(f"  {key}: {path}")
     
-    await db_manager.close()
+    db_manager.close()
     print("\n[OK] PathResolver tests completed")
 
 
@@ -106,7 +106,7 @@ async def test_discovery_manager():
     for key, path in paths.items():
         print(f"  {key}: {path}")
     
-    await db_manager.close()
+    db_manager.close()
     print("\n[OK] DiscoveryManager tests completed")
 
 

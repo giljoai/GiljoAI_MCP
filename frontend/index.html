@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GiljoAI MCP Coding Orchestrator - Multi-agent orchestration dashboard">
+    <meta name="theme-color" content="#0e1c2d">
+    <title>GiljoAI MCP Orchestrator</title>
+    <style>
+      /* Initial loading styles */
+      #app-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0e1c2d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      #app-loader.hidden {
+        display: none;
+      }
+      .loader-content {
+        text-align: center;
+      }
+      .loader-mascot {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 20px;
+      }
+      .loader-text {
+        color: #e1e1e1;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 18px;
+        margin-bottom: 10px;
+      }
+      .loader-subtext {
+        color: #8f97b7;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Loading screen -->
+      <div id="app-loader">
+        <div class="loader-content">
+          <div class="loader-mascot">
+            <iframe 
+              src="/mascot/giljo_mascot_loader_blue.html" 
+              width="120" 
+              height="120" 
+              frameborder="0"
+              scrolling="no">
+            </iframe>
+          </div>
+          <div class="loader-text">GiljoAI MCP Orchestrator</div>
+          <div class="loader-subtext">Initializing dashboard...</div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+    <script>
+      // Hide loader when app is ready
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const loader = document.getElementById('app-loader');
+          if (loader) {
+            loader.classList.add('hidden');
+          }
+        }, 1000);
+      });
+    </script>
+  </body>
+</html>

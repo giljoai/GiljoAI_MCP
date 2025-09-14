@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent / "api"))
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.auth import AuthManager
-from giljo_mcp.config import ConfigManager
+from giljo_mcp.config_manager import ConfigManager
 from api.app import create_app
 
 class Colors:
@@ -85,12 +85,12 @@ class AuthTestSuite:
         
         if passed:
             self.passed += 1
-            print(f"{Colors.GREEN}✅ PASS{Colors.RESET}: {test_name}")
+            print(f"{Colors.GREEN}[PASS] PASS{Colors.RESET}: {test_name}")
             if details:
                 print(f"   {details}")
         else:
             self.failed += 1
-            print(f"{Colors.RED}❌ FAIL{Colors.RESET}: {test_name}")
+            print(f"{Colors.RED}[FAIL] FAIL{Colors.RESET}: {test_name}")
             if details:
                 print(f"   {Colors.YELLOW}{details}{Colors.RESET}")
     

@@ -2,34 +2,50 @@
 WebSocket manager for real-time updates
 """
 
-from typing import Dict, Set, List
-from fastapi import WebSocket
+from typing import Dict, Set, List, Optional, Any
+from fastapi import WebSocket, HTTPException
 import json
 import asyncio
 import logging
+from api.auth_utils import check_subscription_permission
 
 logger = logging.getLogger(__name__)
 
 class WebSocketManager:
-    """Manages WebSocket connections and subscriptions"""
+    """Manages WebSocket connections and subscriptions with authentication"""
     
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
+        self.auth_contexts: Dict[str, Dict[str, Any]] = {}  # NEW: Store auth context
         self.subscriptions: Dict[str, Set[str]] = {}  # client_id -> set of subscriptions
         self.entity_subscribers: Dict[str, Set[str]] = {}  # entity_key -> set of client_ids
     
-    async def connect(self, websocket: WebSocket, client_id: str):
-        """Accept and track new WebSocket connection"""
-        await websocket.accept()
+    async def connect(
+        self, 
+        websocket: WebSocket, 
+        client_id: str,
+        auth_context: Optional[Dict[str, Any]] = None
+    ):
+        """Accept and track new WebSocket connection with auth context"""
+        # Note: websocket.accept() is called in the endpoint after validation
         self.active_connections[client_id] = websocket
+        self.auth_contexts[client_id] = auth_context or {}  # Store auth context
         self.subscriptions[client_id] = set()
-        logger.info(f"WebSocket connected: {client_id}")
+        
+        logger.info(
+            f"WebSocket connected: {client_id} "
+            f"(auth_type: {auth_context.get('auth_type', 'none') if auth_context else 'none'})"
+        )
     
     def disconnect(self, client_id: str):
         """Remove WebSocket connection and clean up subscriptions"""
         # Remove from active connections
         if client_id in self.active_connections:
             del self.active_connections[client_id]
+        
+        # Remove auth context
+        if client_id in self.auth_contexts:
+            del self.auth_contexts[client_id]
         
         # Clean up subscriptions
         if client_id in self.subscriptions:
@@ -42,8 +58,29 @@ class WebSocketManager:
         
         logger.info(f"WebSocket disconnected: {client_id}")
     
-    async def subscribe(self, client_id: str, entity_type: str, entity_id: str):
-        """Subscribe client to entity updates"""
+    async def subscribe(
+        self, 
+        client_id: str, 
+        entity_type: str, 
+        entity_id: str,
+        tenant_key: Optional[str] = None
+    ):
+        """Subscribe client to entity updates with authorization check"""
+        
+        # Check authorization
+        auth_context = self.auth_contexts.get(client_id, {})
+        if not check_subscription_permission(
+            auth_context, entity_type, entity_id, tenant_key
+        ):
+            logger.warning(
+                f"Unauthorized subscription attempt by {client_id} "
+                f"for {entity_type}:{entity_id}"
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to subscribe to this entity"
+            )
+        
         entity_key = f"{entity_type}:{entity_id}"
         
         # Track subscription for client
@@ -147,3 +184,12 @@ class WebSocketManager:
             entity_key = f"{entity_type}:{entity_id}"
             return len(self.entity_subscribers.get(entity_key, []))
         return sum(len(subs) for subs in self.subscriptions.values())
+    
+    def get_auth_context(self, client_id: str) -> Optional[Dict[str, Any]]:
+        """Get auth context for a client"""
+        return self.auth_contexts.get(client_id)
+    
+    def is_authenticated(self, client_id: str) -> bool:
+        """Check if client is authenticated"""
+        auth_context = self.auth_contexts.get(client_id, {})
+        return auth_context.get('auth_type', 'none') != 'none'

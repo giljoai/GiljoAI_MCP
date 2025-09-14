@@ -291,7 +291,7 @@ class ConfigManager:
     def _load_from_file(self):
         """Load configuration from YAML file."""
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
             
             # Server configuration
@@ -705,7 +705,7 @@ class ConfigManager:
         """Save current configuration to a YAML file."""
         save_path = path or self.config_path
         
-        with open(save_path, 'w') as f:
+        with open(save_path, 'w', encoding='utf-8') as f:
             yaml.dump(self.get_all_settings(), f, default_flow_style=False, sort_keys=False)
         
         logger.info(f"Configuration saved to {save_path}")
@@ -830,7 +830,7 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
 """
     
     # Write YAML with comments
-    with open(config_path, 'w') as f:
+    with open(config_path, 'w', encoding='utf-8') as f:
         f.write(config_content)
         yaml.dump(sample_config, f, default_flow_style=False, sort_keys=False)
     

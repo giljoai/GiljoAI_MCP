@@ -157,7 +157,7 @@ async def test_tools():
         else:
             print("  [ERROR] help() tool not found in registered tools")
         
-        await db_manager.close()
+        await db_manager.close_async()
         
     except Exception as e:
         print(f"  [ERROR] Failed to test help() tool: {e}")

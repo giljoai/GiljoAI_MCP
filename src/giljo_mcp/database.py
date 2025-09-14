@@ -117,9 +117,13 @@ class DatabaseManager:
         # Convert URL for async drivers
         async_url = self.database_url
         if self.is_sqlite:
-            async_url = async_url.replace("sqlite://", "sqlite+aiosqlite://")
+            # Only replace if not already an async dialect
+            if async_url.startswith("sqlite://"):
+                async_url = async_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
         elif self.is_postgresql:
-            async_url = async_url.replace("postgresql://", "postgresql+asyncpg://")
+            # Only replace if not already an async dialect
+            if async_url.startswith("postgresql://"):
+                async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
         
         if self.is_sqlite:
             # SQLite async optimizations

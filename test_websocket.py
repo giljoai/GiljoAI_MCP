@@ -57,12 +57,12 @@ class WebSocketTestSuite:
         
         if passed:
             self.passed += 1
-            print(f"{Colors.GREEN}✅ PASS{Colors.RESET}: {test_name}")
+            print(f"{Colors.GREEN}[PASS] PASS{Colors.RESET}: {test_name}")
             if details:
                 print(f"   {details}")
         else:
             self.failed += 1
-            print(f"{Colors.RED}❌ FAIL{Colors.RESET}: {test_name}")
+            print(f"{Colors.RED}[FAIL] FAIL{Colors.RESET}: {test_name}")
             if details:
                 print(f"   {Colors.YELLOW}{details}{Colors.RESET}")
     

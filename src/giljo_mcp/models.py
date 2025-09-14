@@ -89,6 +89,14 @@ class Agent(Base):
         Index("idx_agent_project", "project_id"),
         Index("idx_agent_status", "status"),
     )
+    
+    @property
+    def message_count(self):
+        """Get count of messages received by this agent"""
+        # Count messages sent to this agent
+        if hasattr(self, 'sent_messages'):
+            return len(self.sent_messages) if self.sent_messages else 0
+        return 0
 
 
 class Message(Base):

@@ -39,10 +39,10 @@ class TestResults:
         })
         if passed:
             self.passed += 1
-            print(f"{Colors.GREEN}✅ PASS{Colors.RESET}: {test_name}")
+            print(f"{Colors.GREEN}[PASS] PASS{Colors.RESET}: {test_name}")
         else:
             self.failed += 1
-            print(f"{Colors.RED}❌ FAIL{Colors.RESET}: {test_name}")
+            print(f"{Colors.RED}[FAIL] FAIL{Colors.RESET}: {test_name}")
             if details:
                 print(f"   {Colors.YELLOW}Details: {details}{Colors.RESET}")
     
@@ -56,9 +56,9 @@ class TestResults:
         print(f"{Colors.RED}Failed: {self.failed}{Colors.RESET}")
         
         if self.failed == 0:
-            print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 ALL TESTS PASSED!{Colors.RESET}")
+            print(f"\n{Colors.GREEN}{Colors.BOLD}[SUCCESS] ALL TESTS PASSED!{Colors.RESET}")
         else:
-            print(f"\n{Colors.RED}{Colors.BOLD}⚠️  SOME TESTS FAILED{Colors.RESET}")
+            print(f"\n{Colors.RED}{Colors.BOLD}[WARNING]  SOME TESTS FAILED{Colors.RESET}")
         
         return self.failed == 0
 

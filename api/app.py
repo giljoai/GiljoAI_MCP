@@ -3,7 +3,7 @@ FastAPI application for GiljoAI MCP
 Provides REST API and WebSocket endpoints for orchestration system
 """
 
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -22,9 +22,10 @@ from src.giljo_mcp.config_manager import ConfigManager
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-from .endpoints import projects, agents, messages, tasks, context
+from .endpoints import projects, agents, messages, tasks, context, configuration, statistics
 from .websocket import WebSocketManager
 from .middleware import AuthMiddleware
+from .auth_utils import extract_credentials, validate_websocket_auth, get_websocket_close_code
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +90,79 @@ def create_app() -> FastAPI:
     
     app = FastAPI(
         title="GiljoAI MCP Orchestrator API",
-        description="Multi-agent orchestration system API",
+        description="""
+        ## Multi-Agent Orchestration System REST API
+        
+        The GiljoAI MCP Orchestrator provides a comprehensive REST API for managing AI agent orchestration,
+        enabling coordinated development teams that can tackle projects of unlimited complexity.
+        
+        ### Key Features:
+        - **Project Management**: Create and manage development projects with AI agents
+        - **Agent Orchestration**: Coordinate multiple specialized AI agents working together
+        - **Message Queue**: Reliable inter-agent communication with acknowledgment
+        - **Task Tracking**: Capture and manage technical debt and work items
+        - **Configuration**: Flexible runtime and tenant-specific configuration
+        - **Real-time Updates**: WebSocket support for live monitoring
+        - **Statistics**: Comprehensive metrics and performance monitoring
+        
+        ### Authentication:
+        API authentication can be enabled via configuration. Supports API key and OAuth methods.
+        
+        ### WebSocket:
+        Connect to `/ws/{client_id}` for real-time updates on projects, agents, and messages.
+        
+        ### Rate Limiting:
+        Rate limiting can be configured per tenant. Default: 60 requests/minute.
+        """,
         version="1.0.0",
-        lifespan=lifespan
+        lifespan=lifespan,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        openapi_tags=[
+            {
+                "name": "projects",
+                "description": "Project management operations - create, update, and monitor AI development projects"
+            },
+            {
+                "name": "agents",
+                "description": "Agent control operations - spawn, manage, and decommission AI agents"
+            },
+            {
+                "name": "messages",
+                "description": "Inter-agent messaging - send, acknowledge, and complete messages between agents"
+            },
+            {
+                "name": "tasks",
+                "description": "Task management - track and manage development tasks and technical debt"
+            },
+            {
+                "name": "context",
+                "description": "Context operations - access vision documents and project context"
+            },
+            {
+                "name": "configuration",
+                "description": "Configuration management - system and tenant-specific settings"
+            },
+            {
+                "name": "statistics",
+                "description": "Statistics and monitoring - system metrics, performance, and health checks"
+            }
+        ],
+        servers=[
+            {"url": "http://localhost:8000", "description": "Local development server"},
+            {"url": "http://0.0.0.0:8000", "description": "LAN accessible server"},
+            {"url": "https://api.giljoai.com", "description": "Production server (future)"}
+        ],
+        contact={
+            "name": "GiljoAI Support",
+            "url": "https://github.com/giljoai/mcp-orchestrator",
+            "email": "support@giljoai.com"
+        },
+        license_info={
+            "name": "MIT License",
+            "url": "https://opensource.org/licenses/MIT"
+        }
     )
     
     # Configure CORS
@@ -112,6 +183,8 @@ def create_app() -> FastAPI:
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
+    app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
+    app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
     
     @app.get("/")
     async def root():
@@ -159,10 +232,46 @@ def create_app() -> FastAPI:
         }
     
     @app.websocket("/ws/{client_id}")
-    async def websocket_endpoint(websocket: WebSocket, client_id: str):
-        """WebSocket endpoint for real-time updates"""
-        await state.websocket_manager.connect(websocket, client_id)
+    async def websocket_endpoint(
+        websocket: WebSocket, 
+        client_id: str,
+        api_key: Optional[str] = Query(None),
+        token: Optional[str] = Query(None)
+    ):
+        """WebSocket endpoint for real-time updates with authentication"""
+        
+        # STEP 1: Extract credentials
+        auth_credentials = await extract_credentials(websocket, api_key, token)
+        
+        # STEP 2: Validate BEFORE accepting connection
+        auth_result = await validate_websocket_auth(auth_credentials, state.auth)
+        
+        if not auth_result.is_valid:
+            # REJECT CONNECTION IMMEDIATELY
+            logger.warning(
+                f"WebSocket authentication failed for {client_id}: "
+                f"{auth_result.error_message}"
+            )
+            close_code = get_websocket_close_code("unauthorized")
+            await websocket.close(code=close_code, reason=auth_result.error_message or "Unauthorized")
+            return
+        
+        # STEP 3: Accept connection with auth context
+        await websocket.accept()
+        
+        # STEP 4: Store auth context with connection
+        await state.websocket_manager.connect(
+            websocket, 
+            client_id,
+            auth_context=auth_result.context
+        )
         state.connections[client_id] = websocket
+        
+        # Log successful connection
+        logger.info(
+            f"WebSocket authenticated connection: {client_id} "
+            f"(auth_type: {auth_result.context.get('auth_type', 'unknown')})"
+        )
         
         try:
             while True:
@@ -173,15 +282,40 @@ def create_app() -> FastAPI:
                     await websocket.send_json({"type": "pong"})
                 
                 elif data.get("type") == "subscribe":
-                    # Subscribe to project/agent updates
+                    # Subscribe to project/agent updates with authorization
                     entity_type = data.get("entity_type")
                     entity_id = data.get("entity_id")
-                    await state.websocket_manager.subscribe(client_id, entity_type, entity_id)
-                    await websocket.send_json({
-                        "type": "subscribed",
-                        "entity_type": entity_type,
-                        "entity_id": entity_id
-                    })
+                    
+                    try:
+                        # Get tenant key for entity if needed
+                        tenant_key = None
+                        if entity_type == "project" and state.db_manager:
+                            # Get project tenant for validation
+                            async with state.db_manager.session() as session:
+                                from sqlalchemy import select
+                                stmt = select(Project).where(Project.id == entity_id)
+                                result = await session.execute(stmt)
+                                project = result.scalar_one_or_none()
+                                if project:
+                                    tenant_key = project.tenant_key
+                        
+                        await state.websocket_manager.subscribe(
+                            client_id, entity_type, entity_id, tenant_key
+                        )
+                        await websocket.send_json({
+                            "type": "subscribed",
+                            "entity_type": entity_type,
+                            "entity_id": entity_id
+                        })
+                    except HTTPException as e:
+                        # Send authorization error to client
+                        await websocket.send_json({
+                            "type": "error",
+                            "error": "subscription_denied",
+                            "message": str(e.detail),
+                            "entity_type": entity_type,
+                            "entity_id": entity_id
+                        })
                 
                 elif data.get("type") == "unsubscribe":
                     # Unsubscribe from updates
@@ -197,6 +331,12 @@ def create_app() -> FastAPI:
         except WebSocketDisconnect:
             state.websocket_manager.disconnect(client_id)
             del state.connections[client_id]
+            logger.info(f"WebSocket disconnected: {client_id}")
+        except Exception as e:
+            logger.error(f"WebSocket error for {client_id}: {e}")
+            state.websocket_manager.disconnect(client_id)
+            if client_id in state.connections:
+                del state.connections[client_id]
     
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):
