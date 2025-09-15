@@ -15,7 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import DatabaseManager
 from ..tenant import TenantManager, current_tenant
-from ..models import Project, Agent, Job, Task, Message
+from ..models import Project, Agent, Job, Task, Message, AgentInteraction
+from ..websocket_client import broadcast_sub_agent_event
 
 logger = logging.getLogger(__name__)
 
@@ -569,6 +570,247 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
                 
         except Exception as e:
             logger.error(f"Failed to decommission agent: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @mcp.tool()
+    async def spawn_and_log_sub_agent(
+        project_id: str,
+        parent_agent_name: str,
+        sub_agent_name: str,
+        mission: str,
+        meta_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Log the spawning of a sub-agent (native Claude Code sub-agent).
+        Creates an interaction record for tracking parent-child relationships.
+        
+        Args:
+            project_id: UUID of the project
+            parent_agent_name: Name of the parent agent spawning the sub-agent
+            sub_agent_name: Name of the sub-agent being spawned
+            mission: Mission/task for the sub-agent
+            meta_data: Optional metadata about the spawn
+            
+        Returns:
+            Interaction details including interaction_id for later completion
+        """
+        try:
+            async with db_manager.get_session() as session:
+                # Find the parent agent
+                parent_query = select(Agent).where(
+                    and_(
+                        Agent.project_id == project_id,
+                        Agent.name == parent_agent_name
+                    )
+                )
+                parent_result = await session.execute(parent_query)
+                parent_agent = parent_result.scalar_one_or_none()
+                
+                if not parent_agent:
+                    # Try to create the parent agent first
+                    ensure_result = await ensure_agent(project_id, parent_agent_name)
+                    if not ensure_result["success"]:
+                        return {
+                            "success": False,
+                            "error": f"Parent agent '{parent_agent_name}' not found and could not be created"
+                        }
+                    
+                    # Re-fetch the parent agent
+                    parent_result = await session.execute(parent_query)
+                    parent_agent = parent_result.scalar_one_or_none()
+                    
+                    if not parent_agent:
+                        return {
+                            "success": False,
+                            "error": "Failed to create parent agent"
+                        }
+                
+                # Get project for tenant key
+                project_query = select(Project).where(Project.id == project_id)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+                
+                if not project:
+                    return {
+                        "success": False,  
+                        "error": f"Project {project_id} not found"
+                    }
+                
+                # Create the interaction record
+                interaction = AgentInteraction(
+                    tenant_key=project.tenant_key,
+                    project_id=project_id,
+                    parent_agent_id=parent_agent.id,
+                    sub_agent_name=sub_agent_name,
+                    interaction_type="SPAWN",
+                    mission=mission,
+                    start_time=datetime.utcnow(),
+                    meta_data=meta_data or {}
+                )
+                session.add(interaction)
+                
+                # Update parent agent context usage (estimate)
+                parent_agent.context_used += 500  # Estimate for spawn overhead
+                
+                await session.commit()
+                
+                logger.info(f"Logged sub-agent spawn: {parent_agent_name} -> {sub_agent_name}")
+                
+                # Broadcast WebSocket event
+                await broadcast_sub_agent_event(
+                    "spawned",
+                    interaction_id=str(interaction.id),
+                    parent_agent_name=parent_agent_name,
+                    sub_agent_name=sub_agent_name,
+                    project_id=project_id,
+                    mission=mission,
+                    start_time=interaction.start_time.isoformat(),
+                    meta_data=meta_data
+                )
+                
+                return {
+                    "success": True,
+                    "interaction_id": str(interaction.id),
+                    "parent_agent": parent_agent_name,
+                    "sub_agent": sub_agent_name,
+                    "mission": mission,
+                    "start_time": interaction.start_time.isoformat(),
+                    "message": f"Sub-agent '{sub_agent_name}' spawn logged successfully"
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to log sub-agent spawn: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @mcp.tool()
+    async def log_sub_agent_completion(
+        interaction_id: str,
+        result: Optional[str] = None,
+        tokens_used: Optional[int] = None,
+        error_message: Optional[str] = None,
+        meta_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Log the completion of a sub-agent task.
+        Updates the interaction record with results and metrics.
+        
+        Args:
+            interaction_id: UUID of the interaction record from spawn_and_log_sub_agent
+            result: Result/output from the sub-agent (if successful)
+            tokens_used: Number of tokens consumed by the sub-agent
+            error_message: Error message if sub-agent failed
+            meta_data: Optional additional metadata about completion
+            
+        Returns:
+            Updated interaction details including duration
+        """
+        try:
+            async with db_manager.get_session() as session:
+                # Find the interaction record
+                interaction_query = select(AgentInteraction).where(
+                    AgentInteraction.id == interaction_id
+                )
+                interaction_result = await session.execute(interaction_query)
+                interaction = interaction_result.scalar_one_or_none()
+                
+                if not interaction:
+                    return {
+                        "success": False,
+                        "error": f"Interaction {interaction_id} not found"
+                    }
+                
+                # Check if already completed
+                if interaction.end_time:
+                    return {
+                        "success": False,
+                        "error": f"Interaction {interaction_id} already completed"
+                    }
+                
+                # Update interaction record
+                end_time = datetime.utcnow()
+                interaction.end_time = end_time
+                interaction.duration_seconds = int((end_time - interaction.start_time).total_seconds())
+                interaction.tokens_used = tokens_used
+                
+                # Set interaction type based on success/failure
+                if error_message:
+                    interaction.interaction_type = "ERROR"
+                    interaction.error_message = error_message
+                else:
+                    interaction.interaction_type = "COMPLETE"
+                    interaction.result = result
+                
+                # Merge metadata
+                if meta_data:
+                    existing_meta = interaction.meta_data or {}
+                    existing_meta.update(meta_data)
+                    interaction.meta_data = existing_meta
+                
+                # Update parent agent context usage if tokens provided
+                if tokens_used and interaction.parent_agent_id:
+                    parent_query = select(Agent).where(Agent.id == interaction.parent_agent_id)
+                    parent_result = await session.execute(parent_query)
+                    parent_agent = parent_result.scalar_one_or_none()
+                    
+                    if parent_agent:
+                        parent_agent.context_used += tokens_used
+                        
+                        # Also update project context usage
+                        project_query = select(Project).where(Project.id == interaction.project_id)
+                        project_result = await session.execute(project_query)
+                        project = project_result.scalar_one_or_none()
+                        
+                        if project:
+                            project.context_used += tokens_used
+                
+                await session.commit()
+                
+                status = "error" if error_message else "completed"
+                logger.info(f"Logged sub-agent completion: {interaction.sub_agent_name} ({status})")
+                
+                # Get parent agent name for WebSocket event
+                parent_agent_name = "unknown"
+                if interaction.parent_agent_id:
+                    parent_query = select(Agent).where(Agent.id == interaction.parent_agent_id)
+                    parent_result = await session.execute(parent_query)
+                    parent_agent = parent_result.scalar_one_or_none()
+                    if parent_agent:
+                        parent_agent_name = parent_agent.name
+                
+                # Broadcast WebSocket event
+                await broadcast_sub_agent_event(
+                    status,  # "completed" or "error"
+                    interaction_id=interaction_id,
+                    sub_agent_name=interaction.sub_agent_name,
+                    parent_agent_name=parent_agent_name,
+                    project_id=str(interaction.project_id),
+                    status=status,
+                    duration_seconds=interaction.duration_seconds,
+                    tokens_used=tokens_used,
+                    result=result,
+                    error_message=error_message,
+                    meta_data=meta_data
+                )
+                
+                return {
+                    "success": True,
+                    "interaction_id": interaction_id,
+                    "sub_agent": interaction.sub_agent_name,
+                    "status": status,
+                    "duration_seconds": interaction.duration_seconds,
+                    "tokens_used": tokens_used,
+                    "end_time": interaction.end_time.isoformat(),
+                    "message": f"Sub-agent '{interaction.sub_agent_name}' completion logged"
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to log sub-agent completion: {e}")
             return {
                 "success": False,
                 "error": str(e)

@@ -204,6 +204,65 @@ class WebSocketService:
         )
     
     @staticmethod
+    async def notify_sub_agent_spawned(
+        websocket_manager,
+        interaction_id: str,
+        parent_agent_name: str,
+        sub_agent_name: str,
+        project_id: str,
+        mission: str,
+        start_time: str,
+        **kwargs
+    ):
+        """Helper to notify sub-agent spawn events"""
+        if not websocket_manager:
+            return
+            
+        try:
+            await websocket_manager.broadcast_sub_agent_spawned(
+                interaction_id=interaction_id,
+                parent_agent_name=parent_agent_name,
+                sub_agent_name=sub_agent_name,
+                project_id=project_id,
+                mission=mission,
+                start_time=start_time,
+                meta_data=kwargs
+            )
+        except Exception as e:
+            logger.error(f"Failed to broadcast sub-agent spawn: {e}")
+    
+    @staticmethod
+    async def notify_sub_agent_completed(
+        websocket_manager,
+        interaction_id: str,
+        sub_agent_name: str,
+        parent_agent_name: str,
+        project_id: str,
+        status: str,
+        duration_seconds: int,
+        **kwargs
+    ):
+        """Helper to notify sub-agent completion events"""
+        if not websocket_manager:
+            return
+            
+        try:
+            await websocket_manager.broadcast_sub_agent_completed(
+                interaction_id=interaction_id,
+                sub_agent_name=sub_agent_name,
+                parent_agent_name=parent_agent_name,
+                project_id=project_id,
+                status=status,
+                duration_seconds=duration_seconds,
+                tokens_used=kwargs.get("tokens_used"),
+                result=kwargs.get("result"),
+                error_message=kwargs.get("error_message"),
+                meta_data=kwargs.get("meta_data")
+            )
+        except Exception as e:
+            logger.error(f"Failed to broadcast sub-agent completion: {e}")
+    
+    @staticmethod
     def get_connection_stats(websocket_manager) -> Dict[str, Any]:
         """Get WebSocket connection statistics"""
         if not websocket_manager:

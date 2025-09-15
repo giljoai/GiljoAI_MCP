@@ -367,3 +367,81 @@ class WebSocketManager:
         """Handle pong response from client"""
         # Could track last pong time for connection health monitoring
         logger.debug(f"Received pong from {client_id}")
+    
+    # Sub-agent integration broadcasts
+    
+    async def broadcast_sub_agent_spawned(
+        self,
+        interaction_id: str,
+        parent_agent_name: str,
+        sub_agent_name: str,
+        project_id: str,
+        mission: str,
+        start_time: str,
+        meta_data: Optional[Dict] = None
+    ):
+        """Broadcast when a parent agent spawns a sub-agent"""
+        message = {
+            "type": "agent.sub_agent.spawned",
+            "data": {
+                "interaction_id": interaction_id,
+                "parent_agent_name": parent_agent_name,
+                "sub_agent_name": sub_agent_name,
+                "project_id": project_id,
+                "mission": mission,
+                "start_time": start_time,
+                "meta_data": meta_data or {}
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Notify project subscribers
+        await self.notify_entity_update("project", project_id, message)
+        
+        # Notify parent agent subscribers
+        await self.notify_entity_update("agent", f"{project_id}:{parent_agent_name}", message)
+        
+        # Log for debugging
+        logger.info(f"Broadcast sub-agent spawn: {parent_agent_name} -> {sub_agent_name}")
+    
+    async def broadcast_sub_agent_completed(
+        self,
+        interaction_id: str,
+        sub_agent_name: str,
+        parent_agent_name: str,
+        project_id: str,
+        status: str,  # 'completed' or 'error'
+        duration_seconds: int,
+        tokens_used: Optional[int] = None,
+        result: Optional[str] = None,
+        error_message: Optional[str] = None,
+        meta_data: Optional[Dict] = None
+    ):
+        """Broadcast when a sub-agent completes (success or error)"""
+        event_type = "agent.sub_agent.completed" if status == "completed" else "agent.sub_agent.error"
+        
+        message = {
+            "type": event_type,
+            "data": {
+                "interaction_id": interaction_id,
+                "sub_agent_name": sub_agent_name,
+                "parent_agent_name": parent_agent_name,
+                "project_id": project_id,
+                "status": status,
+                "duration_seconds": duration_seconds,
+                "tokens_used": tokens_used,
+                "result": result if status == "completed" else None,
+                "error_message": error_message if status == "error" else None,
+                "meta_data": meta_data or {}
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Notify project subscribers
+        await self.notify_entity_update("project", project_id, message)
+        
+        # Notify parent agent subscribers
+        await self.notify_entity_update("agent", f"{project_id}:{parent_agent_name}", message)
+        
+        # Log for debugging
+        logger.info(f"Broadcast sub-agent {status}: {sub_agent_name} (duration: {duration_seconds}s)")

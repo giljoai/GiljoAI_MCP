@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import Base
-from src.giljo_mcp.tenant_manager import TenantManager
+from src.giljo_mcp.tenant import TenantManager
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
