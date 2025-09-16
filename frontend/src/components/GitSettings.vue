@@ -91,6 +91,18 @@
           </v-col>
 
           <!-- Authentication Fields -->
+          <template v-if="form.auth_method === 'system'">
+            <v-col cols="12">
+              <v-alert type="success" variant="tonal" class="mb-2">
+                <v-alert-title>Using System Authentication</v-alert-title>
+                <div>
+                  Using existing git configuration and credential helpers from your system.
+                  This leverages GitHub Desktop, SSH keys, or other authentication already set up.
+                </div>
+              </v-alert>
+            </v-col>
+          </template>
+
           <template v-if="form.auth_method === 'https'">
             <v-col cols="12" md="6">
               <v-text-field
@@ -371,7 +383,7 @@ export default {
     const form = reactive({
       repo_url: '',
       branch: 'main',
-      auth_method: 'https',
+      auth_method: 'system',
       username: '',
       password: '',
       ssh_key_path: '',
@@ -384,6 +396,7 @@ export default {
 
     // Static data
     const authMethods = [
+      { title: 'System Authentication (Recommended)', value: 'system' },
       { title: 'HTTPS (Username/Password)', value: 'https' },
       { title: 'SSH Key', value: 'ssh' },
       { title: 'Personal Access Token', value: 'token' }
@@ -417,7 +430,7 @@ export default {
             Object.assign(form, {
               repo_url: gitConfig.value.repo_url || '',
               branch: gitConfig.value.branch || 'main',
-              auth_method: gitConfig.value.auth_method || 'https',
+              auth_method: gitConfig.value.auth_method || 'system',
               username: gitConfig.value.username || '',
               auto_commit: gitConfig.value.auto_commit ?? true,
               auto_push: gitConfig.value.auto_push ?? false,

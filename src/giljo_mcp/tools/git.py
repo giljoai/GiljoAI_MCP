@@ -92,8 +92,9 @@ async def _get_git_config(session: AsyncSession, product_id: str, tenant_key: st
 
 
 async def _run_git_command(
-    command: List[str], 
-    cwd: str, 
+    command: List[str],
+    cwd: str,
+    use_system_auth: bool = True,
     env: Optional[Dict[str, str]] = None,
     capture_output: bool = True
 ) -> Tuple[str, str, int]:
@@ -103,12 +104,14 @@ async def _run_git_command(
         git_check = subprocess.run(["git", "--version"], capture_output=True, text=True)
         if git_check.returncode != 0:
             raise GitOperationError("Git is not installed or not available in PATH")
-        
-        # Prepare environment
+
+        # Prepare environment - use system environment by default
         full_env = os.environ.copy()
-        if env:
+
+        # Only override environment if explicitly requested and not using system auth
+        if not use_system_auth and env:
             full_env.update(env)
-        
+
         # Run the command
         process = subprocess.run(
             command,
@@ -118,9 +121,9 @@ async def _run_git_command(
             text=True,
             timeout=30  # 30 second timeout
         )
-        
+
         return process.stdout, process.stderr, process.returncode
-        
+
     except subprocess.TimeoutExpired:
         raise GitOperationError("Git command timed out after 30 seconds")
     except Exception as e:
@@ -566,37 +569,49 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
                 # Use configured values if not specified
                 remote = remote_name or git_config.remote_name or "origin"
                 branch_name = branch or git_config.branch or "main"
-                
-                # Prepare authentication environment
-                env = {}
-                
-                if git_config.auth_method == "https":
-                    if git_config.username and git_config.password_encrypted:
-                        username = git_config.username
-                        password = _decrypt_credential(git_config.password_encrypted)
-                        
-                        # Use credential helper for HTTPS
-                        env["GIT_ASKPASS"] = "echo"
-                        env["GIT_USERNAME"] = username
-                        env["GIT_PASSWORD"] = password
-                
-                elif git_config.auth_method == "ssh":
-                    if git_config.ssh_key_path:
-                        env["GIT_SSH_COMMAND"] = f"ssh -i {git_config.ssh_key_path} -o StrictHostKeyChecking=no"
-                
-                elif git_config.auth_method == "token":
-                    if git_config.password_encrypted:
-                        token = _decrypt_credential(git_config.password_encrypted)
-                        env["GIT_ASKPASS"] = "echo"
-                        env["GIT_USERNAME"] = "token"
-                        env["GIT_PASSWORD"] = token
-                
-                # Push to remote
-                stdout, stderr, code = await _run_git_command(
-                    ["git", "push", remote, branch_name],
-                    str(repo_path_obj),
-                    env=env
-                )
+
+                # Check if we should use system authentication (recommended)
+                use_system_auth = git_config.auth_method == "system" or not git_config.auth_method
+
+                if use_system_auth:
+                    # Use existing git configuration and credential helpers
+                    stdout, stderr, code = await _run_git_command(
+                        ["git", "push", remote, branch_name],
+                        str(repo_path_obj),
+                        use_system_auth=True
+                    )
+                else:
+                    # Legacy mode: use configured credentials
+                    env = {}
+
+                    if git_config.auth_method == "https":
+                        if git_config.username and git_config.password_encrypted:
+                            username = git_config.username
+                            password = _decrypt_credential(git_config.password_encrypted)
+
+                            # Use credential helper for HTTPS
+                            env["GIT_ASKPASS"] = "echo"
+                            env["GIT_USERNAME"] = username
+                            env["GIT_PASSWORD"] = password
+
+                    elif git_config.auth_method == "ssh":
+                        if git_config.ssh_key_path:
+                            env["GIT_SSH_COMMAND"] = f"ssh -i {git_config.ssh_key_path} -o StrictHostKeyChecking=no"
+
+                    elif git_config.auth_method == "token":
+                        if git_config.password_encrypted:
+                            token = _decrypt_credential(git_config.password_encrypted)
+                            env["GIT_ASKPASS"] = "echo"
+                            env["GIT_USERNAME"] = "token"
+                            env["GIT_PASSWORD"] = token
+
+                    # Push to remote with custom authentication
+                    stdout, stderr, code = await _run_git_command(
+                        ["git", "push", remote, branch_name],
+                        str(repo_path_obj),
+                        use_system_auth=False,
+                        env=env
+                    )
                 
                 # Update commit records
                 if code == 0:
