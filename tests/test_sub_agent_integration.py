@@ -13,6 +13,7 @@ Test Coverage:
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
@@ -53,11 +54,12 @@ class TestAgentInteractionsModel:
             "meta_data": {"language": "python", "framework": "fastapi"}
         }
     
-    def test_create_agent_interaction(self, db_session, sample_interaction_data):
+    @pytest.mark.asyncio
+    async def test_create_agent_interaction(self, db_session, sample_interaction_data):
         """Test creating a new agent interaction record."""
         interaction = AgentInteraction(**sample_interaction_data)
         db_session.add(interaction)
-        db_session.commit()
+        await db_session.commit()
         
         assert interaction.id is not None
         assert interaction.interaction_type == "SPAWN"
@@ -65,12 +67,13 @@ class TestAgentInteractionsModel:
         assert interaction.end_time is None
         assert interaction.duration_seconds is None
     
-    def test_complete_agent_interaction(self, db_session, sample_interaction_data):
+    @pytest.mark.asyncio
+    async def test_complete_agent_interaction(self, db_session, sample_interaction_data):
         """Test completing an agent interaction with results."""
         # Create spawn interaction
         interaction = AgentInteraction(**sample_interaction_data)
         db_session.add(interaction)
-        db_session.commit()
+        await db_session.commit()
         
         # Complete the interaction
         interaction.interaction_type = "COMPLETE"
@@ -82,7 +85,7 @@ class TestAgentInteractionsModel:
             "recommendations": ["Add type hints", "Improve error handling"]
         })
         interaction.tokens_used = 2500
-        db_session.commit()
+        await db_session.commit()
         
         # Verify completion
         assert interaction.interaction_type == "COMPLETE"
@@ -91,7 +94,8 @@ class TestAgentInteractionsModel:
         assert interaction.result is not None
         assert interaction.tokens_used == 2500
     
-    def test_error_agent_interaction(self, db_session, sample_interaction_data):
+    @pytest.mark.asyncio
+    async def test_error_agent_interaction(self, db_session, sample_interaction_data):
         """Test handling error in agent interaction."""
         interaction = AgentInteraction(**sample_interaction_data)
         interaction.interaction_type = "ERROR"
@@ -99,13 +103,14 @@ class TestAgentInteractionsModel:
         interaction.end_time = datetime.now(timezone.utc)
         
         db_session.add(interaction)
-        db_session.commit()
+        await db_session.commit()
         
         assert interaction.interaction_type == "ERROR"
         assert interaction.error_message is not None
         assert "Timeout" in interaction.error_message
     
-    def test_parent_child_relationship(self, db_session, test_project_id, test_agent):
+    @pytest.mark.asyncio
+    async def test_parent_child_relationship(self, db_session, test_project_id, test_agent):
         """Test parent-child agent relationship tracking."""
         # Create parent agent interaction
         parent_interaction = AgentInteraction(
@@ -117,26 +122,28 @@ class TestAgentInteractionsModel:
             mission="Perform specific task"
         )
         db_session.add(parent_interaction)
-        db_session.commit()
+        await db_session.commit()
         
         # Verify relationship
         assert parent_interaction.parent_agent_id == test_agent.id
         assert parent_interaction.parent_agent is not None
         
         # Check backref
-        db_session.refresh(test_agent)
+        await db_session.refresh(test_agent)
         assert len(test_agent.sub_agent_interactions) > 0
     
-    def test_interaction_type_constraint(self, db_session, sample_interaction_data):
+    @pytest.mark.asyncio
+    async def test_interaction_type_constraint(self, db_session, sample_interaction_data):
         """Test that only valid interaction types are accepted."""
         sample_interaction_data["interaction_type"] = "INVALID"
         
         with pytest.raises(Exception):  # Should raise constraint violation
             interaction = AgentInteraction(**sample_interaction_data)
             db_session.add(interaction)
-            db_session.commit()
+            await db_session.commit()
     
-    def test_query_interactions_by_project(self, db_session, test_project_id):
+    @pytest.mark.asyncio
+    async def test_query_interactions_by_project(self, db_session, test_project_id):
         """Test querying interactions by project."""
         # Create multiple interactions
         for i in range(3):
@@ -148,13 +155,14 @@ class TestAgentInteractionsModel:
                 mission=f"Task {i}"
             )
             db_session.add(interaction)
-        db_session.commit()
+        await db_session.commit()
         
         # Query by project
         stmt = select(AgentInteraction).where(
             AgentInteraction.project_id == test_project_id
         )
-        results = db_session.execute(stmt).scalars().all()
+        results = await db_session.execute(stmt)
+        results = results.scalars().all()
         
         assert len(results) >= 3
         for result in results:
@@ -164,7 +172,7 @@ class TestAgentInteractionsModel:
 class TestSubAgentMCPTools:
     """Test the MCP tools for sub-agent integration."""
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def setup_test_data(self, db_session, test_project_id):
         """Setup test project and agent data."""
         # Create test project
@@ -185,7 +193,7 @@ class TestSubAgentMCPTools:
         )
         
         db_session.add_all([project, parent_agent])
-        db_session.commit()
+        await db_session.commit()
         
         return {
             "project": project,
@@ -337,7 +345,8 @@ class TestSubAgentMCPTools:
 class TestBackwardCompatibility:
     """Test backward compatibility with existing message system."""
     
-    def test_message_system_unaffected(self, db_session, test_project_id):
+    @pytest.mark.asyncio
+    async def test_message_system_unaffected(self, db_session, test_project_id):
         """Test that existing message system continues to work."""
         # Create traditional message
         message = Message(
@@ -350,14 +359,15 @@ class TestBackwardCompatibility:
             priority="normal"
         )
         db_session.add(message)
-        db_session.commit()
+        await db_session.commit()
         
         # Verify message created normally
         assert message.id is not None
         assert message.acknowledged_by == []
         assert message.completed_by == []
     
-    def test_concurrent_messaging_and_interactions(self, db_session, test_project_id):
+    @pytest.mark.asyncio
+    async def test_concurrent_messaging_and_interactions(self, db_session, test_project_id):
         """Test that messages and interactions can coexist."""
         # Create message
         message = Message(
@@ -380,14 +390,15 @@ class TestBackwardCompatibility:
         )
         
         db_session.add_all([message, interaction])
-        db_session.commit()
+        await db_session.commit()
         
         # Both should exist independently
         assert message.id is not None
         assert interaction.id is not None
         assert message.project_id == interaction.project_id
     
-    def test_agent_model_unchanged(self, db_session, test_agent):
+    @pytest.mark.asyncio
+    async def test_agent_model_unchanged(self, db_session, test_agent):
         """Test that Agent model still works as before."""
         # Verify agent has expected attributes
         assert hasattr(test_agent, "id")
@@ -576,7 +587,7 @@ class TestIntegrationScenarios:
             status="active"
         )
         db_session.add_all([project, parent])
-        db_session.commit()
+        await db_session.commit()
         
         # Spawn sub-agent using actual tool
         spawn_result = await spawn_and_log_sub_agent(
@@ -637,7 +648,7 @@ class TestIntegrationScenarios:
             status="active"
         )
         db_session.add_all([project, orchestrator])
-        db_session.commit()
+        await db_session.commit()
         
         # Spawn multiple sub-agents concurrently
         spawn_tasks = []
@@ -684,7 +695,8 @@ class TestIntegrationScenarios:
         assert complete_results[1]["interaction_type"] == "ERROR"
         assert complete_results[2]["interaction_type"] == "COMPLETE"
     
-    def test_metrics_aggregation(self, db_session, test_project_id):
+    @pytest.mark.asyncio
+    async def test_metrics_aggregation(self, db_session, test_project_id):
         """Test aggregating metrics across sub-agent interactions."""
         # Create multiple completed interactions
         total_tokens = 0
@@ -704,14 +716,15 @@ class TestIntegrationScenarios:
             total_tokens += interaction.tokens_used
             total_duration += interaction.duration_seconds
         
-        db_session.commit()
+        await db_session.commit()
         
         # Query and aggregate
         stmt = select(AgentInteraction).where(
             AgentInteraction.project_id == test_project_id,
             AgentInteraction.interaction_type == "COMPLETE"
         )
-        completed = db_session.execute(stmt).scalars().all()
+        result = await db_session.execute(stmt)
+        completed = result.scalars().all()
         
         calc_tokens = sum(i.tokens_used or 0 for i in completed)
         calc_duration = sum(i.duration_seconds or 0 for i in completed)

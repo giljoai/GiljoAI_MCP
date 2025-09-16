@@ -146,7 +146,7 @@ async def test_serena_hooks():
     """Test SerenaHooks placeholder functionality"""
     print("\n=== Testing SerenaHooks ===")
     
-    hooks = SerenaHooks()
+    hooks = SerenaHooks(None, None)  # Placeholder for test
     
     # Test lazy_load_symbols
     print("1. Testing lazy_load_symbols:")

@@ -10,26 +10,7 @@ Provides comprehensive mission templates for orchestrator and agents with:
 """
 
 from typing import Dict, Optional, Any
-from enum import Enum
-
-
-class AgentRole(Enum):
-    """Standard agent roles with predefined capabilities."""
-    ORCHESTRATOR = "orchestrator"
-    ANALYZER = "analyzer"
-    IMPLEMENTER = "implementer"
-    TESTER = "tester"
-    REVIEWER = "reviewer"
-
-
-class ProjectType(Enum):
-    """Project types for template customization."""
-    FOUNDATION = "foundation"
-    MCP_INTEGRATION = "mcp_integration"
-    ORCHESTRATION = "orchestration"
-    USER_INTERFACE = "user_interface"
-    DEPLOYMENT = "deployment"
-    GENERAL = "general"
+from .enums import AgentRole, ProjectType
 
 
 class MissionTemplateGenerator:

@@ -39,7 +39,7 @@
       max-width="800"
       scrollable
     >
-      <v-card>
+      <v-card @click.stop>
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-bug</v-icon>
           WebSocket Debug Panel

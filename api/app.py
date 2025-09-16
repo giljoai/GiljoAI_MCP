@@ -22,7 +22,7 @@ from src.giljo_mcp.config_manager import ConfigManager
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-from .endpoints import projects, agents, messages, tasks, context, configuration, statistics
+from .endpoints import projects, agents, messages, tasks, context, configuration, statistics, templates
 from .websocket import WebSocketManager
 from .middleware import AuthMiddleware
 from .auth_utils import extract_credentials, validate_websocket_auth, get_websocket_close_code
@@ -189,6 +189,7 @@ def create_app() -> FastAPI:
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
+    app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
     
     @app.get("/")
     async def root():
@@ -216,8 +217,9 @@ def create_app() -> FastAPI:
         # Check database
         if state.db_manager:
             try:
-                async with state.db_manager.session() as session:
-                    result = await session.execute("SELECT 1")
+                async with state.db_manager.get_session_async() as session:
+                    from sqlalchemy import text
+                    result = await session.execute(text("SELECT 1"))
                     checks["database"] = "healthy"
             except Exception as e:
                 checks["database"] = f"unhealthy: {str(e)}"

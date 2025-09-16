@@ -5,6 +5,7 @@ import { useProjectStore } from './projects'
 import { useAgentStore } from './agents'
 import { useMessageStore } from './messages'
 import { useTaskStore } from './tasks'
+import { useProductStore } from './products'
 
 export const useWebSocketStore = defineStore('websocket', () => {
   // Connection state
@@ -114,8 +115,20 @@ export const useWebSocketStore = defineStore('websocket', () => {
     websocketService.onMessage('entity_update', (data) => {
       if (data.entity_type === 'task') {
         const tasksStore = useTaskStore()
-        if (tasksStore.handleRealtimeUpdate) {
-          tasksStore.handleRealtimeUpdate(data.data)
+        const productStore = useProductStore()
+        
+        // Filter by current product if one is selected
+        if (productStore.currentProductId) {
+          if (data.data.product_id === productStore.currentProductId) {
+            if (tasksStore.handleRealtimeUpdate) {
+              tasksStore.handleRealtimeUpdate(data.data)
+            }
+          }
+        } else {
+          // No product filter, process all updates
+          if (tasksStore.handleRealtimeUpdate) {
+            tasksStore.handleRealtimeUpdate(data.data)
+          }
         }
       }
     })

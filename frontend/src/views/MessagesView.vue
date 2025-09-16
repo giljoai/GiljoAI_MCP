@@ -75,7 +75,7 @@
     </v-row>
 
     <!-- Messages Table -->
-    <v-card>
+    <v-card @click.stop>
       <v-data-table
         :headers="headers"
         :items="filteredMessages"
@@ -295,7 +295,7 @@
 
     <!-- Compose Message Dialog -->
     <v-dialog v-model="showComposeDialog" max-width="600">
-      <v-card>
+      <v-card @click.stop>
         <v-card-title>
           <v-icon class="mr-2">mdi-message-plus</v-icon>
           Compose Message

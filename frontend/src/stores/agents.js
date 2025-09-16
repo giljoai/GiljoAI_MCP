@@ -9,6 +9,19 @@ export const useAgentStore = defineStore('agents', () => {
   const loading = ref(false)
   const error = ref(null)
   const healthData = ref({})
+  
+  // Visualization Data
+  const agentTimeline = ref([]) // Timeline events for visualization
+  const agentTree = ref(null) // Hierarchical tree structure
+  const agentMetrics = ref({
+    totalAgents: 0,
+    activeAgents: 0,
+    completedAgents: 0,
+    averageDuration: 0,
+    tokenUsage: {},
+    successRate: 0,
+    parallelExecutions: []
+  })
 
   // Getters
   const activeAgents = computed(() => 
@@ -124,6 +137,28 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  async function fetchAgentTree(projectId) {
+    try {
+      const response = await api.get(`/api/agents/tree?project_id=${projectId}`)
+      agentTree.value = response.data
+      return response.data
+    } catch (err) {
+      console.error('Failed to fetch agent tree:', err)
+      return null
+    }
+  }
+
+  async function fetchAgentMetrics(projectId, timeRange = '24h') {
+    try {
+      const response = await api.get(`/api/agents/metrics?project_id=${projectId}&range=${timeRange}`)
+      agentMetrics.value = response.data
+      return response.data
+    } catch (err) {
+      console.error('Failed to fetch agent metrics:', err)
+      return null
+    }
+  }
+
   function updateAgentStatus(agentId, status) {
     const agent = agents.value.find(a => a.id === agentId)
     if (agent) {
@@ -175,6 +210,60 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
+  // Add timeline event
+  function addTimelineEvent(event) {
+    const timelineEvent = {
+      id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString(),
+      ...event
+    }
+    
+    agentTimeline.value.unshift(timelineEvent)
+    
+    // Limit timeline to last 100 events
+    if (agentTimeline.value.length > 100) {
+      agentTimeline.value = agentTimeline.value.slice(0, 100)
+    }
+    
+    return timelineEvent
+  }
+
+  // Handle agent spawn event
+  function handleAgentSpawn(data) {
+    addTimelineEvent({
+      type: 'spawn',
+      agent_name: data.agent_name,
+      parent_agent: data.parent_agent || 'orchestrator',
+      mission: data.mission,
+      status: 'active',
+      color: 'green'
+    })
+    
+    // Update metrics
+    agentMetrics.value.totalAgents++
+    agentMetrics.value.activeAgents++
+    
+    handleRealtimeUpdate(data)
+  }
+
+  // Handle agent complete event
+  function handleAgentComplete(data) {
+    addTimelineEvent({
+      type: 'complete',
+      agent_name: data.agent_name,
+      duration: data.duration,
+      tokens_used: data.tokens_used,
+      status: 'completed',
+      color: 'gray'
+    })
+    
+    // Update metrics
+    agentMetrics.value.activeAgents--
+    agentMetrics.value.completedAgents++
+    
+    handleRealtimeUpdate({ ...data, status: 'completed' })
+  }
+
   return {
     // State
     agents,
@@ -182,6 +271,9 @@ export const useAgentStore = defineStore('agents', () => {
     loading,
     error,
     healthData,
+    agentTimeline,
+    agentTree,
+    agentMetrics,
     
     // Getters
     activeAgents,
@@ -198,6 +290,11 @@ export const useAgentStore = defineStore('agents', () => {
     decommissionAgent,
     updateAgentStatus,
     clearError,
-    handleRealtimeUpdate
+    handleRealtimeUpdate,
+    fetchAgentTree,
+    fetchAgentMetrics,
+    addTimelineEvent,
+    handleAgentSpawn,
+    handleAgentComplete
   }
 })

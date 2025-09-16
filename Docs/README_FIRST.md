@@ -50,6 +50,12 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
 - `PROVEN_FEATURES_TO_PRESERVE.md` - Critical features from AKE-MCP to maintain
 - `MESSAGE_QUEUE_GUIDE.md` - Message queue system documentation
 - `AGENT_INSTRUCTIONS.md` - Agent behavior and coordination guidelines
+
+#### 📁 `/Docs/guides/` - Developer Guides
+- `template_migration.md` - **NEW**: Complete guide for migrating from legacy template system
+
+#### 📁 `/Docs/adr/` - Architecture Decision Records
+- `003_template_consolidation.md` - **NEW**: Decision record for template system consolidation
   
 #### 🎨 UI/UX Resources
 - `color_themes.md` - **MANDATORY** color palette and theme specifications
@@ -59,9 +65,11 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
 - `README_FIRST.md` - This index file (you are here)
 - `CONFIGURATION_AND_REFERENCE_INDEX.md` - Complete index of all config files
 
-#### 📁 Development Tracking (Not Indexed)
+#### 📁 Development Tracking
 - **📁 `/Docs/Sessions/`** - Agent session memories and project handoffs
 - **📁 `/Docs/devlog/`** - Development logs and project completion reports
+  - `project_3_9_b_complete.md` - **NEW**: Project 3.9.b completion report (100% success)
+  - `project_3_9_b_template_system.md` - **NEW**: Technical implementation details
 
 ### 📁 `/src/` - Source Code
 - **📁 `/src/giljo_mcp/`** - Core application
@@ -70,7 +78,9 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
   - `models.py` - SQLAlchemy database models
   - `database.py` - Database connection manager
   - `orchestrator.py` - Project and agent orchestration
-  - `mission_templates.py` - Dynamic mission generation system
+  - `mission_templates.py` - Legacy template system (deprecated - use template_manager.py)
+  - `template_manager.py` - **NEW**: Unified database-backed template management system
+  - `template_adapter.py` - **NEW**: Backward compatibility adapter for legacy code
   - `config.py`, `config_manager.py` - Configuration handling
   - `auth.py` - Authentication system
   - `tenant.py` - Multi-tenant isolation
@@ -82,6 +92,7 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
     - `message.py` - Messaging tools
     - `context.py` - Context discovery tools
     - `chunking.py` - Vision document chunking
+    - `template_tools.py` - **NEW**: 9 MCP tools for template management
 ### 📁 `/tests/` - Test Suite (Code)
 - Unit tests and integration tests for all modules
 - Test fixtures and data
@@ -124,6 +135,7 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
 
 #### 📁 `/Docs/api/` - API Documentation
 - `api_implementation_guide.md` - API implementation details
+- `templates.md` - **NEW**: Complete API reference for template management system
 
 ### 📁 `/scripts/` - Utility Scripts (Code - TO BE CREATED)
 Will contain:
@@ -139,9 +151,13 @@ Contains:
 
 ## 🚀 Current Status
 
-**Development Phase**: Phase 2 - MCP Integration (Project 2.2 Complete)
-**Completed**: Projects 1.1-1.4 (Foundation) and 2.1-2.2 (MCP Tools)
-**Next Step**: Project 2.3 - Orchestration Core
+**Development Phase**: Phase 3 - Orchestration Engine
+**Latest Completed**: Project 3.9.b - Template Management System v2 (100% Success!)
+**Completed Projects**:
+- Phase 1: Projects 1.1-1.4 (Foundation) ✅
+- Phase 2: Projects 2.1-2.3 (MCP Integration) ✅
+- Phase 3: Projects 3.1-3.9.b (Orchestration) ✅
+**Performance**: Template generation <0.08ms (exceeds <0.1ms target)
 
 We're about to begin building this system using the AKE-MCP orchestrator to manage its own development through 20 focused projects.
 

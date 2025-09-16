@@ -22,7 +22,7 @@
     <!-- Stats Cards -->
     <v-row class="mb-4">
       <v-col cols="12" sm="6" md="3">
-        <v-card>
+        <v-card @click.stop>
           <v-card-text>
             <div class="d-flex align-center">
               <v-icon size="32" color="primary" class="mr-3">mdi-folder-multiple</v-icon>
@@ -35,7 +35,7 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card>
+        <v-card @click.stop>
           <v-card-text>
             <div class="d-flex align-center">
               <v-icon size="32" color="success" class="mr-3">mdi-check-circle</v-icon>
@@ -48,7 +48,7 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card>
+        <v-card @click.stop>
           <v-card-text>
             <div class="d-flex align-center">
               <v-icon size="32" color="info" class="mr-3">mdi-robot</v-icon>
@@ -61,7 +61,7 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card>
+        <v-card @click.stop>
           <v-card-text>
             <div class="d-flex align-center">
               <v-icon size="32" color="warning" class="mr-3">mdi-clipboard-check</v-icon>
@@ -76,7 +76,7 @@
     </v-row>
 
     <!-- Projects Table -->
-    <v-card>
+    <v-card @click.stop>
       <v-card-title>
         <v-row align="center">
           <v-col>
@@ -193,7 +193,7 @@
 
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="800">
-      <v-card>
+      <v-card @click.stop>
         <v-card-title>
           {{ editingProject ? 'Edit Project' : 'Create New Project' }}
         </v-card-title>
@@ -259,7 +259,7 @@
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="400">
-      <v-card>
+      <v-card @click.stop>
         <v-card-title>Confirm Delete</v-card-title>
         <v-card-text>
           Are you sure you want to delete project "{{ projectToDelete?.name }}"?
@@ -275,7 +275,7 @@
 
     <!-- Close Project Dialog -->
     <v-dialog v-model="showCloseDialog" max-width="500">
-      <v-card>
+      <v-card @click.stop>
         <v-card-title>Close Project</v-card-title>
         <v-card-text>
           <p class="mb-3">Closing project "{{ projectToClose?.name }}"</p>

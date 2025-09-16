@@ -4,6 +4,7 @@ Provides test fixtures and database setup
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 import sys
 from pathlib import Path
@@ -30,7 +31,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_db():
     """Create a test database for each test"""
     # Create temporary database file
@@ -54,14 +55,14 @@ async def test_db():
         pass
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def db_session(test_db) -> AsyncGenerator[AsyncSession, None]:
     """Get database session for testing"""
     async with test_db.get_session_async() as session:
         yield session
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def tenant_manager(test_db) -> TenantManager:
     """Create tenant manager for testing"""
     return TenantManager(test_db)
@@ -78,7 +79,7 @@ def test_config():
     return config
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_project_id(db_session):
     """Create a test project and return its ID"""
     from src.giljo_mcp.models import Project
@@ -98,7 +99,7 @@ async def test_project_id(db_session):
     return project.id
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_agent(db_session, test_project_id):
     """Create a test agent"""
     from src.giljo_mcp.models import Agent

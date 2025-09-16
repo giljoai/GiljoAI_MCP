@@ -445,3 +445,197 @@ class WebSocketManager:
         
         # Log for debugging
         logger.info(f"Broadcast sub-agent {status}: {sub_agent_name} (duration: {duration_seconds}s)")
+
+    async def broadcast_agent_spawn(
+        self,
+        agent_id: str,
+        agent_name: str,
+        parent_agent_id: Optional[str],
+        project_id: str,
+        tenant_key: str,
+        role: str,
+        mission: Optional[str] = None,
+        initial_status: str = "active",
+        meta_data: Optional[Dict] = None
+    ):
+        """
+        Broadcast when a new agent is created/spawned.
+        Includes parent agent ID for hierarchy visualization.
+        """
+        message = {
+            "type": "agent:spawn",
+            "data": {
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "parent_agent_id": parent_agent_id,
+                "project_id": project_id,
+                "tenant_key": tenant_key,
+                "role": role,
+                "mission": mission,
+                "initial_status": initial_status,
+                "meta_data": meta_data or {},
+                "spawn_time": datetime.utcnow().isoformat()
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        # Only notify connections with matching tenant_key for multi-tenant isolation
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.error(f"Error broadcasting agent:spawn to websocket: {e}")
+
+        # Also notify project and parent agent subscribers
+        await self.notify_entity_update("project", project_id, message)
+        if parent_agent_id:
+            await self.notify_entity_update("agent", f"{project_id}:{parent_agent_id}", message)
+
+        logger.info(f"Broadcast agent:spawn - {agent_name} (role: {role}, parent: {parent_agent_id})")
+
+    async def broadcast_agent_complete(
+        self,
+        agent_id: str,
+        agent_name: str,
+        project_id: str,
+        tenant_key: str,
+        duration_seconds: float,
+        final_status: str,
+        context_usage: int,
+        completion_reason: Optional[str] = None,
+        meta_data: Optional[Dict] = None
+    ):
+        """
+        Broadcast when an agent completes its work.
+        Includes duration, final status, and context usage metrics.
+        """
+        message = {
+            "type": "agent:complete",
+            "data": {
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "project_id": project_id,
+                "tenant_key": tenant_key,
+                "duration_seconds": duration_seconds,
+                "final_status": final_status,
+                "context_usage": context_usage,
+                "completion_reason": completion_reason,
+                "meta_data": meta_data or {},
+                "complete_time": datetime.utcnow().isoformat()
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        # Multi-tenant isolation
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.error(f"Error broadcasting agent:complete to websocket: {e}")
+
+        # Notify project subscribers
+        await self.notify_entity_update("project", project_id, message)
+        await self.notify_entity_update("agent", f"{project_id}:{agent_name}", message)
+
+        logger.info(f"Broadcast agent:complete - {agent_name} (duration: {duration_seconds}s, context: {context_usage})")
+
+    async def broadcast_agent_update(
+        self,
+        agent_id: str,
+        agent_name: str,
+        project_id: str,
+        tenant_key: str,
+        status: str,
+        context_usage: int,
+        context_delta: Optional[int] = None,
+        current_task: Optional[str] = None,
+        progress_percentage: Optional[int] = None,
+        meta_data: Optional[Dict] = None
+    ):
+        """
+        Broadcast real-time status updates during agent execution.
+        Includes context usage changes and current task information.
+        """
+        message = {
+            "type": "agent:update",
+            "data": {
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "project_id": project_id,
+                "tenant_key": tenant_key,
+                "status": status,
+                "context_usage": context_usage,
+                "context_delta": context_delta,  # Change since last update
+                "current_task": current_task,
+                "progress_percentage": progress_percentage,
+                "meta_data": meta_data or {},
+                "update_time": datetime.utcnow().isoformat()
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        # Multi-tenant isolation
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.error(f"Error broadcasting agent:update to websocket: {e}")
+
+        # Notify entity subscribers
+        await self.notify_entity_update("project", project_id, message)
+        await self.notify_entity_update("agent", f"{project_id}:{agent_name}", message)
+
+        logger.debug(f"Broadcast agent:update - {agent_name} (status: {status}, context: {context_usage})")
+
+    async def broadcast_template_update(
+        self,
+        template_id: str,
+        template_name: str,
+        operation: str,  # 'create', 'update', 'delete', 'archive'
+        tenant_key: str,
+        product_id: str,
+        user_id: Optional[str] = None,
+        change_summary: Optional[str] = None,
+        version: Optional[int] = None,
+        meta_data: Optional[Dict] = None
+    ):
+        """
+        Broadcast template CRUD operations.
+        Includes change metadata and user information.
+        """
+        message = {
+            "type": "template:update",
+            "data": {
+                "template_id": template_id,
+                "template_name": template_name,
+                "operation": operation,
+                "tenant_key": tenant_key,
+                "product_id": product_id,
+                "user_id": user_id,
+                "change_summary": change_summary,
+                "version": version,
+                "meta_data": meta_data or {},
+                "update_time": datetime.utcnow().isoformat()
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        # Multi-tenant isolation - only broadcast to same tenant
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.error(f"Error broadcasting template:update to websocket: {e}")
+
+        # Notify product subscribers
+        await self.notify_entity_update("product", product_id, message)
+
+        logger.info(f"Broadcast template:update - {template_name} ({operation}) by user {user_id}")

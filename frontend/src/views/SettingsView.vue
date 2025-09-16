@@ -16,6 +16,10 @@
         <v-icon start>mdi-bell</v-icon>
         Notifications
       </v-tab>
+      <v-tab value="templates">
+        <v-icon start>mdi-file-document-multiple</v-icon>
+        Templates
+      </v-tab>
       <v-tab value="api">
         <v-icon start>mdi-api</v-icon>
         API Configuration
@@ -228,6 +232,11 @@
         </v-card>
       </v-window-item>
 
+      <!-- Templates -->
+      <v-window-item value="templates">
+        <TemplateManager />
+      </v-window-item>
+
       <!-- API Configuration -->
       <v-window-item value="api">
         <v-card>
@@ -397,6 +406,7 @@
 import { ref, onMounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
+import TemplateManager from '@/components/TemplateManager.vue'
 
 // Stores
 const settingsStore = useSettingsStore()

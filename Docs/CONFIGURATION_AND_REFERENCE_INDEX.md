@@ -20,6 +20,7 @@ This document provides a comprehensive index of all configuration, environment, 
 - **`config.yaml`** - Main application configuration
 - **`alembic.ini`** - Database migration configuration (Alembic)
 - **`requirements.txt`** - Python dependencies specification
+- **`CLAUDE.md`** - AI assistant instructions with template system documentation
 
 ### MCP Server Configuration
 - **`.mcp.json`** - Primary MCP server configuration (AKE-MCP)
@@ -70,6 +71,8 @@ This document provides a comprehensive index of all configuration, environment, 
 #### MCP/Orchestration Settings
 - Check: `.mcp.json`, `.mcp-serena.json`
 - Serena: `.serena/project.yml`
+- Template System: `src/giljo_mcp/template_manager.py` (single source of truth)
+- Legacy Templates: `src/giljo_mcp/mission_templates.py` (deprecated)
 
 #### Docker/Deployment Settings
 - Check: `docker-compose*.yml` files
@@ -115,6 +118,7 @@ This document provides a comprehensive index of all configuration, environment, 
 For detailed documentation on specific configurations:
 - **Docker**: See `/Docs/docker/docker_setup_guide.md`
 - **API**: See `/Docs/api/api_implementation_guide.md`
+- **Template System**: See `/Docs/api/templates.md` and `/Docs/guides/template_migration.md`
 - **Testing**: See `/Docs/tests/CONSOLIDATED_TEST_DOCUMENTATION.md`
 - **Scripts**: See `/Docs/scripts/scripts_setup_guide.md`
 

@@ -2,10 +2,14 @@
 Agent management API endpoints
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, Depends
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import select, func, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+import time
 
 router = APIRouter()
 
@@ -107,6 +111,276 @@ async def decommission_agent(
             )
         
         return {"success": True, "message": f"Agent {agent_name} decommissioned"}
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Tree structure response models
+class AgentNode(BaseModel):
+    id: str
+    name: str
+    role: str
+    status: str
+    project_id: str
+    parent_id: Optional[str] = None
+    children: List['AgentNode'] = []
+    mission: Optional[str] = None
+    context_used: int = 0
+    created_at: datetime
+    last_active: datetime
+    jobs_count: int = 0
+    messages_sent: int = 0
+    messages_received: int = 0
+
+
+class AgentTreeResponse(BaseModel):
+    project_id: str
+    total_agents: int
+    active_agents: int
+    tree: List[AgentNode]
+    response_time_ms: float
+
+
+# Metrics response models
+class AgentMetrics(BaseModel):
+    total_agents: int
+    active_agents: int
+    decommissioned_agents: int
+    avg_context_usage: float
+    total_messages: int
+    total_jobs: int
+    avg_agent_duration_minutes: float
+    agent_by_role: Dict[str, int]
+    agent_by_status: Dict[str, int]
+    hourly_activity: List[Dict[str, Any]]
+    token_usage_by_agent: List[Dict[str, Any]]
+    response_time_ms: float
+
+
+async def get_db_session():
+    """Get database session dependency"""
+    from src.giljo_mcp.database import DatabaseManager
+    from api.app import state
+
+    db_manager = DatabaseManager(is_async=True)
+    async with db_manager.get_session_async() as session:
+        yield session
+
+
+@router.get("/tree", response_model=AgentTreeResponse)
+async def get_agents_tree(
+    project_id: str = Query(..., description="Project ID"),
+    session: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get hierarchical tree structure of agents in a project.
+    Returns parent-child relationships for visualization.
+    """
+    start_time = time.time()
+
+    try:
+        from src.giljo_mcp.models import Agent, Job, Message
+
+        # Query all agents for the project with relationships
+        stmt = (
+            select(Agent)
+            .options(selectinload(Agent.jobs))
+            .where(Agent.project_id == project_id)
+            .order_by(Agent.created_at)
+        )
+
+        result = await session.execute(stmt)
+        agents = result.scalars().all()
+
+        # Count messages for each agent
+        message_counts_stmt = (
+            select(
+                Message.from_agent_id,
+                func.count(Message.id).label('sent_count')
+            )
+            .where(Message.project_id == project_id)
+            .group_by(Message.from_agent_id)
+        )
+
+        msg_result = await session.execute(message_counts_stmt)
+        message_counts = {row.from_agent_id: row.sent_count for row in msg_result}
+
+        # Build tree structure
+        agent_nodes = {}
+        root_agents = []
+
+        for agent in agents:
+            node = AgentNode(
+                id=agent.id,
+                name=agent.name,
+                role=agent.role,
+                status=agent.status,
+                project_id=agent.project_id,
+                mission=agent.mission,
+                context_used=agent.context_used or 0,
+                created_at=agent.created_at,
+                last_active=agent.last_active,
+                jobs_count=len(agent.jobs) if agent.jobs else 0,
+                messages_sent=message_counts.get(agent.id, 0),
+                messages_received=0,  # TODO: Implement received count
+                children=[]
+            )
+
+            agent_nodes[agent.id] = node
+
+            # Orchestrator is always root
+            if agent.role == "orchestrator":
+                root_agents.append(node)
+                node.parent_id = None
+            else:
+                # For now, all non-orchestrator agents are children of orchestrator
+                # This can be enhanced to support more complex hierarchies
+                orchestrator = next((a for a in agents if a.role == "orchestrator"), None)
+                if orchestrator:
+                    node.parent_id = orchestrator.id
+
+        # Build parent-child relationships
+        for agent_id, node in agent_nodes.items():
+            if node.parent_id and node.parent_id in agent_nodes:
+                agent_nodes[node.parent_id].children.append(node)
+
+        # If no orchestrator, all agents are root level
+        if not root_agents:
+            root_agents = list(agent_nodes.values())
+
+        response_time = (time.time() - start_time) * 1000  # Convert to ms
+
+        return AgentTreeResponse(
+            project_id=project_id,
+            total_agents=len(agents),
+            active_agents=sum(1 for a in agents if a.status == "active"),
+            tree=root_agents,
+            response_time_ms=response_time
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/metrics", response_model=AgentMetrics)
+async def get_agents_metrics(
+    project_id: Optional[str] = Query(None, description="Project ID (optional for all projects)"),
+    hours: int = Query(24, description="Number of hours for activity data"),
+    session: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get performance metrics and statistics for agents.
+    Includes token usage, success rates, and activity patterns.
+    """
+    start_time = time.time()
+
+    try:
+        from src.giljo_mcp.models import Agent, Job, Message
+
+        # Base query for agents
+        agent_query = select(Agent)
+        if project_id:
+            agent_query = agent_query.where(Agent.project_id == project_id)
+
+        result = await session.execute(agent_query)
+        agents = result.scalars().all()
+
+        # Calculate metrics
+        total_agents = len(agents)
+        active_agents = sum(1 for a in agents if a.status == "active")
+        decommissioned_agents = sum(1 for a in agents if a.status == "decommissioned")
+
+        # Average context usage
+        context_usages = [a.context_used for a in agents if a.context_used]
+        avg_context = sum(context_usages) / len(context_usages) if context_usages else 0
+
+        # Agent counts by role and status
+        agent_by_role = {}
+        agent_by_status = {}
+
+        for agent in agents:
+            agent_by_role[agent.role] = agent_by_role.get(agent.role, 0) + 1
+            agent_by_status[agent.status] = agent_by_status.get(agent.status, 0) + 1
+
+        # Count total messages and jobs
+        message_query = select(func.count(Message.id))
+        job_query = select(func.count(Job.id))
+
+        if project_id:
+            message_query = message_query.where(Message.project_id == project_id)
+            job_query = job_query.where(
+                Job.agent_id.in_([a.id for a in agents])
+            )
+
+        msg_result = await session.execute(message_query)
+        total_messages = msg_result.scalar() or 0
+
+        job_result = await session.execute(job_query)
+        total_jobs = job_result.scalar() or 0
+
+        # Calculate average agent duration
+        durations = []
+        for agent in agents:
+            if agent.decommissioned_at and agent.created_at:
+                duration = (agent.decommissioned_at - agent.created_at).total_seconds() / 60
+                durations.append(duration)
+
+        avg_duration = sum(durations) / len(durations) if durations else 0
+
+        # Hourly activity (last N hours)
+        hourly_activity = []
+        now = datetime.utcnow()
+
+        for i in range(hours):
+            hour_start = now - timedelta(hours=i+1)
+            hour_end = now - timedelta(hours=i)
+
+            # Count agents active in this hour
+            active_in_hour = sum(
+                1 for a in agents
+                if a.last_active and hour_start <= a.last_active < hour_end
+            )
+
+            hourly_activity.append({
+                "hour": hour_start.isoformat(),
+                "active_agents": active_in_hour,
+                "hour_label": f"{i+1}h ago"
+            })
+
+        hourly_activity.reverse()  # Show oldest first
+
+        # Token usage by agent (top 10)
+        token_usage = [
+            {
+                "agent_name": a.name,
+                "agent_role": a.role,
+                "context_used": a.context_used or 0,
+                "status": a.status
+            }
+            for a in sorted(agents, key=lambda x: x.context_used or 0, reverse=True)[:10]
+        ]
+
+        response_time = (time.time() - start_time) * 1000  # Convert to ms
+
+        return AgentMetrics(
+            total_agents=total_agents,
+            active_agents=active_agents,
+            decommissioned_agents=decommissioned_agents,
+            avg_context_usage=round(avg_context, 2),
+            total_messages=total_messages,
+            total_jobs=total_jobs,
+            avg_agent_duration_minutes=round(avg_duration, 2),
+            agent_by_role=agent_by_role,
+            agent_by_status=agent_by_status,
+            hourly_activity=hourly_activity,
+            token_usage_by_agent=token_usage,
+            response_time_ms=response_time
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Fix forward reference for Pydantic models
+AgentNode.model_rebuild()

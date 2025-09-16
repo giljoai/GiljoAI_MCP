@@ -1,0 +1,107 @@
+{
+  "timestamp": "2025-09-15T20:24:35.936256",
+  "project": "5.1.c Dashboard Sub-Agent Visualization",
+  "tests": [
+    {
+      "name": "API Health Check",
+      "status": "PASSED",
+      "response_time": 260.543,
+      "details": {
+        "status": "degraded",
+        "checks": {
+          "api": "healthy",
+          "database": "unhealthy: 'DatabaseManager' object has no attribute 'session'",
+          "websocket": "healthy",
+          "active_connections": 0
+        }
+      }
+    },
+    {
+      "name": "Template Management Endpoints",
+      "status": "FAILED",
+      "endpoints_tested": 3,
+      "details": [
+        {
+          "endpoint": "/api/v1/templates",
+          "method": "GET",
+          "status_code": 307,
+          "response_time_ms": 262.33816146850586,
+          "success": false
+        },
+        {
+          "endpoint": "/api/v1/templates/archives",
+          "method": "GET",
+          "status_code": 405,
+          "response_time_ms": 0.5023479461669922,
+          "success": false
+        },
+        {
+          "endpoint": "/api/v1/templates/categories",
+          "method": "GET",
+          "status_code": 405,
+          "response_time_ms": 1.0037422180175781,
+          "success": false
+        }
+      ]
+    },
+    {
+      "name": "Agent Metrics Endpoints",
+      "status": "FAILED",
+      "endpoints_tested": 4,
+      "details": [
+        {
+          "endpoint": "/api/v1/agents",
+          "status_code": 307,
+          "response_time_ms": 266.21031761169434,
+          "success": false
+        },
+        {
+          "endpoint": "/api/v1/agents/metrics",
+          "status_code": 200,
+          "response_time_ms": 4.99725341796875,
+          "success": true
+        },
+        {
+          "endpoint": "/api/v1/agents/tree",
+          "status_code": 422,
+          "response_time_ms": 1.0001659393310547,
+          "success": false
+        },
+        {
+          "endpoint": "/api/v1/stats/overview",
+          "status_code": 404,
+          "response_time_ms": 0.9999275207519531,
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "WebSocket Real-time Updates",
+      "status": "PASSED",
+      "latency_ms": 0,
+      "response": {
+        "type": "pong"
+      }
+    },
+    {
+      "name": "Frontend Accessibility",
+      "status": "PASSED",
+      "status_code": 200,
+      "response_time_ms": 4.6690000000000005,
+      "content_type": "text/html"
+    }
+  ],
+  "performance_metrics": {
+    "template_list_avg_ms": 51.5378475189209,
+    "template_list_max_ms": 253.68690490722656,
+    "template_list_min_ms": 0.9968280792236328
+  },
+  "bugs_found": [],
+  "summary": {
+    "total_tests": 5,
+    "passed": 3,
+    "failed": 2,
+    "pass_rate": 60.0,
+    "bugs_found": 0
+  }
+}

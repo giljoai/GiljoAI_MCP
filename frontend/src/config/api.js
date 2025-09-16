@@ -11,8 +11,8 @@ export const API_CONFIG = {
   },
   WEBSOCKET: {
     url: import.meta.env.VITE_WS_URL || (process.env.NODE_ENV === 'production'
-      ? 'ws://localhost:8000'
-      : 'ws://localhost:8000'),
+      ? 'ws://localhost:6002'
+      : 'ws://localhost:6002'),
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 30000,
@@ -21,30 +21,40 @@ export const API_CONFIG = {
   },
   ENDPOINTS: {
     // Project Management
-    projects: '/api/projects',
-    project: '/api/projects/:id',
+    projects: '/api/v1/projects/',
+    project: '/api/v1/projects/:id',
     
     // Agent Management
-    agents: '/api/agents',
-    agent: '/api/agents/:id',
-    agentHealth: '/api/agents/:id/health',
+    agents: '/api/v1/agents/',
+    agent: '/api/v1/agents/:id',
+    agentHealth: '/api/v1/agents/:id/health',
     
     // Messages
-    messages: '/api/messages',
-    message: '/api/messages/:id',
-    acknowledge: '/api/messages/:id/acknowledge',
+    messages: '/api/v1/messages/',
+    message: '/api/v1/messages/:id',
+    acknowledge: '/api/v1/messages/:id/acknowledge',
     
     // Tasks
-    tasks: '/api/tasks',
-    task: '/api/tasks/:id',
+    tasks: '/api/v1/tasks/',
+    task: '/api/v1/tasks/:id',
     
     // Vision Documents
-    vision: '/api/vision',
-    visionChunk: '/api/vision/chunk/:part',
+    vision: '/api/v1/context/vision',
+    visionChunk: '/api/v1/context/vision/:part',
     
     // Configuration
-    settings: '/api/settings',
-    context: '/api/context'
+    settings: '/api/v1/config/',
+    context: '/api/v1/context/',
+    
+    // Templates (NEW)
+    templates: '/api/v1/templates/',
+    template: '/api/v1/templates/:id',
+    templateHistory: '/api/v1/templates/:id/history',
+    templateRestore: '/api/v1/templates/:id/restore/:archiveId',
+    
+    // Statistics
+    stats: '/api/v1/stats/',
+    health: '/health'
   }
 }
 

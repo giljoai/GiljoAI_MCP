@@ -13,6 +13,25 @@ const routes = [
     }
   },
   {
+    path: '/products',
+    name: 'Products',
+    component: () => import('@/views/ProductsView.vue'),
+    meta: { 
+      title: 'Products',
+      icon: 'mdi-package-variant',
+      showInNav: true
+    }
+  },
+  {
+    path: '/products/:id',
+    name: 'ProductDetail',
+    component: () => import('@/views/ProductDetailView.vue'),
+    meta: { 
+      title: 'Product Details',
+      showInNav: false
+    }
+  },
+  {
     path: '/projects',
     name: 'Projects',
     component: () => import('@/views/ProjectsView.vue'),

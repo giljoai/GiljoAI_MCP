@@ -1,16 +1,26 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import api from '@/services/api'
 import { TASK_STATUS } from '@/utils/constants'
+import { useProductStore } from './products'
 
 export const useTaskStore = defineStore('tasks', () => {
+  // Get product store
+  const productStore = useProductStore()
+  
   // State
   const tasks = ref([])
   const currentTask = ref(null)
   const loading = ref(false)
   const error = ref(null)
+  const taskSummary = ref(null)
 
   // Getters
+  const filteredTasks = computed(() => {
+    if (!productStore.currentProductId) return tasks.value
+    return tasks.value.filter(t => t.product_id === productStore.currentProductId)
+  })
+  
   const tasksByStatus = computed(() => {
     const grouped = {}
     Object.values(TASK_STATUS).forEach(status => {
@@ -49,6 +59,11 @@ export const useTaskStore = defineStore('tasks', () => {
 
   // Actions
   async function fetchTasks(params = {}) {
+    // Add current product filter if available
+    if (productStore.currentProductId && !params.product_id) {
+      params.product_id = productStore.currentProductId
+    }
+    
     loading.value = true
     error.value = null
     try {
@@ -83,6 +98,11 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   async function createTask(taskData) {
+    // Add current product_id if not provided
+    if (!taskData.product_id && productStore.currentProductId) {
+      taskData.product_id = productStore.currentProductId
+    }
+    
     loading.value = true
     error.value = null
     try {
@@ -192,9 +212,31 @@ export const useTaskStore = defineStore('tasks', () => {
     }
   }
 
+  async function fetchTaskSummary(productId) {
+    try {
+      const response = await api.tasks.summary(productId)
+      taskSummary.value = response.data
+      return response.data
+    } catch (err) {
+      console.error('Failed to fetch task summary:', err)
+      return null
+    }
+  }
+
   function clearError() {
     error.value = null
   }
+
+  // Watch for product changes and reload tasks
+  watch(() => productStore.currentProductId, async (newProductId) => {
+    if (newProductId) {
+      await fetchTasks({ product_id: newProductId })
+      await fetchTaskSummary(newProductId)
+    } else {
+      tasks.value = []
+      taskSummary.value = null
+    }
+  })
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
@@ -268,6 +310,7 @@ export const useTaskStore = defineStore('tasks', () => {
     currentTask,
     loading,
     error,
+    taskSummary,
     
     // Getters
     tasksByStatus,
@@ -288,6 +331,7 @@ export const useTaskStore = defineStore('tasks', () => {
     moveTask,
     updateTaskFromWebSocket,
     clearError,
-    handleRealtimeUpdate
+    handleRealtimeUpdate,
+    fetchTaskSummary
   }
 })

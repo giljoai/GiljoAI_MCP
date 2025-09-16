@@ -80,7 +80,7 @@ Building using 20 orchestrated projects across 5 phases:
 - Message acknowledgment arrays
 - Dynamic discovery via Serena MCP
 - Database-first message queue
-- Orchestrator mission templates
+- Orchestrator mission templates (now database-backed via template_manager.py)
 
 ### UI Requirements
 - Vue 3 + Vite with Vuetify 3
@@ -105,11 +105,13 @@ config_file = "~/.giljo-mcp/config.yaml"  # Unix only
 
 ## Database Schema
 
-Core entities: Project, Agent, Message, Task, Session, Vision, Configuration
+Core entities: Project, Agent, Message, Task, Session, Vision, Configuration, AgentTemplate, TemplateArchive
 - Projects have unique tenant keys for isolation
 - Agents belong to projects with specific roles
 - Messages enable inter-agent communication
 - Tasks track work items across sessions
+- AgentTemplates provide database-backed mission templates with multi-tenant isolation
+- TemplateArchives maintain version history for rollback capability
 
 ## Dependencies
 
@@ -121,9 +123,42 @@ Key packages (see requirements.txt):
 - **websockets**: WebSocket client support
 - **pyyaml**: YAML configuration
 
+## Template Management System
+
+### Overview
+Project 3.9.b consolidated three overlapping template systems into one unified solution:
+- **Single Source**: `src/giljo_mcp/template_manager.py`
+- **Database Storage**: SQLAlchemy models (AgentTemplate, TemplateArchive, etc.)
+- **9 MCP Tools**: Complete template CRUD operations
+- **Performance**: <0.08ms generation (exceeds <0.1ms requirement)
+
+### Using Templates
+```python
+from giljo_mcp.template_manager import TemplateManager
+
+# Get template with runtime augmentation
+tm = TemplateManager(session, tenant_key, product_id)
+mission = await tm.get_template(
+    name="analyzer",
+    augmentations="Focus on security",
+    variables={"project_name": "GiljoAI"}
+)
+```
+
+### Migration from Legacy
+For backward compatibility during transition:
+```python
+from giljo_mcp.template_adapter import TemplateAdapter
+adapter = TemplateAdapter(session, tenant_key, product_id)
+# Use same interface as old mission_templates.py
+```
+
+See `docs/guides/template_migration.md` for complete migration guide.
+
 ## Testing Approach
 
 When tests are implemented:
 - Unit tests: `pytest tests/`
 - Integration tests: `pytest tests/integration/`
+- Template tests: `pytest tests/test_template_system.py`
 - Always verify OS compatibility across Windows, Mac, Linux

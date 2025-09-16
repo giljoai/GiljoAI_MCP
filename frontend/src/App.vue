@@ -71,6 +71,9 @@
 
       <v-spacer></v-spacer>
 
+      <!-- Product Switcher -->
+      <ProductSwitcher class="mr-3" />
+
       <!-- WebSocket Connection Status -->
       <ConnectionStatus class="mr-2" />
 
@@ -108,7 +111,7 @@
       max-width="600"
       @click:outside="hideHelp"
     >
-      <v-card>
+      <v-card @click.stop>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-keyboard</v-icon>
           Keyboard Shortcuts
@@ -160,6 +163,7 @@ import { useAgentStore } from '@/stores/agents'
 import { useMessageStore } from '@/stores/messages'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import ConnectionStatus from '@/components/ConnectionStatus.vue'
+import ProductSwitcher from '@/components/ProductSwitcher.vue'
 import ToastManager from '@/components/ToastManager.vue'
 
 // Composables

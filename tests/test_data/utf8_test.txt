@@ -1,0 +1,55 @@
+UTF-8 Test File with Special Characters
+========================================
+
+1. Emojis:
+   - Smileys: 😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃
+   - Hearts: ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔
+   - Tech: 💻 ⌨️ 🖥️ 🖨️ 🖱️ 🖲️ 💾 💿 📀 🔧
+   - Arrows: ⬆️ ⬇️ ⬅️ ➡️ ↗️ ↘️ ↙️ ↖️ ↕️ ↔️
+
+2. Accented Characters:
+   - French: École, café, naïve, résumé, château
+   - Spanish: ñiño, cañón, señor, año, mañana
+   - German: Über, Göthe, Müller, Österreich, Düsseldorf
+   - Portuguese: São Paulo, açúcar, coração, pão, não
+
+3. Asian Characters:
+   - Chinese: 你好世界 (Hello World)
+   - Japanese: こんにちは世界 (Konnichiwa Sekai)
+   - Korean: 안녕하세요 세계 (Annyeonghaseyo Segye)
+   - Thai: สวัสดีชาวโลก (Sawatdee Chao Lok)
+
+4. Mathematical Symbols:
+   - Greek: α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ τ υ φ χ ψ ω
+   - Math: ∑ ∏ ∫ ∂ ∇ ∞ ± ≠ ≤ ≥ ≈ ÷ × √ ∛ ∜
+
+5. Currency Symbols:
+   - Common: $ € £ ¥ ₹ ₽ ¢ ₩ ₪ ₨
+   - Crypto: ₿ Ξ
+
+6. Box Drawing:
+   ┌─────────────┐
+   │ Box Drawing │
+   ├─────────────┤
+   │ Characters  │
+   └─────────────┘
+
+7. Special Quotes and Punctuation:
+   - "Curly quotes" and 'single quotes'
+   - « Guillemets » and ‹ single ›
+   - — Em dash and – en dash
+   - … Ellipsis
+
+8. Miscellaneous Symbols:
+   - Copyright: © ® ™
+   - Bullets: • ◦ ▪ ▫ ■ □ ► ▻
+   - Check marks: ✓ ✗ ✔ ✖ ☑ ☒
+
+9. Right-to-Left Text:
+   - Arabic: مرحبا بالعالم (Hello World)
+   - Hebrew: שלום עולם (Shalom Olam)
+
+10. Combined Characters:
+    - Vietnamese: Xin chào thế giới
+    - Polish: Zażółć gęślą jaźń
+    - Czech: Příliš žluťoučký kůň úpěl ďábelské ódy

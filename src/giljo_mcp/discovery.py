@@ -132,7 +132,7 @@ class PathResolver:
                 config_path = Path("config.yaml")
             
             if config_path.exists():
-                with open(config_path, 'r') as f:
+                with open(config_path, 'r', encoding='utf-8') as f:
                     config = yaml.safe_load(f)
                     
                 # Look for paths section
@@ -201,7 +201,7 @@ class DiscoveryManager:
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self.path_resolver = path_resolver
-        self.serena_hooks = SerenaHooks()
+        self.serena_hooks = SerenaHooks(db_manager, tenant_manager)
         self._content_hashes = {}
     
     async def discover_context(self, agent_role: str, project_id: str,
@@ -368,7 +368,7 @@ class DiscoveryManager:
                 yaml_path = Path("config.yaml")
             
             if yaml_path.exists():
-                with open(yaml_path, 'r') as f:
+                with open(yaml_path, 'r', encoding='utf-8') as f:
                     config_data["yaml"] = yaml.safe_load(f)
             
             # Estimate tokens (rough approximation)
@@ -550,7 +550,9 @@ class SerenaHooks:
     Provides lazy loading and token-optimized code discovery.
     """
     
-    def __init__(self):
+    def __init__(self, db_manager: 'DatabaseManager', tenant_manager: 'TenantManager'):
+        self.db_manager = db_manager
+        self.tenant_manager = tenant_manager
         self._symbol_cache = {}
         self._cache_ttl = timedelta(minutes=10)
     

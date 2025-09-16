@@ -732,7 +732,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 try:
                     config_path = Path.home() / ".giljo-mcp" / "config.yaml"
                     if config_path.exists():
-                        with open(config_path, 'r') as f:
+                        with open(config_path, 'r', encoding='utf-8') as f:
                             system_config = yaml.safe_load(f)
                             settings["system_config"] = system_config
                 except Exception as e:

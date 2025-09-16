@@ -131,7 +131,7 @@
     </v-row>
 
     <!-- Tasks Table -->
-    <v-card>
+    <v-card @click.stop>
       <v-data-table
         :headers="headers"
         :items="filteredTasks"
@@ -257,7 +257,7 @@
 
     <!-- Create/Edit Task Dialog -->
     <v-dialog v-model="showTaskDialog" max-width="600">
-      <v-card>
+      <v-card @click.stop>
         <v-card-title>
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           {{ editingTask ? 'Edit Task' : 'Create Task' }}
@@ -352,12 +352,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
+import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
 import { format, isAfter } from 'date-fns'
 import MascotLoader from '@/components/MascotLoader.vue'
 
 // Stores
 const taskStore = useTaskStore()
+const productStore = useProductStore()
 const agentStore = useAgentStore()
 
 // State
@@ -407,6 +409,11 @@ const agentOptions = computed(() => {
 })
 
 const filteredTasks = computed(() => {
+  // First filter by product if one is selected
+  let tasks = productStore.currentProductId 
+    ? taskStore.tasks.filter(t => t.product_id === productStore.currentProductId)
+    : taskStore.tasks
+  
   let filtered = [...tasks.value]
   
   if (statusFilter.value) {
@@ -525,6 +532,10 @@ async function saveTask() {
     if (editingTask.value) {
       await taskStore.updateTask(editingTask.value.id, currentTask.value)
     } else {
+      // Add current product_id to new task
+      if (productStore.currentProductId) {
+        currentTask.value.product_id = productStore.currentProductId
+      }
       await taskStore.createTask(currentTask.value)
     }
     cancelTask()

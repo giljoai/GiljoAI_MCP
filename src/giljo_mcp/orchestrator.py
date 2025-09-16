@@ -9,45 +9,10 @@ import asyncio
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
-from enum import Enum
-from pathlib import Path
-
-from sqlalchemy import select, update, and_
-from sqlalchemy.orm import selectinload
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from .models import Project, Agent, Message, Task, Job, Session
-from .database import get_db_manager
-from .mission_templates import MissionTemplateGenerator, ProjectType
+from .enums import AgentRole, ProjectType, AgentStatus, ContextStatus
 
 
-logger = logging.getLogger(__name__)
-
-
-class ProjectState(Enum):
-    """Project lifecycle states with clear transitions."""
-    DRAFT = "draft"
-    ACTIVE = "active" 
-    PAUSED = "paused"
-    COMPLETED = "completed"
-    ARCHIVED = "archived"
-
-
-class AgentRole(Enum):
-    """Standard agent roles with predefined capabilities."""
-    ORCHESTRATOR = "orchestrator"
-    ANALYZER = "analyzer"
-    IMPLEMENTER = "implementer"
-    TESTER = "tester"
-    REVIEWER = "reviewer"
-
-
-class ContextStatus(Enum):
-    """Context usage status for visual indicators."""
-    GREEN = "green"   # < 50%
-    YELLOW = "yellow" # 50-80%
-    RED = "red"       # > 80%
-
+# ContextStatus enum moved to enums.py
 
 class ProjectOrchestrator:
     """
@@ -105,7 +70,11 @@ class ProjectOrchestrator:
         self.db_manager = get_db_manager()
         self._active_projects: Dict[str, Project] = {}
         self._context_monitors: Dict[str, asyncio.Task] = {}
-        self.template_generator = MissionTemplateGenerator()
+        # Use new template system if database is available, otherwise fallback
+        if self.db_manager:
+            self.template_generator = MissionTemplateGeneratorV2(self.db_manager)
+        else:
+            self.template_generator = MissionTemplateGenerator()
         
     async def create_project(
         self,
