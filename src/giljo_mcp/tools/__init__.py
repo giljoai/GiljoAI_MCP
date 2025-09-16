@@ -18,11 +18,6 @@ __all__ = [
     "register_message_tools",
     "register_context_tools",
     "register_task_tools",
-    "register_git_tools"
-] = [
-    "register_project_tools",
-    "register_agent_tools", 
-    "register_message_tools",
-    "register_context_tools",
-    "register_task_tools"
+    "register_git_tools",
+    "register_template_tools"
 ]

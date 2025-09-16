@@ -49,7 +49,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             List of available templates with metadata
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 query = select(AgentTemplate)
                 
                 # Apply filters
@@ -123,7 +123,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
         """
         try:
             start_time = time.time()
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find the template
                 query = select(AgentTemplate).where(
                     AgentTemplate.name == name,
@@ -240,9 +240,9 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             Created template details
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Extract variables from template content
-                variables = extract_variables(template_content))
+                variables = extract_variables(template_content)
                 
                 # Get tenant key
                 tenant_key = tenant_manager.get_current_tenant()
@@ -324,7 +324,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             Updated template details
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Get existing template
                 query = select(AgentTemplate).where(AgentTemplate.id == template_id)
                 result = await session.execute(query)
@@ -361,7 +361,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
                 if template_content:
                     template.template_content = template_content
                     # Re-extract variables
-                    variables = extract_variables(template_content))
+                    variables = extract_variables(template_content)
                 
                 if description is not None:
                     template.description = description
@@ -415,7 +415,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             Archive confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Get template
                 query = select(AgentTemplate).where(AgentTemplate.id == template_id)
                 result = await session.execute(query)
@@ -493,7 +493,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             Created augmentation details
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Verify template exists
                 query = select(AgentTemplate).where(AgentTemplate.id == template_id)
                 result = await session.execute(query)
@@ -556,7 +556,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             Restoration confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Get archive
                 query = select(TemplateArchive).where(TemplateArchive.id == archive_id)
                 result = await session.execute(query)
@@ -666,7 +666,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             Suggested template with reasoning
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Build query for templates
                 query = select(AgentTemplate).where(
                     AgentTemplate.is_active == True,
@@ -765,7 +765,7 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             Template usage statistics
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 from datetime import timedelta
                 cutoff_date = datetime.utcnow() - timedelta(days=days)
                 
@@ -843,16 +843,3 @@ def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_ma
             }
     
     logger.info("Template management tools registered")
-
-
-# Augmentation functions moved to template_manager.py for unified handling + "\n\n" + aug_content
-    elif aug_type == "prepend":
-        return aug_content + "\n\n" + content
-    elif aug_type == "replace" and target:
-        return content.replace(target, aug_content)
-    elif aug_type == "inject" and target:
-        index = content.find(target)
-        if index != -1:
-            end_index = index + len(target)
-            return content[:end_index] + "\n" + aug_content + content[end_index:]
-    return content

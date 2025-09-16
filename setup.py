@@ -67,15 +67,22 @@ class GiljoSetup:
         
     def _detect_platform(self) -> Dict[str, str]:
         """Detect platform and environment details"""
-        return {
-            'system': platform.system(),
-            'release': platform.release(),
-            'python': platform.python_version(),
-            'arch': platform.machine(),
-            'is_windows': platform.system() == 'Windows',
-            'is_mac': platform.system() == 'Darwin',
-            'is_linux': platform.system() == 'Linux'
-        }
+        try:
+            # Try to use enhanced platform detection
+            from setup_platform import PlatformDetector
+            detector = PlatformDetector()
+            return detector.get_full_info()
+        except ImportError:
+            # Fallback to basic detection
+            return {
+                'system': platform.system(),
+                'release': platform.release(),
+                'python': platform.python_version(),
+                'arch': platform.machine(),
+                'is_windows': platform.system() == 'Windows',
+                'is_mac': platform.system() == 'Darwin',
+                'is_linux': platform.system() == 'Linux'
+            }
     
     def run(self):
         """Main setup flow"""
@@ -832,9 +839,24 @@ def main():
                        help='Run in non-interactive mode with defaults')
     parser.add_argument('--check-only', action='store_true',
                        help='Only check environment without making changes')
+    parser.add_argument('--gui', action='store_true',
+                       help='Run setup in GUI mode (experimental)')
     args = parser.parse_args()
     
     try:
+        # Handle GUI mode
+        if args.gui:
+            try:
+                from setup_gui import GiljoSetupGUI
+                gui_setup = GiljoSetupGUI()
+                gui_setup.run()
+                sys.exit(0)
+            except ImportError as e:
+                console.print("[red]GUI mode requires tkinter. Please install it:[/red]")
+                console.print("[yellow]pip install tk[/yellow]")
+                console.print(f"[dim]Error: {e}[/dim]")
+                sys.exit(1)
+        
         setup = GiljoSetup()
         
         if args.check_only:

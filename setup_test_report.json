@@ -1,0 +1,166 @@
+{
+  "timestamp": "2025-09-16T13:54:04.358755",
+  "platform": {
+    "system": "Windows",
+    "release": "10",
+    "python": "3.11.9"
+  },
+  "summary": {
+    "total": 27,
+    "passed": 14,
+    "failed": 13,
+    "success_rate": "51.9%"
+  },
+  "tests": [
+    {
+      "name": "setup_gui exists",
+      "passed": true,
+      "message": "Size: 31,275 bytes"
+    },
+    {
+      "name": "setup_platform exists",
+      "passed": true,
+      "message": "Size: 20,386 bytes"
+    },
+    {
+      "name": "setup_migration exists",
+      "passed": true,
+      "message": "Size: 24,958 bytes"
+    },
+    {
+      "name": "setup_dependencies exists",
+      "passed": true,
+      "message": "Size: 24,373 bytes"
+    },
+    {
+      "name": "setup_config exists",
+      "passed": true,
+      "message": "Size: 25,572 bytes"
+    },
+    {
+      "name": "Import setup_gui",
+      "passed": true,
+      "message": ""
+    },
+    {
+      "name": "Import setup_platform",
+      "passed": true,
+      "message": ""
+    },
+    {
+      "name": "Import setup_migration",
+      "passed": true,
+      "message": ""
+    },
+    {
+      "name": "Import setup_dependencies",
+      "passed": true,
+      "message": ""
+    },
+    {
+      "name": "Import setup_config",
+      "passed": true,
+      "message": ""
+    },
+    {
+      "name": "Platform system",
+      "passed": true,
+      "message": "Windows"
+    },
+    {
+      "name": "Platform architecture",
+      "passed": true,
+      "message": "('64bit', 'WindowsPE')"
+    },
+    {
+      "name": "Platform python_version",
+      "passed": false,
+      "message": "Not detected"
+    },
+    {
+      "name": "Platform detection",
+      "passed": false,
+      "message": "unhashable type: 'slice'"
+    },
+    {
+      "name": "GUI has SetupWizard",
+      "passed": false,
+      "message": "Not found"
+    },
+    {
+      "name": "GUI has GUISetupManager",
+      "passed": false,
+      "message": "Not found"
+    },
+    {
+      "name": "Dependency manager",
+      "passed": false,
+      "message": "'DependencyManager' object has no attribute 'get_installed_packages'"
+    },
+    {
+      "name": "AKE-MCP detected",
+      "passed": true,
+      "message": "F:\\AKE-MCP"
+    },
+    {
+      "name": "Migration tool",
+      "passed": false,
+      "message": "'AKEMCPMigrator' object has no attribute 'validate_data'"
+    },
+    {
+      "name": "Config manager",
+      "passed": false,
+      "message": "Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpnx92m63a.json"
+    },
+    {
+      "name": "setup.py has --gui flag",
+      "passed": true,
+      "message": "GUI mode available"
+    },
+    {
+      "name": "Legacy method detect_platform",
+      "passed": false,
+      "message": "Not found"
+    },
+    {
+      "name": "Legacy method setup_database",
+      "passed": false,
+      "message": "Not found"
+    },
+    {
+      "name": "Legacy method create_directories",
+      "passed": false,
+      "message": "Not found"
+    },
+    {
+      "name": "Legacy method check_dependencies",
+      "passed": false,
+      "message": "Not found"
+    },
+    {
+      "name": "Legacy method generate_env_file",
+      "passed": false,
+      "message": "Not found"
+    },
+    {
+      "name": "Performance test",
+      "passed": false,
+      "message": "'GiljoSetup' object has no attribute 'detect_platform'"
+    }
+  ],
+  "errors": [
+    "Platform python_version: Not detected",
+    "Platform detection: unhashable type: 'slice'",
+    "GUI has SetupWizard: Not found",
+    "GUI has GUISetupManager: Not found",
+    "Dependency manager: 'DependencyManager' object has no attribute 'get_installed_packages'",
+    "Migration tool: 'AKEMCPMigrator' object has no attribute 'validate_data'",
+    "Config manager: Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpnx92m63a.json",
+    "Legacy method detect_platform: Not found",
+    "Legacy method setup_database: Not found",
+    "Legacy method create_directories: Not found",
+    "Legacy method check_dependencies: Not found",
+    "Legacy method generate_env_file: Not found",
+    "Performance test: 'GiljoSetup' object has no attribute 'detect_platform'"
+  ]
+}
