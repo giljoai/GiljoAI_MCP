@@ -152,6 +152,7 @@ class Task(Base):
     
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
+    product_id = Column(String(36), nullable=True)  # Product-level scope for task isolation
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
     assigned_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
@@ -175,6 +176,7 @@ class Task(Base):
     
     __table_args__ = (
         Index("idx_task_tenant", "tenant_key"),
+        Index("idx_task_product", "product_id"),
         Index("idx_task_project", "project_id"),
         Index("idx_task_status", "status"),
         Index("idx_task_priority", "priority"),
@@ -429,5 +431,337 @@ class AgentInteraction(Base):
         CheckConstraint(
             "interaction_type IN ('SPAWN', 'COMPLETE', 'ERROR')",
             name="ck_interaction_type"
+        ),
+    )
+
+
+class AgentTemplate(Base):
+    """
+    Agent Template model - stores reusable agent mission templates.
+    Templates are scoped by tenant_key/product_id for multi-tenant isolation.
+    Supports variable substitution and runtime augmentation.
+    """
+    __tablename__ = "agent_templates"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    product_id = Column(String(36), nullable=True)  # Product-level scope
+    
+    # Template identification
+    name = Column(String(100), nullable=False)  # e.g., "orchestrator", "analyzer"
+    category = Column(String(50), nullable=False)  # 'role', 'project_type', 'custom'
+    role = Column(String(50), nullable=True)  # AgentRole enum value
+    project_type = Column(String(50), nullable=True)  # ProjectType enum value
+    
+    # Template content
+    template_content = Column(Text, nullable=False)  # Template with {variable} placeholders
+    variables = Column(JSON, default=list)  # List of required variables
+    behavioral_rules = Column(JSON, default=list)  # Role-specific rules
+    success_criteria = Column(JSON, default=list)  # Success metrics
+    
+    # Usage tracking
+    usage_count = Column(Integer, default=0)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    avg_generation_ms = Column(Float, nullable=True)  # Performance tracking
+    
+    # Metadata
+    description = Column(Text, nullable=True)
+    version = Column(String(20), default="1.0.0")
+    is_active = Column(Boolean, default=True)
+    is_default = Column(Boolean, default=False)  # One default per role
+    tags = Column(JSON, default=list)
+    meta_data = Column(JSON, default=dict)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String(100), nullable=True)
+    
+    # Relationships
+    archives = relationship("TemplateArchive", back_populates="template", cascade="all, delete-orphan")
+    augmentations = relationship("TemplateAugmentation", back_populates="template", cascade="all, delete-orphan")
+    usage_stats = relationship("TemplateUsageStats", back_populates="template", cascade="all, delete-orphan")
+    
+    __table_args__ = (
+        UniqueConstraint("product_id", "name", "version", name="uq_template_product_name_version"),
+        Index("idx_template_tenant", "tenant_key"),
+        Index("idx_template_product", "product_id"),
+        Index("idx_template_category", "category"),
+        Index("idx_template_role", "role"),
+        Index("idx_template_active", "is_active"),
+    )
+    
+    @property
+    def variable_list(self) -> List[str]:
+        """Get list of variables in template"""
+        import re
+        return re.findall(r'\{(\w+)\}', self.template_content)
+
+
+class TemplateArchive(Base):
+    """
+    Template Archive model - stores version history of templates.
+    Auto-created when templates are modified for audit and rollback.
+    """
+    __tablename__ = "template_archives"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    template_id = Column(String(36), ForeignKey("agent_templates.id"), nullable=False)
+    product_id = Column(String(36), nullable=True)
+    
+    # Archived template data (snapshot)
+    name = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False)
+    role = Column(String(50), nullable=True)
+    template_content = Column(Text, nullable=False)
+    variables = Column(JSON, default=list)
+    behavioral_rules = Column(JSON, default=list)
+    success_criteria = Column(JSON, default=list)
+    
+    # Archive metadata
+    version = Column(String(20), nullable=False)
+    archive_reason = Column(String(255), nullable=True)
+    archive_type = Column(String(20), default="manual")  # 'manual', 'auto', 'scheduled'
+    archived_by = Column(String(100), nullable=True)
+    archived_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Performance snapshot
+    usage_count_at_archive = Column(Integer, nullable=True)
+    avg_generation_ms_at_archive = Column(Float, nullable=True)
+    
+    # Restoration tracking
+    is_restorable = Column(Boolean, default=True)
+    restored_at = Column(DateTime(timezone=True), nullable=True)
+    restored_by = Column(String(100), nullable=True)
+    
+    meta_data = Column(JSON, default=dict)
+    
+    # Relationships
+    template = relationship("AgentTemplate", back_populates="archives")
+    
+    __table_args__ = (
+        Index("idx_archive_tenant", "tenant_key"),
+        Index("idx_archive_template", "template_id"),
+        Index("idx_archive_product", "product_id"),
+        Index("idx_archive_version", "version"),
+        Index("idx_archive_date", "archived_at"),
+    )
+
+
+class TemplateAugmentation(Base):
+    """
+    Template Augmentation model - stores runtime modifications to templates.
+    Allows task-specific customization without modifying base templates.
+    """
+    __tablename__ = "template_augmentations"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    template_id = Column(String(36), ForeignKey("agent_templates.id"), nullable=False)
+    
+    # Augmentation details
+    name = Column(String(100), nullable=False)
+    augmentation_type = Column(String(50), nullable=False)  # 'append', 'prepend', 'replace', 'inject'
+    target_section = Column(String(100), nullable=True)  # Which section to augment
+    content = Column(Text, nullable=False)
+    conditions = Column(JSON, default=dict)  # When to apply this augmentation
+    priority = Column(Integer, default=0)  # Order of application
+    
+    # Usage
+    is_active = Column(Boolean, default=True)
+    usage_count = Column(Integer, default=0)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    template = relationship("AgentTemplate", back_populates="augmentations")
+    
+    __table_args__ = (
+        Index("idx_augment_tenant", "tenant_key"),
+        Index("idx_augment_template", "template_id"),
+        Index("idx_augment_active", "is_active"),
+    )
+
+
+class TemplateUsageStats(Base):
+    """
+    Template Usage Stats model - tracks template usage for optimization and recommendations.
+    Helps identify which templates are most effective and need optimization.
+    """
+    __tablename__ = "template_usage_stats"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    template_id = Column(String(36), ForeignKey("agent_templates.id"), nullable=False)
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
+    
+    # Usage details
+    used_at = Column(DateTime(timezone=True), server_default=func.now())
+    generation_ms = Column(Integer, nullable=True)  # Time to generate
+    variables_used = Column(JSON, default=dict)  # Actual variables substituted
+    augmentations_applied = Column(JSON, default=list)  # List of augmentation IDs
+    
+    # Outcome tracking
+    agent_completed = Column(Boolean, nullable=True)
+    agent_success_rate = Column(Float, nullable=True)
+    tokens_used = Column(Integer, nullable=True)
+    
+    # Relationships
+    template = relationship("AgentTemplate", back_populates="usage_stats")
+    agent = relationship("Agent", backref="template_usage_stats")
+    project = relationship("Project", backref="template_usage_stats")
+    
+    __table_args__ = (
+        Index("idx_usage_tenant", "tenant_key"),
+        Index("idx_usage_template", "template_id"),
+        Index("idx_usage_project", "project_id"),
+        Index("idx_usage_date", "used_at"),
+    )
+
+
+class GitConfig(Base):
+    """
+    Git Configuration model - stores git settings per product for version control integration.
+    Links to products via product_id for configuration-level git settings.
+    Supports multiple authentication methods and webhook configuration.
+    """
+    __tablename__ = "git_configs"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    product_id = Column(String(36), nullable=False)  # Links to product configuration
+    
+    # Repository configuration
+    repo_url = Column(String(500), nullable=False)  # Git repository URL
+    branch = Column(String(100), default="main")    # Default branch name
+    remote_name = Column(String(50), default="origin")  # Remote name
+    
+    # Authentication settings
+    auth_method = Column(String(20), nullable=False)  # 'https', 'ssh', 'token'
+    username = Column(String(100), nullable=True)    # For HTTPS auth
+    password_encrypted = Column(Text, nullable=True)  # Encrypted password/token
+    ssh_key_path = Column(String(500), nullable=True)  # Path to SSH private key
+    ssh_key_encrypted = Column(Text, nullable=True)   # Encrypted SSH private key content
+    
+    # Auto-commit settings
+    auto_commit = Column(Boolean, default=True)      # Enable auto-commit on project completion
+    auto_push = Column(Boolean, default=False)       # Enable auto-push after commit
+    commit_message_template = Column(Text, nullable=True)  # Template for commit messages
+    
+    # CI/CD webhook configuration
+    webhook_url = Column(String(500), nullable=True)  # Webhook URL for CI/CD triggers
+    webhook_secret = Column(String(255), nullable=True)  # Webhook secret for verification
+    webhook_events = Column(JSON, default=list)      # List of events to trigger webhook
+    
+    # Git ignore and repository settings
+    ignore_patterns = Column(JSON, default=list)     # Additional .gitignore patterns
+    git_config_options = Column(JSON, default=dict)  # Custom git config options
+    
+    # Status and metadata
+    is_active = Column(Boolean, default=True)
+    last_commit_hash = Column(String(40), nullable=True)  # Last known commit hash
+    last_push_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)         # Last error message
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    verified_at = Column(DateTime(timezone=True), nullable=True)  # Last successful auth verification
+    
+    meta_data = Column(JSON, default=dict)
+    
+    __table_args__ = (
+        UniqueConstraint("product_id", name="uq_git_config_product"),
+        Index("idx_git_config_tenant", "tenant_key"),
+        Index("idx_git_config_product", "product_id"),
+        Index("idx_git_config_active", "is_active"),
+        Index("idx_git_config_auth", "auth_method"),
+        CheckConstraint(
+            "auth_method IN ('https', 'ssh', 'token')",
+            name="ck_git_config_auth_method"
+        ),
+    )
+    
+    @property
+    def is_configured(self) -> bool:
+        """Check if git configuration is complete and valid"""
+        if not self.repo_url or not self.auth_method:
+            return False
+        
+        if self.auth_method == 'https' and not (self.username and self.password_encrypted):
+            return False
+        elif self.auth_method == 'ssh' and not (self.ssh_key_path or self.ssh_key_encrypted):
+            return False
+        elif self.auth_method == 'token' and not self.password_encrypted:
+            return False
+            
+        return True
+    
+    @property
+    def webhook_configured(self) -> bool:
+        """Check if webhook is properly configured"""
+        return bool(self.webhook_url and self.webhook_secret)
+
+
+class GitCommit(Base):
+    """
+    Git Commit model - tracks commits made through the orchestrator.
+    Provides audit trail and enables commit history viewing in dashboard.
+    """
+    __tablename__ = "git_commits"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False)
+    product_id = Column(String(36), nullable=False)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)  # Associated project if any
+    
+    # Commit details
+    commit_hash = Column(String(40), nullable=False, unique=True)
+    commit_message = Column(Text, nullable=False)
+    author_name = Column(String(100), nullable=False)
+    author_email = Column(String(255), nullable=False)
+    branch_name = Column(String(100), nullable=False)
+    
+    # Files and changes
+    files_changed = Column(JSON, default=list)       # List of file paths
+    insertions = Column(Integer, default=0)          # Lines added
+    deletions = Column(Integer, default=0)           # Lines deleted
+    
+    # Orchestrator context
+    triggered_by = Column(String(50), nullable=True)  # 'auto_commit', 'manual', 'project_completion'
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
+    commit_type = Column(String(50), nullable=True)   # 'feature', 'fix', 'docs', 'refactor', etc.
+    
+    # Status tracking
+    push_status = Column(String(20), default="pending")  # 'pending', 'pushed', 'failed'
+    push_error = Column(Text, nullable=True)
+    webhook_triggered = Column(Boolean, default=False)
+    webhook_response = Column(JSON, nullable=True)
+    
+    # Timestamps
+    committed_at = Column(DateTime(timezone=True), nullable=False)
+    pushed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    meta_data = Column(JSON, default=dict)
+    
+    # Relationships
+    project = relationship("Project", backref="git_commits")
+    agent = relationship("Agent", backref="git_commits")
+    
+    __table_args__ = (
+        Index("idx_git_commit_tenant", "tenant_key"),
+        Index("idx_git_commit_product", "product_id"),
+        Index("idx_git_commit_project", "project_id"),
+        Index("idx_git_commit_hash", "commit_hash"),
+        Index("idx_git_commit_date", "committed_at"),
+        Index("idx_git_commit_trigger", "triggered_by"),
+        CheckConstraint(
+            "push_status IN ('pending', 'pushed', 'failed')",
+            name="ck_git_commit_push_status"
         ),
     )

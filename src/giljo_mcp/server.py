@@ -113,12 +113,16 @@ class GiljoMCPServer:
             from .tools.agent import register_agent_tools
             from .tools.message import register_message_tools
             from .tools.context import register_context_tools
+            from .tools.template import register_template_tools
+            from .tools.git import register_git_tools
             
             # Register each tool group with database and tenant manager
             register_project_tools(self.mcp, self.db_manager, self.tenant_manager)
             register_agent_tools(self.mcp, self.db_manager, self.tenant_manager)
             register_message_tools(self.mcp, self.db_manager, self.tenant_manager)
             register_context_tools(self.mcp, self.db_manager, self.tenant_manager)
+            register_template_tools(self.mcp, self.db_manager, self.tenant_manager)
+            register_git_tools(self.mcp, self.db_manager, self.tenant_manager)
             
             logger.info("All tool groups registered successfully")
             

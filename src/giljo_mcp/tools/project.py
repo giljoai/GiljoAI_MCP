@@ -5,6 +5,7 @@ Handles project lifecycle: create, list, switch, close
 
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from uuid import uuid4
 
@@ -270,7 +271,47 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 
                 await session.commit()
                 
-                logger.info(f"Closed project '{project.name}' (ID: {project_id})")
+                # Trigger auto-commit if git is configured
+                try:
+                    from .git import commit_changes
+                    from ..config_manager import get_config
+                    
+                    config = get_config()
+                    if hasattr(config, 'git') and getattr(config.git, 'auto_commit_on_completion', True):
+                        # Get product_id from config or use project's tenant_key as fallback
+                        product_id = getattr(config, 'product_id', project.tenant_key)
+                        
+                        # Try to auto-commit with project summary
+                        repo_path = getattr(config, 'root_path', str(Path.cwd()))
+                        commit_message = f"feat: complete project {project.name}
+
+{summary}
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+Project: {project.name}
+Co-Authored-By: Claude <noreply@anthropic.com>"
+                        
+                        # Use the current tenant context for git operations
+                        current_tenant.set(project.tenant_key)
+                        
+                        auto_commit_result = await commit_changes(
+                            product_id=product_id,
+                            repo_path=repo_path,
+                            message=commit_message,
+                            project_id=project.id,
+                            commit_type="project_completion"
+                        )
+                        
+                        if auto_commit_result.get("success"):
+                            logger.info(f"Auto-commit successful for project completion: {auto_commit_result.get('commit_hash')}")
+                        else:
+                            logger.warning(f"Auto-commit failed for project completion: {auto_commit_result.get('error')}")
+                            
+                except Exception as e:
+                    # Don't fail project closure if git commit fails
+                    logger.warning(f"Auto-commit failed for project completion: {e}")
+                
+                logger.info(f"Closed project '{project.name}' (ID: {project_id})"))
                 
                 return {
                     "success": True,
