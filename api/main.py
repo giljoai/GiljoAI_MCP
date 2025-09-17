@@ -29,6 +29,6 @@ if __name__ == "__main__":
         "api.main:app",
         host=config.server.api_host,
         port=config.server.api_port,
-        reload=config.server.debug,
+        reload=False,  # Disable reload to avoid Windows handle issues
         access_log=True,
     )

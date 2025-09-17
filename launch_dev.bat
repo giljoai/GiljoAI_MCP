@@ -38,8 +38,7 @@ echo Dashboard will be available at: http://localhost:5500
 echo.
 echo Services available for management:
 echo - MCP Server (Port 6001)
-echo - REST API Server (Port 6002)
-echo - WebSocket Server (Port 6003)
+echo - REST API + WebSocket Server (Port 6002)
 echo - Frontend/Dashboard (Port 6000)
 echo - PostgreSQL Database (Port 5432)
 echo.

@@ -35,28 +35,21 @@ SERVICES = {
     'mcp_server': {
         'name': 'MCP Server',
         'port': 6001,
-        'command': [sys.executable, '-m', 'src.giljo_mcp', '--mode', 'server'],
-        'cwd': Path(__file__).parent,
+        'command': [sys.executable, '-m', 'giljo_mcp', '--mode', 'server'],
+        'cwd': Path(__file__).parent / 'src',
         'log_file': 'logs/mcp_server.log'
     },
     'api_server': {
-        'name': 'REST API Server',
+        'name': 'REST API + WebSocket Server',
         'port': 6002,
         'command': [sys.executable, '-m', 'api.main'],
         'cwd': Path(__file__).parent,
         'log_file': 'logs/api_server.log'
     },
-    'websocket_server': {
-        'name': 'WebSocket Server',
-        'port': 6003,
-        'command': [sys.executable, '-m', 'api.websocket_service'],
-        'cwd': Path(__file__).parent,
-        'log_file': 'logs/websocket_server.log'
-    },
     'frontend': {
         'name': 'Frontend (Vue/Vite)',
         'port': 6000,
-        'command': ['npm', 'run', 'dev'],
+        'command': ['npm.cmd', 'run', 'dev'],  # Use npm.cmd on Windows
         'cwd': Path(__file__).parent / 'frontend',
         'log_file': 'logs/frontend.log'
     }
@@ -65,6 +58,142 @@ SERVICES = {
 # Global variables for process management
 processes = {}
 log_threads = {}
+service_statuses = {}  # Cached service statuses
+monitoring_active = False
+monitoring_thread = None
+
+def save_process_info(service_key, pid):
+    """Save process info to file for persistence"""
+    try:
+        pid_file = Path(__file__).parent / 'logs' / f'{service_key}.pid'
+        with open(pid_file, 'w') as f:
+            f.write(str(pid))
+    except Exception as e:
+        logger.error(f"Failed to save PID for {service_key}: {e}")
+
+def load_process_info(service_key):
+    """Load process info from file"""
+    try:
+        pid_file = Path(__file__).parent / 'logs' / f'{service_key}.pid'
+        if pid_file.exists():
+            with open(pid_file, 'r') as f:
+                pid = int(f.read().strip())
+                # Check if process is still running
+                if psutil.pid_exists(pid):
+                    return pid
+                else:
+                    # Process is dead, remove stale PID file
+                    pid_file.unlink()
+    except Exception as e:
+        logger.debug(f"Could not load PID for {service_key}: {e}")
+    return None
+
+def remove_process_info(service_key):
+    """Remove process info file"""
+    try:
+        pid_file = Path(__file__).parent / 'logs' / f'{service_key}.pid'
+        if pid_file.exists():
+            pid_file.unlink()
+    except Exception as e:
+        logger.debug(f"Could not remove PID file for {service_key}: {e}")
+
+def wait_for_service_startup(service_key, max_wait=10):
+    """Wait for a service to start listening on its port"""
+    service = SERVICES[service_key]
+    port = service['port']
+
+    for i in range(max_wait):
+        if check_port(port):
+            logger.info(f"Service {service['name']} is now listening on port {port}")
+            return True
+        time.sleep(1)
+
+    logger.warning(f"Service {service['name']} did not start listening on port {port} within {max_wait} seconds")
+    return False
+
+def monitor_services():
+    """Continuously monitor service health in background thread"""
+    global monitoring_active, service_statuses
+
+    while monitoring_active:
+        try:
+            for service_key in SERVICES:
+                old_status = service_statuses.get(service_key, 'unknown')
+                new_status = get_service_status_direct(service_key)
+
+                # Only log status changes
+                if old_status != new_status:
+                    logger.info(f"Service {SERVICES[service_key]['name']} status changed: {old_status} → {new_status}")
+
+                service_statuses[service_key] = new_status
+
+            # Check PostgreSQL too
+            old_pg_status = service_statuses.get('postgresql', False)
+            new_pg_status = check_postgresql()
+            if old_pg_status != new_pg_status:
+                logger.info(f"PostgreSQL status changed: {old_pg_status} → {new_pg_status}")
+            service_statuses['postgresql'] = new_pg_status
+
+        except Exception as e:
+            logger.error(f"Error in service monitoring: {e}")
+
+        # Wait 3 seconds before next check
+        time.sleep(3)
+
+def get_service_status_direct(service_key):
+    """Get service status without caching - for monitoring thread"""
+    service = SERVICES[service_key]
+
+    # Check if we have a tracked process in memory
+    if service_key in processes and processes[service_key].poll() is None:
+        return 'running'
+
+    # Check for persistent PID info
+    saved_pid = load_process_info(service_key)
+    if saved_pid:
+        try:
+            proc = psutil.Process(saved_pid)
+            if proc.is_running():
+                # For MCP server, check if it's really the right process
+                if service_key == 'mcp_server':
+                    # Check if the process command line contains giljo_mcp
+                    try:
+                        cmdline = ' '.join(proc.cmdline())
+                        if 'giljo_mcp' in cmdline:
+                            return 'running'
+                    except:
+                        pass
+                else:
+                    return 'running'
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            remove_process_info(service_key)
+
+    # Check if port is in use (might be external process or lost tracking)
+    if check_port(service['port']):
+        return 'external'
+
+    return 'stopped'
+
+def start_monitoring():
+    """Start the background monitoring thread"""
+    global monitoring_active, monitoring_thread
+
+    if monitoring_active:
+        return
+
+    monitoring_active = True
+    monitoring_thread = threading.Thread(target=monitor_services, daemon=True)
+    monitoring_thread.start()
+    logger.info("Started background service monitoring")
+
+def stop_monitoring():
+    """Stop the background monitoring thread"""
+    global monitoring_active, monitoring_thread
+
+    monitoring_active = False
+    if monitoring_thread:
+        monitoring_thread.join(timeout=5)
+    logger.info("Stopped background service monitoring")
 
 # Cache status tracking
 cache_status = {
@@ -77,9 +206,23 @@ cache_status = {
 
 def check_port(port):
     """Check if a port is in use"""
-    for conn in psutil.net_connections():
-        if conn.laddr.port == port:
-            return True
+    try:
+        connections = psutil.net_connections(kind='inet')
+        for conn in connections:
+            if (hasattr(conn, 'laddr') and conn.laddr and
+                conn.laddr.port == port and
+                conn.status in ['LISTEN', 'ESTABLISHED']):
+                return True
+    except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError, Exception):
+        # Fallback: try to bind to the port
+        try:
+            import socket
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex(('127.0.0.1', port))
+                return result == 0
+        except:
+            pass
     return False
 
 def check_postgresql():
@@ -94,18 +237,15 @@ def check_postgresql():
         return False
 
 def get_service_status(service_key):
-    """Get the status of a service"""
-    service = SERVICES[service_key]
+    """Get the status of a service - uses cached status from monitoring thread if available"""
+    global service_statuses
 
-    # Check if process is running
-    if service_key in processes and processes[service_key].poll() is None:
-        return 'running'
+    # If monitoring is active and we have a cached status, use it
+    if monitoring_active and service_key in service_statuses:
+        return service_statuses[service_key]
 
-    # Check if port is in use (might be external process)
-    if check_port(service['port']):
-        return 'external'
-
-    return 'stopped'
+    # Otherwise, check directly
+    return get_service_status_direct(service_key)
 
 def start_service(service_key):
     """Start a service"""
@@ -125,16 +265,55 @@ def start_service(service_key):
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(f"\n=== Service started at {datetime.now()} ===\n")
 
-            processes[service_key] = subprocess.Popen(
-                service['command'],
-                cwd=service['cwd'],
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
-            )
+            # For services that need to stay running, don't use CREATE_NEW_CONSOLE
+            # Instead, use subprocess.DETACHED_PROCESS to create independent processes
+            if os.name == 'nt':
+                # Windows: Use DETACHED_PROCESS to create independent process
+                processes[service_key] = subprocess.Popen(
+                    service['command'],
+                    cwd=service['cwd'],
+                    stdout=f,
+                    stderr=subprocess.STDOUT,
+                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                )
+            else:
+                # Unix: Use standard approach
+                processes[service_key] = subprocess.Popen(
+                    service['command'],
+                    cwd=service['cwd'],
+                    stdout=f,
+                    stderr=subprocess.STDOUT
+                )
 
-        logger.info(f"Started {service['name']} (PID: {processes[service_key].pid})")
-        return True, f"Started {service['name']}"
+        # Save PID for persistence
+        save_process_info(service_key, processes[service_key].pid)
+
+        # Give the service a moment to start
+        time.sleep(2)
+
+        # Check if the process is still running
+        if processes[service_key].poll() is not None:
+            # Process exited immediately
+            logger.warning(f"Process for {service['name']} exited immediately")
+            remove_process_info(service_key)
+            if service_key in processes:
+                del processes[service_key]
+
+            # Still wait to see if service started despite process exit
+            if wait_for_service_startup(service_key, max_wait=5):
+                return True, f"Started {service['name']} (service detected)"
+            else:
+                return False, f"Service {service['name']} failed to start - check logs"
+
+        # Process is still running, wait for it to start listening
+        logger.info(f"Process started for {service['name']} (PID: {processes[service_key].pid})")
+
+        # Wait for service to start listening
+        if wait_for_service_startup(service_key, max_wait=8):
+            return True, f"Started {service['name']} successfully"
+        else:
+            # Service process is running but not listening - might be starting up
+            return True, f"Started {service['name']} (process running, port pending)"
 
     except Exception as e:
         logger.error(f"Failed to start {service['name']}: {e}")
@@ -156,6 +335,9 @@ def stop_service(service_key):
                     proc.kill()
                     proc.wait()
             del processes[service_key]
+
+        # Remove PID file
+        remove_process_info(service_key)
 
         # Kill any process using the port
         for conn in psutil.net_connections():
@@ -499,13 +681,51 @@ HTML_TEMPLATE = '''
         }
 
         function showLogs(service) {
-            fetch(`/api/logs/${service}`)
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('log-content').textContent = data;
-                    document.getElementById('log-viewer').style.display = 'block';
-                    document.getElementById('log-service').textContent = service;
-                });
+            // Open logs in a new window
+            const logWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+            logWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Logs - ${service}</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; background: #000; color: #0f0; padding: 20px; margin: 0; }
+                        .header { color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+                        .log-content { white-space: pre-wrap; font-size: 12px; line-height: 1.4; }
+                        .refresh-btn { background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-left: 10px; }
+                        .refresh-btn:hover { background: #0056b3; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>Service Logs - ${service}</h2>
+                        <button class="refresh-btn" onclick="refreshLogs()">Refresh</button>
+                        <button class="refresh-btn" onclick="window.close()">Close</button>
+                    </div>
+                    <div id="log-content" class="log-content">Loading logs...</div>
+                    <script>
+                        function refreshLogs() {
+                            fetch('/api/logs/${service}')
+                                .then(response => response.text())
+                                .then(data => {
+                                    document.getElementById('log-content').textContent = data;
+                                    // Auto-scroll to bottom
+                                    window.scrollTo(0, document.body.scrollHeight);
+                                })
+                                .catch(error => {
+                                    document.getElementById('log-content').textContent = 'Error loading logs: ' + error;
+                                });
+                        }
+
+                        // Load logs initially
+                        refreshLogs();
+
+                        // Auto-refresh every 5 seconds
+                        setInterval(refreshLogs, 5000);
+                    </script>
+                </body>
+                </html>
+            `);
         }
 
         function hideLogs() {
@@ -513,13 +733,51 @@ HTML_TEMPLATE = '''
         }
 
         function showCacheLogs() {
-            fetch('/api/cache_logs')
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('log-content').textContent = data;
-                    document.getElementById('log-viewer').style.display = 'block';
-                    document.getElementById('log-service').textContent = 'Cache Operations';
-                });
+            // Open cache logs in a new window
+            const logWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+            logWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Cache Operations Log</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; background: #000; color: #0f0; padding: 20px; margin: 0; }
+                        .header { color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+                        .log-content { white-space: pre-wrap; font-size: 12px; line-height: 1.4; }
+                        .refresh-btn { background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-left: 10px; }
+                        .refresh-btn:hover { background: #0056b3; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>Cache Operations Log</h2>
+                        <button class="refresh-btn" onclick="refreshLogs()">Refresh</button>
+                        <button class="refresh-btn" onclick="window.close()">Close</button>
+                    </div>
+                    <div id="log-content" class="log-content">Loading cache logs...</div>
+                    <script>
+                        function refreshLogs() {
+                            fetch('/api/cache_logs')
+                                .then(response => response.text())
+                                .then(data => {
+                                    document.getElementById('log-content').textContent = data;
+                                    // Auto-scroll to bottom
+                                    window.scrollTo(0, document.body.scrollHeight);
+                                })
+                                .catch(error => {
+                                    document.getElementById('log-content').textContent = 'Error loading cache logs: ' + error;
+                                });
+                        }
+
+                        // Load logs initially
+                        refreshLogs();
+
+                        // Auto-refresh every 5 seconds
+                        setInterval(refreshLogs, 5000);
+                    </script>
+                </body>
+                </html>
+            `);
         }
 
         // Auto-refresh every 5 seconds
@@ -537,6 +795,15 @@ HTML_TEMPLATE = '''
             <h1>🚀 GiljoAI MCP Development Control Panel</h1>
             <p>Service Management & Development Tools</p>
             <div class="timestamp">Last updated: {{ current_time }}</div>
+            {% if monitoring_active %}
+            <div class="monitoring-status" style="color: #90EE90; font-size: 14px; margin-top: 5px;">
+                ✅ Real-time monitoring active (3-second intervals)
+            </div>
+            {% else %}
+            <div class="monitoring-status" style="color: #FFB6C1; font-size: 14px; margin-top: 5px;">
+                ⚠️ Real-time monitoring inactive
+            </div>
+            {% endif %}
         </div>
 
         <div class="section">
@@ -639,7 +906,7 @@ def index():
     for key in SERVICES:
         statuses[key] = get_service_status(key)
 
-    postgresql_status = check_postgresql()
+    postgresql_status = service_statuses.get('postgresql', check_postgresql())
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     return render_template_string(
@@ -648,7 +915,8 @@ def index():
         statuses=statuses,
         postgresql_status=postgresql_status,
         current_time=current_time,
-        cache_status=cache_status
+        cache_status=cache_status,
+        monitoring_active=monitoring_active
     )
 
 @app.route('/api/start/<service_key>', methods=['POST'])
@@ -794,20 +1062,52 @@ def api_get_cache_logs():
     except Exception as e:
         return f"Error reading cache log: {e}"
 
+@app.route('/api/status')
+def api_get_status():
+    """Get current status of all services"""
+    statuses = {}
+    for key in SERVICES:
+        statuses[key] = get_service_status(key)
+
+    return jsonify({
+        'services': statuses,
+        'postgresql': service_statuses.get('postgresql', check_postgresql()),
+        'monitoring_active': monitoring_active,
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    })
+
 if __name__ == '__main__':
     # Ensure logs directory exists
     log_dir = Path(__file__).parent / 'logs'
     log_dir.mkdir(exist_ok=True)
 
+    # Check for existing running services on startup
+    print("🔍 Checking for existing services...")
+    for service_key in SERVICES:
+        status = get_service_status(service_key)
+        if status != 'stopped':
+            print(f"   {SERVICES[service_key]['name']}: {status.upper()}")
+
     print("🚀 Starting GiljoAI MCP Development Control Panel")
     print("📋 Dashboard available at: http://localhost:5500")
-    print("🔧 Service ports: MCP(6001), API(6002), WebSocket(6003), Frontend(6000)")
+    print("🔧 Service ports: MCP(6001), API+WebSocket(6002), Frontend(6000)")
+    print("🔄 Starting continuous service monitoring...")
+
+    # Start background monitoring
+    start_monitoring()
+
     print("⏹️  Press Ctrl+C to stop")
 
-    # Start Flask app
-    app.run(
-        host='127.0.0.1',
-        port=5500,
-        debug=False,  # Disable debug to avoid auto-reload conflicts
-        use_reloader=False
-    )
+    try:
+        # Start Flask app
+        app.run(
+            host='127.0.0.1',
+            port=5500,
+            debug=False,  # Disable debug to avoid auto-reload conflicts
+            use_reloader=False
+        )
+    except KeyboardInterrupt:
+        print("\n🛑 Shutting down...")
+    finally:
+        # Stop monitoring on exit
+        stop_monitoring()
