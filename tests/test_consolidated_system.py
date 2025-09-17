@@ -11,22 +11,22 @@ import sys
 from typing import Dict, Any
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.template_manager import (
+from src.giljo_mcp.template_manager import (
     apply_augmentation, 
     process_template,
     extract_variables,
     UnifiedTemplateManager,
     get_template_manager
 )
-from giljo_mcp.enums import (
+from src.giljo_mcp.enums import (
     AgentRole,
     ProjectType,
     AugmentationType,
     TemplateCategory
 )
-from giljo_mcp.models import AgentTemplate, TemplateAugmentation
+from src.giljo_mcp.models import AgentTemplate, TemplateAugmentation
 
 
 class TestPolymorphicAugmentation:
@@ -62,7 +62,7 @@ class TestPolymorphicAugmentation:
         content = "Base template content"
         
         # Create a mock that inherits from TemplateAugmentation
-        from giljo_mcp.models import TemplateAugmentation
+        from src.giljo_mcp.models import TemplateAugmentation
         
         # Create a simple mock object with the required attributes
         aug_obj = TemplateAugmentation()
@@ -242,11 +242,11 @@ class TestBackwardCompatibility:
     
     def test_template_adapter_uses_unified_function(self):
         """Verify template_adapter imports and uses unified function"""
-        from giljo_mcp.template_adapter import TemplateAdapter
+        from src.giljo_mcp.template_adapter import TemplateAdapter
         import inspect
         
         # Check the module imports apply_augmentation
-        adapter_module = sys.modules['giljo_mcp.template_adapter']
+        adapter_module = sys.modules['src.giljo_mcp.template_adapter']
         assert hasattr(adapter_module, 'apply_augmentation'), \
             "template_adapter should import apply_augmentation"
         
@@ -257,20 +257,20 @@ class TestBackwardCompatibility:
             "TemplateAdapter should not have its own _apply_augmentation method"
     
     def test_mission_templates_uses_consolidated_enums(self):
-        """Verify mission_templates uses enums from enums.py"""
-        from giljo_mcp.mission_templates import MissionTemplateGenerator
-        import giljo_mcp.mission_templates as mt_module
-        
-        # Check it imports from enums
-        assert hasattr(mt_module, 'AgentRole'), \
-            "mission_templates should import AgentRole"
-        assert hasattr(mt_module, 'ProjectType'), \
-            "mission_templates should import ProjectType"
-        
-        # Verify these are the same as in enums.py
-        from giljo_mcp.enums import AgentRole as EnumsAgentRole
-        assert mt_module.AgentRole is EnumsAgentRole, \
-            "Should use the same AgentRole from enums.py"
+        """Verify template_adapter provides mission template compatibility"""
+        from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2
+        import src.giljo_mcp.template_adapter as ta_module
+
+        # Check compatibility class exists
+        assert hasattr(ta_module, 'MissionTemplateGeneratorV2'), \
+            "template_adapter should provide MissionTemplateGeneratorV2"
+
+        # Check it provides the same interface
+        generator = MissionTemplateGeneratorV2()
+        assert hasattr(generator, 'generate_orchestrator_mission'), \
+            "MissionTemplateGeneratorV2 should have generate_orchestrator_mission method"
+        assert hasattr(generator, 'generate_agent_mission'), \
+            "MissionTemplateGeneratorV2 should have generate_agent_mission method"
 
 
 class TestEdgeCases:

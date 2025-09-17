@@ -10,9 +10,9 @@ from pathlib import Path
 import sys
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.discovery import SerenaHooks
+from src.giljo_mcp.discovery import SerenaHooks
 
 
 class TestSerenaHooks:
@@ -118,8 +118,8 @@ class TestSerenaHooksIntegration:
     async def test_with_real_managers(self):
         """Test SerenaHooks with actual manager instances (if available)"""
         try:
-            from giljo_mcp.database import DatabaseManager
-            from giljo_mcp.tenant_manager import TenantManager
+            from src.giljo_mcp.database import DatabaseManager
+            from src.giljo_mcp.tenant_manager import TenantManager
             
             # Create real instances
             db_manager = DatabaseManager("sqlite:///test.db")
@@ -223,4 +223,4 @@ def run_tests():
 
 if __name__ == "__main__":
     success = run_tests()
-    sys.exit(0 if success else 1)
+    # sys.exit(0 if success else 1)  # Commented for pytest

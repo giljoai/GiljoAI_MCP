@@ -15,12 +15,13 @@ export const darkTheme = {
     success: '#67bd6d',         // Green
     accent: '#c6298c',          // Pink red
     info: '#8f97b7',            // Lightest blue
-    warning: '#ffc300',         // Yellow
+    warning: '#d4a000',         // Darker yellow for better contrast
     error: '#c6298c',           // Pink red
     
     // Text colors
     'on-background': '#e1e1e1', // White gray
     'on-surface': '#e1e1e1',
+    'on-surface-variant': '#c0c0c0', // Caption text
     'on-primary': '#e1e1e1',
     'on-secondary': '#0e1c2d',
     'on-success': '#0e1c2d',
@@ -50,6 +51,7 @@ export const lightTheme = {
     
     'on-background': '#363636',  // Dark gray for light theme
     'on-surface': '#363636',
+    'on-surface-variant': '#666666', // Caption text
     'on-primary': '#ffffff',
     'on-secondary': '#363636',
     'on-success': '#ffffff',

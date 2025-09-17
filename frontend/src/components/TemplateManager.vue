@@ -10,6 +10,7 @@
         color="primary"
         prepend-icon="mdi-plus"
         @click="openCreateDialog"
+        aria-label="Create new template"
       >
         New Template
       </v-btn>
@@ -102,6 +103,7 @@
             variant="text"
             @click="previewTemplate(item)"
             title="Preview"
+            aria-label="Preview template"
           />
           <v-btn
             icon="mdi-pencil"
@@ -109,6 +111,7 @@
             variant="text"
             @click="editTemplate(item)"
             title="Edit"
+            aria-label="Edit template"
           />
           <v-btn
             icon="mdi-content-copy"
@@ -116,6 +119,7 @@
             variant="text"
             @click="duplicateTemplate(item)"
             title="Duplicate"
+            aria-label="Duplicate template"
           />
           <v-btn
             icon="mdi-history"
@@ -123,6 +127,7 @@
             variant="text"
             @click="viewHistory(item)"
             title="Version History"
+            aria-label="View template version history"
           />
           <v-btn
             icon="mdi-delete"
@@ -131,6 +136,7 @@
             color="error"
             @click="confirmDelete(item)"
             title="Delete"
+            aria-label="Delete template"
           />
         </template>
       </v-data-table>
@@ -141,8 +147,9 @@
       v-model="editDialog"
       max-width="900px"
       persistent
+      retain-focus
     >
-      <v-card @click.stop>
+      <v-card>
         <v-card-title>
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
         </v-card-title>
@@ -241,8 +248,10 @@
     <v-dialog
       v-model="previewDialog"
       max-width="800px"
+      persistent
+      retain-focus
     >
-      <v-card @click.stop>
+      <v-card>
         <v-card-title>
           <span class="text-h5">Template Preview: {{ previewingTemplate.name }}</span>
         </v-card-title>
@@ -306,8 +315,10 @@
     <v-dialog
       v-model="deleteDialog"
       max-width="500px"
+      persistent
+      retain-focus
     >
-      <v-card @click.stop>
+      <v-card>
         <v-card-title class="text-h5">Confirm Delete</v-card-title>
         <v-card-text>
           Are you sure you want to delete the template "{{ deletingTemplate?.name }}"?
@@ -333,6 +344,8 @@
       v-model="historyDialog"
       max-width="900px"
       scrollable
+      persistent
+      retain-focus
     >
       <TemplateArchive
         v-if="historyDialog"

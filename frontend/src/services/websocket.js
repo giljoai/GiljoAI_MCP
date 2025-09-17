@@ -469,75 +469,8 @@ class WebSocketService {
     return []
   }
 
-  // Test Helper Methods
-  
-  /**
-   * Force disconnect (for testing)
-   */
-  forceDisconnect() {
-    this.log('Force disconnect triggered')
-    this.shouldReconnect = false
-    
-    if (this.ws) {
-      this.ws.close(1000, 'Test: Force disconnect')
-    }
-    
-    this.addEvent('test', 'Force disconnect')
-  }
+ messages from queue`)
 
-  /**
-   * Simulate connection drop (for testing reconnect)
-   */
-  simulateConnectionDrop() {
-    this.log('Simulating connection drop')
-    this.shouldReconnect = true
-    
-    if (this.ws) {
-      // Close with abnormal closure code to simulate drop
-      this.ws.close(1006, 'Test: Connection drop')
-    }
-    
-    this.addEvent('test', 'Simulated connection drop')
-  }
-
-  /**
-   * Force reconnect
-   */
-  async forceReconnect() {
-    this.log('Force reconnect triggered')
-    this.disconnect()
-    this.shouldReconnect = true
-    this.reconnectAttempts = 0
-    
-    await new Promise(resolve => setTimeout(resolve, 100))
-    return this.connect(this.authCredentials)
-  }
-
-  /**
-   * Send test message
-   */
-  sendTestMessage(type = 'test', data = {}) {
-    const message = {
-      type,
-      data: {
-        ...data,
-        test: true,
-        timestamp: new Date().toISOString()
-      }
-    }
-    
-    this.log('Sending test message', message)
-    return this.send(message)
-  }
-
-  /**
-   * Clear message queue
-   */
-  clearMessageQueue() {
-    const queueSize = this.messageQueue.length
-    this.messageQueue = []
-    this.log(`Cleared ${queueSize} messages from queue`)
-    this.addEvent('test', `Queue cleared (${queueSize} messages)`)
     return queueSize
   }
 

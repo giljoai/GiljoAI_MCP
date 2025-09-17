@@ -6,16 +6,15 @@ Provides priority-based context loading with role-specific filtering
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 import hashlib
 import json
 import yaml
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from .models import Project, Configuration, ContextIndex, Vision, LargeDocumentIndex
+from .models import Configuration, Vision
 from .database import DatabaseManager
 from .tenant import TenantManager
 
@@ -27,7 +26,7 @@ class PathResolver:
     Resolves paths dynamically with multiple fallback options.
     Resolution order: environment variables -> database -> config.yaml -> defaults
     """
-    
+
     DEFAULT_PATHS = {
         "vision": "docs/Vision",
         "sessions": "docs/Sessions",
@@ -36,24 +35,26 @@ class PathResolver:
         "docs": "docs",
         "config": ".giljo-mcp",
         "logs": "logs",
-        "data": "data"
+        "data": "data",
     }
-    
+
     def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._cache = {}
         self._cache_ttl = timedelta(minutes=5)
         self._cache_timestamps = {}
-    
-    async def resolve_path(self, path_key: str, project_id: Optional[str] = None) -> Path:
+
+    async def resolve_path(
+        self, path_key: str, project_id: Optional[str] = None
+    ) -> Path:
         """
         Resolve a path key to an actual filesystem path.
-        
+
         Args:
             path_key: Key identifying the path (e.g., 'vision', 'sessions')
             project_id: Optional project ID for project-specific paths
-            
+
         Returns:
             Resolved Path object
         """
@@ -61,14 +62,14 @@ class PathResolver:
         cache_key = f"{path_key}:{project_id or 'global'}"
         if self._is_cache_valid(cache_key):
             return self._cache[cache_key]
-        
+
         # 1. Check environment variables (highest priority)
         env_var = f"GILJO_MCP_PATH_{path_key.upper()}"
         if env_var in os.environ:
             resolved = Path(os.environ[env_var])
             self._update_cache(cache_key, resolved)
             return resolved
-        
+
         # 2. Check database configuration
         if project_id:
             db_path = await self._get_database_path(path_key, project_id)
@@ -76,27 +77,27 @@ class PathResolver:
                 resolved = Path(db_path)
                 self._update_cache(cache_key, resolved)
                 return resolved
-        
+
         # 3. Check config.yaml
         config_path = await self._get_config_file_path(path_key)
         if config_path:
             resolved = Path(config_path)
             self._update_cache(cache_key, resolved)
             return resolved
-        
+
         # 4. Use defaults
         default = self.DEFAULT_PATHS.get(path_key, path_key)
         resolved = Path(default)
         self._update_cache(cache_key, resolved)
         return resolved
-    
+
     async def get_all_paths(self, project_id: Optional[str] = None) -> Dict[str, Path]:
         """
         Get all resolved paths for the current project.
-        
+
         Args:
             project_id: Optional project ID
-            
+
         Returns:
             Dictionary of path keys to resolved Path objects
         """
@@ -104,7 +105,7 @@ class PathResolver:
         for key in self.DEFAULT_PATHS.keys():
             paths[key] = await self.resolve_path(key, project_id)
         return paths
-    
+
     async def _get_database_path(self, path_key: str, project_id: str) -> Optional[str]:
         """Get path override from database"""
         try:
@@ -112,54 +113,54 @@ class PathResolver:
                 config_query = select(Configuration).where(
                     Configuration.project_id == project_id,
                     Configuration.key == f"path.{path_key}",
-                    Configuration.category == "paths"
+                    Configuration.category == "paths",
                 )
                 result = await session.execute(config_query)
                 config = result.scalar_one_or_none()
-                
+
                 if config and config.value:
                     return config.value
         except Exception as e:
             logger.warning(f"Failed to get database path for {path_key}: {e}")
-        
+
         return None
-    
+
     async def _get_config_file_path(self, path_key: str) -> Optional[str]:
         """Get path from config.yaml"""
         try:
             config_path = Path.home() / ".giljo-mcp" / "config.yaml"
             if not config_path.exists():
                 config_path = Path("config.yaml")
-            
+
             if config_path.exists():
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     config = yaml.safe_load(f)
-                    
+
                 # Look for paths section
-                paths = config.get('paths', {})
+                paths = config.get("paths", {})
                 if path_key in paths:
                     return paths[path_key]
         except Exception as e:
             logger.warning(f"Failed to get config file path for {path_key}: {e}")
-        
+
         return None
-    
+
     def _is_cache_valid(self, cache_key: str) -> bool:
         """Check if cached path is still valid"""
         if cache_key not in self._cache:
             return False
-        
+
         timestamp = self._cache_timestamps.get(cache_key)
         if not timestamp:
             return False
-        
+
         return datetime.utcnow() - timestamp < self._cache_ttl
-    
+
     def _update_cache(self, cache_key: str, path: Path):
         """Update path cache"""
         self._cache[cache_key] = path
         self._cache_timestamps[cache_key] = datetime.utcnow()
-    
+
     def clear_cache(self):
         """Clear all cached paths"""
         self._cache.clear()
@@ -171,98 +172,108 @@ class DiscoveryManager:
     Manages dynamic context discovery with priority-based loading.
     Implements role-based filtering and token optimization.
     """
-    
+
     PRIORITY_ORDER = [
-        "vision",      # Priority 1: Product vision documents
-        "config",      # Priority 2: Configuration (yaml + database)
-        "docs",        # Priority 3: Documentation (CLAUDE.md, README)
-        "memories",    # Priority 4: Session memories
-        "code"         # Priority 5: Code via Serena MCP
+        "vision",  # Priority 1: Product vision documents
+        "config",  # Priority 2: Configuration (yaml + database)
+        "docs",  # Priority 3: Documentation (CLAUDE.md, README)
+        "memories",  # Priority 4: Session memories
+        "code",  # Priority 5: Code via Serena MCP
     ]
-    
+
     ROLE_PRIORITIES = {
         "orchestrator": ["vision", "config", "docs", "memories"],
         "analyzer": ["vision", "docs", "code"],
         "implementer": ["docs", "code", "config"],
         "tester": ["docs", "code", "memories"],
-        "default": ["config", "docs"]  # Fallback for unknown roles
+        "default": ["config", "docs"],  # Fallback for unknown roles
     }
-    
+
     ROLE_TOKEN_LIMITS = {
         "orchestrator": 50000,  # Needs full vision
-        "analyzer": 30000,      # Focused analysis
-        "implementer": 40000,   # Technical details
-        "tester": 20000,        # Test specifics
-        "default": 25000        # Default limit
+        "analyzer": 30000,  # Focused analysis
+        "implementer": 40000,  # Technical details
+        "tester": 20000,  # Test specifics
+        "default": 25000,  # Default limit
     }
-    
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager, 
-                 path_resolver: PathResolver):
+
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_manager: TenantManager,
+        path_resolver: PathResolver,
+    ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self.path_resolver = path_resolver
         self.serena_hooks = SerenaHooks(db_manager, tenant_manager)
         self._content_hashes = {}
-    
-    async def discover_context(self, agent_role: str, project_id: str,
-                              force_refresh: bool = False) -> Dict[str, Any]:
+
+    async def discover_context(
+        self, agent_role: str, project_id: str, force_refresh: bool = False
+    ) -> Dict[str, Any]:
         """
         Main discovery method with role-based filtering.
-        
+
         Args:
             agent_role: Role of the agent requesting context
             project_id: Project ID for context
             force_refresh: Force fresh discovery ignoring cache
-            
+
         Returns:
             Discovered context organized by priority
         """
         # Get role-specific priorities
-        priorities = self.ROLE_PRIORITIES.get(agent_role, self.ROLE_PRIORITIES["default"])
-        token_limit = self.ROLE_TOKEN_LIMITS.get(agent_role, self.ROLE_TOKEN_LIMITS["default"])
-        
+        priorities = self.ROLE_PRIORITIES.get(
+            agent_role, self.ROLE_PRIORITIES["default"]
+        )
+        token_limit = self.ROLE_TOKEN_LIMITS.get(
+            agent_role, self.ROLE_TOKEN_LIMITS["default"]
+        )
+
         # Clear cache if forced refresh
         if force_refresh:
             self.path_resolver.clear_cache()
             self._content_hashes.clear()
-        
+
         # Load context by priority
         context = await self.load_by_priority(priorities, project_id, token_limit)
-        
+
         # Add metadata
         context["metadata"] = {
             "agent_role": agent_role,
             "priorities_used": priorities,
             "token_limit": token_limit,
             "discovered_at": datetime.utcnow().isoformat(),
-            "project_id": project_id
+            "project_id": project_id,
         }
-        
+
         return context
-    
-    async def load_by_priority(self, priorities: List[str], project_id: str,
-                              token_limit: int) -> Dict[str, Any]:
+
+    async def load_by_priority(
+        self, priorities: List[str], project_id: str, token_limit: int
+    ) -> Dict[str, Any]:
         """
         Load context in priority order with token limits.
-        
+
         Args:
             priorities: List of context types in priority order
             project_id: Project ID
             token_limit: Maximum tokens to load
-            
+
         Returns:
             Loaded context by type
         """
         context = {}
         tokens_used = 0
-        
+
         for priority in priorities:
             if tokens_used >= token_limit:
                 logger.info(f"Token limit reached at {tokens_used}/{token_limit}")
                 break
-            
+
             remaining_tokens = token_limit - tokens_used
-            
+
             try:
                 if priority == "vision":
                     result = await self._load_vision(project_id, remaining_tokens)
@@ -277,43 +288,48 @@ class DiscoveryManager:
                 else:
                     logger.warning(f"Unknown priority type: {priority}")
                     continue
-                
+
                 if result:
                     context[priority] = result["content"]
                     tokens_used += result.get("tokens", 0)
-                    
+
             except Exception as e:
                 logger.error(f"Failed to load {priority}: {e}")
                 context[priority] = {"error": str(e)}
-        
+
         context["tokens_used"] = tokens_used
         return context
-    
-    async def get_discovery_paths(self, project_id: Optional[str] = None) -> Dict[str, Path]:
+
+    async def get_discovery_paths(
+        self, project_id: Optional[str] = None
+    ) -> Dict[str, Path]:
         """
         Get all configured paths dynamically.
-        
+
         Args:
             project_id: Optional project ID for project-specific paths
-            
+
         Returns:
             Dictionary of path keys to resolved paths
         """
         return await self.path_resolver.get_all_paths(project_id)
-    
+
     async def _load_vision(self, project_id: str, max_tokens: int) -> Optional[Dict]:
         """Load vision documents with chunking support"""
         try:
             vision_path = await self.path_resolver.resolve_path("vision", project_id)
-            
+
             # Check if already indexed in database
             async with self.db_manager.get_session() as session:
-                vision_query = select(Vision).where(
-                    Vision.project_id == project_id
-                ).order_by(Vision.chunk_number).limit(1)
+                vision_query = (
+                    select(Vision)
+                    .where(Vision.project_id == project_id)
+                    .order_by(Vision.chunk_number)
+                    .limit(1)
+                )
                 result = await session.execute(vision_query)
                 vision = result.scalar_one_or_none()
-                
+
                 if vision:
                     # Load from database
                     return {
@@ -321,11 +337,11 @@ class DiscoveryManager:
                             "source": "database",
                             "chunks_available": vision.total_chunks,
                             "first_chunk": vision.content[:500] + "...",
-                            "message": "Use get_vision() tool for full content"
+                            "message": "Use get_vision() tool for full content",
                         },
-                        "tokens": min(max_tokens, 1000)  # Estimate for summary
+                        "tokens": min(max_tokens, 1000),  # Estimate for summary
                     }
-                
+
                 # Check filesystem
                 if vision_path.exists() and vision_path.is_dir():
                     files = list(vision_path.glob("*.md"))
@@ -334,21 +350,21 @@ class DiscoveryManager:
                             "source": "filesystem",
                             "path": str(vision_path),
                             "files": [f.name for f in files],
-                            "message": "Run get_vision() to index and chunk"
+                            "message": "Run get_vision() to index and chunk",
                         },
-                        "tokens": 500
+                        "tokens": 500,
                     }
-                
+
         except Exception as e:
             logger.error(f"Failed to load vision: {e}")
-        
+
         return None
-    
+
     async def _load_config(self, project_id: str, max_tokens: int) -> Optional[Dict]:
         """Load configuration from database and files"""
         try:
             config_data = {}
-            
+
             # Load from database
             async with self.db_manager.get_session() as session:
                 config_query = select(Configuration).where(
@@ -356,61 +372,60 @@ class DiscoveryManager:
                 )
                 result = await session.execute(config_query)
                 configs = result.scalars().all()
-                
+
                 config_data["database"] = {
                     config.key: config.value for config in configs
                 }
-            
+
             # Load from config.yaml
             config_path = await self.path_resolver.resolve_path("config", project_id)
             yaml_path = config_path / "config.yaml"
             if not yaml_path.exists():
                 yaml_path = Path("config.yaml")
-            
+
             if yaml_path.exists():
-                with open(yaml_path, 'r', encoding='utf-8') as f:
+                with open(yaml_path, "r", encoding="utf-8") as f:
                     config_data["yaml"] = yaml.safe_load(f)
-            
+
             # Estimate tokens (rough approximation)
             content_str = json.dumps(config_data)
             estimated_tokens = len(content_str) // 4
-            
+
             if estimated_tokens > max_tokens:
                 # Truncate if needed
                 config_data["truncated"] = True
-            
-            return {
-                "content": config_data,
-                "tokens": min(estimated_tokens, max_tokens)
-            }
-            
+
+            return {"content": config_data, "tokens": min(estimated_tokens, max_tokens)}
+
         except Exception as e:
             logger.error(f"Failed to load config: {e}")
-        
+
         return None
-    
+
     async def _load_docs(self, project_id: str, max_tokens: int) -> Optional[Dict]:
         """Load documentation files"""
         try:
             docs_path = await self.path_resolver.resolve_path("docs", project_id)
             docs_data = {}
             tokens_used = 0
-            
+
             # Priority docs to load
             priority_files = ["CLAUDE.md", "README.md", "PROJECT_ORCHESTRATION_PLAN.md"]
-            
+
             for filename in priority_files:
                 if tokens_used >= max_tokens:
                     break
-                
-                file_path = Path(filename) if filename == "CLAUDE.md" else docs_path / filename
-                
+
+                file_path = (
+                    Path(filename) if filename == "CLAUDE.md" else docs_path / filename
+                )
+
                 if file_path.exists():
-                    content = file_path.read_text(encoding='utf-8')
-                    
+                    content = file_path.read_text(encoding="utf-8")
+
                     # Estimate tokens
                     file_tokens = len(content) // 4
-                    
+
                     if tokens_used + file_tokens <= max_tokens:
                         docs_data[filename] = content
                         tokens_used += file_tokens
@@ -418,71 +433,73 @@ class DiscoveryManager:
                         # Partial load
                         remaining = max_tokens - tokens_used
                         chars_to_load = remaining * 4
-                        docs_data[filename] = content[:chars_to_load] + "\n... [truncated]"
+                        docs_data[filename] = (
+                            content[:chars_to_load] + "\n... [truncated]"
+                        )
                         tokens_used = max_tokens
-            
-            return {
-                "content": docs_data,
-                "tokens": tokens_used
-            }
-            
+
+            return {"content": docs_data, "tokens": tokens_used}
+
         except Exception as e:
             logger.error(f"Failed to load docs: {e}")
-        
+
         return None
-    
+
     async def _load_memories(self, project_id: str, max_tokens: int) -> Optional[Dict]:
         """Load session memories and project artifacts"""
         try:
             memories_data = {}
             tokens_used = 0
-            
+
             # Load from sessions directory
-            sessions_path = await self.path_resolver.resolve_path("sessions", project_id)
-            
+            sessions_path = await self.path_resolver.resolve_path(
+                "sessions", project_id
+            )
+
             if sessions_path.exists() and sessions_path.is_dir():
                 # Get most recent session files
-                session_files = sorted(sessions_path.glob("*.md"), 
-                                     key=lambda x: x.stat().st_mtime, 
-                                     reverse=True)[:5]  # Last 5 sessions
-                
+                session_files = sorted(
+                    sessions_path.glob("*.md"),
+                    key=lambda x: x.stat().st_mtime,
+                    reverse=True,
+                )[
+                    :5
+                ]  # Last 5 sessions
+
                 for file in session_files:
                     if tokens_used >= max_tokens:
                         break
-                    
-                    content = file.read_text(encoding='utf-8')
+
+                    content = file.read_text(encoding="utf-8")
                     file_tokens = len(content) // 4
-                    
+
                     if tokens_used + file_tokens <= max_tokens:
                         memories_data[file.name] = content
                         tokens_used += file_tokens
-            
+
             # Load from Serena memories if available
             serena_path = await self.path_resolver.resolve_path("memories", project_id)
             if serena_path.exists() and serena_path.is_dir():
                 memory_files = list(serena_path.glob("*.md"))[:3]  # Recent memories
-                
+
                 for file in memory_files:
                     if tokens_used >= max_tokens:
                         break
-                    
-                    content = file.read_text(encoding='utf-8')
+
+                    content = file.read_text(encoding="utf-8")
                     file_tokens = len(content) // 4
-                    
+
                     if tokens_used + file_tokens <= max_tokens:
                         memories_data[f"serena/{file.name}"] = content
                         tokens_used += file_tokens
-            
-            return {
-                "content": memories_data,
-                "tokens": tokens_used
-            }
-            
+
+            return {"content": memories_data, "tokens": tokens_used}
+
         except Exception as e:
             logger.error(f"Failed to load memories: {e}")
-        
+
         return None
-    
+
     async def _load_code(self, project_id: str, max_tokens: int) -> Optional[Dict]:
         """Load code context via Serena MCP hooks"""
         try:
@@ -493,44 +510,44 @@ class DiscoveryManager:
                     "find_symbol",
                     "get_symbols_overview",
                     "search_for_pattern",
-                    "find_referencing_symbols"
+                    "find_referencing_symbols",
                 ],
-                "recommendation": "Use Serena MCP tools for code exploration"
+                "recommendation": "Use Serena MCP tools for code exploration",
             }
-            
+
             return {
                 "content": code_data,
-                "tokens": 100  # Minimal tokens for the message
+                "tokens": 100,  # Minimal tokens for the message
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to load code context: {e}")
-        
+
         return None
-    
+
     def calculate_content_hash(self, content: str) -> str:
         """Calculate MD5 hash of content for change detection"""
         return hashlib.md5(content.encode()).hexdigest()
-    
+
     async def detect_changes(self, project_id: str) -> Dict[str, bool]:
         """
         Detect if any content has changed since last discovery.
-        
+
         Args:
             project_id: Project ID
-            
+
         Returns:
             Dictionary of content types and whether they changed
         """
         changes = {}
-        
+
         try:
             paths = await self.get_discovery_paths(project_id)
-            
+
             for path_key, path in paths.items():
                 if path.exists():
                     if path.is_file():
-                        content = path.read_text(encoding='utf-8')
+                        content = path.read_text(encoding="utf-8")
                         new_hash = self.calculate_content_hash(content)
                         old_hash = self._content_hashes.get(f"{project_id}:{path_key}")
                         changes[path_key] = new_hash != old_hash
@@ -540,7 +557,7 @@ class DiscoveryManager:
                         changes[path_key] = True  # Simplified - could be enhanced
         except Exception as e:
             logger.error(f"Failed to detect changes: {e}")
-        
+
         return changes
 
 
@@ -549,23 +566,24 @@ class SerenaHooks:
     Integration hooks for Serena MCP server.
     Provides lazy loading and token-optimized code discovery.
     """
-    
-    def __init__(self, db_manager: 'DatabaseManager', tenant_manager: 'TenantManager'):
+
+    def __init__(self, db_manager: "DatabaseManager", tenant_manager: "TenantManager"):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._symbol_cache = {}
         self._cache_ttl = timedelta(minutes=10)
-    
-    async def lazy_load_symbols(self, file_path: str, depth: int = 0,
-                               max_chars: int = 5000) -> Dict[str, Any]:
+
+    async def lazy_load_symbols(
+        self, file_path: str, depth: int = 0, max_chars: int = 5000
+    ) -> Dict[str, Any]:
         """
         Load symbols only when needed.
-        
+
         Args:
             file_path: Path to the file
             depth: Depth of symbol tree to retrieve
             max_chars: Maximum characters to return
-            
+
         Returns:
             Symbol information
         """
@@ -574,19 +592,20 @@ class SerenaHooks:
         return {
             "file": file_path,
             "symbols": [],
-            "message": "Use mcp__serena-mcp__get_symbols_overview for actual symbols"
+            "message": "Use mcp__serena-mcp__get_symbols_overview for actual symbols",
         }
-    
-    async def search_codebase(self, pattern: str, max_chars: int = 5000,
-                             paths_include: Optional[str] = None) -> Dict[str, Any]:
+
+    async def search_codebase(
+        self, pattern: str, max_chars: int = 5000, paths_include: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Token-optimized code search.
-        
+
         Args:
             pattern: Search pattern
             max_chars: Maximum characters in response
             paths_include: Optional glob pattern for files
-            
+
         Returns:
             Search results
         """
@@ -594,16 +613,16 @@ class SerenaHooks:
         return {
             "pattern": pattern,
             "results": [],
-            "message": "Use mcp__serena-mcp__search_for_pattern for actual search"
+            "message": "Use mcp__serena-mcp__search_for_pattern for actual search",
         }
-    
+
     async def get_file_overview(self, path: str) -> Dict[str, Any]:
         """
         Get file structure without reading content.
-        
+
         Args:
             path: Directory or file path
-            
+
         Returns:
             File structure overview
         """
@@ -611,9 +630,9 @@ class SerenaHooks:
         return {
             "path": path,
             "structure": {},
-            "message": "Use mcp__serena-mcp__list_dir for actual structure"
+            "message": "Use mcp__serena-mcp__list_dir for actual structure",
         }
-    
+
     def clear_cache(self):
         """Clear symbol cache"""
         self._symbol_cache.clear()

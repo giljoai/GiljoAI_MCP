@@ -24,6 +24,19 @@ MANIFEST
 .ruff_cache/
 *.log
 
+# Test artifacts
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+test_*.db
+tests/test_results/
+tests/reports/
+
 # Virtual Environments
 venv/
 env/

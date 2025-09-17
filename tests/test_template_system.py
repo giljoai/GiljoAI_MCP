@@ -15,18 +15,18 @@ import sys
 import uuid
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.models import (
+from src.giljo_mcp.models import (
     AgentTemplate, 
     TemplateArchive, 
     TemplateAugmentation,
     TemplateUsageStats
 )
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
-from giljo_mcp.tools.template import register_template_tools
-from giljo_mcp.template_manager import apply_augmentation, process_template, extract_variables
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.tools.template import register_template_tools
+from src.giljo_mcp.template_manager import apply_augmentation, process_template, extract_variables
 
 def _apply_augmentation(template: str, replacements: dict) -> str:
     """Simple variable substitution for testing"""
@@ -495,7 +495,7 @@ class TestMigrationFromLegacy:
     @pytest.mark.asyncio
     async def test_migrate_existing_templates(self):
         """Test migrating templates from Python code to database"""
-        from giljo_mcp.mission_templates import MissionTemplateGenerator
+        from src.giljo_mcp.mission_templates import MissionTemplateGenerator
         
         db_manager = DatabaseManager("sqlite:///:memory:")
         await db_manager.initialize()

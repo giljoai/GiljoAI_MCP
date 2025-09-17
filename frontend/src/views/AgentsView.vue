@@ -302,7 +302,7 @@
     <!-- Empty State -->
     <v-row v-if="filteredAgents.length === 0 && !loading">
       <v-col>
-        <v-card @click.stop>
+        <v-card>
           <v-card-text class="text-center py-8">
             <v-icon size="64" color="grey">mdi-robot-off</v-icon>
             <p class="text-h6 mt-4">No agents found</p>

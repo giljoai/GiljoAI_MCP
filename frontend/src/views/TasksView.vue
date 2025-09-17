@@ -168,7 +168,7 @@
     </v-row>
 
     <!-- Tasks Table -->
-    <v-card @click.stop>
+    <v-card>
       <!-- Table Controls -->
       <v-card-title class="d-flex align-center py-3">
         <span class="text-h6">Tasks</span>
@@ -432,7 +432,7 @@
 
     <!-- Create/Edit Task Dialog -->
     <v-dialog v-model="showTaskDialog" max-width="600">
-      <v-card @click.stop>
+      <v-card>
         <v-card-title>
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           {{ editingTask ? 'Edit Task' : 'Create Task' }}

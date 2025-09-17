@@ -8,6 +8,7 @@ from enum import Enum
 
 class AgentRole(Enum):
     """Standard agent roles with predefined capabilities."""
+
     ORCHESTRATOR = "orchestrator"
     ANALYZER = "analyzer"
     IMPLEMENTER = "implementer"
@@ -18,6 +19,7 @@ class AgentRole(Enum):
 
 class ProjectType(Enum):
     """Project types for template customization."""
+
     FOUNDATION = "foundation"
     MCP_INTEGRATION = "mcp_integration"
     ORCHESTRATION = "orchestration"
@@ -28,6 +30,7 @@ class ProjectType(Enum):
 
 class AgentStatus(Enum):
     """Agent lifecycle status."""
+
     PENDING = "pending"
     ACTIVE = "active"
     IDLE = "idle"
@@ -38,6 +41,7 @@ class AgentStatus(Enum):
 
 class ProjectStatus(Enum):
     """Project lifecycle status."""
+
     PLANNING = "planning"
     ACTIVE = "active"
     PAUSED = "paused"
@@ -48,6 +52,7 @@ class ProjectStatus(Enum):
 
 class MessageType(Enum):
     """Message types for inter-agent communication."""
+
     DIRECT = "direct"
     BROADCAST = "broadcast"
     HANDOFF = "handoff"
@@ -57,14 +62,28 @@ class MessageType(Enum):
 
 class MessagePriority(Enum):
     """Message priority levels."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
     URGENT = "urgent"
+    CRITICAL = "critical"
+
+
+class MessageStatus(Enum):
+    """Message processing status."""
+
+    PENDING = "pending"
+    ACKNOWLEDGED = "acknowledged"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPIRED = "expired"
 
 
 class AugmentationType(Enum):
     """Template augmentation types."""
+
     APPEND = "append"
     PREPEND = "prepend"
     REPLACE = "replace"
@@ -73,6 +92,7 @@ class AugmentationType(Enum):
 
 class TemplateCategory(Enum):
     """Template categories."""
+
     ROLE = "role"
     PROJECT_TYPE = "project_type"
     CUSTOM = "custom"
@@ -82,6 +102,7 @@ class TemplateCategory(Enum):
 
 class ArchiveType(Enum):
     """Template archive types."""
+
     MANUAL = "manual"
     AUTO = "auto"
     SCHEDULED = "scheduled"
@@ -90,6 +111,7 @@ class ArchiveType(Enum):
 
 class JobStatus(Enum):
     """Job execution status."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -99,6 +121,7 @@ class JobStatus(Enum):
 
 class InteractionType(Enum):
     """Agent interaction types for sub-agent tracking."""
+
     SPAWN = "spawn"
     COMPLETE = "complete"
     ERROR = "error"
@@ -107,9 +130,10 @@ class InteractionType(Enum):
 
 class ContextStatus(Enum):
     """Context usage status for visual indicators."""
-    GREEN = "green"   # < 50%
-    YELLOW = "yellow" # 50-80%
-    RED = "red"       # > 80%
+
+    GREEN = "green"  # < 50%
+    YELLOW = "yellow"  # 50-80%
+    RED = "red"  # > 80%
     HEALTHY = "healthy"
     WARNING = "warning"
     CRITICAL = "critical"

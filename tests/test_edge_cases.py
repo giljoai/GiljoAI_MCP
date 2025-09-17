@@ -13,10 +13,10 @@ from datetime import datetime, timezone
 
 # Add src to path
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import (
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import (
     Base, Project, Agent, Message, Task, 
     Session, Vision, Configuration, Job
 )
@@ -484,7 +484,7 @@ class TestPathHandling:
     
     def test_path_creation_cross_platform(self):
         """Test that paths are created correctly across platforms."""
-        from giljo_mcp.config import Config
+        from src.giljo_mcp.config import Config
         
         config = Config()
         
@@ -502,7 +502,7 @@ class TestPathHandling:
     
     def test_database_url_generation(self):
         """Test database URL generation with proper path handling."""
-        from giljo_mcp.config import Config
+        from src.giljo_mcp.config import Config
         
         config = Config()
         

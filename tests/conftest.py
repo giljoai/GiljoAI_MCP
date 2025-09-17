@@ -22,6 +22,11 @@ from src.giljo_mcp.tenant import TenantManager
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
+# Import test helpers
+from tests.helpers.test_factories import ProjectFactory, AgentFactory, MessageFactory
+from tests.helpers.async_helpers import AsyncMockManager, TimeoutHelper, DatabaseTestHelper
+from tests.helpers.mock_servers import ExternalServiceMocks
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -149,3 +154,79 @@ def benchmark_timer():
             return min(self.times) if self.times else 0
     
     return Timer()
+
+
+# Additional test fixtures using new helpers
+@pytest.fixture(scope="function")
+def project_factory():
+    """Factory for creating test projects"""
+    return ProjectFactory
+
+
+@pytest.fixture(scope="function")
+def agent_factory():
+    """Factory for creating test agents"""
+    return AgentFactory
+
+
+@pytest.fixture(scope="function")
+def message_factory():
+    """Factory for creating test messages"""
+    return MessageFactory
+
+
+@pytest.fixture(scope="function")
+def timeout_helper():
+    """Helper for testing timeouts and conditions"""
+    return TimeoutHelper
+
+
+@pytest.fixture(scope="function")
+def db_helper():
+    """Helper for database testing operations"""
+    return DatabaseTestHelper
+
+
+@pytest.fixture(scope="function")
+def external_mocks():
+    """Collection of external service mocks"""
+    return ExternalServiceMocks
+
+
+@pytest_asyncio.fixture(scope="function")
+async def async_mock_manager():
+    """Manager for async mocks with automatic cleanup"""
+    manager = AsyncMockManager()
+    yield manager
+    manager.cleanup()
+
+
+@pytest.fixture(scope="function")
+def sample_project_data():
+    """Sample project data for testing"""
+    return {
+        "name": "Test Project",
+        "mission": "Test mission for unit testing",
+        "status": "active"
+    }
+
+
+@pytest.fixture(scope="function")
+def sample_agent_data():
+    """Sample agent data for testing"""
+    return {
+        "name": "test_agent",
+        "type": "worker",
+        "status": "active"
+    }
+
+
+@pytest.fixture(scope="function")
+def sample_message_data():
+    """Sample message data for testing"""
+    return {
+        "from_agent": "orchestrator",
+        "content": "Test message content",
+        "type": "direct",
+        "priority": "normal"
+    }

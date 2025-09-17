@@ -16,7 +16,7 @@ from giljo_mcp.database import DatabaseManager
 from giljo_mcp.orchestrator import ProjectOrchestrator
 from giljo_mcp.models import Project, Agent
 from giljo_mcp.template_manager import TemplateManager
-from giljo_mcp.config import Config
+from giljo_mcp.config_manager import get_config
 
 
 @dataclass

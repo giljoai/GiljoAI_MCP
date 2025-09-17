@@ -6,7 +6,7 @@
       :prepend-icon="icon"
       variant="tonal"
       size="small"
-      class="connection-status"
+      :class="['connection-status', { 'reconnecting': wsStore.connectionState === 'reconnecting' }]"
       @click="showDebugPanel = !showDebugPanel"
       style="cursor: pointer"
     >
@@ -39,7 +39,7 @@
       max-width="800"
       scrollable
     >
-      <v-card @click.stop>
+      <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-bug</v-icon>
           WebSocket Debug Panel
@@ -415,6 +415,16 @@ onUnmounted(() => {
 <style scoped>
 .connection-status {
   transition: all 0.3s ease;
+}
+
+.connection-status.reconnecting {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 .connection-status:deep(.v-chip__content) {

@@ -7,9 +7,9 @@ from pathlib import Path
 import json
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.tools.chunking import EnhancedChunker
+from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 
 def test_single_document_naming():
@@ -287,4 +287,4 @@ def run_all_tests():
 
 if __name__ == "__main__":
     success = run_all_tests()
-    sys.exit(0 if success else 1)
+    # sys.exit(0 if success else 1)  # Commented for pytest

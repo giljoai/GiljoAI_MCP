@@ -167,7 +167,7 @@
                 v-if="node.children && node.children.length > 0"
                 :transform="`translate(${nodeWidth / 2 - 10}, 0)`"
                 class="expand-indicator"
-                @click.stop="toggleNode(node)"
+                @click="toggleNode(node)"
               >
                 <circle
                   r="8"

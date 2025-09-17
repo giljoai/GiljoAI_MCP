@@ -238,7 +238,7 @@
     </v-row>
 
     <!-- Create/Edit Product Dialog -->
-    <v-dialog v-model="showDialog" max-width="600">
+    <v-dialog v-model="showDialog" max-width="600" persistent retain-focus>
       <v-card>
         <v-card-title>
           <v-icon start>{{ editingProduct ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
@@ -294,7 +294,7 @@
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="showDeleteDialog" max-width="400">
+    <v-dialog v-model="showDeleteDialog" max-width="400" persistent retain-focus>
       <v-card>
         <v-card-title class="text-h6">
           <v-icon start color="error">mdi-alert</v-icon>

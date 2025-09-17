@@ -5,46 +5,44 @@ Handles vision documents, context retrieval, and product settings
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import json
+from typing import Dict, Any, Optional
 import yaml
 from datetime import datetime
 
 from fastmcp import FastMCP
 from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import DatabaseManager
-from ..tenant import TenantManager, current_tenant
+from ..tenant import TenantManager
 from ..models import Project, Configuration, Vision, ContextIndex, LargeDocumentIndex
 from .chunking import EnhancedChunker
-from ..discovery import PathResolver, DiscoveryManager, SerenaHooks
+from ..discovery import PathResolver, DiscoveryManager
 
 logger = logging.getLogger(__name__)
 
 
-def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
+def register_context_tools(
+    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
+):
     """Register context and discovery tools with the MCP server"""
-    
+
     # Initialize discovery system
     path_resolver = PathResolver(db_manager, tenant_manager)
     discovery_manager = DiscoveryManager(db_manager, tenant_manager, path_resolver)
-    
+
     @mcp.tool()
     async def get_vision(
-        part: int = 1,
-        max_tokens: int = 20000,
-        force_reindex: bool = False
+        part: int = 1, max_tokens: int = 20000, force_reindex: bool = False
     ) -> Dict[str, Any]:
         """
         Get the vision document for the active product (chunked if too large)
         Creates an index on first read to help orchestrator navigate vision documents.
-        
+
         Args:
             part: Which part to retrieve (1-based index)
             max_tokens: Maximum tokens per part (default 20000, max 24000)
             force_reindex: Force re-indexing of vision documents
-            
+
         Returns:
             Vision document content or chunk with metadata
         """
@@ -54,21 +52,18 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first."
+                    "error": "No active project. Use switch_project first.",
                 }
-            
+
             async with db_manager.get_session() as session:
                 # Find project by tenant key
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if not project:
-                    return {
-                        "success": False,
-                        "error": "Project not found"
-                    }
-                
+                    return {"success": False, "error": "Project not found"}
+
                 # Check if we need to force reindex
                 if force_reindex:
                     # Delete existing visions and indexes
@@ -78,19 +73,21 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     await session.execute(
                         delete(ContextIndex).where(
                             ContextIndex.project_id == project.id,
-                            ContextIndex.index_type == "vision"
+                            ContextIndex.index_type == "vision",
                         )
                     )
                     await session.commit()
                     visions = []
                 else:
                     # Check for vision documents in database
-                    vision_query = select(Vision).where(
-                        Vision.project_id == project.id
-                    ).order_by(Vision.chunk_number)
+                    vision_query = (
+                        select(Vision)
+                        .where(Vision.project_id == project.id)
+                        .order_by(Vision.chunk_number)
+                    )
                     vision_result = await session.execute(vision_query)
                     visions = vision_result.scalars().all()
-                
+
                 if visions and not force_reindex:
                     # Return from database
                     if part <= len(visions):
@@ -105,71 +102,67 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                             "keywords": vision.keywords or [],
                             "headers": vision.headers or [],
                             "has_more": part < len(visions),
-                            "indexed": True
+                            "indexed": True,
                         }
                     else:
                         return {
                             "success": False,
-                            "error": f"Part {part} not found. Document has {len(visions)} parts."
+                            "error": f"Part {part} not found. Document has {len(visions)} parts.",
                         }
-                
+
                 # Try to load from filesystem
-                vision_path = await path_resolver.resolve_path("vision", str(project.id))
+                vision_path = await path_resolver.resolve_path(
+                    "vision", str(project.id)
+                )
                 if not vision_path.exists():
-                    return {
-                        "success": False,
-                        "error": "No vision documents found"
-                    }
-                
+                    return {"success": False, "error": "No vision documents found"}
+
                 # Collect all vision documents
                 vision_docs = []
                 vision_files = sorted(vision_path.glob("*.md"))
-                
+
                 for file in vision_files:
                     try:
-                        content = file.read_text(encoding='utf-8')
-                        vision_docs.append({
-                            "name": file.name,
-                            "content": content
-                        })
+                        content = file.read_text(encoding="utf-8")
+                        vision_docs.append({"name": file.name, "content": content})
                     except Exception as e:
                         logger.warning(f"Failed to read {file}: {e}")
-                
+
                 if not vision_docs:
                     return {
                         "success": False,
-                        "error": "No readable vision documents found"
+                        "error": "No readable vision documents found",
                     }
-                
+
                 # Use enhanced chunker
                 chunker = EnhancedChunker(max_tokens=max_tokens)
                 chunks = chunker.chunk_multiple_documents(vision_docs)
-                
+
                 if not chunks:
                     return {
                         "success": False,
-                        "error": "Failed to chunk vision documents"
+                        "error": "Failed to chunk vision documents",
                     }
-                
+
                 # Store chunks in database
                 for chunk_data in chunks:
                     vision = Vision(
                         tenant_key=project.tenant_key,
                         project_id=project.id,
-                        document_name=chunk_data['document_name'],
-                        chunk_number=chunk_data['chunk_number'],
-                        total_chunks=chunk_data['total_chunks'],
-                        content=chunk_data['content'],
-                        tokens=chunk_data['tokens'],
-                        char_start=chunk_data['char_start'],
-                        char_end=chunk_data['char_end'],
-                        boundary_type=chunk_data['boundary_type'],
-                        keywords=chunk_data['keywords'],
-                        headers=chunk_data['headers'],
-                        created_at=datetime.utcnow()
+                        document_name=chunk_data["document_name"],
+                        chunk_number=chunk_data["chunk_number"],
+                        total_chunks=chunk_data["total_chunks"],
+                        content=chunk_data["content"],
+                        tokens=chunk_data["tokens"],
+                        char_start=chunk_data["char_start"],
+                        char_end=chunk_data["char_end"],
+                        boundary_type=chunk_data["boundary_type"],
+                        keywords=chunk_data["keywords"],
+                        headers=chunk_data["headers"],
+                        created_at=datetime.utcnow(),
                     )
                     session.add(vision)
-                
+
                 # Create index on first read (part=1)
                 if part == 1:
                     # Create context index for navigation
@@ -177,35 +170,35 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         # Find which chunks contain this document
                         doc_chunks = []
                         for i, chunk in enumerate(chunks, 1):
-                            if doc['name'] in chunk['content']:
+                            if doc["name"] in chunk["content"]:
                                 doc_chunks.append(i)
-                        
+
                         # Extract summary (first paragraph)
-                        lines = doc['content'].split('\n')
+                        lines = doc["content"].split("\n")
                         summary = None
                         for line in lines:
-                            if line.strip() and not line.startswith('#'):
+                            if line.strip() and not line.startswith("#"):
                                 summary = line.strip()[:500]
                                 break
-                        
+
                         # Create index entry
                         index_entry = ContextIndex(
                             tenant_key=project.tenant_key,
                             project_id=project.id,
                             index_type="vision",
-                            document_name=doc['name'],
+                            document_name=doc["name"],
                             chunk_numbers=doc_chunks,
                             summary=summary,
-                            token_count=chunker.estimate_tokens(doc['content']),
-                            keywords=chunker.extract_keywords(doc['content']),
+                            token_count=chunker.estimate_tokens(doc["content"]),
+                            keywords=chunker.extract_keywords(doc["content"]),
                             full_path=f"docs/Vision/{doc['name']}",
-                            content_hash=chunker.calculate_content_hash(doc['content']),
-                            created_at=datetime.utcnow()
+                            content_hash=chunker.calculate_content_hash(doc["content"]),
+                            created_at=datetime.utcnow(),
                         )
                         session.add(index_entry)
-                    
+
                     # Create large document index
-                    total_content = '\n\n'.join([d['content'] for d in vision_docs])
+                    total_content = "\n\n".join([d["content"] for d in vision_docs])
                     large_doc_index = LargeDocumentIndex(
                         tenant_key=project.tenant_key,
                         project_id=project.id,
@@ -215,15 +208,15 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         total_tokens=chunker.estimate_tokens(total_content),
                         chunk_count=len(chunks),
                         metadata={
-                            "files": [d['name'] for d in vision_docs],
-                            "created": datetime.utcnow().isoformat()
+                            "files": [d["name"] for d in vision_docs],
+                            "created": datetime.utcnow().isoformat(),
                         },
-                        indexed_at=datetime.utcnow()
+                        indexed_at=datetime.utcnow(),
                     )
                     session.add(large_doc_index)
-                
+
                 await session.commit()
-                
+
                 # Return requested part
                 if part <= len(chunks):
                     chunk = chunks[part - 1]
@@ -231,38 +224,35 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         "success": True,
                         "part": part,
                         "total_parts": len(chunks),
-                        "content": chunk['content'],
-                        "tokens": chunk['tokens'],
-                        "boundary_type": chunk['boundary_type'],
-                        "keywords": chunk['keywords'],
-                        "headers": chunk['headers'],
+                        "content": chunk["content"],
+                        "tokens": chunk["tokens"],
+                        "boundary_type": chunk["boundary_type"],
+                        "keywords": chunk["keywords"],
+                        "headers": chunk["headers"],
                         "has_more": part < len(chunks),
                         "indexed": True,
-                        "message": "Vision documents chunked and indexed successfully"
+                        "message": "Vision documents chunked and indexed successfully",
                     }
                 else:
                     return {
                         "success": False,
-                        "error": f"Part {part} not found. Document has {len(chunks)} parts."
+                        "error": f"Part {part} not found. Document has {len(chunks)} parts.",
                     }
-                
+
         except Exception as e:
             logger.error(f"Failed to get vision: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def get_vision_index() -> Dict[str, Any]:
         """
         Get the vision document index (ORCHESTRATOR ONLY - helps navigate vision files)
-        
+
         Returns an index showing:
         - Which vision files exist and their topics
         - Which chunks contain which files
         - Keywords and token counts for each file
-        
+
         Returns:
             Vision document index from database or filesystem
         """
@@ -272,38 +262,35 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first."
+                    "error": "No active project. Use switch_project first.",
                 }
-            
+
             async with db_manager.get_session() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if not project:
-                    return {
-                        "success": False,
-                        "error": "Project not found"
-                    }
-                
+                    return {"success": False, "error": "Project not found"}
+
                 # Check for context index in database
                 index_query = select(ContextIndex).where(
                     ContextIndex.project_id == project.id,
-                    ContextIndex.index_type == "vision"
+                    ContextIndex.index_type == "vision",
                 )
                 index_result = await session.execute(index_query)
                 index_entries = index_result.scalars().all()
-                
+
                 if index_entries:
                     # Return from database
                     index = {
                         "files": [],
                         "total_files": len(index_entries),
                         "chunks": {},
-                        "from_database": True
+                        "from_database": True,
                     }
-                    
+
                     for entry in index_entries:
                         file_info = {
                             "name": entry.document_name,
@@ -311,55 +298,58 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                             "token_count": entry.token_count,
                             "keywords": entry.keywords or [],
                             "chunk_numbers": entry.chunk_numbers or [],
-                            "content_hash": entry.content_hash
+                            "content_hash": entry.content_hash,
                         }
                         index["files"].append(file_info)
-                        
+
                         # Map chunks to files
                         for chunk_num in entry.chunk_numbers or []:
                             if chunk_num not in index["chunks"]:
                                 index["chunks"][chunk_num] = []
                             index["chunks"][chunk_num].append(entry.document_name)
-                    
+
                     # Get chunk metadata
-                    vision_query = select(Vision).where(
-                        Vision.project_id == project.id
-                    ).order_by(Vision.chunk_number)
+                    vision_query = (
+                        select(Vision)
+                        .where(Vision.project_id == project.id)
+                        .order_by(Vision.chunk_number)
+                    )
                     vision_result = await session.execute(vision_query)
                     visions = vision_result.scalars().all()
-                    
+
                     if visions:
                         index["total_chunks"] = len(visions)
                         index["chunk_metadata"] = []
                         for vision in visions:
-                            index["chunk_metadata"].append({
-                                "chunk_number": vision.chunk_number,
-                                "tokens": vision.tokens,
-                                "boundary_type": vision.boundary_type,
-                                "keywords": vision.keywords or []
-                            })
-                    
+                            index["chunk_metadata"].append(
+                                {
+                                    "chunk_number": vision.chunk_number,
+                                    "tokens": vision.tokens,
+                                    "boundary_type": vision.boundary_type,
+                                    "keywords": vision.keywords or [],
+                                }
+                            )
+
                     return {
                         "success": True,
                         "index": index,
-                        "message": "Index retrieved from database"
+                        "message": "Index retrieved from database",
                     }
-                
+
                 # Fallback to filesystem scanning
-                vision_path = await path_resolver.resolve_path("vision", str(project.id) if project else None)
+                vision_path = await path_resolver.resolve_path(
+                    "vision", str(project.id) if project else None
+                )
                 if not vision_path.exists():
                     return {
                         "success": False,
-                        "error": "No vision directory found and no index in database"
+                        "error": "No vision directory found and no index in database",
                     }
-                
+
                 vision_files = sorted(vision_path.glob("*.md"))
                 if not vision_files:
-                    return {
-                        "success": False,
-                        "error": "No vision files found"
-                    }
-                
+                    return {"success": False, "error": "No vision files found"}
+
                 # Build index from filesystem
                 chunker = EnhancedChunker()
                 index = {
@@ -367,58 +357,51 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "total_files": len(vision_files),
                     "chunks": {},
                     "from_filesystem": True,
-                    "message": "Index built from filesystem (run get_vision to create database index)"
+                    "message": "Index built from filesystem (run get_vision to create database index)",
                 }
-                
+
                 for file in vision_files:
                     try:
-                        content = file.read_text(encoding='utf-8')
-                        
+                        content = file.read_text(encoding="utf-8")
+
                         # Extract summary
-                        lines = content.split('\n')
+                        lines = content.split("\n")
                         summary = None
                         for line in lines:
-                            if line.strip() and not line.startswith('#'):
+                            if line.strip() and not line.startswith("#"):
                                 summary = line.strip()[:500]
                                 break
-                        
+
                         file_info = {
                             "name": file.name,
                             "summary": summary,
                             "size": len(content),
                             "estimated_tokens": chunker.estimate_tokens(content),
-                            "keywords": chunker.extract_keywords(content)
+                            "keywords": chunker.extract_keywords(content),
                         }
                         index["files"].append(file_info)
-                        
+
                     except Exception as e:
                         logger.warning(f"Failed to index {file}: {e}")
-                
-                return {
-                    "success": True,
-                    "index": index
-                }
-            
+
+                return {"success": True, "index": index}
+
         except Exception as e:
             logger.error(f"Failed to get vision index: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def discover_context(
-        agent_role: str = "default",
-        force_refresh: bool = False
+        agent_role: str = "default", force_refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Discover context dynamically based on agent role and priority.
         Uses the new discovery system for intelligent context loading.
-        
+
         Args:
             agent_role: Role of the agent (orchestrator, analyzer, implementer, tester)
             force_refresh: Force fresh discovery ignoring cache
-            
+
         Returns:
             Discovered context organized by priority
         """
@@ -428,50 +411,38 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first."
+                    "error": "No active project. Use switch_project first.",
                 }
-            
+
             async with db_manager.get_session() as session:
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if not project:
-                    return {
-                        "success": False,
-                        "error": "Project not found"
-                    }
-                
+                    return {"success": False, "error": "Project not found"}
+
                 # Use discovery manager
                 context = await discovery_manager.discover_context(
                     agent_role=agent_role,
                     project_id=str(project.id),
-                    force_refresh=force_refresh
+                    force_refresh=force_refresh,
                 )
-                
-                return {
-                    "success": True,
-                    "context": context,
-                    "project": project.name
-                }
-                
+
+                return {"success": True, "context": context, "project": project.name}
+
         except Exception as e:
             logger.error(f"Failed to discover context: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
-    async def get_context_index(
-        product_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_context_index(product_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get the context index for intelligent querying
-        
+
         Args:
             product_id: Optional product ID (uses current if not specified)
-            
+
         Returns:
             Context index with available documents and sections
         """
@@ -479,18 +450,20 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             # Get current tenant and project
             tenant_key = tenant_manager.get_current_tenant()
             project_id = None
-            
+
             if tenant_key:
                 async with db_manager.get_session() as session:
-                    project_query = select(Project).where(Project.tenant_key == tenant_key)
+                    project_query = select(Project).where(
+                        Project.tenant_key == tenant_key
+                    )
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
                     if project:
                         project_id = str(project.id)
-            
+
             # Get all discovery paths
             paths = await discovery_manager.get_discovery_paths(project_id)
-            
+
             # Build context source information
             context_sources = {}
             for path_key, path in paths.items():
@@ -501,57 +474,51 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                             "path": str(path),
                             "type": "directory",
                             "files": len(files),
-                            "exists": True
+                            "exists": True,
                         }
                     else:
                         context_sources[path_key] = {
                             "path": str(path),
                             "type": "file",
                             "exists": True,
-                            "size": path.stat().st_size
+                            "size": path.stat().st_size,
                         }
                 else:
-                    context_sources[path_key] = {
-                        "path": str(path),
-                        "exists": False
-                    }
-            
+                    context_sources[path_key] = {"path": str(path), "exists": False}
+
             # Check for changes
             if project_id:
                 changes = await discovery_manager.detect_changes(project_id)
             else:
                 changes = {}
-            
+
             return {
                 "success": True,
                 "sources": context_sources,
                 "changes_detected": changes,
                 "discovery_enabled": True,
                 "priorities": discovery_manager.PRIORITY_ORDER,
-                "recommendation": "Use discover_context() for role-based context loading"
+                "recommendation": "Use discover_context() for role-based context loading",
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get context index: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def get_context_section(
         document_name: str,
         section_name: Optional[str] = None,
-        product_id: Optional[str] = None
+        product_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Retrieve specific content section from the index
-        
+
         Args:
             document_name: Name of the document to retrieve
             section_name: Optional section within the document
             product_id: Optional product ID
-            
+
         Returns:
             Document or section content
         """
@@ -561,122 +528,115 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             project_id = None
             if tenant_key:
                 async with db_manager.get_session() as session:
-                    project_query = select(Project).where(Project.tenant_key == tenant_key)
+                    project_query = select(Project).where(
+                        Project.tenant_key == tenant_key
+                    )
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
                     if project:
                         project_id = str(project.id)
-            
+
             # Map document names to paths using PathResolver
             doc_paths = {
                 "vision": await path_resolver.resolve_path("vision", project_id),
                 "sessions": await path_resolver.resolve_path("sessions", project_id),
                 "devlog": await path_resolver.resolve_path("devlog", project_id),
-                "claude": Path("CLAUDE.md")
+                "claude": Path("CLAUDE.md"),
             }
-            
+
             doc_key = document_name.lower()
             if doc_key not in doc_paths:
-                return {
-                    "success": False,
-                    "error": f"Unknown document: {document_name}"
-                }
-            
+                return {"success": False, "error": f"Unknown document: {document_name}"}
+
             doc_path = doc_paths[doc_key]
-            
+
             if doc_path.is_file():
                 # Single file
                 try:
-                    content = doc_path.read_text(encoding='utf-8')
-                    
+                    content = doc_path.read_text(encoding="utf-8")
+
                     if section_name:
                         # Try to find section
-                        lines = content.split('\n')
+                        lines = content.split("\n")
                         section_content = []
                         in_section = False
-                        
+
                         for line in lines:
-                            if section_name.lower() in line.lower() and line.startswith('#'):
+                            if section_name.lower() in line.lower() and line.startswith(
+                                "#"
+                            ):
                                 in_section = True
-                            elif in_section and line.startswith('#'):
+                            elif in_section and line.startswith("#"):
                                 break
                             elif in_section:
                                 section_content.append(line)
-                        
+
                         if section_content:
-                            content = '\n'.join(section_content)
+                            content = "\n".join(section_content)
                         else:
                             return {
                                 "success": False,
-                                "error": f"Section '{section_name}' not found"
+                                "error": f"Section '{section_name}' not found",
                             }
-                    
+
                     return {
                         "success": True,
                         "document": document_name,
                         "section": section_name,
-                        "content": content
+                        "content": content,
                     }
-                    
+
                 except Exception as e:
-                    return {
-                        "success": False,
-                        "error": f"Failed to read document: {e}"
-                    }
-                    
+                    return {"success": False, "error": f"Failed to read document: {e}"}
+
             elif doc_path.is_dir():
                 # Directory of documents
                 files = list(doc_path.glob("*.md"))
-                
+
                 if not files:
                     return {
                         "success": False,
-                        "error": f"No documents found in {document_name}"
+                        "error": f"No documents found in {document_name}",
                     }
-                
+
                 # If specific document requested
                 if section_name:
                     for file in files:
                         if section_name.lower() in file.stem.lower():
-                            content = file.read_text(encoding='utf-8')
+                            content = file.read_text(encoding="utf-8")
                             return {
                                 "success": True,
                                 "document": document_name,
                                 "file": file.name,
-                                "content": content
+                                "content": content,
                             }
-                
+
                 # Return list of available documents
                 file_list = [f.name for f in files]
                 return {
                     "success": True,
                     "document": document_name,
                     "available_files": file_list,
-                    "message": f"Specify section_name with one of: {', '.join(file_list)}"
+                    "message": f"Specify section_name with one of: {', '.join(file_list)}",
                 }
             else:
                 return {
                     "success": False,
-                    "error": f"Document path not found: {doc_path}"
+                    "error": f"Document path not found: {doc_path}",
                 }
-                
+
         except Exception as e:
             logger.error(f"Failed to get context section: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
-    async def get_product_settings(
-        product_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_product_settings(product_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get all product settings for analysis
-        
+
         Args:
             product_id: Optional product ID (uses current if not specified)
-            
+
         Returns:
             Complete product configuration and settings
         """
@@ -686,28 +646,25 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first."
+                    "error": "No active project. Use switch_project first.",
                 }
-            
+
             async with db_manager.get_session() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if not project:
-                    return {
-                        "success": False,
-                        "error": "Project not found"
-                    }
-                
+                    return {"success": False, "error": "Project not found"}
+
                 # Get configurations
                 config_query = select(Configuration).where(
                     Configuration.project_id == project.id
                 )
                 config_result = await session.execute(config_query)
                 configs = config_result.scalars().all()
-                
+
                 settings = {
                     "project": {
                         "id": str(project.id),
@@ -716,94 +673,89 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         "tenant_key": project.tenant_key,
                         "status": project.status,
                         "context_budget": project.context_budget,
-                        "context_used": project.context_used
+                        "context_used": project.context_used,
                     },
-                    "configurations": {}
+                    "configurations": {},
                 }
-                
+
                 for config in configs:
                     settings["configurations"][config.key] = {
                         "value": config.value,
                         "category": config.category,
-                        "updated_at": config.updated_at.isoformat() if config.updated_at else None
+                        "updated_at": (
+                            config.updated_at.isoformat() if config.updated_at else None
+                        ),
                     }
-                
+
                 # Load system config
                 try:
                     config_path = Path.home() / ".giljo-mcp" / "config.yaml"
                     if config_path.exists():
-                        with open(config_path, 'r', encoding='utf-8') as f:
+                        with open(config_path, "r", encoding="utf-8") as f:
                             system_config = yaml.safe_load(f)
                             settings["system_config"] = system_config
                 except Exception as e:
                     logger.warning(f"Could not load system config: {e}")
-                
-                return {
-                    "success": True,
-                    "settings": settings
-                }
-                
+
+                return {"success": True, "settings": settings}
+
         except Exception as e:
             logger.error(f"Failed to get product settings: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def session_info() -> Dict[str, Any]:
         """
         Get current session statistics
-        
+
         Returns:
             Session information and statistics
         """
         try:
             tenant_key = tenant_manager.get_current_tenant()
-            
+
             if not tenant_key:
                 return {
                     "success": True,
                     "session": {
                         "active_project": None,
                         "tenant_key": None,
-                        "message": "No active project. Use create_project or switch_project."
-                    }
+                        "message": "No active project. Use create_project or switch_project.",
+                    },
                 }
-            
+
             async with db_manager.get_session() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if not project:
                     return {
                         "success": False,
-                        "error": "Active tenant key does not match any project"
+                        "error": "Active tenant key does not match any project",
                     }
-                
+
                 # Get session stats
                 from ..models import Agent, Message, Session as DBSession
-                
+
                 # Count agents
                 agent_query = select(Agent).where(Agent.project_id == project.id)
                 agent_result = await session.execute(agent_query)
                 agents = agent_result.scalars().all()
-                
+
                 # Count messages
                 message_query = select(Message).where(Message.project_id == project.id)
                 message_result = await session.execute(message_query)
                 messages = message_result.scalars().all()
-                
+
                 # Get active session
                 session_query = select(DBSession).where(
-                    DBSession.project_id == project.id,
-                    DBSession.status == "active"
+                    DBSession.project_id == project.id, DBSession.status == "active"
                 )
                 session_result = await session.execute(session_query)
                 active_session = session_result.scalar_one_or_none()
-                
+
                 return {
                     "success": True,
                     "session": {
@@ -813,37 +765,39 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         "agents": {
                             "total": len(agents),
                             "active": len([a for a in agents if a.status == "active"]),
-                            "idle": len([a for a in agents if a.status == "idle"])
+                            "idle": len([a for a in agents if a.status == "idle"]),
                         },
                         "messages": {
                             "total": len(messages),
-                            "pending": len([m for m in messages if m.status == "pending"]),
-                            "completed": len([m for m in messages if m.status == "completed"])
+                            "pending": len(
+                                [m for m in messages if m.status == "pending"]
+                            ),
+                            "completed": len(
+                                [m for m in messages if m.status == "completed"]
+                            ),
                         },
                         "context_usage": f"{project.context_used}/{project.context_budget}",
-                        "session_id": str(active_session.id) if active_session else None
-                    }
+                        "session_id": (
+                            str(active_session.id) if active_session else None
+                        ),
+                    },
                 }
-                
+
         except Exception as e:
             logger.error(f"Failed to get session info: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def recalibrate_mission(
-        project_id: str,
-        changes_summary: str
+        project_id: str, changes_summary: str
     ) -> Dict[str, Any]:
         """
         Notify agents about mission changes - they will re-discover context as needed
-        
+
         Args:
             project_id: UUID of the project
             changes_summary: Summary of what changed in the mission
-            
+
         Returns:
             Recalibration confirmation
         """
@@ -851,49 +805,46 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             async with db_manager.get_session() as session:
                 # Broadcast mission change to all agents
                 from .message import broadcast
-                
+
                 broadcast_result = await broadcast(
                     content=f"MISSION RECALIBRATION: {changes_summary}",
                     project_id=project_id,
-                    priority="high"
+                    priority="high",
                 )
-                
+
                 if broadcast_result["success"]:
-                    logger.info(f"Mission recalibration broadcast to all agents")
-                    
+                    logger.info("Mission recalibration broadcast to all agents")
+
                     return {
                         "success": True,
                         "project_id": project_id,
                         "agents_notified": broadcast_result["broadcast_to"],
-                        "summary": changes_summary
+                        "summary": changes_summary,
                     }
                 else:
                     return broadcast_result
-                    
+
         except Exception as e:
             logger.error(f"Failed to recalibrate mission: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def get_large_document(
         document_path: str,
         part: int = 1,
         max_tokens: int = 20000,
-        force_reindex: bool = False
+        force_reindex: bool = False,
     ) -> Dict[str, Any]:
         """
         Get any large document with automatic chunking.
         Supports markdown, YAML, and text files over 50K tokens.
-        
+
         Args:
             document_path: Path to the document (relative to project root)
             part: Which part to retrieve (1-based index)
             max_tokens: Maximum tokens per part (default 20000, max 24000)
             force_reindex: Force re-indexing of the document
-            
+
         Returns:
             Document chunk with metadata
         """
@@ -903,39 +854,40 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             if not tenant_key:
                 return {
                     "success": False,
-                    "error": "No active project. Use switch_project first."
+                    "error": "No active project. Use switch_project first.",
                 }
-            
+
             async with db_manager.get_session() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if not project:
-                    return {
-                        "success": False,
-                        "error": "Project not found"
-                    }
-                
+                    return {"success": False, "error": "Project not found"}
+
                 # Check if document is already indexed
                 if not force_reindex:
                     large_doc_query = select(LargeDocumentIndex).where(
                         LargeDocumentIndex.project_id == project.id,
-                        LargeDocumentIndex.document_path == document_path
+                        LargeDocumentIndex.document_path == document_path,
                     )
                     large_doc_result = await session.execute(large_doc_query)
                     large_doc = large_doc_result.scalar_one_or_none()
-                    
+
                     if large_doc:
                         # Document is indexed, retrieve chunks
-                        vision_query = select(Vision).where(
-                            Vision.project_id == project.id,
-                            Vision.document_name == document_path
-                        ).order_by(Vision.chunk_number)
+                        vision_query = (
+                            select(Vision)
+                            .where(
+                                Vision.project_id == project.id,
+                                Vision.document_name == document_path,
+                            )
+                            .order_by(Vision.chunk_number)
+                        )
                         vision_result = await session.execute(vision_query)
                         chunks = vision_result.scalars().all()
-                        
+
                         if chunks and part <= len(chunks):
                             chunk = chunks[part - 1]
                             return {
@@ -949,26 +901,23 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 "headers": chunk.headers or [],
                                 "document_type": large_doc.document_type,
                                 "has_more": part < len(chunks),
-                                "indexed": True
+                                "indexed": True,
                             }
-                
+
                 # Load document from filesystem
                 doc_path = Path(document_path)
                 if not doc_path.exists():
                     return {
                         "success": False,
-                        "error": f"Document not found: {document_path}"
+                        "error": f"Document not found: {document_path}",
                     }
-                
+
                 # Read document content
                 try:
-                    content = doc_path.read_text(encoding='utf-8')
+                    content = doc_path.read_text(encoding="utf-8")
                 except Exception as e:
-                    return {
-                        "success": False,
-                        "error": f"Failed to read document: {e}"
-                    }
-                
+                    return {"success": False, "error": f"Failed to read document: {e}"}
+
                 # Detect document type
                 doc_type = "text"
                 if doc_path.suffix == ".md":
@@ -977,36 +926,33 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     doc_type = "yaml"
                 elif doc_path.suffix == ".json":
                     doc_type = "json"
-                
+
                 # Use enhanced chunker
                 chunker = EnhancedChunker(max_tokens=max_tokens)
                 chunks = chunker.chunk_content(content, document_path)
-                
+
                 if not chunks:
-                    return {
-                        "success": False,
-                        "error": "Failed to chunk document"
-                    }
-                
+                    return {"success": False, "error": "Failed to chunk document"}
+
                 # Store chunks in database
                 for chunk_data in chunks:
                     vision = Vision(
                         tenant_key=project.tenant_key,
                         project_id=project.id,
                         document_name=document_path,
-                        chunk_number=chunk_data['chunk_number'],
-                        total_chunks=chunk_data['total_chunks'],
-                        content=chunk_data['content'],
-                        tokens=chunk_data['tokens'],
-                        char_start=chunk_data['char_start'],
-                        char_end=chunk_data['char_end'],
-                        boundary_type=chunk_data['boundary_type'],
-                        keywords=chunk_data['keywords'],
-                        headers=chunk_data['headers'],
-                        created_at=datetime.utcnow()
+                        chunk_number=chunk_data["chunk_number"],
+                        total_chunks=chunk_data["total_chunks"],
+                        content=chunk_data["content"],
+                        tokens=chunk_data["tokens"],
+                        char_start=chunk_data["char_start"],
+                        char_end=chunk_data["char_end"],
+                        boundary_type=chunk_data["boundary_type"],
+                        keywords=chunk_data["keywords"],
+                        headers=chunk_data["headers"],
+                        created_at=datetime.utcnow(),
                     )
                     session.add(vision)
-                
+
                 # Create large document index
                 large_doc_index = LargeDocumentIndex(
                     tenant_key=project.tenant_key,
@@ -1019,14 +965,14 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     metadata={
                         "file_name": doc_path.name,
                         "file_size": doc_path.stat().st_size,
-                        "created": datetime.utcnow().isoformat()
+                        "created": datetime.utcnow().isoformat(),
                     },
-                    indexed_at=datetime.utcnow()
+                    indexed_at=datetime.utcnow(),
                 )
                 session.add(large_doc_index)
-                
+
                 await session.commit()
-                
+
                 # Return requested part
                 if part <= len(chunks):
                     chunk = chunks[part - 1]
@@ -1034,35 +980,32 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                         "success": True,
                         "part": part,
                         "total_parts": len(chunks),
-                        "content": chunk['content'],
-                        "tokens": chunk['tokens'],
-                        "boundary_type": chunk['boundary_type'],
-                        "keywords": chunk['keywords'],
-                        "headers": chunk['headers'],
+                        "content": chunk["content"],
+                        "tokens": chunk["tokens"],
+                        "boundary_type": chunk["boundary_type"],
+                        "keywords": chunk["keywords"],
+                        "headers": chunk["headers"],
                         "document_type": doc_type,
                         "has_more": part < len(chunks),
                         "indexed": True,
-                        "message": f"Document {document_path} chunked and indexed successfully"
+                        "message": f"Document {document_path} chunked and indexed successfully",
                     }
                 else:
                     return {
                         "success": False,
-                        "error": f"Part {part} not found. Document has {len(chunks)} parts."
+                        "error": f"Part {part} not found. Document has {len(chunks)} parts.",
                     }
-                    
+
         except Exception as e:
             logger.error(f"Failed to get large document: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def get_discovery_paths() -> Dict[str, Any]:
         """
         Get all dynamically resolved paths for the current project.
         Shows the path resolution hierarchy: env vars -> database -> config -> defaults
-        
+
         Returns:
             All resolved paths with their sources
         """
@@ -1070,18 +1013,20 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             # Get current tenant and project
             tenant_key = tenant_manager.get_current_tenant()
             project_id = None
-            
+
             if tenant_key:
                 async with db_manager.get_session() as session:
-                    project_query = select(Project).where(Project.tenant_key == tenant_key)
+                    project_query = select(Project).where(
+                        Project.tenant_key == tenant_key
+                    )
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
                     if project:
                         project_id = str(project.id)
-            
+
             # Get all paths
             paths = await path_resolver.get_all_paths(project_id)
-            
+
             # Convert to serializable format
             path_info = {}
             for key, path in paths.items():
@@ -1089,9 +1034,9 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "resolved": str(path),
                     "exists": path.exists(),
                     "is_absolute": path.is_absolute(),
-                    "default": path_resolver.DEFAULT_PATHS.get(key, key)
+                    "default": path_resolver.DEFAULT_PATHS.get(key, key),
                 }
-            
+
             return {
                 "success": True,
                 "paths": path_info,
@@ -1100,22 +1045,19 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "1. Environment variables (GILJO_MCP_PATH_*)",
                     "2. Database configuration (per-project)",
                     "3. Config.yaml (paths section)",
-                    "4. Default paths"
-                ]
+                    "4. Default paths",
+                ],
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get discovery paths: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     @mcp.tool()
     async def help() -> Dict[str, Any]:
         """
         Get documentation for all available tools
-        
+
         Returns:
             Complete documentation for all 20 MCP tools grouped by category
         """
@@ -1133,48 +1075,48 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 "parameters": {
                                     "name": "Project name (required)",
                                     "mission": "Project mission statement (required)",
-                                    "agents": "Optional list of agent names"
+                                    "agents": "Optional list of agent names",
                                 },
-                                "returns": "Project ID and tenant key"
+                                "returns": "Project ID and tenant key",
                             },
                             "list_projects": {
                                 "description": "List all projects with optional status filter",
                                 "parameters": {
                                     "status": "Optional status filter (active, completed, etc.)"
                                 },
-                                "returns": "List of projects with details"
+                                "returns": "List of projects with details",
                             },
                             "switch_project": {
                                 "description": "Switch to a different project",
                                 "parameters": {
                                     "project_id": "UUID of the project (required)"
                                 },
-                                "returns": "Project activation confirmation"
+                                "returns": "Project activation confirmation",
                             },
                             "close_project": {
                                 "description": "Close a completed project with summary",
                                 "parameters": {
                                     "project_id": "UUID of the project (required)",
-                                    "summary": "Completion summary (required)"
+                                    "summary": "Completion summary (required)",
                                 },
-                                "returns": "Closure confirmation"
+                                "returns": "Closure confirmation",
                             },
                             "update_project_mission": {
                                 "description": "Update the mission field after orchestrator analysis",
                                 "parameters": {
                                     "project_id": "UUID of the project (required)",
-                                    "mission": "Updated mission statement (required)"
+                                    "mission": "Updated mission statement (required)",
                                 },
-                                "returns": "Update confirmation"
+                                "returns": "Update confirmation",
                             },
                             "project_status": {
                                 "description": "Get comprehensive project status",
                                 "parameters": {
                                     "project_id": "Optional UUID (uses current if not specified)"
                                 },
-                                "returns": "Complete project status and metrics"
-                            }
-                        }
+                                "returns": "Complete project status and metrics",
+                            },
+                        },
                     },
                     "agent": {
                         "description": "Agent lifecycle management tools",
@@ -1185,18 +1127,18 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 "parameters": {
                                     "project_id": "UUID of the project (required)",
                                     "agent_name": "Name of the agent (required)",
-                                    "mission": "Optional agent mission"
+                                    "mission": "Optional agent mission",
                                 },
-                                "returns": "Agent details or existing agent info"
+                                "returns": "Agent details or existing agent info",
                             },
                             "activate_agent": {
                                 "description": "Activate orchestrator agent - STARTS WORKING IMMEDIATELY",
                                 "parameters": {
                                     "project_id": "UUID of the project (required)",
                                     "agent_name": "Name of the agent (required)",
-                                    "mission": "Optional agent mission"
+                                    "mission": "Optional agent mission",
                                 },
-                                "returns": "Agent activation confirmation"
+                                "returns": "Agent activation confirmation",
                             },
                             "assign_job": {
                                 "description": "Assign a job to an agent with task descriptions",
@@ -1206,9 +1148,9 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                     "project_id": "UUID of the project (required)",
                                     "tasks": "Optional list of task descriptions",
                                     "scope_boundary": "Optional scope boundaries",
-                                    "vision_alignment": "Optional vision alignment info"
+                                    "vision_alignment": "Optional vision alignment info",
                                 },
-                                "returns": "Job assignment confirmation"
+                                "returns": "Job assignment confirmation",
                             },
                             "handoff": {
                                 "description": "Transfer work from one agent to another",
@@ -1216,27 +1158,27 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                     "from_agent": "Source agent name (required)",
                                     "to_agent": "Target agent name (required)",
                                     "project_id": "UUID of the project (required)",
-                                    "context": "Handoff context object (required)"
+                                    "context": "Handoff context object (required)",
                                 },
-                                "returns": "Handoff confirmation"
+                                "returns": "Handoff confirmation",
                             },
                             "agent_health": {
                                 "description": "Check agent health and context usage",
                                 "parameters": {
                                     "agent_name": "Optional agent name (all if not specified)"
                                 },
-                                "returns": "Agent health metrics"
+                                "returns": "Agent health metrics",
                             },
                             "decommission_agent": {
                                 "description": "Gracefully end an agent's work",
                                 "parameters": {
                                     "agent_name": "Name of the agent (required)",
                                     "project_id": "UUID of the project (required)",
-                                    "reason": "Optional reason (default: completed)"
+                                    "reason": "Optional reason (default: completed)",
                                 },
-                                "returns": "Decommission confirmation"
-                            }
-                        }
+                                "returns": "Decommission confirmation",
+                            },
+                        },
                     },
                     "message": {
                         "description": "Inter-agent communication tools",
@@ -1250,54 +1192,54 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                     "project_id": "UUID of the project (required)",
                                     "message_type": "Optional type (default: direct)",
                                     "priority": "Optional priority (default: normal)",
-                                    "from_agent": "Optional sender (default: orchestrator)"
+                                    "from_agent": "Optional sender (default: orchestrator)",
                                 },
-                                "returns": "Message ID and delivery confirmation"
+                                "returns": "Message ID and delivery confirmation",
                             },
                             "get_messages": {
                                 "description": "Retrieve pending messages for an agent",
                                 "parameters": {
                                     "agent_name": "Agent name (required)",
-                                    "project_id": "Optional project ID"
+                                    "project_id": "Optional project ID",
                                 },
-                                "returns": "List of pending messages"
+                                "returns": "List of pending messages",
                             },
                             "acknowledge_message": {
                                 "description": "Mark message as received by agent",
                                 "parameters": {
                                     "message_id": "UUID of the message (required)",
-                                    "agent_name": "Agent name (required)"
+                                    "agent_name": "Agent name (required)",
                                 },
-                                "returns": "Acknowledgment confirmation"
+                                "returns": "Acknowledgment confirmation",
                             },
                             "complete_message": {
                                 "description": "Mark message as completed with result",
                                 "parameters": {
                                     "message_id": "UUID of the message (required)",
                                     "agent_name": "Agent name (required)",
-                                    "result": "Completion result (required)"
+                                    "result": "Completion result (required)",
                                 },
-                                "returns": "Completion confirmation"
+                                "returns": "Completion confirmation",
                             },
                             "broadcast": {
                                 "description": "Broadcast message to all agents in project",
                                 "parameters": {
                                     "content": "Message content (required)",
                                     "project_id": "UUID of the project (required)",
-                                    "priority": "Optional priority (default: normal)"
+                                    "priority": "Optional priority (default: normal)",
                                 },
-                                "returns": "Broadcast confirmation with recipient list"
+                                "returns": "Broadcast confirmation with recipient list",
                             },
                             "log_task": {
                                 "description": "Quick task capture",
                                 "parameters": {
                                     "content": "Task content (required)",
                                     "category": "Optional category",
-                                    "priority": "Optional priority (default: medium)"
+                                    "priority": "Optional priority (default: medium)",
                                 },
-                                "returns": "Task logging confirmation"
-                            }
-                        }
+                                "returns": "Task logging confirmation",
+                            },
+                        },
                     },
                     "context": {
                         "description": "Context retrieval and discovery tools",
@@ -1307,58 +1249,54 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                                 "description": "Get vision document for active product (chunked if large)",
                                 "parameters": {
                                     "part": "Which part to retrieve (default: 1)",
-                                    "max_tokens": "Max tokens per part (default: 20000)"
+                                    "max_tokens": "Max tokens per part (default: 20000)",
                                 },
-                                "returns": "Vision document content or chunk"
+                                "returns": "Vision document content or chunk",
                             },
                             "get_vision_index": {
                                 "description": "Get vision document index for navigation",
                                 "parameters": {},
-                                "returns": "Index of vision files with metadata"
+                                "returns": "Index of vision files with metadata",
                             },
                             "get_context_index": {
                                 "description": "Get context index for intelligent querying",
-                                "parameters": {
-                                    "product_id": "Optional product ID"
-                                },
-                                "returns": "Available context sources and descriptions"
+                                "parameters": {"product_id": "Optional product ID"},
+                                "returns": "Available context sources and descriptions",
                             },
                             "get_context_section": {
                                 "description": "Retrieve specific content section from index",
                                 "parameters": {
                                     "document_name": "Document name (required)",
                                     "section_name": "Optional section name",
-                                    "product_id": "Optional product ID"
+                                    "product_id": "Optional product ID",
                                 },
-                                "returns": "Document or section content"
+                                "returns": "Document or section content",
                             },
                             "get_product_settings": {
                                 "description": "Get all product settings for analysis",
-                                "parameters": {
-                                    "product_id": "Optional product ID"
-                                },
-                                "returns": "Complete product configuration"
+                                "parameters": {"product_id": "Optional product ID"},
+                                "returns": "Complete product configuration",
                             },
                             "session_info": {
                                 "description": "Get current session statistics",
                                 "parameters": {},
-                                "returns": "Session information and metrics"
+                                "returns": "Session information and metrics",
                             },
                             "recalibrate_mission": {
                                 "description": "Notify agents about mission changes",
                                 "parameters": {
                                     "project_id": "UUID of the project (required)",
-                                    "changes_summary": "Summary of changes (required)"
+                                    "changes_summary": "Summary of changes (required)",
                                 },
-                                "returns": "Recalibration broadcast confirmation"
+                                "returns": "Recalibration broadcast confirmation",
                             },
                             "help": {
                                 "description": "Get documentation for all available tools",
                                 "parameters": {},
-                                "returns": "Complete tool documentation"
-                            }
-                        }
-                    }
+                                "returns": "Complete tool documentation",
+                            },
+                        },
+                    },
                 },
                 "usage_tips": [
                     "Use ensure_agent() for worker agents - it's idempotent and safe",
@@ -1367,17 +1305,14 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "Complete messages with results using complete_message()",
                     "Vision documents auto-chunk for large content (50K+ tokens)",
                     "Project isolation via tenant keys enables concurrent products",
-                    "All tools return success/error status for proper error handling"
-                ]
+                    "All tools return success/error status for proper error handling",
+                ],
             }
-            
+
             return tools_documentation
-            
+
         except Exception as e:
             logger.error(f"Failed to get help documentation: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     logger.info("Context and discovery tools registered")

@@ -11,11 +11,11 @@ import sys
 import os
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
-from giljo_mcp.tools.template import register_template_tools
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.tools.template import register_template_tools
 from unittest.mock import MagicMock
 
 

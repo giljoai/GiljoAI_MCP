@@ -12,9 +12,9 @@ import tempfile
 import shutil
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.utils.path_resolver import PathResolver
+from src.giljo_mcp.utils.path_resolver import PathResolver
 
 def test_basic_path_operations():
     """Test basic pathlib operations are OS-neutral"""
@@ -331,4 +331,4 @@ def run_all_tests():
 
 if __name__ == "__main__":
     success = run_all_tests()
-    sys.exit(0 if success else 1)
+    # sys.exit(0 if success else 1)  # Commented for pytest

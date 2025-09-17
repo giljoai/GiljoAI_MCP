@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import websocketService from '@/services/websocket'
+import { useToast } from '@/composables/useToast'
 import { useProjectStore } from './projects'
 import { useAgentStore } from './agents'
 import { useMessageStore } from './messages'
@@ -54,6 +55,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
   
   // Handle connection state changes
   function handleConnectionChange(event) {
+    const { showToast } = useToast()
+    const prevState = connectionState.value
     connectionState.value = event.state
     
     switch (event.state) {
@@ -62,17 +65,46 @@ export const useWebSocketStore = defineStore('websocket', () => {
         reconnectAttempts.value = 0
         clientId.value = websocketService.clientId
         
+        // Show reconnection success notification
+        if (prevState === 'reconnecting') {
+          showToast({
+            title: 'Connection Restored',
+            message: 'Successfully reconnected to server',
+            color: 'success',
+            icon: 'mdi-wifi',
+            timeout: 3000
+          })
+        }
+        
         // Re-subscribe to previous subscriptions
         resubscribeAll()
         break
         
       case 'disconnected':
-        // Don't clear subscriptions, we'll re-subscribe on reconnect
+        // Show disconnection notification
+        if (prevState === 'connected') {
+          showToast({
+            title: 'Connection Lost',
+            message: 'Attempting to reconnect...',
+            color: 'warning',
+            icon: 'mdi-wifi-off',
+            timeout: 5000
+          })
+        }
         break
         
       case 'reconnecting':
         reconnectAttempts.value = event.attempt
         maxReconnectAttempts.value = event.maxAttempts
+        
+        // Show reconnection attempt notification
+        showToast({
+          title: 'Reconnecting',
+          message: `Attempt ${event.attempt}/${event.maxAttempts}`,
+          color: 'info',
+          icon: 'mdi-wifi-sync',
+          timeout: 2000
+        })
         break
         
       case 'connecting':

@@ -75,7 +75,7 @@
     </v-row>
 
     <!-- Messages Table -->
-    <v-card @click.stop>
+    <v-card>
       <v-data-table
         :headers="headers"
         :items="filteredMessages"
@@ -195,7 +195,7 @@
     </v-card>
 
     <!-- Message Detail Dialog -->
-    <v-dialog v-model="showDetailDialog" max-width="800">
+    <v-dialog v-model="showDetailDialog" max-width="800" persistent retain-focus>
       <v-card v-if="selectedMessage">
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-message</v-icon>
@@ -294,8 +294,8 @@
     </v-dialog>
 
     <!-- Compose Message Dialog -->
-    <v-dialog v-model="showComposeDialog" max-width="600">
-      <v-card @click.stop>
+    <v-dialog v-model="showComposeDialog" max-width="600" persistent retain-focus>
+      <v-card>
         <v-card-title>
           <v-icon class="mr-2">mdi-message-plus</v-icon>
           Compose Message

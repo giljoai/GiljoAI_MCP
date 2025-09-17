@@ -4,7 +4,20 @@
       "mcp__serena-mcp__read_file",
       "Bash(cat:*)",
       "Bash(sed:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "mcp__ake-mcp-v2__get_messages",
+      "mcp__ake-mcp-v2__acknowledge_message",
+      "mcp__ake-mcp-v2__ensure_agent",
+      "mcp__serena-mcp__list_dir",
+      "Bash(python:*)",
+      "Bash(for f in test_api_endpoints.py test_auth.py test_mcp_tools.py test_orchestrator_mission_integration.py test_discovery_system.py test_websocket.py test_product_isolation_complete.py)",
+      "Bash(do echo \"=== $f ===\")",
+      "Bash(done)",
+      "mcp__serena-mcp__search_for_pattern",
+      "mcp__serena-mcp__get_symbols_overview",
+      "mcp__serena-mcp__find_symbol",
+      "mcp__ake-mcp-v2__project_status",
+      "mcp__serena-mcp__find_file"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",

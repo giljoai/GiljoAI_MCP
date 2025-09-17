@@ -10,12 +10,8 @@ import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any
 
-from src.giljo_mcp.mission_templates import (
-    MissionTemplateGenerator,
-    ProjectType,
-    AgentRole,
-    TemplateContext
-)
+from src.giljo_mcp.mission_templates import MissionTemplateGenerator
+from src.giljo_mcp.enums import ProjectType, AgentRole
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
 from src.giljo_mcp.models import Project, Agent
 from src.giljo_mcp.database import get_db_manager

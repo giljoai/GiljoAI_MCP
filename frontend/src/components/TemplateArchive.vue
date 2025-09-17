@@ -144,7 +144,7 @@
       max-width="1200px"
       scrollable
     >
-      <v-card @click.stop>
+      <v-card>
         <v-card-title>
           <span class="text-h5">Compare Versions</span>
           <v-spacer />
@@ -218,7 +218,7 @@
       v-model="restoreDialog"
       max-width="500px"
     >
-      <v-card @click.stop>
+      <v-card>
         <v-card-title class="text-h5">Confirm Restore</v-card-title>
         <v-card-text>
           <div class="mb-4">

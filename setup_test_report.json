@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-16T13:54:04.358755",
+  "timestamp": "2025-09-16T21:39:15.870538",
   "platform": {
     "system": "Windows",
     "release": "10",
@@ -110,7 +110,7 @@
     {
       "name": "Config manager",
       "passed": false,
-      "message": "Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpnx92m63a.json"
+      "message": "Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmp1hu6h64t.json"
     },
     {
       "name": "setup.py has --gui flag",
@@ -155,7 +155,7 @@
     "GUI has GUISetupManager: Not found",
     "Dependency manager: 'DependencyManager' object has no attribute 'get_installed_packages'",
     "Migration tool: 'AKEMCPMigrator' object has no attribute 'validate_data'",
-    "Config manager: Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpnx92m63a.json",
+    "Config manager: Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmp1hu6h64t.json",
     "Legacy method detect_platform: Not found",
     "Legacy method setup_database: Not found",
     "Legacy method create_directories: Not found",

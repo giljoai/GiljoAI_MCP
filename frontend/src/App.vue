@@ -22,7 +22,7 @@
           <v-btn
             variant="text"
             icon="mdi-chevron-left"
-            @click.stop="rail = !rail"
+            @click="rail = !rail"
             :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
           ></v-btn>
         </template>
@@ -111,7 +111,7 @@
       max-width="600"
       @click:outside="hideHelp"
     >
-      <v-card @click.stop>
+      <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-keyboard</v-icon>
           Keyboard Shortcuts

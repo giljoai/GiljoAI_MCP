@@ -18,9 +18,9 @@ from unittest.mock import patch, MagicMock
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giljo_mcp.config import Settings, get_settings, set_settings
+from src.giljo_mcp.config import Settings, get_settings, set_settings
 
 
 class TestSettings:
