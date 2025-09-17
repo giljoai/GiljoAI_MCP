@@ -176,9 +176,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
     try:
         # Update mission if provided
         if update.mission:
-            result = await state.tool_accessor.update_project_mission(
-                project_id=project_id, mission=update.mission
-            )
+            result = await state.tool_accessor.update_project_mission(project_id=project_id, mission=update.mission)
 
             if not result.get("success"):
                 raise HTTPException(status_code=400, detail=result.get("error", "Failed to update project"))

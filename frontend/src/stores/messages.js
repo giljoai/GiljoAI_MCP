@@ -11,26 +11,23 @@ export const useMessageStore = defineStore('messages', () => {
   const unreadCount = ref(0)
 
   // Getters
-  const pendingMessages = computed(() => 
-    messages.value.filter(m => m.status === 'pending')
+  const pendingMessages = computed(() => messages.value.filter((m) => m.status === 'pending'))
+
+  const messagesByProject = computed(
+    () => (projectId) => messages.value.filter((m) => m.project_id === projectId),
   )
-  
-  const messagesByProject = computed(() => (projectId) =>
-    messages.value.filter(m => m.project_id === projectId)
+
+  const messagesByAgent = computed(
+    () => (agentName) =>
+      messages.value.filter((m) => m.to_agents?.includes(agentName) || m.from === agentName),
   )
-  
-  const messagesByAgent = computed(() => (agentName) =>
-    messages.value.filter(m => 
-      m.to_agents?.includes(agentName) || m.from === agentName
-    )
-  )
-  
+
   const highPriorityMessages = computed(() =>
-    messages.value.filter(m => m.priority === 'high' || m.priority === 'urgent')
+    messages.value.filter((m) => m.priority === 'high' || m.priority === 'urgent'),
   )
 
   const acknowledgedMessages = computed(() =>
-    messages.value.filter(m => m.acknowledged_by?.length > 0)
+    messages.value.filter((m) => m.acknowledged_by?.length > 0),
   )
 
   // Actions
@@ -55,9 +52,9 @@ export const useMessageStore = defineStore('messages', () => {
     try {
       const response = await api.messages.get(id)
       currentMessage.value = response.data
-      
+
       // Update in list if exists
-      const index = messages.value.findIndex(m => m.id === id)
+      const index = messages.value.findIndex((m) => m.id === id)
       if (index !== -1) {
         messages.value[index] = response.data
       }
@@ -88,9 +85,9 @@ export const useMessageStore = defineStore('messages', () => {
   async function acknowledgeMessage(id, agentName) {
     try {
       const response = await api.messages.acknowledge(id, agentName)
-      
+
       // Update message in list
-      const message = messages.value.find(m => m.id === id)
+      const message = messages.value.find((m) => m.id === id)
       if (message) {
         if (!message.acknowledged_by) {
           message.acknowledged_by = []
@@ -100,7 +97,7 @@ export const useMessageStore = defineStore('messages', () => {
         }
         message.status = 'acknowledged'
       }
-      
+
       updateUnreadCount()
       return response.data
     } catch (err) {
@@ -112,15 +109,15 @@ export const useMessageStore = defineStore('messages', () => {
   async function completeMessage(id, result) {
     try {
       const response = await api.messages.complete(id, result)
-      
+
       // Update message in list
-      const message = messages.value.find(m => m.id === id)
+      const message = messages.value.find((m) => m.id === id)
       if (message) {
         message.status = 'completed'
         message.result = result
         message.completed_at = new Date().toISOString()
       }
-      
+
       return response.data
     } catch (err) {
       console.error('Failed to complete message:', err)
@@ -146,7 +143,7 @@ export const useMessageStore = defineStore('messages', () => {
 
   function addMessage(message) {
     // Add new message from WebSocket
-    const exists = messages.value.find(m => m.id === message.id)
+    const exists = messages.value.find((m) => m.id === message.id)
     if (!exists) {
       messages.value.unshift(message)
       updateUnreadCount()
@@ -155,7 +152,7 @@ export const useMessageStore = defineStore('messages', () => {
 
   function updateMessage(updatedMessage) {
     // Update message from WebSocket
-    const index = messages.value.findIndex(m => m.id === updatedMessage.id)
+    const index = messages.value.findIndex((m) => m.id === updatedMessage.id)
     if (index !== -1) {
       messages.value[index] = { ...messages.value[index], ...updatedMessage }
       updateUnreadCount()
@@ -163,8 +160,8 @@ export const useMessageStore = defineStore('messages', () => {
   }
 
   function updateUnreadCount() {
-    unreadCount.value = messages.value.filter(m => 
-      m.status === 'pending' && !m.acknowledged_by?.length
+    unreadCount.value = messages.value.filter(
+      (m) => m.status === 'pending' && !m.acknowledged_by?.length,
     ).length
   }
 
@@ -174,11 +171,20 @@ export const useMessageStore = defineStore('messages', () => {
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
-    const { message_id, project_id, update_type, from_agent, to_agents, content, priority, status } = data
-    
+    const {
+      message_id,
+      project_id,
+      update_type,
+      from_agent,
+      to_agents,
+      content,
+      priority,
+      status,
+    } = data
+
     // Find message by ID
-    const messageIndex = messages.value.findIndex(m => m.id === message_id)
-    
+    const messageIndex = messages.value.findIndex((m) => m.id === message_id)
+
     if (update_type === 'new' && messageIndex === -1) {
       // New message - add to list
       const newMessage = {
@@ -191,19 +197,18 @@ export const useMessageStore = defineStore('messages', () => {
         status: status || 'pending',
         acknowledged_by: [],
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
-      
+
       messages.value.unshift(newMessage) // Add to beginning
       updateUnreadCount()
-      
+
       // Emit event for new message notification
       window.dispatchEvent(new CustomEvent('new-message', { detail: newMessage }))
-      
     } else if (messageIndex !== -1) {
       // Update existing message
       const message = messages.value[messageIndex]
-      
+
       if (update_type === 'acknowledged') {
         // Add to acknowledged_by if not already there
         if (!message.acknowledged_by) {
@@ -213,24 +218,29 @@ export const useMessageStore = defineStore('messages', () => {
           message.acknowledged_by.push(from_agent)
         }
         message.status = 'acknowledged'
-        
       } else if (update_type === 'completed') {
         message.status = 'completed'
         message.completed_at = new Date().toISOString()
       }
-      
+
       // Update other fields if provided
-      if (content) message.content = content
-      if (priority) message.priority = priority
-      if (status) message.status = status
-      
+      if (content) {
+        message.content = content
+      }
+      if (priority) {
+        message.priority = priority
+      }
+      if (status) {
+        message.status = status
+      }
+
       message.updated_at = new Date().toISOString()
-      
+
       // Update current message if it's the same
       if (currentMessage.value?.id === message_id) {
         currentMessage.value = { ...message }
       }
-      
+
       updateUnreadCount()
     } else if (message_id && update_type === 'new') {
       // Unknown message - fetch updated list
@@ -245,14 +255,14 @@ export const useMessageStore = defineStore('messages', () => {
     loading,
     error,
     unreadCount,
-    
+
     // Getters
     pendingMessages,
     messagesByProject,
     messagesByAgent,
     highPriorityMessages,
     acknowledgedMessages,
-    
+
     // Actions
     fetchMessages,
     fetchMessage,
@@ -263,6 +273,6 @@ export const useMessageStore = defineStore('messages', () => {
     addMessage,
     updateMessage,
     clearError,
-    handleRealtimeUpdate
+    handleRealtimeUpdate,
   }
 })

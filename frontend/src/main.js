@@ -21,12 +21,12 @@ const vuetify = createVuetify({
     defaultTheme: 'dark',
     themes: {
       dark: darkTheme,
-      light: lightTheme
-    }
+      light: lightTheme,
+    },
   },
   icons: {
-    defaultSet: 'mdi'
-  }
+    defaultSet: 'mdi',
+  },
 })
 
 // Create Vue app

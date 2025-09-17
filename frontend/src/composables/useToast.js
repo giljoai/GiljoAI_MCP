@@ -9,23 +9,23 @@ export function useToast() {
     const toast = {
       id,
       show: true,
-      ...options
+      ...options,
     }
-    
+
     toasts.value.push(toast)
-    
+
     return id
   }
 
   const hideToast = (id) => {
-    const index = toasts.value.findIndex(toast => toast.id === id)
+    const index = toasts.value.findIndex((toast) => toast.id === id)
     if (index > -1) {
       toasts.value[index].show = false
     }
   }
 
   const removeToast = (id) => {
-    const index = toasts.value.findIndex(toast => toast.id === id)
+    const index = toasts.value.findIndex((toast) => toast.id === id)
     if (index > -1) {
       toasts.value.splice(index, 1)
     }
@@ -35,6 +35,6 @@ export function useToast() {
     toasts,
     showToast,
     hideToast,
-    removeToast
+    removeToast,
   }
 }

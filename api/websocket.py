@@ -176,29 +176,7 @@ class WebSocketManager:
         return auth_context.get("auth_type", "none") != "none"
 
     # Enhanced broadcast methods for real-time updates
-
-    async def broadcast_agent_update(
-        self, agent_name: str, project_id: str, status: str, additional_data: Optional[dict] = None
-    ):
-        """Broadcast agent status change to all subscribed clients"""
-        message = {
-            "type": "agent_update",
-            "data": {
-                "agent_name": agent_name,
-                "project_id": project_id,
-                "status": status,
-                "health": additional_data.get("health") if additional_data else None,
-                "active_jobs": additional_data.get("active_jobs") if additional_data else None,
-                "context_used": additional_data.get("context_used") if additional_data else None,
-            },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Notify project subscribers
-        await self.notify_entity_update("project", project_id, message)
-
-        # Also notify agent-specific subscribers
-        await self.notify_entity_update("agent", f"{project_id}:{agent_name}", message)
+    # Note: broadcast_agent_update method is defined later with full multi-tenant support
 
     async def broadcast_message_update(
         self,

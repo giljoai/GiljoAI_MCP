@@ -7,7 +7,7 @@ import { useProductStore } from './products'
 export const useTaskStore = defineStore('tasks', () => {
   // Get product store
   const productStore = useProductStore()
-  
+
   // State
   const tasks = ref([])
   const currentTask = ref(null)
@@ -17,36 +17,36 @@ export const useTaskStore = defineStore('tasks', () => {
 
   // Getters
   const filteredTasks = computed(() => {
-    if (!productStore.currentProductId) return tasks.value
-    return tasks.value.filter(t => t.product_id === productStore.currentProductId)
+    if (!productStore.currentProductId) {
+      return tasks.value
+    }
+    return tasks.value.filter((t) => t.product_id === productStore.currentProductId)
   })
-  
+
   const tasksByStatus = computed(() => {
     const grouped = {}
-    Object.values(TASK_STATUS).forEach(status => {
-      grouped[status] = tasks.value.filter(t => t.status === status)
+    Object.values(TASK_STATUS).forEach((status) => {
+      grouped[status] = tasks.value.filter((t) => t.status === status)
     })
     return grouped
   })
-  
-  const tasksByProject = computed(() => (projectId) =>
-    tasks.value.filter(t => t.project_id === projectId)
+
+  const tasksByProject = computed(
+    () => (projectId) => tasks.value.filter((t) => t.project_id === projectId),
   )
-  
-  const tasksByAgent = computed(() => (agentName) =>
-    tasks.value.filter(t => t.assigned_to === agentName)
+
+  const tasksByAgent = computed(
+    () => (agentName) => tasks.value.filter((t) => t.assigned_to === agentName),
   )
-  
-  const pendingTasks = computed(() =>
-    tasks.value.filter(t => t.status === TASK_STATUS.PENDING)
-  )
-  
+
+  const pendingTasks = computed(() => tasks.value.filter((t) => t.status === TASK_STATUS.PENDING))
+
   const inProgressTasks = computed(() =>
-    tasks.value.filter(t => t.status === TASK_STATUS.IN_PROGRESS)
+    tasks.value.filter((t) => t.status === TASK_STATUS.IN_PROGRESS),
   )
-  
+
   const completedTasks = computed(() =>
-    tasks.value.filter(t => t.status === TASK_STATUS.COMPLETED)
+    tasks.value.filter((t) => t.status === TASK_STATUS.COMPLETED),
   )
 
   const taskStats = computed(() => ({
@@ -54,7 +54,7 @@ export const useTaskStore = defineStore('tasks', () => {
     pending: pendingTasks.value.length,
     inProgress: inProgressTasks.value.length,
     completed: completedTasks.value.length,
-    failed: tasks.value.filter(t => t.status === TASK_STATUS.FAILED).length
+    failed: tasks.value.filter((t) => t.status === TASK_STATUS.FAILED).length,
   }))
 
   // Actions
@@ -63,7 +63,7 @@ export const useTaskStore = defineStore('tasks', () => {
     if (productStore.currentProductId && !params.product_id) {
       params.product_id = productStore.currentProductId
     }
-    
+
     loading.value = true
     error.value = null
     try {
@@ -83,9 +83,9 @@ export const useTaskStore = defineStore('tasks', () => {
     try {
       const response = await api.tasks.get(id)
       currentTask.value = response.data
-      
+
       // Update in list if exists
-      const index = tasks.value.findIndex(t => t.id === id)
+      const index = tasks.value.findIndex((t) => t.id === id)
       if (index !== -1) {
         tasks.value[index] = response.data
       }
@@ -102,7 +102,7 @@ export const useTaskStore = defineStore('tasks', () => {
     if (!taskData.product_id && productStore.currentProductId) {
       taskData.product_id = productStore.currentProductId
     }
-    
+
     loading.value = true
     error.value = null
     try {
@@ -123,16 +123,16 @@ export const useTaskStore = defineStore('tasks', () => {
     error.value = null
     try {
       const response = await api.tasks.update(id, updates)
-      
-      const index = tasks.value.findIndex(t => t.id === id)
+
+      const index = tasks.value.findIndex((t) => t.id === id)
       if (index !== -1) {
         tasks.value[index] = response.data
       }
-      
+
       if (currentTask.value?.id === id) {
         currentTask.value = response.data
       }
-      
+
       return response.data
     } catch (err) {
       error.value = err.message
@@ -148,9 +148,9 @@ export const useTaskStore = defineStore('tasks', () => {
     error.value = null
     try {
       await api.tasks.delete(id)
-      
-      tasks.value = tasks.value.filter(t => t.id !== id)
-      
+
+      tasks.value = tasks.value.filter((t) => t.id !== id)
+
       if (currentTask.value?.id === id) {
         currentTask.value = null
       }
@@ -166,12 +166,12 @@ export const useTaskStore = defineStore('tasks', () => {
   async function changeTaskStatus(id, status) {
     try {
       const response = await api.tasks.changeStatus(id, status)
-      
-      const task = tasks.value.find(t => t.id === id)
+
+      const task = tasks.value.find((t) => t.id === id)
       if (task) {
         task.status = status
         task.updated_at = new Date().toISOString()
-        
+
         // Update progress based on status
         if (status === TASK_STATUS.COMPLETED) {
           task.progress = 100
@@ -179,7 +179,7 @@ export const useTaskStore = defineStore('tasks', () => {
           task.progress = 50
         }
       }
-      
+
       return response.data
     } catch (err) {
       console.error('Failed to change task status:', err)
@@ -189,11 +189,11 @@ export const useTaskStore = defineStore('tasks', () => {
 
   function moveTask(taskId, newStatus) {
     // Local update for drag-and-drop (optimistic update)
-    const task = tasks.value.find(t => t.id === taskId)
+    const task = tasks.value.find((t) => t.id === taskId)
     if (task) {
       const oldStatus = task.status
       task.status = newStatus
-      
+
       // Sync with backend
       changeTaskStatus(taskId, newStatus).catch(() => {
         // Revert on error
@@ -203,7 +203,7 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   function updateTaskFromWebSocket(updatedTask) {
-    const index = tasks.value.findIndex(t => t.id === updatedTask.id)
+    const index = tasks.value.findIndex((t) => t.id === updatedTask.id)
     if (index !== -1) {
       tasks.value[index] = { ...tasks.value[index], ...updatedTask }
     } else {
@@ -228,34 +228,37 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   // Watch for product changes and reload tasks
-  watch(() => productStore.currentProductId, async (newProductId) => {
-    if (newProductId) {
-      await fetchTasks({ product_id: newProductId })
-      await fetchTaskSummary(newProductId)
-    } else {
-      tasks.value = []
-      taskSummary.value = null
-    }
-  })
+  watch(
+    () => productStore.currentProductId,
+    async (newProductId) => {
+      if (newProductId) {
+        await fetchTasks({ product_id: newProductId })
+        await fetchTaskSummary(newProductId)
+      } else {
+        tasks.value = []
+        taskSummary.value = null
+      }
+    },
+  )
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
-    const { 
-      task_id, 
-      project_id, 
-      update_type, 
-      title, 
-      description, 
-      status, 
-      assigned_to, 
+    const {
+      task_id,
+      project_id,
+      update_type,
+      title,
+      description,
+      status,
+      assigned_to,
       priority,
       progress,
-      completed_at 
+      completed_at,
     } = data
-    
+
     // Find task by ID
-    const taskIndex = tasks.value.findIndex(t => t.id === task_id)
-    
+    const taskIndex = tasks.value.findIndex((t) => t.id === task_id)
+
     if (update_type === 'created' && taskIndex === -1) {
       // New task - add to list
       const newTask = {
@@ -268,15 +271,14 @@ export const useTaskStore = defineStore('tasks', () => {
         priority: priority || 'medium',
         progress: progress || 0,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
-      
+
       tasks.value.push(newTask)
-      
     } else if (taskIndex !== -1) {
       // Update existing task
       const task = tasks.value[taskIndex]
-      
+
       if (update_type === 'status_changed' && status) {
         task.status = status
         if (status === TASK_STATUS.COMPLETED) {
@@ -284,16 +286,26 @@ export const useTaskStore = defineStore('tasks', () => {
           task.progress = 100
         }
       }
-      
+
       // Update other fields if provided
-      if (title) task.title = title
-      if (description) task.description = description
-      if (assigned_to !== undefined) task.assigned_to = assigned_to
-      if (priority) task.priority = priority
-      if (progress !== undefined) task.progress = progress
-      
+      if (title) {
+        task.title = title
+      }
+      if (description) {
+        task.description = description
+      }
+      if (assigned_to !== undefined) {
+        task.assigned_to = assigned_to
+      }
+      if (priority) {
+        task.priority = priority
+      }
+      if (progress !== undefined) {
+        task.progress = progress
+      }
+
       task.updated_at = new Date().toISOString()
-      
+
       // Update current task if it's the same
       if (currentTask.value?.id === task_id) {
         currentTask.value = { ...task }
@@ -311,7 +323,7 @@ export const useTaskStore = defineStore('tasks', () => {
     loading,
     error,
     taskSummary,
-    
+
     // Getters
     tasksByStatus,
     tasksByProject,
@@ -320,7 +332,7 @@ export const useTaskStore = defineStore('tasks', () => {
     inProgressTasks,
     completedTasks,
     taskStats,
-    
+
     // Actions
     fetchTasks,
     fetchTask,
@@ -332,6 +344,6 @@ export const useTaskStore = defineStore('tasks', () => {
     updateTaskFromWebSocket,
     clearError,
     handleRealtimeUpdate,
-    fetchTaskSummary
+    fetchTaskSummary,
   }
 })

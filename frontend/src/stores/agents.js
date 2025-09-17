@@ -9,7 +9,7 @@ export const useAgentStore = defineStore('agents', () => {
   const loading = ref(false)
   const error = ref(null)
   const healthData = ref({})
-  
+
   // Visualization Data
   const agentTimeline = ref([]) // Timeline events for visualization
   const agentTree = ref(null) // Hierarchical tree structure
@@ -20,25 +20,19 @@ export const useAgentStore = defineStore('agents', () => {
     averageDuration: 0,
     tokenUsage: {},
     successRate: 0,
-    parallelExecutions: []
+    parallelExecutions: [],
   })
 
   // Getters
-  const activeAgents = computed(() => 
-    agents.value.filter(a => a.status === 'active')
-  )
-  
-  const agentsByProject = computed(() => (projectId) =>
-    agents.value.filter(a => a.project_id === projectId)
-  )
-  
-  const agentByName = computed(() => (name) =>
-    agents.value.find(a => a.name === name)
+  const activeAgents = computed(() => agents.value.filter((a) => a.status === 'active'))
+
+  const agentsByProject = computed(
+    () => (projectId) => agents.value.filter((a) => a.project_id === projectId),
   )
 
-  const agentHealth = computed(() => (agentId) =>
-    healthData.value[agentId] || null
-  )
+  const agentByName = computed(() => (name) => agents.value.find((a) => a.name === name))
+
+  const agentHealth = computed(() => (agentId) => healthData.value[agentId] || null)
 
   // Actions
   async function fetchAgents(projectId = null) {
@@ -61,9 +55,9 @@ export const useAgentStore = defineStore('agents', () => {
     try {
       const response = await api.agents.get(id)
       currentAgent.value = response.data
-      
+
       // Update in list if exists
-      const index = agents.value.findIndex(a => a.id === id)
+      const index = agents.value.findIndex((a) => a.id === id)
       if (index !== -1) {
         agents.value[index] = response.data
       }
@@ -123,7 +117,7 @@ export const useAgentStore = defineStore('agents', () => {
     error.value = null
     try {
       const response = await api.agents.decommission(id, reason)
-      agents.value = agents.value.filter(a => a.id !== id)
+      agents.value = agents.value.filter((a) => a.id !== id)
       if (currentAgent.value?.id === id) {
         currentAgent.value = null
       }
@@ -150,7 +144,9 @@ export const useAgentStore = defineStore('agents', () => {
 
   async function fetchAgentMetrics(projectId, timeRange = '24h') {
     try {
-      const response = await api.get(`/api/agents/metrics?project_id=${projectId}&range=${timeRange}`)
+      const response = await api.get(
+        `/api/agents/metrics?project_id=${projectId}&range=${timeRange}`,
+      )
       agentMetrics.value = response.data
       return response.data
     } catch (err) {
@@ -160,7 +156,7 @@ export const useAgentStore = defineStore('agents', () => {
   }
 
   function updateAgentStatus(agentId, status) {
-    const agent = agents.value.find(a => a.id === agentId)
+    const agent = agents.value.find((a) => a.id === agentId)
     if (agent) {
       agent.status = status
       agent.updated_at = new Date().toISOString()
@@ -174,18 +170,16 @@ export const useAgentStore = defineStore('agents', () => {
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
     const { agent_name, project_id, status, health, active_jobs, context_used } = data
-    
+
     // Find agent by name and project
-    const agent = agents.value.find(a => 
-      a.name === agent_name && a.project_id === project_id
-    )
-    
+    const agent = agents.value.find((a) => a.name === agent_name && a.project_id === project_id)
+
     if (agent) {
       // Update agent status
       if (status) {
         agent.status = status
       }
-      
+
       // Update health data if provided
       if (health !== undefined) {
         healthData.value[agent.id] = {
@@ -193,13 +187,13 @@ export const useAgentStore = defineStore('agents', () => {
           health,
           context_used,
           active_jobs,
-          last_updated: new Date().toISOString()
+          last_updated: new Date().toISOString(),
         }
       }
-      
+
       // Update timestamp
       agent.updated_at = new Date().toISOString()
-      
+
       // If this is the current agent, update it too
       if (currentAgent.value?.id === agent.id) {
         currentAgent.value = { ...agent }
@@ -215,16 +209,16 @@ export const useAgentStore = defineStore('agents', () => {
     const timelineEvent = {
       id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
-      ...event
+      ...event,
     }
-    
+
     agentTimeline.value.unshift(timelineEvent)
-    
+
     // Limit timeline to last 100 events
     if (agentTimeline.value.length > 100) {
       agentTimeline.value = agentTimeline.value.slice(0, 100)
     }
-    
+
     return timelineEvent
   }
 
@@ -236,13 +230,13 @@ export const useAgentStore = defineStore('agents', () => {
       parent_agent: data.parent_agent || 'orchestrator',
       mission: data.mission,
       status: 'active',
-      color: 'green'
+      color: 'green',
     })
-    
+
     // Update metrics
     agentMetrics.value.totalAgents++
     agentMetrics.value.activeAgents++
-    
+
     handleRealtimeUpdate(data)
   }
 
@@ -254,13 +248,13 @@ export const useAgentStore = defineStore('agents', () => {
       duration: data.duration,
       tokens_used: data.tokens_used,
       status: 'completed',
-      color: 'gray'
+      color: 'gray',
     })
-    
+
     // Update metrics
     agentMetrics.value.activeAgents--
     agentMetrics.value.completedAgents++
-    
+
     handleRealtimeUpdate({ ...data, status: 'completed' })
   }
 
@@ -274,13 +268,13 @@ export const useAgentStore = defineStore('agents', () => {
     agentTimeline,
     agentTree,
     agentMetrics,
-    
+
     // Getters
     activeAgents,
     agentsByProject,
     agentByName,
     agentHealth,
-    
+
     // Actions
     fetchAgents,
     fetchAgent,
@@ -295,6 +289,6 @@ export const useAgentStore = defineStore('agents', () => {
     fetchAgentMetrics,
     addTimelineEvent,
     handleAgentSpawn,
-    handleAgentComplete
+    handleAgentComplete,
   }
 })

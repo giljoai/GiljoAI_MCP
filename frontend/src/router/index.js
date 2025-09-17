@@ -6,104 +6,104 @@ const routes = [
     path: '/',
     name: 'Dashboard',
     component: () => import('@/views/DashboardView.vue'),
-    meta: { 
+    meta: {
       title: 'Dashboard',
       icon: 'mdi-view-dashboard',
-      showInNav: true
-    }
+      showInNav: true,
+    },
   },
   {
     path: '/products',
     name: 'Products',
     component: () => import('@/views/ProductsView.vue'),
-    meta: { 
+    meta: {
       title: 'Products',
       icon: 'mdi-package-variant',
-      showInNav: true
-    }
+      showInNav: true,
+    },
   },
   {
     path: '/products/:id',
     name: 'ProductDetail',
     component: () => import('@/views/ProductDetailView.vue'),
-    meta: { 
+    meta: {
       title: 'Product Details',
-      showInNav: false
-    }
+      showInNav: false,
+    },
   },
   {
     path: '/projects',
     name: 'Projects',
     component: () => import('@/views/ProjectsView.vue'),
-    meta: { 
+    meta: {
       title: 'Project Management',
       icon: 'mdi-folder-multiple',
-      showInNav: true
-    }
+      showInNav: true,
+    },
   },
   {
     path: '/projects/:id',
     name: 'ProjectDetail',
     component: () => import('@/views/ProjectDetailView.vue'),
-    meta: { 
+    meta: {
       title: 'Project Details',
-      showInNav: false
-    }
+      showInNav: false,
+    },
   },
   {
     path: '/agents',
     name: 'Agents',
     component: () => import('@/views/AgentsView.vue'),
-    meta: { 
+    meta: {
       title: 'Agent Monitoring',
       icon: 'mdi-robot',
-      showInNav: true
-    }
+      showInNav: true,
+    },
   },
   {
     path: '/messages',
     name: 'Messages',
     component: () => import('@/views/MessagesView.vue'),
-    meta: { 
+    meta: {
       title: 'Message Center',
       icon: 'mdi-message-text',
-      showInNav: true
-    }
+      showInNav: true,
+    },
   },
   {
     path: '/tasks',
     name: 'Tasks',
     component: () => import('@/views/TasksView.vue'),
-    meta: { 
+    meta: {
       title: 'Task Management',
       icon: 'mdi-clipboard-check',
-      showInNav: true
-    }
+      showInNav: true,
+    },
   },
   {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/SettingsView.vue'),
-    meta: { 
+    meta: {
       title: 'Settings',
       icon: 'mdi-cog',
-      showInNav: true
-    }
+      showInNav: true,
+    },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),
-    meta: { 
+    meta: {
       title: '404 Not Found',
-      showInNav: false
-    }
-  }
+      showInNav: false,
+    },
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
 })
 
 // Navigation guard for page titles

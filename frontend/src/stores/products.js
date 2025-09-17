@@ -15,19 +15,23 @@ export const useProductStore = defineStore('products', () => {
   const hasProducts = computed(() => products.value.length > 0)
   const productCount = computed(() => products.value.length)
   const isProductSelected = computed(() => currentProductId.value !== null)
-  
+
   const currentProductName = computed(() => {
     return currentProduct.value?.name || 'No Product Selected'
   })
 
   const currentProductMetrics = computed(() => {
-    if (!currentProductId.value) return null
-    return productMetrics.value[currentProductId.value] || {
-      totalTasks: 0,
-      completedTasks: 0,
-      activeAgents: 0,
-      totalProjects: 0
+    if (!currentProductId.value) {
+      return null
     }
+    return (
+      productMetrics.value[currentProductId.value] || {
+        totalTasks: 0,
+        completedTasks: 0,
+        activeAgents: 0,
+        totalProjects: 0,
+      }
+    )
   })
 
   // Actions
@@ -37,7 +41,7 @@ export const useProductStore = defineStore('products', () => {
     try {
       // This will be connected to the API endpoint when implementer creates it
       // For now, using placeholder logic
-      const response = await api.products?.list() || { data: [] }
+      const response = (await api.products?.list()) || { data: [] }
       products.value = response.data
     } catch (err) {
       error.value = err.message
@@ -48,13 +52,15 @@ export const useProductStore = defineStore('products', () => {
   }
 
   async function fetchProductById(productId) {
-    if (!productId) return null
-    
+    if (!productId) {
+      return null
+    }
+
     loading.value = true
     error.value = null
     try {
       // This will be connected to the API endpoint when implementer creates it
-      const response = await api.products?.get(productId) || { data: null }
+      const response = (await api.products?.get(productId)) || { data: null }
       return response.data
     } catch (err) {
       error.value = err.message
@@ -66,25 +72,29 @@ export const useProductStore = defineStore('products', () => {
   }
 
   async function setCurrentProduct(productId) {
-    if (productId === currentProductId.value) return
-    
+    if (productId === currentProductId.value) {
+      return
+    }
+
     currentProductId.value = productId
-    
+
     if (productId) {
       // Fetch full product details
       const product = await fetchProductById(productId)
       currentProduct.value = product
-      
+
       // Store in localStorage for persistence
       localStorage.setItem('currentProductId', productId)
-      
+
       // Fetch metrics for this product
       await fetchProductMetrics(productId)
-      
+
       // Emit event for other stores to react
-      window.dispatchEvent(new CustomEvent('product-changed', { 
-        detail: { productId, product } 
-      }))
+      window.dispatchEvent(
+        new CustomEvent('product-changed', {
+          detail: { productId, product },
+        }),
+      )
     } else {
       currentProduct.value = null
       localStorage.removeItem('currentProductId')
@@ -92,18 +102,20 @@ export const useProductStore = defineStore('products', () => {
   }
 
   async function fetchProductMetrics(productId) {
-    if (!productId) return
-    
+    if (!productId) {
+      return
+    }
+
     try {
       // This will be connected to the API endpoint when implementer creates it
       // For now, using placeholder logic
-      const response = await api.products?.metrics?.(productId) || { 
+      const response = (await api.products?.metrics?.(productId)) || {
         data: {
           totalTasks: 0,
           completedTasks: 0,
           activeAgents: 0,
-          totalProjects: 0
-        }
+          totalProjects: 0,
+        },
       }
       productMetrics.value[productId] = response.data
     } catch (err) {
@@ -116,7 +128,7 @@ export const useProductStore = defineStore('products', () => {
     error.value = null
     try {
       // This will be connected to the API endpoint when implementer creates it
-      const response = await api.products?.create(productData) || { data: null }
+      const response = (await api.products?.create(productData)) || { data: null }
       if (response.data) {
         products.value.push(response.data)
         // Automatically switch to new product
@@ -137,9 +149,9 @@ export const useProductStore = defineStore('products', () => {
     error.value = null
     try {
       // This will be connected to the API endpoint when implementer creates it
-      const response = await api.products?.update(productId, updates) || { data: null }
+      const response = (await api.products?.update(productId, updates)) || { data: null }
       if (response.data) {
-        const index = products.value.findIndex(p => p.id === productId)
+        const index = products.value.findIndex((p) => p.id === productId)
         if (index !== -1) {
           products.value[index] = response.data
         }
@@ -163,8 +175,8 @@ export const useProductStore = defineStore('products', () => {
     try {
       // This will be connected to the API endpoint when implementer creates it
       await api.products?.delete(productId)
-      products.value = products.value.filter(p => p.id !== productId)
-      
+      products.value = products.value.filter((p) => p.id !== productId)
+
       if (productId === currentProductId.value) {
         // Clear current product if it was deleted
         await setCurrentProduct(null)
@@ -203,14 +215,14 @@ export const useProductStore = defineStore('products', () => {
     loading,
     error,
     productMetrics,
-    
+
     // Getters
     hasProducts,
     productCount,
     isProductSelected,
     currentProductName,
     currentProductMetrics,
-    
+
     // Actions
     fetchProducts,
     fetchProductById,
@@ -220,6 +232,6 @@ export const useProductStore = defineStore('products', () => {
     updateProduct,
     deleteProduct,
     initializeFromStorage,
-    clearProductData
+    clearProductData,
   }
 })

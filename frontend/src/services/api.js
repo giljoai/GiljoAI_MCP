@@ -5,7 +5,7 @@ import { API_CONFIG } from '@/config/api'
 const apiClient = axios.create({
   baseURL: API_CONFIG.REST_API.baseURL,
   timeout: API_CONFIG.REST_API.timeout,
-  headers: API_CONFIG.REST_API.headers
+  headers: API_CONFIG.REST_API.headers,
 })
 
 // Request interceptor for auth token
@@ -18,7 +18,7 @@ apiClient.interceptors.request.use(
     }
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 )
 
 // Response interceptor for error handling
@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
       window.location.href = '/login'
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 // API Service Methods
@@ -44,7 +44,7 @@ export const api = {
     update: (id, data) => apiClient.put(`/api/v1/projects/${id}`, data),
     delete: (id) => apiClient.delete(`/api/v1/projects/${id}`),
     close: (id, summary) => apiClient.delete(`/api/v1/projects/${id}`, { params: { summary } }),
-    status: (id) => apiClient.get(`/api/v1/projects/${id}/status`)
+    status: (id) => apiClient.get(`/api/v1/projects/${id}/status`),
   },
 
   // Agents
@@ -54,7 +54,7 @@ export const api = {
     create: (data) => apiClient.post('/api/v1/agents', data),
     health: (id) => apiClient.get(`/api/agents/${id}/health`),
     assign: (agentName, jobData) => apiClient.post(`/api/agents/${agentName}/assign`, jobData),
-    decommission: (id, reason) => apiClient.post(`/api/agents/${id}/decommission`, { reason })
+    decommission: (id, reason) => apiClient.post(`/api/agents/${id}/decommission`, { reason }),
   },
 
   // Messages
@@ -62,9 +62,11 @@ export const api = {
     list: (params) => apiClient.get('/api/v1/messages', { params }),
     get: (id) => apiClient.get(`/api/messages/${id}`),
     send: (data) => apiClient.post('/api/v1/messages', data),
-    acknowledge: (id, agentName) => apiClient.post(`/api/messages/${id}/acknowledge`, { agent_name: agentName }),
+    acknowledge: (id, agentName) =>
+      apiClient.post(`/api/messages/${id}/acknowledge`, { agent_name: agentName }),
     complete: (id, result) => apiClient.post(`/api/messages/${id}/complete`, { result }),
-    broadcast: (projectId, content) => apiClient.post('/api/messages/broadcast', { project_id: projectId, content })
+    broadcast: (projectId, content) =>
+      apiClient.post('/api/messages/broadcast', { project_id: projectId, content }),
   },
 
   // Tasks
@@ -75,38 +77,42 @@ export const api = {
     update: (id, data) => apiClient.put(`/api/tasks/${id}`, data),
     delete: (id) => apiClient.delete(`/api/tasks/${id}`),
     changeStatus: (id, status) => apiClient.patch(`/api/tasks/${id}/status`, { status }),
-    summary: (productId) => apiClient.get('/api/tasks/summary', { params: { product_id: productId } })
+    summary: (productId) =>
+      apiClient.get('/api/tasks/summary', { params: { product_id: productId } }),
   },
 
   // Vision Documents
   vision: {
     get: () => apiClient.get('/api/v1/context/vision'),
-    getChunk: (part, maxTokens = 20000) => apiClient.get('/api/v1/context/vision', { 
-      params: { part, max_tokens: maxTokens } 
-    }),
-    getIndex: () => apiClient.get('/api/v1/context/vision/index')
+    getChunk: (part, maxTokens = 20000) =>
+      apiClient.get('/api/v1/context/vision', {
+        params: { part, max_tokens: maxTokens },
+      }),
+    getIndex: () => apiClient.get('/api/v1/context/vision/index'),
   },
 
   // Context & Discovery
   context: {
-    getIndex: (productId) => apiClient.get('/api/v1/context/index', { params: { product_id: productId } }),
-    getSection: (documentName, sectionName) => apiClient.get('/api/v1/context/section', { 
-      params: { document_name: documentName, section_name: sectionName }
-    })
+    getIndex: (productId) =>
+      apiClient.get('/api/v1/context/index', { params: { product_id: productId } }),
+    getSection: (documentName, sectionName) =>
+      apiClient.get('/api/v1/context/section', {
+        params: { document_name: documentName, section_name: sectionName },
+      }),
   },
 
   // Settings & Configuration
   settings: {
     get: () => apiClient.get('/api/v1/config'),
     update: (data) => apiClient.put('/api/v1/config', data),
-    getProduct: () => apiClient.get('/api/v1/config/product')
+    getProduct: () => apiClient.get('/api/v1/config/product'),
   },
 
   // Session Info
   session: {
     info: () => apiClient.get('/api/v1/stats/session'),
-    stats: () => apiClient.get('/api/v1/stats')
-  }
+    stats: () => apiClient.get('/api/v1/stats'),
+  },
 }
 
 export default api

@@ -12,13 +12,14 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.mission_templates import AgentRole, MissionTemplateGenerator, ProjectType
+from src.giljo_mcp.enums import AgentRole, ProjectType
+from src.giljo_mcp.template_manager import get_template_manager
 
 
 def test_all_methods():
     """Test every method in MissionTemplateGenerator."""
 
-    generator = MissionTemplateGenerator()
+    template_manager = get_template_manager()
     results = []
 
     # Test 1: generate_orchestrator_mission
@@ -129,7 +130,7 @@ def test_all_methods():
 def test_project_type_customizations():
     """Test project type customizations."""
 
-    generator = MissionTemplateGenerator()
+    template_manager = get_template_manager()
 
     project_types = [
         (ProjectType.FOUNDATION, "Database schema"),
@@ -155,7 +156,7 @@ def test_project_type_customizations():
 def test_performance():
     """Test performance requirements."""
 
-    generator = MissionTemplateGenerator()
+    template_manager = get_template_manager()
 
     # Test 100 template generations
     start = time.time()
@@ -180,7 +181,7 @@ def test_performance():
 def test_edge_cases():
     """Test edge cases."""
 
-    generator = MissionTemplateGenerator()
+    template_manager = get_template_manager()
 
     # Test 1: Very long project name/mission
     long_name = "A" * 1000

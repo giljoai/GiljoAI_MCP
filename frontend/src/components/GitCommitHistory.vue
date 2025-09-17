@@ -73,7 +73,11 @@
       </div>
 
       <!-- Commit List -->
-      <v-timeline v-else-if="filteredCommits && filteredCommits.length > 0" side="end" density="compact">
+      <v-timeline
+        v-else-if="filteredCommits && filteredCommits.length > 0"
+        side="end"
+        density="compact"
+      >
         <v-timeline-item
           v-for="commit in filteredCommits"
           :key="commit.hash"
@@ -184,12 +188,7 @@
 
       <!-- Load More -->
       <div v-if="hasMore" class="text-center mt-4">
-        <v-btn
-          color="primary"
-          variant="outlined"
-          :loading="loadingMore"
-          @click="loadMoreCommits"
-        >
+        <v-btn color="primary" variant="outlined" :loading="loadingMore" @click="loadMoreCommits">
           Load More Commits
         </v-btn>
       </div>
@@ -208,7 +207,11 @@
           <v-row>
             <v-col cols="12">
               <h3 class="text-h6 mb-2">{{ selectedCommit.message.split('\n')[0] }}</h3>
-              <pre v-if="selectedCommit.message.includes('\n')" class="text-body-2 whitespace-pre-wrap">{{ selectedCommit.message.split('\n').slice(1).join('\n').trim() }}</pre>
+              <pre
+                v-if="selectedCommit.message.includes('\n')"
+                class="text-body-2 whitespace-pre-wrap"
+                >{{ selectedCommit.message.split('\n').slice(1).join('\n').trim() }}</pre
+              >
             </v-col>
 
             <v-col cols="12" md="6">
@@ -221,7 +224,11 @@
                 </v-list-item>
                 <v-list-item>
                   <v-list-item-title>Author</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedCommit.author_name }} &lt;{{ selectedCommit.author_email }}&gt;</v-list-item-subtitle>
+                  <v-list-item-subtitle
+                    >{{ selectedCommit.author_name }} &lt;{{
+                      selectedCommit.author_email
+                    }}&gt;</v-list-item-subtitle
+                  >
                 </v-list-item>
                 <v-list-item>
                   <v-list-item-title>Date</v-list-item-title>
@@ -235,7 +242,11 @@
                 <v-list-item>
                   <v-list-item-title>Triggered By</v-list-item-title>
                   <v-list-item-subtitle>
-                    <v-chip :color="getCommitTypeColor(selectedCommit.triggered_by)" size="small" variant="tonal">
+                    <v-chip
+                      :color="getCommitTypeColor(selectedCommit.triggered_by)"
+                      size="small"
+                      variant="tonal"
+                    >
                       {{ selectedCommit.triggered_by || 'manual' }}
                     </v-chip>
                   </v-list-item-subtitle>
@@ -243,7 +254,11 @@
                 <v-list-item>
                   <v-list-item-title>Push Status</v-list-item-title>
                   <v-list-item-subtitle>
-                    <v-chip :color="getPushStatusColor(selectedCommit.push_status)" size="small" variant="tonal">
+                    <v-chip
+                      :color="getPushStatusColor(selectedCommit.push_status)"
+                      size="small"
+                      variant="tonal"
+                    >
                       {{ selectedCommit.push_status || 'unknown' }}
                     </v-chip>
                   </v-list-item-subtitle>
@@ -258,7 +273,10 @@
               </v-list>
             </v-col>
 
-            <v-col v-if="selectedCommit.files_changed && selectedCommit.files_changed.length > 0" cols="12">
+            <v-col
+              v-if="selectedCommit.files_changed && selectedCommit.files_changed.length > 0"
+              cols="12"
+            >
               <h4 class="text-subtitle-1 mb-2">Changed Files</h4>
               <v-chip-group>
                 <v-chip
@@ -276,9 +294,7 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn color="primary" @click="showDetailsDialog = false">
-            Close
-          </v-btn>
+          <v-btn color="primary" @click="showDetailsDialog = false"> Close </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -295,16 +311,16 @@ export default {
   props: {
     productId: {
       type: String,
-      required: true
+      required: true,
     },
     repoPath: {
       type: String,
-      default: '/app'
-    }
+      default: '/app',
+    },
   },
   setup(props) {
     const { showToast } = useToast()
-    
+
     // Reactive data
     const loading = ref(false)
     const loadingMore = ref(false)
@@ -322,18 +338,18 @@ export default {
       { title: '10 commits', value: 10 },
       { title: '20 commits', value: 20 },
       { title: '50 commits', value: 50 },
-      { title: '100 commits', value: 100 }
+      { title: '100 commits', value: 100 },
     ]
     const typeOptions = [
       { title: 'Auto commits', value: 'auto' },
       { title: 'Project completions', value: 'project_completion' },
-      { title: 'Manual commits', value: 'manual' }
+      { title: 'Manual commits', value: 'manual' },
     ]
 
     // Computed
     const filteredCommits = computed(() => {
       if (!commits.value || !filterType.value) return commits.value
-      return commits.value.filter(commit => commit.triggered_by === filterType.value)
+      return commits.value.filter((commit) => commit.triggered_by === filterType.value)
     })
 
     // Methods
@@ -344,10 +360,10 @@ export default {
           params: {
             repo_path: props.repoPath,
             limit: commitLimit.value,
-            branch: selectedBranch.value
-          }
+            branch: selectedBranch.value,
+          },
         })
-        
+
         if (response.data.success) {
           commits.value = response.data.commits || []
           hasMore.value = response.data.commits?.length === commitLimit.value
@@ -371,10 +387,10 @@ export default {
             repo_path: props.repoPath,
             limit: commitLimit.value,
             branch: selectedBranch.value,
-            offset: commits.value.length
-          }
+            offset: commits.value.length,
+          },
         })
-        
+
         if (response.data.success) {
           const newCommits = response.data.commits || []
           commits.value.push(...newCommits)
@@ -409,28 +425,40 @@ export default {
 
     const getCommitTypeColor = (type) => {
       switch (type) {
-        case 'auto': return 'blue'
-        case 'project_completion': return 'green'
-        case 'manual': return 'purple'
-        default: return 'grey'
+        case 'auto':
+          return 'blue'
+        case 'project_completion':
+          return 'green'
+        case 'manual':
+          return 'purple'
+        default:
+          return 'grey'
       }
     }
 
     const getCommitTypeIcon = (type) => {
       switch (type) {
-        case 'auto': return 'mdi-robot'
-        case 'project_completion': return 'mdi-check-circle'
-        case 'manual': return 'mdi-account'
-        default: return 'mdi-source-commit'
+        case 'auto':
+          return 'mdi-robot'
+        case 'project_completion':
+          return 'mdi-check-circle'
+        case 'manual':
+          return 'mdi-account'
+        default:
+          return 'mdi-source-commit'
       }
     }
 
     const getPushStatusColor = (status) => {
       switch (status) {
-        case 'pushed': return 'success'
-        case 'pending': return 'warning'
-        case 'failed': return 'error'
-        default: return 'grey'
+        case 'pushed':
+          return 'success'
+        case 'pending':
+          return 'warning'
+        case 'failed':
+          return 'error'
+        default:
+          return 'grey'
       }
     }
 
@@ -443,7 +471,7 @@ export default {
       const now = new Date()
       const diffMs = now - date
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 0) {
         return date.toLocaleTimeString()
       } else if (diffDays === 1) {
@@ -474,15 +502,15 @@ export default {
       showDetailsDialog,
       selectedCommit,
       hasMore,
-      
+
       // Static data
       branches,
       limitOptions,
       typeOptions,
-      
+
       // Computed
       filteredCommits,
-      
+
       // Methods
       loadCommitHistory,
       loadMoreCommits,
@@ -493,9 +521,9 @@ export default {
       getCommitTypeIcon,
       getPushStatusColor,
       getFileName,
-      formatDate
+      formatDate,
     }
-  }
+  },
 }
 </script>
 

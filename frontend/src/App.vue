@@ -4,13 +4,7 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <a href="#navigation" class="skip-link">Skip to navigation</a>
     <!-- Navigation Drawer -->
-    <v-navigation-drawer
-      id="navigation"
-      v-model="drawer"
-      :rail="rail"
-      permanent
-      color="surface"
-    >
+    <v-navigation-drawer id="navigation" v-model="drawer" :rail="rail" permanent color="surface">
       <!-- Logo/Mascot -->
       <v-list-item
         prepend-avatar="/icons/Giljo_YW_Face.svg"
@@ -56,11 +50,7 @@
     </v-navigation-drawer>
 
     <!-- App Bar -->
-    <v-app-bar
-      color="surface"
-      elevation="0"
-      border
-    >
+    <v-app-bar color="surface" elevation="0" border>
       <v-app-bar-nav-icon
         @click="drawer = !drawer"
         v-if="mobile"
@@ -97,32 +87,24 @@
       <v-row no-gutters align="center">
         <v-col class="text-center" cols="12">
           <span class="text-caption">
-            GiljoAI MCP Orchestrator v0.1.0 | 
-            <span class="text-primary">{{ activeAgents }} agents active</span> | 
+            GiljoAI MCP Orchestrator v0.1.0 |
+            <span class="text-primary">{{ activeAgents }} agents active</span> |
             <span class="text-secondary">{{ pendingMessages }} messages pending</span>
           </span>
         </v-col>
       </v-row>
     </v-footer>
-    
+
     <!-- Keyboard Shortcuts Help Modal -->
-    <v-dialog
-      v-model="isHelpModalOpen"
-      max-width="600"
-      @click:outside="hideHelp"
-    >
+    <v-dialog v-model="isHelpModalOpen" max-width="600" @click:outside="hideHelp">
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-keyboard</v-icon>
           Keyboard Shortcuts
           <v-spacer></v-spacer>
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="hideHelp"
-          ></v-btn>
+          <v-btn icon="mdi-close" variant="text" @click="hideHelp"></v-btn>
         </v-card-title>
-        
+
         <v-card-text>
           <v-list density="compact">
             <template v-for="(shortcut, index) in shortcuts" :key="index">
@@ -135,20 +117,14 @@
             </template>
           </v-list>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="hideHelp"
-          >
-            Close
-          </v-btn>
+          <v-btn color="primary" variant="flat" @click="hideHelp"> Close </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-    
+
     <!-- Toast Notifications -->
     <ToastManager ref="toastManager" position="bottom-right" />
   </v-app>
@@ -186,7 +162,7 @@ const navigationItems = [
   { name: 'Agents', path: '/agents', title: 'Agents', icon: 'mdi-robot' },
   { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },
   { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
-  { name: 'Settings', path: '/settings', title: 'Settings', icon: 'mdi-cog' }
+  { name: 'Settings', path: '/settings', title: 'Settings', icon: 'mdi-cog' },
 ]
 
 // Computed
@@ -199,13 +175,13 @@ const pendingMessages = computed(() => messageStore.pendingMessages.length)
 const toggleTheme = () => {
   // Add transition class for smooth theme switching
   document.documentElement.classList.remove('no-transition')
-  
+
   // Toggle the theme
   theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
-  
+
   // Update data-theme attribute for CSS variables
   document.documentElement.setAttribute('data-theme', theme.global.name.value)
-  
+
   // Store preference
   localStorage.setItem('theme-preference', theme.global.name.value)
 }
@@ -216,7 +192,7 @@ let messagePollingInterval = null
 onMounted(async () => {
   // Prevent transitions on initial load
   document.documentElement.classList.add('no-transition')
-  
+
   // Restore theme preference
   const savedTheme = localStorage.getItem('theme-preference')
   if (savedTheme) {
@@ -225,24 +201,21 @@ onMounted(async () => {
   } else {
     document.documentElement.setAttribute('data-theme', 'dark')
   }
-  
+
   // Enable transitions after a short delay
   setTimeout(() => {
     document.documentElement.classList.remove('no-transition')
   }, 100)
-  
+
   // Connect WebSocket with optional authentication
   // You can pass { apiKey: 'your-key' } or { token: 'your-token' } if needed
   try {
     await wsStore.connect()
     console.log('WebSocket connected successfully')
-    
+
     // Load initial data
-    await Promise.all([
-      agentStore.fetchAgents(),
-      messageStore.fetchMessages()
-    ])
-    
+    await Promise.all([agentStore.fetchAgents(), messageStore.fetchMessages()])
+
     // Set up 10-second message polling interval
     messagePollingInterval = setInterval(async () => {
       try {
@@ -252,14 +225,13 @@ onMounted(async () => {
         console.error('Failed to fetch messages:', error)
       }
     }, 10000) // Poll every 10 seconds
-    
+
     // Subscribe to relevant updates for the whole app
     // Individual views will subscribe to specific entities
-    
+
     // Listen for notifications
     window.addEventListener('ws-notification', handleNotification)
     window.addEventListener('new-message', handleNewMessage)
-    
   } catch (error) {
     console.error('Failed to initialize WebSocket:', error)
   }
@@ -270,7 +242,7 @@ onUnmounted(() => {
   if (messagePollingInterval) {
     clearInterval(messagePollingInterval)
   }
-  
+
   // Cleanup WebSocket connection and event listeners
   wsStore.disconnect()
   window.removeEventListener('ws-notification', handleNotification)

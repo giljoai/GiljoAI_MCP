@@ -15,25 +15,14 @@
       >
         Configured
       </v-btn>
-      <v-btn
-        v-else
-        color="warning"
-        prepend-icon="mdi-alert"
-        variant="text"
-        size="small"
-      >
+      <v-btn v-else color="warning" prepend-icon="mdi-alert" variant="text" size="small">
         Not Configured
       </v-btn>
     </v-card-title>
 
     <v-card-text>
       <!-- Git Status Overview -->
-      <v-alert
-        v-if="gitStatus && !gitStatus.repo_exists"
-        type="info"
-        variant="tonal"
-        class="mb-4"
-      >
+      <v-alert v-if="gitStatus && !gitStatus.repo_exists" type="info" variant="tonal" class="mb-4">
         <v-alert-title>Repository Not Initialized</v-alert-title>
         <div>Git repository not found. Initialize one to enable version control.</div>
       </v-alert>
@@ -96,8 +85,8 @@
               <v-alert type="success" variant="tonal" class="mb-2">
                 <v-alert-title>Using System Authentication</v-alert-title>
                 <div>
-                  Using existing git configuration and credential helpers from your system.
-                  This leverages GitHub Desktop, SSH keys, or other authentication already set up.
+                  Using existing git configuration and credential helpers from your system. This
+                  leverages GitHub Desktop, SSH keys, or other authentication already set up.
                 </div>
               </v-alert>
             </v-col>
@@ -282,7 +271,7 @@
       <!-- Current Status -->
       <v-divider class="my-6" />
       <h3 class="text-h6 mb-3">Current Status</h3>
-      
+
       <v-row v-if="gitStatus">
         <v-col cols="12" md="6">
           <v-list density="compact">
@@ -301,7 +290,9 @@
 
             <v-list-item v-if="gitStatus.status">
               <v-list-item-title>Current Branch</v-list-item-title>
-              <v-list-item-subtitle>{{ gitStatus.status.current_branch || 'Unknown' }}</v-list-item-subtitle>
+              <v-list-item-subtitle>{{
+                gitStatus.status.current_branch || 'Unknown'
+              }}</v-list-item-subtitle>
             </v-list-item>
 
             <v-list-item v-if="gitStatus.status">
@@ -323,7 +314,9 @@
           <v-list density="compact">
             <v-list-item v-if="gitConfig">
               <v-list-item-title>Last Commit</v-list-item-title>
-              <v-list-item-subtitle>{{ gitConfig.last_commit_hash || 'None' }}</v-list-item-subtitle>
+              <v-list-item-subtitle>{{
+                gitConfig.last_commit_hash || 'None'
+              }}</v-list-item-subtitle>
             </v-list-item>
 
             <v-list-item v-if="gitConfig">
@@ -362,12 +355,12 @@ export default {
   props: {
     productId: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
     const { showToast } = useToast()
-    
+
     // Reactive data
     const formValid = ref(false)
     const configForm = ref(null)
@@ -375,7 +368,7 @@ export default {
     const initializing = ref(false)
     const refreshing = ref(false)
     const testing = ref(false)
-    
+
     const gitConfig = ref(null)
     const gitStatus = ref(null)
 
@@ -391,7 +384,7 @@ export default {
       auto_push: false,
       commit_message_template: '',
       webhook_url: '',
-      webhook_secret: ''
+      webhook_secret: '',
     })
 
     // Static data
@@ -399,7 +392,7 @@ export default {
       { title: 'System Authentication (Recommended)', value: 'system' },
       { title: 'HTTPS (Username/Password)', value: 'https' },
       { title: 'SSH Key', value: 'ssh' },
-      { title: 'Personal Access Token', value: 'token' }
+      { title: 'Personal Access Token', value: 'token' },
     ]
 
     // Validation rules
@@ -414,7 +407,7 @@ export default {
         if (!value) return true
         const urlPattern = /^https?:\/\/[^\s/$.?#].[^\s]*$/i
         return urlPattern.test(value) || 'Please enter a valid webhook URL'
-      }
+      },
     }
 
     // Methods
@@ -424,7 +417,7 @@ export default {
         if (response.data.success) {
           gitStatus.value = response.data
           gitConfig.value = response.data.config
-          
+
           if (gitConfig.value) {
             // Populate form with existing config
             Object.assign(form, {
@@ -438,7 +431,7 @@ export default {
               webhook_url: gitConfig.value.webhook_url || '',
               // Don't populate passwords for security
               password: '',
-              ssh_key_path: gitConfig.value.ssh_key_path || ''
+              ssh_key_path: gitConfig.value.ssh_key_path || '',
             })
           }
         }
@@ -450,14 +443,14 @@ export default {
 
     const saveConfiguration = async () => {
       if (!formValid.value) return
-      
+
       saving.value = true
       try {
         const response = await api.post('/git/configure', {
           product_id: props.productId,
-          ...form
+          ...form,
         })
-        
+
         if (response.data.success) {
           showToast('Git configuration saved successfully', 'success')
           await loadGitConfig() // Reload to get updated status
@@ -478,9 +471,9 @@ export default {
         const response = await api.post('/git/init', {
           product_id: props.productId,
           repo_path: process.env.VUE_APP_PROJECT_ROOT || '/app',
-          initial_commit: true
+          initial_commit: true,
         })
-        
+
         if (response.data.success) {
           showToast('Repository initialized successfully', 'success')
           await loadGitConfig()
@@ -512,9 +505,9 @@ export default {
       try {
         // This would test git connectivity
         const response = await api.post('/git/test', {
-          product_id: props.productId
+          product_id: props.productId,
         })
-        
+
         if (response.data.success) {
           showToast('Git connection test successful', 'success')
         } else {
@@ -531,7 +524,7 @@ export default {
     const clearError = async () => {
       try {
         await api.post('/git/clear-error', {
-          product_id: props.productId
+          product_id: props.productId,
         })
         await loadGitConfig()
       } catch (error) {
@@ -562,20 +555,20 @@ export default {
       gitConfig,
       gitStatus,
       form,
-      
+
       // Static data
       authMethods,
       rules,
-      
+
       // Methods
       saveConfiguration,
       initializeRepository,
       refreshStatus,
       testConnection,
       clearError,
-      formatDate
+      formatDate,
     }
-  }
+  },
 }
 </script>
 

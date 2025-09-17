@@ -5,12 +5,11 @@ Tests that frontend and backend integrate seamlessly without workarounds
 """
 
 import asyncio
-import json
 import logging
 from datetime import datetime
-from pathlib import Path
 
 import httpx
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

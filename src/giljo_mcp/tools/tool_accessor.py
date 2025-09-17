@@ -79,8 +79,12 @@ class ToolAccessor:
     async def list_projects(self, status: Optional[str] = None) -> dict[str, Any]:
         """List all projects with optional status filter"""
         try:
-            async with self.db_manager.get_session_async() as session:
-                query = select(Project)
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            async with self.db_manager.get_tenant_session_async(tenant_key) as session:
+                query = select(Project).where(Project.tenant_key == tenant_key)
                 if status:
                     query = query.where(Project.status == status)
 
@@ -89,6 +93,10 @@ class ToolAccessor:
 
                 project_list = []
                 for project in projects:
+                    # Get agent count and message count for this project
+                    agent_count = 0
+                    message_count = 0
+                    
                     project_list.append(
                         {
                             "id": str(project.id),
@@ -97,9 +105,11 @@ class ToolAccessor:
                             "status": project.status,
                             "tenant_key": project.tenant_key,
                             "created_at": project.created_at.isoformat(),
-                            "updated_at": (project.updated_at.isoformat() if project.updated_at else None),
+                            "updated_at": (project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()),
                             "context_budget": project.context_budget,
                             "context_used": project.context_used,
+                            "agent_count": agent_count,
+                            "message_count": message_count,
                         }
                     )
 
@@ -213,9 +223,18 @@ class ToolAccessor:
     async def ensure_agent(self, project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
         """Ensure an agent exists for work on a project"""
         try:
-            async with self.db_manager.get_session_async() as session:
-                # Get project
-                result = await session.execute(select(Project).where(Project.id == project_id))
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            async with self.db_manager.get_tenant_session_async(tenant_key) as session:
+                # Get project with tenant filtering
+                result = await session.execute(
+                    select(Project).where(
+                        Project.id == project_id,
+                        Project.tenant_key == tenant_key
+                    )
+                )
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -223,7 +242,11 @@ class ToolAccessor:
 
                 # Check if agent exists
                 agent_result = await session.execute(
-                    select(Agent).where(Agent.name == agent_name, Agent.project_id == project_id)
+                    select(Agent).where(
+                        Agent.name == agent_name,
+                        Agent.project_id == project_id,
+                        Agent.tenant_key == tenant_key
+                    )
                 )
                 agent = agent_result.scalar_one_or_none()
 
@@ -241,7 +264,7 @@ class ToolAccessor:
                     project_id=project.id,
                     tenant_key=project.tenant_key,
                     status="active",
-                    role=mission,
+                    role=mission or "worker",
                 )
 
                 session.add(agent)
@@ -261,27 +284,39 @@ class ToolAccessor:
     async def agent_health(self, agent_name: Optional[str] = None) -> dict[str, Any]:
         """Check agent health and context usage"""
         try:
-            async with self.db_manager.get_session_async() as session:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            async with self.db_manager.get_tenant_session_async(tenant_key) as session:
                 if agent_name:
-                    result = await session.execute(select(Agent).where(Agent.name == agent_name))
+                    result = await session.execute(
+                        select(Agent).where(
+                            Agent.name == agent_name,
+                            Agent.tenant_key == tenant_key
+                        )
+                    )
                     agents = [result.scalar_one_or_none()]
                 else:
-                    result = await session.execute(select(Agent))
+                    result = await session.execute(
+                        select(Agent).where(Agent.tenant_key == tenant_key)
+                    )
                     agents = result.scalars().all()
 
-                if not agents or not agents[0]:
+                if not agents or (len(agents) == 1 and not agents[0]):
                     return {"success": False, "error": "No agents found"}
 
                 health_data = []
                 for agent in agents:
                     if agent:
-                        # Don't access relationships in async context
                         health_data.append(
                             {
                                 "name": agent.name,
                                 "status": agent.status,
                                 "context_used": agent.context_used or 0,
-                                "message_count": 0,  # Skip relationship access for now
+                                "project_id": str(agent.project_id),
+                                "created_at": agent.created_at.isoformat() if agent.created_at else None,
+                                "last_active": agent.updated_at.isoformat() if agent.updated_at else None,
                             }
                         )
 

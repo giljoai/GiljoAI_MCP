@@ -6,7 +6,7 @@ Tests database models, MCP tools, and template operations
 import sys
 import time
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, Mock
 
@@ -475,7 +475,6 @@ class TestMigrationFromLegacy:
     @pytest.mark.asyncio
     async def test_migrate_existing_templates(self):
         """Test migrating templates from Python code to database"""
-        from src.giljo_mcp.mission_templates import MissionTemplateGenerator
 
         db_manager = DatabaseManager("sqlite:///:memory:")
         await db_manager.initialize()

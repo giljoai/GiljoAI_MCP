@@ -19,8 +19,18 @@ class WebSocketService:
             return
 
         try:
+            # Use the modern WebSocket API with proper parameters
             await websocket_manager.broadcast_agent_update(
-                agent_name=agent_name, project_id=project_id, status=status, additional_data=kwargs
+                agent_id=kwargs.get("agent_id", agent_name),
+                agent_name=agent_name,
+                project_id=project_id,
+                tenant_key=kwargs.get("tenant_key", "default"),
+                status=status,
+                context_usage=kwargs.get("context_usage", 0),
+                context_delta=kwargs.get("context_delta"),
+                current_task=kwargs.get("current_task"),
+                progress_percentage=kwargs.get("progress_percentage"),
+                meta_data=kwargs.get("meta_data", {}),
             )
         except Exception as e:
             logger.exception(f"Failed to broadcast agent status: {e}")

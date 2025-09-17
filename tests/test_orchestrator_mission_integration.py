@@ -12,10 +12,10 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.mission_templates import AgentRole, MissionTemplateGenerator, ProjectType
-
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.enums import AgentRole, ProjectType
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
+from src.giljo_mcp.template_manager import get_template_manager
 
 
 async def test_orchestrator_integration():
@@ -117,36 +117,39 @@ async def test_orchestrator_integration():
     return True
 
 
-async def test_template_generator_methods():
-    """Test all MissionTemplateGenerator methods."""
+async def test_template_manager_methods():
+    """Test UnifiedTemplateManager methods."""
 
-    generator = MissionTemplateGenerator()
+    template_manager = get_template_manager()
 
-    # Test all generation methods
-    methods_to_test = [
-        ("generate_orchestrator_mission", {"project_name": "Test", "project_mission": "Test mission"}),
-        ("generate_agent_mission", {"role": AgentRole.TESTER, "project_name": "Test"}),
-        (
-            "generate_handoff_instructions",
-            {"from_role": AgentRole.ANALYZER, "to_role": AgentRole.IMPLEMENTER, "context_summary": "Test summary"},
-        ),
-        ("generate_parallel_startup_instructions", {"agents": ["analyzer", "implementer"], "project_name": "Test"}),
-        (
-            "generate_context_limit_instructions",
-            {"agent_name": "tester", "context_used": 25000, "context_budget": 30000},
-        ),
-        ("generate_acknowledgment_instruction", {}),
-        ("get_behavioral_rules", {"role": AgentRole.IMPLEMENTER}),
+    # Test template generation for each role
+    roles_to_test = [
+        ("orchestrator", {"project_name": "Test", "project_mission": "Test mission"}),
+        ("analyzer", {"custom_mission": "Analyze the system"}),
+        ("implementer", {"custom_mission": "Implement features"}),
+        ("tester", {"custom_mission": "Test the implementation"}),
+        ("reviewer", {"custom_mission": "Review the code"}),
+        ("documenter", {"custom_mission": "Document the project"}),
     ]
 
-    for method_name, kwargs in methods_to_test:
-        method = getattr(generator, method_name)
-        result = method(**kwargs)
+    for role, variables in roles_to_test:
+        template = await template_manager.get_template(role=role, variables=variables)
 
-        if isinstance(result, (str, list)):
-            assert len(result) > 0
-        else:
-            pass
+        assert isinstance(template, str)
+        assert len(template) > 0
+        assert role in template.lower() or "agent" in template.lower()
+        print(f"✓ Template generated for role: {role}")
+
+    # Test behavioral rules and success criteria
+    for role in ["orchestrator", "analyzer", "implementer"]:
+        rules = template_manager.get_behavioral_rules(role)
+        criteria = template_manager.get_success_criteria(role)
+
+        assert isinstance(rules, list)
+        assert isinstance(criteria, list)
+        assert len(rules) > 0
+        assert len(criteria) > 0
+        print(f"✓ Rules and criteria available for role: {role}")
 
     return True
 
@@ -158,7 +161,7 @@ async def main():
         await test_orchestrator_integration()
 
         # Run method validation
-        await test_template_generator_methods()
+        await test_template_manager_methods()
 
     except Exception:
         import traceback

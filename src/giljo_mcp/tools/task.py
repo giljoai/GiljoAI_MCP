@@ -5,6 +5,7 @@ Task management tools with product isolation
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
+from uuid import uuid4
 
 from sqlalchemy import and_, select
 
@@ -611,7 +612,7 @@ def register_task_tools(mcp):
                     task.meta_data = {}
 
                 conversion_entry = {
-                    "conversion_id": generate_uuid(),
+                    "conversion_id": str(uuid4()),
                     "converted_to_project_id": converted_project_id,
                     "conversion_type": conversion_type,
                     "converted_at": datetime.now(timezone.utc).isoformat(),
@@ -771,6 +772,11 @@ def register_task_tools(mcp):
             logger.exception(f"Failed to get conversion history: {e}")
             return {"success": False, "error": str(e)}
 
+    # Register template integration tools
+    register_task_template_tools(mcp)
+
+    logger.info("Task management tools with templates registered successfully")
+
 
 # Helper functions for dependency mapping
 async def _get_parent_chain(
@@ -826,9 +832,3 @@ async def _get_child_tasks(
         child_tree.append(child_info)
 
     return child_tree
-
-    # Register template integration tools
-    register_task_template_tools(mcp)
-
-    logger.info("Task management tools with templates registered successfully")
-    return None

@@ -2,14 +2,16 @@
 Agent management API endpoints
 """
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-from typing import List, Optional, Dict, Any
+import time
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func, and_
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-import time
+
 
 router = APIRouter()
 
@@ -54,13 +56,18 @@ async def create_agent(agent: AgentCreate):
         )
 
         # Broadcast agent creation/update
-        if state.websocket_manager:
-            await state.websocket_manager.broadcast_agent_update(
-                agent_name=agent.agent_name,
-                project_id=agent.project_id,
-                status="active",
-                additional_data={"health": response.health, "mission": agent.mission},
-            )
+        if state.websocket_manager and state.tenant_manager:
+            tenant_key = state.tenant_manager.get_current_tenant()
+            if tenant_key:
+                await state.websocket_manager.broadcast_agent_update(
+                    agent_id=result.get("agent_id", agent.agent_name),
+                    agent_name=agent.agent_name,
+                    project_id=agent.project_id,
+                    tenant_key=tenant_key,
+                    status="active",
+                    context_usage=0,
+                    meta_data={"health": response.health, "mission": agent.mission},
+                )
 
         return response
 
@@ -103,12 +110,17 @@ async def decommission_agent(
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to decommission agent"))
 
         # Broadcast agent decommission
-        if state.websocket_manager:
-            await state.websocket_manager.broadcast_agent_update(
-                agent_name=agent_name,
-                project_id=project_id,
-                status="decommissioned",
-                additional_data={"reason": reason},
+        if state.websocket_manager and state.tenant_manager:
+            tenant_key = state.tenant_manager.get_current_tenant()
+            if tenant_key:
+                await state.websocket_manager.broadcast_agent_update(
+                    agent_id=agent_name,  # Use agent_name as ID for decommission
+                    agent_name=agent_name,
+                    project_id=project_id,
+                    tenant_key=tenant_key,
+                    status="decommissioned",
+                    context_usage=0,
+                    meta_data={"reason": reason},
             )
 
         return {"success": True, "message": f"Agent {agent_name} decommissioned"}
@@ -162,7 +174,6 @@ class AgentMetrics(BaseModel):
 async def get_db_session():
     """Get database session dependency"""
     from src.giljo_mcp.database import DatabaseManager
-    from api.app import state
 
     db_manager = DatabaseManager(is_async=True)
     async with db_manager.get_session_async() as session:
@@ -180,7 +191,7 @@ async def get_agents_tree(
     start_time = time.time()
 
     try:
-        from src.giljo_mcp.models import Agent, Job, Message
+        from src.giljo_mcp.models import Agent, Message
 
         # Query all agents for the project with relationships
         stmt = (
@@ -379,3 +390,5 @@ async def get_agents_metrics(
 
 # Fix forward reference for Pydantic models
 AgentNode.model_rebuild()
+# Force reload
+# Force reload again

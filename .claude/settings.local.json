@@ -17,7 +17,8 @@
       "mcp__serena-mcp__get_symbols_overview",
       "mcp__serena-mcp__find_symbol",
       "mcp__ake-mcp-v2__project_status",
-      "mcp__serena-mcp__find_file"
+      "mcp__serena-mcp__find_file",
+      "mcp__serena-mcp__read_memory"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",

@@ -15,8 +15,6 @@ from uuid import uuid4
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.config import load_config
-from src.giljo_mcp.mission_templates import MissionTemplateGenerator
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate

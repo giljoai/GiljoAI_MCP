@@ -81,7 +81,9 @@ def test_acknowledge_message_array(db_manager, results):
             if not message.acknowledged_by:
                 message.acknowledged_by = []
 
-            message.acknowledged_by.append({"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat()})
+            message.acknowledged_by.append(
+                {"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat()}
+            )
             session.commit()
 
             # Verify structure
@@ -96,7 +98,9 @@ def test_acknowledge_message_array(db_manager, results):
 
                     if has_agent and has_timestamp and correct_agent:
                         # Add second acknowledgment
-                        msg.acknowledged_by.append({"agent_name": "agent2", "timestamp": datetime.now(timezone.utc).isoformat()})
+                        msg.acknowledged_by.append(
+                            {"agent_name": "agent2", "timestamp": datetime.now(timezone.utc).isoformat()}
+                        )
                         session.commit()
 
                         # Verify both acknowledgments
@@ -234,7 +238,9 @@ def test_auto_acknowledgment(db_manager, results):
                 # Check if agent1 not already acknowledged
                 agents_acked = [ack["agent_name"] for ack in msg.acknowledged_by]
                 if "agent1" not in agents_acked:
-                    msg.acknowledged_by.append({"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat()})
+                    msg.acknowledged_by.append(
+                        {"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat()}
+                    )
                 session.commit()
 
             # Verify agent1 acknowledgment
@@ -291,11 +297,17 @@ def test_array_structure_format(db_manager, results):
             msg_id = message.id
 
             # Acknowledge
-            message.acknowledged_by.append({"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat()})
+            message.acknowledged_by.append(
+                {"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat()}
+            )
 
             # Complete
             message.completed_by.append(
-                {"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat(), "notes": "Format test complete"}
+                {
+                    "agent_name": "agent1",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "notes": "Format test complete",
+                }
             )
             session.commit()
 
@@ -371,7 +383,9 @@ def test_multi_agent_delivery(db_manager, results):
                 # Simulate auto-acknowledgment for each agent
                 for agent in ["agent1", "agent2", "agent3"]:
                     if agent not in [ack.get("agent_name") for ack in msg.acknowledged_by]:
-                        msg.acknowledged_by.append({"agent_name": agent, "timestamp": datetime.now(timezone.utc).isoformat()})
+                        msg.acknowledged_by.append(
+                            {"agent_name": agent, "timestamp": datetime.now(timezone.utc).isoformat()}
+                        )
 
                 msg.status = "acknowledged"
                 session.commit()
@@ -519,12 +533,18 @@ def test_integration_flow(db_manager, results):
             msg = session.query(Message).filter(Message.id == msg_id).first()
             if "worker1" in msg.to_agents:
                 msg.status = "acknowledged"
-                msg.acknowledged_by.append({"agent_name": "worker1", "timestamp": datetime.now(timezone.utc).isoformat()})
+                msg.acknowledged_by.append(
+                    {"agent_name": "worker1", "timestamp": datetime.now(timezone.utc).isoformat()}
+                )
                 session.commit()
 
             # Worker1 completes their part
             msg.completed_by.append(
-                {"agent_name": "worker1", "timestamp": datetime.now(timezone.utc).isoformat(), "notes": "Worker1 task complete"}
+                {
+                    "agent_name": "worker1",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "notes": "Worker1 task complete",
+                }
             )
             session.commit()
 
@@ -532,12 +552,18 @@ def test_integration_flow(db_manager, results):
             msg = session.query(Message).filter(Message.id == msg_id).first()
             if "worker2" in msg.to_agents:
                 if "worker2" not in [ack["agent_name"] for ack in msg.acknowledged_by]:
-                    msg.acknowledged_by.append({"agent_name": "worker2", "timestamp": datetime.now(timezone.utc).isoformat()})
+                    msg.acknowledged_by.append(
+                        {"agent_name": "worker2", "timestamp": datetime.now(timezone.utc).isoformat()}
+                    )
                 session.commit()
 
             # Worker2 completes their part
             msg.completed_by.append(
-                {"agent_name": "worker2", "timestamp": datetime.now(timezone.utc).isoformat(), "notes": "Worker2 task complete"}
+                {
+                    "agent_name": "worker2",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "notes": "Worker2 task complete",
+                }
             )
             session.commit()
 
@@ -545,7 +571,9 @@ def test_integration_flow(db_manager, results):
             msg = session.query(Message).filter(Message.id == msg_id).first()
             if "supervisor" in msg.to_agents:
                 if "supervisor" not in [ack["agent_name"] for ack in msg.acknowledged_by]:
-                    msg.acknowledged_by.append({"agent_name": "supervisor", "timestamp": datetime.now(timezone.utc).isoformat()})
+                    msg.acknowledged_by.append(
+                        {"agent_name": "supervisor", "timestamp": datetime.now(timezone.utc).isoformat()}
+                    )
                 session.commit()
 
             # Verify final state

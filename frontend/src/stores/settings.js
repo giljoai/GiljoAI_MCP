@@ -14,9 +14,9 @@ export const useSettingsStore = defineStore('settings', () => {
     compactView: false,
     showMascot: true,
     apiUrl: 'http://localhost:6002',
-    wsUrl: 'ws://localhost:6003'
+    wsUrl: 'ws://localhost:6003',
   })
-  
+
   const productInfo = ref(null)
   const sessionInfo = ref(null)
   const loading = ref(false)
@@ -41,7 +41,7 @@ export const useSettingsStore = defineStore('settings', () => {
         settings.value = { ...settings.value, ...JSON.parse(savedSettings) }
         applyTheme()
       }
-      
+
       // Then try to load from server
       try {
         const response = await api.settings.get()
@@ -64,7 +64,7 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       // Save to localStorage immediately
       saveToLocalStorage()
-      
+
       // Then sync with server
       try {
         await api.settings.update(settings.value)
@@ -101,12 +101,12 @@ export const useSettingsStore = defineStore('settings', () => {
   function updateSetting(key, value) {
     if (settings.value[key] !== undefined) {
       settings.value[key] = value
-      
+
       // Apply theme immediately if changed
       if (key === 'theme') {
         applyTheme()
       }
-      
+
       // Auto-save
       saveToLocalStorage()
     }
@@ -136,7 +136,7 @@ export const useSettingsStore = defineStore('settings', () => {
       compactView: false,
       showMascot: true,
       apiUrl: 'http://localhost:6002',
-      wsUrl: 'ws://localhost:6003'
+      wsUrl: 'ws://localhost:6003',
     }
     applyTheme()
     saveToLocalStorage()
@@ -147,9 +147,13 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   // Watch for settings changes
-  watch(settings, () => {
-    saveToLocalStorage()
-  }, { deep: true })
+  watch(
+    settings,
+    () => {
+      saveToLocalStorage()
+    },
+    { deep: true },
+  )
 
   return {
     // State
@@ -158,12 +162,12 @@ export const useSettingsStore = defineStore('settings', () => {
     sessionInfo,
     loading,
     error,
-    
+
     // Getters
     isDarkTheme,
     refreshEnabled,
     notificationsEnabled,
-    
+
     // Actions
     loadSettings,
     saveSettings,
@@ -172,6 +176,6 @@ export const useSettingsStore = defineStore('settings', () => {
     updateSetting,
     toggleTheme,
     resetSettings,
-    clearError
+    clearError,
   }
 })

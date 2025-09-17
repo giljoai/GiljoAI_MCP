@@ -6,49 +6,31 @@
       :prepend-icon="icon"
       variant="tonal"
       size="small"
-      :class="['connection-status', { 'reconnecting': wsStore.connectionState === 'reconnecting' }]"
+      :class="['connection-status', { reconnecting: wsStore.connectionState === 'reconnecting' }]"
       @click="showDebugPanel = !showDebugPanel"
       style="cursor: pointer"
     >
       <span class="text-caption">{{ statusText }}</span>
-      <v-tooltip
-        v-if="showTooltip"
-        activator="parent"
-        location="bottom"
-      >
+      <v-tooltip v-if="showTooltip" activator="parent" location="bottom">
         <div class="text-caption">
           <div v-if="isReconnecting">
             Reconnection attempt {{ reconnectAttempts }}/{{ maxReconnectAttempts }}
           </div>
-          <div v-if="connectionError">
-            Error: {{ connectionError }}
-          </div>
-          <div v-if="messageQueueSize > 0">
-            {{ messageQueueSize }} messages queued
-          </div>
-          <div v-if="clientId">
-            Client ID: {{ clientId }}
-          </div>
+          <div v-if="connectionError">Error: {{ connectionError }}</div>
+          <div v-if="messageQueueSize > 0">{{ messageQueueSize }} messages queued</div>
+          <div v-if="clientId">Client ID: {{ clientId }}</div>
         </div>
       </v-tooltip>
     </v-chip>
 
     <!-- Debug Panel Dialog -->
-    <v-dialog
-      v-model="showDebugPanel"
-      max-width="800"
-      scrollable
-    >
+    <v-dialog v-model="showDebugPanel" max-width="800" scrollable>
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-bug</v-icon>
           WebSocket Debug Panel
           <v-spacer></v-spacer>
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="showDebugPanel = false"
-          ></v-btn>
+          <v-btn icon="mdi-close" variant="text" @click="showDebugPanel = false"></v-btn>
         </v-card-title>
 
         <v-divider></v-divider>
@@ -78,11 +60,15 @@
                   </v-list-item>
                   <v-list-item v-if="debugInfo?.stats?.connectedAt">
                     <v-list-item-title>Connected At</v-list-item-title>
-                    <v-list-item-subtitle>{{ formatTime(debugInfo.stats.connectedAt) }}</v-list-item-subtitle>
+                    <v-list-item-subtitle>{{
+                      formatTime(debugInfo.stats.connectedAt)
+                    }}</v-list-item-subtitle>
                   </v-list-item>
                   <v-list-item v-if="debugInfo?.stats?.disconnectedAt">
                     <v-list-item-title>Disconnected At</v-list-item-title>
-                    <v-list-item-subtitle>{{ formatTime(debugInfo.stats.disconnectedAt) }}</v-list-item-subtitle>
+                    <v-list-item-subtitle>{{
+                      formatTime(debugInfo.stats.disconnectedAt)
+                    }}</v-list-item-subtitle>
                   </v-list-item>
                 </v-list>
               </v-expansion-panel-text>
@@ -158,8 +144,8 @@
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-list density="compact" class="event-list">
-                  <v-list-item 
-                    v-for="(event, index) in recentEvents" 
+                  <v-list-item
+                    v-for="(event, index) in recentEvents"
                     :key="index"
                     :class="`event-${event.type}`"
                   >
@@ -197,30 +183,15 @@
 
         <!-- Test Actions -->
         <v-card-actions>
-          <v-btn
-            color="primary"
-            variant="tonal"
-            @click="forceReconnect"
-            :disabled="isConnecting"
-          >
+          <v-btn color="primary" variant="tonal" @click="forceReconnect" :disabled="isConnecting">
             <v-icon start>mdi-refresh</v-icon>
             Force Reconnect
           </v-btn>
-          <v-btn
-            color="warning"
-            variant="tonal"
-            @click="simulateDrop"
-            :disabled="!isConnected"
-          >
+          <v-btn color="warning" variant="tonal" @click="simulateDrop" :disabled="!isConnected">
             <v-icon start>mdi-connection</v-icon>
             Simulate Drop
           </v-btn>
-          <v-btn
-            color="info"
-            variant="tonal"
-            @click="sendTestMessage"
-            :disabled="!isConnected"
-          >
+          <v-btn color="info" variant="tonal" @click="sendTestMessage" :disabled="!isConnected">
             <v-icon start>mdi-send</v-icon>
             Send Test
           </v-btn>
@@ -306,10 +277,12 @@ const icon = computed(() => {
 })
 
 const showTooltip = computed(() => {
-  return wsStore.isReconnecting || 
-         wsStore.connectionError || 
-         wsStore.messageQueueSize > 0 ||
-         wsStore.clientId
+  return (
+    wsStore.isReconnecting ||
+    wsStore.connectionError ||
+    wsStore.messageQueueSize > 0 ||
+    wsStore.clientId
+  )
 })
 
 const isReconnecting = computed(() => wsStore.isReconnecting)
@@ -348,7 +321,7 @@ const simulateDrop = () => {
 const sendTestMessage = () => {
   websocketService.sendTestMessage('test', {
     timestamp: new Date().toISOString(),
-    message: 'Test message from debug panel'
+    message: 'Test message from debug panel',
   })
   updateDebugInfo()
 }
@@ -376,7 +349,7 @@ const getEventIcon = (type) => {
     error: 'mdi-alert-circle',
     subscription: 'mdi-broadcast',
     log: 'mdi-text',
-    test: 'mdi-test-tube'
+    test: 'mdi-test-tube',
   }
   return icons[type] || 'mdi-circle'
 }
@@ -387,7 +360,7 @@ const getEventColor = (type) => {
     error: 'error',
     subscription: 'info',
     log: 'grey',
-    test: 'warning'
+    test: 'warning',
   }
   return colors[type] || 'grey'
 }
@@ -396,7 +369,7 @@ const getEventColor = (type) => {
 onMounted(() => {
   updateDebugInfo()
   debugMode.value = websocketService.debug
-  
+
   // Update debug info every second when panel is open
   refreshInterval.value = setInterval(() => {
     if (showDebugPanel.value) {
@@ -422,9 +395,15 @@ onUnmounted(() => {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .connection-status:deep(.v-chip__content) {

@@ -1268,23 +1268,26 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
     logger.info("Context and discovery tools registered")
 
+
 # Expose MCP tools as importable async functions for API endpoints
 async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
     """Wrapper for MCP tool - Get the context index for intelligent querying"""
-    from giljo_mcp.database import DatabaseManager
-    from giljo_mcp.tenant import TenantManager
-    from giljo_mcp.discovery import DiscoveryManager
-    from giljo_mcp.models import Project
     from sqlalchemy import select
-    
+
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.discovery import DiscoveryManager, PathResolver
+    from giljo_mcp.models import Project
+    from giljo_mcp.tenant import TenantManager
+
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()
+    path_resolver = PathResolver(db_manager, tenant_manager)
     discovery_manager = DiscoveryManager(db_manager, tenant_manager, path_resolver)
-    
+
     try:
         tenant_key = tenant_manager.get_current_tenant()
         project_id = None
-        
+
         if tenant_key:
             async with db_manager.get_session() as session:
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
@@ -1292,10 +1295,10 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
                 project = project_result.scalar_one_or_none()
                 if project:
                     project_id = str(project.id)
-        
+
         # Get all discovery paths
         paths = await discovery_manager.get_discovery_paths(project_id)
-        
+
         # Build context source information
         context_sources = {}
         for path_key, path in paths.items():
@@ -1317,7 +1320,7 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
                     }
             else:
                 context_sources[path_key] = {"path": str(path), "exists": False}
-        
+
         # Build index
         index = {
             "product_id": product_id or "default",
@@ -1325,9 +1328,9 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
             "documents": [],
             "last_updated": datetime.now(timezone.utc).isoformat(),
         }
-        
+
         return {"success": True, "index": index}
-            
+
     except Exception as e:
         logger.exception(f"Failed to get vision index: {e}")
         return {"success": False, "error": str(e)}
@@ -1335,58 +1338,74 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
 
 async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool = False) -> dict[str, Any]:
     """Wrapper for MCP tool - Get the vision document for the active product"""
-    from giljo_mcp.database import DatabaseManager
-    from giljo_mcp.tenant import TenantManager
-    from giljo_mcp.tools.chunking import EnhancedChunker
-    from giljo_mcp.utils.path_resolver import PathResolver
-    from giljo_mcp.models import Project
     from sqlalchemy import select
-    from pathlib import Path
-    import logging
-    
-    logger = logging.getLogger(__name__)
+
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.discovery import PathResolver
+    from giljo_mcp.models import Project, Vision
+    from giljo_mcp.tenant import TenantManager
+
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()
-    path_resolver = PathResolver()
-    
+    path_resolver = PathResolver(db_manager, tenant_manager)
+
     try:
         tenant_key = tenant_manager.get_current_tenant()
-        project_id = None
-        
-        if tenant_key:
-            async with db_manager.get_session() as session:
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-                if project:
-                    project_id = str(project.id)
-        
-        vision_path = await path_resolver.resolve_path("vision", project_id)
-        
-        if not vision_path or not vision_path.exists():
-            return {
-                "success": False,
-                "error": f"Vision directory not found at {vision_path}",
-            }
-        
-        chunker = EnhancedChunker(max_tokens=max_tokens)
-        chunks = await chunker.chunk_vision(vision_path, force_reindex=force_reindex)
-        
-        if part < 1 or part > len(chunks):
-            return {
-                "success": False,
-                "error": f"Invalid part {part}. Available parts: 1-{len(chunks)}",
-            }
-        
-        chunk = chunks[part - 1]
-        return {
-            "success": True,
-            "part": part,
-            "total_parts": len(chunks),
-            "content": chunk["content"],
-            "metadata": chunk.get("metadata", {}),
-        }
+        if not tenant_key:
+            return {"success": False, "error": "No tenant context available"}
+
+        async with db_manager.get_tenant_session_async(tenant_key) as session:
+            project_query = select(Project).where(Project.tenant_key == tenant_key)
+            project_result = await session.execute(project_query)
+            project = project_result.scalar_one_or_none()
             
+            if not project:
+                return {"success": False, "error": "Project not found"}
+
+            # Check for existing vision chunks in database
+            vision_query = select(Vision).where(
+                Vision.project_id == project.id,
+                Vision.tenant_key == tenant_key
+            ).order_by(Vision.chunk_number)
+            vision_result = await session.execute(vision_query)
+            visions = vision_result.scalars().all()
+
+            if visions:
+                # Return from database
+                if part <= len(visions):
+                    vision = visions[part - 1]
+                    return {
+                        "success": True,
+                        "part": part,
+                        "total_parts": len(visions),
+                        "content": vision.content,
+                        "tokens": vision.tokens,
+                        "boundary_type": vision.boundary_type,
+                        "keywords": vision.keywords or [],
+                        "headers": vision.headers or [],
+                        "has_more": part < len(visions),
+                        "indexed": True,
+                    }
+                return {
+                    "success": False,
+                    "error": f"Part {part} not found. Document has {len(visions)} parts.",
+                }
+
+            # No vision data in database, return placeholder
+            return {
+                "success": True,
+                "part": 1,
+                "total_parts": 1,
+                "content": "# Vision Document\n\nNo vision documents have been indexed yet. Use the MCP tools to initialize vision documents.",
+                "tokens": 20,
+                "boundary_type": "paragraph",
+                "keywords": ["vision", "placeholder"],
+                "headers": ["Vision Document"],
+                "has_more": False,
+                "indexed": False,
+                "message": "No vision documents found - returning placeholder"
+            }
+
     except Exception as e:
         logger.exception(f"Failed to get vision: {e}")
         return {"success": False, "error": str(e)}
@@ -1394,72 +1413,73 @@ async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool
 
 async def get_vision_index() -> dict[str, Any]:
     """Wrapper for MCP tool - Get the vision document index"""
-    from giljo_mcp.database import DatabaseManager
-    from giljo_mcp.tenant import TenantManager
-    from giljo_mcp.tools.chunking import EnhancedChunker
-    from giljo_mcp.utils.path_resolver import PathResolver
-    from giljo_mcp.models import Project
     from sqlalchemy import select
-    from pathlib import Path
-    import logging
-    
-    logger = logging.getLogger(__name__)
+
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.discovery import PathResolver
+    from giljo_mcp.models import ContextIndex, Project
+    from giljo_mcp.tenant import TenantManager
+
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()
-    path_resolver = PathResolver()
-    
+    path_resolver = PathResolver(db_manager, tenant_manager)
+
     try:
         tenant_key = tenant_manager.get_current_tenant()
-        project_id = None
-        
-        if tenant_key:
-            async with db_manager.get_session() as session:
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-                if project:
-                    project_id = str(project.id)
-        
-        vision_path = await path_resolver.resolve_path("vision", project_id)
-        
-        if not vision_path or not vision_path.exists():
-            return {
-                "success": False,
-                "error": f"Vision directory not found at {vision_path}",
-            }
-        
-        chunker = EnhancedChunker()
-        index = {"files": [], "chunks": {}}
-        
-        # Get all markdown files
-        vision_files = sorted(vision_path.glob("*.md"))
-        
-        for file in vision_files:
-            try:
-                content = file.read_text(encoding="utf-8")
-                lines = content.split("\n")
-                
-                # Get first non-comment line as summary
-                summary = None
-                for line in lines:
-                    if line.strip() and not line.startswith("#"):
-                        summary = line.strip()[:500]
-                        break
-                
-                file_info = {
-                    "name": file.name,
-                    "summary": summary,
-                    "size": len(content),
-                    "estimated_tokens": chunker.estimate_tokens(content),
-                    "keywords": chunker.extract_keywords(content),
-                }
-                index["files"].append(file_info)
-                
-            except Exception as e:
-                logger.warning(f"Failed to index {file}: {e}")
-        
-        return {"success": True, "index": index}
+        if not tenant_key:
+            return {"success": False, "error": "No tenant context available"}
+
+        async with db_manager.get_tenant_session_async(tenant_key) as session:
+            project_query = select(Project).where(Project.tenant_key == tenant_key)
+            project_result = await session.execute(project_query)
+            project = project_result.scalar_one_or_none()
             
+            if not project:
+                return {"success": False, "error": "Project not found"}
+
+            # Check for context index in database
+            index_query = select(ContextIndex).where(
+                ContextIndex.project_id == project.id,
+                ContextIndex.tenant_key == tenant_key,
+                ContextIndex.index_type == "vision",
+            )
+            index_result = await session.execute(index_query)
+            index_entries = index_result.scalars().all()
+
+            if index_entries:
+                # Return from database
+                index = {
+                    "files": [],
+                    "total_files": len(index_entries),
+                    "chunks": {},
+                    "from_database": True,
+                }
+
+                for entry in index_entries:
+                    file_info = {
+                        "name": entry.document_name,
+                        "summary": entry.summary,
+                        "token_count": entry.token_count,
+                        "keywords": entry.keywords or [],
+                        "chunk_numbers": entry.chunk_numbers or [],
+                        "content_hash": entry.content_hash,
+                    }
+                    index["files"].append(file_info)
+
+                return {"success": True, "index": index}
+
+            # No index found, return placeholder
+            return {
+                "success": True,
+                "index": {
+                    "files": [],
+                    "total_files": 0,
+                    "chunks": {},
+                    "from_database": False,
+                    "message": "No vision index found - use MCP tools to initialize vision documents"
+                }
+            }
+
     except Exception as e:
         logger.exception(f"Failed to get vision index: {e}")
         return {"success": False, "error": str(e)}

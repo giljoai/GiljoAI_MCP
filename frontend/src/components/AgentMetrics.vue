@@ -74,7 +74,7 @@
             <v-card-text>
               <v-list density="compact">
                 <v-list-item
-                  v-for="agent in (metrics?.top_token_usage || [])"
+                  v-for="agent in metrics?.top_token_usage || []"
                   :key="agent.agent_name"
                 >
                   <v-list-item-title>{{ agent.agent_name }}</v-list-item-title>
@@ -101,12 +101,12 @@ Chart.register(...registerables)
 const props = defineProps({
   projectId: {
     type: String,
-    default: null
+    default: null,
   },
   metrics: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 })
 
 const emit = defineEmits(['refresh'])
@@ -149,16 +149,12 @@ const createRoleChart = () => {
     type: 'doughnut',
     data: {
       labels: Object.keys(data),
-      datasets: [{
-        data: Object.values(data),
-        backgroundColor: [
-          '#67bd6d',
-          '#ffc300',
-          '#8b5cf6',
-          '#c6298c',
-          '#8f97b7'
-        ]
-      }]
+      datasets: [
+        {
+          data: Object.values(data),
+          backgroundColor: ['#67bd6d', '#ffc300', '#8b5cf6', '#c6298c', '#8f97b7'],
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -167,11 +163,11 @@ const createRoleChart = () => {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#e1e1e1'
-          }
-        }
-      }
-    }
+            color: '#e1e1e1',
+          },
+        },
+      },
+    },
   })
 }
 
@@ -189,42 +185,44 @@ const createActivityChart = () => {
   activityChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: Object.keys(data).map(h => `${h}:00`),
-      datasets: [{
-        label: 'Agent Activity',
-        data: Object.values(data),
-        borderColor: '#ffc300',
-        backgroundColor: 'rgba(255, 195, 0, 0.1)',
-        tension: 0.4
-      }]
+      labels: Object.keys(data).map((h) => `${h}:00`),
+      datasets: [
+        {
+          label: 'Agent Activity',
+          data: Object.values(data),
+          borderColor: '#ffc300',
+          backgroundColor: 'rgba(255, 195, 0, 0.1)',
+          tension: 0.4,
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: false
-        }
+          display: false,
+        },
       },
       scales: {
         x: {
           grid: {
-            color: '#315074'
+            color: '#315074',
           },
           ticks: {
-            color: '#8f97b7'
-          }
+            color: '#8f97b7',
+          },
         },
         y: {
           grid: {
-            color: '#315074'
+            color: '#315074',
           },
           ticks: {
-            color: '#8f97b7'
-          }
-        }
-      }
-    }
+            color: '#8f97b7',
+          },
+        },
+      },
+    },
   })
 }
 
@@ -237,10 +235,14 @@ onMounted(() => {
 })
 
 // Watch for metrics changes
-watch(() => props.metrics, () => {
-  createRoleChart()
-  createActivityChart()
-}, { deep: true })
+watch(
+  () => props.metrics,
+  () => {
+    createRoleChart()
+    createActivityChart()
+  },
+  { deep: true },
+)
 </script>
 
 <style scoped lang="scss">

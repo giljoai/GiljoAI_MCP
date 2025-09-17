@@ -601,3 +601,7 @@ def get_template_manager(
         _template_manager_instance.db_manager = db_manager
 
     return _template_manager_instance
+
+
+# Compatibility alias for backward compatibility
+TemplateManager = UnifiedTemplateManager

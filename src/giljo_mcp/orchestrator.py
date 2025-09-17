@@ -6,16 +6,17 @@ and multi-project concurrency with tenant isolation.
 """
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from .enums import AgentRole, ContextStatus, ProjectType, ProjectStatus
-from .models import Agent, Message, Project
-from .database import get_db_manager
-from .template_manager import TemplateManager
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-import logging
+
+from .database import get_db_manager
+from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
+from .models import Agent, Message, Project
+
 
 logger = logging.getLogger(__name__)
 

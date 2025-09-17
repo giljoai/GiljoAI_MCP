@@ -3,21 +3,21 @@ export const darkTheme = {
   dark: true,
   colors: {
     // Primary colors from Docs/Website colors.txt
-    background: '#0e1c2d',      // Darkest blue
-    surface: '#182739',         // Almost as dark blue
+    background: '#0e1c2d', // Darkest blue
+    surface: '#182739', // Almost as dark blue
     'surface-variant': '#1e3147', // A hue lighter dark blue
-    primary: '#315074',          // Med blue
+    primary: '#315074', // Med blue
     'primary-darken-1': '#1e3147',
     'primary-lighten-1': '#8f97b7', // Lightest blue
-    
+
     // Accent colors
-    secondary: '#ffc300',        // Yellow
-    success: '#67bd6d',         // Green
-    accent: '#c6298c',          // Pink red
-    info: '#8f97b7',            // Lightest blue
-    warning: '#d4a000',         // Darker yellow for better contrast
-    error: '#c6298c',           // Pink red
-    
+    secondary: '#ffc300', // Yellow
+    success: '#67bd6d', // Green
+    accent: '#c6298c', // Pink red
+    info: '#8f97b7', // Lightest blue
+    warning: '#d4a000', // Darker yellow for better contrast
+    error: '#c6298c', // Pink red
+
     // Text colors
     'on-background': '#e1e1e1', // White gray
     'on-surface': '#e1e1e1',
@@ -28,8 +28,8 @@ export const darkTheme = {
     'on-accent': '#e1e1e1',
     'on-info': '#0e1c2d',
     'on-warning': '#0e1c2d',
-    'on-error': '#e1e1e1'
-  }
+    'on-error': '#e1e1e1',
+  },
 }
 
 export const lightTheme = {
@@ -41,15 +41,15 @@ export const lightTheme = {
     primary: '#315074',
     'primary-darken-1': '#1e3147',
     'primary-lighten-1': '#8f97b7',
-    
+
     secondary: '#ffc300',
     success: '#67bd6d',
-    accent: '#8b5cf6',          // Purple for light theme
+    accent: '#8b5cf6', // Purple for light theme
     info: '#315074',
     warning: '#ffc300',
     error: '#c6298c',
-    
-    'on-background': '#363636',  // Dark gray for light theme
+
+    'on-background': '#363636', // Dark gray for light theme
     'on-surface': '#363636',
     'on-surface-variant': '#666666', // Caption text
     'on-primary': '#ffffff',
@@ -58,8 +58,8 @@ export const lightTheme = {
     'on-accent': '#ffffff',
     'on-info': '#ffffff',
     'on-warning': '#363636',
-    'on-error': '#ffffff'
-  }
+    'on-error': '#ffffff',
+  },
 }
 
 export default { darkTheme, lightTheme }

@@ -6,7 +6,7 @@ export const AGENT_STATUS = {
   WORKING: 'working',
   IDLE: 'idle',
   ERROR: 'error',
-  DECOMMISSIONED: 'decommissioned'
+  DECOMMISSIONED: 'decommissioned',
 }
 
 export const MESSAGE_TYPES = {
@@ -15,14 +15,14 @@ export const MESSAGE_TYPES = {
   HANDOFF: 'handoff',
   STATUS: 'status',
   ERROR: 'error',
-  COMPLETION: 'completion'
+  COMPLETION: 'completion',
 }
 
 export const MESSAGE_PRIORITY = {
   LOW: 'low',
   NORMAL: 'normal',
   HIGH: 'high',
-  URGENT: 'urgent'
+  URGENT: 'urgent',
 }
 
 export const TASK_STATUS = {
@@ -30,14 +30,14 @@ export const TASK_STATUS = {
   IN_PROGRESS: 'in_progress',
   COMPLETED: 'completed',
   FAILED: 'failed',
-  CANCELLED: 'cancelled'
+  CANCELLED: 'cancelled',
 }
 
 export const PROJECT_STATUS = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
   COMPLETED: 'completed',
-  ARCHIVED: 'archived'
+  ARCHIVED: 'archived',
 }
 
 export const JOB_TYPES = {
@@ -46,15 +46,15 @@ export const JOB_TYPES = {
   TESTING: 'testing',
   REVIEW: 'review',
   DEPLOYMENT: 'deployment',
-  DOCUMENTATION: 'documentation'
+  DOCUMENTATION: 'documentation',
 }
 
 export const REFRESH_INTERVALS = {
-  AGENT_HEALTH: 5000,      // 5 seconds
-  MESSAGES: 2000,          // 2 seconds
-  PROJECTS: 10000,         // 10 seconds
-  TASKS: 3000,            // 3 seconds
-  CONTEXT: 30000          // 30 seconds
+  AGENT_HEALTH: 5000, // 5 seconds
+  MESSAGES: 2000, // 2 seconds
+  PROJECTS: 10000, // 10 seconds
+  TASKS: 3000, // 3 seconds
+  CONTEXT: 30000, // 30 seconds
 }
 
 export const CHART_COLORS = {
@@ -63,7 +63,7 @@ export const CHART_COLORS = {
   success: '#67bd6d',
   error: '#c6298c',
   info: '#8f97b7',
-  warning: '#ffc300'
+  warning: '#ffc300',
 }
 
 export const MASCOT_STATES = {
@@ -72,5 +72,5 @@ export const MASCOT_STATES = {
   THINKING: 'giljo_mascot_thinker',
   WORKING: 'giljo_mascot_working',
   ERROR: 'error',
-  BLINK: 'blink'
+  BLINK: 'blink',
 }

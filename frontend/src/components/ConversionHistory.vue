@@ -64,7 +64,11 @@
         <v-icon size="large" color="grey" class="mb-2">mdi-timeline-clock-outline</v-icon>
         <div class="text-h6">No Conversion History</div>
         <div class="text-body-2 text-medium-emphasis">
-          {{ hasFilters ? 'No conversions match your filters' : 'No task conversions have been performed yet' }}
+          {{
+            hasFilters
+              ? 'No conversions match your filters'
+              : 'No task conversions have been performed yet'
+          }}
         </div>
       </div>
 
@@ -94,18 +98,16 @@
                 <v-icon class="mr-2" color="primary">mdi-arrow-right-bold-circle</v-icon>
                 <div class="flex-grow-1">
                   <div class="font-weight-medium">
-                    {{ conversion.task_count }} task{{ conversion.task_count > 1 ? 's' : '' }} → 
-                    {{ conversion.project_count }} project{{ conversion.project_count > 1 ? 's' : '' }}
+                    {{ conversion.task_count }} task{{ conversion.task_count > 1 ? 's' : '' }} →
+                    {{ conversion.project_count }} project{{
+                      conversion.project_count > 1 ? 's' : ''
+                    }}
                   </div>
                   <div class="text-caption text-medium-emphasis">
                     Strategy: {{ conversion.strategy || 'single' }}
                   </div>
                 </div>
-                <v-chip
-                  :color="getStatusColor(conversion.status)"
-                  size="small"
-                  variant="flat"
-                >
+                <v-chip :color="getStatusColor(conversion.status)" size="small" variant="flat">
                   {{ conversion.status }}
                 </v-chip>
               </div>
@@ -155,9 +157,9 @@
                       <v-row density="compact">
                         <v-col cols="6">
                           <div class="d-flex align-center mb-1">
-                            <v-icon 
-                              :color="conversion.options.preserveTaskLinks ? 'success' : 'grey'" 
-                              size="small" 
+                            <v-icon
+                              :color="conversion.options.preserveTaskLinks ? 'success' : 'grey'"
+                              size="small"
                               class="mr-2"
                             >
                               {{ conversion.options.preserveTaskLinks ? 'mdi-check' : 'mdi-close' }}
@@ -165,34 +167,40 @@
                             <span class="text-caption">Preserve task links</span>
                           </div>
                           <div class="d-flex align-center mb-1">
-                            <v-icon 
-                              :color="conversion.options.markTasksConverted ? 'success' : 'grey'" 
-                              size="small" 
+                            <v-icon
+                              :color="conversion.options.markTasksConverted ? 'success' : 'grey'"
+                              size="small"
                               class="mr-2"
                             >
-                              {{ conversion.options.markTasksConverted ? 'mdi-check' : 'mdi-close' }}
+                              {{
+                                conversion.options.markTasksConverted ? 'mdi-check' : 'mdi-close'
+                              }}
                             </v-icon>
                             <span class="text-caption">Mark tasks converted</span>
                           </div>
                         </v-col>
                         <v-col cols="6">
                           <div class="d-flex align-center mb-1">
-                            <v-icon 
-                              :color="conversion.options.assignToCurrentAgent ? 'success' : 'grey'" 
-                              size="small" 
+                            <v-icon
+                              :color="conversion.options.assignToCurrentAgent ? 'success' : 'grey'"
+                              size="small"
                               class="mr-2"
                             >
-                              {{ conversion.options.assignToCurrentAgent ? 'mdi-check' : 'mdi-close' }}
+                              {{
+                                conversion.options.assignToCurrentAgent ? 'mdi-check' : 'mdi-close'
+                              }}
                             </v-icon>
                             <span class="text-caption">Assign to agent</span>
                           </div>
                           <div class="d-flex align-center mb-1">
-                            <v-icon 
-                              :color="conversion.options.inheritTaskPriority ? 'success' : 'grey'" 
-                              size="small" 
+                            <v-icon
+                              :color="conversion.options.inheritTaskPriority ? 'success' : 'grey'"
+                              size="small"
                               class="mr-2"
                             >
-                              {{ conversion.options.inheritTaskPriority ? 'mdi-check' : 'mdi-close' }}
+                              {{
+                                conversion.options.inheritTaskPriority ? 'mdi-check' : 'mdi-close'
+                              }}
                             </v-icon>
                             <span class="text-caption">Inherit priority</span>
                           </div>
@@ -205,12 +213,7 @@
 
               <!-- Error Details -->
               <div v-if="conversion.status === 'failed' && conversion.error" class="mb-3">
-                <v-alert
-                  type="error"
-                  variant="outlined"
-                  density="compact"
-                  class="text-caption"
-                >
+                <v-alert type="error" variant="outlined" density="compact" class="text-caption">
                   <strong>Error:</strong> {{ conversion.error }}
                 </v-alert>
               </div>
@@ -256,10 +259,12 @@
             <v-col cols="6">
               <div class="text-subtitle-2 mb-1">Conversion ID</div>
               <div class="text-body-2 mb-3">{{ selectedConversion.id }}</div>
-              
+
               <div class="text-subtitle-2 mb-1">Created At</div>
-              <div class="text-body-2 mb-3">{{ formatFullTimestamp(selectedConversion.created_at) }}</div>
-              
+              <div class="text-body-2 mb-3">
+                {{ formatFullTimestamp(selectedConversion.created_at) }}
+              </div>
+
               <div class="text-subtitle-2 mb-1">Status</div>
               <v-chip
                 :color="getStatusColor(selectedConversion.status)"
@@ -273,18 +278,20 @@
             <v-col cols="6">
               <div class="text-subtitle-2 mb-1">Strategy</div>
               <div class="text-body-2 mb-3">{{ selectedConversion.strategy || 'single' }}</div>
-              
+
               <div class="text-subtitle-2 mb-1">Task Count</div>
               <div class="text-body-2 mb-3">{{ selectedConversion.task_count }}</div>
-              
+
               <div class="text-subtitle-2 mb-1">Project Count</div>
               <div class="text-body-2 mb-3">{{ selectedConversion.project_count }}</div>
             </v-col>
           </v-row>
-          
+
           <div v-if="selectedConversion.metadata" class="mt-4">
             <div class="text-subtitle-2 mb-2">Metadata</div>
-            <pre class="metadata-display">{{ JSON.stringify(selectedConversion.metadata, null, 2) }}</pre>
+            <pre class="metadata-display">{{
+              JSON.stringify(selectedConversion.metadata, null, 2)
+            }}</pre>
           </div>
         </v-card-text>
         <v-divider />
@@ -305,8 +312,8 @@ import { format, formatDistanceToNow } from 'date-fns'
 const props = defineProps({
   productId: {
     type: String,
-    default: null
-  }
+    default: null,
+  },
 })
 
 // Emits
@@ -327,21 +334,19 @@ const timeFilterOptions = [
   { title: 'All Time', value: 'all' },
   { title: 'Last 24 Hours', value: '24h' },
   { title: 'Last Week', value: '7d' },
-  { title: 'Last Month', value: '30d' }
+  { title: 'Last Month', value: '30d' },
 ]
 
 const statusFilterOptions = [
   { title: 'All Status', value: 'all' },
   { title: 'Completed', value: 'completed' },
   { title: 'Failed', value: 'failed' },
-  { title: 'In Progress', value: 'in_progress' }
+  { title: 'In Progress', value: 'in_progress' },
 ]
 
 // Computed
 const hasFilters = computed(() => {
-  return timeFilter.value !== 'all' || 
-         statusFilter.value !== 'all' || 
-         searchFilter.value
+  return timeFilter.value !== 'all' || statusFilter.value !== 'all' || searchFilter.value
 })
 
 const filteredHistory = computed(() => {
@@ -351,7 +356,7 @@ const filteredHistory = computed(() => {
   if (timeFilter.value !== 'all') {
     const now = new Date()
     const cutoff = new Date()
-    
+
     switch (timeFilter.value) {
       case '24h':
         cutoff.setHours(now.getHours() - 24)
@@ -363,21 +368,22 @@ const filteredHistory = computed(() => {
         cutoff.setDate(now.getDate() - 30)
         break
     }
-    
-    filtered = filtered.filter(c => new Date(c.created_at) >= cutoff)
+
+    filtered = filtered.filter((c) => new Date(c.created_at) >= cutoff)
   }
 
   // Status filter
   if (statusFilter.value !== 'all') {
-    filtered = filtered.filter(c => c.status === statusFilter.value)
+    filtered = filtered.filter((c) => c.status === statusFilter.value)
   }
 
   // Search filter
   if (searchFilter.value) {
     const search = searchFilter.value.toLowerCase()
-    filtered = filtered.filter(c => 
-      c.tasks?.some(t => t.title.toLowerCase().includes(search)) ||
-      c.projects?.some(p => p.name.toLowerCase().includes(search))
+    filtered = filtered.filter(
+      (c) =>
+        c.tasks?.some((t) => t.title.toLowerCase().includes(search)) ||
+        c.projects?.some((p) => p.name.toLowerCase().includes(search)),
     )
   }
 
@@ -390,7 +396,7 @@ function getStatusColor(status) {
     completed: 'success',
     failed: 'error',
     in_progress: 'warning',
-    pending: 'info'
+    pending: 'info',
   }
   return colors[status] || 'grey'
 }
@@ -400,7 +406,7 @@ function getStatusIcon(status) {
     completed: 'mdi-check',
     failed: 'mdi-alert',
     in_progress: 'mdi-clock',
-    pending: 'mdi-dots-horizontal'
+    pending: 'mdi-dots-horizontal',
   }
   return icons[status] || 'mdi-help'
 }
@@ -410,7 +416,7 @@ function getPriorityColor(priority) {
     low: 'grey',
     medium: 'info',
     high: 'warning',
-    critical: 'error'
+    critical: 'error',
   }
   return colors[priority] || 'grey'
 }
@@ -427,10 +433,12 @@ function canRollback(conversion) {
   // Can rollback if completed within last 24 hours and no dependencies
   const dayAgo = new Date()
   dayAgo.setHours(dayAgo.getHours() - 24)
-  
-  return conversion.status === 'completed' && 
-         new Date(conversion.created_at) > dayAgo &&
-         !conversion.has_dependencies
+
+  return (
+    conversion.status === 'completed' &&
+    new Date(conversion.created_at) > dayAgo &&
+    !conversion.has_dependencies
+  )
 }
 
 async function refreshHistory() {
@@ -448,18 +456,16 @@ async function refreshHistory() {
         tasks: [
           { id: 'task_1', title: 'Fix authentication bug', priority: 'high' },
           { id: 'task_2', title: 'Update user interface', priority: 'medium' },
-          { id: 'task_3', title: 'Add error handling', priority: 'medium' }
+          { id: 'task_3', title: 'Add error handling', priority: 'medium' },
         ],
-        projects: [
-          { id: 'proj_1', name: 'Authentication System Improvements' }
-        ],
+        projects: [{ id: 'proj_1', name: 'Authentication System Improvements' }],
         options: {
           preserveTaskLinks: true,
           markTasksConverted: true,
           assignToCurrentAgent: false,
-          inheritTaskPriority: true
+          inheritTaskPriority: true,
         },
-        has_dependencies: false
+        has_dependencies: false,
       },
       {
         id: 'conv_2',
@@ -473,20 +479,20 @@ async function refreshHistory() {
           { id: 'task_5', title: 'User guide update', priority: 'low' },
           { id: 'task_6', title: 'Database optimization', priority: 'high' },
           { id: 'task_7', title: 'Query performance', priority: 'high' },
-          { id: 'task_8', title: 'Index cleanup', priority: 'medium' }
+          { id: 'task_8', title: 'Index cleanup', priority: 'medium' },
         ],
         projects: [
           { id: 'proj_2', name: 'Documentation Tasks Project' },
-          { id: 'proj_3', name: 'Database Tasks Project' }
+          { id: 'proj_3', name: 'Database Tasks Project' },
         ],
         options: {
           preserveTaskLinks: true,
           markTasksConverted: true,
           assignToCurrentAgent: true,
-          inheritTaskPriority: true
+          inheritTaskPriority: true,
         },
-        has_dependencies: true
-      }
+        has_dependencies: true,
+      },
     ]
   } catch (error) {
     console.error('Failed to fetch conversion history:', error)
@@ -496,7 +502,9 @@ async function refreshHistory() {
 }
 
 async function rollbackConversion(conversion) {
-  if (!confirm(`Are you sure you want to rollback the conversion of ${conversion.task_count} tasks?`)) {
+  if (
+    !confirm(`Are you sure you want to rollback the conversion of ${conversion.task_count} tasks?`)
+  ) {
     return
   }
 
@@ -504,10 +512,10 @@ async function rollbackConversion(conversion) {
   try {
     // Mock rollback - would call API
     console.log('Rolling back conversion:', conversion.id)
-    
+
     // Update status
     conversion.status = 'rolled_back'
-    
+
     // Emit event to refresh tasks
     emit('conversion-rolled-back', conversion)
   } catch (error) {

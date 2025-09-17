@@ -5,7 +5,7 @@ export function useFocusTrap(containerRef, options = {}) {
     initialFocus = null,
     returnFocus = true,
     escapeDeactivates = true,
-    clickOutsideDeactivates = false
+    clickOutsideDeactivates = false,
   } = options
 
   let previouslyFocusedElement = null
@@ -20,17 +20,22 @@ export function useFocusTrap(containerRef, options = {}) {
     '[tabindex]:not([tabindex="-1"])',
     '[contenteditable]',
     'audio[controls]',
-    'video[controls]'
+    'video[controls]',
   ].join(',')
 
   function getFocusableElements() {
-    if (!containerRef.value) return []
-    return Array.from(containerRef.value.querySelectorAll(focusableSelectors))
-      .filter(el => el.offsetWidth > 0 && el.offsetHeight > 0) // Visible elements only
+    if (!containerRef.value) {
+      return []
+    }
+    return Array.from(containerRef.value.querySelectorAll(focusableSelectors)).filter(
+      (el) => el.offsetWidth > 0 && el.offsetHeight > 0,
+    ) // Visible elements only
   }
 
   function handleKeyDown(event) {
-    if (!isActive || !containerRef.value) return
+    if (!isActive || !containerRef.value) {
+      return
+    }
 
     // Handle Escape key
     if (escapeDeactivates && event.key === 'Escape') {
@@ -41,7 +46,7 @@ export function useFocusTrap(containerRef, options = {}) {
     // Handle Tab key for focus trap
     if (event.key === 'Tab') {
       const focusableElements = getFocusableElements()
-      
+
       if (focusableElements.length === 0) {
         event.preventDefault()
         return
@@ -78,15 +83,19 @@ export function useFocusTrap(containerRef, options = {}) {
   }
 
   function handleClickOutside(event) {
-    if (!isActive || !containerRef.value || !clickOutsideDeactivates) return
-    
+    if (!isActive || !containerRef.value || !clickOutsideDeactivates) {
+      return
+    }
+
     if (!containerRef.value.contains(event.target)) {
       deactivate()
     }
   }
 
   function activate() {
-    if (isActive) return
+    if (isActive) {
+      return
+    }
 
     isActive = true
     previouslyFocusedElement = document.activeElement
@@ -101,10 +110,11 @@ export function useFocusTrap(containerRef, options = {}) {
     // Set initial focus
     nextTick(() => {
       if (initialFocus) {
-        const element = typeof initialFocus === 'string' 
-          ? containerRef.value?.querySelector(initialFocus)
-          : initialFocus
-        
+        const element
+          = typeof initialFocus === 'string'
+            ? containerRef.value?.querySelector(initialFocus)
+            : initialFocus
+
         if (element) {
           element.focus()
           return
@@ -120,7 +130,9 @@ export function useFocusTrap(containerRef, options = {}) {
   }
 
   function deactivate() {
-    if (!isActive) return
+    if (!isActive) {
+      return
+    }
 
     isActive = false
 
@@ -136,12 +148,16 @@ export function useFocusTrap(containerRef, options = {}) {
   }
 
   function pause() {
-    if (!isActive) return
+    if (!isActive) {
+      return
+    }
     document.removeEventListener('keydown', handleKeyDown, true)
   }
 
   function unpause() {
-    if (!isActive) return
+    if (!isActive) {
+      return
+    }
     document.addEventListener('keydown', handleKeyDown, true)
   }
 
@@ -159,6 +175,6 @@ export function useFocusTrap(containerRef, options = {}) {
     activate,
     deactivate,
     pause,
-    unpause
+    unpause,
   }
 }

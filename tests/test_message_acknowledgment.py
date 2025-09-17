@@ -99,7 +99,9 @@ async def test_message_acknowledgment():
                 if not msg.acknowledged_by:
                     msg.acknowledged_by = []
 
-                msg.acknowledged_by.append({"agent_name": "implementer", "timestamp": datetime.now(timezone.utc).isoformat()})
+                msg.acknowledged_by.append(
+                    {"agent_name": "implementer", "timestamp": datetime.now(timezone.utc).isoformat()}
+                )
 
         await session.commit()
 

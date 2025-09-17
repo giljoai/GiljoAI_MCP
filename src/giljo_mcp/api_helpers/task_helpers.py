@@ -94,7 +94,9 @@ async def create_task_for_api(
                 "category": task.category,
                 "status": task.status,
                 "priority": task.priority,
-                "created_at": (task.created_at.isoformat() if task.created_at else datetime.now(timezone.utc).isoformat()),
+                "created_at": (
+                    task.created_at.isoformat() if task.created_at else datetime.now(timezone.utc).isoformat()
+                ),
             }
 
     except Exception as e:
