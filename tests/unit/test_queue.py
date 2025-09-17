@@ -3,22 +3,23 @@ Unit tests for MessageQueue class.
 Tests message routing, acknowledgments, persistence, and concurrent handling.
 """
 
-import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
-import uuid
-import json
-
 import sys
+import uuid
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.giljo_mcp.queue import MessageQueue, MessagePriority
 from src.giljo_mcp.enums import MessageStatus
-from src.giljo_mcp.models import Message, Agent
-from tests.fixtures.base_test import BaseAsyncTest
+from src.giljo_mcp.models import Message
+from src.giljo_mcp.queue import MessagePriority, MessageQueue
 from tests.fixtures.base_fixtures import TestData
+from tests.fixtures.base_test import BaseAsyncTest
 
 
 class TestMessageQueue(BaseAsyncTest):
@@ -47,7 +48,7 @@ class TestMessageQueue(BaseAsyncTest):
             content="Analyze the codebase",
             project_id=self.project_id,
             priority=MessagePriority.HIGH,
-            db_session=mock_session
+            db_session=mock_session,
         )
 
         assert result["status"] == "success"
@@ -67,7 +68,7 @@ class TestMessageQueue(BaseAsyncTest):
         agents = [
             Mock(name="agent1", project_id=self.project_id),
             Mock(name="agent2", project_id=self.project_id),
-            Mock(name="agent3", project_id=self.project_id)
+            Mock(name="agent3", project_id=self.project_id),
         ]
 
         mock_query = Mock()
@@ -77,10 +78,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session.commit = AsyncMock()
 
         result = await self.queue.broadcast_message(
-            from_agent="orchestrator",
-            content="System update",
-            project_id=self.project_id,
-            db_session=mock_session
+            from_agent="orchestrator", content="System update", project_id=self.project_id, db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -96,11 +94,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
 
-        metadata = {
-            "task_type": "analysis",
-            "requires_response": True,
-            "timeout": 300
-        }
+        metadata = {"task_type": "analysis", "requires_response": True, "timeout": 300}
 
         result = await self.queue.send_message(
             from_agent="orchestrator",
@@ -108,7 +102,7 @@ class TestMessageQueue(BaseAsyncTest):
             content="Analyze with metadata",
             project_id=self.project_id,
             metadata=metadata,
-            db_session=mock_session
+            db_session=mock_session,
         )
 
         assert result["message"].metadata == metadata
@@ -123,25 +117,21 @@ class TestMessageQueue(BaseAsyncTest):
         # Create mock messages
         messages = [
             Mock(id=str(uuid.uuid4()), content="Message 1", status=MessageStatus.PENDING.value),
-            Mock(id=str(uuid.uuid4()), content="Message 2", status=MessageStatus.PENDING.value)
+            Mock(id=str(uuid.uuid4()), content="Message 2", status=MessageStatus.PENDING.value),
         ]
 
         mock_query = Mock()
-        mock_query.filter_by.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value = messages
+        mock_query.filter_by.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value = (
+            messages
+        )
         mock_session.query.return_value = mock_query
 
         result = await self.queue.get_pending_messages(
-            agent_name="analyzer",
-            project_id=self.project_id,
-            limit=10,
-            db_session=mock_session
+            agent_name="analyzer", project_id=self.project_id, limit=10, db_session=mock_session
         )
 
         assert len(result) == 2
-        mock_query.filter_by.assert_called_with(
-            to_agent="analyzer",
-            project_id=self.project_id
-        )
+        mock_query.filter_by.assert_called_with(to_agent="analyzer", project_id=self.project_id)
 
     @pytest.mark.asyncio
     async def test_get_messages_by_priority(self):
@@ -149,28 +139,19 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
 
         # Create mock messages with different priorities
-        high_priority = Mock(
-            id="1",
-            priority=MessagePriority.CRITICAL.value,
-            created_at=datetime.utcnow()
-        )
-        medium_priority = Mock(
-            id="2",
-            priority=MessagePriority.NORMAL.value,
-            created_at=datetime.utcnow()
-        )
+        high_priority = Mock(id="1", priority=MessagePriority.CRITICAL.value, created_at=datetime.now(timezone.utc))
+        medium_priority = Mock(id="2", priority=MessagePriority.NORMAL.value, created_at=datetime.now(timezone.utc))
 
         mock_query = Mock()
         # Should order by priority DESC, created_at ASC
         mock_query.filter_by.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value = [
-            high_priority, medium_priority
+            high_priority,
+            medium_priority,
         ]
         mock_session.query.return_value = mock_query
 
         result = await self.queue.get_pending_messages(
-            agent_name="analyzer",
-            project_id=self.project_id,
-            db_session=mock_session
+            agent_name="analyzer", project_id=self.project_id, db_session=mock_session
         )
 
         assert result[0].priority == MessagePriority.CRITICAL.value
@@ -194,9 +175,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session.commit = AsyncMock()
 
         result = await self.queue.acknowledge_message(
-            message_id=mock_message.id,
-            agent_name="analyzer",
-            db_session=mock_session
+            message_id=mock_message.id, agent_name="analyzer", db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -213,7 +192,7 @@ class TestMessageQueue(BaseAsyncTest):
         # Create mock messages
         messages = []
         message_ids = []
-        for i in range(3):
+        for _i in range(3):
             msg = Mock(spec=Message)
             msg.id = str(uuid.uuid4())
             msg.status = MessageStatus.PENDING.value
@@ -227,9 +206,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session.commit = AsyncMock()
 
         result = await self.queue.acknowledge_array(
-            message_ids=message_ids,
-            agent_name="analyzer",
-            db_session=mock_session
+            message_ids=message_ids, agent_name="analyzer", db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -259,10 +236,7 @@ class TestMessageQueue(BaseAsyncTest):
         result_data = {"analysis": "complete", "findings": ["issue1", "issue2"]}
 
         result = await self.queue.complete_message(
-            message_id=mock_message.id,
-            agent_name="analyzer",
-            result=result_data,
-            db_session=mock_session
+            message_id=mock_message.id, agent_name="analyzer", result=result_data, db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -288,11 +262,7 @@ class TestMessageQueue(BaseAsyncTest):
 
         error_msg = "Failed to process: timeout"
 
-        result = await self.queue.fail_message(
-            message_id=mock_message.id,
-            error=error_msg,
-            db_session=mock_session
-        )
+        result = await self.queue.fail_message(message_id=mock_message.id, error=error_msg, db_session=mock_session)
 
         assert result["status"] == "success"
         assert mock_message.status == MessageStatus.FAILED.value
@@ -310,20 +280,14 @@ class TestMessageQueue(BaseAsyncTest):
         mock_message = Mock(spec=Message)
         mock_message.id = str(uuid.uuid4())
         mock_message.status = MessageStatus.FAILED.value
-        mock_message.metadata = {
-            "error": "Previous error",
-            "retry_count": 1
-        }
+        mock_message.metadata = {"error": "Previous error", "retry_count": 1}
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_message
         mock_session.query.return_value = mock_query
         mock_session.commit = AsyncMock()
 
-        result = await self.queue.retry_message(
-            message_id=mock_message.id,
-            db_session=mock_session
-        )
+        result = await self.queue.retry_message(message_id=mock_message.id, db_session=mock_session)
 
         assert result["status"] == "success"
         assert mock_message.status == MessageStatus.PENDING.value
@@ -345,11 +309,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_query.filter_by.return_value.first.return_value = mock_message
         mock_session.query.return_value = mock_query
 
-        result = await self.queue.retry_message(
-            message_id=mock_message.id,
-            max_retries=3,
-            db_session=mock_session
-        )
+        result = await self.queue.retry_message(message_id=mock_message.id, max_retries=3, db_session=mock_session)
 
         assert result["status"] == "error"
         assert "Max retries exceeded" in result["error"]
@@ -365,16 +325,13 @@ class TestMessageQueue(BaseAsyncTest):
         mock_query = Mock()
         mock_query.filter_by.side_effect = [
             Mock(count=Mock(return_value=10)),  # Pending
-            Mock(count=Mock(return_value=5)),   # Acknowledged
+            Mock(count=Mock(return_value=5)),  # Acknowledged
             Mock(count=Mock(return_value=20)),  # Completed
-            Mock(count=Mock(return_value=2))    # Failed
+            Mock(count=Mock(return_value=2)),  # Failed
         ]
         mock_session.query.return_value = mock_query
 
-        result = await self.queue.get_queue_stats(
-            project_id=self.project_id,
-            db_session=mock_session
-        )
+        result = await self.queue.get_queue_stats(project_id=self.project_id, db_session=mock_session)
 
         assert result["pending"] == 10
         assert result["acknowledged"] == 5
@@ -400,7 +357,7 @@ class TestMessageQueue(BaseAsyncTest):
                 to_agent=f"agent_{i}",
                 content=f"Message {i}",
                 project_id=self.project_id,
-                db_session=mock_session
+                db_session=mock_session,
             )
             tasks.append(task)
 
@@ -415,11 +372,11 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
 
         # Create messages with different timestamps
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         messages = [
             Mock(created_at=now - timedelta(minutes=5), priority=MessagePriority.NORMAL.value),
             Mock(created_at=now - timedelta(minutes=2), priority=MessagePriority.NORMAL.value),
-            Mock(created_at=now - timedelta(minutes=10), priority=MessagePriority.NORMAL.value)
+            Mock(created_at=now - timedelta(minutes=10), priority=MessagePriority.NORMAL.value),
         ]
 
         mock_query = Mock()
@@ -429,9 +386,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session.query.return_value = mock_query
 
         result = await self.queue.get_pending_messages(
-            agent_name="analyzer",
-            project_id=self.project_id,
-            db_session=mock_session
+            agent_name="analyzer", project_id=self.project_id, db_session=mock_session
         )
 
         # Should be ordered oldest first (FIFO for same priority)
@@ -446,23 +401,15 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
 
         # Create messages with different metadata
-        urgent_msg = Mock(
-            id="1",
-            metadata={"urgent": True, "task_type": "critical"}
-        )
-        normal_msg = Mock(
-            id="2",
-            metadata={"urgent": False, "task_type": "routine"}
-        )
+        urgent_msg = Mock(id="1", metadata={"urgent": True, "task_type": "critical"})
+        Mock(id="2", metadata={"urgent": False, "task_type": "routine"})
 
         mock_query = Mock()
         mock_query.filter_by.return_value.filter.return_value.all.return_value = [urgent_msg]
         mock_session.query.return_value = mock_query
 
         result = await self.queue.get_messages_by_metadata(
-            project_id=self.project_id,
-            metadata_filter={"urgent": True},
-            db_session=mock_session
+            project_id=self.project_id, metadata_filter={"urgent": True}, db_session=mock_session
         )
 
         assert len(result) == 1
@@ -474,7 +421,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
 
         # Mock old messages
-        cutoff_date = datetime.utcnow() - timedelta(days=7)
+        datetime.now(timezone.utc) - timedelta(days=7)
 
         mock_query = Mock()
         mock_query.filter_by.return_value.filter.return_value.filter.return_value.delete.return_value = 5
@@ -482,9 +429,7 @@ class TestMessageQueue(BaseAsyncTest):
         mock_session.commit = AsyncMock()
 
         result = await self.queue.purge_old_messages(
-            project_id=self.project_id,
-            older_than_days=7,
-            db_session=mock_session
+            project_id=self.project_id, older_than_days=7, db_session=mock_session
         )
 
         assert result["status"] == "success"

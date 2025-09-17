@@ -4,12 +4,14 @@ Provides backward compatibility for orchestrator.py while using the new template
 """
 
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
+
 from sqlalchemy import select
 
-from .models import AgentTemplate
 from .database import DatabaseManager
+from .models import AgentTemplate
 from .template_manager import apply_augmentation
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +27,8 @@ class TemplateAdapter:
     async def get_template(
         self,
         role: str,
-        variables: Optional[Dict[str, str]] = None,
-        augmentations: Optional[List[Dict[str, Any]]] = None,
+        variables: Optional[dict[str, str]] = None,
+        augmentations: Optional[list[dict[str, Any]]] = None,
     ) -> str:
         """
         Get a template from the database and apply substitutions
@@ -47,8 +49,8 @@ class TemplateAdapter:
                     # Query for the template
                     query = select(AgentTemplate).where(
                         AgentTemplate.role == role,
-                        AgentTemplate.is_active == True,
-                        AgentTemplate.is_default == True,
+                        AgentTemplate.is_active,
+                        AgentTemplate.is_default,
                     )
 
                     result = await session.execute(query)
@@ -56,9 +58,7 @@ class TemplateAdapter:
 
                     if not template:
                         # Fallback to name-based lookup
-                        query = select(AgentTemplate).where(
-                            AgentTemplate.name == role, AgentTemplate.is_active == True
-                        )
+                        query = select(AgentTemplate).where(AgentTemplate.name == role, AgentTemplate.is_active)
                         result = await session.execute(query)
                         template = result.scalar_one_or_none()
 
@@ -88,8 +88,8 @@ class TemplateAdapter:
             return content
 
         except Exception as e:
-            logger.error(f"Failed to get template for role '{role}': {e}")
-            return f"Error loading template: {str(e)}"
+            logger.exception(f"Failed to get template for role '{role}': {e}")
+            return f"Error loading template: {e!s}"
 
     # _apply_augmentation method removed - using unified apply_augmentation from template_manager
 
@@ -155,14 +155,11 @@ Your role is to review code and ensure quality."""
             return await self.adapter.get_template(
                 role="orchestrator", variables=variables, augmentations=augmentations
             )
-        else:
-            # Fallback to hardcoded template
-            content = self.ORCHESTRATOR_TEMPLATE.format(
-                project_name=project_name, project_mission=project_mission
-            )
-            if additional_context:
-                content += f"\n\nADDITIONAL CONTEXT:\n{additional_context}"
-            return content
+        # Fallback to hardcoded template
+        content = self.ORCHESTRATOR_TEMPLATE.format(project_name=project_name, project_mission=project_mission)
+        if additional_context:
+            content += f"\n\nADDITIONAL CONTEXT:\n{additional_context}"
+        return content
 
     async def generate_agent_mission(
         self,
@@ -194,34 +191,27 @@ Your role is to review code and ensure quality."""
                     }
                 )
 
-            return await self.adapter.get_template(
-                role=role.lower(), variables=variables, augmentations=augmentations
-            )
-        else:
-            # Fallback to hardcoded templates
-            template_map = {
-                "analyzer": self.ANALYZER_TEMPLATE,
-                "implementer": self.IMPLEMENTER_TEMPLATE,
-                "tester": self.TESTER_TEMPLATE,
-                "reviewer": self.REVIEWER_TEMPLATE,
-            }
+            return await self.adapter.get_template(role=role.lower(), variables=variables, augmentations=augmentations)
+        # Fallback to hardcoded templates
+        template_map = {
+            "analyzer": self.ANALYZER_TEMPLATE,
+            "implementer": self.IMPLEMENTER_TEMPLATE,
+            "tester": self.TESTER_TEMPLATE,
+            "reviewer": self.REVIEWER_TEMPLATE,
+        }
 
-            template = template_map.get(
-                role.lower(), "You are an agent for: {project_name}"
-            )
-            content = template.format(project_name=project_name)
+        template = template_map.get(role.lower(), "You are an agent for: {project_name}")
+        content = template.format(project_name=project_name)
 
-            if custom_mission:
-                content = content.replace("Your role", custom_mission)
+        if custom_mission:
+            content = content.replace("Your role", custom_mission)
 
-            if additional_instructions:
-                content += f"\n\n{additional_instructions}"
+        if additional_instructions:
+            content += f"\n\n{additional_instructions}"
 
-            return content
+        return content
 
-    def generate_parallel_startup_instructions(
-        self, agents: List[str], project_name: str
-    ) -> str:
+    def generate_parallel_startup_instructions(self, agents: list[str], project_name: str) -> str:
         """Generate instructions for parallel agent startup"""
         agent_list = ", ".join(agents)
         return f"""
@@ -258,9 +248,7 @@ Please prepare for handoff:
 4. Signal completion of handoff
 """
 
-    def generate_handoff_instructions(
-        self, from_agent: str, to_agent: str, handoff_context: Dict[str, Any]
-    ) -> str:
+    def generate_handoff_instructions(self, from_agent: str, to_agent: str, handoff_context: dict[str, Any]) -> str:
         """Generate handoff instructions between agents"""
         context_summary = "\n".join([f"- {k}: {v}" for k, v in handoff_context.items()])
 
@@ -284,7 +272,7 @@ The receiving agent should:
         """Generate acknowledgment instruction"""
         return "Please acknowledge receipt of this message by using the acknowledge_message() tool."
 
-    def get_behavioral_rules(self, role: str) -> List[str]:
+    def get_behavioral_rules(self, role: str) -> list[str]:
         """Get behavioral rules for a role"""
         # This would query the database for behavioral rules
         # For now, return default rules

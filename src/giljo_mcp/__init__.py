@@ -9,5 +9,6 @@ __author__ = "GiljoAI Team"
 
 from pathlib import Path
 
+
 # Project root directory (OS-neutral)
 PROJECT_ROOT = Path(__file__).parent.parent.parent

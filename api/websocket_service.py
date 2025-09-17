@@ -2,102 +2,70 @@
 WebSocket service helper functions for easy broadcasting
 """
 
-from typing import Optional, Dict, List, Any
 import logging
+from typing import Any, Optional
+
 
 logger = logging.getLogger(__name__)
 
+
 class WebSocketService:
     """Service class for WebSocket operations"""
-    
+
     @staticmethod
-    async def notify_agent_status(
-        websocket_manager,
-        agent_name: str,
-        project_id: str,
-        status: str,
-        **kwargs
-    ):
+    async def notify_agent_status(websocket_manager, agent_name: str, project_id: str, status: str, **kwargs):
         """Helper to notify agent status changes"""
         if not websocket_manager:
             return
-            
+
         try:
             await websocket_manager.broadcast_agent_update(
-                agent_name=agent_name,
-                project_id=project_id,
-                status=status,
-                additional_data=kwargs
+                agent_name=agent_name, project_id=project_id, status=status, additional_data=kwargs
             )
         except Exception as e:
-            logger.error(f"Failed to broadcast agent status: {e}")
-    
+            logger.exception(f"Failed to broadcast agent status: {e}")
+
     @staticmethod
-    async def notify_message(
-        websocket_manager,
-        message_id: str,
-        project_id: str,
-        update_type: str,
-        **kwargs
-    ):
+    async def notify_message(websocket_manager, message_id: str, project_id: str, update_type: str, **kwargs):
         """Helper to notify message updates"""
         if not websocket_manager:
             return
-            
+
         try:
             await websocket_manager.broadcast_message_update(
-                message_id=message_id,
-                project_id=project_id,
-                update_type=update_type,
-                message_data=kwargs
+                message_id=message_id, project_id=project_id, update_type=update_type, message_data=kwargs
             )
         except Exception as e:
-            logger.error(f"Failed to broadcast message update: {e}")
-    
+            logger.exception(f"Failed to broadcast message update: {e}")
+
     @staticmethod
     async def notify_progress(
-        websocket_manager,
-        operation_id: str,
-        project_id: str,
-        percentage: float,
-        message: str,
-        **kwargs
+        websocket_manager, operation_id: str, project_id: str, percentage: float, message: str, **kwargs
     ):
         """Helper to notify progress updates"""
         if not websocket_manager:
             return
-            
+
         try:
             await websocket_manager.broadcast_progress(
-                operation_id=operation_id,
-                project_id=project_id,
-                percentage=percentage,
-                message=message,
-                details=kwargs
+                operation_id=operation_id, project_id=project_id, percentage=percentage, message=message, details=kwargs
             )
         except Exception as e:
-            logger.error(f"Failed to broadcast progress: {e}")
-    
+            logger.exception(f"Failed to broadcast progress: {e}")
+
     @staticmethod
-    async def notify_project(
-        websocket_manager,
-        project_id: str,
-        update_type: str,
-        **kwargs
-    ):
+    async def notify_project(websocket_manager, project_id: str, update_type: str, **kwargs):
         """Helper to notify project updates"""
         if not websocket_manager:
             return
-            
+
         try:
             await websocket_manager.broadcast_project_update(
-                project_id=project_id,
-                update_type=update_type,
-                project_data=kwargs
+                project_id=project_id, update_type=update_type, project_data=kwargs
             )
         except Exception as e:
-            logger.error(f"Failed to broadcast project update: {e}")
-    
+            logger.exception(f"Failed to broadcast project update: {e}")
+
     @staticmethod
     async def send_notification(
         websocket_manager,
@@ -105,35 +73,35 @@ class WebSocketService:
         title: str,
         message: str,
         project_id: Optional[str] = None,
-        target_clients: Optional[List[str]] = None
+        target_clients: Optional[list[str]] = None,
     ):
         """Helper to send notifications"""
         if not websocket_manager:
             return
-            
+
         try:
             await websocket_manager.broadcast_notification(
                 notification_type=notification_type,
                 title=title,
                 message=message,
                 project_id=project_id,
-                target_clients=target_clients
+                target_clients=target_clients,
             )
         except Exception as e:
-            logger.error(f"Failed to send notification: {e}")
-    
+            logger.exception(f"Failed to send notification: {e}")
+
     @staticmethod
     async def notify_long_operation_start(
         websocket_manager,
         operation_id: str,
         project_id: str,
         operation_name: str,
-        estimated_duration: Optional[int] = None
+        estimated_duration: Optional[int] = None,
     ):
         """Notify start of a long-running operation"""
         if not websocket_manager:
             return
-            
+
         await WebSocketService.notify_progress(
             websocket_manager,
             operation_id=operation_id,
@@ -141,9 +109,9 @@ class WebSocketService:
             percentage=0,
             message=f"Starting {operation_name}",
             operation_name=operation_name,
-            estimated_duration=estimated_duration
+            estimated_duration=estimated_duration,
         )
-    
+
     @staticmethod
     async def notify_long_operation_progress(
         websocket_manager,
@@ -152,12 +120,12 @@ class WebSocketService:
         percentage: float,
         current_step: str,
         steps_completed: Optional[int] = None,
-        total_steps: Optional[int] = None
+        total_steps: Optional[int] = None,
     ):
         """Notify progress of a long-running operation"""
         if not websocket_manager:
             return
-            
+
         await WebSocketService.notify_progress(
             websocket_manager,
             operation_id=operation_id,
@@ -165,9 +133,9 @@ class WebSocketService:
             percentage=percentage,
             message=current_step,
             steps_completed=steps_completed,
-            total_steps=total_steps
+            total_steps=total_steps,
         )
-    
+
     @staticmethod
     async def notify_long_operation_complete(
         websocket_manager,
@@ -175,14 +143,14 @@ class WebSocketService:
         project_id: str,
         operation_name: str,
         success: bool = True,
-        result: Optional[str] = None
+        result: Optional[str] = None,
     ):
         """Notify completion of a long-running operation"""
         if not websocket_manager:
             return
-            
+
         message = f"{operation_name} completed successfully" if success else f"{operation_name} failed"
-        
+
         await WebSocketService.notify_progress(
             websocket_manager,
             operation_id=operation_id,
@@ -190,9 +158,9 @@ class WebSocketService:
             percentage=100 if success else -1,
             message=message,
             success=success,
-            result=result
+            result=result,
         )
-        
+
         # Also send a notification
         notification_type = "success" if success else "error"
         await WebSocketService.send_notification(
@@ -200,9 +168,9 @@ class WebSocketService:
             notification_type=notification_type,
             title=operation_name,
             message=message,
-            project_id=project_id
+            project_id=project_id,
         )
-    
+
     @staticmethod
     async def notify_sub_agent_spawned(
         websocket_manager,
@@ -212,12 +180,12 @@ class WebSocketService:
         project_id: str,
         mission: str,
         start_time: str,
-        **kwargs
+        **kwargs,
     ):
         """Helper to notify sub-agent spawn events"""
         if not websocket_manager:
             return
-            
+
         try:
             await websocket_manager.broadcast_sub_agent_spawned(
                 interaction_id=interaction_id,
@@ -226,11 +194,11 @@ class WebSocketService:
                 project_id=project_id,
                 mission=mission,
                 start_time=start_time,
-                meta_data=kwargs
+                meta_data=kwargs,
             )
         except Exception as e:
-            logger.error(f"Failed to broadcast sub-agent spawn: {e}")
-    
+            logger.exception(f"Failed to broadcast sub-agent spawn: {e}")
+
     @staticmethod
     async def notify_sub_agent_completed(
         websocket_manager,
@@ -240,12 +208,12 @@ class WebSocketService:
         project_id: str,
         status: str,
         duration_seconds: int,
-        **kwargs
+        **kwargs,
     ):
         """Helper to notify sub-agent completion events"""
         if not websocket_manager:
             return
-            
+
         try:
             await websocket_manager.broadcast_sub_agent_completed(
                 interaction_id=interaction_id,
@@ -257,23 +225,19 @@ class WebSocketService:
                 tokens_used=kwargs.get("tokens_used"),
                 result=kwargs.get("result"),
                 error_message=kwargs.get("error_message"),
-                meta_data=kwargs.get("meta_data")
+                meta_data=kwargs.get("meta_data"),
             )
         except Exception as e:
-            logger.error(f"Failed to broadcast sub-agent completion: {e}")
-    
+            logger.exception(f"Failed to broadcast sub-agent completion: {e}")
+
     @staticmethod
-    def get_connection_stats(websocket_manager) -> Dict[str, Any]:
+    def get_connection_stats(websocket_manager) -> dict[str, Any]:
         """Get WebSocket connection statistics"""
         if not websocket_manager:
-            return {
-                "active_connections": 0,
-                "total_subscriptions": 0,
-                "status": "unavailable"
-            }
-        
+            return {"active_connections": 0, "total_subscriptions": 0, "status": "unavailable"}
+
         return {
             "active_connections": websocket_manager.get_connection_count(),
             "total_subscriptions": websocket_manager.get_subscription_count(),
-            "status": "operational"
+            "status": "operational",
         }

@@ -5,34 +5,34 @@ Template initialization script for GiljoAI MCP.
 Loads default agent templates into the database.
 """
 
-import sys
-import os
-from pathlib import Path
 import argparse
-import re
-from typing import Dict, List, Optional
 import json
-from datetime import datetime
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
 from uuid import uuid4
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy.orm import Session
 from giljo_mcp.database import DatabaseManager, get_db_manager
 from giljo_mcp.models import AgentTemplate
 
 
-def extract_variables(template_content: str) -> List[str]:
+def extract_variables(template_content: str) -> list[str]:
     """Extract variable names from template content."""
     # Find all {variable_name} patterns
-    pattern = r'\{(\w+)\}'
+    pattern = r"\{(\w+)\}"
     matches = re.findall(pattern, template_content)
     # Return unique variables
     return list(set(matches))
 
 
-def get_default_templates() -> Dict[str, Dict]:
+def get_default_templates() -> dict[str, dict]:
     """Get the default template definitions."""
     templates = {
         "orchestrator": {
@@ -142,7 +142,7 @@ YOUR APPROACH:
 3. Write API documentation
 4. Update README and setup guides
 5. Document architectural decisions""",
-            "role": "documenter", 
+            "role": "documenter",
             "description": "Creates comprehensive documentation",
             "is_default": False
         }
@@ -158,42 +158,39 @@ def init_templates(
 ):
     """
     Initialize the database with default templates.
-    
+
     Args:
         database_url: Database URL. If None, uses default SQLite.
         tenant_key: Tenant key for multi-tenant isolation.
         product_id: Product ID for template association.
         force_reload: Whether to reload templates even if they exist.
     """
-    print(f"Initializing templates...")
-    
+
     # Create database manager
     db_manager = get_db_manager(database_url)
-    
+
     if database_url:
-        print(f"Using database: {database_url}")
+        pass
     else:
-        print(f"Using default SQLite database: {db_manager.database_url}")
-    
+        pass
+
     # Use defaults if not provided
     if not tenant_key:
         tenant_key = "default"
-        print(f"Using default tenant key: {tenant_key}")
-    
+
     if not product_id:
         product_id = str(uuid4())
-        print(f"Generated product ID: {product_id}")
-    
+
     try:
         # Get database session
         with db_manager.get_session() as session:
             # Get default templates
             templates = get_default_templates()
-            
+
             created_count = 0
             skipped_count = 0
             updated_count = 0
-            
+
             for name, template_def in templates.items():
                 # Check if template already exists
                 existing = session.query(AgentTemplate).filter(
@@ -201,26 +198,23 @@ def init_templates(
                     AgentTemplate.product_id == product_id,
                     AgentTemplate.name == name
                 ).first()
-                
+
                 if existing and not force_reload:
-                    print(f"  Template '{name}' already exists, skipping...")
                     skipped_count += 1
                     continue
-                elif existing and force_reload:
+                if existing and force_reload:
                     # Update existing template
-                    print(f"  Updating template '{name}'...")
                     existing.template_content = template_def["content"]
                     existing.role = template_def["role"]
                     existing.description = template_def["description"]
                     existing.is_default = template_def["is_default"]
                     existing.variables = json.dumps(extract_variables(template_def["content"]))
                     existing.version = "1.0.0"
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(timezone.utc)
                     updated_count += 1
                 else:
                     # Create new template
-                    print(f"  Creating template '{name}'...")
-                    
+
                     template = AgentTemplate(
                         id=str(uuid4()),
                         tenant_key=tenant_key,
@@ -243,39 +237,31 @@ def init_templates(
                         avg_generation_ms=0.0,
                         created_by="system"
                     )
-                    
+
                     session.add(template)
                     created_count += 1
-            
+
             # Commit all changes
             session.commit()
-            
-            print(f"\nTemplate initialization complete!")
-            print(f"  Created: {created_count} templates")
-            print(f"  Updated: {updated_count} templates")
-            print(f"  Skipped: {skipped_count} templates")
-            
+
+
             # Verify templates were created
-            total_templates = session.query(AgentTemplate).filter(
+            session.query(AgentTemplate).filter(
                 AgentTemplate.tenant_key == tenant_key,
                 AgentTemplate.product_id == product_id
             ).count()
-            
-            print(f"\nTotal templates in database: {total_templates}")
-            
+
+
             # List all templates
-            print("\nAvailable templates:")
             for template in session.query(AgentTemplate).filter(
                 AgentTemplate.tenant_key == tenant_key,
                 AgentTemplate.product_id == product_id
             ).all():
-                default_marker = " (DEFAULT)" if template.is_default else ""
-                print(f"  - {template.name} ({template.role}){default_marker}")
-            
+                pass
+
             return True
-        
-    except Exception as e:
-        print(f"Error initializing templates: {e}", file=sys.stderr)
+
+    except Exception:
         return False
     finally:
         db_manager.close()
@@ -284,39 +270,39 @@ def init_templates(
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(description="Initialize GiljoAI MCP templates")
-    
+
     parser.add_argument(
         "--database-url",
         help="Database URL (e.g., sqlite:///path/to/db.db or postgresql://user:pass@host/db)",
         default=None
     )
-    
+
     parser.add_argument(
         "--tenant-key",
         help="Tenant key for multi-tenant isolation",
         default="default"
     )
-    
+
     parser.add_argument(
         "--product-id",
         help="Product ID for template association",
         default=None
     )
-    
+
     parser.add_argument(
         "--force-reload",
         action="store_true",
         help="Force reload templates even if they already exist"
     )
-    
+
     parser.add_argument(
         "--postgresql",
         action="store_true",
         help="Use PostgreSQL with default local settings"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Build database URL if PostgreSQL flag is set
     database_url = args.database_url
     if args.postgresql and not database_url:
@@ -327,7 +313,7 @@ def main():
             username="postgres",
             password=os.getenv("DB_PASSWORD", "")
         )
-    
+
     # Initialize templates
     success = init_templates(
         database_url=database_url,
@@ -335,7 +321,7 @@ def main():
         product_id=args.product_id,
         force_reload=args.force_reload
     )
-    
+
     sys.exit(0 if success else 1)
 
 

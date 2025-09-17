@@ -1,15 +1,15 @@
 import json
-import time
 import subprocess
-import sys
+import time
 from datetime import datetime
+
 
 def check_messages():
     """Check for new messages from agents"""
     try:
         result = subprocess.run([
-            'python', '-c',
-            '''
+            "python", "-c",
+            """
 import requests
 import json
 
@@ -26,27 +26,20 @@ try:
         print(json.dumps({"status": "error", "code": response.status_code}))
 except Exception as e:
     print(json.dumps({"status": "error", "error": str(e)}))
-'''
-        ], capture_output=True, text=True)
-        
+"""
+        ], check=False, capture_output=True, text=True)
+
         if result.stdout:
             data = json.loads(result.stdout)
             if data.get("status") == "new_messages":
-                timestamp = datetime.now().strftime('%H:%M:%S')
-                print(f"\n[{timestamp}] 🔔 NEW MESSAGES - {data['count']} pending")
-                for msg in data.get("messages", []):
-                    print(f"  📨 From: {msg.get('from_agent', 'unknown')}")
+                datetime.now().strftime("%H:%M:%S")
+                for _msg in data.get("messages", []):
+                    pass
                 return True
-    except Exception as e:
-        print(f"[ERROR] {str(e)}")
+    except Exception:
+        pass
     return False
 
-print("=" * 50)
-print("FAST MESSAGE MONITOR - 10 SECOND INTERVALS")
-print("=" * 50)
-print("[MONITOR] Starting fast message monitor for orchestrator...")
-print("[MONITOR] Checking every 10 seconds for new messages...")
-print("-" * 50)
 
 while True:
     check_messages()

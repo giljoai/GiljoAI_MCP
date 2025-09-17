@@ -3,9 +3,10 @@ Test data factories for consistent test data generation
 """
 
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
-from src.giljo_mcp.models import Project, Agent, Message, Task
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from src.giljo_mcp.models import Agent, Message, Project
 
 
 class TestDataFactory:
@@ -16,8 +17,8 @@ class TestDataFactory:
         name: str = "Test Project",
         mission: str = "Test mission for integration testing",
         status: str = "active",
-        tenant_key: Optional[str] = None
-    ) -> Dict[str, Any]:
+        tenant_key: Optional[str] = None,
+    ) -> dict[str, Any]:
         """Create project data dictionary"""
         return {
             "id": str(uuid.uuid4()),
@@ -25,17 +26,14 @@ class TestDataFactory:
             "mission": mission,
             "status": status,
             "tenant_key": tenant_key or str(uuid.uuid4()),
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
 
     @staticmethod
     def create_agent_data(
-        project_id: str,
-        name: str = "test_agent",
-        agent_type: str = "worker",
-        status: str = "active"
-    ) -> Dict[str, Any]:
+        project_id: str, name: str = "test_agent", agent_type: str = "worker", status: str = "active"
+    ) -> dict[str, Any]:
         """Create agent data dictionary"""
         return {
             "id": str(uuid.uuid4()),
@@ -43,8 +41,8 @@ class TestDataFactory:
             "type": agent_type,
             "status": status,
             "project_id": project_id,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
 
     @staticmethod
@@ -54,8 +52,8 @@ class TestDataFactory:
         content: str,
         project_id: str,
         message_type: str = "direct",
-        priority: str = "normal"
-    ) -> Dict[str, Any]:
+        priority: str = "normal",
+    ) -> dict[str, Any]:
         """Create message data dictionary"""
         return {
             "id": str(uuid.uuid4()),
@@ -66,15 +64,11 @@ class TestDataFactory:
             "type": message_type,
             "priority": priority,
             "status": "pending",
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
         }
 
     @staticmethod
-    def create_task_data(
-        content: str,
-        category: str = "general",
-        priority: str = "medium"
-    ) -> Dict[str, Any]:
+    def create_task_data(content: str, category: str = "general", priority: str = "medium") -> dict[str, Any]:
         """Create task data dictionary"""
         return {
             "id": str(uuid.uuid4()),
@@ -82,7 +76,7 @@ class TestDataFactory:
             "category": category,
             "priority": priority,
             "status": "pending",
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc),
         }
 
 

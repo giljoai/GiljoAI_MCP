@@ -10,21 +10,23 @@ This module provides a robust configuration system that:
 - Supports hot-reloading of configuration
 """
 
+import ipaddress
+import logging
 import os
-import yaml
-from pathlib import Path
-from typing import Dict, Any, Optional
+import socket
+import threading
 from dataclasses import dataclass, field
 from enum import Enum
-import logging
+from pathlib import Path
+from typing import Any, Optional
+
+import yaml
+from watchdog.events import FileModifiedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent
-import threading
-import ipaddress
-import socket
 
 # Import from centralized exceptions
 from .exceptions import ConfigValidationError
+
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +100,7 @@ class DatabaseConfig:
 
             db_path.parent.mkdir(parents=True, exist_ok=True)
             return f"sqlite:///{db_path.as_posix()}"
-        elif self.type == "postgresql":
+        if self.type == "postgresql":
             # Try to use DatabaseManager's method if available
             try:
                 from giljo_mcp.database import DatabaseManager
@@ -106,11 +108,7 @@ class DatabaseConfig:
                 url = DatabaseManager.build_postgresql_url(
                     host=self.pg_host,
                     port=self.pg_port,
-                    database=(
-                        self.pg_database
-                        if not tenant_key
-                        else f"{self.pg_database}_{tenant_key}"
-                    ),
+                    database=(self.pg_database if not tenant_key else f"{self.pg_database}_{tenant_key}"),
                     username=self.pg_user,
                     password=self.pg_password or os.getenv("DB_PASSWORD", ""),
                 )
@@ -124,8 +122,7 @@ class DatabaseConfig:
                 if tenant_key:
                     # Use database name with tenant suffix for complete isolation
                     return f"{base_url}/{self.pg_database}_{tenant_key}"
-                else:
-                    return f"{base_url}/{self.pg_database}"
+                return f"{base_url}/{self.pg_database}"
         else:
             raise ValueError(f"Unsupported database type: {self.type}")
 
@@ -157,18 +154,12 @@ class LoggingConfig:
         else:
             max_bytes = int(size_str)
 
-        handler = RotatingFileHandler(
-            self.file, maxBytes=max_bytes, backupCount=self.max_files
-        )
+        handler = RotatingFileHandler(self.file, maxBytes=max_bytes, backupCount=self.max_files)
 
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
 
-        logging.basicConfig(
-            level=log_level, handlers=[handler, logging.StreamHandler()]
-        )
+        logging.basicConfig(level=log_level, handlers=[handler, logging.StreamHandler()])
 
 
 @dataclass
@@ -298,7 +289,7 @@ class ConfigManager:
     def _load_from_file(self):
         """Load configuration from YAML file."""
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
 
             # Server configuration
@@ -309,35 +300,21 @@ class ConfigManager:
                 if "mcp" in srv:
                     self.server.mcp_host = srv["mcp"].get("host", self.server.mcp_host)
                     self.server.mcp_port = srv["mcp"].get("port", self.server.mcp_port)
-                    self.server.mcp_transport = srv["mcp"].get(
-                        "transport", self.server.mcp_transport
-                    )
+                    self.server.mcp_transport = srv["mcp"].get("transport", self.server.mcp_transport)
 
                 if "api" in srv:
                     self.server.api_host = srv["api"].get("host", self.server.api_host)
                     self.server.api_port = srv["api"].get("port", self.server.api_port)
-                    self.server.api_cors_enabled = srv["api"].get(
-                        "cors_enabled", self.server.api_cors_enabled
-                    )
+                    self.server.api_cors_enabled = srv["api"].get("cors_enabled", self.server.api_cors_enabled)
 
                 if "websocket" in srv:
-                    self.server.websocket_enabled = srv["websocket"].get(
-                        "enabled", self.server.websocket_enabled
-                    )
-                    self.server.websocket_port = srv["websocket"].get(
-                        "port", self.server.websocket_port
-                    )
+                    self.server.websocket_enabled = srv["websocket"].get("enabled", self.server.websocket_enabled)
+                    self.server.websocket_port = srv["websocket"].get("port", self.server.websocket_port)
 
                 if "dashboard" in srv:
-                    self.server.dashboard_enabled = srv["dashboard"].get(
-                        "enabled", self.server.dashboard_enabled
-                    )
-                    self.server.dashboard_host = srv["dashboard"].get(
-                        "host", self.server.dashboard_host
-                    )
-                    self.server.dashboard_port = srv["dashboard"].get(
-                        "port", self.server.dashboard_port
-                    )
+                    self.server.dashboard_enabled = srv["dashboard"].get("enabled", self.server.dashboard_enabled)
+                    self.server.dashboard_host = srv["dashboard"].get("host", self.server.dashboard_host)
+                    self.server.dashboard_port = srv["dashboard"].get("port", self.server.dashboard_port)
                     self.server.dashboard_dev_port = srv["dashboard"].get(
                         "dev_server_port", self.server.dashboard_dev_port
                     )
@@ -348,24 +325,16 @@ class ConfigManager:
                 self.database.type = db.get("type", self.database.type)
 
                 if "sqlite" in db:
-                    self.database.sqlite_path = Path(
-                        db["sqlite"].get("path", self.database.sqlite_path)
-                    )
+                    self.database.sqlite_path = Path(db["sqlite"].get("path", self.database.sqlite_path))
 
                 if "postgresql" in db:
                     pg = db["postgresql"]
                     self.database.pg_host = pg.get("host", self.database.pg_host)
                     self.database.pg_port = pg.get("port", self.database.pg_port)
-                    self.database.pg_database = pg.get(
-                        "database", self.database.pg_database
-                    )
+                    self.database.pg_database = pg.get("database", self.database.pg_database)
                     self.database.pg_user = pg.get("user", self.database.pg_user)
-                    self.database.pg_password = pg.get(
-                        "password", self.database.pg_password
-                    )
-                    self.database.pg_pool_size = pg.get(
-                        "pool_size", self.database.pg_pool_size
-                    )
+                    self.database.pg_password = pg.get("password", self.database.pg_password)
+                    self.database.pg_pool_size = pg.get("pool_size", self.database.pg_pool_size)
 
             # Logging configuration
             if "logging" in data:
@@ -379,41 +348,23 @@ class ConfigManager:
             if "session" in data:
                 sess = data["session"]
                 self.session.timeout = sess.get("timeout", self.session.timeout)
-                self.session.max_concurrent = sess.get(
-                    "max_concurrent", self.session.max_concurrent
-                )
-                self.session.cleanup_interval = sess.get(
-                    "cleanup_interval", self.session.cleanup_interval
-                )
+                self.session.max_concurrent = sess.get("max_concurrent", self.session.max_concurrent)
+                self.session.cleanup_interval = sess.get("cleanup_interval", self.session.cleanup_interval)
 
             # Agent configuration
             if "agents" in data:
                 ag = data["agents"]
-                self.agents.max_per_project = ag.get(
-                    "max_per_project", self.agents.max_per_project
-                )
-                self.agents.context_limit = ag.get(
-                    "context_limit", self.agents.context_limit
-                )
-                self.agents.handoff_threshold = ag.get(
-                    "handoff_threshold", self.agents.handoff_threshold
-                )
+                self.agents.max_per_project = ag.get("max_per_project", self.agents.max_per_project)
+                self.agents.context_limit = ag.get("context_limit", self.agents.context_limit)
+                self.agents.handoff_threshold = ag.get("handoff_threshold", self.agents.handoff_threshold)
 
             # Message configuration
             if "messages" in data:
                 msg = data["messages"]
-                self.messages.max_queue_size = msg.get(
-                    "max_queue_size", self.messages.max_queue_size
-                )
-                self.messages.batch_size = msg.get(
-                    "batch_size", self.messages.batch_size
-                )
-                self.messages.retry_attempts = msg.get(
-                    "retry_attempts", self.messages.retry_attempts
-                )
-                self.messages.retry_delay = msg.get(
-                    "retry_delay", self.messages.retry_delay
-                )
+                self.messages.max_queue_size = msg.get("max_queue_size", self.messages.max_queue_size)
+                self.messages.batch_size = msg.get("batch_size", self.messages.batch_size)
+                self.messages.retry_attempts = msg.get("retry_attempts", self.messages.retry_attempts)
+                self.messages.retry_delay = msg.get("retry_delay", self.messages.retry_delay)
 
             # Tenant configuration
             if "tenant" in data:
@@ -421,31 +372,19 @@ class ConfigManager:
                 self.tenant.enabled = tn.get("enabled", self.tenant.enabled)
                 self.tenant.default_key = tn.get("default_key", self.tenant.default_key)
                 self.tenant.key_header = tn.get("key_header", self.tenant.key_header)
-                self.tenant.isolation_strict = tn.get(
-                    "isolation_strict", self.tenant.isolation_strict
-                )
+                self.tenant.isolation_strict = tn.get("isolation_strict", self.tenant.isolation_strict)
 
             # Feature flags
             if "features" in data:
                 feat = data["features"]
-                self.features.vision_chunking = feat.get(
-                    "vision_chunking", self.features.vision_chunking
-                )
-                self.features.multi_tenant = feat.get(
-                    "multi_tenant", self.features.multi_tenant
-                )
-                self.features.websocket_updates = feat.get(
-                    "websocket_updates", self.features.websocket_updates
-                )
-                self.features.auto_handoff = feat.get(
-                    "auto_handoff", self.features.auto_handoff
-                )
-                self.features.dynamic_discovery = feat.get(
-                    "dynamic_discovery", self.features.dynamic_discovery
-                )
+                self.features.vision_chunking = feat.get("vision_chunking", self.features.vision_chunking)
+                self.features.multi_tenant = feat.get("multi_tenant", self.features.multi_tenant)
+                self.features.websocket_updates = feat.get("websocket_updates", self.features.websocket_updates)
+                self.features.auto_handoff = feat.get("auto_handoff", self.features.auto_handoff)
+                self.features.dynamic_discovery = feat.get("dynamic_discovery", self.features.dynamic_discovery)
 
         except Exception as e:
-            logger.error(f"Error loading config file: {e}")
+            logger.exception(f"Error loading config file: {e}")
             raise ConfigValidationError(f"Failed to load config file: {e}")
 
     def _load_from_env(self):
@@ -532,9 +471,8 @@ class ConfigManager:
                     pass
 
         # Check for security settings
-        if self.server.api_key:
-            if self.server.mode == DeploymentMode.LOCAL:
-                self.server.mode = DeploymentMode.LAN
+        if self.server.api_key and self.server.mode == DeploymentMode.LOCAL:
+            self.server.mode = DeploymentMode.LAN
 
     def _apply_mode_settings(self):
         """Apply mode-specific configuration adjustments."""
@@ -562,9 +500,7 @@ class ConfigManager:
         elif self.server.mode == DeploymentMode.WAN:
             # WAN mode: require strong auth, recommend PostgreSQL
             if self.database.type == "sqlite":
-                logger.warning(
-                    "SQLite is not recommended for WAN mode. Consider using PostgreSQL."
-                )
+                logger.warning("SQLite is not recommended for WAN mode. Consider using PostgreSQL.")
 
             if not self.server.api_key:
                 raise ConfigValidationError("API key is required for WAN mode")
@@ -611,14 +547,11 @@ class ConfigManager:
             errors.append("Batch size cannot exceed max queue size")
 
         # Mode-specific validation
-        if self.server.mode == DeploymentMode.WAN:
-            if not self.server.api_key:
-                errors.append("API key is required for WAN mode")
+        if self.server.mode == DeploymentMode.WAN and not self.server.api_key:
+            errors.append("API key is required for WAN mode")
 
         if errors:
-            error_msg = "Configuration validation failed:\n" + "\n".join(
-                f"  - {e}" for e in errors
-            )
+            error_msg = "Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
             raise ConfigValidationError(error_msg)
 
     def reload(self):
@@ -630,13 +563,11 @@ class ConfigManager:
             self.load()
 
             if old_mode != self.server.mode:
-                logger.warning(
-                    f"Deployment mode changed from {old_mode.value} to {self.server.mode.value}"
-                )
+                logger.warning(f"Deployment mode changed from {old_mode.value} to {self.server.mode.value}")
 
             logger.info("Configuration reloaded successfully")
         except Exception as e:
-            logger.error(f"Failed to reload configuration: {e}")
+            logger.exception(f"Failed to reload configuration: {e}")
             raise
 
     def _setup_file_watcher(self):
@@ -661,7 +592,7 @@ class ConfigManager:
             self._observer.join()
             self._observer = None
 
-    def get_all_settings(self) -> Dict[str, Any]:
+    def get_all_settings(self) -> dict[str, Any]:
         """Get all configuration settings as a dictionary."""
         return {
             "server": {
@@ -765,18 +696,14 @@ class ConfigManager:
         # TenantManager uses the base database for tenant metadata
         db_manager = self.create_database_manager()
 
-        return TenantManager(
-            db_manager=db_manager, multi_tenant_enabled=self.features.multi_tenant
-        )
+        return TenantManager(db_manager=db_manager, multi_tenant_enabled=self.features.multi_tenant)
 
     def save_to_file(self, path: Optional[Path] = None):
         """Save current configuration to a YAML file."""
         save_path = path or self.config_path
 
         with open(save_path, "w", encoding="utf-8") as f:
-            yaml.dump(
-                self.get_all_settings(), f, default_flow_style=False, sort_keys=False
-            )
+            yaml.dump(self.get_all_settings(), f, default_flow_style=False, sort_keys=False)
 
         logger.info(f"Configuration saved to {save_path}")
 

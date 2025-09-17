@@ -7,17 +7,20 @@ This is a one-time migration for Project 3.9.b.
 import asyncio
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-from datetime import datetime
+
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.giljo_mcp.config import load_config
+from src.giljo_mcp.mission_templates import MissionTemplateGenerator
+
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.mission_templates import MissionTemplateGenerator
-from src.giljo_mcp.config import load_config
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,10 +28,10 @@ logger = logging.getLogger(__name__)
 
 async def migrate_templates():
     """Migrate hardcoded templates to database"""
-    
+
     # Load configuration
     config = load_config()
-    
+
     # Build database URL
     if config.database.type == "postgresql":
         db_url = DatabaseManager.build_postgresql_url(
@@ -40,23 +43,23 @@ async def migrate_templates():
         )
     else:
         db_url = DatabaseManager.build_sqlite_url(str(config.database.sqlite_path))
-    
+
     # Create database manager
     db_manager = DatabaseManager(db_url, is_async=True)
-    
+
     try:
         # Ensure tables exist
         await db_manager.create_tables_async()
         logger.info("Database tables verified/created")
-        
+
         # Get a session
         async with db_manager.get_session() as session:
             # Create template generator to access templates
             generator = MissionTemplateGenerator()
-            
+
             # Default tenant key for system templates
             tenant_key = str(uuid4())
-            
+
             # Define templates to migrate
             templates_to_migrate = [
                 {
@@ -169,7 +172,7 @@ async def migrate_templates():
 PROJECT GOAL: {project_mission}
 
 YOUR MISSION:
-Create comprehensive documentation for all project deliverables, ensuring future developers 
+Create comprehensive documentation for all project deliverables, ensuring future developers
 and users can understand and maintain the system.
 
 YOUR RESPONSIBILITIES:
@@ -209,7 +212,7 @@ SUCCESS CRITERIA:
                     "is_default": True
                 }
             ]
-            
+
             # Migrate each template
             migrated_count = 0
             for template_data in templates_to_migrate:
@@ -221,15 +224,15 @@ SUCCESS CRITERIA:
                         AgentTemplate.role == template_data.get("role")
                     )
                 )
-                
+
                 if existing.scalar_one_or_none():
                     logger.info(f"Template '{template_data['name']}' already exists, skipping")
                     continue
-                
+
                 # Extract variables from template
                 import re
-                variables = list(set(re.findall(r'\{(\w+)\}', template_data["template_content"])))
-                
+                variables = list(set(re.findall(r"\{(\w+)\}", template_data["template_content"])))
+
                 # Create new template
                 template = AgentTemplate(
                     tenant_key=tenant_key,
@@ -245,25 +248,25 @@ SUCCESS CRITERIA:
                     is_active=True,
                     is_default=template_data.get("is_default", False),
                     created_by="migration_script",
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
-                
+
                 session.add(template)
                 migrated_count += 1
                 logger.info(f"Migrated template: {template_data['name']}")
-            
+
             # Commit all changes
             await session.commit()
             logger.info(f"Successfully migrated {migrated_count} templates to database")
-            
+
             # Verify migration
             result = await session.execute(select(AgentTemplate))
             all_templates = result.scalars().all()
             logger.info(f"Total templates in database: {len(all_templates)}")
-            
+
             for template in all_templates:
                 logger.info(f"  - {template.name} ({template.role}): v{template.version}")
-    
+
     finally:
         await db_manager.close_async()
         logger.info("Database connection closed")

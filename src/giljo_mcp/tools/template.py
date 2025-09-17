@@ -6,28 +6,22 @@ Provides tools for managing agent templates with versioning and augmentation.
 import logging
 import time
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Optional
 
 from fastmcp import FastMCP
-from sqlalchemy import select, update, and_
+from sqlalchemy import and_, select, update
 from sqlalchemy.orm import selectinload
 
-from ..database import DatabaseManager
-from ..models import (
-    AgentTemplate,
-    TemplateArchive,
-    TemplateAugmentation,
-    TemplateUsageStats,
-)
-from ..template_manager import process_template, extract_variables
-from ..tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from giljo_mcp.template_manager import extract_variables, process_template
+from giljo_mcp.tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
 
-def register_template_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_template_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register template management tools with the MCP server"""
 
     @mcp.tool()
@@ -36,7 +30,7 @@ def register_template_tools(
         category: Optional[str] = None,
         role: Optional[str] = None,
         is_active: Optional[bool] = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         List available agent templates with optional filters
 
@@ -88,11 +82,7 @@ def register_template_tools(
                             "usage_count": template.usage_count,
                             "variables": template.variables or [],
                             "tags": template.tags or [],
-                            "created_at": (
-                                template.created_at.isoformat()
-                                if template.created_at
-                                else None
-                            ),
+                            "created_at": (template.created_at.isoformat() if template.created_at else None),
                         }
                     )
 
@@ -103,16 +93,16 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to list templates: {e}")
+            logger.exception(f"Failed to list templates: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def get_agent_template(
         name: str,
         product_id: Optional[str] = None,
-        augmentations: Optional[List[Dict[str, Any]]] = None,
-        variables: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        augmentations: Optional[list[dict[str, Any]]] = None,
+        variables: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         """
         Get a specific agent template with optional runtime augmentations
 
@@ -129,15 +119,13 @@ def register_template_tools(
             start_time = time.time()
             async with db_manager.get_session_async() as session:
                 # Find the template
-                query = select(AgentTemplate).where(
-                    AgentTemplate.name == name, AgentTemplate.is_active == True
-                )
+                query = select(AgentTemplate).where(AgentTemplate.name == name, AgentTemplate.is_active)
 
                 if product_id:
                     query = query.where(AgentTemplate.product_id == product_id)
                 else:
                     # Get default template if no product specified
-                    query = query.where(AgentTemplate.is_default == True)
+                    query = query.where(AgentTemplate.is_default)
 
                 # Load with augmentations relationship
                 query = query.options(selectinload(AgentTemplate.augmentations))
@@ -149,9 +137,7 @@ def register_template_tools(
                     return {"success": False, "error": f"Template '{name}' not found"}
 
                 # Process template with unified function
-                db_augmentations = [
-                    aug for aug in template.augmentations if aug.is_active
-                ]
+                db_augmentations = [aug for aug in template.augmentations if aug.is_active]
                 all_augmentations = db_augmentations + (augmentations or [])
 
                 content = process_template(
@@ -168,9 +154,7 @@ def register_template_tools(
                 template.last_used_at = datetime.utcnow()
                 if template.avg_generation_ms:
                     # Rolling average
-                    template.avg_generation_ms = (
-                        template.avg_generation_ms * 0.9 + generation_ms * 0.1
-                    )
+                    template.avg_generation_ms = template.avg_generation_ms * 0.9 + generation_ms * 0.1
                 else:
                     template.avg_generation_ms = float(generation_ms)
 
@@ -181,9 +165,7 @@ def register_template_tools(
                     template_id=template.id,
                     generation_ms=generation_ms,
                     variables_used=variables or {},
-                    augmentations_applied=[
-                        aug.get("name", "") for aug in (augmentations or [])
-                    ],
+                    augmentations_applied=[aug.get("name", "") for aug in (augmentations or [])],
                 )
                 session.add(stats)
 
@@ -204,7 +186,7 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get template: {e}")
+            logger.exception(f"Failed to get template: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -216,11 +198,11 @@ def register_template_tools(
         role: Optional[str] = None,
         project_type: Optional[str] = None,
         description: Optional[str] = None,
-        behavioral_rules: Optional[List[str]] = None,
-        success_criteria: Optional[List[str]] = None,
-        tags: Optional[List[str]] = None,
+        behavioral_rules: Optional[list[str]] = None,
+        success_criteria: Optional[list[str]] = None,
+        tags: Optional[list[str]] = None,
         is_default: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new agent template
 
@@ -293,7 +275,7 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to create template: {e}")
+            logger.exception(f"Failed to create template: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -301,11 +283,11 @@ def register_template_tools(
         template_id: str,
         template_content: Optional[str] = None,
         description: Optional[str] = None,
-        behavioral_rules: Optional[List[str]] = None,
-        success_criteria: Optional[List[str]] = None,
-        tags: Optional[List[str]] = None,
+        behavioral_rules: Optional[list[str]] = None,
+        success_criteria: Optional[list[str]] = None,
+        tags: Optional[list[str]] = None,
         archive_reason: str = "Manual update",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update an existing template (auto-archives previous version)
 
@@ -359,7 +341,7 @@ def register_template_tools(
                 if template_content:
                     template.template_content = template_content
                     # Re-extract variables
-                    variables = extract_variables(template_content)
+                    extract_variables(template_content)
 
                 if description is not None:
                     template.description = description
@@ -378,9 +360,7 @@ def register_template_tools(
 
                 await session.commit()
 
-                logger.info(
-                    f"Updated template '{template.name}' to version {template.version}"
-                )
+                logger.info(f"Updated template '{template.name}' to version {template.version}")
 
                 return {
                     "success": True,
@@ -391,13 +371,11 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to update template: {e}")
+            logger.exception(f"Failed to update template: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def archive_template(
-        template_id: str, reason: str, archive_type: str = "manual"
-    ) -> Dict[str, Any]:
+    async def archive_template(template_id: str, reason: str, archive_type: str = "manual") -> dict[str, Any]:
         """
         Archive a template version (does not modify the template)
 
@@ -445,9 +423,7 @@ def register_template_tools(
                 session.add(archive)
                 await session.commit()
 
-                logger.info(
-                    f"Archived template '{template.name}' version {template.version}"
-                )
+                logger.info(f"Archived template '{template.name}' version {template.version}")
 
                 return {
                     "success": True,
@@ -458,7 +434,7 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to archive template: {e}")
+            logger.exception(f"Failed to archive template: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -468,9 +444,9 @@ def register_template_tools(
         augmentation_type: str,
         content: str,
         target_section: Optional[str] = None,
-        conditions: Optional[Dict[str, Any]] = None,
+        conditions: Optional[dict[str, Any]] = None,
         priority: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a template augmentation for runtime customization
 
@@ -517,9 +493,7 @@ def register_template_tools(
                 session.add(augmentation)
                 await session.commit()
 
-                logger.info(
-                    f"Created augmentation '{name}' for template '{template.name}'"
-                )
+                logger.info(f"Created augmentation '{name}' for template '{template.name}'")
 
                 return {
                     "success": True,
@@ -530,13 +504,11 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to create augmentation: {e}")
+            logger.exception(f"Failed to create augmentation: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def restore_template_version(
-        archive_id: str, restore_as_new: bool = False
-    ) -> Dict[str, Any]:
+    async def restore_template_version(archive_id: str, restore_as_new: bool = False) -> dict[str, Any]:
         """
         Restore an archived template version
 
@@ -581,9 +553,7 @@ def register_template_tools(
                     session.add(template)
                 else:
                     # Overwrite existing template
-                    query = select(AgentTemplate).where(
-                        AgentTemplate.id == archive.template_id
-                    )
+                    query = select(AgentTemplate).where(AgentTemplate.id == archive.template_id)
                     result = await session.execute(query)
                     template = result.scalar_one_or_none()
 
@@ -631,15 +601,15 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to restore template: {e}")
+            logger.exception(f"Failed to restore template: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def suggest_template(
         project_type: Optional[str] = None,
         role: str = "orchestrator",
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        context: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Suggest the best template based on context and usage stats
 
@@ -654,15 +624,11 @@ def register_template_tools(
         try:
             async with db_manager.get_session_async() as session:
                 # Build query for templates
-                query = select(AgentTemplate).where(
-                    AgentTemplate.is_active == True, AgentTemplate.role == role
-                )
+                query = select(AgentTemplate).where(AgentTemplate.is_active, AgentTemplate.role == role)
 
                 if project_type:
                     # First try project-specific template
-                    specific_query = query.where(
-                        AgentTemplate.project_type == project_type
-                    )
+                    specific_query = query.where(AgentTemplate.project_type == project_type)
                     result = await session.execute(specific_query)
                     templates = result.scalars().all()
 
@@ -676,9 +642,7 @@ def register_template_tools(
                         templates = result.scalars().all()
 
                         if templates:
-                            best_template = max(
-                                templates, key=lambda t: (t.is_default, t.usage_count)
-                            )
+                            best_template = max(templates, key=lambda t: (t.is_default, t.usage_count))
                             reason = f"Default template for {role} role"
                         else:
                             return {
@@ -691,9 +655,7 @@ def register_template_tools(
                     templates = result.scalars().all()
 
                     if templates:
-                        best_template = max(
-                            templates, key=lambda t: (t.is_default, t.usage_count)
-                        )
+                        best_template = max(templates, key=lambda t: (t.is_default, t.usage_count))
                         reason = "Most frequently used template"
                     else:
                         return {
@@ -713,9 +675,7 @@ def register_template_tools(
                 recent_stats = stats_result.scalars().all()
 
                 avg_generation_ms = (
-                    sum(s.generation_ms or 0 for s in recent_stats) / len(recent_stats)
-                    if recent_stats
-                    else 0
+                    sum(s.generation_ms or 0 for s in recent_stats) / len(recent_stats) if recent_stats else 0
                 )
 
                 return {
@@ -733,13 +693,11 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to suggest template: {e}")
+            logger.exception(f"Failed to suggest template: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_template_stats(
-        template_id: Optional[str] = None, days: int = 30
-    ) -> Dict[str, Any]:
+    async def get_template_stats(template_id: Optional[str] = None, days: int = 30) -> dict[str, Any]:
         """
         Get usage statistics for templates
 
@@ -764,9 +722,7 @@ def register_template_tools(
                     )
                 else:
                     # Stats for all templates
-                    query = select(TemplateUsageStats).where(
-                        TemplateUsageStats.used_at >= cutoff_date
-                    )
+                    query = select(TemplateUsageStats).where(TemplateUsageStats.used_at >= cutoff_date)
 
                 result = await session.execute(query)
                 stats = result.scalars().all()
@@ -785,24 +741,18 @@ def register_template_tools(
                         }
 
                     template_stats[tid]["usage_count"] += 1
-                    template_stats[tid]["total_generation_ms"] += (
-                        stat.generation_ms or 0
-                    )
+                    template_stats[tid]["total_generation_ms"] += stat.generation_ms or 0
                     if stat.agent_completed:
                         template_stats[tid]["completed_count"] += 1
                     template_stats[tid]["total_tokens"] += stat.tokens_used or 0
                     if stat.augmentations_applied:
-                        template_stats[tid]["augmentations_used"].update(
-                            stat.augmentations_applied
-                        )
+                        template_stats[tid]["augmentations_used"].update(stat.augmentations_applied)
 
                 # Calculate averages and format output
                 results = []
                 for tid, tstats in template_stats.items():
                     # Get template name
-                    template_query = select(AgentTemplate).where(
-                        AgentTemplate.id == tid
-                    )
+                    template_query = select(AgentTemplate).where(AgentTemplate.id == tid)
                     template_result = await session.execute(template_query)
                     template = template_result.scalar_one_or_none()
 
@@ -813,8 +763,7 @@ def register_template_tools(
                                 "template_name": template.name,
                                 "usage_count": tstats["usage_count"],
                                 "avg_generation_ms": (
-                                    tstats["total_generation_ms"]
-                                    / tstats["usage_count"]
+                                    tstats["total_generation_ms"] / tstats["usage_count"]
                                     if tstats["usage_count"] > 0
                                     else 0
                                 ),
@@ -824,13 +773,9 @@ def register_template_tools(
                                     else 0
                                 ),
                                 "avg_tokens": (
-                                    tstats["total_tokens"] / tstats["usage_count"]
-                                    if tstats["usage_count"] > 0
-                                    else 0
+                                    tstats["total_tokens"] / tstats["usage_count"] if tstats["usage_count"] > 0 else 0
                                 ),
-                                "unique_augmentations": len(
-                                    tstats["augmentations_used"]
-                                ),
+                                "unique_augmentations": len(tstats["augmentations_used"]),
                             }
                         )
 
@@ -846,7 +791,7 @@ def register_template_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get template stats: {e}")
+            logger.exception(f"Failed to get template stats: {e}")
             return {"success": False, "error": str(e)}
 
     logger.info("Template management tools registered")

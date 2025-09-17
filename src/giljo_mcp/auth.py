@@ -3,19 +3,20 @@ Authentication Middleware for GiljoAI MCP
 Supports LOCAL (no auth), LAN (API key), and WAN (JWT) modes
 """
 
+import json
 import logging
 import secrets
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
-import json
-import jwt
+from typing import Any, Optional
 
+import jwt
 from fastmcp import FastMCP
 
-from .config_manager import get_config, DeploymentMode
+from .config_manager import DeploymentMode, get_config
 from .database import DatabaseManager
 from .models import Configuration
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class AuthManager:
         self.config = config or get_config()
         self.mode = self.config.server.mode
         self.jwt_secret = self._get_or_create_jwt_secret()
-        self.api_keys: Dict[str, Dict[str, Any]] = {}
+        self.api_keys: dict[str, dict[str, Any]] = {}
 
     def is_enabled(self) -> bool:
         """Check if authentication is enabled based on deployment mode"""
@@ -42,20 +43,17 @@ class AuthManager:
 
         if secret_file.exists():
             return secret_file.read_text().strip()
-        else:
-            secret = secrets.token_urlsafe(32)
-            secret_file.write_text(secret)
-            return secret
+        secret = secrets.token_urlsafe(32)
+        secret_file.write_text(secret)
+        return secret
 
-    def generate_api_key(
-        self, name: str, permissions: Optional[List[str]] = None
-    ) -> str:
+    def generate_api_key(self, name: str, permissions: Optional[list[str]] = None) -> str:
         """Generate a new API key for LAN mode"""
         api_key = f"gk_{secrets.token_urlsafe(32)}"
 
         self.api_keys[api_key] = {
             "name": name,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "permissions": permissions or ["*"],
             "active": True,
         }
@@ -74,7 +72,7 @@ class AuthManager:
         logger.info(f"Generated API key for '{name}'")
         return api_key
 
-    def validate_api_key(self, api_key: str) -> Optional[Dict[str, Any]]:
+    def validate_api_key(self, api_key: str) -> Optional[dict[str, Any]]:
         """Validate an API key for LAN mode"""
         # Load API keys from file if not in memory
         if not self.api_keys:
@@ -89,22 +87,20 @@ class AuthManager:
 
         return None
 
-    def generate_jwt_token(
-        self, user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600
-    ) -> str:
+    def generate_jwt_token(self, user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600) -> str:
         """Generate JWT token for WAN mode"""
         payload = {
             "user_id": user_id,
             "tenant_key": tenant_key,
-            "iat": datetime.utcnow(),
-            "exp": datetime.utcnow() + timedelta(seconds=expires_in),
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(seconds=expires_in),
         }
 
         token = jwt.encode(payload, self.jwt_secret, algorithm="HS256")
         logger.info(f"Generated JWT token for user '{user_id}'")
         return token
 
-    def validate_jwt_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def validate_jwt_token(self, token: str) -> Optional[dict[str, Any]]:
         """Validate JWT token for WAN mode"""
         try:
             payload = jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
@@ -118,7 +114,7 @@ class AuthManager:
 
     async def authenticate_request(
         self, authorization: Optional[str] = None, api_key: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Authenticate a request based on deployment mode
 
@@ -139,7 +135,7 @@ class AuthManager:
             }
 
         # LAN mode - API key authentication
-        elif self.mode == DeploymentMode.LAN:
+        if self.mode == DeploymentMode.LAN:
             if not api_key:
                 return {
                     "authenticated": False,
@@ -154,11 +150,10 @@ class AuthManager:
                     "user": key_info["name"],
                     "permissions": key_info.get("permissions", ["*"]),
                 }
-            else:
-                return {"authenticated": False, "error": "Invalid API key"}
+            return {"authenticated": False, "error": "Invalid API key"}
 
         # WAN mode - JWT authentication
-        elif self.mode == DeploymentMode.WAN:
+        if self.mode == DeploymentMode.WAN:
             if not authorization or not authorization.startswith("Bearer "):
                 return {
                     "authenticated": False,
@@ -174,12 +169,9 @@ class AuthManager:
                     "mode": "WAN",
                     "user": token_info["user_id"],
                     "tenant_key": token_info.get("tenant_key"),
-                    "permissions": [
-                        "*"
-                    ],  # Could be extended with role-based permissions
+                    "permissions": ["*"],  # Could be extended with role-based permissions
                 }
-            else:
-                return {"authenticated": False, "error": "Invalid or expired token"}
+            return {"authenticated": False, "error": "Invalid or expired token"}
 
         return {"authenticated": False, "error": "Unknown deployment mode"}
 
@@ -201,14 +193,10 @@ def create_auth_middleware(auth_manager: AuthManager):
 
         # Extract authentication credentials
         authorization = request.headers.get("Authorization")
-        api_key = request.headers.get("X-API-Key") or request.query_params.get(
-            "api_key"
-        )
+        api_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
 
         # Authenticate the request
-        auth_result = await auth_manager.authenticate_request(
-            authorization=authorization, api_key=api_key
-        )
+        auth_result = await auth_manager.authenticate_request(authorization=authorization, api_key=api_key)
 
         if not auth_result["authenticated"]:
             # Return authentication error
@@ -223,13 +211,11 @@ def create_auth_middleware(auth_manager: AuthManager):
     return auth_middleware
 
 
-def register_auth_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, auth_manager: AuthManager
-):
+def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager: AuthManager):
     """Register authentication management tools"""
 
     @mcp.tool()
-    async def generate_api_key(name: str) -> Dict[str, Any]:
+    async def generate_api_key(name: str) -> dict[str, Any]:
         """
         Generate a new API key for LAN mode access
 
@@ -254,7 +240,7 @@ def register_auth_tools(
                     key=f"api_key_{name}",
                     value=api_key,
                     category="auth",
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                 )
                 session.add(config)
                 await session.commit()
@@ -267,11 +253,11 @@ def register_auth_tools(
             }
 
         except Exception as e:
-            logger.error(f"Failed to generate API key: {e}")
+            logger.exception(f"Failed to generate API key: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def revoke_api_key(api_key: str) -> Dict[str, Any]:
+    async def revoke_api_key(api_key: str) -> dict[str, Any]:
         """
         Revoke an API key
 
@@ -295,7 +281,7 @@ def register_auth_tools(
 
             # Mark as inactive
             api_keys[api_key]["active"] = False
-            api_keys[api_key]["revoked_at"] = datetime.utcnow().isoformat()
+            api_keys[api_key]["revoked_at"] = datetime.now(timezone.utc).isoformat()
 
             # Save updated keys
             api_keys_file.write_text(json.dumps(api_keys, indent=2))
@@ -306,13 +292,13 @@ def register_auth_tools(
             return {"success": True, "api_key": api_key, "status": "revoked"}
 
         except Exception as e:
-            logger.error(f"Failed to revoke API key: {e}")
+            logger.exception(f"Failed to revoke API key: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def generate_jwt_token(
         user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate JWT token for WAN mode
 
@@ -341,7 +327,7 @@ def register_auth_tools(
             }
 
         except Exception as e:
-            logger.error(f"Failed to generate JWT token: {e}")
+            logger.exception(f"Failed to generate JWT token: {e}")
             return {"success": False, "error": str(e)}
 
     logger.info("Authentication tools registered")

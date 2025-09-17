@@ -5,22 +5,25 @@ Run this to update the product configuration with current implementation status
 """
 
 import asyncio
-import asyncpg
 import json
-from datetime import datetime
+import sys
+from datetime import datetime, timezone
+
+import asyncpg
+
 
 # Database connection settings for AKE-MCP
 DB_CONFIG = {
-    'host': 'localhost',
-    'port': 5432,
-    'database': 'ai_assistant',
-    'user': 'postgres',
-    'password': '4010'
+    "host": "localhost",
+    "port": 5432,
+    "database": "ai_assistant",
+    "user": "postgres",
+    "password": "4010"
 }
 
 # Updated product settings reflecting current implementation
 UPDATED_SETTINGS = {
-    'architecture': """Multi-tenant orchestration system with proven Tool-API bridge via ToolAccessor pattern.
+    "architecture": """Multi-tenant orchestration system with proven Tool-API bridge via ToolAccessor pattern.
 
 Environment:
 - Windows 11 Pro, Git bash, Python 3.11 primary
@@ -43,7 +46,7 @@ Integration Pattern:
 MCP Tools → ToolAccessor → API Endpoints → Frontend
 All async with proper context management""",
 
-    'tech_stack': """Backend (IMPLEMENTED):
+    "tech_stack": """Backend (IMPLEMENTED):
 - Python 3.11, FastMCP server framework
 - SQLAlchemy 2.0 (async), Alembic migrations
 - FastAPI + Pydantic for REST/WebSocket
@@ -67,7 +70,7 @@ Database:
 - PostgreSQL (production ready)
 - Multi-tenant via tenant_keys""",
 
-    'known_issues': """RESOLVED:
+    "known_issues": """RESOLVED:
 ✅ Unicode encoding in tests - Fixed, replaced emojis with ASCII
 ✅ Tool-API bridge - Implemented via ToolAccessor pattern
 ✅ Vision chunking - Working at 20M tokens/sec
@@ -84,7 +87,7 @@ WORKAROUNDS:
 - Run MCP server directly for tool testing
 - Use AKE-MCP for orchestration until UI ready""",
 
-    'test_commands': """# Individual test suites
+    "test_commands": """# Individual test suites
 python test_mcp_tools.py              # Test all 20 MCP tools
 python test_tool_api_integration.py   # Test Tool-API bridge
 python test_message_comprehensive.py  # Message system tests
@@ -105,7 +108,7 @@ ruff src/                            # Lint code
 python -m giljo_mcp                  # Start MCP server
 python api/app.py                    # Start REST API (port 6002)""",
 
-    'critical_features': """IMPLEMENTED & WORKING:
+    "critical_features": """IMPLEMENTED & WORKING:
 ✅ Tool-API Bridge:
   - ToolAccessor class with all 20+ methods
   - Async context management
@@ -147,7 +150,7 @@ python api/app.py                    # Start REST API (port 6002)""",
 - Docker deployment
 - Setup wizard GUI""",
 
-    'codebase_structure': """giljo_mcp/                        # Root directory
+    "codebase_structure": """giljo_mcp/                        # Root directory
 ├── src/giljo_mcp/                # ✅ Core implementation
 │   ├── server.py                 # ✅ FastMCP server
 │   ├── models.py                 # ✅ SQLAlchemy models
@@ -179,123 +182,104 @@ python api/app.py                    # Start REST API (port 6002)""",
 
 async def update_product_settings():
     """Update the product settings in AKE-MCP database"""
-    
-    print("Connecting to AKE-MCP database...")
+
     conn = await asyncpg.connect(**DB_CONFIG)
-    
+
     try:
         # First, get the current config_data
         current = await conn.fetchrow(
             "SELECT id, name, config_data FROM products WHERE name = $1",
-            'GiljoAI-MCP Coding Orchestrator'
+            "GiljoAI-MCP Coding Orchestrator"
         )
-        
+
         if not current:
-            print("ERROR: Product 'GiljoAI-MCP Coding Orchestrator' not found!")
             return False
-        
-        print(f"Found product: {current['name']}")
-        
+
+
         # Parse current config
-        config_data = json.loads(current['config_data']) if current['config_data'] else {}
-        
+        config_data = json.loads(current["config_data"]) if current["config_data"] else {}
+
         # Update with new settings
         config_data.update(UPDATED_SETTINGS)
-        
+
         # Update the database
         await conn.execute(
             """
-            UPDATE products 
+            UPDATE products
             SET config_data = $1::jsonb,
                 updated_at = $2
             WHERE id = $3
             """,
             json.dumps(config_data),
-            datetime.utcnow(),
-            current['id']
+            datetime.now(timezone.utc),
+            current["id"]
         )
-        
-        print("✅ Successfully updated product settings!")
-        
+
+
         # Verify the update
         updated = await conn.fetchrow(
             "SELECT config_data FROM products WHERE id = $1",
-            current['id']
+            current["id"]
         )
-        
-        updated_config = json.loads(updated['config_data'])
-        
-        print("\n📊 Updated fields:")
-        for field in UPDATED_SETTINGS.keys():
+
+        updated_config = json.loads(updated["config_data"])
+
+        for field in UPDATED_SETTINGS:
             if field in updated_config:
-                print(f"  ✅ {field}: {len(updated_config[field])} chars")
+                pass
             else:
-                print(f"  ❌ {field}: NOT UPDATED")
-        
+                pass
+
         return True
-        
-    except Exception as e:
-        print(f"ERROR: {e}")
+
+    except Exception:
         return False
-        
+
     finally:
         await conn.close()
-        print("\nDatabase connection closed.")
 
 
 async def verify_settings():
     """Verify the updated settings"""
-    
-    print("\n🔍 Verifying updated settings...")
+
     conn = await asyncpg.connect(**DB_CONFIG)
-    
+
     try:
         result = await conn.fetchrow(
             """
-            SELECT 
+            SELECT
                 name,
                 config_data->>'architecture' as architecture,
                 config_data->>'test_commands' as test_commands,
                 LENGTH(config_data::text) as total_size
-            FROM products 
+            FROM products
             WHERE name = $1
             """,
-            'GiljoAI-MCP Coding Orchestrator'
+            "GiljoAI-MCP Coding Orchestrator"
         )
-        
+
         if result:
-            print(f"Product: {result['name']}")
-            print(f"Total config size: {result['total_size']} chars")
-            print(f"Architecture field: {'✅ Present' if result['architecture'] else '❌ Missing'}")
-            print(f"Test commands field: {'✅ Present' if result['test_commands'] else '❌ Missing'}")
-        
+            pass
+
     finally:
         await conn.close()
 
 
 async def main():
     """Main execution"""
-    print("=" * 60)
-    print("GiljoAI-MCP Product Settings Updater")
-    print("=" * 60)
-    print(f"Target: AKE-MCP Database at {DB_CONFIG['host']}:{DB_CONFIG['port']}")
-    print(f"Database: {DB_CONFIG['database']}")
-    print("=" * 60)
-    
+
     # Update settings
     success = await update_product_settings()
-    
+
     if success:
         # Verify the update
         await verify_settings()
-        print("\n✅ Product settings update completed successfully!")
     else:
-        print("\n❌ Product settings update failed!")
         return 1
-    
+
     return 0
 
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())
-    exit(exit_code)
+    sys.exit(exit_code)

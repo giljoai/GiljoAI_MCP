@@ -5,18 +5,14 @@ Orchestrates multiple agents to generate comprehensive documentation
 """
 
 import asyncio
-import json
-import ast
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Set
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from dataclasses import dataclass, field, asdict
+from pathlib import Path
+from typing import Any, Optional
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.orchestrator import ProjectOrchestrator
-from giljo_mcp.models import Project, Agent
 from giljo_mcp.template_manager import TemplateManager
-from giljo_mcp.config_manager import get_config
 
 
 @dataclass
@@ -29,7 +25,7 @@ class CodeSymbol:
     docstring: Optional[str] = None
     signature: Optional[str] = None
     parent: Optional[str] = None
-    children: List[str] = field(default_factory=list)
+    children: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -39,7 +35,7 @@ class DocumentationSection:
     content: str
     format: str = "markdown"
     order: int = 0
-    subsections: List['DocumentationSection'] = field(default_factory=list)
+    subsections: list["DocumentationSection"] = field(default_factory=list)
 
 
 @dataclass
@@ -47,8 +43,8 @@ class DiagramSpec:
     """Specification for a diagram"""
     type: str  # architecture, sequence, class, dependency
     title: str
-    elements: List[Dict[str, Any]]
-    relationships: List[Dict[str, Any]]
+    elements: list[dict[str, Any]]
+    relationships: list[dict[str, Any]]
     format: str = "mermaid"
 
 
@@ -79,9 +75,9 @@ class DocumentationOrchestrator:
         self.agents = {}
 
         # Documentation state
-        self.symbols: List[CodeSymbol] = []
-        self.sections: List[DocumentationSection] = []
-        self.diagrams: List[DiagramSpec] = []
+        self.symbols: list[CodeSymbol] = []
+        self.sections: list[DocumentationSection] = []
+        self.diagrams: list[DiagramSpec] = []
 
     async def setup(self):
         """Initialize database and orchestrator"""
@@ -429,7 +425,7 @@ class DocumentationOrchestrator:
         self._write_documentation_files()
 
         print(f"  ✅ Documentation published to {self.output_path}")
-        print(f"     - Format: MkDocs with Material theme")
+        print("     - Format: MkDocs with Material theme")
         print(f"     - Files generated: {mkdocs_result.get('files_count', 0)}")
 
     def _write_documentation_files(self):
@@ -538,7 +534,7 @@ Get started with {self.source_path.name} in minutes:
             content += "classDiagram\n"
             for elem in diagram.elements:
                 content += f"    class {elem['name']} {{\n"
-                for method in elem.get('methods', []):
+                for method in elem.get("methods", []):
                     content += f"        +{method}\n"
                 content += "    }\n"
 
@@ -592,7 +588,7 @@ Get started with {self.source_path.name} in minutes:
         import yaml
         return yaml.dump(config, default_flow_style=False)
 
-    def _parse_symbols(self, symbol_index: Dict) -> List[CodeSymbol]:
+    def _parse_symbols(self, symbol_index: dict) -> list[CodeSymbol]:
         """Parse symbol index into CodeSymbol objects"""
         symbols = []
         for file_path, file_symbols in symbol_index.get("symbols", {}).items():
@@ -610,7 +606,7 @@ Get started with {self.source_path.name} in minutes:
                 symbols.append(symbol)
         return symbols
 
-    def _update_symbols_with_parsed_data(self, data: Dict):
+    def _update_symbols_with_parsed_data(self, data: dict):
         """Update symbols with parsed information"""
         for update in data.get("symbols", []):
             for symbol in self.symbols:
@@ -618,7 +614,7 @@ Get started with {self.source_path.name} in minutes:
                     symbol.docstring = update.get("docstring", symbol.docstring)
                     symbol.signature = update.get("signature", symbol.signature)
 
-    def _identify_key_features(self) -> List[str]:
+    def _identify_key_features(self) -> list[str]:
         """Identify key features from codebase"""
         # Simplified - would analyze code structure
         return [
@@ -634,7 +630,7 @@ Get started with {self.source_path.name} in minutes:
         features = self._identify_key_features()
         return "\n".join(f"- ✨ {feature}" for feature in features)
 
-    def _find_config_files(self) -> List[str]:
+    def _find_config_files(self) -> list[str]:
         """Find configuration files in the project"""
         config_patterns = ["*.yaml", "*.yml", "*.json", "*.toml", "*.ini"]
         config_files = []
@@ -642,7 +638,7 @@ Get started with {self.source_path.name} in minutes:
             config_files.extend(self.source_path.glob(pattern))
         return [str(f) for f in config_files]
 
-    def _identify_components(self) -> List[Dict]:
+    def _identify_components(self) -> list[dict]:
         """Identify system components for architecture diagram"""
         # Simplified - would analyze imports and structure
         return [
@@ -660,16 +656,16 @@ Get started with {self.source_path.name} in minutes:
         print("="*60)
         print(f"📁 Source: {self.source_path}")
         print(f"📄 Output: {self.output_path}")
-        print(f"\n📊 Statistics:")
+        print("\n📊 Statistics:")
         print(f"   - Symbols documented: {len(self.symbols)}")
         print(f"   - Sections generated: {len(self.sections)}")
         print(f"   - Diagrams created: {len(self.diagrams)}")
-        print(f"\n✅ Next steps:")
+        print("\n✅ Next steps:")
         print(f"   1. cd {self.output_path}")
-        print(f"   2. mkdocs serve")
-        print(f"   3. Open http://localhost:8000")
+        print("   2. mkdocs serve")
+        print("   3. Open http://localhost:8000")
 
-    async def _wait_for_response(self, agent: str, timeout: int = 30) -> Dict:
+    async def _wait_for_response(self, agent: str, timeout: int = 30) -> dict:
         """Wait for agent response (mock implementation)"""
         await asyncio.sleep(1)
         # Return mock data

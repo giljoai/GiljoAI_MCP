@@ -5,12 +5,13 @@ Provides tenant key generation, validation, and context management
 for complete project isolation in multi-tenant environments.
 """
 
+import hashlib
 import secrets
 import string
-from typing import Optional, Dict, Any, List
 from contextvars import ContextVar
-import hashlib
 from datetime import datetime, timezone
+from typing import Any, Optional
+
 
 # Thread-safe context variable for current tenant
 current_tenant: ContextVar[Optional[str]] = ContextVar("current_tenant", default=None)
@@ -33,7 +34,7 @@ class TenantManager:
     KEY_ALPHABET = string.ascii_letters + string.digits
 
     # Validation cache to avoid repeated checks
-    _validation_cache: Dict[str, bool] = {}
+    _validation_cache: dict[str, bool] = {}
     _cache_max_size = 1000  # Limit cache size to prevent memory issues
 
     @classmethod
@@ -48,9 +49,7 @@ class TenantManager:
             A unique tenant key in format: tk_<32-char-random>
         """
         # Generate random component
-        random_chars = "".join(
-            secrets.choice(cls.KEY_ALPHABET) for _ in range(cls.KEY_LENGTH)
-        )
+        random_chars = "".join(secrets.choice(cls.KEY_ALPHABET) for _ in range(cls.KEY_LENGTH))
 
         tenant_key = f"{cls.KEY_PREFIX}{random_chars}"
 
@@ -141,9 +140,7 @@ class TenantManager:
         """
         tenant_key = cls.get_current_tenant()
         if not tenant_key:
-            raise RuntimeError(
-                "No tenant context set. Call set_current_tenant() first."
-            )
+            raise RuntimeError("No tenant context set. Call set_current_tenant() first.")
         return tenant_key
 
     @classmethod
@@ -212,9 +209,7 @@ class TenantManager:
         return cls.get_current_tenant()
 
     @classmethod
-    def apply_tenant_filter(
-        cls, query: Any, model: Any, tenant_key: Optional[str] = None
-    ) -> Any:
+    def apply_tenant_filter(cls, query: Any, model: Any, tenant_key: Optional[str] = None) -> Any:
         """
         Apply tenant filtering to a SQLAlchemy query.
 
@@ -239,9 +234,7 @@ class TenantManager:
         return query
 
     @classmethod
-    def ensure_tenant_isolation(
-        cls, entity: Any, tenant_key: Optional[str] = None
-    ) -> None:
+    def ensure_tenant_isolation(cls, entity: Any, tenant_key: Optional[str] = None) -> None:
         """
         Ensure entity belongs to the correct tenant.
 
@@ -267,7 +260,7 @@ class TenantManager:
             )
 
     @classmethod
-    def batch_validate_keys(cls, tenant_keys: List[str]) -> Dict[str, bool]:
+    def batch_validate_keys(cls, tenant_keys: list[str]) -> dict[str, bool]:
         """
         Validate multiple tenant keys efficiently.
 
@@ -283,7 +276,7 @@ class TenantManager:
         return results
 
     @classmethod
-    def export_tenant_metadata(cls, tenant_key: str) -> Dict[str, Any]:
+    def export_tenant_metadata(cls, tenant_key: str) -> dict[str, Any]:
         """
         Export metadata about a tenant (for debugging/admin).
 

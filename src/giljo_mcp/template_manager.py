@@ -4,22 +4,21 @@ Consolidates template functionality from Projects 3.4 and 3.9.b
 Single source of truth for all template operations
 """
 
-import re
 import logging
-from typing import Dict, Any, List, Optional, Union
-from datetime import datetime
+import re
+from datetime import datetime, timezone
+from typing import Any, Optional, Union
 
 from sqlalchemy import select
 
-from .models import AgentTemplate, TemplateAugmentation
 from .database import DatabaseManager
+from .models import AgentTemplate, TemplateAugmentation
+
 
 logger = logging.getLogger(__name__)
 
 
-def apply_augmentation(
-    content: str, augmentation: Union[TemplateAugmentation, Dict[str, Any]]
-) -> str:
+def apply_augmentation(content: str, augmentation: Union[TemplateAugmentation, dict[str, Any]]) -> str:
     """
     Apply augmentation to template content.
     Handles both database objects and runtime dictionaries.
@@ -44,20 +43,18 @@ def apply_augmentation(
         aug_content = augmentation.content
         target = augmentation.target_section
     else:
-        aug_type = augmentation.get("type") or augmentation.get(
-            "augmentation_type", "append"
-        )
+        aug_type = augmentation.get("type") or augmentation.get("augmentation_type", "append")
         aug_content = augmentation.get("content", "")
         target = augmentation.get("target") or augmentation.get("target_section", "")
 
     # Apply augmentation based on type
     if aug_type == "append":
         return content + "\n\n" + aug_content
-    elif aug_type == "prepend":
+    if aug_type == "prepend":
         return aug_content + "\n\n" + content
-    elif aug_type == "replace" and target:
+    if aug_type == "replace" and target:
         return content.replace(target, aug_content)
-    elif aug_type == "inject" and target:
+    if aug_type == "inject" and target:
         index = content.find(target)
         if index != -1:
             end_index = index + len(target)
@@ -68,8 +65,8 @@ def apply_augmentation(
 
 def process_template(
     content: str,
-    variables: Optional[Dict[str, Any]] = None,
-    augmentations: Optional[List[Union[TemplateAugmentation, Dict]]] = None,
+    variables: Optional[dict[str, Any]] = None,
+    augmentations: Optional[list[Union[TemplateAugmentation, dict]]] = None,
     substitute_first: bool = False,
 ) -> str:
     """
@@ -98,9 +95,7 @@ def process_template(
         if all(hasattr(a, "priority") or "priority" in a for a in augmentations):
             sorted_augs = sorted(
                 augmentations,
-                key=lambda x: (
-                    x.priority if hasattr(x, "priority") else x.get("priority", 0)
-                ),
+                key=lambda x: (x.priority if hasattr(x, "priority") else x.get("priority", 0)),
             )
 
         for aug in sorted_augs:
@@ -114,7 +109,7 @@ def process_template(
     return processed
 
 
-def extract_variables(content: str) -> List[str]:
+def extract_variables(content: str) -> list[str]:
     """
     Extract variable names from template content.
 
@@ -150,7 +145,7 @@ class UnifiedTemplateManager:
         self._template_cache = {}
         self._legacy_templates = self._load_legacy_templates()
 
-    def _load_legacy_templates(self) -> Dict[str, str]:
+    def _load_legacy_templates(self) -> dict[str, str]:
         """Load comprehensive templates extracted from mission_templates.py"""
         return {
             "orchestrator": """You are the Project Orchestrator for: {project_name}
@@ -349,7 +344,7 @@ DOCUMENTATION WORKFLOW:
 
 RESPONSIBILITIES:
 - Create comprehensive documentation for all project deliverables
-- Write usage examples and tutorials  
+- Write usage examples and tutorials
 - Document API specifications
 - Update README and setup guides
 - Document architectural decisions
@@ -373,8 +368,8 @@ SUCCESS CRITERIA:
     async def get_template(
         self,
         role: str,
-        variables: Optional[Dict[str, Any]] = None,
-        augmentations: Optional[List[Union[TemplateAugmentation, Dict]]] = None,
+        variables: Optional[dict[str, Any]] = None,
+        augmentations: Optional[list[Union[TemplateAugmentation, dict]]] = None,
         project_type: Optional[str] = None,
         product_id: Optional[str] = None,
         use_cache: bool = True,
@@ -396,24 +391,18 @@ SUCCESS CRITERIA:
         try:
             # Try database first if available
             if self.db_manager:
-                template_content = await self._get_db_template(
-                    role, project_type, product_id, use_cache
-                )
+                template_content = await self._get_db_template(role, project_type, product_id, use_cache)
             else:
                 # Fall back to legacy templates
-                template_content = self._legacy_templates.get(
-                    role.lower(), f"No template available for role: {role}"
-                )
+                template_content = self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
 
             # Process the template
             return process_template(template_content, variables, augmentations)
 
         except Exception as e:
-            logger.error(f"Failed to get template for role '{role}': {e}")
+            logger.exception(f"Failed to get template for role '{role}': {e}")
             # Return fallback template
-            fallback = self._legacy_templates.get(
-                role.lower(), f"Error loading template for role: {role}"
-            )
+            fallback = self._legacy_templates.get(role.lower(), f"Error loading template for role: {role}")
             return process_template(fallback, variables, augmentations)
 
     async def _get_db_template(
@@ -431,9 +420,7 @@ SUCCESS CRITERIA:
 
         async with self.db_manager.get_session() as session:
             # Build query
-            query = select(AgentTemplate).where(
-                AgentTemplate.role == role, AgentTemplate.is_active == True
-            )
+            query = select(AgentTemplate).where(AgentTemplate.role == role, AgentTemplate.is_active)
 
             # Add filters
             if product_id:
@@ -449,8 +436,8 @@ SUCCESS CRITERIA:
             if not template:
                 query = select(AgentTemplate).where(
                     AgentTemplate.role == role,
-                    AgentTemplate.is_active == True,
-                    AgentTemplate.is_default == True,
+                    AgentTemplate.is_active,
+                    AgentTemplate.is_default,
                 )
                 result = await session.execute(query)
                 template = result.scalar_one_or_none()
@@ -458,7 +445,7 @@ SUCCESS CRITERIA:
             if template:
                 # Update usage stats
                 template.usage_count += 1
-                template.last_used_at = datetime.utcnow()
+                template.last_used_at = datetime.now(timezone.utc)
                 await session.commit()
 
                 # Cache the template
@@ -468,20 +455,18 @@ SUCCESS CRITERIA:
                 return template.template_content
 
             # Fall back to legacy template
-            return self._legacy_templates.get(
-                role.lower(), f"No template available for role: {role}"
-            )
+            return self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
 
     def clear_cache(self):
         """Clear the template cache"""
         self._template_cache.clear()
         logger.info("Template cache cleared")
 
-    def get_cached_templates(self) -> List[str]:
+    def get_cached_templates(self) -> list[str]:
         """Get list of cached template keys"""
         return list(self._template_cache.keys())
 
-    def get_behavioral_rules(self, role: str) -> List[str]:
+    def get_behavioral_rules(self, role: str) -> list[str]:
         """
         Get behavioral rules for a role.
 
@@ -539,7 +524,7 @@ SUCCESS CRITERIA:
 
         return default_rules.get(role.lower(), ["Follow project guidelines"])
 
-    def get_success_criteria(self, role: str) -> List[str]:
+    def get_success_criteria(self, role: str) -> list[str]:
         """
         Get success criteria for a role.
 

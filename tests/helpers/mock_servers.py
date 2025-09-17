@@ -3,9 +3,9 @@ Mock servers and external service mocks for testing
 """
 
 import asyncio
-import json
-from typing import Dict, Any, Optional, Callable
+from typing import Any, Callable
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 
@@ -18,18 +18,15 @@ class MockAPIServer:
         self.server = None
         self.app = None
 
-    def add_route(self, method: str, path: str, response_data: Dict[str, Any], status_code: int = 200):
+    def add_route(self, method: str, path: str, response_data: dict[str, Any], status_code: int = 200):
         """Add a mock route"""
-        self.routes[f"{method.upper()}:{path}"] = {
-            "response": response_data,
-            "status_code": status_code
-        }
+        self.routes[f"{method.upper()}:{path}"] = {"response": response_data, "status_code": status_code}
 
     async def start(self):
         """Start the mock server"""
+        import uvicorn
         from fastapi import FastAPI
         from fastapi.responses import JSONResponse
-        import uvicorn
 
         self.app = FastAPI()
 
@@ -40,15 +37,8 @@ class MockAPIServer:
 
             if route_key in self.routes:
                 route_data = self.routes[route_key]
-                return JSONResponse(
-                    content=route_data["response"],
-                    status_code=route_data["status_code"]
-                )
-            else:
-                return JSONResponse(
-                    content={"error": "Route not found"},
-                    status_code=404
-                )
+                return JSONResponse(content=route_data["response"], status_code=route_data["status_code"])
+            return JSONResponse(content={"error": "Route not found"}, status_code=404)
 
         config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="error")
         self.server = uvicorn.Server(config)
@@ -97,11 +87,7 @@ class MockWebSocketServer:
         """Start the WebSocket server"""
         import websockets
 
-        self.server = await websockets.serve(
-            self.handle_connection,
-            "localhost",
-            self.port
-        )
+        self.server = await websockets.serve(self.handle_connection, "localhost", self.port)
 
     async def stop(self):
         """Stop the WebSocket server"""
@@ -112,10 +98,7 @@ class MockWebSocketServer:
     async def broadcast(self, message: str):
         """Broadcast message to all connections"""
         if self.connections:
-            await asyncio.gather(
-                *[conn.send(message) for conn in self.connections],
-                return_exceptions=True
-            )
+            await asyncio.gather(*[conn.send(message) for conn in self.connections], return_exceptions=True)
 
 
 class MockDatabaseManager:
@@ -127,12 +110,7 @@ class MockDatabaseManager:
 
     async def create_tables_async(self):
         """Mock table creation"""
-        self.data = {
-            'projects': [],
-            'agents': [],
-            'messages': [],
-            'tasks': []
-        }
+        self.data = {"projects": [], "agents": [], "messages": [], "tasks": []}
 
     async def get_session_async(self):
         """Mock session getter"""
@@ -146,7 +124,7 @@ class MockDatabaseManager:
 class MockAsyncSession:
     """Mock async session for database operations"""
 
-    def __init__(self, data_store: Dict):
+    def __init__(self, data_store: dict):
         self.data = data_store
         self.pending_adds = []
         self.committed = False
@@ -177,7 +155,6 @@ class MockAsyncSession:
 
     async def close(self):
         """Mock session close"""
-        pass
 
     async def __aenter__(self):
         return self
@@ -205,7 +182,7 @@ class MockResult:
         return self.data[0] if self.data else None
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def mock_api_server():
     """Fixture providing mock API server"""
     server = MockAPIServer()
@@ -214,7 +191,7 @@ async def mock_api_server():
     await server.stop()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def mock_websocket_server():
     """Fixture providing mock WebSocket server"""
     server = MockWebSocketServer()
@@ -223,7 +200,7 @@ async def mock_websocket_server():
     await server.stop()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_db_manager():
     """Fixture providing mock database manager"""
     return MockDatabaseManager()

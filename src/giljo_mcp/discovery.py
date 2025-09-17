@@ -3,20 +3,21 @@ Dynamic Discovery System for GiljoAI MCP
 Provides priority-based context loading with role-specific filtering
 """
 
-import logging
-import os
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
 import hashlib
 import json
-import yaml
+import logging
+import os
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from typing import Any, Optional
 
+import yaml
 from sqlalchemy import select
 
-from .models import Configuration, Vision
 from .database import DatabaseManager
+from .models import Configuration, Vision
 from .tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,7 @@ class PathResolver:
         self._cache_ttl = timedelta(minutes=5)
         self._cache_timestamps = {}
 
-    async def resolve_path(
-        self, path_key: str, project_id: Optional[str] = None
-    ) -> Path:
+    async def resolve_path(self, path_key: str, project_id: Optional[str] = None) -> Path:
         """
         Resolve a path key to an actual filesystem path.
 
@@ -91,7 +90,7 @@ class PathResolver:
         self._update_cache(cache_key, resolved)
         return resolved
 
-    async def get_all_paths(self, project_id: Optional[str] = None) -> Dict[str, Path]:
+    async def get_all_paths(self, project_id: Optional[str] = None) -> dict[str, Path]:
         """
         Get all resolved paths for the current project.
 
@@ -102,7 +101,7 @@ class PathResolver:
             Dictionary of path keys to resolved Path objects
         """
         paths = {}
-        for key in self.DEFAULT_PATHS.keys():
+        for key in self.DEFAULT_PATHS:
             paths[key] = await self.resolve_path(key, project_id)
         return paths
 
@@ -133,7 +132,7 @@ class PathResolver:
                 config_path = Path("config.yaml")
 
             if config_path.exists():
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     config = yaml.safe_load(f)
 
                 # Look for paths section
@@ -154,12 +153,12 @@ class PathResolver:
         if not timestamp:
             return False
 
-        return datetime.utcnow() - timestamp < self._cache_ttl
+        return datetime.now(timezone.utc) - timestamp < self._cache_ttl
 
     def _update_cache(self, cache_key: str, path: Path):
         """Update path cache"""
         self._cache[cache_key] = path
-        self._cache_timestamps[cache_key] = datetime.utcnow()
+        self._cache_timestamps[cache_key] = datetime.now(timezone.utc)
 
     def clear_cache(self):
         """Clear all cached paths"""
@@ -209,9 +208,7 @@ class DiscoveryManager:
         self.serena_hooks = SerenaHooks(db_manager, tenant_manager)
         self._content_hashes = {}
 
-    async def discover_context(
-        self, agent_role: str, project_id: str, force_refresh: bool = False
-    ) -> Dict[str, Any]:
+    async def discover_context(self, agent_role: str, project_id: str, force_refresh: bool = False) -> dict[str, Any]:
         """
         Main discovery method with role-based filtering.
 
@@ -224,12 +221,8 @@ class DiscoveryManager:
             Discovered context organized by priority
         """
         # Get role-specific priorities
-        priorities = self.ROLE_PRIORITIES.get(
-            agent_role, self.ROLE_PRIORITIES["default"]
-        )
-        token_limit = self.ROLE_TOKEN_LIMITS.get(
-            agent_role, self.ROLE_TOKEN_LIMITS["default"]
-        )
+        priorities = self.ROLE_PRIORITIES.get(agent_role, self.ROLE_PRIORITIES["default"])
+        token_limit = self.ROLE_TOKEN_LIMITS.get(agent_role, self.ROLE_TOKEN_LIMITS["default"])
 
         # Clear cache if forced refresh
         if force_refresh:
@@ -244,15 +237,13 @@ class DiscoveryManager:
             "agent_role": agent_role,
             "priorities_used": priorities,
             "token_limit": token_limit,
-            "discovered_at": datetime.utcnow().isoformat(),
+            "discovered_at": datetime.now(timezone.utc).isoformat(),
             "project_id": project_id,
         }
 
         return context
 
-    async def load_by_priority(
-        self, priorities: List[str], project_id: str, token_limit: int
-    ) -> Dict[str, Any]:
+    async def load_by_priority(self, priorities: list[str], project_id: str, token_limit: int) -> dict[str, Any]:
         """
         Load context in priority order with token limits.
 
@@ -294,15 +285,13 @@ class DiscoveryManager:
                     tokens_used += result.get("tokens", 0)
 
             except Exception as e:
-                logger.error(f"Failed to load {priority}: {e}")
+                logger.exception(f"Failed to load {priority}: {e}")
                 context[priority] = {"error": str(e)}
 
         context["tokens_used"] = tokens_used
         return context
 
-    async def get_discovery_paths(
-        self, project_id: Optional[str] = None
-    ) -> Dict[str, Path]:
+    async def get_discovery_paths(self, project_id: Optional[str] = None) -> dict[str, Path]:
         """
         Get all configured paths dynamically.
 
@@ -314,7 +303,7 @@ class DiscoveryManager:
         """
         return await self.path_resolver.get_all_paths(project_id)
 
-    async def _load_vision(self, project_id: str, max_tokens: int) -> Optional[Dict]:
+    async def _load_vision(self, project_id: str, max_tokens: int) -> Optional[dict]:
         """Load vision documents with chunking support"""
         try:
             vision_path = await self.path_resolver.resolve_path("vision", project_id)
@@ -322,10 +311,7 @@ class DiscoveryManager:
             # Check if already indexed in database
             async with self.db_manager.get_session() as session:
                 vision_query = (
-                    select(Vision)
-                    .where(Vision.project_id == project_id)
-                    .order_by(Vision.chunk_number)
-                    .limit(1)
+                    select(Vision).where(Vision.project_id == project_id).order_by(Vision.chunk_number).limit(1)
                 )
                 result = await session.execute(vision_query)
                 vision = result.scalar_one_or_none()
@@ -356,26 +342,22 @@ class DiscoveryManager:
                     }
 
         except Exception as e:
-            logger.error(f"Failed to load vision: {e}")
+            logger.exception(f"Failed to load vision: {e}")
 
         return None
 
-    async def _load_config(self, project_id: str, max_tokens: int) -> Optional[Dict]:
+    async def _load_config(self, project_id: str, max_tokens: int) -> Optional[dict]:
         """Load configuration from database and files"""
         try:
             config_data = {}
 
             # Load from database
             async with self.db_manager.get_session() as session:
-                config_query = select(Configuration).where(
-                    Configuration.project_id == project_id
-                )
+                config_query = select(Configuration).where(Configuration.project_id == project_id)
                 result = await session.execute(config_query)
                 configs = result.scalars().all()
 
-                config_data["database"] = {
-                    config.key: config.value for config in configs
-                }
+                config_data["database"] = {config.key: config.value for config in configs}
 
             # Load from config.yaml
             config_path = await self.path_resolver.resolve_path("config", project_id)
@@ -384,7 +366,7 @@ class DiscoveryManager:
                 yaml_path = Path("config.yaml")
 
             if yaml_path.exists():
-                with open(yaml_path, "r", encoding="utf-8") as f:
+                with open(yaml_path, encoding="utf-8") as f:
                     config_data["yaml"] = yaml.safe_load(f)
 
             # Estimate tokens (rough approximation)
@@ -398,11 +380,11 @@ class DiscoveryManager:
             return {"content": config_data, "tokens": min(estimated_tokens, max_tokens)}
 
         except Exception as e:
-            logger.error(f"Failed to load config: {e}")
+            logger.exception(f"Failed to load config: {e}")
 
         return None
 
-    async def _load_docs(self, project_id: str, max_tokens: int) -> Optional[Dict]:
+    async def _load_docs(self, project_id: str, max_tokens: int) -> Optional[dict]:
         """Load documentation files"""
         try:
             docs_path = await self.path_resolver.resolve_path("docs", project_id)
@@ -416,9 +398,7 @@ class DiscoveryManager:
                 if tokens_used >= max_tokens:
                     break
 
-                file_path = (
-                    Path(filename) if filename == "CLAUDE.md" else docs_path / filename
-                )
+                file_path = Path(filename) if filename == "CLAUDE.md" else docs_path / filename
 
                 if file_path.exists():
                     content = file_path.read_text(encoding="utf-8")
@@ -433,28 +413,24 @@ class DiscoveryManager:
                         # Partial load
                         remaining = max_tokens - tokens_used
                         chars_to_load = remaining * 4
-                        docs_data[filename] = (
-                            content[:chars_to_load] + "\n... [truncated]"
-                        )
+                        docs_data[filename] = content[:chars_to_load] + "\n... [truncated]"
                         tokens_used = max_tokens
 
             return {"content": docs_data, "tokens": tokens_used}
 
         except Exception as e:
-            logger.error(f"Failed to load docs: {e}")
+            logger.exception(f"Failed to load docs: {e}")
 
         return None
 
-    async def _load_memories(self, project_id: str, max_tokens: int) -> Optional[Dict]:
+    async def _load_memories(self, project_id: str, max_tokens: int) -> Optional[dict]:
         """Load session memories and project artifacts"""
         try:
             memories_data = {}
             tokens_used = 0
 
             # Load from sessions directory
-            sessions_path = await self.path_resolver.resolve_path(
-                "sessions", project_id
-            )
+            sessions_path = await self.path_resolver.resolve_path("sessions", project_id)
 
             if sessions_path.exists() and sessions_path.is_dir():
                 # Get most recent session files
@@ -496,11 +472,11 @@ class DiscoveryManager:
             return {"content": memories_data, "tokens": tokens_used}
 
         except Exception as e:
-            logger.error(f"Failed to load memories: {e}")
+            logger.exception(f"Failed to load memories: {e}")
 
         return None
 
-    async def _load_code(self, project_id: str, max_tokens: int) -> Optional[Dict]:
+    async def _load_code(self, project_id: str, max_tokens: int) -> Optional[dict]:
         """Load code context via Serena MCP hooks"""
         try:
             # This will be expanded with actual Serena MCP integration
@@ -521,7 +497,7 @@ class DiscoveryManager:
             }
 
         except Exception as e:
-            logger.error(f"Failed to load code context: {e}")
+            logger.exception(f"Failed to load code context: {e}")
 
         return None
 
@@ -529,7 +505,7 @@ class DiscoveryManager:
         """Calculate MD5 hash of content for change detection"""
         return hashlib.md5(content.encode()).hexdigest()
 
-    async def detect_changes(self, project_id: str) -> Dict[str, bool]:
+    async def detect_changes(self, project_id: str) -> dict[str, bool]:
         """
         Detect if any content has changed since last discovery.
 
@@ -556,7 +532,7 @@ class DiscoveryManager:
                         # Check directory modification time
                         changes[path_key] = True  # Simplified - could be enhanced
         except Exception as e:
-            logger.error(f"Failed to detect changes: {e}")
+            logger.exception(f"Failed to detect changes: {e}")
 
         return changes
 
@@ -573,9 +549,7 @@ class SerenaHooks:
         self._symbol_cache = {}
         self._cache_ttl = timedelta(minutes=10)
 
-    async def lazy_load_symbols(
-        self, file_path: str, depth: int = 0, max_chars: int = 5000
-    ) -> Dict[str, Any]:
+    async def lazy_load_symbols(self, file_path: str, depth: int = 0, max_chars: int = 5000) -> dict[str, Any]:
         """
         Load symbols only when needed.
 
@@ -597,7 +571,7 @@ class SerenaHooks:
 
     async def search_codebase(
         self, pattern: str, max_chars: int = 5000, paths_include: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Token-optimized code search.
 
@@ -616,7 +590,7 @@ class SerenaHooks:
             "message": "Use mcp__serena-mcp__search_for_pattern for actual search",
         }
 
-    async def get_file_overview(self, path: str) -> Dict[str, Any]:
+    async def get_file_overview(self, path: str) -> dict[str, Any]:
         """
         Get file structure without reading content.
 

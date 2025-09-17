@@ -4,30 +4,27 @@ Handles project lifecycle: create, list, switch, close
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 from fastmcp import FastMCP
 from sqlalchemy import select, update
 
-from ..database import DatabaseManager
-from ..tenant import TenantManager, current_tenant
-from ..models import Project, Agent, Session
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Agent, Project, Session
+from giljo_mcp.tenant import TenantManager, current_tenant
+
 
 logger = logging.getLogger(__name__)
 
 
-def register_project_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register project management tools with the MCP server"""
 
     @mcp.tool()
-    async def create_project(
-        name: str, mission: str, agents: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    async def create_project(name: str, mission: str, agents: Optional[list[str]] = None) -> dict[str, Any]:
         """
         Create a new project with mission and optional agent sequence
 
@@ -52,16 +49,14 @@ def register_project_tools(
                     status="active",
                     context_budget=150000,
                     context_used=0,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                 )
 
                 session.add(project)
                 await session.flush()
 
                 # Create initial session
-                initial_session = Session(
-                    project_id=project.id, started_at=datetime.utcnow(), status="active"
-                )
+                initial_session = Session(project_id=project.id, started_at=datetime.now(timezone.utc), status="active")
                 session.add(initial_session)
 
                 # Create agents if specified
@@ -72,7 +67,7 @@ def register_project_tools(
                             name=agent_name,
                             role=agent_name,
                             status="pending",
-                            created_at=datetime.utcnow(),
+                            created_at=datetime.now(timezone.utc),
                         )
                         session.add(agent)
 
@@ -93,11 +88,11 @@ def register_project_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to create project: {e}")
+            logger.exception(f"Failed to create project: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def list_projects(status: Optional[str] = None) -> Dict[str, Any]:
+    async def list_projects(status: Optional[str] = None) -> dict[str, Any]:
         """
         List all projects with optional status filter
 
@@ -132,11 +127,7 @@ def register_project_tools(
                             "tenant_key": project.tenant_key,
                             "agent_count": len(agents),
                             "context_usage": f"{project.context_used}/{project.context_budget}",
-                            "created_at": (
-                                project.created_at.isoformat()
-                                if project.created_at
-                                else None
-                            ),
+                            "created_at": (project.created_at.isoformat() if project.created_at else None),
                         }
                     )
 
@@ -147,11 +138,11 @@ def register_project_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to list projects: {e}")
+            logger.exception(f"Failed to list projects: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def switch_project(project_id: str) -> Dict[str, Any]:
+    async def switch_project(project_id: str) -> dict[str, Any]:
         """
         Switch to a different project
 
@@ -179,16 +170,14 @@ def register_project_tools(
                 current_tenant.set(project.tenant_key)
 
                 # Create new session if needed
-                session_query = select(Session).where(
-                    Session.project_id == project.id, Session.status == "active"
-                )
+                session_query = select(Session).where(Session.project_id == project.id, Session.status == "active")
                 session_result = await session.execute(session_query)
                 active_session = session_result.scalar_one_or_none()
 
                 if not active_session:
                     active_session = Session(
                         project_id=project.id,
-                        started_at=datetime.utcnow(),
+                        started_at=datetime.now(timezone.utc),
                         status="active",
                     )
                     session.add(active_session)
@@ -207,11 +196,11 @@ def register_project_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to switch project: {e}")
+            logger.exception(f"Failed to switch project: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def close_project(project_id: str, summary: str) -> Dict[str, Any]:
+    async def close_project(project_id: str, summary: str) -> dict[str, Any]:
         """
         Close a completed project with summary
 
@@ -244,13 +233,13 @@ def register_project_tools(
                 # Update project status
                 project.status = "completed"
                 project.summary = summary
-                project.completed_at = datetime.utcnow()
+                project.completed_at = datetime.now(timezone.utc)
 
                 # Close all active sessions
                 session_update = (
                     update(Session)
                     .where(Session.project_id == project.id, Session.status == "active")
-                    .values(status="completed", ended_at=datetime.utcnow())
+                    .values(status="completed", ended_at=datetime.now(timezone.utc))
                 )
                 await session.execute(session_update)
 
@@ -269,13 +258,12 @@ def register_project_tools(
 
                 # Trigger auto-commit if git is configured
                 try:
+                    from giljo_mcp.config_manager import get_config
+
                     from .git import commit_changes
-                    from ..config_manager import get_config
 
                     config = get_config()
-                    if hasattr(config, "git") and getattr(
-                        config.git, "auto_commit_on_completion", True
-                    ):
+                    if hasattr(config, "git") and getattr(config.git, "auto_commit_on_completion", True):
                         # Get product_id from config or use project's tenant_key as fallback
                         product_id = getattr(config, "product_id", project.tenant_key)
 
@@ -325,11 +313,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
                 }
 
         except Exception as e:
-            logger.error(f"Failed to close project: {e}")
+            logger.exception(f"Failed to close project: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def update_project_mission(project_id: str, mission: str) -> Dict[str, Any]:
+    async def update_project_mission(project_id: str, mission: str) -> dict[str, Any]:
         """
         Update the mission field after orchestrator analysis
 
@@ -370,11 +358,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
                 }
 
         except Exception as e:
-            logger.error(f"Failed to update project mission: {e}")
+            logger.exception(f"Failed to update project mission: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def project_status(project_id: Optional[str] = None) -> Dict[str, Any]:
+    async def project_status(project_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get comprehensive project status
 
@@ -433,18 +421,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
                         "status": project.status,
                         "tenant_key": project.tenant_key,
                         "context_usage": f"{project.context_used}/{project.context_budget}",
-                        "created_at": (
-                            project.created_at.isoformat()
-                            if project.created_at
-                            else None
-                        ),
+                        "created_at": (project.created_at.isoformat() if project.created_at else None),
                     },
                     "agents": agent_list,
                     "agent_count": len(agent_list),
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get project status: {e}")
+            logger.exception(f"Failed to get project status: {e}")
             return {"success": False, "error": str(e)}
 
     logger.info("Project management tools registered")

@@ -3,25 +3,26 @@ Git Integration Tools for GiljoAI MCP
 Handles git operations: init, commit, push, history, configuration
 """
 
+import base64
 import logging
 import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from cryptography.fernet import Fernet
-import base64
+from typing import Any, Optional
 
+from cryptography.fernet import Fernet
 from fastmcp import FastMCP
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import DatabaseManager
-from ..tenant import TenantManager, current_tenant
-from ..models import GitConfig, GitCommit, Project
+from giljo_mcp.database import DatabaseManager
 
 # Import from centralized exceptions
-from ..exceptions import GitOperationError, GitAuthenticationError
+from giljo_mcp.exceptions import GitAuthenticationError, GitOperationError
+from giljo_mcp.models import GitCommit, GitConfig, Project
+from giljo_mcp.tenant import TenantManager, current_tenant
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,10 @@ def _get_encryption_key() -> bytes:
 
     if key_file.exists():
         return key_file.read_bytes()
-    else:
-        key = Fernet.generate_key()
-        key_file.write_bytes(key)
-        key_file.chmod(0o600)  # Secure permissions
-        return key
+    key = Fernet.generate_key()
+    key_file.write_bytes(key)
+    key_file.chmod(0o600)  # Secure permissions
+    return key
 
 
 def _encrypt_credential(credential: str) -> str:
@@ -65,35 +65,33 @@ def _decrypt_credential(encrypted_credential: str) -> str:
         decrypted = fernet.decrypt(encrypted_bytes)
         return decrypted.decode()
     except Exception as e:
-        logger.error(f"Failed to decrypt credential: {e}")
+        logger.exception(f"Failed to decrypt credential: {e}")
         raise GitAuthenticationError("Failed to decrypt stored credentials")
 
 
-async def _get_git_config(
-    session: AsyncSession, product_id: str, tenant_key: str
-) -> Optional[GitConfig]:
+async def _get_git_config(session: AsyncSession, product_id: str, tenant_key: str) -> Optional[GitConfig]:
     """Get git configuration for a product"""
     result = await session.execute(
         select(GitConfig).where(
             GitConfig.product_id == product_id,
             GitConfig.tenant_key == tenant_key,
-            GitConfig.is_active == True,
+            GitConfig.is_active,
         )
     )
     return result.scalar_one_or_none()
 
 
 async def _run_git_command(
-    command: List[str],
+    command: list[str],
     cwd: str,
     use_system_auth: bool = True,
-    env: Optional[Dict[str, str]] = None,
+    env: Optional[dict[str, str]] = None,
     capture_output: bool = True,
-) -> Tuple[str, str, int]:
+) -> tuple[str, str, int]:
     """Run a git command and return stdout, stderr, returncode"""
     try:
         # Ensure git is available
-        git_check = subprocess.run(["git", "--version"], capture_output=True, text=True)
+        git_check = subprocess.run(["git", "--version"], check=False, capture_output=True, text=True)
         if git_check.returncode != 0:
             raise GitOperationError("Git is not installed or not available in PATH")
 
@@ -107,6 +105,7 @@ async def _run_git_command(
         # Run the command
         process = subprocess.run(
             command,
+            check=False,
             cwd=cwd,
             env=full_env,
             capture_output=capture_output,
@@ -122,9 +121,7 @@ async def _run_git_command(
         raise GitOperationError(f"Failed to execute git command: {e}")
 
 
-def _generate_commit_message(
-    project_name: str, project_mission: str, changes_summary: str = ""
-) -> str:
+def _generate_commit_message(project_name: str, project_mission: str, changes_summary: str = "") -> str:
     """Generate a semantic commit message from project context"""
     # Extract commit type from mission or changes
     commit_type = "feat"  # Default to feature
@@ -160,9 +157,7 @@ def _generate_commit_message(
     return message
 
 
-def register_git_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register git management tools with the MCP server"""
 
     @mcp.tool()
@@ -178,7 +173,7 @@ def register_git_tools(
         auto_push: bool = False,
         webhook_url: Optional[str] = None,
         webhook_secret: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Configure git settings for a product
 
@@ -235,9 +230,7 @@ def register_git_tools(
                         branch=branch,
                         auth_method=auth_method,
                         username=username,
-                        password_encrypted=(
-                            _encrypt_credential(password) if password else None
-                        ),
+                        password_encrypted=(_encrypt_credential(password) if password else None),
                         ssh_key_path=ssh_key_path,
                         auto_commit=auto_commit,
                         auto_push=auto_push,
@@ -257,13 +250,11 @@ def register_git_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to configure git: {e}")
+            logger.exception(f"Failed to configure git: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def init_repo(
-        product_id: str, repo_path: str, initial_commit: bool = True
-    ) -> Dict[str, Any]:
+    async def init_repo(product_id: str, repo_path: str, initial_commit: bool = True) -> dict[str, Any]:
         """
         Initialize a git repository for a product
 
@@ -293,18 +284,14 @@ def register_git_tools(
                 repo_path_obj.mkdir(parents=True, exist_ok=True)
 
                 # Initialize git repository
-                stdout, stderr, code = await _run_git_command(
-                    ["git", "init"], str(repo_path_obj)
-                )
+                stdout, stderr, code = await _run_git_command(["git", "init"], str(repo_path_obj))
 
                 if code != 0:
                     raise GitOperationError(f"Git init failed: {stderr}")
 
                 # Set default branch
                 if git_config.branch != "master":
-                    await _run_git_command(
-                        ["git", "checkout", "-b", git_config.branch], str(repo_path_obj)
-                    )
+                    await _run_git_command(["git", "checkout", "-b", git_config.branch], str(repo_path_obj))
 
                 # Add remote if configured
                 if git_config.repo_url:
@@ -328,25 +315,19 @@ def register_git_tools(
                         ".env",
                         ".venv/",
                     ]
-                    gitignore_path.write_text(
-                        "\n".join(default_ignore + git_config.ignore_patterns)
-                    )
+                    gitignore_path.write_text("\n".join(default_ignore + git_config.ignore_patterns))
 
                     # Add and commit
-                    await _run_git_command(
-                        ["git", "add", ".gitignore"], str(repo_path_obj)
-                    )
+                    await _run_git_command(["git", "add", ".gitignore"], str(repo_path_obj))
 
                     commit_msg = "feat: initialize repository with GiljoAI MCP\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\nCo-Authored-By: Claude <noreply@anthropic.com>"
-                    stdout, stderr, code = await _run_git_command(
+                    _stdout, stderr, code = await _run_git_command(
                         ["git", "commit", "-m", commit_msg], str(repo_path_obj)
                     )
 
                     if code == 0:
                         # Get commit hash
-                        hash_out, _, _ = await _run_git_command(
-                            ["git", "rev-parse", "HEAD"], str(repo_path_obj)
-                        )
+                        hash_out, _, _ = await _run_git_command(["git", "rev-parse", "HEAD"], str(repo_path_obj))
                         initial_commit_hash = hash_out.strip()
 
                 # Update git config with last known state
@@ -364,7 +345,7 @@ def register_git_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to initialize repository: {e}")
+            logger.exception(f"Failed to initialize repository: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -375,7 +356,7 @@ def register_git_tools(
         project_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         commit_type: str = "auto",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Commit changes to the repository
 
@@ -405,7 +386,7 @@ def register_git_tools(
                     return {"success": False, "error": "Repository path does not exist"}
 
                 # Check for changes
-                status_out, _, status_code = await _run_git_command(
+                status_out, _, _status_code = await _run_git_command(
                     ["git", "status", "--porcelain"], str(repo_path_obj)
                 )
 
@@ -425,35 +406,25 @@ def register_git_tools(
                     project_mission = "Development work"
 
                     if project_id:
-                        project_result = await session.execute(
-                            select(Project).where(Project.id == project_id)
-                        )
+                        project_result = await session.execute(select(Project).where(Project.id == project_id))
                         project = project_result.scalar_one_or_none()
                         if project:
                             project_name = project.name
                             project_mission = project.mission
 
                     # Get file changes for summary
-                    diff_out, _, _ = await _run_git_command(
-                        ["git", "diff", "--cached", "--stat"], str(repo_path_obj)
-                    )
+                    diff_out, _, _ = await _run_git_command(["git", "diff", "--cached", "--stat"], str(repo_path_obj))
 
-                    message = _generate_commit_message(
-                        project_name, project_mission, diff_out
-                    )
+                    message = _generate_commit_message(project_name, project_mission, diff_out)
 
                 # Commit changes
-                stdout, stderr, code = await _run_git_command(
-                    ["git", "commit", "-m", message], str(repo_path_obj)
-                )
+                _stdout, stderr, code = await _run_git_command(["git", "commit", "-m", message], str(repo_path_obj))
 
                 if code != 0:
                     raise GitOperationError(f"Git commit failed: {stderr}")
 
                 # Get commit details
-                hash_out, _, _ = await _run_git_command(
-                    ["git", "rev-parse", "HEAD"], str(repo_path_obj)
-                )
+                hash_out, _, _ = await _run_git_command(["git", "rev-parse", "HEAD"], str(repo_path_obj))
                 commit_hash = hash_out.strip()
 
                 # Get commit info
@@ -465,12 +436,8 @@ def register_git_tools(
                 lines = info_out.strip().split("\n")
                 author_info = lines[0].split("|")
                 author_name = author_info[0] if len(author_info) > 0 else "Unknown"
-                author_email = (
-                    author_info[1] if len(author_info) > 1 else "unknown@example.com"
-                )
-                commit_subject = (
-                    author_info[2] if len(author_info) > 2 else message.split("\n")[0]
-                )
+                author_email = author_info[1] if len(author_info) > 1 else "unknown@example.com"
+                commit_subject = author_info[2] if len(author_info) > 2 else message.split("\n")[0]
 
                 # Parse file changes
                 files_changed = []
@@ -532,7 +499,7 @@ def register_git_tools(
                 return result
 
         except Exception as e:
-            logger.error(f"Failed to commit changes: {e}")
+            logger.exception(f"Failed to commit changes: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -541,7 +508,7 @@ def register_git_tools(
         repo_path: str,
         remote_name: Optional[str] = None,
         branch: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Push commits to remote repository
 
@@ -579,9 +546,7 @@ def register_git_tools(
                 branch_name = branch or git_config.branch or "main"
 
                 # Check if we should use system authentication (recommended)
-                use_system_auth = (
-                    git_config.auth_method == "system" or not git_config.auth_method
-                )
+                use_system_auth = git_config.auth_method == "system" or not git_config.auth_method
 
                 if use_system_auth:
                     # Use existing git configuration and credential helpers
@@ -597,9 +562,7 @@ def register_git_tools(
                     if git_config.auth_method == "https":
                         if git_config.username and git_config.password_encrypted:
                             username = git_config.username
-                            password = _decrypt_credential(
-                                git_config.password_encrypted
-                            )
+                            password = _decrypt_credential(git_config.password_encrypted)
 
                             # Use credential helper for HTTPS
                             env["GIT_ASKPASS"] = "echo"
@@ -608,19 +571,16 @@ def register_git_tools(
 
                     elif git_config.auth_method == "ssh":
                         if git_config.ssh_key_path:
-                            env["GIT_SSH_COMMAND"] = (
-                                f"ssh -i {git_config.ssh_key_path} -o StrictHostKeyChecking=no"
-                            )
+                            env["GIT_SSH_COMMAND"] = f"ssh -i {git_config.ssh_key_path} -o StrictHostKeyChecking=no"
 
-                    elif git_config.auth_method == "token":
-                        if git_config.password_encrypted:
-                            token = _decrypt_credential(git_config.password_encrypted)
-                            env["GIT_ASKPASS"] = "echo"
-                            env["GIT_USERNAME"] = "token"
-                            env["GIT_PASSWORD"] = token
+                    elif git_config.auth_method == "token" and git_config.password_encrypted:
+                        token = _decrypt_credential(git_config.password_encrypted)
+                        env["GIT_ASKPASS"] = "echo"
+                        env["GIT_USERNAME"] = "token"
+                        env["GIT_PASSWORD"] = token
 
                     # Push to remote with custom authentication
-                    stdout, stderr, code = await _run_git_command(
+                    _stdout, stderr, code = await _run_git_command(
                         ["git", "push", remote, branch_name],
                         str(repo_path_obj),
                         use_system_auth=False,
@@ -651,31 +611,30 @@ def register_git_tools(
                         "branch": branch_name,
                         "message": "Changes pushed successfully",
                     }
-                else:
-                    # Mark commits as failed
-                    await session.execute(
-                        update(GitCommit)
-                        .where(
-                            GitCommit.product_id == product_id,
-                            GitCommit.tenant_key == tenant_key,
-                            GitCommit.push_status == "pending",
-                        )
-                        .values(push_status="failed", push_error=stderr)
+                # Mark commits as failed
+                await session.execute(
+                    update(GitCommit)
+                    .where(
+                        GitCommit.product_id == product_id,
+                        GitCommit.tenant_key == tenant_key,
+                        GitCommit.push_status == "pending",
                     )
+                    .values(push_status="failed", push_error=stderr)
+                )
 
-                    git_config.last_error = stderr
-                    await session.commit()
+                git_config.last_error = stderr
+                await session.commit()
 
-                    raise GitOperationError(f"Git push failed: {stderr}")
+                raise GitOperationError(f"Git push failed: {stderr}")
 
         except Exception as e:
-            logger.error(f"Failed to push to remote: {e}")
+            logger.exception(f"Failed to push to remote: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def get_commit_history(
         product_id: str, repo_path: str, limit: int = 10, branch: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get commit history from repository
 
@@ -731,9 +690,7 @@ def register_git_tools(
                                     "author_email": parts[2],
                                     "timestamp": int(parts[3]),
                                     "message": parts[4],
-                                    "date": datetime.fromtimestamp(
-                                        int(parts[3])
-                                    ).isoformat(),
+                                    "date": datetime.fromtimestamp(int(parts[3])).isoformat(),
                                 }
                             )
 
@@ -773,11 +730,11 @@ def register_git_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get commit history: {e}")
+            logger.exception(f"Failed to get commit history: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_git_status(product_id: str, repo_path: str) -> Dict[str, Any]:
+    async def get_git_status(product_id: str, repo_path: str) -> dict[str, Any]:
         """
         Get current git status for a repository
 
@@ -800,8 +757,7 @@ def register_git_tools(
                 status_info = {
                     "success": True,
                     "configured": bool(git_config),
-                    "repo_exists": repo_path_obj.exists()
-                    and (repo_path_obj / ".git").exists(),
+                    "repo_exists": repo_path_obj.exists() and (repo_path_obj / ".git").exists(),
                     "config": None,
                     "status": None,
                 }
@@ -816,47 +772,31 @@ def register_git_tools(
                         "is_configured": git_config.is_configured,
                         "webhook_configured": git_config.webhook_configured,
                         "last_commit_hash": git_config.last_commit_hash,
-                        "last_push_at": (
-                            git_config.last_push_at.isoformat()
-                            if git_config.last_push_at
-                            else None
-                        ),
+                        "last_push_at": (git_config.last_push_at.isoformat() if git_config.last_push_at else None),
                         "last_error": git_config.last_error,
                     }
 
                 if status_info["repo_exists"]:
                     # Get git status
-                    status_out, _, status_code = await _run_git_command(
+                    status_out, _, _status_code = await _run_git_command(
                         ["git", "status", "--porcelain"], str(repo_path_obj)
                     )
 
                     # Get current branch
-                    branch_out, _, _ = await _run_git_command(
-                        ["git", "branch", "--show-current"], str(repo_path_obj)
-                    )
+                    branch_out, _, _ = await _run_git_command(["git", "branch", "--show-current"], str(repo_path_obj))
 
                     # Get remote info
-                    remote_out, _, _ = await _run_git_command(
-                        ["git", "remote", "-v"], str(repo_path_obj)
-                    )
+                    remote_out, _, _ = await _run_git_command(["git", "remote", "-v"], str(repo_path_obj))
 
                     status_info["status"] = {
                         "current_branch": branch_out.strip(),
                         "has_changes": bool(status_out.strip()),
-                        "changed_files": (
-                            len(status_out.strip().split("\n"))
-                            if status_out.strip()
-                            else 0
-                        ),
-                        "remotes": [
-                            line.strip()
-                            for line in remote_out.split("\n")
-                            if line.strip()
-                        ],
+                        "changed_files": (len(status_out.strip().split("\n")) if status_out.strip() else 0),
+                        "remotes": [line.strip() for line in remote_out.split("\n") if line.strip()],
                     }
 
                 return status_info
 
         except Exception as e:
-            logger.error(f"Failed to get git status: {e}")
+            logger.exception(f"Failed to get git status: {e}")
             return {"success": False, "error": str(e)}

@@ -4,23 +4,22 @@ Handles inter-agent messaging: send, get, acknowledge, broadcast
 """
 
 import logging
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from fastmcp import FastMCP
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 
-from ..database import DatabaseManager
-from ..tenant import TenantManager
-from ..models import Project, Agent, Message
-from ..queue import MessageQueue
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Agent, Message, Project
+from giljo_mcp.queue import MessageQueue
+from giljo_mcp.tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
 
-def register_message_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register message communication tools with the MCP server"""
 
     # Initialize the MessageQueue system
@@ -28,13 +27,13 @@ def register_message_tools(
 
     @mcp.tool()
     async def send_message(
-        to_agents: List[str],
+        to_agents: list[str],
         content: str,
         project_id: str,
         message_type: str = "direct",
         priority: str = "normal",
         from_agent: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send message to one or more agents
 
@@ -69,9 +68,7 @@ def register_message_tools(
                 # Get sender agent if specified
                 from_agent_id = None
                 if from_agent and from_agent != "system":
-                    sender_query = select(Agent).where(
-                        and_(Agent.project_id == project_id, Agent.name == from_agent)
-                    )
+                    sender_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == from_agent))
                     sender_result = await session.execute(sender_query)
                     sender = sender_result.scalar_one_or_none()
                     if sender:
@@ -82,9 +79,7 @@ def register_message_tools(
                 failed_recipients = []
 
                 for agent_name in to_agents:
-                    agent_query = select(Agent).where(
-                        and_(Agent.project_id == project_id, Agent.name == agent_name)
-                    )
+                    agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
                     agent_result = await session.execute(agent_query)
                     recipient = agent_result.scalar_one_or_none()
 
@@ -121,9 +116,7 @@ def register_message_tools(
                 # Use the MessageQueue to enqueue the message
                 message_id = await message_queue.enqueue(message)
 
-                logger.info(
-                    f"Sent message from '{from_agent}' to {verified_recipients}"
-                )
+                logger.info(f"Sent message from '{from_agent}' to {verified_recipients}")
 
                 return {
                     "success": True,
@@ -135,13 +128,11 @@ def register_message_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to send messages: {e}")
+            logger.exception(f"Failed to send messages: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_messages(
-        agent_name: str, project_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_messages(agent_name: str, project_id: Optional[str] = None) -> dict[str, Any]:
         """
         Retrieve pending messages for an agent
 
@@ -163,9 +154,7 @@ def register_message_tools(
                             "error": "No active project. Use switch_project first.",
                         }
 
-                    project_query = select(Project).where(
-                        Project.tenant_key == tenant_key
-                    )
+                    project_query = select(Project).where(Project.tenant_key == tenant_key)
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
 
@@ -181,32 +170,27 @@ def register_message_tools(
                     # Auto-acknowledge the message
                     if msg.status == "pending":
                         msg.status = "acknowledged"
-                        msg.acknowledged_at = datetime.utcnow()
+                        msg.acknowledged_at = datetime.now(timezone.utc)
 
                         # Add to acknowledged_by array if not already there
                         if not msg.acknowledged_by:
                             msg.acknowledged_by = []
 
                         # Check if agent hasn't already acknowledged
-                        already_acknowledged = any(
-                            ack.get("agent_name") == agent_name
-                            for ack in msg.acknowledged_by
-                        )
+                        already_acknowledged = any(ack.get("agent_name") == agent_name for ack in msg.acknowledged_by)
 
                         if not already_acknowledged:
                             msg.acknowledged_by.append(
                                 {
                                     "agent_name": agent_name,
-                                    "timestamp": datetime.utcnow().isoformat(),
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
                                 }
                             )
 
                     # Get sender name
                     from_agent_name = "system"
                     if msg.from_agent_id:
-                        sender_query = select(Agent).where(
-                            Agent.id == msg.from_agent_id
-                        )
+                        sender_query = select(Agent).where(Agent.id == msg.from_agent_id)
                         sender_result = await session.execute(sender_query)
                         sender = sender_result.scalar_one_or_none()
                         if sender:
@@ -220,18 +204,14 @@ def register_message_tools(
                             "subject": msg.subject,
                             "content": msg.content,
                             "priority": msg.priority,
-                            "created": (
-                                msg.created_at.isoformat() if msg.created_at else None
-                            ),
+                            "created": (msg.created_at.isoformat() if msg.created_at else None),
                         }
                     )
 
                 # Commit auto-acknowledgments
                 await session.commit()
 
-                logger.info(
-                    f"Retrieved {len(message_list)} messages for agent '{agent_name}'"
-                )
+                logger.info(f"Retrieved {len(message_list)} messages for agent '{agent_name}'")
 
                 return {
                     "success": True,
@@ -241,11 +221,11 @@ def register_message_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get messages: {e}")
+            logger.exception(f"Failed to get messages: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def acknowledge_message(message_id: str, agent_name: str) -> Dict[str, Any]:
+    async def acknowledge_message(message_id: str, agent_name: str) -> dict[str, Any]:
         """
         Mark message as received by agent
 
@@ -279,31 +259,26 @@ def register_message_tools(
                 # Update message status
                 if message.status == "pending":
                     message.status = "acknowledged"
-                    message.acknowledged_at = datetime.utcnow()
+                    message.acknowledged_at = datetime.now(timezone.utc)
 
                     # Update acknowledged_by array
                     if not message.acknowledged_by:
                         message.acknowledged_by = []
 
                     # Check if agent hasn't already acknowledged
-                    already_acknowledged = any(
-                        ack.get("agent_name") == agent_name
-                        for ack in message.acknowledged_by
-                    )
+                    already_acknowledged = any(ack.get("agent_name") == agent_name for ack in message.acknowledged_by)
 
                     if not already_acknowledged:
                         message.acknowledged_by.append(
                             {
                                 "agent_name": agent_name,
-                                "timestamp": datetime.utcnow().isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                             }
                         )
 
                     await session.commit()
 
-                    logger.info(
-                        f"Message {message_id} acknowledged by agent '{agent_name}'"
-                    )
+                    logger.info(f"Message {message_id} acknowledged by agent '{agent_name}'")
 
                     return {
                         "success": True,
@@ -311,14 +286,13 @@ def register_message_tools(
                         "agent": agent_name,
                         "status": "acknowledged",
                     }
-                else:
-                    return {
-                        "success": False,
-                        "error": f"Message already has status: {message.status}",
-                    }
+                return {
+                    "success": False,
+                    "error": f"Message already has status: {message.status}",
+                }
 
         except Exception as e:
-            logger.error(f"Failed to acknowledge message: {e}")
+            logger.exception(f"Failed to acknowledge message: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -327,7 +301,7 @@ def register_message_tools(
         agent_name: str,
         result: str,
         completion_notes: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Mark message as completed with result
 
@@ -363,7 +337,7 @@ def register_message_tools(
                 # Update message status
                 if message.status in ["pending", "acknowledged"]:
                     message.status = "completed"
-                    message.completed_at = datetime.utcnow()
+                    message.completed_at = datetime.now(timezone.utc)
 
                     # Store result in meta_data
                     if not message.meta_data:
@@ -375,15 +349,12 @@ def register_message_tools(
                         message.completed_by = []
 
                     # Check if agent hasn't already marked as complete
-                    already_completed = any(
-                        comp.get("agent_name") == agent_name
-                        for comp in message.completed_by
-                    )
+                    already_completed = any(comp.get("agent_name") == agent_name for comp in message.completed_by)
 
                     if not already_completed:
                         completion_entry = {
                             "agent_name": agent_name,
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                         if completion_notes:
                             completion_entry["notes"] = completion_notes
@@ -391,9 +362,7 @@ def register_message_tools(
 
                     await session.commit()
 
-                    logger.info(
-                        f"Message {message_id} completed by agent '{agent_name}'"
-                    )
+                    logger.info(f"Message {message_id} completed by agent '{agent_name}'")
 
                     return {
                         "success": True,
@@ -402,20 +371,17 @@ def register_message_tools(
                         "status": "completed",
                         "result_stored": True,
                     }
-                else:
-                    return {
-                        "success": False,
-                        "error": f"Message already has status: {message.status}",
-                    }
+                return {
+                    "success": False,
+                    "error": f"Message already has status: {message.status}",
+                }
 
         except Exception as e:
-            logger.error(f"Failed to complete message: {e}")
+            logger.exception(f"Failed to complete message: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def broadcast(
-        content: str, project_id: str, priority: str = "normal"
-    ) -> Dict[str, Any]:
+    async def broadcast(content: str, project_id: str, priority: str = "normal") -> dict[str, Any]:
         """
         Broadcast message to all agents in project
 
@@ -431,17 +397,13 @@ def register_message_tools(
             async with db_manager.get_session() as session:
                 # Get all agents in the project
                 agent_query = select(Agent).where(
-                    and_(
-                        Agent.project_id == project_id, Agent.status != "decommissioned"
-                    )
+                    and_(Agent.project_id == project_id, Agent.status != "decommissioned")
                 )
                 agent_result = await session.execute(agent_query)
                 agents = agent_result.scalars().all()
 
                 if not agents:
                     return {"success": False, "error": "No active agents in project"}
-
-                message_ids = []
 
                 # Get tenant key
                 project_query = select(Project).where(Project.id == project_id)
@@ -476,9 +438,7 @@ def register_message_tools(
 
                 await session.commit()
 
-                logger.info(
-                    f"Broadcast sent to {len(agents)} agents in project {project_id}"
-                )
+                logger.info(f"Broadcast sent to {len(agents)} agents in project {project_id}")
 
                 return {
                     "success": True,
@@ -489,13 +449,11 @@ def register_message_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to broadcast message: {e}")
+            logger.exception(f"Failed to broadcast message: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def log_task(
-        content: str, category: Optional[str] = None, priority: str = "medium"
-    ) -> Dict[str, Any]:
+    async def log_task(content: str, category: Optional[str] = None, priority: str = "medium") -> dict[str, Any]:
         """
         Quick task capture for logging work items
 
@@ -553,7 +511,7 @@ def register_message_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to log task: {e}")
+            logger.exception(f"Failed to log task: {e}")
             return {"success": False, "error": str(e)}
 
     logger.info("Message communication tools registered")

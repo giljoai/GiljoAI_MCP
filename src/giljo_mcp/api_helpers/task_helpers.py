@@ -4,13 +4,16 @@ Direct database operations without MCP tool decorators
 """
 
 import logging
-from typing import Dict, Any, Optional
-from datetime import datetime
-from sqlalchemy import select, and_
-from giljo_mcp.models import Task, Project
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.tenant import TenantManager
 import uuid
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from sqlalchemy import and_, select
+
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Project, Task
+from giljo_mcp.tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +30,7 @@ async def create_task_for_api(
     product_id: Optional[str] = None,
     project_id: Optional[str] = None,
     tenant_key: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create a new task with product isolation for API endpoints
 
@@ -54,9 +57,7 @@ async def create_task_for_api(
         async with db_manager.get_session_async() as session:
             # If project_id is provided, get project and use its product_id
             if project_id:
-                project_query = select(Project).where(
-                    and_(Project.id == project_id, Project.tenant_key == tenant_key)
-                )
+                project_query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
 
@@ -70,8 +71,7 @@ async def create_task_for_api(
             task = Task(
                 tenant_key=tenant_key,
                 product_id=product_id,
-                project_id=project_id
-                or str(uuid.uuid4()),  # Default project if not provided
+                project_id=project_id or str(uuid.uuid4()),  # Default project if not provided
                 title=title,
                 description=description,
                 category=category,
@@ -94,15 +94,11 @@ async def create_task_for_api(
                 "category": task.category,
                 "status": task.status,
                 "priority": task.priority,
-                "created_at": (
-                    task.created_at.isoformat()
-                    if task.created_at
-                    else datetime.utcnow().isoformat()
-                ),
+                "created_at": (task.created_at.isoformat() if task.created_at else datetime.now(timezone.utc).isoformat()),
             }
 
     except Exception as e:
-        logger.error(f"Failed to create task: {e}")
+        logger.exception(f"Failed to create task: {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -114,7 +110,7 @@ async def list_tasks_for_api(
     category: Optional[str] = None,
     limit: int = 50,
     tenant_key: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     List tasks with product isolation filtering for API endpoints
 
@@ -175,15 +171,9 @@ async def list_tasks_for_api(
                         "category": task.category,
                         "status": task.status,
                         "priority": task.priority,
-                        "created_at": (
-                            task.created_at.isoformat() if task.created_at else None
-                        ),
-                        "started_at": (
-                            task.started_at.isoformat() if task.started_at else None
-                        ),
-                        "completed_at": (
-                            task.completed_at.isoformat() if task.completed_at else None
-                        ),
+                        "created_at": (task.created_at.isoformat() if task.created_at else None),
+                        "started_at": (task.started_at.isoformat() if task.started_at else None),
+                        "completed_at": (task.completed_at.isoformat() if task.completed_at else None),
                     }
                 )
 
@@ -201,7 +191,7 @@ async def list_tasks_for_api(
             }
 
     except Exception as e:
-        logger.error(f"Failed to list tasks: {e}")
+        logger.exception(f"Failed to list tasks: {e}")
         return {"success": False, "error": str(e), "tasks": []}
 
 
@@ -212,7 +202,7 @@ async def update_task_for_api(
     description: Optional[str] = None,
     assigned_agent_id: Optional[str] = None,
     tenant_key: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Update a task (respects product isolation) for API endpoints
 
@@ -253,9 +243,9 @@ async def update_task_for_api(
             if status:
                 task.status = status
                 if status == "in_progress" and not task.started_at:
-                    task.started_at = datetime.utcnow()
+                    task.started_at = datetime.now(timezone.utc)
                 elif status == "completed" and not task.completed_at:
-                    task.completed_at = datetime.utcnow()
+                    task.completed_at = datetime.now(timezone.utc)
 
             if priority:
                 task.priority = priority
@@ -280,13 +270,13 @@ async def update_task_for_api(
             }
 
     except Exception as e:
-        logger.error(f"Failed to update task: {e}")
+        logger.exception(f"Failed to update task: {e}")
         return {"success": False, "error": str(e)}
 
 
 async def get_product_task_summary_for_api(
     product_id: Optional[str] = None, tenant_key: Optional[str] = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get task summary for a product or all products for API endpoints
 
@@ -357,5 +347,5 @@ async def get_product_task_summary_for_api(
             }
 
     except Exception as e:
-        logger.error(f"Failed to get product task summary: {e}")
+        logger.exception(f"Failed to get product task summary: {e}")
         return {"success": False, "error": str(e), "summary": {}}

@@ -3,21 +3,16 @@ Final Integration Test for Sub-Agent System
 Comprehensive validation of all components post-restart
 """
 
-import pytest
 import json
 import time
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, select
+
+import pytest
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.giljo_mcp.models import (
-    Base,
-    AgentInteraction,
-    Agent,
-    Project,
-    Message
-)
+from src.giljo_mcp.models import AgentInteraction, Base, Message, Project
 
 
 class TestFinalIntegration:
@@ -41,7 +36,7 @@ class TestFinalIntegration:
             tenant_key="test-tenant",
             name="Integration Test Project",
             mission="Test sub-agent integration",
-            status="active"
+            status="active",
         )
         test_session.add(project)
         test_session.commit()
@@ -59,16 +54,14 @@ class TestFinalIntegration:
             interaction_type="spawn",
             mission="Process test data",
             start_time=datetime.now(timezone.utc),
-            meta_data=json.dumps({"priority": "high", "test": True})
+            meta_data=json.dumps({"priority": "high", "test": True}),
         )
 
         test_session.add(interaction)
         test_session.commit()
 
         # Verify interaction was created
-        result = test_session.query(AgentInteraction).filter_by(
-            id=interaction.id
-        ).first()
+        result = test_session.query(AgentInteraction).filter_by(id=interaction.id).first()
 
         assert result is not None
         assert result.sub_agent_name == "test_worker"
@@ -78,7 +71,7 @@ class TestFinalIntegration:
 
         meta = json.loads(result.meta_data)
         assert meta["priority"] == "high"
-        assert meta["test"] == True
+        assert meta["test"]
 
     def test_complete_sub_agent_updates_interaction(self, test_session, test_project):
         """Test completing a sub-agent updates the interaction properly"""
@@ -91,7 +84,7 @@ class TestFinalIntegration:
             sub_agent_name="completion_worker",
             interaction_type="spawn",
             mission="Complete task",
-            start_time=datetime.now(timezone.utc)
+            start_time=datetime.now(timezone.utc),
         )
 
         test_session.add(interaction)
@@ -110,9 +103,7 @@ class TestFinalIntegration:
         test_session.commit()
 
         # Verify completion
-        result = test_session.query(AgentInteraction).filter_by(
-            id=interaction.id
-        ).first()
+        result = test_session.query(AgentInteraction).filter_by(id=interaction.id).first()
 
         assert result.interaction_type == "completed"
         assert result.end_time is not None
@@ -131,7 +122,7 @@ class TestFinalIntegration:
             sub_agent_name="error_worker",
             interaction_type="spawn",
             mission="Failing task",
-            start_time=datetime.now(timezone.utc)
+            start_time=datetime.now(timezone.utc),
         )
 
         test_session.add(interaction)
@@ -147,9 +138,7 @@ class TestFinalIntegration:
         test_session.commit()
 
         # Verify error handling
-        result = test_session.query(AgentInteraction).filter_by(
-            id=interaction.id
-        ).first()
+        result = test_session.query(AgentInteraction).filter_by(id=interaction.id).first()
 
         assert result.interaction_type == "error"
         assert result.error_message == "Task failed: Resource not found"
@@ -171,7 +160,7 @@ class TestFinalIntegration:
                 interaction_type="spawn",
                 mission=f"Task {i}",
                 start_time=datetime.now(timezone.utc),
-                meta_data=json.dumps({"index": i})
+                meta_data=json.dumps({"index": i}),
             )
             interactions.append(interaction)
             test_session.add(interaction)
@@ -179,9 +168,7 @@ class TestFinalIntegration:
         test_session.commit()
 
         # Verify all were created
-        results = test_session.query(AgentInteraction).filter_by(
-            project_id=test_project.id
-        ).all()
+        results = test_session.query(AgentInteraction).filter_by(project_id=test_project.id).all()
 
         assert len(results) == 5
 
@@ -196,10 +183,11 @@ class TestFinalIntegration:
         test_session.commit()
 
         # Verify all completed
-        completed = test_session.query(AgentInteraction).filter_by(
-            project_id=test_project.id,
-            interaction_type="completed"
-        ).all()
+        completed = (
+            test_session.query(AgentInteraction)
+            .filter_by(project_id=test_project.id, interaction_type="completed")
+            .all()
+        )
 
         assert len(completed) == 5
         for c in completed:
@@ -217,7 +205,7 @@ class TestFinalIntegration:
             sub_agent_name="parent_worker",
             interaction_type="spawn",
             mission="Parent task",
-            start_time=datetime.now(timezone.utc)
+            start_time=datetime.now(timezone.utc),
         )
 
         child = AgentInteraction(
@@ -228,7 +216,7 @@ class TestFinalIntegration:
             sub_agent_name="child_worker",
             interaction_type="spawn",
             mission="Child task",
-            start_time=datetime.now(timezone.utc)
+            start_time=datetime.now(timezone.utc),
         )
 
         grandchild = AgentInteraction(
@@ -239,16 +227,14 @@ class TestFinalIntegration:
             sub_agent_name="grandchild_worker",
             interaction_type="spawn",
             mission="Grandchild task",
-            start_time=datetime.now(timezone.utc)
+            start_time=datetime.now(timezone.utc),
         )
 
         test_session.add_all([parent, child, grandchild])
         test_session.commit()
 
         # Verify relationships
-        all_interactions = test_session.query(AgentInteraction).filter_by(
-            project_id=test_project.id
-        ).all()
+        all_interactions = test_session.query(AgentInteraction).filter_by(project_id=test_project.id).all()
 
         assert len(all_interactions) == 3
 
@@ -276,17 +262,18 @@ class TestFinalIntegration:
                 end_time=datetime.now(timezone.utc),
                 duration_seconds=10 * (i + 1),
                 tokens_used=100 * (i + 1),
-                result=f"Result {i}"
+                result=f"Result {i}",
             )
             test_session.add(interaction)
 
         test_session.commit()
 
         # Query and aggregate metrics
-        results = test_session.query(AgentInteraction).filter_by(
-            project_id=test_project.id,
-            interaction_type="completed"
-        ).all()
+        results = (
+            test_session.query(AgentInteraction)
+            .filter_by(project_id=test_project.id, interaction_type="completed")
+            .all()
+        )
 
         total_tokens = sum(r.tokens_used for r in results)
         total_duration = sum(r.duration_seconds for r in results)
@@ -306,7 +293,7 @@ class TestFinalIntegration:
             content="Regular message",
             message_type="direct",
             priority="normal",
-            status="pending"
+            status="pending",
         )
 
         # Create agent interaction
@@ -318,20 +305,16 @@ class TestFinalIntegration:
             sub_agent_name="sub_worker",
             interaction_type="spawn",
             mission="Sub-agent task",
-            start_time=datetime.now(timezone.utc)
+            start_time=datetime.now(timezone.utc),
         )
 
         test_session.add_all([message, interaction])
         test_session.commit()
 
         # Verify both systems work independently
-        messages = test_session.query(Message).filter_by(
-            project_id=test_project.id
-        ).all()
+        messages = test_session.query(Message).filter_by(project_id=test_project.id).all()
 
-        interactions = test_session.query(AgentInteraction).filter_by(
-            project_id=test_project.id
-        ).all()
+        interactions = test_session.query(AgentInteraction).filter_by(project_id=test_project.id).all()
 
         assert len(messages) == 1
         assert len(interactions) == 1

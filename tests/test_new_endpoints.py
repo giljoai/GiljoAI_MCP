@@ -4,18 +4,19 @@ Test script for new agent tree and metrics endpoints
 """
 
 import asyncio
-import time
-from datetime import datetime
-from pathlib import Path
 import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project, Agent, Job, Message
-from src.giljo_mcp.api.endpoints.agents import get_agents_tree, get_agents_metrics
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Agent, Job, Message, Project
 
 
 async def setup_test_data(session: AsyncSession):
@@ -27,7 +28,7 @@ async def setup_test_data(session: AsyncSession):
         tenant_key="test-tenant",
         name="Test Project",
         mission="Test mission for endpoint testing",
-        status="active"
+        status="active",
     )
     session.add(project)
 
@@ -41,7 +42,7 @@ async def setup_test_data(session: AsyncSession):
         status="active",
         mission="Orchestrate the project",
         context_used=5000,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
     )
     session.add(orchestrator)
 
@@ -56,7 +57,7 @@ async def setup_test_data(session: AsyncSession):
             status="active" if i < 2 else "decommissioned",
             mission=f"Handle {role} tasks",
             context_used=1000 * (i + 1),
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
         )
         for i, role in enumerate(["designer", "implementer", "tester"])
     ]
@@ -70,7 +71,7 @@ async def setup_test_data(session: AsyncSession):
         agent_id="agent-implementer",
         job_type="implementation",
         status="active",
-        tasks=["Build API", "Test endpoints"]
+        tasks=["Build API", "Test endpoints"],
     )
     session.add(job1)
 
@@ -82,7 +83,7 @@ async def setup_test_data(session: AsyncSession):
         to_agents=["implementer"],
         content="Start implementation",
         message_type="direct",
-        priority="high"
+        priority="high",
     )
     session.add(msg1)
 
@@ -92,13 +93,12 @@ async def setup_test_data(session: AsyncSession):
 
 async def test_tree_endpoint():
     """Test the /api/agents/tree endpoint"""
-    print("\n=== Testing /api/agents/tree endpoint ===")
 
     db_manager = DatabaseManager(is_async=True)
 
     async with db_manager.get_session_async() as session:
         # Setup test data
-        project = await setup_test_data(session)
+        await setup_test_data(session)
 
         # Mock request query params
         class MockQuery:
@@ -109,7 +109,6 @@ async def test_tree_endpoint():
 
         try:
             # Direct function call since we're testing without running server
-            from src.giljo_mcp.api.endpoints.agents import AgentTreeResponse
 
             # Manually query the data
             from sqlalchemy import select
@@ -127,62 +126,53 @@ async def test_tree_endpoint():
 
             response_time = (time.time() - start_time) * 1000
 
-            print(f"✓ Tree endpoint responded in {response_time:.2f}ms")
-            print(f"  - Total agents: {len(agents)}")
-            print(f"  - Active agents: {sum(1 for a in agents if a.status == 'active')}")
-
             # Check performance requirement
             if response_time < 100:
-                print(f"✓ Performance requirement met: {response_time:.2f}ms < 100ms")
+                pass
             else:
-                print(f"✗ Performance requirement NOT met: {response_time:.2f}ms > 100ms")
+                pass
 
             # Display tree structure
-            print("\n  Agent Tree:")
             for agent in agents:
                 if agent.role == "orchestrator":
-                    print(f"    └─ {agent.name} (orchestrator)")
                     for sub_agent in agents:
                         if sub_agent.role != "orchestrator":
-                            print(f"       └─ {sub_agent.name} ({sub_agent.status})")
+                            pass
 
-        except Exception as e:
-            print(f"✗ Error testing tree endpoint: {e}")
+        except Exception:
+            pass
 
         # Cleanup
-        await session.execute(f"DELETE FROM messages WHERE project_id = 'test-project-001'")
-        await session.execute(f"DELETE FROM jobs WHERE tenant_key = 'test-tenant'")
-        await session.execute(f"DELETE FROM agents WHERE project_id = 'test-project-001'")
-        await session.execute(f"DELETE FROM projects WHERE id = 'test-project-001'")
+        await session.execute("DELETE FROM messages WHERE project_id = 'test-project-001'")
+        await session.execute("DELETE FROM jobs WHERE tenant_key = 'test-tenant'")
+        await session.execute("DELETE FROM agents WHERE project_id = 'test-project-001'")
+        await session.execute("DELETE FROM projects WHERE id = 'test-project-001'")
         await session.commit()
 
 
 async def test_metrics_endpoint():
     """Test the /api/agents/metrics endpoint"""
-    print("\n=== Testing /api/agents/metrics endpoint ===")
 
     db_manager = DatabaseManager(is_async=True)
 
     async with db_manager.get_session_async() as session:
         # Setup test data
-        project = await setup_test_data(session)
+        await setup_test_data(session)
 
         # Test the endpoint
         start_time = time.time()
 
         try:
-            from sqlalchemy import select, func
+            from sqlalchemy import select
 
             # Query agents
-            result = await session.execute(
-                select(Agent).where(Agent.project_id == "test-project-001")
-            )
+            result = await session.execute(select(Agent).where(Agent.project_id == "test-project-001"))
             agents = result.scalars().all()
 
             # Calculate metrics
-            total_agents = len(agents)
-            active_agents = sum(1 for a in agents if a.status == "active")
-            decommissioned = sum(1 for a in agents if a.status == "decommissioned")
+            len(agents)
+            sum(1 for a in agents if a.status == "active")
+            sum(1 for a in agents if a.status == "decommissioned")
 
             # Count by role
             agent_by_role = {}
@@ -191,39 +181,28 @@ async def test_metrics_endpoint():
 
             response_time = (time.time() - start_time) * 1000
 
-            print(f"✓ Metrics endpoint responded in {response_time:.2f}ms")
-            print(f"  - Total agents: {total_agents}")
-            print(f"  - Active agents: {active_agents}")
-            print(f"  - Decommissioned: {decommissioned}")
-            print(f"  - Agents by role: {agent_by_role}")
-
             # Check performance requirement
             if response_time < 100:
-                print(f"✓ Performance requirement met: {response_time:.2f}ms < 100ms")
+                pass
             else:
-                print(f"✗ Performance requirement NOT met: {response_time:.2f}ms > 100ms")
+                pass
 
-        except Exception as e:
-            print(f"✗ Error testing metrics endpoint: {e}")
+        except Exception:
+            pass
 
         # Cleanup
-        await session.execute(f"DELETE FROM messages WHERE project_id = 'test-project-001'")
-        await session.execute(f"DELETE FROM jobs WHERE tenant_key = 'test-tenant'")
-        await session.execute(f"DELETE FROM agents WHERE project_id = 'test-project-001'")
-        await session.execute(f"DELETE FROM projects WHERE id = 'test-project-001'")
+        await session.execute("DELETE FROM messages WHERE project_id = 'test-project-001'")
+        await session.execute("DELETE FROM jobs WHERE tenant_key = 'test-tenant'")
+        await session.execute("DELETE FROM agents WHERE project_id = 'test-project-001'")
+        await session.execute("DELETE FROM projects WHERE id = 'test-project-001'")
         await session.commit()
 
 
 async def main():
     """Run all endpoint tests"""
-    print("Starting endpoint tests...")
-    print("=" * 50)
 
     await test_tree_endpoint()
     await test_metrics_endpoint()
-
-    print("\n" + "=" * 50)
-    print("Endpoint tests completed!")
 
 
 if __name__ == "__main__":

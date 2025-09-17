@@ -5,24 +5,25 @@ All models include tenant_key for project isolation.
 Supports both SQLite (local) and PostgreSQL (production).
 """
 
-from typing import List
 from uuid import uuid4
+
 from sqlalchemy import (
-    Column,
-    String,
-    Text,
-    DateTime,
+    JSON,
     Boolean,
-    Integer,
+    CheckConstraint,
+    Column,
+    DateTime,
     Float,
     ForeignKey,
-    JSON,
     Index,
+    Integer,
+    String,
+    Text,
     UniqueConstraint,
-    CheckConstraint,
 )
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
+
 
 Base = declarative_base()
 
@@ -53,25 +54,13 @@ class Project(Base):
     meta_data = Column(JSON, default=dict)
 
     # Relationships
-    agents = relationship(
-        "Agent", back_populates="project", cascade="all, delete-orphan"
-    )
-    messages = relationship(
-        "Message", back_populates="project", cascade="all, delete-orphan"
-    )
+    agents = relationship("Agent", back_populates="project", cascade="all, delete-orphan")
+    messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
-    sessions = relationship(
-        "Session", back_populates="project", cascade="all, delete-orphan"
-    )
-    visions = relationship(
-        "Vision", back_populates="project", cascade="all, delete-orphan"
-    )
-    context_indexes = relationship(
-        "ContextIndex", back_populates="project", cascade="all, delete-orphan"
-    )
-    document_indexes = relationship(
-        "LargeDocumentIndex", back_populates="project", cascade="all, delete-orphan"
-    )
+    sessions = relationship("Session", back_populates="project", cascade="all, delete-orphan")
+    visions = relationship("Vision", back_populates="project", cascade="all, delete-orphan")
+    context_indexes = relationship("ContextIndex", back_populates="project", cascade="all, delete-orphan")
+    document_indexes = relationship("LargeDocumentIndex", back_populates="project", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_project_tenant", "tenant_key"),
@@ -91,12 +80,8 @@ class Agent(Base):
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
     name = Column(String(100), nullable=False)
-    role = Column(
-        String(50), nullable=False
-    )  # orchestrator, analyzer, implementer, tester, etc.
-    status = Column(
-        String(50), default="active"
-    )  # active, idle, working, decommissioned
+    role = Column(String(50), nullable=False)  # orchestrator, analyzer, implementer, tester, etc.
+    status = Column(String(50), default="active")  # active, idle, working, decommissioned
     mission = Column(Text, nullable=True)
     context_used = Column(Integer, default=0)
     last_active = Column(DateTime(timezone=True), server_default=func.now())
@@ -106,9 +91,7 @@ class Agent(Base):
 
     # Relationships
     project = relationship("Project", back_populates="agents")
-    sent_messages = relationship(
-        "Message", foreign_keys="Message.from_agent_id", back_populates="sender"
-    )
+    sent_messages = relationship("Message", foreign_keys="Message.from_agent_id", back_populates="sender")
     jobs = relationship("Job", back_populates="agent", cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -144,12 +127,8 @@ class Message(Base):
     subject = Column(String(255), nullable=True)
     content = Column(Text, nullable=False)
     priority = Column(String(20), default="normal")  # low, normal, high, critical
-    status = Column(
-        String(50), default="pending"
-    )  # pending, acknowledged, completed, failed
-    acknowledged_by = Column(
-        JSON, default=list
-    )  # Array of agent names that acknowledged
+    status = Column(String(50), default="pending")  # pending, acknowledged, completed, failed
+    acknowledged_by = Column(JSON, default=list)  # Array of agent names that acknowledged
     completed_by = Column(JSON, default=list)  # Array of agent names that completed
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
@@ -165,9 +144,7 @@ class Message(Base):
 
     # Relationships
     project = relationship("Project", back_populates="messages")
-    sender = relationship(
-        "Agent", foreign_keys=[from_agent_id], back_populates="sent_messages"
-    )
+    sender = relationship("Agent", foreign_keys=[from_agent_id], back_populates="sent_messages")
 
     __table_args__ = (
         Index("idx_message_tenant", "tenant_key"),
@@ -188,18 +165,14 @@ class Task(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
-    product_id = Column(
-        String(36), nullable=True
-    )  # Product-level scope for task isolation
+    product_id = Column(String(36), nullable=True)  # Product-level scope for task isolation
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
     assigned_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
-    status = Column(
-        String(50), default="pending"
-    )  # pending, in_progress, completed, blocked, cancelled
+    status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled
     priority = Column(String(20), default="medium")  # low, medium, high, critical
     estimated_effort = Column(Float, nullable=True)  # Hours
     actual_effort = Column(Float, nullable=True)  # Hours
@@ -211,9 +184,7 @@ class Task(Base):
 
     # Relationships
     project = relationship("Project", back_populates="tasks")
-    subtasks = relationship(
-        "Task", back_populates="parent_task", foreign_keys="Task.parent_task_id"
-    )
+    subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])
 
     __table_args__ = (
@@ -253,9 +224,7 @@ class Session(Base):
     project = relationship("Project", back_populates="sessions")
 
     __table_args__ = (
-        UniqueConstraint(
-            "project_id", "session_number", name="uq_session_project_number"
-        ),
+        UniqueConstraint("project_id", "session_number", name="uq_session_project_number"),
         Index("idx_session_tenant", "tenant_key"),
         Index("idx_session_project", "project_id"),
     )
@@ -281,9 +250,7 @@ class Vision(Base):
     # New fields for enhanced chunking
     char_start = Column(Integer, nullable=True)
     char_end = Column(Integer, nullable=True)
-    boundary_type = Column(
-        String(20), nullable=True
-    )  # document, section, paragraph, line, sentence, word, forced
+    boundary_type = Column(String(20), nullable=True)  # document, section, paragraph, line, sentence, word, forced
     keywords = Column(JSON, default=list)  # List of keywords extracted from chunk
     headers = Column(JSON, default=list)  # List of headers found in chunk
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -294,9 +261,7 @@ class Vision(Base):
     project = relationship("Project", back_populates="visions")
 
     __table_args__ = (
-        UniqueConstraint(
-            "project_id", "document_name", "chunk_number", name="uq_vision_chunk"
-        ),
+        UniqueConstraint("project_id", "document_name", "chunk_number", name="uq_vision_chunk"),
         Index("idx_vision_tenant", "tenant_key"),
         Index("idx_vision_project", "project_id"),
         Index("idx_vision_document", "document_name"),
@@ -386,9 +351,7 @@ class ContextIndex(Base):
     project = relationship("Project", back_populates="context_indexes")
 
     __table_args__ = (
-        UniqueConstraint(
-            "project_id", "document_name", "section_name", name="uq_context_index"
-        ),
+        UniqueConstraint("project_id", "document_name", "section_name", name="uq_context_index"),
         Index("idx_context_tenant", "tenant_key"),
         Index("idx_context_type", "index_type"),
         Index("idx_context_doc", "document_name"),
@@ -411,9 +374,7 @@ class LargeDocumentIndex(Base):
     total_size = Column(Integer, nullable=True)  # Total characters
     total_tokens = Column(Integer, nullable=True)  # Estimated total tokens
     chunk_count = Column(Integer, nullable=True)
-    meta_data = Column(
-        JSON, default=dict
-    )  # Changed from metadata to avoid SQLAlchemy conflict
+    meta_data = Column(JSON, default=dict)  # Changed from metadata to avoid SQLAlchemy conflict
     indexed_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -516,9 +477,7 @@ class AgentTemplate(Base):
     project_type = Column(String(50), nullable=True)  # ProjectType enum value
 
     # Template content
-    template_content = Column(
-        Text, nullable=False
-    )  # Template with {variable} placeholders
+    template_content = Column(Text, nullable=False)  # Template with {variable} placeholders
     variables = Column(JSON, default=list)  # List of required variables
     behavioral_rules = Column(JSON, default=list)  # Role-specific rules
     success_criteria = Column(JSON, default=list)  # Success metrics
@@ -542,20 +501,12 @@ class AgentTemplate(Base):
     created_by = Column(String(100), nullable=True)
 
     # Relationships
-    archives = relationship(
-        "TemplateArchive", back_populates="template", cascade="all, delete-orphan"
-    )
-    augmentations = relationship(
-        "TemplateAugmentation", back_populates="template", cascade="all, delete-orphan"
-    )
-    usage_stats = relationship(
-        "TemplateUsageStats", back_populates="template", cascade="all, delete-orphan"
-    )
+    archives = relationship("TemplateArchive", back_populates="template", cascade="all, delete-orphan")
+    augmentations = relationship("TemplateAugmentation", back_populates="template", cascade="all, delete-orphan")
+    usage_stats = relationship("TemplateUsageStats", back_populates="template", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint(
-            "product_id", "name", "version", name="uq_template_product_name_version"
-        ),
+        UniqueConstraint("product_id", "name", "version", name="uq_template_product_name_version"),
         Index("idx_template_tenant", "tenant_key"),
         Index("idx_template_product", "product_id"),
         Index("idx_template_category", "category"),
@@ -564,7 +515,7 @@ class AgentTemplate(Base):
     )
 
     @property
-    def variable_list(self) -> List[str]:
+    def variable_list(self) -> list[str]:
         """Get list of variables in template"""
         import re
 
@@ -637,9 +588,7 @@ class TemplateAugmentation(Base):
 
     # Augmentation details
     name = Column(String(100), nullable=False)
-    augmentation_type = Column(
-        String(50), nullable=False
-    )  # 'append', 'prepend', 'replace', 'inject'
+    augmentation_type = Column(String(50), nullable=False)  # 'append', 'prepend', 'replace', 'inject'
     target_section = Column(String(100), nullable=True)  # Which section to augment
     content = Column(Text, nullable=False)
     conditions = Column(JSON, default=dict)  # When to apply this augmentation
@@ -727,19 +676,13 @@ class GitConfig(Base):
     ssh_key_encrypted = Column(Text, nullable=True)  # Encrypted SSH private key content
 
     # Auto-commit settings
-    auto_commit = Column(
-        Boolean, default=True
-    )  # Enable auto-commit on project completion
+    auto_commit = Column(Boolean, default=True)  # Enable auto-commit on project completion
     auto_push = Column(Boolean, default=False)  # Enable auto-push after commit
-    commit_message_template = Column(
-        Text, nullable=True
-    )  # Template for commit messages
+    commit_message_template = Column(Text, nullable=True)  # Template for commit messages
 
     # CI/CD webhook configuration
     webhook_url = Column(String(500), nullable=True)  # Webhook URL for CI/CD triggers
-    webhook_secret = Column(
-        String(255), nullable=True
-    )  # Webhook secret for verification
+    webhook_secret = Column(String(255), nullable=True)  # Webhook secret for verification
     webhook_events = Column(JSON, default=list)  # List of events to trigger webhook
 
     # Git ignore and repository settings
@@ -755,9 +698,7 @@ class GitConfig(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    verified_at = Column(
-        DateTime(timezone=True), nullable=True
-    )  # Last successful auth verification
+    verified_at = Column(DateTime(timezone=True), nullable=True)  # Last successful auth verification
 
     meta_data = Column(JSON, default=dict)
 
@@ -767,9 +708,7 @@ class GitConfig(Base):
         Index("idx_git_config_product", "product_id"),
         Index("idx_git_config_active", "is_active"),
         Index("idx_git_config_auth", "auth_method"),
-        CheckConstraint(
-            "auth_method IN ('https', 'ssh', 'token')", name="ck_git_config_auth_method"
-        ),
+        CheckConstraint("auth_method IN ('https', 'ssh', 'token')", name="ck_git_config_auth_method"),
     )
 
     @property
@@ -778,18 +717,11 @@ class GitConfig(Base):
         if not self.repo_url or not self.auth_method:
             return False
 
-        if self.auth_method == "https" and not (
-            self.username and self.password_encrypted
+        if (self.auth_method == "https" and not (self.username and self.password_encrypted)) or (
+            self.auth_method == "ssh" and not (self.ssh_key_path or self.ssh_key_encrypted)
         ):
             return False
-        elif self.auth_method == "ssh" and not (
-            self.ssh_key_path or self.ssh_key_encrypted
-        ):
-            return False
-        elif self.auth_method == "token" and not self.password_encrypted:
-            return False
-
-        return True
+        return not (self.auth_method == "token" and not self.password_encrypted)
 
     @property
     def webhook_configured(self) -> bool:
@@ -808,9 +740,7 @@ class GitCommit(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     product_id = Column(String(36), nullable=False)
-    project_id = Column(
-        String(36), ForeignKey("projects.id"), nullable=True
-    )  # Associated project if any
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)  # Associated project if any
 
     # Commit details
     commit_hash = Column(String(40), nullable=False, unique=True)
@@ -825,13 +755,9 @@ class GitCommit(Base):
     deletions = Column(Integer, default=0)  # Lines deleted
 
     # Orchestrator context
-    triggered_by = Column(
-        String(50), nullable=True
-    )  # 'auto_commit', 'manual', 'project_completion'
+    triggered_by = Column(String(50), nullable=True)  # 'auto_commit', 'manual', 'project_completion'
     agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
-    commit_type = Column(
-        String(50), nullable=True
-    )  # 'feature', 'fix', 'docs', 'refactor', etc.
+    commit_type = Column(String(50), nullable=True)  # 'feature', 'fix', 'docs', 'refactor', etc.
 
     # Status tracking
     push_status = Column(String(20), default="pending")  # 'pending', 'pushed', 'failed'

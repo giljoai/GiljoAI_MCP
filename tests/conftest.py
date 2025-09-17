@@ -3,29 +3,33 @@ Pytest configuration for test suite
 Provides test fixtures and database setup
 """
 
+import asyncio
+import os
+import sys
+import tempfile
+from collections.abc import AsyncGenerator
+from pathlib import Path
+
 import pytest
 import pytest_asyncio
-import asyncio
-import sys
-from pathlib import Path
-from typing import AsyncGenerator, Generator
-import tempfile
-import os
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import Base
-from src.giljo_mcp.tenant import TenantManager
+import builtins
+import contextlib
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+
+from src.giljo_mcp.config_manager import get_config
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tenant import TenantManager
+from tests.helpers.async_helpers import AsyncMockManager, DatabaseTestHelper, TimeoutHelper
+from tests.helpers.mock_servers import ExternalServiceMocks
 
 # Import test helpers
-from tests.helpers.test_factories import ProjectFactory, AgentFactory, MessageFactory
-from tests.helpers.async_helpers import AsyncMockManager, TimeoutHelper, DatabaseTestHelper
-from tests.helpers.mock_servers import ExternalServiceMocks
+from tests.helpers.test_factories import AgentFactory, MessageFactory, ProjectFactory
 
 
 @pytest.fixture(scope="session")
@@ -42,22 +46,20 @@ async def test_db():
     # Create temporary database file
     temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     temp_db.close()
-    
+
     # Create database manager with test database
     connection_string = f"sqlite+aiosqlite:///{temp_db.name}"
     db_manager = DatabaseManager(connection_string, is_async=True)
-    
+
     # Initialize database
     await db_manager.create_tables_async()
-    
+
     yield db_manager
-    
+
     # Cleanup
     await db_manager.close_async()
-    try:
+    with contextlib.suppress(builtins.BaseException):
         os.unlink(temp_db.name)
-    except:
-        pass
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -73,7 +75,7 @@ async def tenant_manager(test_db) -> TenantManager:
     return TenantManager(test_db)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def test_config():
     """Get test configuration"""
     config = get_config()
@@ -87,107 +89,109 @@ def test_config():
 @pytest_asyncio.fixture(scope="function")
 async def test_project_id(db_session):
     """Create a test project and return its ID"""
-    from src.giljo_mcp.models import Project
     import uuid
-    
+
+    from src.giljo_mcp.models import Project
+
     project = Project(
         id=str(uuid.uuid4()),
         name="Test Project",
         mission="Test mission for integration testing",
         status="active",
-        tenant_key=str(uuid.uuid4())
+        tenant_key=str(uuid.uuid4()),
     )
-    
+
     db_session.add(project)
     await db_session.commit()
-    
+
     return project.id
 
 
 @pytest_asyncio.fixture(scope="function")
 async def test_agent(db_session, test_project_id):
     """Create a test agent"""
-    from src.giljo_mcp.models import Agent
     import uuid
-    from datetime import datetime
-    
+    from datetime import datetime, timezone
+
+    from src.giljo_mcp.models import Agent
+
     agent = Agent(
         id=str(uuid.uuid4()),
         name="test_agent",
         type="worker",
         status="active",
         project_id=test_project_id,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
     )
-    
+
     db_session.add(agent)
     await db_session.commit()
-    
+
     return agent
 
 
 # Performance benchmarking fixtures
-@pytest.fixture(scope="function")
+@pytest.fixture
 def benchmark_timer():
     """Simple timer for performance benchmarking"""
     import time
-    
+
     class Timer:
         def __init__(self):
             self.times = []
-            
+
         def start(self):
             self.start_time = time.perf_counter()
-            
+
         def stop(self):
             elapsed = (time.perf_counter() - self.start_time) * 1000  # Convert to ms
             self.times.append(elapsed)
             return elapsed
-            
+
         def average(self):
             return sum(self.times) / len(self.times) if self.times else 0
-            
+
         def max(self):
             return max(self.times) if self.times else 0
-            
+
         def min(self):
             return min(self.times) if self.times else 0
-    
+
     return Timer()
 
 
 # Additional test fixtures using new helpers
-@pytest.fixture(scope="function")
+@pytest.fixture
 def project_factory():
     """Factory for creating test projects"""
     return ProjectFactory
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def agent_factory():
     """Factory for creating test agents"""
     return AgentFactory
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def message_factory():
     """Factory for creating test messages"""
     return MessageFactory
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def timeout_helper():
     """Helper for testing timeouts and conditions"""
     return TimeoutHelper
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def db_helper():
     """Helper for database testing operations"""
     return DatabaseTestHelper
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def external_mocks():
     """Collection of external service mocks"""
     return ExternalServiceMocks
@@ -201,32 +205,19 @@ async def async_mock_manager():
     manager.cleanup()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sample_project_data():
     """Sample project data for testing"""
-    return {
-        "name": "Test Project",
-        "mission": "Test mission for unit testing",
-        "status": "active"
-    }
+    return {"name": "Test Project", "mission": "Test mission for unit testing", "status": "active"}
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sample_agent_data():
     """Sample agent data for testing"""
-    return {
-        "name": "test_agent",
-        "type": "worker",
-        "status": "active"
-    }
+    return {"name": "test_agent", "type": "worker", "status": "active"}
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sample_message_data():
     """Sample message data for testing"""
-    return {
-        "from_agent": "orchestrator",
-        "content": "Test message content",
-        "type": "direct",
-        "priority": "normal"
-    }
+    return {"from_agent": "orchestrator", "content": "Test message content", "type": "direct", "priority": "normal"}

@@ -4,11 +4,14 @@ Integrates with template_manager.py for task-to-project conversion templates
 """
 
 import logging
-from typing import Dict, Any, List, Optional
-from sqlalchemy import select, and_
-from giljo_mcp.models import Task
+from typing import Any, Optional
+
+from sqlalchemy import and_, select
+
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Task
 from giljo_mcp.template_manager import get_template_manager
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +22,7 @@ def register_task_template_tools(mcp):
     @mcp.tool()
     async def get_task_conversion_templates(
         category: Optional[str] = None, priority: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get available templates for task-to-project conversion
 
@@ -41,7 +44,7 @@ def register_task_template_tools(mcp):
                 }
 
             db_manager = DatabaseManager(is_async=True)
-            template_manager = get_template_manager(db_manager)
+            get_template_manager(db_manager)
 
             # Common conversion templates organized by category
             conversion_templates = {
@@ -143,7 +146,7 @@ def register_task_template_tools(mcp):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get conversion templates: {e}")
+            logger.exception(f"Failed to get conversion templates: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -151,8 +154,8 @@ def register_task_template_tools(mcp):
         task_id: str,
         template_category: str,
         project_name: Optional[str] = None,
-        additional_variables: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        additional_variables: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Generate a complete project configuration from a task using templates
 
@@ -180,9 +183,7 @@ def register_task_template_tools(mcp):
 
             async with db_manager.get_session_async() as session:
                 # Get source task
-                task_query = select(Task).where(
-                    and_(Task.id == task_id, Task.tenant_key == tenant_key)
-                )
+                task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
                 task_result = await session.execute(task_query)
                 task = task_result.scalar_one_or_none()
 
@@ -190,9 +191,7 @@ def register_task_template_tools(mcp):
                     return {"success": False, "error": f"Task {task_id} not found"}
 
                 # Get template configuration
-                templates_result = await get_task_conversion_templates(
-                    category=template_category
-                )
+                templates_result = await get_task_conversion_templates(category=template_category)
                 if not templates_result["success"]:
                     return templates_result
 
@@ -206,9 +205,7 @@ def register_task_template_tools(mcp):
                 # Build project configuration
                 project_config = {
                     "name": project_name or f"Project: {task.title}",
-                    "mission": _generate_project_mission(
-                        task, template_config, additional_variables
-                    ),
+                    "mission": _generate_project_mission(task, template_config, additional_variables),
                     "agent_sequence": template_config["agents"],
                     "source_task": {
                         "id": str(task.id),
@@ -236,8 +233,7 @@ def register_task_template_tools(mcp):
                                 "project_name": project_config["name"],
                                 "project_mission": project_config["mission"],
                                 "task_title": task.title,
-                                "task_description": task.description
-                                or "No description provided",
+                                "task_description": task.description or "No description provided",
                                 "task_category": task.category or "general",
                                 "task_priority": task.priority,
                                 **project_config["template_variables"],
@@ -246,12 +242,8 @@ def register_task_template_tools(mcp):
                         )
                         agent_missions[agent_role] = mission
                     except Exception as agent_error:
-                        logger.warning(
-                            f"Failed to generate mission for {agent_role}: {agent_error}"
-                        )
-                        agent_missions[agent_role] = (
-                            f"Standard {agent_role} mission for {template_category} project"
-                        )
+                        logger.warning(f"Failed to generate mission for {agent_role}: {agent_error}")
+                        agent_missions[agent_role] = f"Standard {agent_role} mission for {template_category} project"
 
                 project_config["agent_missions"] = agent_missions
 
@@ -263,11 +255,11 @@ def register_task_template_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to generate project from template: {e}")
+            logger.exception(f"Failed to generate project from template: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def suggest_conversion_template(task_id: str) -> Dict[str, Any]:
+    async def suggest_conversion_template(task_id: str) -> dict[str, Any]:
         """
         Analyze a task and suggest the best conversion template
 
@@ -290,9 +282,7 @@ def register_task_template_tools(mcp):
             db_manager = DatabaseManager(is_async=True)
             async with db_manager.get_session_async() as session:
                 # Get task details
-                task_query = select(Task).where(
-                    and_(Task.id == task_id, Task.tenant_key == tenant_key)
-                )
+                task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
                 task_result = await session.execute(task_query)
                 task = task_result.scalar_one_or_none()
 
@@ -316,14 +306,14 @@ def register_task_template_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to suggest conversion template: {e}")
+            logger.exception(f"Failed to suggest conversion template: {e}")
             return {"success": False, "error": str(e)}
 
 
 def _generate_project_mission(
     task: Task,
-    template_config: Dict[str, Any],
-    additional_variables: Optional[Dict[str, Any]],
+    template_config: dict[str, Any],
+    additional_variables: Optional[dict[str, Any]],
 ) -> str:
     """Generate a comprehensive project mission from task and template"""
 
@@ -363,7 +353,7 @@ ORCHESTRATOR INSTRUCTIONS:
     return base_mission.strip()
 
 
-def _analyze_task_for_template(task: Task) -> List[Dict[str, Any]]:
+def _analyze_task_for_template(task: Task) -> list[dict[str, Any]]:
     """Analyze task content and suggest appropriate templates"""
 
     suggestions = []
@@ -472,9 +462,7 @@ def _analyze_task_for_template(task: Task) -> List[Dict[str, Any]]:
 
         if task.priority in ["critical", "high"]:
             fallback_suggestion["template_category"] = "bug_fix"
-            fallback_suggestion["reasoning"] = (
-                "High priority suggests urgent issue resolution"
-            )
+            fallback_suggestion["reasoning"] = "High priority suggests urgent issue resolution"
 
         suggestions.append(fallback_suggestion)
 

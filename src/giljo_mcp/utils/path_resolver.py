@@ -4,7 +4,7 @@ Ensures all paths use forward slashes and handles edge cases.
 """
 
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
 
 
 class PathResolver:
@@ -31,10 +31,10 @@ class PathResolver:
             path = path.replace("\\", "/")
 
             # Handle special relative path cases
-            if original.startswith(".\\") or original.startswith("./"):
+            if original.startswith((".\\", "./")):
                 # Preserve ./ prefix
                 path = "./" + path.lstrip("./")
-            elif original.startswith("..\\") or original.startswith("../"):
+            elif original.startswith(("..\\", "../")):
                 # Preserve ../ prefix
                 path = "../" + path.lstrip("../")
 
@@ -90,16 +90,16 @@ class PathResolver:
 
         # If relative path starts with ./, preserve it
         relative_str = str(relative)
-        if relative_str.startswith("./") or relative_str.startswith(".\\"):
+        if relative_str.startswith(("./", ".\\")):
             result = base_path / rel_path
             result_str = result.as_posix()
             # Ensure ./ prefix is preserved for relative paths
-            if not result_str.startswith("/") and not result_str[1:3] == ":/":
+            if not result_str.startswith("/") and result_str[1:3] != ":/":
                 result_str = "./" + result_str.lstrip("./")
             return result_str
 
         # Handle parent directory references
-        if relative_str.startswith("../") or relative_str.startswith("..\\"):
+        if relative_str.startswith(("../", "..\\")):
             # Count how many parent levels
             parts = Path(relative_str).parts
             parent_count = sum(1 for p in parts if p == "..")
@@ -136,9 +136,7 @@ class PathResolver:
         return normalized.replace("\\", "/")
 
     @staticmethod
-    def get_relative(
-        path: Union[str, Path], base: Optional[Union[str, Path]] = None
-    ) -> str:
+    def get_relative(path: Union[str, Path], base: Optional[Union[str, Path]] = None) -> str:
         """
         Get relative path from base to path.
 
@@ -160,9 +158,7 @@ class PathResolver:
             return path_obj.as_posix()
 
     @staticmethod
-    def ensure_absolute(
-        path: Union[str, Path], base: Optional[Union[str, Path]] = None
-    ) -> str:
+    def ensure_absolute(path: Union[str, Path], base: Optional[Union[str, Path]] = None) -> str:
         """
         Ensure a path is absolute.
 

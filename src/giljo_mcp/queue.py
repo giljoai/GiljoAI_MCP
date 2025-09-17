@@ -5,19 +5,20 @@ Provides ACID-compliant, priority-based message queue with intelligent routing
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Tuple
-from enum import Enum
 import re
+from datetime import datetime, timezone, timedelta
+from enum import Enum
+from typing import Any, Optional
 
-from sqlalchemy import select, update, and_, func
+from sqlalchemy import and_, func, select, update
 
 from .database import DatabaseManager
-from .tenant import TenantManager
-from .models import Message, Agent
 
 # Import from centralized exceptions
-from .exceptions import QueueException, ConsistencyError
+from .exceptions import ConsistencyError, QueueException
+from .models import Agent, Message
+from .tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -78,18 +79,14 @@ class MessageQueue:
             # Record metrics
             await self._monitor.record_enqueue(message)
 
-            logger.info(
-                f"Enqueued message {message.id} with priority {message.priority}"
-            )
+            logger.info(f"Enqueued message {message.id} with priority {message.priority}")
             return str(message.id)
 
         except Exception as e:
-            logger.error(f"Failed to enqueue message: {e}")
+            logger.exception(f"Failed to enqueue message: {e}")
             raise QueueException(f"Enqueue failed: {e}")
 
-    async def dequeue(
-        self, agent_name: str, batch_size: Optional[int] = None
-    ) -> List[Message]:
+    async def dequeue(self, agent_name: str, batch_size: Optional[int] = None) -> list[Message]:
         """
         Retrieve messages for agent based on priority and routing rules.
 
@@ -131,9 +128,7 @@ class MessageQueue:
                     for message in messages:
                         message.status = "processing"
                         message.meta_data = message.meta_data or {}
-                        message.meta_data["processing_started_at"] = (
-                            datetime.utcnow().isoformat()
-                        )
+                        message.meta_data["processing_started_at"] = datetime.now(timezone.utc).isoformat()
                         message.meta_data["processing_agent"] = agent_name
 
                         # Record dequeue metrics
@@ -142,14 +137,12 @@ class MessageQueue:
                     # Commit transaction
                     await session.commit()
 
-                    logger.info(
-                        f"Dequeued {len(messages)} messages for agent {agent_name}"
-                    )
+                    logger.info(f"Dequeued {len(messages)} messages for agent {agent_name}")
                     return messages
 
                 except Exception as e:
                     await session.rollback()
-                    logger.error(f"Failed to dequeue messages: {e}")
+                    logger.exception(f"Failed to dequeue messages: {e}")
                     raise QueueException(f"Dequeue failed: {e}")
 
     async def process_message(self, message_id: str, agent_name: str) -> bool:
@@ -169,11 +162,7 @@ class MessageQueue:
                     await session.begin()
 
                     # Get and lock the message
-                    stmt = (
-                        select(Message)
-                        .where(Message.id == message_id)
-                        .with_for_update()
-                    )
+                    stmt = select(Message).where(Message.id == message_id).with_for_update()
                     result = await session.execute(stmt)
                     message = result.scalar_one_or_none()
 
@@ -182,16 +171,12 @@ class MessageQueue:
 
                     # Validate state transition
                     if message.status not in ["pending", "acknowledged"]:
-                        raise ConsistencyError(
-                            f"Invalid state transition from {message.status}"
-                        )
+                        raise ConsistencyError(f"Invalid state transition from {message.status}")
 
                     # Update message
                     message.status = "processing"
                     message.meta_data = message.meta_data or {}
-                    message.meta_data["processing_started_at"] = (
-                        datetime.utcnow().isoformat()
-                    )
+                    message.meta_data["processing_started_at"] = datetime.now(timezone.utc).isoformat()
                     message.meta_data["processing_agent"] = agent_name
 
                     # Record processing time
@@ -202,12 +187,10 @@ class MessageQueue:
 
                 except Exception as e:
                     await session.rollback()
-                    logger.error(f"Failed to process message: {e}")
+                    logger.exception(f"Failed to process message: {e}")
                     return False
 
-    async def detect_stuck_messages(
-        self, timeout_seconds: Optional[int] = None
-    ) -> List[Message]:
+    async def detect_stuck_messages(self, timeout_seconds: Optional[int] = None) -> list[Message]:
         """
         Find messages that have been processing too long.
 
@@ -239,11 +222,7 @@ class MessageQueue:
                     await session.begin()
 
                     # Get the message
-                    stmt = (
-                        select(Message)
-                        .where(Message.id == message_id)
-                        .with_for_update()
-                    )
+                    stmt = select(Message).where(Message.id == message_id).with_for_update()
                     result = await session.execute(stmt)
                     message = result.scalar_one_or_none()
 
@@ -256,36 +235,32 @@ class MessageQueue:
 
                     if retry_count >= self._max_retries:
                         # Move to DLQ
-                        await self._dead_letter_queue.add_message(
-                            message, f"Max retries exceeded: {reason}"
-                        )
+                        await self._dead_letter_queue.add_message(message, f"Max retries exceeded: {reason}")
                         await session.commit()
                         return False
 
                     # Calculate backoff
                     backoff_seconds = (2**retry_count) * 60  # Exponential backoff
-                    retry_after = datetime.utcnow() + timedelta(seconds=backoff_seconds)
+                    retry_after = datetime.now(timezone.utc) + timedelta(seconds=backoff_seconds)
 
                     # Update message for retry
                     message.status = "pending"
                     message.meta_data["retry_count"] = retry_count + 1
                     message.meta_data["retry_reason"] = reason
                     message.meta_data["retry_after"] = retry_after.isoformat()
-                    message.meta_data["last_retry_at"] = datetime.utcnow().isoformat()
+                    message.meta_data["last_retry_at"] = datetime.now(timezone.utc).isoformat()
 
                     await session.commit()
 
-                    logger.info(
-                        f"Message {message_id} scheduled for retry #{retry_count + 1}"
-                    )
+                    logger.info(f"Message {message_id} scheduled for retry #{retry_count + 1}")
                     return True
 
                 except Exception as e:
                     await session.rollback()
-                    logger.error(f"Failed to retry message: {e}")
+                    logger.exception(f"Failed to retry message: {e}")
                     return False
 
-    async def get_statistics(self) -> Dict[str, Any]:
+    async def get_statistics(self) -> dict[str, Any]:
         """
         Get comprehensive queue statistics.
 
@@ -319,9 +294,7 @@ class MessageQueue:
                     .where(Message.status == "processing")
                     .values(
                         status="pending",
-                        meta_data=func.json_set(
-                            Message.meta_data, "$.recovered_from_crash", True
-                        ),
+                        meta_data=func.json_set(Message.meta_data, "$.recovered_from_crash", True),
                     )
                 )
                 result = await session.execute(stmt)
@@ -329,9 +302,7 @@ class MessageQueue:
 
                 await session.commit()
 
-                logger.info(
-                    f"Recovered {recovered_count} messages from processing state"
-                )
+                logger.info(f"Recovered {recovered_count} messages from processing state")
 
                 # Recover from WAL
                 await self._durability_manager.recover_from_crash()
@@ -343,7 +314,7 @@ class MessageQueue:
 
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Crash recovery failed: {e}")
+                logger.exception(f"Crash recovery failed: {e}")
                 raise QueueException(f"Recovery failed: {e}")
 
     async def checkpoint(self):
@@ -361,11 +332,11 @@ class RoutingEngine:
     """
 
     def __init__(self):
-        self._routing_rules: List[RoutingRule] = []
-        self._agent_capabilities: Dict[str, List[str]] = {}
-        self._agent_load: Dict[str, int] = {}
-        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
-        self._response_times: Dict[str, List[float]] = {}
+        self._routing_rules: list[RoutingRule] = []
+        self._agent_capabilities: dict[str, list[str]] = {}
+        self._agent_load: dict[str, int] = {}
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+        self._response_times: dict[str, list[float]] = {}
 
         # Initialize default routing rules
         self._initialize_default_rules()
@@ -378,9 +349,7 @@ class RoutingEngine:
         # Broadcast messages go to all agents
         self._routing_rules.append(TypeRoutingRule("broadcast", ["*"]))
 
-    async def route_message(
-        self, message: Message, available_agents: List[Agent]
-    ) -> List[str]:
+    async def route_message(self, message: Message, available_agents: list[Agent]) -> list[str]:
         """
         Determine optimal agent(s) for message delivery.
 
@@ -425,11 +394,7 @@ class RoutingEngine:
         )
 
         # Step 5: Check circuit breakers
-        healthy_agents = [
-            agent_name
-            for agent_name in sorted_agents
-            if not self._is_circuit_open(agent_name)
-        ]
+        healthy_agents = [agent_name for agent_name in sorted_agents if not self._is_circuit_open(agent_name)]
 
         return healthy_agents
 
@@ -442,10 +407,7 @@ class RoutingEngine:
             return True
 
         # Check if agent is in to_agents list
-        if agent.name in (message.to_agents or []):
-            return True
-
-        return False
+        return agent.name in (message.to_agents or [])
 
     def _calculate_agent_score(self, agent_name: str, message: Message) -> float:
         """
@@ -506,7 +468,7 @@ class RoutingRule:
         """Check if rule applies to message"""
         raise NotImplementedError
 
-    def get_agents(self) -> List[str]:
+    def get_agents(self) -> list[str]:
         """Get target agents for this rule"""
         raise NotImplementedError
 
@@ -514,42 +476,42 @@ class RoutingRule:
 class PriorityRoutingRule(RoutingRule):
     """Route based on message priority"""
 
-    def __init__(self, priority: str, agents: List[str]):
+    def __init__(self, priority: str, agents: list[str]):
         self.priority = priority
         self.agents = agents
 
     def matches(self, message: Message) -> bool:
         return message.priority == self.priority
 
-    def get_agents(self) -> List[str]:
+    def get_agents(self) -> list[str]:
         return self.agents
 
 
 class TypeRoutingRule(RoutingRule):
     """Route based on message type"""
 
-    def __init__(self, message_type: str, agents: List[str]):
+    def __init__(self, message_type: str, agents: list[str]):
         self.message_type = message_type
         self.agents = agents
 
     def matches(self, message: Message) -> bool:
         return message.message_type == self.message_type
 
-    def get_agents(self) -> List[str]:
+    def get_agents(self) -> list[str]:
         return self.agents
 
 
 class ContentRoutingRule(RoutingRule):
     """Route based on message content patterns"""
 
-    def __init__(self, pattern: str, agents: List[str]):
+    def __init__(self, pattern: str, agents: list[str]):
         self.pattern = re.compile(pattern)
         self.agents = agents
 
     def matches(self, message: Message) -> bool:
         return bool(self.pattern.search(message.content))
 
-    def get_agents(self) -> List[str]:
+    def get_agents(self) -> list[str]:
         return self.agents
 
 
@@ -569,7 +531,7 @@ class CircuitBreaker:
         if self.state == "open":
             # Check if timeout has passed
             if self.last_failure_time:
-                elapsed = (datetime.utcnow() - self.last_failure_time).total_seconds()
+                elapsed = (datetime.now(timezone.utc) - self.last_failure_time).total_seconds()
                 if elapsed > self.timeout:
                     self.state = "half-open"
                     return False
@@ -585,7 +547,7 @@ class CircuitBreaker:
     def record_failure(self):
         """Record failed operation"""
         self.failure_count += 1
-        self.last_failure_time = datetime.utcnow()
+        self.last_failure_time = datetime.now(timezone.utc)
 
         if self.failure_count >= self.failure_threshold:
             self.state = "open"
@@ -605,26 +567,24 @@ class QueueMonitor:
             "stuck_messages": 0,
             "dlq_size": 0,
         }
-        self._latency_samples: List[float] = []
-        self._throughput_window: List[Tuple[datetime, int]] = []
-        self._processing_starts: Dict[str, datetime] = {}
+        self._latency_samples: list[float] = []
+        self._throughput_window: list[tuple[datetime, int]] = []
+        self._processing_starts: dict[str, datetime] = {}
 
     async def record_enqueue(self, message: Message):
         """Record message enqueue event"""
         priority = message.priority
-        self._metrics["queue_depth"][priority] = (
-            self._metrics["queue_depth"].get(priority, 0) + 1
-        )
+        self._metrics["queue_depth"][priority] = self._metrics["queue_depth"].get(priority, 0) + 1
 
         # Update throughput
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self._throughput_window.append((now, 1))
         self._cleanup_throughput_window()
 
     async def record_dequeue(self, message: Message, agent_name: str):
         """Record message dequeue event"""
         # Calculate latency
-        latency = (datetime.utcnow() - message.created_at).total_seconds()
+        latency = (datetime.now(timezone.utc) - message.created_at).total_seconds()
         self._latency_samples.append(latency)
 
         # Keep only last 1000 samples
@@ -638,15 +598,13 @@ class QueueMonitor:
 
     async def record_processing_start(self, message_id: str, agent_name: str):
         """Record when processing starts"""
-        self._processing_starts[message_id] = datetime.utcnow()
+        self._processing_starts[message_id] = datetime.now(timezone.utc)
 
-    async def record_processing_end(
-        self, message_id: str, agent_name: str, success: bool
-    ):
+    async def record_processing_end(self, message_id: str, agent_name: str, success: bool):
         """Record when processing ends"""
         if message_id in self._processing_starts:
             start_time = self._processing_starts[message_id]
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             if agent_name not in self._metrics["processing_time"]:
                 self._metrics["processing_time"][agent_name] = []
@@ -655,9 +613,7 @@ class QueueMonitor:
 
             # Keep only last 100 samples per agent
             if len(self._metrics["processing_time"][agent_name]) > 100:
-                self._metrics["processing_time"][agent_name] = self._metrics[
-                    "processing_time"
-                ][agent_name][-100:]
+                self._metrics["processing_time"][agent_name] = self._metrics["processing_time"][agent_name][-100:]
 
             del self._processing_starts[message_id]
 
@@ -666,17 +622,15 @@ class QueueMonitor:
 
     def _cleanup_throughput_window(self):
         """Remove old entries from throughput window"""
-        cutoff = datetime.utcnow() - timedelta(minutes=1)
-        self._throughput_window = [
-            (t, c) for t, c in self._throughput_window if t > cutoff
-        ]
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=1)
+        self._throughput_window = [(t, c) for t, c in self._throughput_window if t > cutoff]
 
     def _calculate_throughput(self) -> float:
         """Calculate messages per minute"""
         self._cleanup_throughput_window()
         return sum(c for _, c in self._throughput_window)
 
-    def _calculate_latency_percentiles(self) -> Dict[str, float]:
+    def _calculate_latency_percentiles(self) -> dict[str, float]:
         """Calculate latency percentiles"""
         if not self._latency_samples:
             return {"p50": 0, "p95": 0, "p99": 0}
@@ -690,11 +644,9 @@ class QueueMonitor:
             "p99": sorted_samples[int(n * 0.99)],
         }
 
-    async def get_statistics(self) -> Dict[str, Any]:
+    async def get_statistics(self) -> dict[str, Any]:
         """Get comprehensive statistics"""
-        self._metrics["throughput"][
-            "messages_per_minute"
-        ] = self._calculate_throughput()
+        self._metrics["throughput"]["messages_per_minute"] = self._calculate_throughput()
         self._metrics["latency"] = self._calculate_latency_percentiles()
 
         # Calculate average processing times
@@ -734,15 +686,13 @@ class StuckMessageDetector:
         self.db_manager = db_manager
         self.timeout_seconds = timeout_seconds
 
-    async def detect_stuck_messages(
-        self, timeout_seconds: Optional[int] = None
-    ) -> List[Message]:
+    async def detect_stuck_messages(self, timeout_seconds: Optional[int] = None) -> list[Message]:
         """Find messages that have been processing too long"""
         if timeout_seconds is None:
             timeout_seconds = self.timeout_seconds
 
         async with self.db_manager.get_session() as session:
-            cutoff_time = datetime.utcnow() - timedelta(seconds=timeout_seconds)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=timeout_seconds)
 
             # Check messages with processing_started_at in meta_data
             stmt = select(Message).where(
@@ -759,14 +709,10 @@ class StuckMessageDetector:
             stuck = []
             for msg in messages:
                 if msg.meta_data and "processing_started_at" in msg.meta_data:
-                    started = datetime.fromisoformat(
-                        msg.meta_data["processing_started_at"]
-                    )
-                    if (datetime.utcnow() - started).total_seconds() > timeout_seconds:
+                    started = datetime.fromisoformat(msg.meta_data["processing_started_at"])
+                    if (datetime.now(timezone.utc) - started).total_seconds() > timeout_seconds:
                         stuck.append(msg)
-                elif (
-                    datetime.utcnow() - msg.created_at
-                ).total_seconds() > timeout_seconds:
+                elif (datetime.now(timezone.utc) - msg.created_at).total_seconds() > timeout_seconds:
                     stuck.append(msg)
 
             return stuck
@@ -788,7 +734,7 @@ class DeadLetterQueue:
                 message.status = "dead_letter"
                 message.meta_data = message.meta_data or {}
                 message.meta_data["dlq_reason"] = reason
-                message.meta_data["dlq_timestamp"] = datetime.utcnow().isoformat()
+                message.meta_data["dlq_timestamp"] = datetime.now(timezone.utc).isoformat()
 
                 session.add(message)
                 await session.commit()
@@ -797,16 +743,12 @@ class DeadLetterQueue:
 
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Failed to move message to DLQ: {e}")
+                logger.exception(f"Failed to move message to DLQ: {e}")
 
     async def get_size(self) -> int:
         """Get number of messages in DLQ"""
         async with self.db_manager.get_session() as session:
-            stmt = (
-                select(func.count())
-                .select_from(Message)
-                .where(Message.status == "dead_letter")
-            )
+            stmt = select(func.count()).select_from(Message).where(Message.status == "dead_letter")
             result = await session.execute(stmt)
             return result.scalar() or 0
 
@@ -833,7 +775,7 @@ class DeadLetterQueue:
 
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Failed to reprocess DLQ message: {e}")
+                logger.exception(f"Failed to reprocess DLQ message: {e}")
 
         return False
 
@@ -843,13 +785,13 @@ class DurabilityManager:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self._wal_entries: List[Dict[str, Any]] = []
+        self._wal_entries: list[dict[str, Any]] = []
 
     async def persist_with_wal(self, message: Message):
         """Write-ahead logging for crash recovery"""
         # Record WAL entry
         wal_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "operation": "enqueue",
             "message_id": str(message.id),
             "committed": False,
@@ -869,9 +811,7 @@ class DurabilityManager:
         uncommitted = [e for e in self._wal_entries if not e["committed"]]
 
         for entry in uncommitted:
-            logger.info(
-                f"Recovering uncommitted operation: {entry['operation']} for message {entry['message_id']}"
-            )
+            logger.info(f"Recovering uncommitted operation: {entry['operation']} for message {entry['message_id']}")
             # In a real implementation, this would replay the operation
 
     async def checkpoint(self):
@@ -885,8 +825,8 @@ class IsolationManager:
     """Ensure proper isolation between concurrent operations"""
 
     def __init__(self):
-        self._locks: Dict[str, asyncio.Lock] = {}
-        self._agent_locks: Dict[str, asyncio.Lock] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
+        self._agent_locks: dict[str, asyncio.Lock] = {}
 
     def with_message_lock(self, message_id: str):
         """Get or create a lock for a message"""

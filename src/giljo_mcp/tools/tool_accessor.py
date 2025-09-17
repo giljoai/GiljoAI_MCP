@@ -4,15 +4,16 @@ Provides direct access to MCP tool functions for API endpoints
 """
 
 import logging
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import select, update
 
-from ..database import DatabaseManager
-from ..tenant import TenantManager
-from ..models import Project, Agent, Message, Task
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Agent, Message, Project, Task
+from giljo_mcp.tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +27,7 @@ class ToolAccessor:
 
     # Project Tools
 
-    async def create_project(
-        self, name: str, mission: str, agents: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None) -> dict[str, Any]:
         """Create a new project"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -63,9 +62,7 @@ class ToolAccessor:
                         session.add(agent)
                     await session.commit()
 
-                logger.info(
-                    f"Created project {project_id} with tenant key {tenant_key}"
-                )
+                logger.info(f"Created project {project_id} with tenant key {tenant_key}")
 
                 return {
                     "success": True,
@@ -76,10 +73,10 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to create project: {e}")
+            logger.exception(f"Failed to create project: {e}")
             return {"success": False, "error": str(e)}
 
-    async def list_projects(self, status: Optional[str] = None) -> Dict[str, Any]:
+    async def list_projects(self, status: Optional[str] = None) -> dict[str, Any]:
         """List all projects with optional status filter"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -100,11 +97,7 @@ class ToolAccessor:
                             "status": project.status,
                             "tenant_key": project.tenant_key,
                             "created_at": project.created_at.isoformat(),
-                            "updated_at": (
-                                project.updated_at.isoformat()
-                                if project.updated_at
-                                else None
-                            ),
+                            "updated_at": (project.updated_at.isoformat() if project.updated_at else None),
                             "context_budget": project.context_budget,
                             "context_used": project.context_used,
                         }
@@ -113,10 +106,10 @@ class ToolAccessor:
                 return {"success": True, "projects": project_list}
 
         except Exception as e:
-            logger.error(f"Failed to list projects: {e}")
+            logger.exception(f"Failed to list projects: {e}")
             return {"success": False, "error": str(e)}
 
-    async def project_status(self, project_id: Optional[str] = None) -> Dict[str, Any]:
+    async def project_status(self, project_id: Optional[str] = None) -> dict[str, Any]:
         """Get comprehensive project status"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -134,16 +127,12 @@ class ToolAccessor:
                     return {"success": False, "error": "Project not found"}
 
                 # Get agents
-                agent_result = await session.execute(
-                    select(Agent).where(Agent.project_id == project.id)
-                )
+                agent_result = await session.execute(select(Agent).where(Agent.project_id == project.id))
                 agents = agent_result.scalars().all()
 
                 # Get pending messages
                 message_result = await session.execute(
-                    select(Message).where(
-                        Message.project_id == project.id, Message.status == "pending"
-                    )
+                    select(Message).where(Message.project_id == project.id, Message.status == "pending")
                 )
                 pending_messages = len(message_result.scalars().all())
 
@@ -159,18 +148,15 @@ class ToolAccessor:
                         "context_budget": project.context_budget,
                         "context_used": project.context_used,
                     },
-                    "agents": [
-                        {"name": agent.name, "status": agent.status, "role": agent.role}
-                        for agent in agents
-                    ],
+                    "agents": [{"name": agent.name, "status": agent.status, "role": agent.role} for agent in agents],
                     "pending_messages": pending_messages,
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get project status: {e}")
+            logger.exception(f"Failed to get project status: {e}")
             return {"success": False, "error": str(e)}
 
-    async def close_project(self, project_id: str, summary: str) -> Dict[str, Any]:
+    async def close_project(self, project_id: str, summary: str) -> dict[str, Any]:
         """Close a completed project with summary"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -198,12 +184,10 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to close project: {e}")
+            logger.exception(f"Failed to close project: {e}")
             return {"success": False, "error": str(e)}
 
-    async def update_project_mission(
-        self, project_id: str, mission: str
-    ) -> Dict[str, Any]:
+    async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
         """Update the mission field after orchestrator analysis"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -221,21 +205,17 @@ class ToolAccessor:
                 return {"success": True, "message": "Mission updated successfully"}
 
         except Exception as e:
-            logger.error(f"Failed to update mission: {e}")
+            logger.exception(f"Failed to update mission: {e}")
             return {"success": False, "error": str(e)}
 
     # Agent Tools
 
-    async def ensure_agent(
-        self, project_id: str, agent_name: str, mission: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def ensure_agent(self, project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
         """Ensure an agent exists for work on a project"""
         try:
             async with self.db_manager.get_session_async() as session:
                 # Get project
-                result = await session.execute(
-                    select(Project).where(Project.id == project_id)
-                )
+                result = await session.execute(select(Project).where(Project.id == project_id))
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -243,9 +223,7 @@ class ToolAccessor:
 
                 # Check if agent exists
                 agent_result = await session.execute(
-                    select(Agent).where(
-                        Agent.name == agent_name, Agent.project_id == project_id
-                    )
+                    select(Agent).where(Agent.name == agent_name, Agent.project_id == project_id)
                 )
                 agent = agent_result.scalar_one_or_none()
 
@@ -277,17 +255,15 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to ensure agent: {e}")
+            logger.exception(f"Failed to ensure agent: {e}")
             return {"success": False, "error": str(e)}
 
-    async def agent_health(self, agent_name: Optional[str] = None) -> Dict[str, Any]:
+    async def agent_health(self, agent_name: Optional[str] = None) -> dict[str, Any]:
         """Check agent health and context usage"""
         try:
             async with self.db_manager.get_session_async() as session:
                 if agent_name:
-                    result = await session.execute(
-                        select(Agent).where(Agent.name == agent_name)
-                    )
+                    result = await session.execute(select(Agent).where(Agent.name == agent_name))
                     agents = [result.scalar_one_or_none()]
                 else:
                     result = await session.execute(select(Agent))
@@ -315,12 +291,10 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to check agent health: {e}")
+            logger.exception(f"Failed to check agent health: {e}")
             return {"success": False, "error": str(e)}
 
-    async def decommission_agent(
-        self, agent_name: str, project_id: str, reason: str = "completed"
-    ) -> Dict[str, Any]:
+    async def decommission_agent(self, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
         """Gracefully end an agent's work"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -341,27 +315,25 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to decommission agent: {e}")
+            logger.exception(f"Failed to decommission agent: {e}")
             return {"success": False, "error": str(e)}
 
     # Message Tools
 
     async def send_message(
         self,
-        to_agents: List[str],
+        to_agents: list[str],
         content: str,
         project_id: str,
         message_type: str = "direct",
         priority: str = "normal",
         from_agent: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send message to one or more agents"""
         try:
             async with self.db_manager.get_session_async() as session:
                 # Get project
-                result = await session.execute(
-                    select(Project).where(Project.id == project_id)
-                )
+                result = await session.execute(select(Project).where(Project.id == project_id))
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -390,12 +362,10 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to send message: {e}")
+            logger.exception(f"Failed to send message: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_messages(
-        self, agent_name: str, project_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_messages(self, agent_name: str, project_id: Optional[str] = None) -> dict[str, Any]:
         """Retrieve pending messages for an agent"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -430,18 +400,14 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get messages: {e}")
+            logger.exception(f"Failed to get messages: {e}")
             return {"success": False, "error": str(e)}
 
-    async def acknowledge_message(
-        self, message_id: str, agent_name: str
-    ) -> Dict[str, Any]:
+    async def acknowledge_message(self, message_id: str, agent_name: str) -> dict[str, Any]:
         """Mark message as received by agent"""
         try:
             async with self.db_manager.get_session_async() as session:
-                result = await session.execute(
-                    select(Message).where(Message.id == message_id)
-                )
+                result = await session.execute(select(Message).where(Message.id == message_id))
                 message = result.scalar_one_or_none()
 
                 if not message:
@@ -462,18 +428,14 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to acknowledge message: {e}")
+            logger.exception(f"Failed to acknowledge message: {e}")
             return {"success": False, "error": str(e)}
 
-    async def complete_message(
-        self, message_id: str, agent_name: str, result: str
-    ) -> Dict[str, Any]:
+    async def complete_message(self, message_id: str, agent_name: str, result: str) -> dict[str, Any]:
         """Mark message as completed with result"""
         try:
             async with self.db_manager.get_session_async() as session:
-                msg_result = await session.execute(
-                    select(Message).where(Message.id == message_id)
-                )
+                msg_result = await session.execute(select(Message).where(Message.id == message_id))
                 message = msg_result.scalar_one_or_none()
 
                 if not message:
@@ -494,19 +456,15 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to complete message: {e}")
+            logger.exception(f"Failed to complete message: {e}")
             return {"success": False, "error": str(e)}
 
-    async def broadcast(
-        self, content: str, project_id: str, priority: str = "normal"
-    ) -> Dict[str, Any]:
+    async def broadcast(self, content: str, project_id: str, priority: str = "normal") -> dict[str, Any]:
         """Broadcast message to all agents in project"""
         try:
             async with self.db_manager.get_session_async() as session:
                 # Get all agents in project
-                result = await session.execute(
-                    select(Agent).where(Agent.project_id == project_id)
-                )
+                result = await session.execute(select(Agent).where(Agent.project_id == project_id))
                 agents = result.scalars().all()
 
                 if not agents:
@@ -525,14 +483,12 @@ class ToolAccessor:
                 )
 
         except Exception as e:
-            logger.error(f"Failed to broadcast message: {e}")
+            logger.exception(f"Failed to broadcast message: {e}")
             return {"success": False, "error": str(e)}
 
     # Task Tools
 
-    async def log_task(
-        self, content: str, category: Optional[str] = None, priority: str = "medium"
-    ) -> Dict[str, Any]:
+    async def log_task(self, content: str, category: Optional[str] = None, priority: str = "medium") -> dict[str, Any]:
         """Quick task capture"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -574,20 +530,16 @@ class ToolAccessor:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to log task: {e}")
+            logger.exception(f"Failed to log task: {e}")
             return {"success": False, "error": str(e)}
 
     # Context Tools (simplified stubs for now)
 
-    async def get_context_index(
-        self, product_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """Get the context index for intelligent querying"""
         return {"success": True, "index": {"documents": [], "sections": []}}
 
-    async def get_vision(
-        self, part: int = 1, max_tokens: int = 20000
-    ) -> Dict[str, Any]:
+    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> dict[str, Any]:
         """Get the vision document"""
         return {
             "success": True,
@@ -597,13 +549,11 @@ class ToolAccessor:
             "tokens": 100,
         }
 
-    async def get_vision_index(self) -> Dict[str, Any]:
+    async def get_vision_index(self) -> dict[str, Any]:
         """Get the vision document index"""
         return {"success": True, "index": {"files": [], "chunks": []}}
 
-    async def get_product_settings(
-        self, product_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """Get all product settings for analysis"""
         return {
             "success": True,

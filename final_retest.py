@@ -5,12 +5,14 @@ Comprehensive validation of all functionality
 """
 
 import asyncio
-import httpx
 import json
+import sys
 import time
-import websockets
 from datetime import datetime
-from typing import Dict, List, Any
+
+import httpx
+import websockets
+
 
 class FinalRetestSuite:
     def __init__(self):
@@ -27,21 +29,17 @@ class FinalRetestSuite:
 
     async def test_health_check(self):
         """Test API health check - should be fully healthy now"""
-        print("\n[1/7] Testing Health Check...")
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(f"{self.api_base}/health")
                 data = response.json()
 
                 if response.status_code == 200 and data.get("database") == "healthy":
-                    print("  [PASS] Health check shows all systems healthy")
                     result = {"test": "Health Check", "status": "PASSED", "details": data}
                 else:
-                    print(f"  [FAIL] Health check issue: {data}")
                     result = {"test": "Health Check", "status": "FAILED", "details": data}
                     self.test_results["all_passed"] = False
         except Exception as e:
-            print(f"  [FAIL] Health check error: {e}")
             result = {"test": "Health Check", "status": "FAILED", "error": str(e)}
             self.test_results["all_passed"] = False
 
@@ -50,7 +48,6 @@ class FinalRetestSuite:
 
     async def test_api_endpoints(self):
         """Test all critical API endpoints return JSON data"""
-        print("\n[2/7] Testing API Endpoints...")
         endpoints = [
             ("/api/v1/templates/", "Templates"),
             ("/api/v1/agents/", "Agents"),
@@ -65,21 +62,18 @@ class FinalRetestSuite:
         endpoint_results = []
 
         async with httpx.AsyncClient() as client:
-            for endpoint, name in endpoints:
+            for endpoint, _name in endpoints:
                 try:
                     response = await client.get(f"{self.api_base}{endpoint}")
                     if response.status_code in [200, 201]:
                         # Verify it returns JSON
-                        data = response.json()
-                        print(f"  [PASS] {name}: Returns JSON data")
+                        response.json()
                         endpoint_results.append({"endpoint": endpoint, "status": "PASSED"})
                     else:
-                        print(f"  [WARN] {name}: Status {response.status_code}")
                         endpoint_results.append({"endpoint": endpoint, "status": "WARNING", "code": response.status_code})
                         if response.status_code >= 500:
                             all_good = False
                 except Exception as e:
-                    print(f"  [FAIL] {name}: {e}")
                     endpoint_results.append({"endpoint": endpoint, "status": "FAILED", "error": str(e)})
                     all_good = False
 
@@ -94,7 +88,6 @@ class FinalRetestSuite:
 
     async def test_websocket_realtime(self):
         """Test WebSocket real-time updates"""
-        print("\n[3/7] Testing WebSocket Real-time Updates...")
         try:
             async with websockets.connect(self.ws_url) as websocket:
                 # Send ping
@@ -107,14 +100,11 @@ class FinalRetestSuite:
 
                 data = json.loads(response)
                 if data.get("type") == "pong" and latency < 100:
-                    print(f"  [PASS] WebSocket latency: {latency:.2f}ms (< 100ms requirement)")
                     result = {"test": "WebSocket", "status": "PASSED", "latency_ms": latency}
                 else:
-                    print(f"  [FAIL] WebSocket issue - latency: {latency:.2f}ms")
                     result = {"test": "WebSocket", "status": "FAILED", "latency_ms": latency}
                     self.test_results["all_passed"] = False
         except Exception as e:
-            print(f"  [FAIL] WebSocket error: {e}")
             result = {"test": "WebSocket", "status": "FAILED", "error": str(e)}
             self.test_results["all_passed"] = False
 
@@ -122,7 +112,6 @@ class FinalRetestSuite:
 
     async def test_template_crud(self):
         """Test Template Manager CRUD operations"""
-        print("\n[4/7] Testing TemplateManager CRUD Operations...")
 
         async with httpx.AsyncClient() as client:
             # Test CREATE
@@ -141,13 +130,12 @@ class FinalRetestSuite:
                 )
 
                 if create_response.status_code in [200, 201]:
-                    print("  [PASS] Template CREATE operation successful")
                     template_id = create_response.json().get("id")
 
                     # Test READ
                     read_response = await client.get(f"{self.api_base}/api/v1/templates/{template_id}")
                     if read_response.status_code == 200:
-                        print("  [PASS] Template READ operation successful")
+                        pass
 
                     # Test UPDATE
                     update_data = {"description": "Updated test template"}
@@ -156,12 +144,12 @@ class FinalRetestSuite:
                         json=update_data
                     )
                     if update_response.status_code == 200:
-                        print("  [PASS] Template UPDATE operation successful")
+                        pass
 
                     # Test DELETE
                     delete_response = await client.delete(f"{self.api_base}/api/v1/templates/{template_id}")
                     if delete_response.status_code in [200, 204]:
-                        print("  [PASS] Template DELETE operation successful")
+                        pass
 
                     self.test_results["tests"].append({
                         "test": "Template CRUD",
@@ -169,7 +157,6 @@ class FinalRetestSuite:
                         "operations": ["CREATE", "READ", "UPDATE", "DELETE"]
                     })
                 else:
-                    print(f"  [FAIL] Template CREATE failed: {create_response.status_code}")
                     self.test_results["tests"].append({
                         "test": "Template CRUD",
                         "status": "FAILED",
@@ -178,7 +165,6 @@ class FinalRetestSuite:
                     self.test_results["all_passed"] = False
 
             except Exception as e:
-                print(f"  [FAIL] Template CRUD error: {e}")
                 self.test_results["tests"].append({
                     "test": "Template CRUD",
                     "status": "FAILED",
@@ -188,7 +174,6 @@ class FinalRetestSuite:
 
     async def test_performance_metrics(self):
         """Measure performance metrics"""
-        print("\n[5/7] Measuring Performance Metrics...")
 
         metrics = {}
 
@@ -208,9 +193,8 @@ class FinalRetestSuite:
                 metrics["template_avg_ms"] = avg_time
 
                 if avg_time < 500:
-                    print(f"  [PASS] Template operations: {avg_time:.2f}ms (< 500ms requirement)")
+                    pass
                 else:
-                    print(f"  [FAIL] Template operations: {avg_time:.2f}ms (> 500ms requirement)")
                     self.test_results["all_passed"] = False
 
             # API response times
@@ -227,20 +211,13 @@ class FinalRetestSuite:
             if api_times:
                 avg_api = sum(api_times) / len(api_times)
                 metrics["api_avg_ms"] = avg_api
-                print(f"  [PASS] API response average: {avg_api:.2f}ms")
 
         self.test_results["performance_metrics"] = metrics
 
     async def test_responsive_design(self):
         """Test responsive design"""
-        print("\n[6/7] Checking Responsive Design...")
 
         # This would require browser automation for full testing
-        print("  [INFO] Manual verification required for breakpoints:")
-        print("    - Mobile: 320px")
-        print("    - Tablet: 768px")
-        print("    - Desktop: 1024px")
-        print("    - Wide: 1920px")
 
         self.test_results["tests"].append({
             "test": "Responsive Design",
@@ -250,10 +227,7 @@ class FinalRetestSuite:
 
     async def test_accessibility(self):
         """Validate accessibility"""
-        print("\n[7/7] Validating Accessibility...")
 
-        print("  [INFO] Manual WCAG 2.1 AA compliance check required")
-        print("  [INFO] Automated checks:")
 
         async with httpx.AsyncClient() as client:
             try:
@@ -267,59 +241,47 @@ class FinalRetestSuite:
                     "semantic_html": all(tag in html for tag in ["<header", "<main", "<nav"]),
                 }
 
-                for check, passed in checks.items():
+                for passed in checks.values():
                     if passed:
-                        print(f"    [PASS] {check}")
+                        pass
                     else:
-                        print(f"    [WARN] {check} may need attention")
+                        pass
 
                 self.test_results["tests"].append({
                     "test": "Accessibility",
                     "status": "PARTIAL",
                     "automated_checks": checks
                 })
-            except Exception as e:
-                print(f"  [FAIL] Accessibility check error: {e}")
+            except Exception:
+                pass
 
     async def generate_final_report(self):
         """Generate final test report"""
-        print("\n" + "="*60)
-        print("FINAL TEST REPORT - Project 5.1.c")
-        print("="*60)
 
         # Count results
-        passed = sum(1 for t in self.test_results["tests"] if t.get("status") == "PASSED")
-        failed = sum(1 for t in self.test_results["tests"] if t.get("status") == "FAILED")
-        warnings = sum(1 for t in self.test_results["tests"] if t.get("status") in ["WARNING", "PARTIAL", "MANUAL_REQUIRED"])
+        sum(1 for t in self.test_results["tests"] if t.get("status") == "PASSED")
+        sum(1 for t in self.test_results["tests"] if t.get("status") == "FAILED")
+        sum(1 for t in self.test_results["tests"] if t.get("status") in ["WARNING", "PARTIAL", "MANUAL_REQUIRED"])
 
-        print(f"\nTest Results:")
-        print(f"  Passed: {passed}")
-        print(f"  Failed: {failed}")
-        print(f"  Warnings/Manual: {warnings}")
 
         if self.test_results["all_passed"]:
-            print("\n[SUCCESS] ALL CRITICAL TESTS PASSED!")
-            print("Project 5.1.c is FULLY FUNCTIONAL and READY FOR DEPLOYMENT")
+            pass
         else:
-            print("\n[WARNING] Some tests failed - review needed")
+            pass
 
         # Performance summary
         if self.test_results["performance_metrics"]:
-            print("\nPerformance Metrics:")
-            for metric, value in self.test_results["performance_metrics"].items():
-                print(f"  {metric}: {value:.2f}ms")
+            for _metric, _value in self.test_results["performance_metrics"].items():
+                pass
 
         # Save report
         with open("final_test_report.json", "w") as f:
             json.dump(self.test_results, f, indent=2)
-        print(f"\nDetailed report saved to final_test_report.json")
 
         return self.test_results["all_passed"]
 
     async def run_all_tests(self):
         """Run complete test suite"""
-        print("\nStarting Final Re-test Suite...")
-        print("After Backend Fixes by backend_fixer agent")
 
         await self.test_health_check()
         await self.test_api_endpoints()
@@ -336,12 +298,9 @@ async def main():
     all_passed = await tester.run_all_tests()
 
     if all_passed:
-        print("\n[FINAL STATUS] Project 5.1.c COMPLETE AND FUNCTIONAL")
         return 0
-    else:
-        print("\n[FINAL STATUS] Project 5.1.c has remaining issues")
-        return 1
+    return 1
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())
-    exit(exit_code)
+    sys.exit(exit_code)

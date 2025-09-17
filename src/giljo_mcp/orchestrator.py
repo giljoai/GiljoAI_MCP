@@ -6,10 +6,18 @@ and multi-project concurrency with tenant isolation.
 """
 
 import asyncio
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
-from .enums import AgentRole, ProjectType, ContextStatus
-from .models import Project, Agent, Message
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from .enums import AgentRole, ContextStatus, ProjectType, ProjectStatus
+from .models import Agent, Message, Project
+from .database import get_db_manager
+from .template_manager import TemplateManager
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ContextStatus enum moved to enums.py
@@ -69,13 +77,13 @@ class ProjectOrchestrator:
     def __init__(self):
         """Initialize the orchestrator."""
         self.db_manager = get_db_manager()
-        self._active_projects: Dict[str, Project] = {}
-        self._context_monitors: Dict[str, asyncio.Task] = {}
-        # Use new template system if database is available, otherwise fallback
+        self._active_projects: dict[str, Project] = {}
+        self._context_monitors: dict[str, asyncio.Task] = {}
+        # Use new template system
+        self.template_manager = None
         if self.db_manager:
-            self.template_generator = MissionTemplateGeneratorV2(self.db_manager)
-        else:
-            self.template_generator = MissionTemplateGenerator()
+            # Template manager will be initialized per-request with tenant context
+            pass
 
     async def create_project(
         self,
@@ -105,7 +113,7 @@ class ProjectOrchestrator:
                 name=name,
                 mission=mission,
                 tenant_key=tenant_key,
-                status=ProjectState.DRAFT.value,
+                status=ProjectStatus.DRAFT.value,
                 context_budget=context_budget,
                 context_used=0,
             )
@@ -128,21 +136,19 @@ class ProjectOrchestrator:
             Updated Project instance
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(Project).where(Project.id == project_id)
-            )
+            result = await session.execute(select(Project).where(Project.id == project_id))
             project = result.scalar_one_or_none()
 
             if not project:
                 raise ValueError(f"Project {project_id} not found")
 
             if project.status not in [
-                ProjectState.DRAFT.value,
-                ProjectState.PAUSED.value,
+                ProjectStatus.DRAFT.value,
+                ProjectStatus.PAUSED.value,
             ]:
                 raise ValueError(f"Cannot activate project in {project.status} state")
 
-            project.status = ProjectState.ACTIVE.value
+            project.status = ProjectStatus.ACTIVE.value
             await session.commit()
             await session.refresh(project)
 
@@ -166,18 +172,16 @@ class ProjectOrchestrator:
             Updated Project instance
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(Project).where(Project.id == project_id)
-            )
+            result = await session.execute(select(Project).where(Project.id == project_id))
             project = result.scalar_one_or_none()
 
             if not project:
                 raise ValueError(f"Project {project_id} not found")
 
-            if project.status != ProjectState.ACTIVE.value:
+            if project.status != ProjectStatus.ACTIVE.value:
                 raise ValueError("Can only pause active projects")
 
-            project.status = ProjectState.PAUSED.value
+            project.status = ProjectStatus.PAUSED.value
             await session.commit()
             await session.refresh(project)
 
@@ -199,9 +203,7 @@ class ProjectOrchestrator:
         """
         return await self.activate_project(project_id)
 
-    async def complete_project(
-        self, project_id: str, summary: Optional[str] = None
-    ) -> Project:
+    async def complete_project(self, project_id: str, summary: Optional[str] = None) -> Project:
         """
         Complete a project, marking it as finished.
 
@@ -213,16 +215,14 @@ class ProjectOrchestrator:
             Updated Project instance
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(Project).where(Project.id == project_id)
-            )
+            result = await session.execute(select(Project).where(Project.id == project_id))
             project = result.scalar_one_or_none()
 
             if not project:
                 raise ValueError(f"Project {project_id} not found")
 
-            project.status = ProjectState.COMPLETED.value
-            project.completed_at = datetime.utcnow()
+            project.status = ProjectStatus.COMPLETED.value
+            project.completed_at = datetime.now(timezone.utc)
 
             if summary:
                 if not project.meta_data:
@@ -250,18 +250,16 @@ class ProjectOrchestrator:
             Updated Project instance
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(Project).where(Project.id == project_id)
-            )
+            result = await session.execute(select(Project).where(Project.id == project_id))
             project = result.scalar_one_or_none()
 
             if not project:
                 raise ValueError(f"Project {project_id} not found")
 
-            if project.status != ProjectState.COMPLETED.value:
+            if project.status != ProjectStatus.COMPLETED.value:
                 raise ValueError("Can only archive completed projects")
 
-            project.status = ProjectState.ARCHIVED.value
+            project.status = ProjectStatus.ARCHIVED.value
             await session.commit()
             await session.refresh(project)
 
@@ -291,9 +289,7 @@ class ProjectOrchestrator:
         """
         async with self.db_manager.get_session_async() as session:
             # Get project
-            result = await session.execute(
-                select(Project).where(Project.id == project_id)
-            )
+            result = await session.execute(select(Project).where(Project.id == project_id))
             project = result.scalar_one_or_none()
 
             if not project:
@@ -302,9 +298,7 @@ class ProjectOrchestrator:
             # Generate mission based on role
             if role == AgentRole.ORCHESTRATOR:
                 # Use comprehensive orchestrator template
-                additional_context = (
-                    {"project_type": project_type} if project_type else None
-                )
+                additional_context = {"project_type": project_type} if project_type else None
                 mission = self.template_generator.generate_orchestrator_mission(
                     project_name=project.name,
                     project_mission=project.mission,
@@ -334,17 +328,15 @@ class ProjectOrchestrator:
             await session.commit()
             await session.refresh(agent)
 
-            logger.info(
-                f"Spawned {role.value} agent {agent.id} for project {project_id}"
-            )
+            logger.info(f"Spawned {role.value} agent {agent.id} for project {project_id}")
             return agent
 
     async def spawn_agents_parallel(
         self,
         project_id: str,
-        agents: List[Tuple[AgentRole, Optional[str]]],
+        agents: list[tuple[AgentRole, Optional[str]]],
         project_type: Optional[ProjectType] = None,
-    ) -> List[Agent]:
+    ) -> list[Agent]:
         """
         Spawn multiple agents in parallel with coordination instructions.
 
@@ -358,9 +350,7 @@ class ProjectOrchestrator:
         """
         async with self.db_manager.get_session_async() as session:
             # Get project
-            result = await session.execute(
-                select(Project).where(Project.id == project_id)
-            )
+            result = await session.execute(select(Project).where(Project.id == project_id))
             project = result.scalar_one_or_none()
 
             if not project:
@@ -368,10 +358,8 @@ class ProjectOrchestrator:
 
             # Generate parallel startup instructions
             agent_names = [role.value for role, _ in agents]
-            parallel_instructions = (
-                self.template_generator.generate_parallel_startup_instructions(
-                    agents=agent_names, project_name=project.name
-                )
+            parallel_instructions = self.template_generator.generate_parallel_startup_instructions(
+                agents=agent_names, project_name=project.name
             )
 
             # Create all agents
@@ -386,9 +374,7 @@ class ProjectOrchestrator:
                 )
                 created_agents.append(agent)
 
-            logger.info(
-                f"Spawned {len(created_agents)} agents in parallel for project {project_id}"
-            )
+            logger.info(f"Spawned {len(created_agents)} agents in parallel for project {project_id}")
             return created_agents
 
     async def handle_context_limit(self, agent_id: str) -> Optional[Message]:
@@ -435,14 +421,10 @@ class ProjectOrchestrator:
             await session.commit()
             await session.refresh(message)
 
-            logger.warning(
-                f"Agent {agent.name} approaching context limit: {usage_ratio:.1%}"
-            )
+            logger.warning(f"Agent {agent.name} approaching context limit: {usage_ratio:.1%}")
             return message
 
-    async def handoff(
-        self, from_agent_id: str, to_agent_id: str, context: Dict[str, Any]
-    ) -> Message:
+    async def handoff(self, from_agent_id: str, to_agent_id: str, context: dict[str, Any]) -> Message:
         """
         Perform intelligent handoff between agents.
 
@@ -456,14 +438,10 @@ class ProjectOrchestrator:
         """
         async with self.db_manager.get_session_async() as session:
             # Get both agents
-            from_result = await session.execute(
-                select(Agent).where(Agent.id == from_agent_id)
-            )
+            from_result = await session.execute(select(Agent).where(Agent.id == from_agent_id))
             from_agent = from_result.scalar_one_or_none()
 
-            to_result = await session.execute(
-                select(Agent).where(Agent.id == to_agent_id)
-            )
+            to_result = await session.execute(select(Agent).where(Agent.id == to_agent_id))
             to_agent = to_result.scalar_one_or_none()
 
             if not from_agent or not to_agent:
@@ -477,12 +455,10 @@ class ProjectOrchestrator:
             to_role = AgentRole(to_agent.role)
             context_summary = context.get("summary", "Work completed by previous agent")
 
-            handoff_instructions = (
-                self.template_generator.generate_handoff_instructions(
-                    from_role=from_role,
-                    to_role=to_role,
-                    context_summary=context_summary,
-                )
+            handoff_instructions = self.template_generator.generate_handoff_instructions(
+                from_role=from_role,
+                to_role=to_role,
+                context_summary=context_summary,
             )
 
             # Package handoff context
@@ -518,7 +494,7 @@ class ProjectOrchestrator:
             logger.info(f"Handoff from {from_agent.name} to {to_agent.name}")
             return message
 
-    async def check_handoff_needed(self, agent_id: str) -> Tuple[bool, Optional[str]]:
+    async def check_handoff_needed(self, agent_id: str) -> tuple[bool, Optional[str]]:
         """
         Check if an agent needs handoff based on context usage.
 
@@ -542,9 +518,7 @@ class ProjectOrchestrator:
 
             return False, None
 
-    def get_context_status(
-        self, context_used: int, context_budget: int
-    ) -> ContextStatus:
+    def get_context_status(self, context_used: int, context_budget: int) -> ContextStatus:
         """
         Get color-coded context status.
 
@@ -559,10 +533,9 @@ class ProjectOrchestrator:
 
         if usage_ratio < 0.5:
             return ContextStatus.GREEN
-        elif usage_ratio < 0.8:
+        if usage_ratio < 0.8:
             return ContextStatus.YELLOW
-        else:
-            return ContextStatus.RED
+        return ContextStatus.RED
 
     async def update_context_usage(self, agent_id: str, tokens_used: int) -> Agent:
         """
@@ -586,9 +559,7 @@ class ProjectOrchestrator:
             agent.context_used += tokens_used
 
             # Also update project context
-            project_result = await session.execute(
-                select(Project).where(Project.id == agent.project_id)
-            )
+            project_result = await session.execute(select(Project).where(Project.id == agent.project_id))
             project = project_result.scalar_one_or_none()
             if project:
                 project.context_used += tokens_used
@@ -603,9 +574,7 @@ class ProjectOrchestrator:
 
             return agent
 
-    async def get_active_projects(
-        self, tenant_key: Optional[str] = None
-    ) -> List[Project]:
+    async def get_active_projects(self, tenant_key: Optional[str] = None) -> list[Project]:
         """
         Get all active projects, optionally filtered by tenant.
 
@@ -616,7 +585,7 @@ class ProjectOrchestrator:
             List of active Project instances
         """
         async with self.db_manager.get_session_async() as session:
-            query = select(Project).where(Project.status == ProjectState.ACTIVE.value)
+            query = select(Project).where(Project.status == ProjectStatus.ACTIVE.value)
 
             if tenant_key:
                 query = query.where(Project.tenant_key == tenant_key)
@@ -624,7 +593,7 @@ class ProjectOrchestrator:
             result = await session.execute(query.options(selectinload(Project.agents)))
             return result.scalars().all()
 
-    async def get_project_agents(self, project_id: str) -> List[Agent]:
+    async def get_project_agents(self, project_id: str) -> list[Agent]:
         """
         Get all agents for a project.
 
@@ -635,12 +604,10 @@ class ProjectOrchestrator:
             List of Agent instances
         """
         async with self.db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(Agent).where(Agent.project_id == project_id)
-            )
+            result = await session.execute(select(Agent).where(Agent.project_id == project_id))
             return result.scalars().all()
 
-    async def get_agent_context_status(self, agent_id: str) -> Dict[str, Any]:
+    async def get_agent_context_status(self, agent_id: str) -> dict[str, Any]:
         """
         Get detailed context status for an agent.
 
@@ -674,9 +641,7 @@ class ProjectOrchestrator:
     async def _start_context_monitor(self, project_id: str):
         """Start monitoring context for a project."""
         if project_id not in self._context_monitors:
-            monitor_task = asyncio.create_task(
-                self._monitor_project_context(project_id)
-            )
+            monitor_task = asyncio.create_task(self._monitor_project_context(project_id))
             self._context_monitors[project_id] = monitor_task
 
     async def _stop_context_monitor(self, project_id: str):
@@ -699,31 +664,26 @@ class ProjectOrchestrator:
                 async with self.db_manager.get_session_async() as session:
                     # Get project and agents
                     result = await session.execute(
-                        select(Project)
-                        .where(Project.id == project_id)
-                        .options(selectinload(Project.agents))
+                        select(Project).where(Project.id == project_id).options(selectinload(Project.agents))
                     )
                     project = result.scalar_one_or_none()
 
-                    if not project or project.status != ProjectState.ACTIVE.value:
+                    if not project or project.status != ProjectStatus.ACTIVE.value:
                         break
 
                     # Check each agent
                     for agent in project.agents:
                         if agent.status == "active":
-                            needs_handoff, reason = await self.check_handoff_needed(
-                                agent.id
-                            )
+                            needs_handoff, reason = await self.check_handoff_needed(agent.id)
                             if needs_handoff:
                                 logger.warning(
-                                    f"Agent {agent.name} in project {project.name} "
-                                    f"needs handoff: {reason}"
+                                    f"Agent {agent.name} in project {project.name} " f"needs handoff: {reason}"
                                 )
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error monitoring project {project_id}: {e}")
+                logger.exception(f"Error monitoring project {project_id}: {e}")
                 await asyncio.sleep(60)  # Back off on error
 
     def _get_handoff_reason(self, agent: Agent) -> str:
@@ -732,12 +692,11 @@ class ProjectOrchestrator:
 
         if usage_ratio >= 0.8:
             return f"Context usage at {round(usage_ratio * 100)}%"
-        elif agent.status == "error":
+        if agent.status == "error":
             return "Agent encountered error"
-        else:
-            return "Manual handoff requested"
+        return "Manual handoff requested"
 
-    async def get_tenant_projects(self, tenant_key: str) -> List[Project]:
+    async def get_tenant_projects(self, tenant_key: str) -> list[Project]:
         """
         Get all projects for a tenant.
 
@@ -749,9 +708,7 @@ class ProjectOrchestrator:
         """
         async with self.db_manager.get_session_async() as session:
             result = await session.execute(
-                select(Project)
-                .where(Project.tenant_key == tenant_key)
-                .options(selectinload(Project.agents))
+                select(Project).where(Project.tenant_key == tenant_key).options(selectinload(Project.agents))
             )
             return result.scalars().all()
 
@@ -760,7 +717,7 @@ class ProjectOrchestrator:
         tenant_key: str,
         max_concurrent_projects: int = 5,
         total_context_budget: int = 500000,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Allocate resources for a tenant across projects.
 
@@ -773,7 +730,7 @@ class ProjectOrchestrator:
             Resource allocation details
         """
         projects = await self.get_tenant_projects(tenant_key)
-        active_projects = [p for p in projects if p.status == ProjectState.ACTIVE.value]
+        active_projects = [p for p in projects if p.status == ProjectStatus.ACTIVE.value]
 
         if len(active_projects) >= max_concurrent_projects:
             return {

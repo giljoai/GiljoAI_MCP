@@ -1,7 +1,8 @@
 import time
-import requests
-import json
 from datetime import datetime
+
+import requests
+
 
 AGENT_NAME = "ui-analyzer"
 PROJECT_ID = "86b708fd-6b53-4067-acec-08ab005d0f3d"
@@ -30,7 +31,7 @@ def check_messages():
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Error checking messages: {e}")
 
 print(f"Starting message monitor for {AGENT_NAME}")
-print(f"Checking every 10 seconds...")
+print("Checking every 10 seconds...")
 print("Press Ctrl+C to stop")
 print("-" * 50)
 

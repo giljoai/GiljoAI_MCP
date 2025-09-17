@@ -6,16 +6,13 @@ Demonstrates orchestrating multiple agents to refactor legacy code
 
 import asyncio
 import json
-from pathlib import Path
-from typing import Dict, List, Optional
 from datetime import datetime
+from pathlib import Path
 
 # GiljoAI MCP imports
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.orchestrator import ProjectOrchestrator
-from giljo_mcp.models import Project, Agent, Message
 from giljo_mcp.template_manager import TemplateManager
-from giljo_mcp.config_manager import get_config
 
 
 class RefactoringBot:
@@ -223,7 +220,7 @@ class RefactoringBot:
                 }
             )
 
-            result = await self._wait_for_response("refactor", timeout=20)
+            await self._wait_for_response("refactor", timeout=20)
             print(f"  - Refactored: {file_path}")
 
     async def _validate_phase(self):
@@ -268,7 +265,7 @@ class RefactoringBot:
         # Print summary
         self._print_summary(report)
 
-    def _generate_report(self, results: Dict) -> Dict:
+    def _generate_report(self, results: dict) -> dict:
         """Generate comprehensive refactoring report"""
         return {
             "project": str(self.project_path),
@@ -287,7 +284,7 @@ class RefactoringBot:
             "details": results
         }
 
-    def _print_summary(self, report: Dict):
+    def _print_summary(self, report: dict):
         """Print readable summary"""
         print("\n" + "="*60)
         print("REFACTORING COMPLETE")
@@ -310,7 +307,7 @@ class RefactoringBot:
                 symbol = "📈" if change > 0 else "📉" if change < 0 else "➖"
                 print(f"  {metric}: {before:.2f} → {after:.2f} ({symbol} {abs(change):.1f}%)")
 
-    async def _wait_for_response(self, agent: str, timeout: int = 30) -> Dict:
+    async def _wait_for_response(self, agent: str, timeout: int = 30) -> dict:
         """Wait for agent response with timeout"""
         start = asyncio.get_event_loop().time()
 
@@ -327,7 +324,7 @@ class RefactoringBot:
 
         raise TimeoutError(f"No response from {agent} within {timeout}s")
 
-    async def _broadcast_to_agents(self, content: Dict):
+    async def _broadcast_to_agents(self, content: dict):
         """Send message to all agents"""
         for agent_name in self.agents:
             if agent_name != "orchestrator":
@@ -337,7 +334,7 @@ class RefactoringBot:
                     content=content
                 )
 
-    async def _get_agent_context(self, agent: str) -> Dict:
+    async def _get_agent_context(self, agent: str) -> dict:
         """Get agent's current context"""
         # This would query the agent's state/results
         # For demo, returning mock data

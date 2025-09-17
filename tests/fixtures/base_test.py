@@ -3,10 +3,9 @@ Base test class with common functionality for all test classes.
 """
 
 import asyncio
-import pytest
-from typing import Any, Dict, Optional
-from unittest.mock import Mock, AsyncMock, patch
 from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
 
 
 class BaseTest:
@@ -21,7 +20,6 @@ class BaseTest:
     @classmethod
     def teardown_class(cls):
         """Teardown test class"""
-        pass
 
     def setup_method(self, method):
         """Setup each test method"""
@@ -63,7 +61,7 @@ class BaseTest:
         return mock
 
     @staticmethod
-    def assert_dict_contains(actual: Dict, expected: Dict):
+    def assert_dict_contains(actual: dict, expected: dict):
         """Assert that actual dict contains all expected key-value pairs"""
         for key, value in expected.items():
             assert key in actual, f"Key '{key}' not found in actual dict"
@@ -100,8 +98,8 @@ class BaseIntegrationTest(BaseAsyncTest):
 
     async def create_test_environment(self, db_session):
         """Create a complete test environment with projects, agents, etc."""
+        from src.giljo_mcp.models import Agent, Project
         from tests.fixtures.base_fixtures import TestData
-        from src.giljo_mcp.models import Project, Agent
 
         # Create tenant key
         tenant_key = TestData.generate_tenant_key()
@@ -121,15 +119,11 @@ class BaseIntegrationTest(BaseAsyncTest):
 
         await db_session.commit()
 
-        return {
-            "tenant_key": tenant_key,
-            "project": project,
-            "agents": agents
-        }
+        return {"tenant_key": tenant_key, "project": project, "agents": agents}
 
-    async def cleanup_test_environment(self, db_session, environment: Dict):
+    async def cleanup_test_environment(self, db_session, environment: dict):
         """Clean up test environment"""
-        from src.giljo_mcp.models import Agent, Project, Message, Task
+        from src.giljo_mcp.models import Agent, Message, Project, Task
 
         # Delete in order to respect foreign keys
         await db_session.query(Message).filter_by(project_id=environment["project"].id).delete()

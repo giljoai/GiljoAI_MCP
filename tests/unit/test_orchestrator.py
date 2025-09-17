@@ -3,21 +3,21 @@ Unit tests for ProjectOrchestrator class.
 Tests project lifecycle, agent management, handoffs, and context tracking.
 """
 
-import pytest
-import asyncio
-from datetime import datetime
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-import uuid
-
 import sys
+import uuid
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from src.giljo_mcp.enums import AgentRole, AgentStatus, ContextStatus, ProjectType
+from src.giljo_mcp.models import Agent, Project
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
-from src.giljo_mcp.enums import AgentRole, ProjectType, AgentStatus, ContextStatus
-from src.giljo_mcp.models import Project, Agent
-from tests.fixtures.base_test import BaseAsyncTest
 from tests.fixtures.base_fixtures import TestData
+from tests.fixtures.base_test import BaseAsyncTest
 
 
 class TestProjectOrchestrator(BaseAsyncTest):
@@ -46,7 +46,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
             mission="Test mission",
             tenant_key=self.tenant_key,
             project_type=ProjectType.DEVELOPMENT,
-            db_session=mock_session
+            db_session=mock_session,
         )
 
         # Assertions
@@ -74,7 +74,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
             tenant_key=self.tenant_key,
             project_type=ProjectType.RESEARCH,
             metadata=metadata,
-            db_session=mock_session
+            db_session=mock_session,
         )
 
         assert result["project"].metadata == metadata
@@ -89,10 +89,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         mock_session.rollback = AsyncMock()
 
         result = await self.orchestrator.create_project(
-            name="Test Project",
-            mission="Test mission",
-            tenant_key=self.tenant_key,
-            db_session=mock_session
+            name="Test Project", mission="Test mission", tenant_key=self.tenant_key, db_session=mock_session
         )
 
         assert result["status"] == "error"
@@ -112,10 +109,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         project_id = str(uuid.uuid4())
 
         result = await self.orchestrator.spawn_agent(
-            project_id=project_id,
-            role=AgentRole.ANALYZER,
-            name="test_analyzer",
-            db_session=mock_session
+            project_id=project_id, role=AgentRole.ANALYZER, name="test_analyzer", db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -141,7 +135,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
             role=AgentRole.ANALYZER,
             name="custom_analyzer",
             mission=custom_mission,
-            db_session=mock_session
+            db_session=mock_session,
         )
 
         assert result["agent"].mission == custom_mission
@@ -155,10 +149,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         mock_session.refresh = AsyncMock()
 
         result = await self.orchestrator.spawn_agent(
-            project_id=str(uuid.uuid4()),
-            role=AgentRole.IMPLEMENTER,
-            name="implementer",
-            db_session=mock_session
+            project_id=str(uuid.uuid4()), role=AgentRole.IMPLEMENTER, name="implementer", db_session=mock_session
         )
 
         # Should use the default mission template for IMPLEMENTER role
@@ -181,9 +172,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         mock_session.commit = AsyncMock()
 
         result = await self.orchestrator.deactivate_agent(
-            agent_id=mock_agent.id,
-            reason="Task completed",
-            db_session=mock_session
+            agent_id=mock_agent.id, reason="Task completed", db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -219,10 +208,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         context = {"analysis_complete": True, "next_steps": ["implement", "test"]}
 
         result = await self.orchestrator.handoff(
-            from_agent_id=from_agent.id,
-            to_agent_id=to_agent.id,
-            context=context,
-            db_session=mock_session
+            from_agent_id=from_agent.id, to_agent_id=to_agent.id, context=context, db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -242,10 +228,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         mock_session.query.return_value = mock_query
 
         result = await self.orchestrator.handoff(
-            from_agent_id="invalid_id",
-            to_agent_id="another_invalid",
-            context={},
-            db_session=mock_session
+            from_agent_id="invalid_id", to_agent_id="another_invalid", context={}, db_session=mock_session
         )
 
         assert result["status"] == "error"
@@ -261,10 +244,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         # Create mock project with context tracking
         mock_project = Mock(spec=Project)
         mock_project.id = str(uuid.uuid4())
-        mock_project.metadata = {
-            "context_used": 5000,
-            "context_budget": 150000
-        }
+        mock_project.metadata = {"context_used": 5000, "context_budget": 150000}
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_project
@@ -272,9 +252,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         mock_session.commit = AsyncMock()
 
         result = await self.orchestrator.update_context_usage(
-            project_id=mock_project.id,
-            tokens_used=10000,
-            db_session=mock_session
+            project_id=mock_project.id, tokens_used=10000, db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -290,19 +268,13 @@ class TestProjectOrchestrator(BaseAsyncTest):
 
         mock_project = Mock(spec=Project)
         mock_project.id = str(uuid.uuid4())
-        mock_project.metadata = {
-            "context_used": 120000,
-            "context_budget": 150000
-        }
+        mock_project.metadata = {"context_used": 120000, "context_budget": 150000}
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_project
         mock_session.query.return_value = mock_query
 
-        status = await self.orchestrator.get_context_status(
-            project_id=mock_project.id,
-            db_session=mock_session
-        )
+        status = await self.orchestrator.get_context_status(project_id=mock_project.id, db_session=mock_session)
 
         assert status == ContextStatus.CRITICAL
         assert mock_project.metadata["context_status"] == ContextStatus.CRITICAL.value
@@ -311,29 +283,23 @@ class TestProjectOrchestrator(BaseAsyncTest):
     async def test_context_status_levels(self):
         """Test different context status levels"""
         test_cases = [
-            (10000, 150000, ContextStatus.HEALTHY),   # < 50%
-            (90000, 150000, ContextStatus.WARNING),   # 60%
-            (120000, 150000, ContextStatus.CRITICAL), # 80%
-            (145000, 150000, ContextStatus.EXHAUSTED) # > 95%
+            (10000, 150000, ContextStatus.HEALTHY),  # < 50%
+            (90000, 150000, ContextStatus.WARNING),  # 60%
+            (120000, 150000, ContextStatus.CRITICAL),  # 80%
+            (145000, 150000, ContextStatus.EXHAUSTED),  # > 95%
         ]
 
         for used, budget, expected_status in test_cases:
             mock_session = self.create_async_mock("session")
 
             mock_project = Mock(spec=Project)
-            mock_project.metadata = {
-                "context_used": used,
-                "context_budget": budget
-            }
+            mock_project.metadata = {"context_used": used, "context_budget": budget}
 
             mock_query = Mock()
             mock_query.filter_by.return_value.first.return_value = mock_project
             mock_session.query.return_value = mock_query
 
-            status = await self.orchestrator.get_context_status(
-                project_id=str(uuid.uuid4()),
-                db_session=mock_session
-            )
+            status = await self.orchestrator.get_context_status(project_id=str(uuid.uuid4()), db_session=mock_session)
 
             assert status == expected_status
 
@@ -356,9 +322,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
 
         # Valid transition from planning to active
         result = await self.orchestrator.transition_project_state(
-            project_id=mock_project.id,
-            new_state="active",
-            db_session=mock_session
+            project_id=mock_project.id, new_state="active", db_session=mock_session
         )
 
         assert result["status"] == "success"
@@ -381,9 +345,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
 
         # Cannot transition from completed to planning
         result = await self.orchestrator.transition_project_state(
-            project_id=mock_project.id,
-            new_state="planning",
-            db_session=mock_session
+            project_id=mock_project.id, new_state="planning", db_session=mock_session
         )
 
         assert result["status"] == "error"
@@ -411,10 +373,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
         mock_query.filter_by.return_value.filter.return_value.all.return_value = [project1, project2]
         mock_session.query.return_value = mock_query
 
-        result = await self.orchestrator.get_active_projects(
-            tenant_key=self.tenant_key,
-            db_session=mock_session
-        )
+        result = await self.orchestrator.get_active_projects(tenant_key=self.tenant_key, db_session=mock_session)
 
         assert len(result) == 2
         assert all(p.status == "active" for p in result)
@@ -426,16 +385,13 @@ class TestProjectOrchestrator(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
 
         # Mock 5 active projects (at the limit)
-        active_projects = [Mock(spec=Project) for _ in range(5)]
+        [Mock(spec=Project) for _ in range(5)]
 
         mock_query = Mock()
         mock_query.filter_by.return_value.filter.return_value.count.return_value = 5
         mock_session.query.return_value = mock_query
 
-        result = await self.orchestrator.check_project_limit(
-            tenant_key=self.tenant_key,
-            db_session=mock_session
-        )
+        result = await self.orchestrator.check_project_limit(tenant_key=self.tenant_key, db_session=mock_session)
 
         assert result["can_create"] is False
         assert result["active_count"] == 5

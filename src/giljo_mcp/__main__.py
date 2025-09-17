@@ -8,18 +8,18 @@ import logging
 import sys
 from pathlib import Path
 
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from giljo_mcp.config_manager import get_config, DeploymentMode
+from giljo_mcp.auth import AuthManager
+from giljo_mcp.config_manager import DeploymentMode, get_config
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.server import create_server
-from giljo_mcp.auth import AuthManager
+
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -41,19 +41,12 @@ async def check_database_connection(config) -> bool:
                     port=config.database.pg_port,
                     database=config.database.pg_database,
                     username=config.database.pg_user,
-                    password=config.database.pg_password
-                    or "4010",  # Fallback to known password
+                    password=config.database.pg_password or "4010",  # Fallback to known password
                 )
-                logger.info(
-                    f"Testing PostgreSQL connection to {host}:{config.database.pg_port} (attempt {attempt})"
-                )
+                logger.info(f"Testing PostgreSQL connection to {host}:{config.database.pg_port} (attempt {attempt})")
             else:
-                db_url = DatabaseManager.build_sqlite_url(
-                    str(config.database.sqlite_path)
-                )
-                logger.info(
-                    f"Testing SQLite connection at {config.database.sqlite_path}"
-                )
+                db_url = DatabaseManager.build_sqlite_url(str(config.database.sqlite_path))
+                logger.info(f"Testing SQLite connection at {config.database.sqlite_path}")
 
             # Test connection
             db_manager = DatabaseManager(db_url, is_async=True)
@@ -76,7 +69,7 @@ async def check_database_connection(config) -> bool:
         except Exception as e:
             logger.warning(f"Database connection attempt {attempt} failed: {e}")
             if config.database.type != "postgresql" or attempt == len(hosts_to_try):
-                logger.error("All database connection attempts failed")
+                logger.exception("All database connection attempts failed")
                 return False
             continue
 
@@ -92,7 +85,7 @@ async def run_migrations(config) -> bool:
         return True
 
     except Exception as e:
-        logger.error(f"Migration check failed: {e}")
+        logger.exception(f"Migration check failed: {e}")
         return False
 
 
@@ -107,9 +100,7 @@ async def startup_sequence():
         logger.info("Step 1: Loading configuration...")
         config = get_config()
 
-        logger.info(
-            f"Configuration loaded: Mode={config.server.mode.value}, Port={config.server.mcp_port}"
-        )
+        logger.info(f"Configuration loaded: Mode={config.server.mode.value}, Port={config.server.mcp_port}")
 
         # Step 2: Validate database connection
         logger.info("Step 2: Validating database connection...")
@@ -125,7 +116,7 @@ async def startup_sequence():
 
         # Step 4: Initialize authentication
         logger.info("Step 4: Initializing authentication...")
-        auth_manager = AuthManager(config)
+        AuthManager(config)
 
         auth_mode = "None (LOCAL)"
         if config.server.mode == DeploymentMode.LAN:
@@ -141,9 +132,7 @@ async def startup_sequence():
 
         # Step 6: Get FastMCP application
         mcp_app = await server.run(
-            host=(
-                "localhost" if config.server.mode == DeploymentMode.LOCAL else "0.0.0.0"
-            ),
+            host=("localhost" if config.server.mode == DeploymentMode.LOCAL else "0.0.0.0"),
             port=config.server.mcp_port,
         )
 
@@ -176,9 +165,6 @@ def main():
     """Main entry point"""
     try:
         # Check Python version
-        if sys.version_info < (3, 8):
-            logger.error("Python 3.8+ required")
-            sys.exit(1)
 
         # Run startup sequence
         success = asyncio.run(startup_sequence())

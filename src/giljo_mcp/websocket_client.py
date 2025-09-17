@@ -3,9 +3,11 @@ WebSocket client for MCP tools to send real-time updates
 """
 
 import logging
-from typing import Optional, Dict, Any
-import aiohttp
 from datetime import datetime
+from typing import Any, Optional
+
+import aiohttp
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ class WebSocketEventClient:
             logger.info(f"Connected to WebSocket server at {self.ws_url}")
 
         except Exception as e:
-            logger.error(f"Failed to connect to WebSocket: {e}")
+            logger.exception(f"Failed to connect to WebSocket: {e}")
             self._connected = False
             raise
 
@@ -49,14 +51,12 @@ class WebSocketEventClient:
             self._connected = False
             logger.info("Disconnected from WebSocket server")
         except Exception as e:
-            logger.error(f"Error disconnecting from WebSocket: {e}")
+            logger.exception(f"Error disconnecting from WebSocket: {e}")
 
-    async def send_event(self, event_type: str, data: Dict[str, Any]):
+    async def send_event(self, event_type: str, data: dict[str, Any]):
         """Send an event to the WebSocket server"""
         if not self._connected or not self.ws:
-            logger.warning(
-                "Not connected to WebSocket server, attempting to connect..."
-            )
+            logger.warning("Not connected to WebSocket server, attempting to connect...")
             await self.connect()
 
         try:
@@ -70,7 +70,7 @@ class WebSocketEventClient:
             logger.debug(f"Sent WebSocket event: {event_type}")
 
         except Exception as e:
-            logger.error(f"Failed to send WebSocket event: {e}")
+            logger.exception(f"Failed to send WebSocket event: {e}")
             self._connected = False
             # Try to reconnect on next send
 
@@ -82,7 +82,7 @@ class WebSocketEventClient:
         project_id: str,
         mission: str,
         start_time: str,
-        meta_data: Optional[Dict] = None,
+        meta_data: Optional[dict] = None,
     ):
         """Broadcast when a parent agent spawns a sub-agent"""
         await self.send_event(
@@ -109,14 +109,10 @@ class WebSocketEventClient:
         tokens_used: Optional[int] = None,
         result: Optional[str] = None,
         error_message: Optional[str] = None,
-        meta_data: Optional[Dict] = None,
+        meta_data: Optional[dict] = None,
     ):
         """Broadcast when a sub-agent completes (success or error)"""
-        event_type = (
-            "agent.sub_agent.completed"
-            if status == "completed"
-            else "agent.sub_agent.error"
-        )
+        event_type = "agent.sub_agent.completed" if status == "completed" else "agent.sub_agent.error"
 
         await self.send_event(
             event_type,
@@ -173,4 +169,4 @@ async def broadcast_sub_agent_event(event_type: str, **kwargs):
 
     except Exception as e:
         # Don't fail the MCP tool if WebSocket fails
-        logger.error(f"Failed to broadcast WebSocket event: {e}")
+        logger.exception(f"Failed to broadcast WebSocket event: {e}")

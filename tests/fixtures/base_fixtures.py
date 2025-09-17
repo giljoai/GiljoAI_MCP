@@ -3,20 +3,22 @@ Base test fixtures for GiljoAI MCP test suite.
 Provides reusable fixtures for database, models, and common test data.
 """
 
+import builtins
+import contextlib
+import os
+import tempfile
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
+from typing import Any, Optional
+
 import pytest
 import pytest_asyncio
-import uuid
-from datetime import datetime
-from typing import AsyncGenerator, Dict, Any
-from pathlib import Path
-import tempfile
-import os
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project, Agent, Message, Task
-from src.giljo_mcp.enums import AgentRole, ProjectType, AgentStatus, ProjectStatus
-from src.giljo_mcp.tenant import TenantManager
-from sqlalchemy.ext.asyncio import AsyncSession
+from src.giljo_mcp.enums import AgentRole, AgentStatus, ProjectStatus, ProjectType
+from src.giljo_mcp.models import Agent, Message, Project
 
 
 class TestData:
@@ -28,7 +30,7 @@ class TestData:
         return f"tk_test_{uuid.uuid4().hex[:16]}"
 
     @staticmethod
-    def generate_project_data(tenant_key: str) -> Dict[str, Any]:
+    def generate_project_data(tenant_key: str) -> dict[str, Any]:
         """Generate test project data"""
         return {
             "id": str(uuid.uuid4()),
@@ -37,11 +39,11 @@ class TestData:
             "status": ProjectStatus.ACTIVE.value,
             "tenant_key": tenant_key,
             "type": ProjectType.DEVELOPMENT.value,
-            "metadata": {"test": True}
+            "metadata": {"test": True},
         }
 
     @staticmethod
-    def generate_agent_data(project_id: str, name: str = None) -> Dict[str, Any]:
+    def generate_agent_data(project_id: str, name: Optional[str] = None) -> dict[str, Any]:
         """Generate test agent data"""
         return {
             "id": str(uuid.uuid4()),
@@ -49,16 +51,12 @@ class TestData:
             "type": AgentRole.WORKER.value,
             "status": AgentStatus.ACTIVE.value,
             "project_id": project_id,
-            "created_at": datetime.utcnow(),
-            "metadata": {"test": True}
+            "created_at": datetime.now(timezone.utc),
+            "metadata": {"test": True},
         }
 
     @staticmethod
-    def generate_message_data(
-        from_agent: str,
-        to_agent: str,
-        project_id: str
-    ) -> Dict[str, Any]:
+    def generate_message_data(from_agent: str, to_agent: str, project_id: str) -> dict[str, Any]:
         """Generate test message data"""
         return {
             "id": str(uuid.uuid4()),
@@ -66,8 +64,8 @@ class TestData:
             "to_agent": to_agent,
             "content": "Test message content",
             "project_id": project_id,
-            "created_at": datetime.utcnow(),
-            "status": "pending"
+            "created_at": datetime.now(timezone.utc),
+            "status": "pending",
         }
 
 
@@ -89,10 +87,8 @@ async def sqlite_db_manager():
 
     # Cleanup
     await db_manager.close_async()
-    try:
+    with contextlib.suppress(builtins.BaseException):
         os.unlink(temp_db.name)
-    except:
-        pass
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -100,11 +96,7 @@ async def postgresql_db_manager():
     """Create PostgreSQL database manager for testing"""
     # Use test database configuration
     connection_string = DatabaseManager.build_postgresql_url(
-        host="localhost",
-        port=5432,
-        database="giljo_mcp_test",
-        username="postgres",
-        password="4010"
+        host="localhost", port=5432, database="giljo_mcp_test", username="postgres", password="4010"
     )
 
     # Convert to async URL
@@ -113,10 +105,8 @@ async def postgresql_db_manager():
     db_manager = DatabaseManager(connection_string, is_async=True)
 
     # Drop and recreate tables for clean test
-    try:
+    with contextlib.suppress(builtins.BaseException):
         await db_manager.drop_tables_async()
-    except:
-        pass
     await db_manager.create_tables_async()
 
     yield db_manager
@@ -173,9 +163,7 @@ async def test_messages(db_session, test_agents, test_project) -> list:
     # Create messages between agents
     for i in range(len(test_agents) - 1):
         msg_data = TestData.generate_message_data(
-            from_agent=test_agents[i].name,
-            to_agent=test_agents[i + 1].name,
-            project_id=test_project.id
+            from_agent=test_agents[i].name, to_agent=test_agents[i + 1].name, project_id=test_project.id
         )
         message = Message(**msg_data)
         db_session.add(message)
@@ -189,7 +177,7 @@ async def test_messages(db_session, test_agents, test_project) -> list:
 
 
 # Synchronous database fixtures for non-async tests
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sync_db_manager():
     """Create synchronous SQLite database manager for testing"""
     # Create temporary database file
@@ -207,13 +195,11 @@ def sync_db_manager():
 
     # Cleanup
     db_manager.close()
-    try:
+    with contextlib.suppress(builtins.BaseException):
         os.unlink(temp_db.name)
-    except:
-        pass
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sync_session(sync_db_manager):
     """Get synchronous database session for testing"""
     with sync_db_manager.get_session() as session:

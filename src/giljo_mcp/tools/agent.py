@@ -3,31 +3,28 @@ Agent Lifecycle Management Tools for GiljoAI MCP
 Handles agent operations: ensure, activate, assign_job, decommission
 """
 
-import logging
-from datetime import datetime
-from typing import Dict, Any, List, Optional
 import json
+import logging
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from fastmcp import FastMCP
-from sqlalchemy import select, update, and_
+from sqlalchemy import and_, select, update
 
-from ..database import DatabaseManager
-from ..tenant import TenantManager
-from ..models import Project, Agent, Job, Task, Message, AgentInteraction
-from ..websocket_client import broadcast_sub_agent_event
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Agent, AgentInteraction, Job, Message, Project, Task
+from giljo_mcp.tenant import TenantManager
+from giljo_mcp.websocket_client import broadcast_sub_agent_event
+
 
 logger = logging.getLogger(__name__)
 
 
-def register_agent_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register agent management tools with the MCP server"""
 
     @mcp.tool()
-    async def ensure_agent(
-        project_id: str, agent_name: str, mission: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def ensure_agent(project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
         """
         Ensure an agent exists for work on a project (creates if needed, returns if exists)
 
@@ -55,17 +52,13 @@ def register_agent_tools(
                     }
 
                 # Check if agent already exists
-                agent_query = select(Agent).where(
-                    and_(Agent.project_id == project_id, Agent.name == agent_name)
-                )
+                agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
                 agent_result = await session.execute(agent_query)
                 existing_agent = agent_result.scalar_one_or_none()
 
                 if existing_agent:
                     # Agent exists, return it
-                    logger.info(
-                        f"Agent '{agent_name}' already exists in project {project_id}"
-                    )
+                    logger.info(f"Agent '{agent_name}' already exists in project {project_id}")
                     return {
                         "success": True,
                         "agent": agent_name,
@@ -83,7 +76,7 @@ def register_agent_tools(
                     status="idle",
                     mission=mission,
                     context_used=0,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                 )
                 session.add(agent)
                 await session.commit()
@@ -100,13 +93,11 @@ def register_agent_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to ensure agent: {e}")
+            logger.exception(f"Failed to ensure agent: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def activate_agent(
-        project_id: str, agent_name: str, mission: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def activate_agent(project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
         """
         Activate orchestrator agent - STARTS WORKING IMMEDIATELY
 
@@ -141,7 +132,7 @@ def register_agent_tools(
 
                 # Update agent status to active
                 agent.status = "active"
-                agent.last_active = datetime.utcnow()
+                agent.last_active = datetime.now(timezone.utc)
 
                 # Create discovery job for orchestrator
                 if agent_name.lower() == "orchestrator":
@@ -149,7 +140,7 @@ def register_agent_tools(
                         agent_id=agent.id,
                         type="discovery",
                         status="active",
-                        created_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
                     )
                     session.add(discovery_job)
 
@@ -158,7 +149,7 @@ def register_agent_tools(
                         job_id=discovery_job.id,
                         description="Analyze project mission and plan implementation",
                         status="pending",
-                        created_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
                     )
                     session.add(discovery_task)
 
@@ -171,14 +162,12 @@ def register_agent_tools(
                     "agent": agent_name,
                     "agent_id": str(agent.id),
                     "status": "active",
-                    "workflow": (
-                        "discovery" if agent_name.lower() == "orchestrator" else "ready"
-                    ),
+                    "workflow": ("discovery" if agent_name.lower() == "orchestrator" else "ready"),
                     "message": f"Agent activated and {'started discovery' if agent_name.lower() == 'orchestrator' else 'ready for work'}",
                 }
 
         except Exception as e:
-            logger.error(f"Failed to activate agent: {e}")
+            logger.exception(f"Failed to activate agent: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -186,10 +175,10 @@ def register_agent_tools(
         agent_name: str,
         job_type: str,
         project_id: str,
-        tasks: Optional[List[str]] = None,
+        tasks: Optional[list[str]] = None,
         scope_boundary: Optional[str] = None,
         vision_alignment: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Assign a job to an agent with task descriptions and optional scope/vision alignment
 
@@ -209,9 +198,7 @@ def register_agent_tools(
         try:
             async with db_manager.get_session() as session:
                 # Find the agent
-                agent_query = select(Agent).where(
-                    and_(Agent.project_id == project_id, Agent.name == agent_name)
-                )
+                agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
 
@@ -229,9 +216,7 @@ def register_agent_tools(
                         return {"success": False, "error": "Failed to create agent"}
 
                 # Check for existing active job
-                job_query = select(Job).where(
-                    and_(Job.agent_id == agent.id, Job.status == "active")
-                )
+                job_query = select(Job).where(and_(Job.agent_id == agent.id, Job.status == "active"))
                 job_result = await session.execute(job_query)
                 existing_job = job_result.scalar_one_or_none()
 
@@ -250,7 +235,7 @@ def register_agent_tools(
                         status="active",
                         scope_boundary=scope_boundary,
                         vision_alignment=vision_alignment,
-                        created_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
                     )
                     session.add(job)
                     await session.flush()
@@ -264,7 +249,7 @@ def register_agent_tools(
                             job_id=job.id,
                             description=task_desc,
                             status="pending",
-                            created_at=datetime.utcnow(),
+                            created_at=datetime.now(timezone.utc),
                         )
                         session.add(task)
                         await session.flush()
@@ -272,7 +257,7 @@ def register_agent_tools(
 
                 # Update agent status
                 agent.status = "active"
-                agent.last_active = datetime.utcnow()
+                agent.last_active = datetime.now(timezone.utc)
 
                 await session.commit()
 
@@ -288,13 +273,11 @@ def register_agent_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to assign job: {e}")
+            logger.exception(f"Failed to assign job: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def handoff(
-        from_agent: str, to_agent: str, project_id: str, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def handoff(from_agent: str, to_agent: str, project_id: str, context: dict[str, Any]) -> dict[str, Any]:
         """
         Transfer work from one agent to another
 
@@ -310,9 +293,7 @@ def register_agent_tools(
         try:
             async with db_manager.get_session() as session:
                 # Find both agents
-                from_query = select(Agent).where(
-                    and_(Agent.project_id == project_id, Agent.name == from_agent)
-                )
+                from_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == from_agent))
                 from_result = await session.execute(from_query)
                 from_agent_obj = from_result.scalar_one_or_none()
 
@@ -327,9 +308,7 @@ def register_agent_tools(
                 if not ensure_result["success"]:
                     return ensure_result
 
-                to_query = select(Agent).where(
-                    and_(Agent.project_id == project_id, Agent.name == to_agent)
-                )
+                to_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == to_agent))
                 to_result = await session.execute(to_query)
                 to_agent_obj = to_result.scalar_one_or_none()
 
@@ -351,19 +330,19 @@ def register_agent_tools(
                             "handoff_from": from_agent,
                             "handoff_to": to_agent,
                             "context": context,
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                     ),
                     priority="high",
                     status="pending",
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                 )
                 session.add(handoff_message)
 
                 # Update agent statuses
                 from_agent_obj.status = "idle"
                 to_agent_obj.status = "active"
-                to_agent_obj.last_active = datetime.utcnow()
+                to_agent_obj.last_active = datetime.now(timezone.utc)
 
                 await session.commit()
 
@@ -378,11 +357,11 @@ def register_agent_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to perform handoff: {e}")
+            logger.exception(f"Failed to perform handoff: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def agent_health(agent_name: Optional[str] = None) -> Dict[str, Any]:
+    async def agent_health(agent_name: Optional[str] = None) -> dict[str, Any]:
         """
         Check agent health and context usage
 
@@ -429,17 +408,13 @@ def register_agent_tools(
                 for agent in agents:
                     # Count pending messages
                     message_query = select(Message).where(
-                        and_(
-                            Message.to_agent == agent.name, Message.status == "pending"
-                        )
+                        and_(Message.to_agent == agent.name, Message.status == "pending")
                     )
                     message_result = await session.execute(message_query)
                     pending_messages = len(message_result.scalars().all())
 
                     # Get active job
-                    job_query = select(Job).where(
-                        and_(Job.agent_id == agent.id, Job.status == "active")
-                    )
+                    job_query = select(Job).where(and_(Job.agent_id == agent.id, Job.status == "active"))
                     job_result = await session.execute(job_query)
                     active_job = job_result.scalar_one_or_none()
 
@@ -450,11 +425,7 @@ def register_agent_tools(
                             "context_used": agent.context_used,
                             "pending_messages": pending_messages,
                             "active_job": active_job.type if active_job else None,
-                            "last_active": (
-                                agent.last_active.isoformat()
-                                if agent.last_active
-                                else None
-                            ),
+                            "last_active": (agent.last_active.isoformat() if agent.last_active else None),
                         }
                     )
 
@@ -465,13 +436,11 @@ def register_agent_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to check agent health: {e}")
+            logger.exception(f"Failed to check agent health: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def decommission_agent(
-        agent_name: str, project_id: str, reason: str = "completed"
-    ) -> Dict[str, Any]:
+    async def decommission_agent(agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
         """
         Gracefully end an agent's work
 
@@ -486,9 +455,7 @@ def register_agent_tools(
         try:
             async with db_manager.get_session() as session:
                 # Find the agent
-                agent_query = select(Agent).where(
-                    and_(Agent.project_id == project_id, Agent.name == agent_name)
-                )
+                agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
 
@@ -504,7 +471,7 @@ def register_agent_tools(
                     .where(Job.agent_id == agent.id, Job.status == "active")
                     .values(
                         status="completed" if reason == "completed" else reason,
-                        completed_at=datetime.utcnow(),
+                        completed_at=datetime.now(timezone.utc),
                     )
                 )
                 await session.execute(job_update)
@@ -526,7 +493,7 @@ def register_agent_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to decommission agent: {e}")
+            logger.exception(f"Failed to decommission agent: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -535,8 +502,8 @@ def register_agent_tools(
         parent_agent_name: str,
         sub_agent_name: str,
         mission: str,
-        meta_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        meta_data: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Log the spawning of a sub-agent (native Claude Code sub-agent).
         Creates an interaction record for tracking parent-child relationships.
@@ -555,9 +522,7 @@ def register_agent_tools(
             async with db_manager.get_session() as session:
                 # Find the parent agent
                 parent_query = select(Agent).where(
-                    and_(
-                        Agent.project_id == project_id, Agent.name == parent_agent_name
-                    )
+                    and_(Agent.project_id == project_id, Agent.name == parent_agent_name)
                 )
                 parent_result = await session.execute(parent_query)
                 parent_agent = parent_result.scalar_one_or_none()
@@ -600,7 +565,7 @@ def register_agent_tools(
                     sub_agent_name=sub_agent_name,
                     interaction_type="SPAWN",
                     mission=mission,
-                    start_time=datetime.utcnow(),
+                    start_time=datetime.now(timezone.utc),
                     meta_data=meta_data or {},
                 )
                 session.add(interaction)
@@ -610,9 +575,7 @@ def register_agent_tools(
 
                 await session.commit()
 
-                logger.info(
-                    f"Logged sub-agent spawn: {parent_agent_name} -> {sub_agent_name}"
-                )
+                logger.info(f"Logged sub-agent spawn: {parent_agent_name} -> {sub_agent_name}")
 
                 # Broadcast WebSocket event
                 await broadcast_sub_agent_event(
@@ -637,7 +600,7 @@ def register_agent_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to log sub-agent spawn: {e}")
+            logger.exception(f"Failed to log sub-agent spawn: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -646,8 +609,8 @@ def register_agent_tools(
         result: Optional[str] = None,
         tokens_used: Optional[int] = None,
         error_message: Optional[str] = None,
-        meta_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        meta_data: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Log the completion of a sub-agent task.
         Updates the interaction record with results and metrics.
@@ -665,9 +628,7 @@ def register_agent_tools(
         try:
             async with db_manager.get_session() as session:
                 # Find the interaction record
-                interaction_query = select(AgentInteraction).where(
-                    AgentInteraction.id == interaction_id
-                )
+                interaction_query = select(AgentInteraction).where(AgentInteraction.id == interaction_id)
                 interaction_result = await session.execute(interaction_query)
                 interaction = interaction_result.scalar_one_or_none()
 
@@ -685,11 +646,9 @@ def register_agent_tools(
                     }
 
                 # Update interaction record
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 interaction.end_time = end_time
-                interaction.duration_seconds = int(
-                    (end_time - interaction.start_time).total_seconds()
-                )
+                interaction.duration_seconds = int((end_time - interaction.start_time).total_seconds())
                 interaction.tokens_used = tokens_used
 
                 # Set interaction type based on success/failure
@@ -708,9 +667,7 @@ def register_agent_tools(
 
                 # Update parent agent context usage if tokens provided
                 if tokens_used and interaction.parent_agent_id:
-                    parent_query = select(Agent).where(
-                        Agent.id == interaction.parent_agent_id
-                    )
+                    parent_query = select(Agent).where(Agent.id == interaction.parent_agent_id)
                     parent_result = await session.execute(parent_query)
                     parent_agent = parent_result.scalar_one_or_none()
 
@@ -718,9 +675,7 @@ def register_agent_tools(
                         parent_agent.context_used += tokens_used
 
                         # Also update project context usage
-                        project_query = select(Project).where(
-                            Project.id == interaction.project_id
-                        )
+                        project_query = select(Project).where(Project.id == interaction.project_id)
                         project_result = await session.execute(project_query)
                         project = project_result.scalar_one_or_none()
 
@@ -730,16 +685,12 @@ def register_agent_tools(
                 await session.commit()
 
                 status = "error" if error_message else "completed"
-                logger.info(
-                    f"Logged sub-agent completion: {interaction.sub_agent_name} ({status})"
-                )
+                logger.info(f"Logged sub-agent completion: {interaction.sub_agent_name} ({status})")
 
                 # Get parent agent name for WebSocket event
                 parent_agent_name = "unknown"
                 if interaction.parent_agent_id:
-                    parent_query = select(Agent).where(
-                        Agent.id == interaction.parent_agent_id
-                    )
+                    parent_query = select(Agent).where(Agent.id == interaction.parent_agent_id)
                     parent_result = await session.execute(parent_query)
                     parent_agent = parent_result.scalar_one_or_none()
                     if parent_agent:
@@ -772,7 +723,7 @@ def register_agent_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to log sub-agent completion: {e}")
+            logger.exception(f"Failed to log sub-agent completion: {e}")
             return {"success": False, "error": str(e)}
 
     logger.info("Agent management tools registered")

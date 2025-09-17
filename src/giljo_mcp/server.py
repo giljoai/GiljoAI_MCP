@@ -6,15 +6,15 @@ Provides MCP protocol server with tool organization and tenant isolation
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any
+from typing import Any, Optional
 
 from fastmcp import FastMCP
 
 # from fastmcp.types import AnyUrl  # May not be needed
-
-from .config_manager import get_config, ConfigManager
+from .config_manager import ConfigManager, get_config
 from .database import DatabaseManager
 from .tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +77,7 @@ class GiljoMCPServer:
                         username=self.config.database.pg_user,
                         password=self.config.database.pg_password or "4010",
                     )
-                    logger.info(
-                        f"Attempting PostgreSQL connection to {host}:{self.config.database.pg_port}"
-                    )
+                    logger.info(f"Attempting PostgreSQL connection to {host}:{self.config.database.pg_port}")
                     self.db_manager = DatabaseManager(db_url, is_async=True)
                     await self.db_manager.create_tables_async()
                     logger.info(f"Successfully connected to PostgreSQL at {host}")
@@ -88,31 +86,28 @@ class GiljoMCPServer:
                     logger.warning(f"Failed to connect to PostgreSQL at {host}: {e}")
                     continue
             raise Exception("Failed to connect to PostgreSQL with all available hosts")
-        else:
-            # Default to SQLite for local development
-            db_url = DatabaseManager.build_sqlite_url(
-                str(self.config.database.sqlite_path)
-            )
-            logger.info(f"Using SQLite database at {self.config.database.sqlite_path}")
+        # Default to SQLite for local development
+        db_url = DatabaseManager.build_sqlite_url(str(self.config.database.sqlite_path))
+        logger.info(f"Using SQLite database at {self.config.database.sqlite_path}")
 
-            # Create database manager with async support
-            self.db_manager = DatabaseManager(db_url, is_async=True)
+        # Create database manager with async support
+        self.db_manager = DatabaseManager(db_url, is_async=True)
 
-            # Initialize database schema
-            await self.db_manager.create_tables_async()
+        # Initialize database schema
+        await self.db_manager.create_tables_async()
 
-            logger.info("Database initialized successfully")
+        logger.info("Database initialized successfully")
 
     async def _register_tools(self):
         """Register all tool groups with the MCP server"""
         try:
             # Import tools dynamically to avoid circular imports
-            from .tools.project import register_project_tools
             from .tools.agent import register_agent_tools
-            from .tools.message import register_message_tools
             from .tools.context import register_context_tools
-            from .tools.template import register_template_tools
             from .tools.git import register_git_tools
+            from .tools.message import register_message_tools
+            from .tools.project import register_project_tools
+            from .tools.template import register_template_tools
 
             # Register each tool group with database and tenant manager
             register_project_tools(self.mcp, self.db_manager, self.tenant_manager)
@@ -131,7 +126,7 @@ class GiljoMCPServer:
         """Register server information endpoints"""
 
         @self.mcp.tool()
-        async def health() -> Dict[str, Any]:
+        async def health() -> dict[str, Any]:
             """Check server health status"""
             return {
                 "status": "healthy",
@@ -141,7 +136,7 @@ class GiljoMCPServer:
             }
 
         @self.mcp.tool()
-        async def ready() -> Dict[str, Any]:
+        async def ready() -> dict[str, Any]:
             """Check if server is ready to handle requests"""
             # Verify database connectivity
             db_ready = False
@@ -152,7 +147,7 @@ class GiljoMCPServer:
                         await session.execute("SELECT 1")
                         db_ready = True
                 except Exception as e:
-                    logger.error(f"Database not ready: {e}")
+                    logger.exception(f"Database not ready: {e}")
 
             return {
                 "ready": db_ready,
@@ -161,7 +156,7 @@ class GiljoMCPServer:
             }
 
         @self.mcp.tool()
-        async def info() -> Dict[str, Any]:
+        async def info() -> dict[str, Any]:
             """Get server information and capabilities"""
             return {
                 "name": "GiljoAI MCP Server",
@@ -186,10 +181,9 @@ class GiljoMCPServer:
         """Determine authentication mode based on deployment"""
         if self.config.server.mode.value == "LOCAL":
             return "none"
-        elif self.config.server.mode.value == "LAN":
+        if self.config.server.mode.value == "LAN":
             return "api_key"
-        else:
-            return "jwt"
+        return "jwt"
 
     async def run(self, host: str = "localhost", port: Optional[int] = None):
         """Run the MCP server"""

@@ -5,7 +5,7 @@ Agent management API endpoints
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -13,10 +13,12 @@ import time
 
 router = APIRouter()
 
+
 class AgentCreate(BaseModel):
     project_id: str = Field(..., description="Project ID")
     agent_name: str = Field(..., description="Agent name")
     mission: Optional[str] = Field(None, description="Agent mission")
+
 
 class AgentResponse(BaseModel):
     id: str
@@ -27,89 +29,88 @@ class AgentResponse(BaseModel):
     created_at: datetime
     health: dict
 
+
 @router.post("/", response_model=AgentResponse)
 async def create_agent(agent: AgentCreate):
     """Create or ensure an agent exists"""
     from api.app import state
-    
+
     try:
-        result = await state.api_state.tool_accessor.ensure_agent(
-            project_id=agent.project_id,
-            agent_name=agent.agent_name,
-            mission=agent.mission
+        result = await state.tool_accessor.ensure_agent(
+            project_id=agent.project_id, agent_name=agent.agent_name, mission=agent.mission
         )
-        
+
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to create agent"))
-        
+
         response = AgentResponse(
             id=result.get("agent_id", agent.agent_name),
             name=agent.agent_name,
             project_id=agent.project_id,
             status="active",
             mission=agent.mission,
-            created_at=datetime.utcnow(),
-            health={"status": "healthy", "context_used": 0}
+            created_at=datetime.now(timezone.utc),
+            health={"status": "healthy", "context_used": 0},
         )
-        
+
         # Broadcast agent creation/update
-        if state.api_state.websocket_manager:
-            await state.api_state.websocket_manager.broadcast_agent_update(
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_agent_update(
                 agent_name=agent.agent_name,
                 project_id=agent.project_id,
                 status="active",
-                additional_data={"health": response.health, "mission": agent.mission}
+                additional_data={"health": response.health, "mission": agent.mission},
             )
-        
+
         return response
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{agent_name}/health", response_model=dict)
 async def get_agent_health(agent_name: str):
     """Get agent health status"""
     from api.app import state
-    
+
     try:
-        result = await state.api_state.tool_accessor.agent_health(agent_name=agent_name)
-        
+        result = await state.tool_accessor.agent_health(agent_name=agent_name)
+
         if not result.get("success"):
             raise HTTPException(status_code=404, detail="Agent not found")
-        
+
         return result.get("health", {})
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/{agent_name}/decommission")
 async def decommission_agent(
     agent_name: str,
     project_id: str = Query(..., description="Project ID"),
-    reason: str = Query("completed", description="Decommission reason")
+    reason: str = Query("completed", description="Decommission reason"),
 ):
     """Decommission an agent"""
     from api.app import state
-    
+
     try:
-        result = await state.api_state.tool_accessor.decommission_agent(
-            agent_name=agent_name,
-            project_id=project_id,
-            reason=reason
+        result = await state.tool_accessor.decommission_agent(
+            agent_name=agent_name, project_id=project_id, reason=reason
         )
-        
+
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to decommission agent"))
-        
+
         # Broadcast agent decommission
-        if state.api_state.websocket_manager:
-            await state.api_state.websocket_manager.broadcast_agent_update(
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_agent_update(
                 agent_name=agent_name,
                 project_id=project_id,
                 status="decommissioned",
-                additional_data={"reason": reason}
+                additional_data={"reason": reason},
             )
-        
+
         return {"success": True, "message": f"Agent {agent_name} decommissioned"}
 
     except Exception as e:
@@ -124,7 +125,7 @@ class AgentNode(BaseModel):
     status: str
     project_id: str
     parent_id: Optional[str] = None
-    children: List['AgentNode'] = []
+    children: List["AgentNode"] = []
     mission: Optional[str] = None
     context_used: int = 0
     created_at: datetime
@@ -170,8 +171,7 @@ async def get_db_session():
 
 @router.get("/tree", response_model=AgentTreeResponse)
 async def get_agents_tree(
-    project_id: str = Query(..., description="Project ID"),
-    session: AsyncSession = Depends(get_db_session)
+    project_id: str = Query(..., description="Project ID"), session: AsyncSession = Depends(get_db_session)
 ):
     """
     Get hierarchical tree structure of agents in a project.
@@ -193,18 +193,25 @@ async def get_agents_tree(
         result = await session.execute(stmt)
         agents = result.scalars().all()
 
-        # Count messages for each agent
+        # Count messages sent by each agent
         message_counts_stmt = (
-            select(
-                Message.from_agent_id,
-                func.count(Message.id).label('sent_count')
-            )
+            select(Message.from_agent_id, func.count(Message.id).label("sent_count"))
             .where(Message.project_id == project_id)
             .group_by(Message.from_agent_id)
         )
 
         msg_result = await session.execute(message_counts_stmt)
         message_counts = {row.from_agent_id: row.sent_count for row in msg_result}
+
+        # Count messages received by each agent
+        received_counts_stmt = (
+            select(Message.to_agent_id, func.count(Message.id).label("received_count"))
+            .where(Message.project_id == project_id)
+            .group_by(Message.to_agent_id)
+        )
+
+        received_result = await session.execute(received_counts_stmt)
+        received_counts = {row.to_agent_id: row.received_count for row in received_result}
 
         # Build tree structure
         agent_nodes = {}
@@ -223,8 +230,8 @@ async def get_agents_tree(
                 last_active=agent.last_active,
                 jobs_count=len(agent.jobs) if agent.jobs else 0,
                 messages_sent=message_counts.get(agent.id, 0),
-                messages_received=0,  # TODO: Implement received count
-                children=[]
+                messages_received=received_counts.get(agent.id, 0),
+                children=[],
             )
 
             agent_nodes[agent.id] = node
@@ -256,7 +263,7 @@ async def get_agents_tree(
             total_agents=len(agents),
             active_agents=sum(1 for a in agents if a.status == "active"),
             tree=root_agents,
-            response_time_ms=response_time
+            response_time_ms=response_time,
         )
 
     except Exception as e:
@@ -267,7 +274,7 @@ async def get_agents_tree(
 async def get_agents_metrics(
     project_id: Optional[str] = Query(None, description="Project ID (optional for all projects)"),
     hours: int = Query(24, description="Number of hours for activity data"),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
 ):
     """
     Get performance metrics and statistics for agents.
@@ -309,9 +316,7 @@ async def get_agents_metrics(
 
         if project_id:
             message_query = message_query.where(Message.project_id == project_id)
-            job_query = job_query.where(
-                Job.agent_id.in_([a.id for a in agents])
-            )
+            job_query = job_query.where(Job.agent_id.in_([a.id for a in agents]))
 
         msg_result = await session.execute(message_query)
         total_messages = msg_result.scalar() or 0
@@ -330,34 +335,24 @@ async def get_agents_metrics(
 
         # Hourly activity (last N hours)
         hourly_activity = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for i in range(hours):
-            hour_start = now - timedelta(hours=i+1)
+            hour_start = now - timedelta(hours=i + 1)
             hour_end = now - timedelta(hours=i)
 
             # Count agents active in this hour
-            active_in_hour = sum(
-                1 for a in agents
-                if a.last_active and hour_start <= a.last_active < hour_end
-            )
+            active_in_hour = sum(1 for a in agents if a.last_active and hour_start <= a.last_active < hour_end)
 
-            hourly_activity.append({
-                "hour": hour_start.isoformat(),
-                "active_agents": active_in_hour,
-                "hour_label": f"{i+1}h ago"
-            })
+            hourly_activity.append(
+                {"hour": hour_start.isoformat(), "active_agents": active_in_hour, "hour_label": f"{i+1}h ago"}
+            )
 
         hourly_activity.reverse()  # Show oldest first
 
         # Token usage by agent (top 10)
         token_usage = [
-            {
-                "agent_name": a.name,
-                "agent_role": a.role,
-                "context_used": a.context_used or 0,
-                "status": a.status
-            }
+            {"agent_name": a.name, "agent_role": a.role, "context_used": a.context_used or 0, "status": a.status}
             for a in sorted(agents, key=lambda x: x.context_used or 0, reverse=True)[:10]
         ]
 
@@ -375,7 +370,7 @@ async def get_agents_metrics(
             agent_by_status=agent_by_status,
             hourly_activity=hourly_activity,
             token_usage_by_agent=token_usage,
-            response_time_ms=response_time
+            response_time_ms=response_time,
         )
 
     except Exception as e:

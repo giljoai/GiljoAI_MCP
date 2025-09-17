@@ -2,13 +2,16 @@
 Statistics and monitoring API endpoints
 """
 
+from datetime import datetime, timezone, timedelta
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query
-from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
-from sqlalchemy import select, func, and_, or_
+from pydantic import BaseModel
+from sqlalchemy import and_, func, select
+
 
 router = APIRouter()
+
 
 # Pydantic models for response
 class SystemStatsResponse(BaseModel):
@@ -26,6 +29,7 @@ class SystemStatsResponse(BaseModel):
     database_size_mb: float
     uptime_seconds: float
 
+
 class ProjectStatsResponse(BaseModel):
     project_id: str
     name: str
@@ -39,6 +43,7 @@ class ProjectStatsResponse(BaseModel):
     context_budget: int
     context_usage_percent: float
     last_activity: datetime
+
 
 class AgentStatsResponse(BaseModel):
     agent_id: str
@@ -54,6 +59,7 @@ class AgentStatsResponse(BaseModel):
     average_response_time_seconds: float
     last_activity: datetime
 
+
 class MessageStatsResponse(BaseModel):
     total_messages: int
     pending_messages: int
@@ -63,6 +69,7 @@ class MessageStatsResponse(BaseModel):
     average_processing_time_seconds: float
     messages_per_hour: float
     peak_hour_messages: int
+
 
 class PerformanceMetricsResponse(BaseModel):
     api_response_time_ms: float
@@ -74,82 +81,70 @@ class PerformanceMetricsResponse(BaseModel):
     disk_usage_percent: float
     error_rate_percent: float
 
+
 class TimeSeriesDataPoint(BaseModel):
     timestamp: datetime
     value: float
     label: Optional[str] = None
 
+
 class TimeSeriesResponse(BaseModel):
     metric: str
     period: str
-    data_points: List[TimeSeriesDataPoint]
+    data_points: list[TimeSeriesDataPoint]
+
 
 # Store startup time
-startup_time = datetime.utcnow()
+startup_time = datetime.now(timezone.utc)
+
 
 @router.get("/system", response_model=SystemStatsResponse)
 async def get_system_statistics():
     """Get overall system statistics"""
     from api.app import state
-    
+
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
-    
+
     try:
-        async with state.db_manager.session() as session:
-            from src.giljo_mcp.models import Project, Agent, Message, Task
-            
+        async with state.db_manager.get_session_async() as session:
+            from src.giljo_mcp.models import Agent, Message, Project, Task
+
             # Get project stats
             total_projects = await session.scalar(select(func.count(Project.id)))
-            active_projects = await session.scalar(
-                select(func.count(Project.id))
-                .where(Project.status == "active")
-            )
+            active_projects = await session.scalar(select(func.count(Project.id)).where(Project.status == "active"))
             completed_projects = await session.scalar(
-                select(func.count(Project.id))
-                .where(Project.status == "completed")
+                select(func.count(Project.id)).where(Project.status == "completed")
             )
-            
+
             # Get agent stats
             total_agents = await session.scalar(select(func.count(Agent.id)))
-            active_agents = await session.scalar(
-                select(func.count(Agent.id))
-                .where(Agent.status == "active")
-            )
-            
+            active_agents = await session.scalar(select(func.count(Agent.id)).where(Agent.status == "active"))
+
             # Get message stats
             total_messages = await session.scalar(select(func.count(Message.id)))
-            pending_messages = await session.scalar(
-                select(func.count(Message.id))
-                .where(Message.status == "pending")
-            )
-            
+            pending_messages = await session.scalar(select(func.count(Message.id)).where(Message.status == "pending"))
+
             # Get task stats
             total_tasks = await session.scalar(select(func.count(Task.id)))
-            completed_tasks = await session.scalar(
-                select(func.count(Task.id))
-                .where(Task.status == "completed")
-            )
-            
+            completed_tasks = await session.scalar(select(func.count(Task.id)).where(Task.status == "completed"))
+
             # Get context usage stats
-            avg_context = await session.scalar(
-                select(func.avg(Project.context_used))
-            ) or 0
-            peak_context = await session.scalar(
-                select(func.max(Project.context_used))
-            ) or 0
-            
+            avg_context = await session.scalar(select(func.avg(Project.context_used))) or 0
+            peak_context = await session.scalar(select(func.max(Project.context_used))) or 0
+
             # Get database size (approximate)
             db_size = 0
             if state.config.get("database.type") == "sqlite":
                 import os
+
                 db_path = state.config.get("database.url", "").replace("sqlite:///", "")
                 if os.path.exists(db_path):
                     db_size = os.path.getsize(db_path) / (1024 * 1024)  # Convert to MB
-            
+
             # Calculate uptime
-            uptime = (datetime.utcnow() - startup_time).total_seconds()
-            
+            uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
+
             return SystemStatsResponse(
                 total_projects=total_projects or 0,
                 active_projects=active_projects or 0,
@@ -163,95 +158,89 @@ async def get_system_statistics():
                 average_context_usage=float(avg_context),
                 peak_context_usage=peak_context,
                 database_size_mb=db_size,
-                uptime_seconds=uptime
+                uptime_seconds=uptime,
             )
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/projects", response_model=List[ProjectStatsResponse])
+
+@router.get("/projects", response_model=list[ProjectStatsResponse])
 async def get_project_statistics(
     status: Optional[str] = Query(None, description="Filter by project status"),
     limit: int = Query(100, description="Maximum number of results"),
-    offset: int = Query(0, description="Number of results to skip")
+    offset: int = Query(0, description="Number of results to skip"),
 ):
     """Get statistics for all projects"""
     from api.app import state
-    
+
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
-    
+
     try:
-        async with state.db_manager.session() as session:
-            from src.giljo_mcp.models import Project, Agent, Message, Task
-            
+        async with state.db_manager.get_session_async() as session:
+            from src.giljo_mcp.models import Agent, Message, Project, Task
+
             # Build query
             query = select(Project)
             if status:
                 query = query.where(Project.status == status)
             query = query.offset(offset).limit(limit)
-            
+
             result = await session.execute(query)
             projects = result.scalars().all()
-            
+
             stats = []
             for project in projects:
                 # Get related counts
-                agent_count = await session.scalar(
-                    select(func.count(Agent.id))
-                    .where(Agent.project_id == project.id)
-                )
-                
+                agent_count = await session.scalar(select(func.count(Agent.id)).where(Agent.project_id == project.id))
+
                 message_count = await session.scalar(
-                    select(func.count(Message.id))
-                    .where(Message.project_id == project.id)
+                    select(func.count(Message.id)).where(Message.project_id == project.id)
                 )
-                
-                task_count = await session.scalar(
-                    select(func.count(Task.id))
-                    .where(Task.project_id == project.id)
-                )
-                
+
+                task_count = await session.scalar(select(func.count(Task.id)).where(Task.project_id == project.id))
+
                 completed_task_count = await session.scalar(
-                    select(func.count(Task.id))
-                    .where(and_(
-                        Task.project_id == project.id,
-                        Task.status == "completed"
-                    ))
+                    select(func.count(Task.id)).where(and_(Task.project_id == project.id, Task.status == "completed"))
                 )
-                
+
                 # Get last activity
                 last_message = await session.scalar(
-                    select(func.max(Message.created_at))
-                    .where(Message.project_id == project.id)
+                    select(func.max(Message.created_at)).where(Message.project_id == project.id)
                 )
-                
+
                 # Calculate duration
-                end_time = project.updated_at if project.status == "completed" else datetime.utcnow()
+                end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
                 duration = (end_time - project.created_at).total_seconds()
-                
+
                 # Calculate context usage
-                context_percent = (project.context_used / project.context_budget * 100) if project.context_budget > 0 else 0
-                
-                stats.append(ProjectStatsResponse(
-                    project_id=str(project.id),
-                    name=project.name,
-                    status=project.status,
-                    duration_seconds=duration,
-                    agent_count=agent_count or 0,
-                    message_count=message_count or 0,
-                    task_count=task_count or 0,
-                    completed_tasks=completed_task_count or 0,
-                    context_used=project.context_used,
-                    context_budget=project.context_budget,
-                    context_usage_percent=context_percent,
-                    last_activity=last_message or project.updated_at
-                ))
-            
+                context_percent = (
+                    (project.context_used / project.context_budget * 100) if project.context_budget > 0 else 0
+                )
+
+                stats.append(
+                    ProjectStatsResponse(
+                        project_id=str(project.id),
+                        name=project.name,
+                        status=project.status,
+                        duration_seconds=duration,
+                        agent_count=agent_count or 0,
+                        message_count=message_count or 0,
+                        task_count=task_count or 0,
+                        completed_tasks=completed_task_count or 0,
+                        context_used=project.context_used,
+                        context_budget=project.context_budget,
+                        context_usage_percent=context_percent,
+                        last_activity=last_message or project.updated_at,
+                    )
+                )
+
             return stats
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/project/{project_id}", response_model=ProjectStatsResponse)
 async def get_project_statistics_by_id(project_id: str):
@@ -262,22 +251,23 @@ async def get_project_statistics_by_id(project_id: str):
             return stat
     raise HTTPException(status_code=404, detail="Project not found")
 
-@router.get("/agents", response_model=List[AgentStatsResponse])
+
+@router.get("/agents", response_model=list[AgentStatsResponse])
 async def get_agent_statistics(
     project_id: Optional[str] = Query(None, description="Filter by project"),
     status: Optional[str] = Query(None, description="Filter by agent status"),
-    limit: int = Query(100, description="Maximum number of results")
+    limit: int = Query(100, description="Maximum number of results"),
 ):
     """Get statistics for all agents"""
     from api.app import state
-    
+
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
-    
+
     try:
-        async with state.db_manager.session() as session:
+        async with state.db_manager.get_session_async() as session:
             from src.giljo_mcp.models import Agent, Message
-            
+
             # Build query
             query = select(Agent)
             if project_id:
@@ -285,79 +275,80 @@ async def get_agent_statistics(
             if status:
                 query = query.where(Agent.status == status)
             query = query.limit(limit)
-            
+
             result = await session.execute(query)
             agents = result.scalars().all()
-            
+
             stats = []
             for agent in agents:
                 # Get message counts
                 sent_count = await session.scalar(
-                    select(func.count(Message.id))
-                    .where(Message.from_agent == agent.name)
+                    select(func.count(Message.id)).where(Message.from_agent == agent.name)
                 )
-                
+
                 received_count = await session.scalar(
-                    select(func.count(Message.id))
-                    .where(Message.to_agents.contains([agent.name]))
+                    select(func.count(Message.id)).where(Message.to_agents.contains([agent.name]))
                 )
-                
+
                 # Get task counts (from jobs)
                 task_count = 0
                 completed_count = 0
                 if agent.active_job_id:
                     from src.giljo_mcp.models import Job
+
                     job = await session.get(Job, agent.active_job_id)
                     if job and job.tasks:
                         task_count = len(job.tasks)
                         completed_count = sum(1 for t in job.tasks if t.get("status") == "completed")
-                
+
                 # Calculate average response time (simplified)
                 avg_response_time = 30.0  # Default 30 seconds
-                
+
                 # Get last activity
                 last_sent = await session.scalar(
-                    select(func.max(Message.created_at))
-                    .where(Message.from_agent == agent.name)
+                    select(func.max(Message.created_at)).where(Message.from_agent == agent.name)
                 )
-                
-                stats.append(AgentStatsResponse(
-                    agent_id=str(agent.id),
-                    name=agent.name,
-                    role=agent.role,
-                    status=agent.status,
-                    project_id=str(agent.project_id),
-                    created_at=agent.created_at,
-                    messages_sent=sent_count or 0,
-                    messages_received=received_count or 0,
-                    tasks_assigned=task_count,
-                    tasks_completed=completed_count,
-                    average_response_time_seconds=avg_response_time,
-                    last_activity=last_sent or agent.created_at
-                ))
-            
+
+                stats.append(
+                    AgentStatsResponse(
+                        agent_id=str(agent.id),
+                        name=agent.name,
+                        role=agent.role,
+                        status=agent.status,
+                        project_id=str(agent.project_id),
+                        created_at=agent.created_at,
+                        messages_sent=sent_count or 0,
+                        messages_received=received_count or 0,
+                        tasks_assigned=task_count,
+                        tasks_completed=completed_count,
+                        average_response_time_seconds=avg_response_time,
+                        last_activity=last_sent or agent.created_at,
+                    )
+                )
+
             return stats
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/messages", response_model=MessageStatsResponse)
 async def get_message_statistics(
     project_id: Optional[str] = Query(None, description="Filter by project"),
-    time_range: Optional[str] = Query("24h", description="Time range (1h, 24h, 7d, 30d)")
+    time_range: Optional[str] = Query("24h", description="Time range (1h, 24h, 7d, 30d)"),
 ):
     """Get message statistics"""
     from api.app import state
-    
+
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
-    
+
     try:
-        async with state.db_manager.session() as session:
+        async with state.db_manager.get_session_async() as session:
             from src.giljo_mcp.models import Message
-            
+
             # Calculate time filter
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if time_range == "1h":
                 since = now - timedelta(hours=1)
             elif time_range == "24h":
@@ -368,53 +359,45 @@ async def get_message_statistics(
                 since = now - timedelta(days=30)
             else:
                 since = None
-            
+
             # Build base query
             base_query = select(Message)
             if project_id:
                 base_query = base_query.where(Message.project_id == project_id)
             if since:
                 base_query = base_query.where(Message.created_at >= since)
-            
+
             # Get counts by status
-            total = await session.scalar(
-                select(func.count(Message.id)).select_from(base_query.subquery())
-            )
-            
+            total = await session.scalar(select(func.count(Message.id)).select_from(base_query.subquery()))
+
             pending = await session.scalar(
-                select(func.count(Message.id))
-                .select_from(base_query.subquery())
-                .where(Message.status == "pending")
+                select(func.count(Message.id)).select_from(base_query.subquery()).where(Message.status == "pending")
             )
-            
+
             acknowledged = await session.scalar(
                 select(func.count(Message.id))
                 .select_from(base_query.subquery())
                 .where(Message.status == "acknowledged")
             )
-            
+
             completed = await session.scalar(
-                select(func.count(Message.id))
-                .select_from(base_query.subquery())
-                .where(Message.status == "completed")
+                select(func.count(Message.id)).select_from(base_query.subquery()).where(Message.status == "completed")
             )
-            
+
             failed = await session.scalar(
-                select(func.count(Message.id))
-                .select_from(base_query.subquery())
-                .where(Message.status == "failed")
+                select(func.count(Message.id)).select_from(base_query.subquery()).where(Message.status == "failed")
             )
-            
+
             # Calculate processing time (simplified)
             avg_processing_time = 45.0  # Default 45 seconds
-            
+
             # Calculate messages per hour
             hours_in_range = max((now - since).total_seconds() / 3600, 1) if since else 24
             messages_per_hour = (total or 0) / hours_in_range
-            
+
             # Find peak hour (simplified)
             peak_hour_messages = int(messages_per_hour * 1.5)  # Estimate
-            
+
             return MessageStatsResponse(
                 total_messages=total or 0,
                 pending_messages=pending or 0,
@@ -423,57 +406,60 @@ async def get_message_statistics(
                 failed_messages=failed or 0,
                 average_processing_time_seconds=avg_processing_time,
                 messages_per_hour=messages_per_hour,
-                peak_hour_messages=peak_hour_messages
+                peak_hour_messages=peak_hour_messages,
             )
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/performance", response_model=PerformanceMetricsResponse)
 async def get_performance_metrics():
     """Get real-time performance metrics"""
-    from api.app import state
-    import psutil
     import time
-    
+
+    import psutil
+
+    from api.app import state
+
     try:
         # Measure API response time
         start_time = time.time()
-        
+
         # Get memory usage
         process = psutil.Process()
         memory_mb = process.memory_info().rss / (1024 * 1024)
-        
+
         # Get CPU usage
         cpu_percent = psutil.cpu_percent(interval=0.1)
-        
+
         # Get disk usage
-        disk_usage = psutil.disk_usage('/')
+        disk_usage = psutil.disk_usage("/")
         disk_percent = disk_usage.percent
-        
+
         # Count WebSocket connections
         websocket_connections = len(state.connections) if state.connections else 0
-        
+
         # Count active sessions (simplified)
         active_sessions = 1  # Current session
-        
+
         # Calculate error rate (simplified)
         error_rate = 0.1  # 0.1% error rate
-        
+
         # Measure database query time
         db_query_time = 0
         if state.db_manager:
             db_start = time.time()
             try:
-                async with state.db_manager.session() as session:
+                async with state.db_manager.get_session_async() as session:
                     await session.execute(select(1))
                 db_query_time = (time.time() - db_start) * 1000
             except:
                 db_query_time = -1
-        
+
         # Calculate API response time
         api_response_time = (time.time() - start_time) * 1000
-        
+
         return PerformanceMetricsResponse(
             api_response_time_ms=api_response_time,
             database_query_time_ms=db_query_time,
@@ -482,33 +468,34 @@ async def get_performance_metrics():
             memory_usage_mb=memory_mb,
             cpu_usage_percent=cpu_percent,
             disk_usage_percent=disk_percent,
-            error_rate_percent=error_rate
+            error_rate_percent=error_rate,
         )
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/timeseries/{metric}", response_model=TimeSeriesResponse)
 async def get_timeseries_data(
     metric: str,
     period: str = Query("1h", description="Time period (1h, 24h, 7d)"),
-    project_id: Optional[str] = Query(None, description="Filter by project")
+    project_id: Optional[str] = Query(None, description="Filter by project"),
 ):
     """Get time series data for specific metrics"""
     from api.app import state
-    
+
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
-    
+
     valid_metrics = ["messages", "agents", "tasks", "context_usage", "errors"]
     if metric not in valid_metrics:
         raise HTTPException(status_code=400, detail=f"Invalid metric. Choose from: {valid_metrics}")
-    
+
     try:
         # Generate sample time series data
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         data_points = []
-        
+
         if period == "1h":
             points = 12  # 5-minute intervals
             interval = timedelta(minutes=5)
@@ -521,12 +508,13 @@ async def get_timeseries_data(
         else:
             points = 24
             interval = timedelta(hours=1)
-        
+
         # Generate data points (simplified - in production, query actual data)
         import random
+
         for i in range(points):
             timestamp = now - (interval * (points - i - 1))
-            
+
             if metric == "messages":
                 value = random.randint(10, 100)
             elif metric == "agents":
@@ -537,68 +525,54 @@ async def get_timeseries_data(
                 value = random.randint(1000, 150000)
             else:  # errors
                 value = random.randint(0, 5)
-            
-            data_points.append(TimeSeriesDataPoint(
-                timestamp=timestamp,
-                value=float(value)
-            ))
-        
-        return TimeSeriesResponse(
-            metric=metric,
-            period=period,
-            data_points=data_points
-        )
-    
+
+            data_points.append(TimeSeriesDataPoint(timestamp=timestamp, value=float(value)))
+
+        return TimeSeriesResponse(metric=metric, period=period, data_points=data_points)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/health/detailed")
 async def get_detailed_health():
     """Get detailed health status of all system components"""
     from api.app import state
-    
-    health = {
-        "overall": "healthy",
-        "components": {},
-        "checks_passed": 0,
-        "checks_failed": 0
-    }
-    
+
+    health = {"overall": "healthy", "components": {}, "checks_passed": 0, "checks_failed": 0}
+
     # Check API
     health["components"]["api"] = {
         "status": "healthy",
-        "uptime_seconds": (datetime.utcnow() - startup_time).total_seconds()
+        "uptime_seconds": (datetime.now(timezone.utc) - startup_time).total_seconds(),
     }
     health["checks_passed"] += 1
-    
+
     # Check database
     if state.db_manager:
         try:
-            async with state.db_manager.session() as session:
+            async with state.db_manager.get_session_async() as session:
                 await session.execute(select(1))
             health["components"]["database"] = {"status": "healthy"}
             health["checks_passed"] += 1
         except Exception as e:
-            health["components"]["database"] = {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+            health["components"]["database"] = {"status": "unhealthy", "error": str(e)}
             health["checks_failed"] += 1
             health["overall"] = "degraded"
     else:
         health["components"]["database"] = {"status": "not_configured"}
         health["checks_failed"] += 1
-    
+
     # Check WebSocket
     if state.websocket_manager:
         health["components"]["websocket"] = {
             "status": "healthy",
-            "active_connections": len(state.connections) if state.connections else 0
+            "active_connections": len(state.connections) if state.connections else 0,
         }
         health["checks_passed"] += 1
     else:
         health["components"]["websocket"] = {"status": "not_configured"}
-    
+
     # Check configuration
     if state.config:
         health["components"]["configuration"] = {"status": "healthy"}
@@ -606,22 +580,22 @@ async def get_detailed_health():
     else:
         health["components"]["configuration"] = {"status": "not_loaded"}
         health["checks_failed"] += 1
-    
+
     # Check authentication
     if state.auth:
         health["components"]["authentication"] = {
             "status": "healthy",
-            "auth_enabled": state.config.get("security.auth_enabled", False)
+            "auth_enabled": state.config.get("security.auth_enabled", False),
         }
         health["checks_passed"] += 1
     else:
         health["components"]["authentication"] = {"status": "not_configured"}
-    
+
     # Determine overall health
     if health["checks_failed"] > 0:
         if health["checks_failed"] > health["checks_passed"]:
             health["overall"] = "unhealthy"
         else:
             health["overall"] = "degraded"
-    
+
     return health

@@ -4,10 +4,11 @@ Supports documents up to 100K+ tokens with natural boundary preservation.
 Based on AKE-MCP's proven chunking implementation with enhancements.
 """
 
-import re
 import hashlib
 import logging
-from typing import List, Dict, Any, Tuple, Optional
+import re
+from typing import Any, Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class EnhancedChunker:
 
     def find_natural_boundary(
         self, content: str, target_pos: int, search_range: Optional[int] = None
-    ) -> Tuple[int, str]:
+    ) -> tuple[int, str]:
         """
         Find the nearest natural boundary to the target position.
         Implements multi-level boundary hierarchy.
@@ -70,9 +71,7 @@ class EnhancedChunker:
             Tuple of (boundary_position, boundary_type)
         """
         if search_range is None:
-            search_range = min(
-                self.DEFAULT_SEARCH_RANGE, int(self.chars_per_chunk * 0.1)
-            )
+            search_range = min(self.DEFAULT_SEARCH_RANGE, int(self.chars_per_chunk * 0.1))
 
         # Ensure we don't go out of bounds
         content_len = len(content)
@@ -92,7 +91,7 @@ class EnhancedChunker:
         # Calculate search window
         search_start = max(0, target_pos - search_range)
         search_end = min(content_len, target_pos + search_range)
-        search_text = content[search_start:search_end]
+        content[search_start:search_end]
 
         # Try each boundary type
         for boundary_type, pattern in boundaries:
@@ -117,7 +116,7 @@ class EnhancedChunker:
         # No boundary found, use target position
         return target_pos, "forced"
 
-    def extract_keywords(self, content: str, max_keywords: int = 10) -> List[str]:
+    def extract_keywords(self, content: str, max_keywords: int = 10) -> list[str]:
         """
         Extract keywords from content chunk.
 
@@ -169,7 +168,7 @@ class EnhancedChunker:
 
         return keywords[:max_keywords]
 
-    def extract_headers(self, content: str) -> List[str]:
+    def extract_headers(self, content: str) -> list[str]:
         """
         Extract markdown headers from content.
 
@@ -187,9 +186,7 @@ class EnhancedChunker:
 
         return headers
 
-    def chunk_content(
-        self, content: str, document_name: str = "document"
-    ) -> List[Dict[str, Any]]:
+    def chunk_content(self, content: str, document_name: str = "document") -> list[dict[str, Any]]:
         """
         Chunk content into parts with natural boundaries.
         Based on AKE-MCP's proven algorithm with enhancements.
@@ -240,9 +237,7 @@ class EnhancedChunker:
                 target_end = int((chunk_num * total_chars) / num_chunks)
 
             # Find natural boundary near target
-            actual_end, boundary_type = self.find_natural_boundary(
-                content, target_end, self.MINIMUM_SEARCH_RANGE
-            )
+            actual_end, boundary_type = self.find_natural_boundary(content, target_end, self.MINIMUM_SEARCH_RANGE)
 
             # Extract chunk content
             chunk_content = content[current_pos:actual_end]
@@ -278,9 +273,7 @@ class EnhancedChunker:
 
         return chunks
 
-    def chunk_multiple_documents(
-        self, documents: List[Dict[str, str]]
-    ) -> List[Dict[str, Any]]:
+    def chunk_multiple_documents(self, documents: list[dict[str, str]]) -> list[dict[str, Any]]:
         """
         Chunk multiple documents intelligently.
         Tries to keep related content together.
@@ -306,9 +299,7 @@ class EnhancedChunker:
             if doc_tokens > self.max_tokens:
                 # First, process any accumulated content
                 if combined_content:
-                    combined_text = "\n\n---\n\n".join(
-                        [f"# {d['name']}\n\n{d['content']}" for d in combined_content]
-                    )
+                    combined_text = "\n\n---\n\n".join([f"# {d['name']}\n\n{d['content']}" for d in combined_content])
                     chunks = self.chunk_content(combined_text, "combined")
                     all_chunks.extend(chunks)
                     combined_content = []
@@ -322,9 +313,7 @@ class EnhancedChunker:
             # If adding this would exceed limit, flush accumulated
             elif combined_size + doc_size > self.chars_per_chunk:
                 if combined_content:
-                    combined_text = "\n\n---\n\n".join(
-                        [f"# {d['name']}\n\n{d['content']}" for d in combined_content]
-                    )
+                    combined_text = "\n\n---\n\n".join([f"# {d['name']}\n\n{d['content']}" for d in combined_content])
                     chunks = self.chunk_content(combined_text, "combined")
                     all_chunks.extend(chunks)
 
@@ -339,9 +328,7 @@ class EnhancedChunker:
 
         # Process any remaining accumulated content
         if combined_content:
-            combined_text = "\n\n---\n\n".join(
-                [f"# {d['name']}\n\n{d['content']}" for d in combined_content]
-            )
+            combined_text = "\n\n---\n\n".join([f"# {d['name']}\n\n{d['content']}" for d in combined_content])
             chunks = self.chunk_content(combined_text, "combined")
             all_chunks.extend(chunks)
 

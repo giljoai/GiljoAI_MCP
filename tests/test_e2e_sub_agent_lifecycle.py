@@ -3,16 +3,15 @@ End-to-End Test for Sub-Agent Lifecycle
 Tests the complete flow from spawn to completion with real-time events
 """
 
-import pytest
 import asyncio
-import json
-import time
 import uuid
-from datetime import datetime
-from unittest.mock import Mock, patch, AsyncMock
-from src.giljo_mcp.models import Base, AgentInteraction, Project
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker, Session
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
+
+from src.giljo_mcp.models import AgentInteraction
 
 
 class TestSubAgentLifecycle:
@@ -21,13 +20,11 @@ class TestSubAgentLifecycle:
     @pytest.fixture
     async def db_session(self):
         """Create test database session"""
-        engine = create_async_engine('sqlite+aiosqlite:///:memory:')
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
         async with engine.begin() as conn:
             await conn.run_sync(init_db)
 
-        async_session = sessionmaker(
-            engine, class_=AsyncSession, expire_on_commit=False
-        )
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
         async with async_session() as session:
             yield session
@@ -61,11 +58,11 @@ class TestSubAgentLifecycle:
             parent_agent_name=parent_agent,
             sub_agent_name=sub_agent,
             mission=mission,
-            meta_data={"test": True, "priority": "high"}
+            meta_data={"test": True, "priority": "high"},
         )
 
         # Verify spawn
-        assert spawn_result["success"] == True
+        assert spawn_result["success"]
         assert "interaction_id" in spawn_result
         assert spawn_result["sub_agent_name"] == sub_agent
 
@@ -85,19 +82,20 @@ class TestSubAgentLifecycle:
             interaction_id=interaction_id,
             result="Test completed successfully",
             tokens_used=150,
-            meta_data={"output": "processed_data.json"}
+            meta_data={"output": "processed_data.json"},
         )
 
         # Verify completion
-        assert complete_result["success"] == True
+        assert complete_result["success"]
         assert complete_result["status"] == "completed"
         assert "duration_seconds" in complete_result
 
         # Verify completion WebSocket event
-        complete_event = [
-            call[0][1] for call in mock_websocket_manager.broadcast.call_args_list
+        complete_event = next(
+            call[0][1]
+            for call in mock_websocket_manager.broadcast.call_args_list
             if call[0][1]["type"] == "sub_agent_completed"
-        ][0]
+        )
         assert complete_event["data"]["interaction_id"] == interaction_id
         assert complete_event["data"]["result"] == "Test completed successfully"
 
@@ -128,7 +126,7 @@ class TestSubAgentLifecycle:
                 parent_agent_name=parent_agent,
                 sub_agent_name=f"worker_{i}",
                 mission=f"Task {i}",
-                meta_data={"index": i}
+                meta_data={"index": i},
             )
             spawn_tasks.append(task)
 
@@ -138,7 +136,7 @@ class TestSubAgentLifecycle:
         # Verify all spawns succeeded
         assert len(spawn_results) == 5
         for i, result in enumerate(spawn_results):
-            assert result["success"] == True
+            assert result["success"]
             assert result["sub_agent_name"] == f"worker_{i}"
 
         # Verify no race conditions - all have unique IDs
@@ -149,9 +147,7 @@ class TestSubAgentLifecycle:
         complete_tasks = []
         for result in spawn_results:
             task = tools.log_sub_agent_completion(
-                interaction_id=result["interaction_id"],
-                result=f"Completed {result['sub_agent_name']}",
-                tokens_used=100
+                interaction_id=result["interaction_id"], result=f"Completed {result['sub_agent_name']}", tokens_used=100
             )
             complete_tasks.append(task)
 
@@ -160,7 +156,7 @@ class TestSubAgentLifecycle:
         # Verify all completions
         assert len(complete_results) == 5
         for result in complete_results:
-            assert result["success"] == True
+            assert result["success"]
             assert result["status"] == "completed"
 
     @pytest.mark.asyncio
@@ -177,29 +173,27 @@ class TestSubAgentLifecycle:
             project_id=project_id,
             parent_agent_name="orchestrator",
             sub_agent_name="failing_worker",
-            mission="Impossible task"
+            mission="Impossible task",
         )
 
         interaction_id = spawn_result["interaction_id"]
 
         # Log error completion
         error_result = await tools.log_sub_agent_completion(
-            interaction_id=interaction_id,
-            result=None,
-            error="Task failed: Resource not found",
-            tokens_used=50
+            interaction_id=interaction_id, result=None, error="Task failed: Resource not found", tokens_used=50
         )
 
         # Verify error handling
-        assert error_result["success"] == True
+        assert error_result["success"]
         assert error_result["status"] == "error"
         assert error_result["error"] == "Task failed: Resource not found"
 
         # Verify error WebSocket event
-        error_event = [
-            call[0][1] for call in mock_websocket_manager.broadcast.call_args_list
+        error_event = next(
+            call[0][1]
+            for call in mock_websocket_manager.broadcast.call_args_list
             if call[0][1]["type"] == "sub_agent_error"
-        ][0]
+        )
         assert error_event["data"]["interaction_id"] == interaction_id
         assert "Resource not found" in error_event["data"]["error"]
 
@@ -222,49 +216,40 @@ class TestSubAgentLifecycle:
             project_id=project_id,
             parent_agent_name="orchestrator",
             sub_agent_name="parent_worker",
-            mission="Parent task"
+            mission="Parent task",
         )
 
         child_result = await tools.spawn_and_log_sub_agent(
             project_id=project_id,
             parent_agent_name="parent_worker",
             sub_agent_name="child_worker",
-            mission="Child task"
+            mission="Child task",
         )
 
         grandchild_result = await tools.spawn_and_log_sub_agent(
             project_id=project_id,
             parent_agent_name="child_worker",
             sub_agent_name="grandchild_worker",
-            mission="Grandchild task"
+            mission="Grandchild task",
         )
 
         # Complete in reverse order (grandchild -> child -> parent)
         await tools.log_sub_agent_completion(
-            interaction_id=grandchild_result["interaction_id"],
-            result="Grandchild done",
-            tokens_used=25
+            interaction_id=grandchild_result["interaction_id"], result="Grandchild done", tokens_used=25
         )
 
         await tools.log_sub_agent_completion(
-            interaction_id=child_result["interaction_id"],
-            result="Child done",
-            tokens_used=50
+            interaction_id=child_result["interaction_id"], result="Child done", tokens_used=50
         )
 
         await tools.log_sub_agent_completion(
-            interaction_id=parent_result["interaction_id"],
-            result="Parent done",
-            tokens_used=100
+            interaction_id=parent_result["interaction_id"], result="Parent done", tokens_used=100
         )
 
         # Verify relationships in database
-        from sqlalchemy import select
 
         # Query all interactions for this project
-        stmt = select(AgentInteraction).where(
-            AgentInteraction.project_id == project_id
-        )
+        stmt = select(AgentInteraction).where(AgentInteraction.project_id == project_id)
         result = await db_session.execute(stmt)
         interactions = result.scalars().all()
 

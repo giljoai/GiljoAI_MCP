@@ -4,26 +4,26 @@ Handles vision documents, context retrieval, and product settings
 """
 
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Optional
+
 import yaml
-from datetime import datetime
-
 from fastmcp import FastMCP
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 
-from ..database import DatabaseManager
-from ..tenant import TenantManager
-from ..models import Project, Configuration, Vision, ContextIndex, LargeDocumentIndex
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.discovery import DiscoveryManager, PathResolver
+from giljo_mcp.models import Configuration, ContextIndex, LargeDocumentIndex, Project, Vision
+from giljo_mcp.tenant import TenantManager
+
 from .chunking import EnhancedChunker
-from ..discovery import PathResolver, DiscoveryManager
+
 
 logger = logging.getLogger(__name__)
 
 
-def register_context_tools(
-    mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager
-):
+def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register context and discovery tools with the MCP server"""
 
     # Initialize discovery system
@@ -31,9 +31,7 @@ def register_context_tools(
     discovery_manager = DiscoveryManager(db_manager, tenant_manager, path_resolver)
 
     @mcp.tool()
-    async def get_vision(
-        part: int = 1, max_tokens: int = 20000, force_reindex: bool = False
-    ) -> Dict[str, Any]:
+    async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool = False) -> dict[str, Any]:
         """
         Get the vision document for the active product (chunked if too large)
         Creates an index on first read to help orchestrator navigate vision documents.
@@ -67,9 +65,7 @@ def register_context_tools(
                 # Check if we need to force reindex
                 if force_reindex:
                     # Delete existing visions and indexes
-                    await session.execute(
-                        delete(Vision).where(Vision.project_id == project.id)
-                    )
+                    await session.execute(delete(Vision).where(Vision.project_id == project.id))
                     await session.execute(
                         delete(ContextIndex).where(
                             ContextIndex.project_id == project.id,
@@ -80,11 +76,7 @@ def register_context_tools(
                     visions = []
                 else:
                     # Check for vision documents in database
-                    vision_query = (
-                        select(Vision)
-                        .where(Vision.project_id == project.id)
-                        .order_by(Vision.chunk_number)
-                    )
+                    vision_query = select(Vision).where(Vision.project_id == project.id).order_by(Vision.chunk_number)
                     vision_result = await session.execute(vision_query)
                     visions = vision_result.scalars().all()
 
@@ -104,16 +96,13 @@ def register_context_tools(
                             "has_more": part < len(visions),
                             "indexed": True,
                         }
-                    else:
-                        return {
-                            "success": False,
-                            "error": f"Part {part} not found. Document has {len(visions)} parts.",
-                        }
+                    return {
+                        "success": False,
+                        "error": f"Part {part} not found. Document has {len(visions)} parts.",
+                    }
 
                 # Try to load from filesystem
-                vision_path = await path_resolver.resolve_path(
-                    "vision", str(project.id)
-                )
+                vision_path = await path_resolver.resolve_path("vision", str(project.id))
                 if not vision_path.exists():
                     return {"success": False, "error": "No vision documents found"}
 
@@ -159,7 +148,7 @@ def register_context_tools(
                         boundary_type=chunk_data["boundary_type"],
                         keywords=chunk_data["keywords"],
                         headers=chunk_data["headers"],
-                        created_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
                     )
                     session.add(vision)
 
@@ -193,7 +182,7 @@ def register_context_tools(
                             keywords=chunker.extract_keywords(doc["content"]),
                             full_path=f"docs/Vision/{doc['name']}",
                             content_hash=chunker.calculate_content_hash(doc["content"]),
-                            created_at=datetime.utcnow(),
+                            created_at=datetime.now(timezone.utc),
                         )
                         session.add(index_entry)
 
@@ -209,9 +198,9 @@ def register_context_tools(
                         chunk_count=len(chunks),
                         metadata={
                             "files": [d["name"] for d in vision_docs],
-                            "created": datetime.utcnow().isoformat(),
+                            "created": datetime.now(timezone.utc).isoformat(),
                         },
-                        indexed_at=datetime.utcnow(),
+                        indexed_at=datetime.now(timezone.utc),
                     )
                     session.add(large_doc_index)
 
@@ -233,18 +222,17 @@ def register_context_tools(
                         "indexed": True,
                         "message": "Vision documents chunked and indexed successfully",
                     }
-                else:
-                    return {
-                        "success": False,
-                        "error": f"Part {part} not found. Document has {len(chunks)} parts.",
-                    }
+                return {
+                    "success": False,
+                    "error": f"Part {part} not found. Document has {len(chunks)} parts.",
+                }
 
         except Exception as e:
-            logger.error(f"Failed to get vision: {e}")
+            logger.exception(f"Failed to get vision: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_vision_index() -> Dict[str, Any]:
+    async def get_vision_index() -> dict[str, Any]:
         """
         Get the vision document index (ORCHESTRATOR ONLY - helps navigate vision files)
 
@@ -309,11 +297,7 @@ def register_context_tools(
                             index["chunks"][chunk_num].append(entry.document_name)
 
                     # Get chunk metadata
-                    vision_query = (
-                        select(Vision)
-                        .where(Vision.project_id == project.id)
-                        .order_by(Vision.chunk_number)
-                    )
+                    vision_query = select(Vision).where(Vision.project_id == project.id).order_by(Vision.chunk_number)
                     vision_result = await session.execute(vision_query)
                     visions = vision_result.scalars().all()
 
@@ -337,9 +321,7 @@ def register_context_tools(
                     }
 
                 # Fallback to filesystem scanning
-                vision_path = await path_resolver.resolve_path(
-                    "vision", str(project.id) if project else None
-                )
+                vision_path = await path_resolver.resolve_path("vision", str(project.id) if project else None)
                 if not vision_path.exists():
                     return {
                         "success": False,
@@ -387,13 +369,11 @@ def register_context_tools(
                 return {"success": True, "index": index}
 
         except Exception as e:
-            logger.error(f"Failed to get vision index: {e}")
+            logger.exception(f"Failed to get vision index: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def discover_context(
-        agent_role: str = "default", force_refresh: bool = False
-    ) -> Dict[str, Any]:
+    async def discover_context(agent_role: str = "default", force_refresh: bool = False) -> dict[str, Any]:
         """
         Discover context dynamically based on agent role and priority.
         Uses the new discovery system for intelligent context loading.
@@ -432,11 +412,11 @@ def register_context_tools(
                 return {"success": True, "context": context, "project": project.name}
 
         except Exception as e:
-            logger.error(f"Failed to discover context: {e}")
+            logger.exception(f"Failed to discover context: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_context_index(product_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get the context index for intelligent querying
 
@@ -453,9 +433,7 @@ def register_context_tools(
 
             if tenant_key:
                 async with db_manager.get_session() as session:
-                    project_query = select(Project).where(
-                        Project.tenant_key == tenant_key
-                    )
+                    project_query = select(Project).where(Project.tenant_key == tenant_key)
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
                     if project:
@@ -502,7 +480,7 @@ def register_context_tools(
             }
 
         except Exception as e:
-            logger.error(f"Failed to get context index: {e}")
+            logger.exception(f"Failed to get context index: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -510,7 +488,7 @@ def register_context_tools(
         document_name: str,
         section_name: Optional[str] = None,
         product_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Retrieve specific content section from the index
 
@@ -528,9 +506,7 @@ def register_context_tools(
             project_id = None
             if tenant_key:
                 async with db_manager.get_session() as session:
-                    project_query = select(Project).where(
-                        Project.tenant_key == tenant_key
-                    )
+                    project_query = select(Project).where(Project.tenant_key == tenant_key)
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
                     if project:
@@ -562,9 +538,7 @@ def register_context_tools(
                         in_section = False
 
                         for line in lines:
-                            if section_name.lower() in line.lower() and line.startswith(
-                                "#"
-                            ):
+                            if section_name.lower() in line.lower() and line.startswith("#"):
                                 in_section = True
                             elif in_section and line.startswith("#"):
                                 break
@@ -626,11 +600,11 @@ def register_context_tools(
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get context section: {e}")
+            logger.exception(f"Failed to get context section: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_product_settings(product_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_product_settings(product_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get all product settings for analysis
 
@@ -659,9 +633,7 @@ def register_context_tools(
                     return {"success": False, "error": "Project not found"}
 
                 # Get configurations
-                config_query = select(Configuration).where(
-                    Configuration.project_id == project.id
-                )
+                config_query = select(Configuration).where(Configuration.project_id == project.id)
                 config_result = await session.execute(config_query)
                 configs = config_result.scalars().all()
 
@@ -682,16 +654,14 @@ def register_context_tools(
                     settings["configurations"][config.key] = {
                         "value": config.value,
                         "category": config.category,
-                        "updated_at": (
-                            config.updated_at.isoformat() if config.updated_at else None
-                        ),
+                        "updated_at": (config.updated_at.isoformat() if config.updated_at else None),
                     }
 
                 # Load system config
                 try:
                     config_path = Path.home() / ".giljo-mcp" / "config.yaml"
                     if config_path.exists():
-                        with open(config_path, "r", encoding="utf-8") as f:
+                        with open(config_path, encoding="utf-8") as f:
                             system_config = yaml.safe_load(f)
                             settings["system_config"] = system_config
                 except Exception as e:
@@ -700,11 +670,11 @@ def register_context_tools(
                 return {"success": True, "settings": settings}
 
         except Exception as e:
-            logger.error(f"Failed to get product settings: {e}")
+            logger.exception(f"Failed to get product settings: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def session_info() -> Dict[str, Any]:
+    async def session_info() -> dict[str, Any]:
         """
         Get current session statistics
 
@@ -737,7 +707,8 @@ def register_context_tools(
                     }
 
                 # Get session stats
-                from ..models import Agent, Message, Session as DBSession
+                from giljo_mcp.models import Agent, Message
+                from giljo_mcp.models import Session as DBSession
 
                 # Count agents
                 agent_query = select(Agent).where(Agent.project_id == project.id)
@@ -769,28 +740,20 @@ def register_context_tools(
                         },
                         "messages": {
                             "total": len(messages),
-                            "pending": len(
-                                [m for m in messages if m.status == "pending"]
-                            ),
-                            "completed": len(
-                                [m for m in messages if m.status == "completed"]
-                            ),
+                            "pending": len([m for m in messages if m.status == "pending"]),
+                            "completed": len([m for m in messages if m.status == "completed"]),
                         },
                         "context_usage": f"{project.context_used}/{project.context_budget}",
-                        "session_id": (
-                            str(active_session.id) if active_session else None
-                        ),
+                        "session_id": (str(active_session.id) if active_session else None),
                     },
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get session info: {e}")
+            logger.exception(f"Failed to get session info: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def recalibrate_mission(
-        project_id: str, changes_summary: str
-    ) -> Dict[str, Any]:
+    async def recalibrate_mission(project_id: str, changes_summary: str) -> dict[str, Any]:
         """
         Notify agents about mission changes - they will re-discover context as needed
 
@@ -802,7 +765,7 @@ def register_context_tools(
             Recalibration confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session():
                 # Broadcast mission change to all agents
                 from .message import broadcast
 
@@ -821,11 +784,10 @@ def register_context_tools(
                         "agents_notified": broadcast_result["broadcast_to"],
                         "summary": changes_summary,
                     }
-                else:
-                    return broadcast_result
+                return broadcast_result
 
         except Exception as e:
-            logger.error(f"Failed to recalibrate mission: {e}")
+            logger.exception(f"Failed to recalibrate mission: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -834,7 +796,7 @@ def register_context_tools(
         part: int = 1,
         max_tokens: int = 20000,
         force_reindex: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get any large document with automatic chunking.
         Supports markdown, YAML, and text files over 50K tokens.
@@ -949,7 +911,7 @@ def register_context_tools(
                         boundary_type=chunk_data["boundary_type"],
                         keywords=chunk_data["keywords"],
                         headers=chunk_data["headers"],
-                        created_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
                     )
                     session.add(vision)
 
@@ -965,9 +927,9 @@ def register_context_tools(
                     metadata={
                         "file_name": doc_path.name,
                         "file_size": doc_path.stat().st_size,
-                        "created": datetime.utcnow().isoformat(),
+                        "created": datetime.now(timezone.utc).isoformat(),
                     },
-                    indexed_at=datetime.utcnow(),
+                    indexed_at=datetime.now(timezone.utc),
                 )
                 session.add(large_doc_index)
 
@@ -990,18 +952,17 @@ def register_context_tools(
                         "indexed": True,
                         "message": f"Document {document_path} chunked and indexed successfully",
                     }
-                else:
-                    return {
-                        "success": False,
-                        "error": f"Part {part} not found. Document has {len(chunks)} parts.",
-                    }
+                return {
+                    "success": False,
+                    "error": f"Part {part} not found. Document has {len(chunks)} parts.",
+                }
 
         except Exception as e:
-            logger.error(f"Failed to get large document: {e}")
+            logger.exception(f"Failed to get large document: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def get_discovery_paths() -> Dict[str, Any]:
+    async def get_discovery_paths() -> dict[str, Any]:
         """
         Get all dynamically resolved paths for the current project.
         Shows the path resolution hierarchy: env vars -> database -> config -> defaults
@@ -1016,9 +977,7 @@ def register_context_tools(
 
             if tenant_key:
                 async with db_manager.get_session() as session:
-                    project_query = select(Project).where(
-                        Project.tenant_key == tenant_key
-                    )
+                    project_query = select(Project).where(Project.tenant_key == tenant_key)
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
                     if project:
@@ -1050,11 +1009,11 @@ def register_context_tools(
             }
 
         except Exception as e:
-            logger.error(f"Failed to get discovery paths: {e}")
+            logger.exception(f"Failed to get discovery paths: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def help() -> Dict[str, Any]:
+    async def help() -> dict[str, Any]:
         """
         Get documentation for all available tools
 
@@ -1081,16 +1040,12 @@ def register_context_tools(
                             },
                             "list_projects": {
                                 "description": "List all projects with optional status filter",
-                                "parameters": {
-                                    "status": "Optional status filter (active, completed, etc.)"
-                                },
+                                "parameters": {"status": "Optional status filter (active, completed, etc.)"},
                                 "returns": "List of projects with details",
                             },
                             "switch_project": {
                                 "description": "Switch to a different project",
-                                "parameters": {
-                                    "project_id": "UUID of the project (required)"
-                                },
+                                "parameters": {"project_id": "UUID of the project (required)"},
                                 "returns": "Project activation confirmation",
                             },
                             "close_project": {
@@ -1111,9 +1066,7 @@ def register_context_tools(
                             },
                             "project_status": {
                                 "description": "Get comprehensive project status",
-                                "parameters": {
-                                    "project_id": "Optional UUID (uses current if not specified)"
-                                },
+                                "parameters": {"project_id": "Optional UUID (uses current if not specified)"},
                                 "returns": "Complete project status and metrics",
                             },
                         },
@@ -1164,9 +1117,7 @@ def register_context_tools(
                             },
                             "agent_health": {
                                 "description": "Check agent health and context usage",
-                                "parameters": {
-                                    "agent_name": "Optional agent name (all if not specified)"
-                                },
+                                "parameters": {"agent_name": "Optional agent name (all if not specified)"},
                                 "returns": "Agent health metrics",
                             },
                             "decommission_agent": {
@@ -1312,7 +1263,203 @@ def register_context_tools(
             return tools_documentation
 
         except Exception as e:
-            logger.error(f"Failed to get help documentation: {e}")
+            logger.exception(f"Failed to get help documentation: {e}")
             return {"success": False, "error": str(e)}
 
     logger.info("Context and discovery tools registered")
+
+# Expose MCP tools as importable async functions for API endpoints
+async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
+    """Wrapper for MCP tool - Get the context index for intelligent querying"""
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.tenant import TenantManager
+    from giljo_mcp.discovery import DiscoveryManager
+    from giljo_mcp.models import Project
+    from sqlalchemy import select
+    
+    db_manager = DatabaseManager(is_async=True)
+    tenant_manager = TenantManager()
+    discovery_manager = DiscoveryManager(db_manager, tenant_manager, path_resolver)
+    
+    try:
+        tenant_key = tenant_manager.get_current_tenant()
+        project_id = None
+        
+        if tenant_key:
+            async with db_manager.get_session() as session:
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+                if project:
+                    project_id = str(project.id)
+        
+        # Get all discovery paths
+        paths = await discovery_manager.get_discovery_paths(project_id)
+        
+        # Build context source information
+        context_sources = {}
+        for path_key, path in paths.items():
+            if path.exists():
+                if path.is_dir():
+                    files = list(path.glob("*"))
+                    context_sources[path_key] = {
+                        "path": str(path),
+                        "type": "directory",
+                        "files": len(files),
+                        "exists": True,
+                    }
+                else:
+                    context_sources[path_key] = {
+                        "path": str(path),
+                        "type": "file",
+                        "exists": True,
+                        "size": path.stat().st_size,
+                    }
+            else:
+                context_sources[path_key] = {"path": str(path), "exists": False}
+        
+        # Build index
+        index = {
+            "product_id": product_id or "default",
+            "sources": context_sources,
+            "documents": [],
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        return {"success": True, "index": index}
+            
+    except Exception as e:
+        logger.exception(f"Failed to get vision index: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool = False) -> dict[str, Any]:
+    """Wrapper for MCP tool - Get the vision document for the active product"""
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.tenant import TenantManager
+    from giljo_mcp.tools.chunking import EnhancedChunker
+    from giljo_mcp.utils.path_resolver import PathResolver
+    from giljo_mcp.models import Project
+    from sqlalchemy import select
+    from pathlib import Path
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    db_manager = DatabaseManager(is_async=True)
+    tenant_manager = TenantManager()
+    path_resolver = PathResolver()
+    
+    try:
+        tenant_key = tenant_manager.get_current_tenant()
+        project_id = None
+        
+        if tenant_key:
+            async with db_manager.get_session() as session:
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+                if project:
+                    project_id = str(project.id)
+        
+        vision_path = await path_resolver.resolve_path("vision", project_id)
+        
+        if not vision_path or not vision_path.exists():
+            return {
+                "success": False,
+                "error": f"Vision directory not found at {vision_path}",
+            }
+        
+        chunker = EnhancedChunker(max_tokens=max_tokens)
+        chunks = await chunker.chunk_vision(vision_path, force_reindex=force_reindex)
+        
+        if part < 1 or part > len(chunks):
+            return {
+                "success": False,
+                "error": f"Invalid part {part}. Available parts: 1-{len(chunks)}",
+            }
+        
+        chunk = chunks[part - 1]
+        return {
+            "success": True,
+            "part": part,
+            "total_parts": len(chunks),
+            "content": chunk["content"],
+            "metadata": chunk.get("metadata", {}),
+        }
+            
+    except Exception as e:
+        logger.exception(f"Failed to get vision: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def get_vision_index() -> dict[str, Any]:
+    """Wrapper for MCP tool - Get the vision document index"""
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.tenant import TenantManager
+    from giljo_mcp.tools.chunking import EnhancedChunker
+    from giljo_mcp.utils.path_resolver import PathResolver
+    from giljo_mcp.models import Project
+    from sqlalchemy import select
+    from pathlib import Path
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    db_manager = DatabaseManager(is_async=True)
+    tenant_manager = TenantManager()
+    path_resolver = PathResolver()
+    
+    try:
+        tenant_key = tenant_manager.get_current_tenant()
+        project_id = None
+        
+        if tenant_key:
+            async with db_manager.get_session() as session:
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+                if project:
+                    project_id = str(project.id)
+        
+        vision_path = await path_resolver.resolve_path("vision", project_id)
+        
+        if not vision_path or not vision_path.exists():
+            return {
+                "success": False,
+                "error": f"Vision directory not found at {vision_path}",
+            }
+        
+        chunker = EnhancedChunker()
+        index = {"files": [], "chunks": {}}
+        
+        # Get all markdown files
+        vision_files = sorted(vision_path.glob("*.md"))
+        
+        for file in vision_files:
+            try:
+                content = file.read_text(encoding="utf-8")
+                lines = content.split("\n")
+                
+                # Get first non-comment line as summary
+                summary = None
+                for line in lines:
+                    if line.strip() and not line.startswith("#"):
+                        summary = line.strip()[:500]
+                        break
+                
+                file_info = {
+                    "name": file.name,
+                    "summary": summary,
+                    "size": len(content),
+                    "estimated_tokens": chunker.estimate_tokens(content),
+                    "keywords": chunker.extract_keywords(content),
+                }
+                index["files"].append(file_info)
+                
+            except Exception as e:
+                logger.warning(f"Failed to index {file}: {e}")
+        
+        return {"success": True, "index": index}
+            
+    except Exception as e:
+        logger.exception(f"Failed to get vision index: {e}")
+        return {"success": False, "error": str(e)}

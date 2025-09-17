@@ -3,12 +3,16 @@ Task management tools with product isolation
 """
 
 import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime
-from sqlalchemy import select, and_
-from giljo_mcp.models import Task, Project
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from sqlalchemy import and_, select
+
 from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Project, Task
+
 from .task_templates import register_task_template_tools
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +29,7 @@ def register_task_tools(mcp):
         tenant_key: Optional[str] = None,
         product_id: Optional[str] = None,
         project_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new task with product isolation
 
@@ -102,7 +106,7 @@ def register_task_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to create task: {e}")
+            logger.exception(f"Failed to create task: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -113,7 +117,7 @@ def register_task_tools(mcp):
         priority: Optional[str] = None,
         category: Optional[str] = None,
         limit: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         List tasks with product isolation filtering
 
@@ -177,14 +181,8 @@ def register_task_tools(mcp):
                             "status": task.status,
                             "priority": task.priority,
                             "created_at": task.created_at.isoformat(),
-                            "started_at": (
-                                task.started_at.isoformat() if task.started_at else None
-                            ),
-                            "completed_at": (
-                                task.completed_at.isoformat()
-                                if task.completed_at
-                                else None
-                            ),
+                            "started_at": (task.started_at.isoformat() if task.started_at else None),
+                            "completed_at": (task.completed_at.isoformat() if task.completed_at else None),
                         }
                     )
 
@@ -202,7 +200,7 @@ def register_task_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to list tasks: {e}")
+            logger.exception(f"Failed to list tasks: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -212,7 +210,7 @@ def register_task_tools(mcp):
         priority: Optional[str] = None,
         description: Optional[str] = None,
         assigned_agent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update a task (respects product isolation)
 
@@ -240,9 +238,7 @@ def register_task_tools(mcp):
             db_manager = DatabaseManager(is_async=True)
             async with db_manager.get_session_async() as session:
                 # Query task with tenant isolation
-                task_query = select(Task).where(
-                    and_(Task.id == task_id, Task.tenant_key == tenant_key)
-                )
+                task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
                 task_result = await session.execute(task_query)
                 task = task_result.scalar_one_or_none()
 
@@ -256,9 +252,9 @@ def register_task_tools(mcp):
                 if status:
                     task.status = status
                     if status == "in_progress" and not task.started_at:
-                        task.started_at = datetime.utcnow()
+                        task.started_at = datetime.now(timezone.utc)
                     elif status == "completed" and not task.completed_at:
-                        task.completed_at = datetime.utcnow()
+                        task.completed_at = datetime.now(timezone.utc)
 
                 if priority:
                     task.priority = priority
@@ -283,13 +279,13 @@ def register_task_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to update task: {e}")
+            logger.exception(f"Failed to update task: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def get_product_task_summary(
         product_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get task summary for a product or all products
 
@@ -344,9 +340,7 @@ def register_task_tools(mcp):
                     stats = product_stats[pid]
                     stats["total"] += 1
                     stats[task.status] = stats.get(task.status, 0) + 1
-                    stats["by_priority"][task.priority] = (
-                        stats["by_priority"].get(task.priority, 0) + 1
-                    )
+                    stats["by_priority"][task.priority] = stats["by_priority"].get(task.priority, 0) + 1
 
                 return {
                     "success": True,
@@ -356,7 +350,7 @@ def register_task_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get product task summary: {e}")
+            logger.exception(f"Failed to get product task summary: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -365,7 +359,7 @@ def register_task_tools(mcp):
         include_subtasks: bool = True,
         include_parent: bool = True,
         max_depth: int = 5,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get task dependency relationships for visualization and management
 
@@ -391,9 +385,7 @@ def register_task_tools(mcp):
             db_manager = DatabaseManager(is_async=True)
             async with db_manager.get_session_async() as session:
                 # Get the main task
-                main_query = select(Task).where(
-                    and_(Task.id == task_id, Task.tenant_key == tenant_key)
-                )
+                main_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
                 main_result = await session.execute(main_query)
                 main_task = main_result.scalar_one_or_none()
 
@@ -417,16 +409,12 @@ def register_task_tools(mcp):
 
                 # Get parent chain if requested
                 if include_parent and main_task.parent_task_id:
-                    parent_chain = await _get_parent_chain(
-                        session, main_task.parent_task_id, tenant_key, max_depth
-                    )
+                    parent_chain = await _get_parent_chain(session, main_task.parent_task_id, tenant_key, max_depth)
                     dependency_tree["dependencies"]["parent_chain"] = parent_chain
 
                 # Get child tasks if requested
                 if include_subtasks:
-                    child_tasks = await _get_child_tasks(
-                        session, task_id, tenant_key, max_depth
-                    )
+                    child_tasks = await _get_child_tasks(session, task_id, tenant_key, max_depth)
                     dependency_tree["dependencies"]["child_tasks"] = child_tasks
 
                 # Get sibling tasks (tasks with same parent)
@@ -455,15 +443,9 @@ def register_task_tools(mcp):
                     "success": True,
                     "dependency_tree": dependency_tree,
                     "analysis": {
-                        "has_dependencies": bool(
-                            dependency_tree["dependencies"]["parent_chain"]
-                        ),
-                        "has_subtasks": bool(
-                            dependency_tree["dependencies"]["child_tasks"]
-                        ),
-                        "has_siblings": bool(
-                            dependency_tree["dependencies"]["sibling_tasks"]
-                        ),
+                        "has_dependencies": bool(dependency_tree["dependencies"]["parent_chain"]),
+                        "has_subtasks": bool(dependency_tree["dependencies"]["child_tasks"]),
+                        "has_siblings": bool(dependency_tree["dependencies"]["sibling_tasks"]),
                         "total_related": (
                             len(dependency_tree["dependencies"]["parent_chain"])
                             + len(dependency_tree["dependencies"]["child_tasks"])
@@ -473,13 +455,13 @@ def register_task_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get task dependencies: {e}")
+            logger.exception(f"Failed to get task dependencies: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def bulk_update_tasks(
-        task_ids: List[str], updates: Dict[str, Any], operation_type: str = "update"
-    ) -> Dict[str, Any]:
+        task_ids: list[str], updates: dict[str, Any], operation_type: str = "update"
+    ) -> dict[str, Any]:
         """
         Perform bulk operations on multiple tasks
 
@@ -514,9 +496,7 @@ def register_task_tools(mcp):
                 for task_id in task_ids:
                     try:
                         # Get task with tenant isolation
-                        task_query = select(Task).where(
-                            and_(Task.id == task_id, Task.tenant_key == tenant_key)
-                        )
+                        task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
                         task_result = await session.execute(task_query)
                         task = task_result.scalar_one_or_none()
 
@@ -535,9 +515,7 @@ def register_task_tools(mcp):
                             if hasattr(task, field):
                                 old_value = getattr(task, field)
                                 setattr(task, field, value)
-                                updated_fields.append(
-                                    f"{field}: {old_value} -> {value}"
-                                )
+                                updated_fields.append(f"{field}: {old_value} -> {value}")
 
                         # Handle special operations
                         if operation_type == "reorder" and "parent_task_id" in updates:
@@ -568,9 +546,7 @@ def register_task_tools(mcp):
                         )
 
                     except Exception as task_error:
-                        results["failed"].append(
-                            {"task_id": task_id, "error": str(task_error)}
-                        )
+                        results["failed"].append({"task_id": task_id, "error": str(task_error)})
 
                 # Commit all successful changes
                 if results["successful"]:
@@ -579,15 +555,13 @@ def register_task_tools(mcp):
                 results["summary"] = {
                     "successful_count": len(results["successful"]),
                     "failed_count": len(results["failed"]),
-                    "success_rate": (
-                        len(results["successful"]) / len(task_ids) if task_ids else 0
-                    ),
+                    "success_rate": (len(results["successful"]) / len(task_ids) if task_ids else 0),
                 }
 
                 return {"success": True, "results": results}
 
         except Exception as e:
-            logger.error(f"Failed bulk task operation: {e}")
+            logger.exception(f"Failed bulk task operation: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
@@ -595,8 +569,8 @@ def register_task_tools(mcp):
         original_task_id: str,
         converted_project_id: str,
         conversion_type: str = "task_to_project",
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Create conversion history entry tracking task-to-project conversions
 
@@ -622,9 +596,7 @@ def register_task_tools(mcp):
             db_manager = DatabaseManager(is_async=True)
             async with db_manager.get_session_async() as session:
                 # Verify original task exists
-                task_query = select(Task).where(
-                    and_(Task.id == original_task_id, Task.tenant_key == tenant_key)
-                )
+                task_query = select(Task).where(and_(Task.id == original_task_id, Task.tenant_key == tenant_key))
                 task_result = await session.execute(task_query)
                 task = task_result.scalar_one_or_none()
 
@@ -642,7 +614,7 @@ def register_task_tools(mcp):
                     "conversion_id": generate_uuid(),
                     "converted_to_project_id": converted_project_id,
                     "conversion_type": conversion_type,
-                    "converted_at": datetime.utcnow().isoformat(),
+                    "converted_at": datetime.now(timezone.utc).isoformat(),
                     "original_title": task.title,
                     "original_status": task.status,
                     "original_priority": task.priority,
@@ -674,13 +646,13 @@ def register_task_tools(mcp):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to create conversion history: {e}")
+            logger.exception(f"Failed to create conversion history: {e}")
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def get_conversion_history(
         task_id: Optional[str] = None, project_id: Optional[str] = None, limit: int = 50
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get conversion history for tasks or find tasks converted to specific projects
 
@@ -706,20 +678,14 @@ def register_task_tools(mcp):
             async with db_manager.get_session_async() as session:
                 if task_id:
                     # Get specific task conversion history
-                    task_query = select(Task).where(
-                        and_(Task.id == task_id, Task.tenant_key == tenant_key)
-                    )
+                    task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
                     task_result = await session.execute(task_query)
                     task = task_result.scalar_one_or_none()
 
                     if not task:
                         return {"success": False, "error": f"Task {task_id} not found"}
 
-                    conversion_history = (
-                        task.meta_data.get("conversion_history", [])
-                        if task.meta_data
-                        else []
-                    )
+                    conversion_history = task.meta_data.get("conversion_history", []) if task.meta_data else []
 
                     return {
                         "success": True,
@@ -729,16 +695,14 @@ def register_task_tools(mcp):
                         "has_conversions": len(conversion_history) > 0,
                     }
 
-                elif project_id:
+                if project_id:
                     # Find all tasks converted to this project
                     query = (
                         select(Task)
                         .where(
                             and_(
                                 Task.tenant_key == tenant_key,
-                                Task.meta_data.contains(
-                                    {"converted_to_project": project_id}
-                                ),
+                                Task.meta_data.contains({"converted_to_project": project_id}),
                             )
                         )
                         .limit(limit)
@@ -749,11 +713,7 @@ def register_task_tools(mcp):
 
                     converted_tasks = []
                     for task in tasks:
-                        conversion_history = (
-                            task.meta_data.get("conversion_history", [])
-                            if task.meta_data
-                            else []
-                        )
+                        conversion_history = task.meta_data.get("conversion_history", []) if task.meta_data else []
                         converted_tasks.append(
                             {
                                 "id": str(task.id),
@@ -770,70 +730,57 @@ def register_task_tools(mcp):
                         "total_converted": len(converted_tasks),
                     }
 
-                else:
-                    # Get all recent conversions
-                    query = (
-                        select(Task)
-                        .where(
-                            and_(
-                                Task.tenant_key == tenant_key,
-                                Task.status == "converted",
-                            )
+                # Get all recent conversions
+                query = (
+                    select(Task)
+                    .where(
+                        and_(
+                            Task.tenant_key == tenant_key,
+                            Task.status == "converted",
                         )
-                        .order_by(Task.updated_at.desc())
-                        .limit(limit)
                     )
+                    .order_by(Task.updated_at.desc())
+                    .limit(limit)
+                )
 
-                    result = await session.execute(query)
-                    tasks = result.scalars().all()
+                result = await session.execute(query)
+                tasks = result.scalars().all()
 
-                    recent_conversions = []
-                    for task in tasks:
-                        conversion_history = (
-                            task.meta_data.get("conversion_history", [])
-                            if task.meta_data
-                            else []
+                recent_conversions = []
+                for task in tasks:
+                    conversion_history = task.meta_data.get("conversion_history", []) if task.meta_data else []
+                    if conversion_history:
+                        latest_conversion = conversion_history[-1]
+                        recent_conversions.append(
+                            {
+                                "task_id": str(task.id),
+                                "task_title": task.title,
+                                "converted_to_project_id": latest_conversion.get("converted_to_project_id"),
+                                "conversion_type": latest_conversion.get("conversion_type"),
+                                "converted_at": latest_conversion.get("converted_at"),
+                            }
                         )
-                        if conversion_history:
-                            latest_conversion = conversion_history[-1]
-                            recent_conversions.append(
-                                {
-                                    "task_id": str(task.id),
-                                    "task_title": task.title,
-                                    "converted_to_project_id": latest_conversion.get(
-                                        "converted_to_project_id"
-                                    ),
-                                    "conversion_type": latest_conversion.get(
-                                        "conversion_type"
-                                    ),
-                                    "converted_at": latest_conversion.get(
-                                        "converted_at"
-                                    ),
-                                }
-                            )
 
-                    return {
-                        "success": True,
-                        "recent_conversions": recent_conversions,
-                        "total_found": len(recent_conversions),
-                    }
+                return {
+                    "success": True,
+                    "recent_conversions": recent_conversions,
+                    "total_found": len(recent_conversions),
+                }
 
         except Exception as e:
-            logger.error(f"Failed to get conversion history: {e}")
+            logger.exception(f"Failed to get conversion history: {e}")
             return {"success": False, "error": str(e)}
 
 
 # Helper functions for dependency mapping
 async def _get_parent_chain(
     session, parent_id: str, tenant_key: str, max_depth: int, current_depth: int = 0
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Recursively get parent task chain"""
     if current_depth >= max_depth:
         return []
 
-    parent_query = select(Task).where(
-        and_(Task.id == parent_id, Task.tenant_key == tenant_key)
-    )
+    parent_query = select(Task).where(and_(Task.id == parent_id, Task.tenant_key == tenant_key))
     parent_result = await session.execute(parent_query)
     parent = parent_result.scalar_one_or_none()
 
@@ -850,25 +797,19 @@ async def _get_parent_chain(
 
     chain = [parent_info]
     if parent.parent_task_id:
-        chain.extend(
-            await _get_parent_chain(
-                session, parent.parent_task_id, tenant_key, max_depth, current_depth + 1
-            )
-        )
+        chain.extend(await _get_parent_chain(session, parent.parent_task_id, tenant_key, max_depth, current_depth + 1))
 
     return chain
 
 
 async def _get_child_tasks(
     session, parent_id: str, tenant_key: str, max_depth: int, current_depth: int = 0
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Recursively get child task tree"""
     if current_depth >= max_depth:
         return []
 
-    children_query = select(Task).where(
-        and_(Task.parent_task_id == parent_id, Task.tenant_key == tenant_key)
-    )
+    children_query = select(Task).where(and_(Task.parent_task_id == parent_id, Task.tenant_key == tenant_key))
     children_result = await session.execute(children_query)
     children = children_result.scalars().all()
 
@@ -880,9 +821,7 @@ async def _get_child_tasks(
             "status": child.status,
             "priority": child.priority,
             "depth": current_depth,
-            "children": await _get_child_tasks(
-                session, str(child.id), tenant_key, max_depth, current_depth + 1
-            ),
+            "children": await _get_child_tasks(session, str(child.id), tenant_key, max_depth, current_depth + 1),
         }
         child_tree.append(child_info)
 
@@ -892,3 +831,4 @@ async def _get_child_tasks(
     register_task_template_tools(mcp)
 
     logger.info("Task management tools with templates registered successfully")
+    return None

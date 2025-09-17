@@ -7,275 +7,214 @@ multi-tenant scenarios.
 """
 
 import os
-import time
-import tempfile
+import sys
 import threading
+import time
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
 import yaml
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
-import sys
-from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.config import Settings, get_settings, set_settings
-from src.giljo_mcp.config_manager import (
-    ConfigManager,
-    DeploymentMode,
-    ConfigValidationError,
-    get_config,
-    set_config
-)
+from src.giljo_mcp.config import Settings
+
+from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, DeploymentMode
 
 
 class TestConfigIntegration:
     """Integration tests for Settings and ConfigManager together."""
-    
+
     def test_settings_and_manager_compatibility(self, temp_dir):
         """Test that Settings and ConfigManager work together."""
         # Create Settings instance
-        settings = Settings(
-            data_dir=temp_dir / "data",
-            config_dir=temp_dir / "config",
-            log_dir=temp_dir / "logs"
-        )
-        
+        settings = Settings(data_dir=temp_dir / "data", config_dir=temp_dir / "config", log_dir=temp_dir / "logs")
+
         # Create ConfigManager instance
         config_path = temp_dir / "config" / "config.yaml"
         manager = ConfigManager(config_path=config_path)
-        
+
         # They should be able to share configuration
         settings.ensure_directories()
-        
+
         # Save settings to file
         config_data = {
-            'server': {
-                'host': settings.api_host,
-                'port': settings.api_port
-            },
-            'database': {
-                'type': settings.database_type
-            }
+            "server": {"host": settings.api_host, "port": settings.api_port},
+            "database": {"type": settings.database_type},
         }
         settings.save_config_file(config_data)
-        
+
         # Manager should be able to load it
         manager.load()
-        
+
         assert manager.server.host == settings.api_host
         assert manager.server.port == settings.api_port
-    
-    @patch.dict(os.environ, {
-        'DATABASE_URL': 'postgresql://user:pass@dbhost:5432/testdb',
-        'API_HOST': '0.0.0.0',
-        'API_PORT': '8888',
-        'GILJO_SERVER_HOST': '0.0.0.0',
-        'GILJO_SERVER_PORT': '8888',
-        'GILJO_DATABASE_TYPE': 'postgresql'
-    })
+
+    @patch.dict(
+        os.environ,
+        {
+            "DATABASE_URL": "postgresql://user:pass@dbhost:5432/testdb",
+            "API_HOST": "0.0.0.0",
+            "API_PORT": "8888",
+            "GILJO_SERVER_HOST": "0.0.0.0",
+            "GILJO_SERVER_PORT": "8888",
+            "GILJO_DATABASE_TYPE": "postgresql",
+        },
+    )
     def test_environment_variable_precedence(self, temp_dir):
         """Test that environment variables override both Settings and ConfigManager."""
         # Create config file with different values
         config_file = temp_dir / "config.yaml"
-        config_data = {
-            'server': {
-                'host': 'localhost',
-                'port': 6000
-            },
-            'database': {
-                'type': 'sqlite'
-            }
-        }
-        
-        with open(config_file, 'w') as f:
+        config_data = {"server": {"host": "localhost", "port": 6000}, "database": {"type": "sqlite"}}
+
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
-        
+
         # Settings should pick up env vars
         settings = Settings()
-        assert settings.api_host == '0.0.0.0'
+        assert settings.api_host == "0.0.0.0"
         assert settings.api_port == 8888
-        assert settings.database_url == 'postgresql://user:pass@dbhost:5432/testdb'
-        
+        assert settings.database_url == "postgresql://user:pass@dbhost:5432/testdb"
+
         # ConfigManager should also pick up env vars
         manager = ConfigManager(config_path=config_file)
         manager.load()
-        
-        assert manager.server.host == '0.0.0.0'
+
+        assert manager.server.host == "0.0.0.0"
         assert manager.server.port == 8888
-        assert manager.database.type == 'postgresql'
-    
+        assert manager.database.type == "postgresql"
+
     def test_progressive_deployment_modes(self, temp_dir, clean_environment):
         """Test progression from LOCAL -> LAN -> WAN modes."""
         config_file = temp_dir / "config.yaml"
-        
+
         # Start with LOCAL mode
-        local_config = {
-            'server': {
-                'host': '127.0.0.1',
-                'port': 6000,
-                'api_key': None,
-                'tls_enabled': False
-            }
-        }
-        
-        with open(config_file, 'w') as f:
+        local_config = {"server": {"host": "127.0.0.1", "port": 6000, "api_key": None, "tls_enabled": False}}
+
+        with open(config_file, "w") as f:
             yaml.dump(local_config, f)
-        
+
         manager = ConfigManager(config_path=config_file)
         manager.load()
-        
+
         assert manager.server.mode == DeploymentMode.LOCAL
-        
+
         # Progress to LAN mode
-        lan_config = {
-            'server': {
-                'host': '192.168.1.100',
-                'port': 6000,
-                'api_key': 'lan-key-123',
-                'tls_enabled': False
-            }
-        }
-        
-        with open(config_file, 'w') as f:
+        lan_config = {"server": {"host": "192.168.1.100", "port": 6000, "api_key": "lan-key-123", "tls_enabled": False}}
+
+        with open(config_file, "w") as f:
             yaml.dump(lan_config, f)
-        
+
         manager.reload()
         assert manager.server.mode == DeploymentMode.LAN
-        
+
         # Progress to WAN mode
-        wan_config = {
-            'server': {
-                'host': '0.0.0.0',
-                'port': 443,
-                'api_key': 'wan-key-xyz',
-                'tls_enabled': True
-            }
-        }
-        
-        with open(config_file, 'w') as f:
+        wan_config = {"server": {"host": "0.0.0.0", "port": 443, "api_key": "wan-key-xyz", "tls_enabled": True}}
+
+        with open(config_file, "w") as f:
             yaml.dump(wan_config, f)
-        
+
         manager.reload()
         assert manager.server.mode == DeploymentMode.WAN
-    
+
     def test_hot_reload_with_validation(self, temp_dir):
         """Test hot-reload with validation of changed configuration."""
         config_file = temp_dir / "config.yaml"
-        
+
         initial_config = {
-            'server': {
-                'host': 'localhost',
-                'port': 6000
-            },
-            'database': {
-                'type': 'sqlite',
-                'path': str(temp_dir / 'test.db')
-            }
+            "server": {"host": "localhost", "port": 6000},
+            "database": {"type": "sqlite", "path": str(temp_dir / "test.db")},
         }
-        
-        with open(config_file, 'w') as f:
+
+        with open(config_file, "w") as f:
             yaml.dump(initial_config, f)
-        
+
         manager = ConfigManager(config_path=config_file, auto_reload=True)
         manager.load()
-        
+
         assert manager.server.port == 6000
-        
+
         # Update with valid configuration
         valid_config = initial_config.copy()
-        valid_config['server']['port'] = 7000
-        
-        with open(config_file, 'w') as f:
+        valid_config["server"]["port"] = 7000
+
+        with open(config_file, "w") as f:
             yaml.dump(valid_config, f)
-        
+
         manager.reload()
         assert manager.server.port == 7000
-        
+
         # Try to update with invalid configuration
         invalid_config = initial_config.copy()
-        invalid_config['server']['port'] = 99999  # Invalid port
-        
-        with open(config_file, 'w') as f:
+        invalid_config["server"]["port"] = 99999  # Invalid port
+
+        with open(config_file, "w") as f:
             yaml.dump(invalid_config, f)
-        
+
         # Reload should fail validation
         with pytest.raises(ConfigValidationError):
             manager.reload()
-        
+
         # Configuration should remain at last valid state
         assert manager.server.port == 7000
-    
+
     def test_multi_tenant_configuration_isolation(self, temp_dir):
         """Test multi-tenant configuration isolation."""
         # Create configurations for different tenants
         tenant1_config = temp_dir / "tenant1_config.yaml"
         tenant2_config = temp_dir / "tenant2_config.yaml"
-        
+
         tenant1_data = {
-            'server': {'port': 6001},
-            'session': {
-                'multi_tenant_enabled': True,
-                'tenant_isolation_level': 'strict'
-            },
-            'agents': {
-                'default_tenant_key': 'tenant-1',
-                'enable_tenant_scoping': True
-            }
+            "server": {"port": 6001},
+            "session": {"multi_tenant_enabled": True, "tenant_isolation_level": "strict"},
+            "agents": {"default_tenant_key": "tenant-1", "enable_tenant_scoping": True},
         }
-        
+
         tenant2_data = {
-            'server': {'port': 6002},
-            'session': {
-                'multi_tenant_enabled': True,
-                'tenant_isolation_level': 'strict'
-            },
-            'agents': {
-                'default_tenant_key': 'tenant-2',
-                'enable_tenant_scoping': True
-            }
+            "server": {"port": 6002},
+            "session": {"multi_tenant_enabled": True, "tenant_isolation_level": "strict"},
+            "agents": {"default_tenant_key": "tenant-2", "enable_tenant_scoping": True},
         }
-        
-        with open(tenant1_config, 'w') as f:
+
+        with open(tenant1_config, "w") as f:
             yaml.dump(tenant1_data, f)
-        
-        with open(tenant2_config, 'w') as f:
+
+        with open(tenant2_config, "w") as f:
             yaml.dump(tenant2_data, f)
-        
+
         # Load configurations for different tenants
         manager1 = ConfigManager(config_path=tenant1_config)
         manager1.load()
-        
+
         manager2 = ConfigManager(config_path=tenant2_config)
         manager2.load()
-        
+
         # Verify isolation
         assert manager1.server.port != manager2.server.port
-        assert manager1.agents.default_tenant_key == 'tenant-1'
-        assert manager2.agents.default_tenant_key == 'tenant-2'
-        
+        assert manager1.agents.default_tenant_key == "tenant-1"
+        assert manager2.agents.default_tenant_key == "tenant-2"
+
         # Both should have multi-tenant enabled
         assert manager1.session.multi_tenant_enabled is True
         assert manager2.session.multi_tenant_enabled is True
-    
+
     def test_concurrent_configuration_access(self, temp_dir):
         """Test thread-safe concurrent access to configuration."""
         config_file = temp_dir / "config.yaml"
-        
-        config_data = {
-            'server': {'port': 6000},
-            'database': {'type': 'sqlite', 'path': str(temp_dir / 'test.db')}
-        }
-        
-        with open(config_file, 'w') as f:
+
+        config_data = {"server": {"port": 6000}, "database": {"type": "sqlite", "path": str(temp_dir / "test.db")}}
+
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
-        
+
         manager = ConfigManager(config_path=config_file)
         manager.load()
-        
+
         errors = []
         results = []
-        
+
         def reader_thread(thread_id):
             """Read configuration values."""
             try:
@@ -286,7 +225,7 @@ class TestConfigIntegration:
                     time.sleep(0.001)
             except Exception as e:
                 errors.append(f"Reader {thread_id}: {e}")
-        
+
         def writer_thread(thread_id):
             """Modify configuration values."""
             try:
@@ -296,181 +235,170 @@ class TestConfigIntegration:
                 results.append(f"Writer {thread_id}: completed")
             except Exception as e:
                 errors.append(f"Writer {thread_id}: {e}")
-        
+
         # Create threads
         threads = []
         for i in range(3):
             threads.append(threading.Thread(target=reader_thread, args=(i,)))
         for i in range(2):
             threads.append(threading.Thread(target=writer_thread, args=(i,)))
-        
+
         # Run threads
         for t in threads:
             t.start()
-        
+
         for t in threads:
             t.join()
-        
+
         # Check for errors
         assert len(errors) == 0
         assert len(results) > 0
-    
+
     def test_configuration_migration_path(self, temp_dir):
         """Test migration from old configuration format to new."""
         old_config_file = temp_dir / "old_config.yaml"
         new_config_file = temp_dir / "new_config.yaml"
-        
+
         # Old format (simulated)
-        old_format = {
-            'host': 'localhost',
-            'port': 5000,
-            'database': 'postgresql://localhost/olddb',
-            'debug': True
-        }
-        
-        with open(old_config_file, 'w') as f:
+        old_format = {"host": "localhost", "port": 5000, "database": "postgresql://localhost/olddb", "debug": True}
+
+        with open(old_config_file, "w") as f:
             yaml.dump(old_format, f)
-        
+
         # Simulate migration logic
-        with open(old_config_file, 'r') as f:
+        with open(old_config_file) as f:
             old_data = yaml.safe_load(f)
-        
+
         # Convert to new format
         new_format = {
-            'server': {
-                'host': old_data.get('host', 'localhost'),
-                'port': old_data.get('port', 6000)
+            "server": {"host": old_data.get("host", "localhost"), "port": old_data.get("port", 6000)},
+            "database": {
+                "type": "postgresql" if "postgresql" in old_data.get("database", "") else "sqlite",
+                "connection_string": old_data.get("database"),
             },
-            'database': {
-                'type': 'postgresql' if 'postgresql' in old_data.get('database', '') else 'sqlite',
-                'connection_string': old_data.get('database')
-            },
-            'features': {
-                'debug_mode': old_data.get('debug', False)
-            }
+            "features": {"debug_mode": old_data.get("debug", False)},
         }
-        
-        with open(new_config_file, 'w') as f:
+
+        with open(new_config_file, "w") as f:
             yaml.dump(new_format, f)
-        
+
         # Load with new ConfigManager
         manager = ConfigManager(config_path=new_config_file)
         manager.load()
-        
-        assert manager.server.host == 'localhost'
+
+        assert manager.server.host == "localhost"
         assert manager.server.port == 5000
-        assert manager.database.type == 'postgresql'
+        assert manager.database.type == "postgresql"
         assert manager.features.debug_mode is True
-    
+
     def test_zero_config_local_development(self):
         """Test that system works with zero configuration for local dev."""
         # No config file, no environment variables
         with patch.dict(os.environ, {}, clear=True):
             # Settings should work with defaults
             settings = Settings()
-            assert settings.database_type == 'sqlite'
-            assert settings.api_host == '127.0.0.1'
-            
+            assert settings.database_type == "sqlite"
+            assert settings.api_host == "127.0.0.1"
+
             # ConfigManager should work with defaults
             manager = ConfigManager()
             assert manager.server.mode == DeploymentMode.LOCAL
-            assert manager.database.type == 'sqlite'
-            
+            assert manager.database.type == "sqlite"
+
             # Should be able to get database URL
             db_url = settings.get_database_url()
-            assert 'sqlite' in db_url
-    
+            assert "sqlite" in db_url
+
     def test_config_file_watcher_lifecycle(self, temp_dir):
         """Test file watcher lifecycle for hot-reload."""
         config_file = temp_dir / "config.yaml"
-        
-        config_data = {'server': {'port': 6000}}
-        with open(config_file, 'w') as f:
+
+        config_data = {"server": {"port": 6000}}
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
-        
+
         # Use context manager
         with ConfigManager(config_path=config_file, auto_reload=True) as manager:
             manager.load()
-            
+
             # Mock file watcher
-            with patch.object(manager, '_observer') as mock_observer:
+            with patch.object(manager, "_observer") as mock_observer:
                 mock_observer.is_alive.return_value = True
-                
+
                 # Update config
-                config_data['server']['port'] = 7000
-                with open(config_file, 'w') as f:
+                config_data["server"]["port"] = 7000
+                with open(config_file, "w") as f:
                     yaml.dump(config_data, f)
-                
+
                 # Simulate file change event
                 manager.reload()
-                
+
                 assert manager.server.port == 7000
-        
+
         # After context exit, watcher should be stopped
         # (In real implementation, __exit__ would call stop_watching)
 
 
 class TestErrorHandling:
     """Test error handling in configuration system."""
-    
+
     def test_corrupt_yaml_handling(self, temp_dir):
         """Test handling of corrupt YAML files."""
         config_file = temp_dir / "corrupt.yaml"
-        
+
         # Write invalid YAML
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             f.write("invalid: yaml: content: ][")
-        
+
         manager = ConfigManager(config_path=config_file)
-        
+
         # Should handle corrupt file gracefully
         with pytest.raises(yaml.YAMLError):
             manager.load()
-    
+
     def test_missing_required_fields(self, temp_dir):
         """Test handling of missing required configuration fields."""
         config_file = temp_dir / "incomplete.yaml"
-        
+
         # Config missing required database info for PostgreSQL
         incomplete_config = {
-            'database': {
-                'type': 'postgresql'
+            "database": {
+                "type": "postgresql"
                 # Missing host, port, etc.
             }
         }
-        
-        with open(config_file, 'w') as f:
+
+        with open(config_file, "w") as f:
             yaml.dump(incomplete_config, f)
-        
+
         manager = ConfigManager(config_path=config_file)
         manager.load()
-        
+
         # Validation should catch missing fields
         with pytest.raises(ConfigValidationError):
             manager.validate()
-    
+
     def test_type_conversion_errors(self):
         """Test handling of type conversion errors."""
-        with patch.dict(os.environ, {'API_PORT': 'not-a-number'}):
-            with pytest.raises(ValueError):
-                Settings()
-    
+        with patch.dict(os.environ, {"API_PORT": "not-a-number"}), pytest.raises(ValueError):
+            Settings()
+
     def test_permission_errors(self, temp_dir):
         """Test handling of file permission errors."""
         config_file = temp_dir / "readonly.yaml"
-        
+
         # Create read-only file
-        config_data = {'server': {'port': 6000}}
-        with open(config_file, 'w') as f:
+        config_data = {"server": {"port": 6000}}
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
-        
+
         # Make file read-only (Unix-like systems)
-        if os.name != 'nt':  # Not Windows
+        if os.name != "nt":  # Not Windows
             os.chmod(config_file, 0o444)
-        
+
         manager = ConfigManager(config_path=config_file)
         manager.load()
-        
+
         # Try to save (should handle permission error)
         new_path = temp_dir / "new_config.yaml"
         try:
@@ -479,5 +407,5 @@ class TestErrorHandling:
             assert new_path.exists()
         finally:
             # Restore permissions for cleanup
-            if os.name != 'nt':
+            if os.name != "nt":
                 os.chmod(config_file, 0o644)

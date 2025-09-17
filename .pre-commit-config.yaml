@@ -1,0 +1,138 @@
+# Pre-commit hooks for GiljoAI MCP Coding Orchestrator
+# See https://pre-commit.com for more information
+
+default_language_version:
+  python: python3.9
+
+repos:
+  # Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.13
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        name: ruff (linter)
+      - id: ruff-format
+        name: ruff (formatter)
+
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3.9
+        exclude: ^(migrations/|tests/fixtures/|node_modules/)
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-PyYAML, types-requests]
+        args: [--ignore-missing-imports, --no-strict-optional]
+        exclude: ^(tests/|migrations/|examples/)
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(.*\.(md|rst)|tests/fixtures/)
+      - id: end-of-file-fixer
+        exclude: ^(tests/fixtures/|.*\.min\.js)
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: debug-statements
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: name-tests-test
+        args: ['--pytest-test-first']
+        exclude: ^(tests/helpers/|tests/fixtures/)
+      - id: requirements-txt-fixer
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: ['-ll', '--skip', 'B101,B601']
+        exclude: ^(tests/|examples/)
+
+  # Frontend checks (if ESLint/Prettier are installed)
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: \.(js|jsx|ts|tsx|vue)$
+        pass_filenames: false
+
+      - id: prettier
+        name: Prettier
+        entry: bash -c 'cd frontend && npm run format'
+        language: system
+        files: \.(js|jsx|ts|tsx|vue|json|css|scss|md)$
+        pass_filenames: false
+
+  # Documentation
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+        args: ['--ignore-words-list', 'giljo,mcp,orchestrator,nd,ans']
+        exclude: ^(node_modules/|.*\.min\..*|package-lock\.json)
+
+  # YAML formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        types_or: [yaml, markdown]
+        exclude: ^(frontend/|node_modules/)
+
+# Configuration for specific file types
+files: |
+  (?x)^(
+    .*\.py|
+    .*\.yaml|
+    .*\.yml|
+    .*\.json|
+    .*\.js|
+    .*\.jsx|
+    .*\.ts|
+    .*\.tsx|
+    .*\.vue|
+    .*\.md|
+    .*\.toml|
+    .*\.ini
+  )$
+
+exclude: |
+  (?x)^(
+    .*migrations/.*|
+    .*node_modules/.*|
+    .*\.git/.*|
+    .*\.venv/.*|
+    .*__pycache__/.*|
+    .*\.mypy_cache/.*|
+    .*\.pytest_cache/.*|
+    .*\.ruff_cache/.*|
+    .*build/.*|
+    .*dist/.*|
+    .*\.egg-info/.*|
+    .*data/.*|
+    .*logs/.*|
+    .*backups/.*|
+    .*temp/.*|
+    .*\.serena/.*|
+    .*\.giljo-config/.*
+  )$

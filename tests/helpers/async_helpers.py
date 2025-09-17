@@ -3,16 +3,22 @@ Async test utilities and helpers
 """
 
 import asyncio
+import builtins
+import contextlib
 import functools
-from typing import Any, Callable, Coroutine
+from collections.abc import Coroutine
+from typing import Any, Callable
+
 import pytest
 
 
 def async_test(func: Callable[..., Coroutine[Any, Any, Any]]) -> Callable:
     """Decorator to mark async functions as tests"""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return asyncio.run(func(*args, **kwargs))
+
     return wrapper
 
 
@@ -54,22 +60,18 @@ class AsyncMockManager:
     def cleanup(self):
         """Clean up all mocks and patches"""
         for patch in self.patches:
-            try:
+            with contextlib.suppress(builtins.BaseException):
                 patch.stop()
-            except:
-                pass
 
         for mock in self.mocks:
-            try:
+            with contextlib.suppress(builtins.BaseException):
                 mock.reset_mock()
-            except:
-                pass
 
         self.patches.clear()
         self.mocks.clear()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def async_mock_manager():
     """Fixture providing async mock manager with automatic cleanup"""
     manager = AsyncMockManager()
@@ -82,9 +84,7 @@ class TimeoutHelper:
 
     @staticmethod
     async def wait_for_condition(
-        condition_func: Callable[[], bool],
-        timeout: float = 5.0,
-        check_interval: float = 0.1
+        condition_func: Callable[[], bool], timeout: float = 5.0, check_interval: float = 0.1
     ) -> bool:
         """Wait for a condition to become true"""
         start_time = asyncio.get_event_loop().time()
@@ -98,9 +98,7 @@ class TimeoutHelper:
 
     @staticmethod
     async def wait_for_async_condition(
-        condition_func: Callable[[], Coroutine[Any, Any, bool]],
-        timeout: float = 5.0,
-        check_interval: float = 0.1
+        condition_func: Callable[[], Coroutine[Any, Any, bool]], timeout: float = 5.0, check_interval: float = 0.1
     ) -> bool:
         """Wait for an async condition to become true"""
         start_time = asyncio.get_event_loop().time()
@@ -119,7 +117,8 @@ class DatabaseTestHelper:
     @staticmethod
     async def count_records(session, model_class):
         """Count records in a table"""
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         result = await session.execute(select(func.count()).select_from(model_class))
         return result.scalar()
 
@@ -127,6 +126,7 @@ class DatabaseTestHelper:
     async def clear_table(session, model_class):
         """Clear all records from a table"""
         from sqlalchemy import delete
+
         await session.execute(delete(model_class))
         await session.commit()
 

@@ -466,26 +466,22 @@ async def main():
         all_passed = tester.generate_report()
 
         if all_passed:
-            print("
-[SUCCESS] ALL TESTS PASSED SUCCESSFULLY!")
+            print("\n[SUCCESS] ALL TESTS PASSED SUCCESSFULLY!")
             print("\nImplementation Status:")
             print("  [OK] Database: product_id field implemented")
             print("  [OK] Queries: Product filtering working")
             print("  [OK] Isolation: No cross-product data leaks")
             print("  [OK] Metrics: Product-level aggregation working")
             print("  [OK] Frontend: Components implemented")
-            print("
-[COMPLETE] Project 5.1.e: Product/Task Isolation - COMPLETE")
+            print("\n[COMPLETE] Project 5.1.e: Product/Task Isolation - COMPLETE")
         else:
-            print("
-[WARNING] SOME TESTS FAILED")
+            print("\n[WARNING] SOME TESTS FAILED")
             print("Review the report for details and fixes needed.")
 
         return all_passed
 
     except Exception as e:
-        print(f"
-[ERROR] TEST SUITE ERROR: {e}")
+        print(f"\n[ERROR] TEST SUITE ERROR: {e}")
         import traceback
         traceback.print_exc()
         return False

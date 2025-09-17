@@ -5,18 +5,17 @@ Checks for new messages every 10 seconds and processes them according to priorit
 """
 
 import asyncio
-import json
-import time
-from datetime import datetime
-from typing import Dict, List, Any
 import logging
+from datetime import datetime
+from typing import Any
+
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler('ui_analyzer_monitor.log'),
+        logging.FileHandler("ui_analyzer_monitor.log"),
         logging.StreamHandler()
     ]
 )
@@ -29,14 +28,14 @@ class UIAnalyzerMonitor:
         self.last_check = datetime.now()
         self.check_interval = 10  # seconds
         self.running = False
-    
+
     async def start_monitoring(self):
         """Start continuous monitoring for ui-analyzer messages."""
         self.running = True
         logger.info(f"Starting continuous monitoring for {self.agent_name} messages...")
         logger.info(f"Check interval: {self.check_interval} seconds")
         logger.info("Press Ctrl+C to stop monitoring")
-        
+
         try:
             while self.running:
                 await self.check_for_messages()
@@ -44,83 +43,83 @@ class UIAnalyzerMonitor:
         except KeyboardInterrupt:
             logger.info("Monitoring stopped by user")
         except Exception as e:
-            logger.error(f"Error during monitoring: {e}")
+            logger.exception(f"Error during monitoring: {e}")
         finally:
             self.running = False
-    
+
     async def check_for_messages(self):
         """Check for new messages from AKE-MCP for ui-analyzer agent."""
         try:
             current_time = datetime.now()
             logger.info(f"Checking for {self.agent_name} messages...")
-            
+
             # This would use the actual MCP get_messages tool
             # For now, simulate the check
             messages = await self.get_agent_messages()
-            
+
             if messages:
                 logger.info(f"Found {len(messages)} messages for {self.agent_name}")
                 await self.process_messages(messages)
             else:
                 logger.info(f"No new messages for {self.agent_name}")
-            
+
             self.last_check = current_time
-            
+
         except Exception as e:
-            logger.error(f"Error checking messages: {e}")
-    
-    async def get_agent_messages(self) -> List[Dict[str, Any]]:
+            logger.exception(f"Error checking messages: {e}")
+
+    async def get_agent_messages(self) -> list[dict[str, Any]]:
         """Retrieve messages for the ui-analyzer agent."""
         # This is where we would call the actual MCP tool
         # For demonstration, return empty list
         # In real implementation:
         # return mcp_get_messages(agent_name=self.agent_name)
         return []
-    
-    async def process_messages(self, messages: List[Dict[str, Any]]):
+
+    async def process_messages(self, messages: list[dict[str, Any]]):
         """Process incoming messages according to priority."""
         for message in messages:
-            if message.get('id') in self.processed_messages:
+            if message.get("id") in self.processed_messages:
                 continue
-            
+
             await self.process_single_message(message)
-            self.processed_messages.add(message.get('id'))
-    
-    async def process_single_message(self, message: Dict[str, Any]):
+            self.processed_messages.add(message.get("id"))
+
+    async def process_single_message(self, message: dict[str, Any]):
         """Process a single message based on its priority and content."""
-        message_id = message.get('id', 'unknown')
-        priority = message.get('priority', 'normal')
-        content = message.get('content', '')
-        from_agent = message.get('from_agent', 'unknown')
-        
+        message_id = message.get("id", "unknown")
+        priority = message.get("priority", "normal")
+        message.get("content", "")
+        from_agent = message.get("from_agent", "unknown")
+
         logger.info(f"Processing message {message_id} from {from_agent} (priority: {priority})")
-        
+
         # Process based on priority
-        if priority == 'high':
+        if priority == "high":
             await self.handle_high_priority(message)
-        elif priority == 'urgent':
+        elif priority == "urgent":
             await self.handle_urgent_message(message)
         else:
             await self.handle_normal_priority(message)
-        
+
         # Acknowledge message
         await self.acknowledge_message(message_id)
-    
-    async def handle_urgent_message(self, message: Dict[str, Any]):
+
+    async def handle_urgent_message(self, message: dict[str, Any]):
         """Handle urgent priority messages immediately."""
         logger.warning(f"URGENT MESSAGE: {message.get('content')}")
         # Implement urgent message handling logic
-        
-    async def handle_high_priority(self, message: Dict[str, Any]):
+
+    async def handle_high_priority(self, message: dict[str, Any]):
         """Handle high priority messages with elevated processing."""
         logger.info(f"HIGH PRIORITY: {message.get('content')}")
         # Implement high priority message handling logic
-    
-    async def handle_normal_priority(self, message: Dict[str, Any]):
+
+    async def handle_normal_priority(self, message: dict[str, Any]):
         """Handle normal priority messages."""
         logger.info(f"NORMAL: {message.get('content')}")
         # Implement normal priority message handling logic
-    
+
     async def acknowledge_message(self, message_id: str):
         """Acknowledge receipt of a message."""
         try:
@@ -128,8 +127,8 @@ class UIAnalyzerMonitor:
             # mcp_acknowledge_message(message_id=message_id, agent_name=self.agent_name)
             logger.info(f"Acknowledged message {message_id}")
         except Exception as e:
-            logger.error(f"Failed to acknowledge message {message_id}: {e}")
-    
+            logger.exception(f"Failed to acknowledge message {message_id}: {e}")
+
     def stop_monitoring(self):
         """Stop the monitoring loop."""
         self.running = False

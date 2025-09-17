@@ -4,24 +4,25 @@ Provides direct access to MCP tool functions with improved error handling,
 retry logic, performance timing, and transaction management
 """
 
+import asyncio
 import logging
 import time
-import asyncio
-from typing import Dict, Any, List, Optional, TypeVar, Callable
-from datetime import datetime
-from uuid import uuid4, UUID
-from functools import wraps
 from contextlib import asynccontextmanager
+from datetime import datetime
+from functools import wraps
+from typing import Any, Callable, Optional, TypeVar
+from uuid import UUID, uuid4
 
 from sqlalchemy import select, update
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
-from ..database import DatabaseManager
-from ..tenant import TenantManager
-from ..models import Project, Agent, Message, Task
+from giljo_mcp.database import DatabaseManager
 
 # Import from centralized exceptions
-from ..exceptions import ValidationError, DatabaseError, RetryExhaustedError
+from giljo_mcp.exceptions import DatabaseError, RetryExhaustedError, ValidationError
+from giljo_mcp.models import Agent, Message, Project, Task
+from giljo_mcp.tenant import TenantManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ def measure_performance(operation_name: str):
 
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
-                logger.error(f"{operation_name} failed after {duration_ms:.2f}ms: {e}")
+                logger.exception(f"{operation_name} failed after {duration_ms:.2f}ms: {e}")
                 raise
 
         return wrapper
@@ -83,26 +84,22 @@ def with_retry(max_attempts: int = 3, backoff_factor: float = 2.0):
                     last_exception = e
                     if attempt < max_attempts - 1:
                         wait_time = (backoff_factor**attempt) * 0.1
-                        logger.warning(
-                            f"Attempt {attempt + 1} failed, retrying in {wait_time:.2f}s: {e}"
-                        )
+                        logger.warning(f"Attempt {attempt + 1} failed, retrying in {wait_time:.2f}s: {e}")
                         await asyncio.sleep(wait_time)
                     continue
 
                 except IntegrityError as e:
                     # Constraint violations - don't retry
-                    logger.error(f"Integrity error, not retrying: {e}")
+                    logger.exception(f"Integrity error, not retrying: {e}")
                     raise DatabaseError(f"Database constraint violation: {e}")
 
                 except Exception as e:
                     # Other errors - don't retry
-                    logger.error(f"Unexpected error, not retrying: {e}")
+                    logger.exception(f"Unexpected error, not retrying: {e}")
                     raise
 
             # All retries exhausted
-            raise RetryExhaustedError(
-                f"Failed after {max_attempts} attempts: {last_exception}"
-            )
+            raise RetryExhaustedError(f"Failed after {max_attempts} attempts: {last_exception}")
 
         return wrapper
 
@@ -126,16 +123,14 @@ class EnhancedToolAccessor:
                 await session.commit()
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Transaction rolled back: {e}")
+                logger.exception(f"Transaction rolled back: {e}")
                 raise
 
     # Project Tools with Enhanced Error Handling
 
     @measure_performance("create_project")
     @with_retry(max_attempts=3)
-    async def create_project(
-        self, name: str, mission: str, agents: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None) -> dict[str, Any]:
         """Create a new project with transaction rollback on failure"""
         try:
             async with self._get_transactional_session() as session:
@@ -171,9 +166,7 @@ class EnhancedToolAccessor:
 
                 # Commit handled by context manager
 
-                logger.info(
-                    f"Created project {project_id} with tenant key {tenant_key}"
-                )
+                logger.info(f"Created project {project_id} with tenant key {tenant_key}")
 
                 return {
                     "success": True,
@@ -184,15 +177,15 @@ class EnhancedToolAccessor:
                 }
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error creating project: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error creating project: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error creating project: {e}")
+            logger.exception(f"Unexpected error creating project: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("list_projects")
     @with_retry(max_attempts=2)
-    async def list_projects(self, status: Optional[str] = None) -> Dict[str, Any]:
+    async def list_projects(self, status: Optional[str] = None) -> dict[str, Any]:
         """List all projects with optional status filter"""
         try:
             async with self.db_manager.get_session() as session:
@@ -213,11 +206,7 @@ class EnhancedToolAccessor:
                             "status": project.status,
                             "tenant_key": project.tenant_key,
                             "created_at": project.created_at.isoformat(),
-                            "updated_at": (
-                                project.updated_at.isoformat()
-                                if project.updated_at
-                                else None
-                            ),
+                            "updated_at": (project.updated_at.isoformat() if project.updated_at else None),
                             "context_budget": project.context_budget,
                             "context_used": project.context_used,
                         }
@@ -230,15 +219,15 @@ class EnhancedToolAccessor:
                 }
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error listing projects: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error listing projects: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error listing projects: {e}")
+            logger.exception(f"Unexpected error listing projects: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("project_status")
     @with_retry(max_attempts=2)
-    async def project_status(self, project_id: Optional[str] = None) -> Dict[str, Any]:
+    async def project_status(self, project_id: Optional[str] = None) -> dict[str, Any]:
         """Get comprehensive project status with validation"""
         try:
             async with self.db_manager.get_session() as session:
@@ -256,16 +245,12 @@ class EnhancedToolAccessor:
                     return {"success": False, "error": "Project not found"}
 
                 # Get agents
-                agent_result = await session.execute(
-                    select(Agent).where(Agent.project_id == project.id)
-                )
+                agent_result = await session.execute(select(Agent).where(Agent.project_id == project.id))
                 agents = agent_result.scalars().all()
 
                 # Get pending messages
                 message_result = await session.execute(
-                    select(Message).where(
-                        Message.project_id == project.id, Message.status == "pending"
-                    )
+                    select(Message).where(Message.project_id == project.id, Message.status == "pending")
                 )
                 pending_messages = len(message_result.scalars().all())
 
@@ -295,18 +280,18 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error getting project status: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error getting project status: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error getting project status: {e}")
+            logger.exception(f"Unexpected error getting project status: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("close_project")
     @with_retry(max_attempts=3)
-    async def close_project(self, project_id: str, summary: str) -> Dict[str, Any]:
+    async def close_project(self, project_id: str, summary: str) -> dict[str, Any]:
         """Close a completed project with summary"""
         try:
             project_uuid = validate_uuid(project_id, "project_id")
@@ -333,20 +318,18 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error closing project: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error closing project: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error closing project: {e}")
+            logger.exception(f"Unexpected error closing project: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("update_project_mission")
     @with_retry(max_attempts=3)
-    async def update_project_mission(
-        self, project_id: str, mission: str
-    ) -> Dict[str, Any]:
+    async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
         """Update the mission field after orchestrator analysis"""
         try:
             project_uuid = validate_uuid(project_id, "project_id")
@@ -364,31 +347,27 @@ class EnhancedToolAccessor:
                 return {"success": True, "message": "Mission updated successfully"}
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error updating mission: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error updating mission: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error updating mission: {e}")
+            logger.exception(f"Unexpected error updating mission: {e}")
             return {"success": False, "error": str(e)}
 
     # Agent Tools with Enhanced Error Handling
 
     @measure_performance("ensure_agent")
     @with_retry(max_attempts=3)
-    async def ensure_agent(
-        self, project_id: str, agent_name: str, mission: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def ensure_agent(self, project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
         """Ensure an agent exists for work on a project (idempotent)"""
         try:
             project_uuid = validate_uuid(project_id, "project_id")
 
             async with self._get_transactional_session() as session:
                 # Get project
-                result = await session.execute(
-                    select(Project).where(Project.id == project_uuid)
-                )
+                result = await session.execute(select(Project).where(Project.id == project_uuid))
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -396,9 +375,7 @@ class EnhancedToolAccessor:
 
                 # Check if agent exists
                 agent_result = await session.execute(
-                    select(Agent).where(
-                        Agent.name == agent_name, Agent.project_id == project_uuid
-                    )
+                    select(Agent).where(Agent.name == agent_name, Agent.project_id == project_uuid)
                 )
                 agent = agent_result.scalar_one_or_none()
 
@@ -432,25 +409,23 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error ensuring agent: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error ensuring agent: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error ensuring agent: {e}")
+            logger.exception(f"Unexpected error ensuring agent: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("agent_health")
     @with_retry(max_attempts=2)
-    async def agent_health(self, agent_name: Optional[str] = None) -> Dict[str, Any]:
+    async def agent_health(self, agent_name: Optional[str] = None) -> dict[str, Any]:
         """Check agent health and context usage with null safety"""
         try:
             async with self.db_manager.get_session() as session:
                 if agent_name:
-                    result = await session.execute(
-                        select(Agent).where(Agent.name == agent_name)
-                    )
+                    result = await session.execute(select(Agent).where(Agent.name == agent_name))
                     agents = [result.scalar_one_or_none()]
                     if not agents[0]:
                         return {
@@ -473,11 +448,7 @@ class EnhancedToolAccessor:
                                 "status": agent.status,
                                 "context_used": agent.context_used or 0,
                                 "message_count": 0,  # Skip relationship access in async context
-                                "created_at": (
-                                    agent.created_at.isoformat()
-                                    if agent.created_at
-                                    else None
-                                ),
+                                "created_at": (agent.created_at.isoformat() if agent.created_at else None),
                             }
                         )
 
@@ -488,17 +459,15 @@ class EnhancedToolAccessor:
                 }
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error checking agent health: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error checking agent health: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error checking agent health: {e}")
+            logger.exception(f"Unexpected error checking agent health: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("decommission_agent")
     @with_retry(max_attempts=3)
-    async def decommission_agent(
-        self, agent_name: str, project_id: str, reason: str = "completed"
-    ) -> Dict[str, Any]:
+    async def decommission_agent(self, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
         """Gracefully end an agent's work"""
         try:
             project_uuid = validate_uuid(project_id, "project_id")
@@ -525,13 +494,13 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error decommissioning agent: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error decommissioning agent: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error decommissioning agent: {e}")
+            logger.exception(f"Unexpected error decommissioning agent: {e}")
             return {"success": False, "error": str(e)}
 
     # Message Tools with Enhanced Error Handling
@@ -540,13 +509,13 @@ class EnhancedToolAccessor:
     @with_retry(max_attempts=3)
     async def send_message(
         self,
-        to_agents: List[str],
+        to_agents: list[str],
         content: str,
         project_id: str,
         message_type: str = "direct",
         priority: str = "normal",
         from_agent: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send message to one or more agents with validation"""
         try:
             project_uuid = validate_uuid(project_id, "project_id")
@@ -556,9 +525,7 @@ class EnhancedToolAccessor:
 
             async with self._get_transactional_session() as session:
                 # Get project
-                result = await session.execute(
-                    select(Project).where(Project.id == project_uuid)
-                )
+                result = await session.execute(select(Project).where(Project.id == project_uuid))
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -589,20 +556,18 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error sending message: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error sending message: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error sending message: {e}")
+            logger.exception(f"Unexpected error sending message: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("get_messages")
     @with_retry(max_attempts=2)
-    async def get_messages(
-        self, agent_name: str, project_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_messages(self, agent_name: str, project_id: Optional[str] = None) -> dict[str, Any]:
         """Retrieve pending messages for an agent with auto-acknowledgment"""
         try:
             project_uuid = None
@@ -653,28 +618,24 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error getting messages: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error getting messages: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error getting messages: {e}")
+            logger.exception(f"Unexpected error getting messages: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("acknowledge_message")
     @with_retry(max_attempts=3)
-    async def acknowledge_message(
-        self, message_id: str, agent_name: str
-    ) -> Dict[str, Any]:
+    async def acknowledge_message(self, message_id: str, agent_name: str) -> dict[str, Any]:
         """Mark message as received by agent with null safety"""
         try:
             message_uuid = validate_uuid(message_id, "message_id")
 
             async with self._get_transactional_session() as session:
-                result = await session.execute(
-                    select(Message).where(Message.id == message_uuid)
-                )
+                result = await session.execute(select(Message).where(Message.id == message_uuid))
                 message = result.scalar_one_or_none()
 
                 if not message:
@@ -697,28 +658,24 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error acknowledging message: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error acknowledging message: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error acknowledging message: {e}")
+            logger.exception(f"Unexpected error acknowledging message: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("complete_message")
     @with_retry(max_attempts=3)
-    async def complete_message(
-        self, message_id: str, agent_name: str, result: str
-    ) -> Dict[str, Any]:
+    async def complete_message(self, message_id: str, agent_name: str, result: str) -> dict[str, Any]:
         """Mark message as completed with result"""
         try:
             message_uuid = validate_uuid(message_id, "message_id")
 
             async with self._get_transactional_session() as session:
-                msg_result = await session.execute(
-                    select(Message).where(Message.id == message_uuid)
-                )
+                msg_result = await session.execute(select(Message).where(Message.id == message_uuid))
                 message = msg_result.scalar_one_or_none()
 
                 if not message:
@@ -751,28 +708,24 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error completing message: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error completing message: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error completing message: {e}")
+            logger.exception(f"Unexpected error completing message: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("broadcast")
-    async def broadcast(
-        self, content: str, project_id: str, priority: str = "normal"
-    ) -> Dict[str, Any]:
+    async def broadcast(self, content: str, project_id: str, priority: str = "normal") -> dict[str, Any]:
         """Broadcast message to all agents in project (optimized)"""
         try:
             project_uuid = validate_uuid(project_id, "project_id")
 
             async with self.db_manager.get_session() as session:
                 # Get all agents in project
-                result = await session.execute(
-                    select(Agent).where(Agent.project_id == project_uuid)
-                )
+                result = await session.execute(select(Agent).where(Agent.project_id == project_uuid))
                 agents = result.scalars().all()
 
                 if not agents:
@@ -791,22 +744,20 @@ class EnhancedToolAccessor:
                 )
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error broadcasting message: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error broadcasting message: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error broadcasting message: {e}")
+            logger.exception(f"Unexpected error broadcasting message: {e}")
             return {"success": False, "error": str(e)}
 
     # Task Tools
 
     @measure_performance("log_task")
     @with_retry(max_attempts=3)
-    async def log_task(
-        self, content: str, category: Optional[str] = None, priority: str = "medium"
-    ) -> Dict[str, Any]:
+    async def log_task(self, content: str, category: Optional[str] = None, priority: str = "medium") -> dict[str, Any]:
         """Quick task capture with validation"""
         try:
             if not content:
@@ -851,26 +802,22 @@ class EnhancedToolAccessor:
                 }
 
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.exception(f"Validation error: {e}")
             return {"success": False, "error": str(e)}
         except SQLAlchemyError as e:
-            logger.error(f"Database error logging task: {e}")
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            logger.exception(f"Database error logging task: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
-            logger.error(f"Unexpected error logging task: {e}")
+            logger.exception(f"Unexpected error logging task: {e}")
             return {"success": False, "error": str(e)}
 
     # Context Tools (stubs remain the same)
 
-    async def get_context_index(
-        self, product_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """Get the context index for intelligent querying"""
         return {"success": True, "index": {"documents": [], "sections": []}}
 
-    async def get_vision(
-        self, part: int = 1, max_tokens: int = 20000
-    ) -> Dict[str, Any]:
+    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> dict[str, Any]:
         """Get the vision document"""
         return {
             "success": True,
@@ -880,19 +827,17 @@ class EnhancedToolAccessor:
             "tokens": 100,
         }
 
-    async def get_vision_index(self) -> Dict[str, Any]:
+    async def get_vision_index(self) -> dict[str, Any]:
         """Get the vision document index"""
         return {"success": True, "index": {"files": [], "chunks": []}}
 
-    async def get_product_settings(
-        self, product_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """Get all product settings for analysis"""
         return {
             "success": True,
             "settings": {"product_id": product_id or "default", "config": {}},
         }
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """Get accumulated performance metrics"""
         return self._performance_metrics

@@ -4,14 +4,14 @@ DatabaseManager for GiljoAI MCP with SQLite/PostgreSQL support.
 Provides connection pooling, tenant isolation, and seamless database switching.
 """
 
-from pathlib import Path
-from typing import Optional, Dict, Any
 from contextlib import asynccontextmanager, contextmanager
+from pathlib import Path
+from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from sqlalchemy import create_engine, Engine, pool, event
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession
-from sqlalchemy.orm import sessionmaker, Session, scoped_session
+from sqlalchemy import Engine, create_engine, event, pool
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from .models import Base
@@ -46,14 +46,10 @@ class DatabaseManager:
         # Initialize engines and session factories
         if self.is_async:
             self.async_engine = self._create_async_engine()
-            self.AsyncSessionLocal = sessionmaker(
-                self.async_engine, class_=AsyncSession, expire_on_commit=False
-            )
+            self.AsyncSessionLocal = sessionmaker(self.async_engine, class_=AsyncSession, expire_on_commit=False)
         else:
             self.engine = self._create_sync_engine()
-            self.SessionLocal = scoped_session(
-                sessionmaker(self.engine, expire_on_commit=False)
-            )
+            self.SessionLocal = scoped_session(sessionmaker(self.engine, expire_on_commit=False))
 
     def _get_default_database_url(self) -> str:
         """Get default database URL (SQLite for zero-config local dev)."""
@@ -94,9 +90,7 @@ class DatabaseManager:
             )
         else:
             # Generic database
-            engine = create_engine(
-                self.database_url, poolclass=QueuePool, pool_pre_ping=True, echo=False
-            )
+            engine = create_engine(self.database_url, poolclass=QueuePool, pool_pre_ping=True, echo=False)
 
         return engine
 
@@ -111,9 +105,7 @@ class DatabaseManager:
         elif self.is_postgresql:
             # Only replace if not already an async dialect
             if async_url.startswith("postgresql://"):
-                async_url = async_url.replace(
-                    "postgresql://", "postgresql+asyncpg://", 1
-                )
+                async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
         if self.is_sqlite:
             # SQLite async optimizations
@@ -274,7 +266,7 @@ class DatabaseManager:
 
         return f"sqlite:///{db_path}"
 
-    def get_tenant_filter(self, tenant_key: str) -> Dict[str, Any]:
+    def get_tenant_filter(self, tenant_key: str) -> dict[str, Any]:
         """
         Get filter dictionary for tenant isolation.
 
@@ -286,9 +278,7 @@ class DatabaseManager:
         """
         return {"tenant_key": tenant_key}
 
-    def apply_tenant_filter(
-        self, query: Any, model: Any, tenant_key: Optional[str] = None
-    ) -> Any:
+    def apply_tenant_filter(self, query: Any, model: Any, tenant_key: Optional[str] = None) -> Any:
         """
         Apply tenant filtering to a query using TenantManager.
 
@@ -302,9 +292,7 @@ class DatabaseManager:
         """
         return TenantManager.apply_tenant_filter(query, model, tenant_key)
 
-    def ensure_tenant_isolation(
-        self, entity: Any, tenant_key: Optional[str] = None
-    ) -> None:
+    def ensure_tenant_isolation(self, entity: Any, tenant_key: Optional[str] = None) -> None:
         """
         Ensure entity belongs to the correct tenant.
 
@@ -339,11 +327,10 @@ class DatabaseManager:
         Yields:
             Session configured with tenant context
         """
-        with TenantManager.with_tenant(tenant_key):
-            with self.get_session() as session:
-                # Add tenant key to session info for reference
-                session.info["tenant_key"] = tenant_key
-                yield session
+        with TenantManager.with_tenant(tenant_key), self.get_session() as session:
+            # Add tenant key to session info for reference
+            session.info["tenant_key"] = tenant_key
+            yield session
 
     @asynccontextmanager
     async def get_tenant_session_async(self, tenant_key: str):
@@ -362,9 +349,7 @@ class DatabaseManager:
                 session.info["tenant_key"] = tenant_key
                 yield session
 
-    def query_with_tenant(
-        self, session: Session, model: Any, tenant_key: Optional[str] = None
-    ):
+    def query_with_tenant(self, session: Session, model: Any, tenant_key: Optional[str] = None):
         """
         Create a query with automatic tenant filtering.
 
@@ -408,9 +393,7 @@ class DatabaseManager:
 _db_manager: Optional[DatabaseManager] = None
 
 
-def get_db_manager(
-    database_url: Optional[str] = None, is_async: bool = False
-) -> DatabaseManager:
+def get_db_manager(database_url: Optional[str] = None, is_async: bool = False) -> DatabaseManager:
     """
     Get or create the global DatabaseManager instance.
 
@@ -423,9 +406,7 @@ def get_db_manager(
     """
     global _db_manager
 
-    if _db_manager is None or (
-        database_url and _db_manager.database_url != database_url
-    ):
+    if _db_manager is None or (database_url and _db_manager.database_url != database_url):
         _db_manager = DatabaseManager(database_url, is_async)
 
     return _db_manager
