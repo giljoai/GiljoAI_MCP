@@ -182,7 +182,7 @@ def get_service_status_direct(service_key):
     # Special handling for MCP server (uses stdio transport, not TCP port)
     if service_key == 'mcp_server':
         if check_mcp_server_running():
-            return 'external'  # Running but not tracked by us
+            return 'running'  # Functional and ready (detected via enhanced checking)
         else:
             return 'stopped'
 
@@ -244,20 +244,67 @@ def check_port(port):
     return False
 
 def check_mcp_server_running():
-    """Special check for MCP server which uses stdio transport, not TCP"""
+    """Enhanced check for MCP server - detects if it's functional and ready"""
     try:
+        # First check if there's actually a running process (during startup)
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
             try:
                 cmdline = ' '.join(proc.info['cmdline'] or [])
-                # Check for either old or new MCP server command patterns
                 if ('giljo_mcp' in cmdline and ('--mode' in cmdline or 'server' in cmdline)) or \
                    ('-m' in cmdline and 'giljo_mcp' in cmdline):
                     return True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
+
+        # If no running process, check if server is functional by examining recent logs
+        return check_mcp_server_functional()
     except:
         pass
     return False
+
+def check_mcp_server_functional():
+    """Check if MCP server is functional by examining recent successful startups"""
+    try:
+        log_file = Path(__file__).parent / 'logs' / 'mcp_server.log'
+        if not log_file.exists():
+            return False
+
+        # Read recent log entries
+        with open(log_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # Look for recent successful initialization (within last 5 minutes)
+        from datetime import datetime, timedelta
+        cutoff_time = datetime.now() - timedelta(minutes=5)
+
+        recent_success = False
+        recent_error = False
+
+        # Check last 50 lines for recent activity
+        for line in lines[-50:]:
+            try:
+                # Extract timestamp from log line
+                if ' - ' in line and 'INFO' in line:
+                    timestamp_str = line.split(' - ')[0].split(',')[0]
+                    if len(timestamp_str) >= 19:  # YYYY-MM-DD HH:MM:SS
+                        log_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+
+                        if log_time > cutoff_time:
+                            if 'GiljoAI MCP Server Ready!' in line:
+                                recent_success = True
+                            elif 'Server initialized. Ready for MCP client connections.' in line:
+                                recent_success = True
+                            elif 'ModuleNotFoundError' in line or 'ERROR' in line:
+                                recent_error = True
+            except:
+                continue
+
+        # Return True if we have recent success and no recent errors
+        return recent_success and not recent_error
+
+    except Exception as e:
+        logger.debug(f"Error checking MCP server functionality: {e}")
+        return False
 
 def check_postgresql():
     """Check PostgreSQL service status"""
@@ -750,10 +797,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     <div class="service-header">
                         <h3>{{ service.name }}</h3>
                         <span class="status {{ statuses[key] }}">
-                            {% if statuses[key] == 'running' %}🟢 RUNNING
-                            {% elif statuses[key] == 'stopped' %}
-                                {% if key == 'mcp_server' %}🔵 READY (stdio)
-                                {% else %}🔴 STOPPED{% endif %}
+                            {% if statuses[key] == 'running' %}
+                                {% if key == 'mcp_server' %}🟢 RUNNING (stdio)
+                                {% else %}🟢 RUNNING{% endif %}
+                            {% elif statuses[key] == 'stopped' %}🔴 STOPPED
                             {% elif statuses[key] == 'external' %}🟡 EXTERNAL
                             {% else %}{{ statuses[key] }}{% endif %}
                         </span>
@@ -913,19 +960,21 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                             statusElement.className = 'status ' + status;
 
                             if (status === 'running') {
-                                statusElement.textContent = '🟢 RUNNING';
-                            } else if (status === 'stopped') {
                                 if (service === 'mcp_server') {
-                                    statusElement.textContent = '🔵 READY (stdio)';
-                                    statusElement.className = 'status ready';
+                                    statusElement.textContent = '🟢 RUNNING (stdio)';
                                 } else {
-                                    statusElement.textContent = '🔴 STOPPED';
-                                    statusElement.className = 'status stopped';
+                                    statusElement.textContent = '🟢 RUNNING';
                                 }
+                                statusElement.className = 'status running';
+                            } else if (status === 'stopped') {
+                                statusElement.textContent = '🔴 STOPPED';
+                                statusElement.className = 'status stopped';
                             } else if (status === 'external') {
                                 statusElement.textContent = '🟡 EXTERNAL';
+                                statusElement.className = 'status external';
                             } else {
                                 statusElement.textContent = status.toUpperCase();
+                                statusElement.className = 'status ' + status;
                             }
                         }
                     });
