@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 # Service definitions
 SERVICES = {
     'mcp_server': {
-        'name': 'MCP Server',
-        'port': 6001,
+        'name': 'MCP Server (stdio)',
+        'port': 6001,  # Not actually used - stdio transport
         'command': [sys.executable, '-m', 'giljo_mcp', '--mode', 'server'],
         'cwd': Path(__file__).parent / 'src',
         'log_file': 'logs/mcp_server.log'
@@ -98,10 +98,21 @@ def remove_process_info(service_key):
         logger.debug(f"Could not remove PID file for {service_key}: {e}")
 
 def wait_for_service_startup(service_key, max_wait=10):
-    """Wait for a service to start listening on its port"""
+    """Wait for a service to start listening on its port or become available"""
     service = SERVICES[service_key]
-    port = service['port']
 
+    # Special handling for MCP server (stdio mode)
+    if service_key == 'mcp_server':
+        for i in range(max_wait):
+            if check_mcp_server_running():
+                logger.info(f"MCP Server is now running (stdio mode)")
+                return True
+            time.sleep(1)
+        logger.warning(f"MCP Server did not start within {max_wait} seconds")
+        return False
+
+    # Normal port-based checking for other services
+    port = service['port']
     for i in range(max_wait):
         if check_port(port):
             logger.info(f"Service {service['name']} is now listening on port {port}")
@@ -168,7 +179,14 @@ def get_service_status_direct(service_key):
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             remove_process_info(service_key)
 
-    # Check if port is in use (might be external process or lost tracking)
+    # Special handling for MCP server (uses stdio transport, not TCP port)
+    if service_key == 'mcp_server':
+        if check_mcp_server_running():
+            return 'external'  # Running but not tracked by us
+        else:
+            return 'stopped'
+
+    # For non-MCP services, check if port is in use (might be external process or lost tracking)
     if check_port(service['port']):
         return 'external'
 
@@ -223,6 +241,22 @@ def check_port(port):
                 return result == 0
         except:
             pass
+    return False
+
+def check_mcp_server_running():
+    """Special check for MCP server which uses stdio transport, not TCP"""
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                cmdline = ' '.join(proc.info['cmdline'] or [])
+                # Check for either old or new MCP server command patterns
+                if ('giljo_mcp' in cmdline and ('--mode' in cmdline or 'server' in cmdline)) or \
+                   ('-m' in cmdline and 'giljo_mcp' in cmdline):
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except:
+        pass
     return False
 
 def check_postgresql():
@@ -312,8 +346,11 @@ def start_service(service_key):
         if wait_for_service_startup(service_key, max_wait=8):
             return True, f"Started {service['name']} successfully"
         else:
-            # Service process is running but not listening - might be starting up
-            return True, f"Started {service['name']} (process running, port pending)"
+            # Service process is running but not listening - for MCP this might be normal (stdio mode)
+            if service_key == 'mcp_server':
+                return True, f"Started {service['name']} (MCP stdio mode)"
+            else:
+                return True, f"Started {service['name']} (process running, port pending)"
 
     except Exception as e:
         logger.error(f"Failed to start {service['name']}: {e}")
@@ -339,15 +376,38 @@ def stop_service(service_key):
         # Remove PID file
         remove_process_info(service_key)
 
-        # Kill any process using the port
-        for conn in psutil.net_connections():
-            if conn.laddr.port == service['port']:
-                try:
-                    process = psutil.Process(conn.pid)
-                    process.terminate()
-                    logger.info(f"Terminated process on port {service['port']}")
-                except:
-                    pass
+        # Special handling for MCP server (kill by process search since it doesn't use ports)
+        if service_key == 'mcp_server':
+            try:
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        cmdline = ' '.join(proc.info['cmdline'] or [])
+                        if ('giljo_mcp' in cmdline and ('--mode' in cmdline or 'server' in cmdline)) or \
+                           ('-m' in cmdline and 'giljo_mcp' in cmdline):
+                            process = psutil.Process(proc.info['pid'])
+                            process.terminate()
+                            logger.info(f"Terminated MCP server process (PID: {proc.info['pid']})")
+                            try:
+                                process.wait(timeout=3)
+                            except psutil.TimeoutExpired:
+                                process.kill()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+            except Exception as e:
+                logger.warning(f"Could not terminate MCP server processes: {e}")
+        else:
+            # Kill any process using the port for other services
+            try:
+                for conn in psutil.net_connections():
+                    if hasattr(conn, 'laddr') and conn.laddr and conn.laddr.port == service['port']:
+                        try:
+                            process = psutil.Process(conn.pid)
+                            process.terminate()
+                            logger.info(f"Terminated process on port {service['port']}")
+                        except:
+                            pass
+            except Exception as e:
+                logger.warning(f"Could not kill processes on port {service['port']}: {e}")
 
         return True, f"Stopped {service['name']}"
 
@@ -496,311 +556,187 @@ def get_log_tail(service_key, lines=50):
         return f"Error reading log: {e}"
 
 # HTML Template
-HTML_TEMPLATE = '''
-<!DOCTYPE html>
+HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GiljoAI MCP Development Control Panel</title>
+    <title>giljoai_MCP Development Control Panel</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f5f5;
             padding: 20px;
+            color: #333;
         }
         .container { max-width: 1200px; margin: 0 auto; }
         .header {
-            background: #2c3e50;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .header p { opacity: 0.9; font-size: 16px; }
         .section {
             background: white;
-            padding: 20px;
+            padding: 25px;
             margin: 20px 0;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e1e8ed;
         }
+        .section h2 { color: #2c3e50; margin-bottom: 20px; font-size: 22px; }
         .service-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 20px;
         }
         .service-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            padding: 20px;
+            background: #fafbfc;
+            transition: all 0.3s ease;
         }
+        .service-card:hover { border-color: #3498db; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.1); }
         .service-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
+        .service-header h3 { color: #2c3e50; font-size: 18px; }
         .status {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .status.running { background: #d4edda; color: #155724; }
         .status.stopped { background: #f8d7da; color: #721c24; }
         .status.external { background: #fff3cd; color: #856404; }
+        .status.ready { background: #d1ecf1; color: #0c5460; }
+        .service-card p { margin: 8px 0; color: #555; }
+        .service-card strong { color: #2c3e50; }
         .btn {
-            padding: 8px 16px;
+            padding: 10px 16px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            margin: 2px;
-            font-size: 12px;
+            margin: 3px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
         .btn.start { background: #28a745; color: white; }
         .btn.stop { background: #dc3545; color: white; }
         .btn.restart { background: #17a2b8; color: white; }
-        .btn.cache { background: #ffc107; color: black; }
+        .btn.cache { background: #ffc107; color: #333; font-weight: bold; }
         .btn.logs { background: #6c757d; color: white; }
-        .btn:hover { opacity: 0.8; }
         .maintenance {
-            background: #e9ecef;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid #dee2e6;
         }
-        .log-viewer {
-            background: #000;
-            color: #0f0;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
+        .maintenance h3 { color: #495057; margin-bottom: 10px; }
         .actions {
             text-align: center;
-            margin: 20px 0;
+            margin: 30px 0;
         }
+        .actions h2 { margin-bottom: 20px; color: #2c3e50; }
         .actions .btn {
-            padding: 12px 24px;
-            font-size: 14px;
-            margin: 5px;
+            padding: 15px 30px;
+            font-size: 15px;
+            margin: 8px;
+            border-radius: 8px;
         }
         .flash {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: 500;
+            border-left: 4px solid;
         }
-        .flash.success { background: #d4edda; color: #155724; }
-        .flash.error { background: #f8d7da; color: #721c24; }
+        .flash.success { background: #d4edda; color: #155724; border-color: #28a745; }
+        .flash.error { background: #f8d7da; color: #721c24; border-color: #dc3545; }
         .timestamp {
-            font-size: 11px;
-            color: #666;
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 8px;
+        }
+        .monitoring-status {
             margin-top: 10px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 500;
         }
         .cache-status {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
         }
+        .cache-status h3 { color: #495057; margin-bottom: 15px; }
         .cache-status-display {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .cache-status-indicator {
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 8px 16px;
+            border-radius: 20px;
             font-size: 14px;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .cache-status-indicator.success {
-            background: #d4edda;
-            color: #155724;
-        }
-        .cache-status-indicator.failed {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .cache-status-indicator.running {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        .cache-status-indicator.idle {
-            background: #e9ecef;
-            color: #495057;
-        }
-        .cache-timestamp {
-            font-size: 12px;
-            color: #6c757d;
-        }
-        .cache-message {
-            font-weight: bold;
-            margin: 5px 0;
-        }
+        .cache-status-indicator.success { background: #d4edda; color: #155724; }
+        .cache-status-indicator.failed { background: #f8d7da; color: #721c24; }
+        .cache-status-indicator.running { background: #d1ecf1; color: #0c5460; }
+        .cache-status-indicator.idle { background: #e9ecef; color: #495057; }
+        .cache-timestamp { font-size: 12px; color: #6c757d; }
+        .cache-message { font-weight: 600; margin: 10px 0; color: #2c3e50; }
         .cache-details {
             font-size: 12px;
             color: #666;
             background: #f1f3f4;
-            padding: 8px;
-            border-radius: 4px;
-            margin: 5px 0;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border-left: 3px solid #17a2b8;
         }
     </style>
-    <script>
-        function executeAction(action, service = null) {
-            const url = service ? `/api/${action}/${service}` : `/api/${action}`;
-            fetch(url, { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showFlash(data.message, 'success');
-                    } else {
-                        showFlash(data.message, 'error');
-                    }
-                    setTimeout(() => location.reload(), 1000);
-                })
-                .catch(error => {
-                    showFlash('Action failed: ' + error, 'error');
-                });
-        }
-
-        function showFlash(message, type) {
-            const flash = document.createElement('div');
-            flash.className = `flash ${type}`;
-            flash.textContent = message;
-            document.querySelector('.container').insertBefore(flash, document.querySelector('.section'));
-            setTimeout(() => flash.remove(), 5000);
-        }
-
-        function showLogs(service) {
-            // Open logs in a new window
-            const logWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-            logWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Logs - ${service}</title>
-                    <style>
-                        body { font-family: 'Courier New', monospace; background: #000; color: #0f0; padding: 20px; margin: 0; }
-                        .header { color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-                        .log-content { white-space: pre-wrap; font-size: 12px; line-height: 1.4; }
-                        .refresh-btn { background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-left: 10px; }
-                        .refresh-btn:hover { background: #0056b3; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h2>Service Logs - ${service}</h2>
-                        <button class="refresh-btn" onclick="refreshLogs()">Refresh</button>
-                        <button class="refresh-btn" onclick="window.close()">Close</button>
-                    </div>
-                    <div id="log-content" class="log-content">Loading logs...</div>
-                    <script>
-                        function refreshLogs() {
-                            fetch('/api/logs/${service}')
-                                .then(response => response.text())
-                                .then(data => {
-                                    document.getElementById('log-content').textContent = data;
-                                    // Auto-scroll to bottom
-                                    window.scrollTo(0, document.body.scrollHeight);
-                                })
-                                .catch(error => {
-                                    document.getElementById('log-content').textContent = 'Error loading logs: ' + error;
-                                });
-                        }
-
-                        // Load logs initially
-                        refreshLogs();
-
-                        // Auto-refresh every 5 seconds
-                        setInterval(refreshLogs, 5000);
-                    </script>
-                </body>
-                </html>
-            `);
-        }
-
-        function hideLogs() {
-            document.getElementById('log-viewer').style.display = 'none';
-        }
-
-        function showCacheLogs() {
-            // Open cache logs in a new window
-            const logWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-            logWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Cache Operations Log</title>
-                    <style>
-                        body { font-family: 'Courier New', monospace; background: #000; color: #0f0; padding: 20px; margin: 0; }
-                        .header { color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-                        .log-content { white-space: pre-wrap; font-size: 12px; line-height: 1.4; }
-                        .refresh-btn { background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-left: 10px; }
-                        .refresh-btn:hover { background: #0056b3; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h2>Cache Operations Log</h2>
-                        <button class="refresh-btn" onclick="refreshLogs()">Refresh</button>
-                        <button class="refresh-btn" onclick="window.close()">Close</button>
-                    </div>
-                    <div id="log-content" class="log-content">Loading cache logs...</div>
-                    <script>
-                        function refreshLogs() {
-                            fetch('/api/cache_logs')
-                                .then(response => response.text())
-                                .then(data => {
-                                    document.getElementById('log-content').textContent = data;
-                                    // Auto-scroll to bottom
-                                    window.scrollTo(0, document.body.scrollHeight);
-                                })
-                                .catch(error => {
-                                    document.getElementById('log-content').textContent = 'Error loading cache logs: ' + error;
-                                });
-                        }
-
-                        // Load logs initially
-                        refreshLogs();
-
-                        // Auto-refresh every 5 seconds
-                        setInterval(refreshLogs, 5000);
-                    </script>
-                </body>
-                </html>
-            `);
-        }
-
-        // Auto-refresh every 5 seconds
-        setInterval(() => {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (!urlParams.has('no_refresh')) {
-                location.reload();
-            }
-        }, 5000);
-    </script>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 GiljoAI MCP Development Control Panel</h1>
+            <h1>🚀 giljoai_MCP Development Control Panel</h1>
             <p>Service Management & Development Tools</p>
             <div class="timestamp">Last updated: {{ current_time }}</div>
             {% if monitoring_active %}
-            <div class="monitoring-status" style="color: #90EE90; font-size: 14px; margin-top: 5px;">
+            <div class="monitoring-status" style="background: rgba(144, 238, 144, 0.2); color: #155724;">
                 ✅ Real-time monitoring active (3-second intervals)
             </div>
             {% else %}
-            <div class="monitoring-status" style="color: #FFB6C1; font-size: 14px; margin-top: 5px;">
+            <div class="monitoring-status" style="background: rgba(255, 182, 193, 0.2); color: #721c24;">
                 ⚠️ Real-time monitoring inactive
             </div>
             {% endif %}
@@ -810,22 +746,28 @@ HTML_TEMPLATE = '''
             <h2>🔧 System Services</h2>
             <div class="service-grid">
                 {% for key, service in services.items() %}
-                <div class="service-card">
+                <div class="service-card" data-service="{{ key }}">
                     <div class="service-header">
                         <h3>{{ service.name }}</h3>
                         <span class="status {{ statuses[key] }}">
-                            {% if statuses[key] == 'running' %}🟢 Running
-                            {% elif statuses[key] == 'external' %}🟡 External
-                            {% else %}🔴 Stopped{% endif %}
+                            {% if statuses[key] == 'running' %}🟢 RUNNING
+                            {% elif statuses[key] == 'stopped' %}
+                                {% if key == 'mcp_server' %}🔵 READY (stdio)
+                                {% else %}🔴 STOPPED{% endif %}
+                            {% elif statuses[key] == 'external' %}🟡 EXTERNAL
+                            {% else %}{{ statuses[key] }}{% endif %}
                         </span>
                     </div>
-                    <p><strong>Port:</strong> {{ service.port }}</p>
+                    <p><strong>Port:</strong>
+                        {% if key == 'mcp_server' %}stdio transport
+                        {% else %}{{ service.port }}{% endif %}
+                    </p>
                     <p><strong>Command:</strong> {{ service.command|join(' ') }}</p>
-                    <div style="margin-top: 10px;">
-                        <button class="btn start" onclick="executeAction('start', '{{ key }}')">Start</button>
-                        <button class="btn stop" onclick="executeAction('stop', '{{ key }}')">Stop</button>
-                        <button class="btn restart" onclick="executeAction('restart', '{{ key }}')">Restart</button>
-                        <button class="btn logs" onclick="showLogs('{{ key }}')">Logs</button>
+                    <div style="margin-top: 15px;">
+                        <button class="btn start" onclick="executeAction('start', '{{ key }}')">▶️ Start</button>
+                        <button class="btn stop" onclick="executeAction('stop', '{{ key }}')">⏹️ Stop</button>
+                        <button class="btn restart" onclick="executeAction('restart', '{{ key }}')">🔄 Restart</button>
+                        <button class="btn logs" onclick="showLogs('{{ key }}')">📋 Logs</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -834,13 +776,13 @@ HTML_TEMPLATE = '''
                     <div class="service-header">
                         <h3>PostgreSQL Database</h3>
                         <span class="status {% if postgresql_status %}running{% else %}stopped{% endif %}">
-                            {% if postgresql_status %}🟢 Running{% else %}🔴 Stopped{% endif %}
+                            {% if postgresql_status %}🟢 RUNNING{% else %}🔴 STOPPED{% endif %}
                         </span>
                     </div>
                     <p><strong>Port:</strong> 5432</p>
                     <p><strong>Database:</strong> ai_assistant</p>
-                    <div style="margin-top: 10px;">
-                        <button class="btn logs" onclick="alert('PostgreSQL logs: See Windows Services')">Info</button>
+                    <div style="margin-top: 15px;">
+                        <button class="btn logs" onclick="alert('PostgreSQL logs: Check Windows Services\\nServices.msc → PostgreSQL')">ℹ️ Info</button>
                     </div>
                 </div>
             </div>
@@ -849,9 +791,8 @@ HTML_TEMPLATE = '''
         <div class="section">
             <h2>🧹 Maintenance Tools</h2>
 
-            <!-- Cache Status Indicator -->
             <div class="cache-status">
-                <h3>Cache Operations Status</h3>
+                <h3>🗂️ Cache Operations Status</h3>
                 <div class="cache-status-display">
                     <span class="cache-status-indicator {{ cache_status.status }}">
                         {% if cache_status.status == 'success' %}✅ SUCCESS
@@ -871,33 +812,143 @@ HTML_TEMPLATE = '''
                 {% if cache_status.details %}
                 <div class="cache-details">{{ cache_status.details }}</div>
                 {% endif %}
-                <button class="btn logs" onclick="showCacheLogs()">View Cache Logs</button>
+                <button class="btn logs" onclick="showCacheLogs()">📋 View Cache Logs</button>
             </div>
 
             <div class="maintenance">
-                <h3>Cache Management</h3>
-                <p>Clear Python bytecode cache to ensure code changes take effect</p>
-                <button class="btn cache" onclick="executeAction('clear_cache')">Clear Python Cache</button>
-                <button class="btn restart" onclick="executeAction('clear_and_restart')">Clear Cache & Restart All</button>
+                <h3>🧼 Cache Management</h3>
+                <p style="margin-bottom: 15px; color: #666;">Clear Python bytecode cache to ensure code changes take effect</p>
+                <button class="btn cache" onclick="executeAction('clear_cache')">🧹 Clear Python Cache</button>
+                <button class="btn restart" onclick="executeAction('clear_and_restart')">🔄 Clear Cache & Restart All</button>
             </div>
         </div>
 
         <div class="actions">
             <h2>🎮 Quick Actions</h2>
-            <button class="btn start" onclick="executeAction('start_all')">Start All Services</button>
-            <button class="btn stop" onclick="executeAction('stop_all')">Stop All Services</button>
-            <button class="btn restart" onclick="executeAction('restart_all')">Restart All Services</button>
-        </div>
-
-        <div id="log-viewer" class="section" style="display: none;">
-            <h2>📋 Logs - <span id="log-service"></span></h2>
-            <button class="btn" onclick="hideLogs()">Hide Logs</button>
-            <div class="log-viewer" id="log-content"></div>
+            <button class="btn start" onclick="executeAction('start_all')">▶️ Start All Services</button>
+            <button class="btn stop" onclick="executeAction('stop_all')">⏹️ Stop All Services</button>
+            <button class="btn restart" onclick="executeAction('restart_all')">🔄 Restart All Services</button>
         </div>
     </div>
+
+    <script>
+        function executeAction(action, service = null) {
+            console.log('Executing action:', action, 'for service:', service);
+            const url = service ? '/api/' + action + '/' + service : '/api/' + action;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    showFlash(data.message, 'success');
+                } else {
+                    showFlash(data.message, 'error');
+                }
+                // Delay reload to show flash message
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            })
+            .catch(error => {
+                console.error('Action failed:', error);
+                showFlash('Action failed: ' + error.message, 'error');
+            });
+        }
+
+        function showFlash(message, type) {
+            // Remove existing flash messages
+            const existingFlash = document.querySelector('.flash');
+            if (existingFlash) {
+                existingFlash.remove();
+            }
+
+            const flash = document.createElement('div');
+            flash.className = 'flash ' + type;
+            flash.textContent = message;
+
+            const container = document.querySelector('.container');
+            const firstSection = document.querySelector('.section');
+            container.insertBefore(flash, firstSection);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (flash.parentNode) {
+                    flash.remove();
+                }
+            }, 5000);
+        }
+
+        function showLogs(service) {
+            console.log('Opening logs for service:', service);
+            const logUrl = '/api/logs/' + service;
+            window.open(logUrl, '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
+        }
+
+        function showCacheLogs() {
+            console.log('Opening cache logs');
+            window.open('/api/cache_logs', '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
+        }
+
+        // Status update function
+        function updateStatuses() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Status update:', data);
+
+                    // Update service statuses
+                    Object.keys(data.services).forEach(service => {
+                        const statusElement = document.querySelector('[data-service="' + service + '"] .status');
+                        if (statusElement) {
+                            const status = data.services[service];
+                            statusElement.className = 'status ' + status;
+
+                            if (status === 'running') {
+                                statusElement.textContent = '🟢 RUNNING';
+                            } else if (status === 'stopped') {
+                                if (service === 'mcp_server') {
+                                    statusElement.textContent = '🔵 READY (stdio)';
+                                    statusElement.className = 'status ready';
+                                } else {
+                                    statusElement.textContent = '🔴 STOPPED';
+                                    statusElement.className = 'status stopped';
+                                }
+                            } else if (status === 'external') {
+                                statusElement.textContent = '🟡 EXTERNAL';
+                            } else {
+                                statusElement.textContent = status.toUpperCase();
+                            }
+                        }
+                    });
+
+                    // Update timestamp
+                    const timestampElement = document.querySelector('.timestamp');
+                    if (timestampElement) {
+                        timestampElement.textContent = 'Last updated: ' + new Date().toLocaleString();
+                    }
+                })
+                .catch(error => {
+                    console.log('Status update failed:', error);
+                });
+        }
+
+        // Auto-refresh status every 10 seconds
+        setInterval(updateStatuses, 10000);
+
+        // Initial status update after 2 seconds
+        setTimeout(updateStatuses, 2000);
+    </script>
 </body>
-</html>
-'''
+</html>'''
 
 @app.route('/')
 def index():
@@ -1044,7 +1095,36 @@ def api_get_logs(service_key):
     if service_key not in SERVICES:
         return "Unknown service", 404
 
-    return get_log_tail(service_key)
+    logs = get_log_tail(service_key)
+
+    # Return as HTML page for better viewing
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Logs - {SERVICES[service_key]['name']}</title>
+        <style>
+            body {{ font-family: 'Courier New', monospace; background: #000; color: #0f0; padding: 20px; margin: 0; }}
+            .header {{ color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }}
+            .log-content {{ white-space: pre-wrap; font-size: 12px; line-height: 1.4; }}
+            .refresh-btn {{ background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }}
+            .refresh-btn:hover {{ background: #0056b3; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h2>Service Logs - {SERVICES[service_key]['name']}</h2>
+            <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+            <button class="refresh-btn" onclick="window.close()">Close</button>
+        </div>
+        <div class="log-content">{logs}</div>
+        <script>
+            // Auto-refresh every 10 seconds
+            setTimeout(() => location.reload(), 10000);
+        </script>
+    </body>
+    </html>
+    """
 
 @app.route('/api/cache_logs')
 def api_get_cache_logs():
@@ -1082,21 +1162,21 @@ if __name__ == '__main__':
     log_dir.mkdir(exist_ok=True)
 
     # Check for existing running services on startup
-    print("🔍 Checking for existing services...")
+    print("Checking for existing services...")
     for service_key in SERVICES:
         status = get_service_status(service_key)
         if status != 'stopped':
             print(f"   {SERVICES[service_key]['name']}: {status.upper()}")
 
-    print("🚀 Starting GiljoAI MCP Development Control Panel")
-    print("📋 Dashboard available at: http://localhost:5500")
-    print("🔧 Service ports: MCP(6001), API+WebSocket(6002), Frontend(6000)")
-    print("🔄 Starting continuous service monitoring...")
+    print("Starting GiljoAI MCP Development Control Panel")
+    print("Dashboard available at: http://localhost:5500")
+    print("Service ports: MCP(6001), API+WebSocket(6002), Frontend(6000)")
+    print("Starting continuous service monitoring...")
 
     # Start background monitoring
     start_monitoring()
 
-    print("⏹️  Press Ctrl+C to stop")
+    print("Press Ctrl+C to stop")
 
     try:
         # Start Flask app
@@ -1107,7 +1187,7 @@ if __name__ == '__main__':
             use_reloader=False
         )
     except KeyboardInterrupt:
-        print("\n🛑 Shutting down...")
+        print("\nShutting down...")
     finally:
         # Stop monitoring on exit
         stop_monitoring()
