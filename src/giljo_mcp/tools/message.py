@@ -12,7 +12,7 @@ from sqlalchemy import and_, select
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import Agent, Message, Project
-from giljo_mcp.queue import MessageQueue
+from giljo_mcp.message_queue import MessageQueue
 from giljo_mcp.tenant import TenantManager
 
 

@@ -9,8 +9,10 @@ import sys
 from pathlib import Path
 
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add src directory to path for imports - OS neutral
+src_dir = Path(__file__).parent.parent
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 
 from giljo_mcp.auth import AuthManager
 from giljo_mcp.config_manager import DeploymentMode, get_config

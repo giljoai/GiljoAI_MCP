@@ -278,18 +278,33 @@ class TestConfigManagerEdgeCases:
 
     def test_config_with_invalid_yaml(self):
         """Test handling of invalid YAML configuration."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write("invalid: yaml: content: [unclosed")
-            f.flush()
+        temp_file = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+                temp_file = f.name
+                f.write("invalid: yaml: content: [unclosed")
+                f.flush()
 
             # Should handle gracefully
             try:
-                ConfigManager.load_from_file(Path(f.name))
+                ConfigManager.load_from_file(Path(temp_file))
             except Exception:
                 # Expected - invalid YAML should raise an exception
                 pass
-            finally:
-                os.unlink(f.name)
+        finally:
+            # Windows-compatible file cleanup
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                except PermissionError:
+                    # On Windows, add a small delay and retry
+                    import time
+                    time.sleep(0.1)
+                    try:
+                        os.unlink(temp_file)
+                    except PermissionError:
+                        # If still locked, skip cleanup (temp files will be cleaned by OS)
+                        pass
 
     def test_config_permissions_error(self):
         """Test handling of permission errors."""

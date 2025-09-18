@@ -44,15 +44,16 @@ class ServerConfig:
     """Server configuration settings."""
 
     mode: DeploymentMode = DeploymentMode.LOCAL
+    debug: bool = False
 
     # MCP Server
     mcp_host: str = "127.0.0.1"
     mcp_port: int = 6001
     mcp_transport: str = "stdio"
 
-    # REST API
+    # REST API  
     api_host: str = "127.0.0.1"
-    api_port: int = 6002
+    api_port: int = 8000  # Production default from tests
     api_cors_enabled: bool = True
     api_key: Optional[str] = None
 
@@ -72,17 +73,69 @@ class DatabaseConfig:
     """Database configuration settings."""
 
     type: str = "sqlite"  # sqlite or postgresql
+    database_name: str = "giljo_mcp.db"
+    database_url: Optional[str] = None
 
     # SQLite settings
     sqlite_path: Path = field(default_factory=lambda: Path("./data/giljo_mcp.db"))
 
     # PostgreSQL settings
-    pg_host: str = "localhost"
-    pg_port: int = 5432
-    pg_database: str = "giljo_mcp_db"
-    pg_user: str = "postgres"
-    pg_password: str = ""
+    host: str = "localhost"
+    port: int = 5432
+    username: str = "postgres"
+    password: str = ""
     pg_pool_size: int = 10
+
+    @property
+    def database_type(self) -> str:
+        """Alias for type property to match test expectations."""
+        return self.type
+
+    @database_type.setter
+    def database_type(self, value: str):
+        """Setter for database_type alias."""
+        self.type = value
+
+    # Legacy aliases for PostgreSQL settings
+    @property
+    def pg_host(self) -> str:
+        return self.host
+
+    @pg_host.setter
+    def pg_host(self, value: str):
+        self.host = value
+
+    @property
+    def pg_port(self) -> int:
+        return self.port
+
+    @pg_port.setter
+    def pg_port(self, value: int):
+        self.port = value
+
+    @property
+    def pg_database(self) -> str:
+        return self.database_name
+
+    @pg_database.setter
+    def pg_database(self, value: str):
+        self.database_name = value
+
+    @property
+    def pg_user(self) -> str:
+        return self.username
+
+    @pg_user.setter
+    def pg_user(self, value: str):
+        self.username = value
+
+    @property
+    def pg_password(self) -> str:
+        return self.password
+
+    @pg_password.setter
+    def pg_password(self, value: str):
+        self.password = value
 
     def get_connection_string(self, tenant_key: Optional[str] = None) -> str:
         """
@@ -91,38 +144,47 @@ class DatabaseConfig:
         Args:
             tenant_key: Optional tenant key for multi-tenant database separation
         """
+        if self.database_url:
+            return self.database_url
+
         if self.type == "sqlite":
+            # Use database_name if different from default
+            if self.database_name != "giljo_mcp.db":
+                base_path = self.sqlite_path.parent / self.database_name
+            else:
+                base_path = self.sqlite_path
+                
             # Support tenant-specific SQLite databases if multi-tenant enabled
             if tenant_key:
-                db_path = self.sqlite_path.parent / f"tenant_{tenant_key}.db"
+                db_path = base_path.parent / f"tenant_{tenant_key}.db"
             else:
-                db_path = self.sqlite_path
+                db_path = base_path
 
             db_path.parent.mkdir(parents=True, exist_ok=True)
             return f"sqlite:///{db_path.as_posix()}"
-        if self.type == "postgresql":
+        elif self.type == "postgresql":
             # Try to use DatabaseManager's method if available
             try:
                 from giljo_mcp.database import DatabaseManager
 
                 url = DatabaseManager.build_postgresql_url(
-                    host=self.pg_host,
-                    port=self.pg_port,
-                    database=(self.pg_database if not tenant_key else f"{self.pg_database}_{tenant_key}"),
-                    username=self.pg_user,
-                    password=self.pg_password or os.getenv("DB_PASSWORD", ""),
+                    host=self.host,
+                    port=self.port,
+                    database=(self.database_name if not tenant_key else f"{self.database_name}_{tenant_key}"),
+                    username=self.username,
+                    password=self.password or os.getenv("DB_PASSWORD", ""),
                 )
                 return url
             except ImportError:
                 # Fallback to manual URL building
-                password = self.pg_password or os.getenv("DB_PASSWORD", "")
-                base_url = f"postgresql://{self.pg_user}:{password}@{self.pg_host}:{self.pg_port}"
+                password = self.password or os.getenv("DB_PASSWORD", "")
+                base_url = f"postgresql://{self.username}:{password}@{self.host}:{self.port}"
 
                 # Support tenant-specific schemas in PostgreSQL if multi-tenant enabled
                 if tenant_key:
                     # Use database name with tenant suffix for complete isolation
-                    return f"{base_url}/{self.pg_database}_{tenant_key}"
-                return f"{base_url}/{self.pg_database}"
+                    return f"{base_url}/{self.database_name}_{tenant_key}"
+                return f"{base_url}/{self.database_name}"
         else:
             raise ValueError(f"Unsupported database type: {self.type}")
 
@@ -170,14 +232,44 @@ class SessionConfig:
     max_concurrent: int = 10
     cleanup_interval: int = 300  # seconds
 
+    # Vision chunking settings (restored from cleanup)
+    vision_chunk_size: int = 50000
+    vision_overlap: int = 500
+    max_vision_size: int = 200000  # Maximum size before chunking required
+
 
 @dataclass
 class AgentConfig:
     """Agent configuration settings."""
 
-    max_per_project: int = 20
-    context_limit: int = 150000  # tokens
-    handoff_threshold: int = 140000  # tokens
+    max_agents: int = 20
+    default_context_budget: int = 150000  # tokens
+    context_warning_threshold: int = 140000  # tokens
+
+    # Legacy aliases for backwards compatibility
+    @property
+    def max_per_project(self) -> int:
+        return self.max_agents
+
+    @max_per_project.setter
+    def max_per_project(self, value: int):
+        self.max_agents = value
+
+    @property
+    def context_limit(self) -> int:
+        return self.default_context_budget
+
+    @context_limit.setter
+    def context_limit(self, value: int):
+        self.default_context_budget = value
+
+    @property
+    def handoff_threshold(self) -> int:
+        return self.context_warning_threshold
+
+    @handoff_threshold.setter
+    def handoff_threshold(self, value: int):
+        self.context_warning_threshold = value  # tokens
 
 
 @dataclass
@@ -185,19 +277,69 @@ class MessageConfig:
     """Message queue configuration settings."""
 
     max_queue_size: int = 1000
-    batch_size: int = 10
-    retry_attempts: int = 3
-    retry_delay: float = 1.0  # seconds
+    message_timeout: int = 300  # seconds
+    max_retries: int = 3
+    _batch_size: int = 10  # Internal batch size storage
+    _retry_delay: float = 1.0  # Internal retry delay storage
+
+    @property
+    def batch_size(self) -> int:
+        return self._batch_size
+
+    @batch_size.setter
+    def batch_size(self, value: int):
+        self._batch_size = value
+
+    @property
+    def retry_attempts(self) -> int:
+        return self.max_retries
+
+    @retry_attempts.setter
+    def retry_attempts(self, value: int):
+        self.max_retries = value
+
+    @property
+    def retry_delay(self) -> float:
+        return self._retry_delay
+
+    @retry_delay.setter
+    def retry_delay(self, value: float):
+        self._retry_delay = value  # Fixed retry delay for legacy compatibility  # seconds
 
 
 @dataclass
 class TenantConfig:
     """Multi-tenant configuration settings."""
 
-    enabled: bool = True
-    default_key: Optional[str] = None
+    enable_multi_tenant: bool = True
+    default_tenant_key: Optional[str] = None
+    tenant_isolation_level: str = "strict"
     key_header: str = "X-Tenant-Key"
-    isolation_strict: bool = True
+
+    # Legacy alias for backwards compatibility
+    @property
+    def enabled(self) -> bool:
+        return self.enable_multi_tenant
+
+    @enabled.setter
+    def enabled(self, value: bool):
+        self.enable_multi_tenant = value
+
+    @property
+    def default_key(self) -> Optional[str]:
+        return self.default_tenant_key
+
+    @default_key.setter
+    def default_key(self, value: Optional[str]):
+        self.default_tenant_key = value
+
+    @property
+    def isolation_strict(self) -> bool:
+        return self.tenant_isolation_level == "strict"
+
+    @isolation_strict.setter
+    def isolation_strict(self, value: bool):
+        self.tenant_isolation_level = "strict" if value else "relaxed"
 
 
 @dataclass
@@ -206,9 +348,18 @@ class FeatureFlags:
 
     vision_chunking: bool = True
     multi_tenant: bool = True
-    websocket_updates: bool = True
+    enable_websockets: bool = True
     auto_handoff: bool = True
     dynamic_discovery: bool = True
+
+    # Legacy aliases for backwards compatibility
+    @property
+    def websocket_updates(self) -> bool:
+        return self.enable_websockets
+
+    @websocket_updates.setter
+    def websocket_updates(self, value: bool):
+        self.enable_websockets = value
 
 
 class ConfigFileWatcher(FileSystemEventHandler):
@@ -253,10 +404,14 @@ class ConfigManager:
         self.database = DatabaseConfig()
         self.logging = LoggingConfig()
         self.session = SessionConfig()
-        self.agents = AgentConfig()
-        self.messages = MessageConfig()
+        self.agent = AgentConfig()
+        self.message = MessageConfig()
         self.tenant = TenantConfig()
         self.features = FeatureFlags()
+
+        # Application metadata (restored from cleanup)
+        self.app_name = "GiljoAI MCP Coding Orchestrator"
+        self.app_version = "0.1.0"
 
         # Load configuration
         self.load()
@@ -264,6 +419,47 @@ class ConfigManager:
         # Setup hot-reloading if enabled
         if auto_reload:
             self._setup_file_watcher()
+
+    @property
+    def deployment_mode(self):
+        """Get deployment mode (compatibility alias for server.mode)."""
+        return self.server.mode
+
+    @deployment_mode.setter
+    def deployment_mode(self, value):
+        """Set deployment mode (compatibility alias for server.mode)."""
+        self.server.mode = value
+
+    def get_data_dir(self) -> Path:
+        """Get application data directory (restored from cleanup)."""
+        if hasattr(self, '_override_base_dir') and self._override_base_dir:
+            path = self._override_base_dir / ".giljo-mcp" / "data"
+        else:
+            path = Path.home() / ".giljo-mcp" / "data"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_config_dir(self) -> Path:
+        """Get configuration directory (restored from cleanup)."""
+        if hasattr(self, '_override_base_dir') and self._override_base_dir:
+            path = self._override_base_dir / ".giljo-mcp" / "config"
+        else:
+            path = Path.home() / ".giljo-mcp" / "config"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_log_dir(self) -> Path:
+        """Get log directory (restored from cleanup)."""
+        if hasattr(self, '_override_base_dir') and self._override_base_dir:
+            path = self._override_base_dir / ".giljo-mcp" / "logs"
+        else:
+            path = Path.home() / ".giljo-mcp" / "logs"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_database_url(self) -> str:
+        """Get database connection URL (restored from cleanup)."""
+        return self.database.get_connection_string()
 
     def load(self):
         """Load configuration from file and environment variables."""
@@ -296,6 +492,7 @@ class ConfigManager:
             if "server" in data:
                 srv = data["server"]
                 self.server.mode = DeploymentMode(srv.get("mode", "local"))
+                self.server.debug = srv.get("debug", self.server.debug)
 
                 if "mcp" in srv:
                     self.server.mcp_host = srv["mcp"].get("host", self.server.mcp_host)
@@ -354,17 +551,17 @@ class ConfigManager:
             # Agent configuration
             if "agents" in data:
                 ag = data["agents"]
-                self.agents.max_per_project = ag.get("max_per_project", self.agents.max_per_project)
-                self.agents.context_limit = ag.get("context_limit", self.agents.context_limit)
-                self.agents.handoff_threshold = ag.get("handoff_threshold", self.agents.handoff_threshold)
+                self.agent.max_per_project = ag.get("max_per_project", self.agent.max_per_project)
+                self.agent.context_limit = ag.get("context_limit", self.agent.context_limit)
+                self.agent.handoff_threshold = ag.get("handoff_threshold", self.agent.handoff_threshold)
 
             # Message configuration
             if "messages" in data:
                 msg = data["messages"]
-                self.messages.max_queue_size = msg.get("max_queue_size", self.messages.max_queue_size)
-                self.messages.batch_size = msg.get("batch_size", self.messages.batch_size)
-                self.messages.retry_attempts = msg.get("retry_attempts", self.messages.retry_attempts)
-                self.messages.retry_delay = msg.get("retry_delay", self.messages.retry_delay)
+                self.message.max_queue_size = msg.get("max_queue_size", self.message.max_queue_size)
+                self.message.batch_size = msg.get("batch_size", self.message.batch_size)
+                self.message.retry_attempts = msg.get("retry_attempts", self.message.retry_attempts)
+                self.message.retry_delay = msg.get("retry_delay", self.message.retry_delay)
 
             # Tenant configuration
             if "tenant" in data:
@@ -399,6 +596,9 @@ class ConfigManager:
         if port := os.getenv("GILJO_MCP_API_PORT"):
             self.server.api_port = int(port)
 
+        if port := os.getenv("GILJO_API_PORT"):  # Alternative env var from tests
+            self.server.api_port = int(port)
+
         if port := os.getenv("GILJO_MCP_WEBSOCKET_PORT"):
             self.server.websocket_port = int(port)
 
@@ -408,9 +608,21 @@ class ConfigManager:
         if api_key := os.getenv("GILJO_MCP_API_KEY"):
             self.server.api_key = api_key
 
+        if host := os.getenv("GILJO_API_HOST"):  # From tests
+            self.server.api_host = host
+
+        if debug := os.getenv("GILJO_DEBUG"):  # From tests
+            self.server.debug = debug.lower() in ("true", "1", "yes")
+
         # Database settings
         if db_type := os.getenv("DB_TYPE"):
             self.database.type = db_type
+
+        if db_type := os.getenv("GILJO_DATABASE_TYPE"):  # From tests
+            self.database.type = db_type
+
+        if db_url := os.getenv("GILJO_DATABASE_URL"):  # From tests
+            self.database.database_url = db_url
 
         if db_host := os.getenv("DB_HOST"):
             self.database.pg_host = db_host
@@ -529,21 +741,22 @@ class ConfigManager:
             errors.append(f"Invalid database type: {self.database.type}")
 
         if self.database.type == "postgresql":
-            if not self.database.pg_password and not os.getenv("DB_PASSWORD"):
+            # Only require password if no database URL is provided
+            if not self.database.database_url and not self.database.pg_password and not os.getenv("DB_PASSWORD"):
                 errors.append("PostgreSQL password is required")
 
         # Agent configuration validation
-        if self.agents.handoff_threshold >= self.agents.context_limit:
+        if self.agent.handoff_threshold >= self.agent.context_limit:
             errors.append("Handoff threshold must be less than context limit")
 
-        if self.agents.max_per_project < 1:
+        if self.agent.max_per_project < 1:
             errors.append("Must allow at least 1 agent per project")
 
         # Message configuration validation
-        if self.messages.retry_attempts < 0:
+        if self.message.retry_attempts < 0:
             errors.append("Retry attempts must be non-negative")
 
-        if self.messages.batch_size > self.messages.max_queue_size:
+        if self.message.batch_size > self.message.max_queue_size:
             errors.append("Batch size cannot exceed max queue size")
 
         # Mode-specific validation
@@ -597,6 +810,7 @@ class ConfigManager:
         return {
             "server": {
                 "mode": self.server.mode.value,
+                "debug": self.server.debug,
                 "mcp": {
                     "host": self.server.mcp_host,
                     "port": self.server.mcp_port,
@@ -606,7 +820,6 @@ class ConfigManager:
                     "host": self.server.api_host,
                     "port": self.server.api_port,
                     "cors_enabled": self.server.api_cors_enabled,
-                    "has_api_key": bool(self.server.api_key),
                 },
                 "websocket": {
                     "enabled": self.server.websocket_enabled,
@@ -616,16 +829,22 @@ class ConfigManager:
                     "enabled": self.server.dashboard_enabled,
                     "host": self.server.dashboard_host,
                     "port": self.server.dashboard_port,
-                    "dev_port": self.server.dashboard_dev_port,
+                    "dev_server_port": self.server.dashboard_dev_port,
                 },
             },
             "database": {
                 "type": self.database.type,
-                "connection_string": (
-                    "***"
-                    if "password" in self.database.get_connection_string()
-                    else self.database.get_connection_string()
-                ),
+                "sqlite": {
+                    "path": str(self.database.sqlite_path),
+                },
+                "postgresql": {
+                    "host": self.database.host,
+                    "port": self.database.port,
+                    "database": self.database.database_name,
+                    "user": self.database.username,
+                    "password": "",  # Don't save passwords to file
+                    "pool_size": self.database.pg_pool_size,
+                },
             },
             "logging": {
                 "level": self.logging.level,
@@ -639,15 +858,15 @@ class ConfigManager:
                 "cleanup_interval": self.session.cleanup_interval,
             },
             "agents": {
-                "max_per_project": self.agents.max_per_project,
-                "context_limit": self.agents.context_limit,
-                "handoff_threshold": self.agents.handoff_threshold,
+                "max_per_project": self.agent.max_per_project,
+                "context_limit": self.agent.context_limit,
+                "handoff_threshold": self.agent.handoff_threshold,
             },
             "messages": {
-                "max_queue_size": self.messages.max_queue_size,
-                "batch_size": self.messages.batch_size,
-                "retry_attempts": self.messages.retry_attempts,
-                "retry_delay": self.messages.retry_delay,
+                "max_queue_size": self.message.max_queue_size,
+                "batch_size": self.message.batch_size,
+                "retry_attempts": self.message.retry_attempts,
+                "retry_delay": self.message.retry_delay,
             },
             "tenant": {
                 "enabled": self.tenant.enabled,
@@ -706,6 +925,18 @@ class ConfigManager:
             yaml.dump(self.get_all_settings(), f, default_flow_style=False, sort_keys=False)
 
         logger.info(f"Configuration saved to {save_path}")
+
+    @classmethod
+    def load_from_file(cls, path: Path) -> "ConfigManager":
+        """Load configuration from a specific file."""
+        config = cls(config_path=path, auto_reload=False)
+        return config
+
+    def ensure_directories_exist(self):
+        """Ensure all required directories exist."""
+        self.get_data_dir()  # Creates directory
+        self.get_config_dir()  # Creates directory  
+        self.get_log_dir()  # Creates directory
 
     def __enter__(self):
         """Context manager entry."""
