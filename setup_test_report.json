@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-16T21:39:15.870538",
+  "timestamp": "2025-09-18T14:04:13.139678",
   "platform": {
     "system": "Windows",
     "release": "10",
@@ -15,27 +15,27 @@
     {
       "name": "setup_gui exists",
       "passed": true,
-      "message": "Size: 31,275 bytes"
+      "message": "Size: 29,974 bytes"
     },
     {
       "name": "setup_platform exists",
       "passed": true,
-      "message": "Size: 20,386 bytes"
+      "message": "Size: 19,678 bytes"
     },
     {
       "name": "setup_migration exists",
       "passed": true,
-      "message": "Size: 24,958 bytes"
+      "message": "Size: 24,064 bytes"
     },
     {
       "name": "setup_dependencies exists",
       "passed": true,
-      "message": "Size: 24,373 bytes"
+      "message": "Size: 23,645 bytes"
     },
     {
       "name": "setup_config exists",
       "passed": true,
-      "message": "Size: 25,572 bytes"
+      "message": "Size: 24,656 bytes"
     },
     {
       "name": "Import setup_gui",
@@ -110,7 +110,7 @@
     {
       "name": "Config manager",
       "passed": false,
-      "message": "Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmp1hu6h64t.json"
+      "message": "Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmperj_t2he.json"
     },
     {
       "name": "setup.py has --gui flag",
@@ -155,7 +155,7 @@
     "GUI has GUISetupManager: Not found",
     "Dependency manager: 'DependencyManager' object has no attribute 'get_installed_packages'",
     "Migration tool: 'AKEMCPMigrator' object has no attribute 'validate_data'",
-    "Config manager: Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmp1hu6h64t.json",
+    "Config manager: Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmperj_t2he.json",
     "Legacy method detect_platform: Not found",
     "Legacy method setup_database: Not found",
     "Legacy method create_directories: Not found",

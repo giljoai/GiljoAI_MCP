@@ -51,7 +51,7 @@ class ServerConfig:
     mcp_port: int = 6001
     mcp_transport: str = "stdio"
 
-    # REST API  
+    # REST API
     api_host: str = "127.0.0.1"
     api_port: int = 8000  # Production default from tests
     api_cors_enabled: bool = True
@@ -153,7 +153,7 @@ class DatabaseConfig:
                 base_path = self.sqlite_path.parent / self.database_name
             else:
                 base_path = self.sqlite_path
-                
+
             # Support tenant-specific SQLite databases if multi-tenant enabled
             if tenant_key:
                 db_path = base_path.parent / f"tenant_{tenant_key}.db"
@@ -162,7 +162,7 @@ class DatabaseConfig:
 
             db_path.parent.mkdir(parents=True, exist_ok=True)
             return f"sqlite:///{db_path.as_posix()}"
-        elif self.type == "postgresql":
+        if self.type == "postgresql":
             # Try to use DatabaseManager's method if available
             try:
                 from giljo_mcp.database import DatabaseManager
@@ -432,7 +432,7 @@ class ConfigManager:
 
     def get_data_dir(self) -> Path:
         """Get application data directory (restored from cleanup)."""
-        if hasattr(self, '_override_base_dir') and self._override_base_dir:
+        if hasattr(self, "_override_base_dir") and self._override_base_dir:
             path = self._override_base_dir / ".giljo-mcp" / "data"
         else:
             path = Path.home() / ".giljo-mcp" / "data"
@@ -441,7 +441,7 @@ class ConfigManager:
 
     def get_config_dir(self) -> Path:
         """Get configuration directory (restored from cleanup)."""
-        if hasattr(self, '_override_base_dir') and self._override_base_dir:
+        if hasattr(self, "_override_base_dir") and self._override_base_dir:
             path = self._override_base_dir / ".giljo-mcp" / "config"
         else:
             path = Path.home() / ".giljo-mcp" / "config"
@@ -450,7 +450,7 @@ class ConfigManager:
 
     def get_log_dir(self) -> Path:
         """Get log directory (restored from cleanup)."""
-        if hasattr(self, '_override_base_dir') and self._override_base_dir:
+        if hasattr(self, "_override_base_dir") and self._override_base_dir:
             path = self._override_base_dir / ".giljo-mcp" / "logs"
         else:
             path = Path.home() / ".giljo-mcp" / "logs"
@@ -935,7 +935,7 @@ class ConfigManager:
     def ensure_directories_exist(self):
         """Ensure all required directories exist."""
         self.get_data_dir()  # Creates directory
-        self.get_config_dir()  # Creates directory  
+        self.get_config_dir()  # Creates directory
         self.get_log_dir()  # Creates directory
 
     def __enter__(self):

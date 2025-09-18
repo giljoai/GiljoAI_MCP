@@ -12,6 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # Note: mission_templates.py was deleted and unified into template_manager.py
+from src.giljo_mcp.enums import AgentRole, ProjectType
+from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2 as MissionTemplateGenerator
 
 
 def test_orchestrator_template():

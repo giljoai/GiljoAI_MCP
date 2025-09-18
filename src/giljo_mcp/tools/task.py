@@ -9,8 +9,8 @@ from uuid import uuid4
 
 from sqlalchemy import and_, select
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Project, Task
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Project, Task
 
 from .task_templates import register_task_template_tools
 
@@ -47,7 +47,7 @@ def register_task_tools(mcp):
             Created task details
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             # Use current tenant if not provided
             if not tenant_key:
@@ -134,7 +134,7 @@ def register_task_tools(mcp):
             List of tasks matching filters
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             # Get current tenant
             tenant_key = tenant_manager.get_current_tenant()
@@ -226,7 +226,7 @@ def register_task_tools(mcp):
             Updated task details
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             # Get current tenant
             tenant_key = tenant_manager.get_current_tenant()
@@ -297,7 +297,7 @@ def register_task_tools(mcp):
             Task statistics grouped by product
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             # Get current tenant
             tenant_key = tenant_manager.get_current_tenant()
@@ -374,7 +374,7 @@ def register_task_tools(mcp):
             Task dependency tree with relationships
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:
@@ -475,7 +475,7 @@ def register_task_tools(mcp):
             Results of bulk operation with success/failure details
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:
@@ -585,7 +585,7 @@ def register_task_tools(mcp):
             Conversion history entry details
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:
@@ -666,7 +666,7 @@ def register_task_tools(mcp):
             Conversion history entries
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:

@@ -15,8 +15,8 @@ import websockets
 
 
 # Test configuration
-WS_URL = "ws://localhost:8000/ws"
-API_URL = "http://localhost:8000"
+WS_URL = "ws://localhost:6002/ws"
+API_URL = "http://localhost:6002"
 FRONTEND_URL = "http://localhost:6000"
 TEST_CLIENT_ID = "test_client_001"
 TEST_API_KEY = "test_api_key_123"

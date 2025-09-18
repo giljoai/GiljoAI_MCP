@@ -1,7 +1,7 @@
 """
 Integration tests for the complete configuration system.
 
-Tests the interaction between Settings and ConfigManager,
+Tests the interaction between ConfigManager instances,
 environment variables, file loading, hot-reloading, and
 multi-tenant scenarios.
 """
@@ -24,32 +24,33 @@ from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, D
 
 
 class TestConfigIntegration:
-    """Integration tests for Settings and ConfigManager together."""
+    """Integration tests for ConfigManager instances together."""
 
-    def test_settings_and_manager_compatibility(self, temp_dir):
-        """Test that Settings and ConfigManager work together."""
-        # Create Settings instance
-        settings = Settings(data_dir=temp_dir / "data", config_dir=temp_dir / "config", log_dir=temp_dir / "logs")
+    def test_config_manager_compatibility(self, temp_dir):
+        """Test that multiple ConfigManager instances work together."""
+        # Create config directory
+        config_dir = temp_dir / "config"
+        config_dir.mkdir()
 
-        # Create ConfigManager instance
-        config_path = temp_dir / "config" / "config.yaml"
-        manager = ConfigManager(config_path=config_path)
+        # Create first ConfigManager instance
+        config_path = config_dir / "config.yaml"
+        manager1 = ConfigManager(config_path=config_path)
 
-        # They should be able to share configuration
-        settings.ensure_directories()
+        # Create a second ConfigManager instance
+        manager2 = ConfigManager(config_path=config_path)
 
-        # Save settings to file
+        # Save config data using first manager
         config_data = {
-            "server": {"host": settings.api_host, "port": settings.api_port},
-            "database": {"type": settings.database_type},
+            "server": {"host": "localhost", "port": 6000},
+            "database": {"type": "sqlite"},
         }
-        settings.save_config_file(config_data)
+        manager1.save_to_file(config_path, config_data)
 
-        # Manager should be able to load it
-        manager.load()
+        # Second manager should be able to load it
+        manager2.load()
 
-        assert manager.server.host == settings.api_host
-        assert manager.server.port == settings.api_port
+        assert manager2.server.host == "localhost"
+        assert manager2.server.port == 6000
 
     @patch.dict(
         os.environ,
@@ -71,11 +72,12 @@ class TestConfigIntegration:
         with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
-        # Settings should pick up env vars
-        settings = Settings()
-        assert settings.api_host == "0.0.0.0"
-        assert settings.api_port == 8888
-        assert settings.database_url == "postgresql://user:pass@dbhost:5432/testdb"
+        # ConfigManager should pick up env vars
+        manager_env = ConfigManager()
+        manager_env.load()
+
+        assert manager_env.server.host == "0.0.0.0"
+        assert manager_env.server.port == 8888
 
         # ConfigManager should also pick up env vars
         manager = ConfigManager(config_path=config_file)
@@ -294,19 +296,13 @@ class TestConfigIntegration:
         """Test that system works with zero configuration for local dev."""
         # No config file, no environment variables
         with patch.dict(os.environ, {}, clear=True):
-            # Settings should work with defaults
-            settings = Settings()
-            assert settings.database_type == "sqlite"
-            assert settings.api_host == "127.0.0.1"
-
             # ConfigManager should work with defaults
             manager = ConfigManager()
             assert manager.server.mode == DeploymentMode.LOCAL
             assert manager.database.type == "sqlite"
 
             # Should be able to get database URL
-            db_url = settings.get_database_url()
-            assert "sqlite" in db_url
+            assert "sqlite" in manager.database.get_connection_string()
 
     def test_config_file_watcher_lifecycle(self, temp_dir):
         """Test file watcher lifecycle for hot-reload."""
@@ -379,8 +375,9 @@ class TestErrorHandling:
 
     def test_type_conversion_errors(self):
         """Test handling of type conversion errors."""
-        with patch.dict(os.environ, {"API_PORT": "not-a-number"}), pytest.raises(ValueError):
-            Settings()
+        with patch.dict(os.environ, {"GILJO_SERVER_PORT": "not-a-number"}), pytest.raises(ValueError):
+            manager = ConfigManager()
+            manager.load()
 
     def test_permission_errors(self, temp_dir):
         """Test handling of file permission errors."""

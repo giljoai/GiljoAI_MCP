@@ -11,10 +11,10 @@ from typing import Any, Optional
 from fastmcp import FastMCP
 from sqlalchemy import and_, select, update
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, AgentInteraction, Job, Message, Project, Task
-from giljo_mcp.tenant import TenantManager
-from giljo_mcp.websocket_client import broadcast_sub_agent_event
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Agent, AgentInteraction, Job, Message, Project, Task
+from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.websocket_client import broadcast_sub_agent_event
 
 
 logger = logging.getLogger(__name__)

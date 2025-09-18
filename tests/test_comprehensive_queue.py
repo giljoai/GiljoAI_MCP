@@ -16,12 +16,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.giljo_mcp.config_manager import ConfigManager
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.message_queue import DeadLetterQueue, MessageQueue, QueueMonitor, StuckMessageDetector
 from src.giljo_mcp.models import Message
-from src.giljo_mcp.queue import DeadLetterQueue, MessageQueue, QueueMonitor, StuckMessageDetector
 from src.giljo_mcp.tenant import TenantManager
 
 
-class TestResult:
+class QueueTestResult:
     def __init__(self, name, passed, details=""):
         self.name = name
         self.passed = passed
@@ -74,12 +74,12 @@ class MessageQueueTester:
                 # Test atomic enqueue
                 result = await self.message_queue.enqueue(msg)
                 if result:
-                    self.results.append(TestResult("ACID: Atomicity - Enqueue", True, "Message enqueued atomically"))
+                    self.results.append(QueueTestResult("ACID: Atomicity - Enqueue", True, "Message enqueued atomically"))
 
             # Test Consistency
             is_consistent = await self.message_queue.validate_consistency()
             self.results.append(
-                TestResult(
+                QueueTestResult(
                     "ACID: Consistency",
                     is_consistent,
                     "Queue state is consistent" if is_consistent else "Consistency check failed",
@@ -102,7 +102,7 @@ class MessageQueueTester:
             failures = [r for r in results if isinstance(r, Exception)]
 
             self.results.append(
-                TestResult(
+                QueueTestResult(
                     "ACID: Isolation",
                     len(failures) == 0,
                     f"Concurrent operations: {len(results) - len(failures)}/{len(results)} succeeded",
@@ -115,10 +115,10 @@ class MessageQueueTester:
             new_queue = MessageQueue(self.db_manager, self.tenant_manager)
             await new_queue.restore_state(state)
 
-            self.results.append(TestResult("ACID: Durability", True, "State persisted and restored successfully"))
+            self.results.append(QueueTestResult("ACID: Durability", True, "State persisted and restored successfully"))
 
         except Exception as e:
-            self.results.append(TestResult("ACID Compliance", False, f"Error during ACID testing: {e!s}"))
+            self.results.append(QueueTestResult("ACID Compliance", False, f"Error during ACID testing: {e!s}"))
 
     async def test_priority_routing(self):
         """Test priority-based message routing"""
@@ -156,11 +156,11 @@ class MessageQueueTester:
                     break
 
             self.results.append(
-                TestResult("Priority Routing", is_ordered, f"Messages dequeued in priority order: {dequeued[:5]}...")
+                QueueTestResult("Priority Routing", is_ordered, f"Messages dequeued in priority order: {dequeued[:5]}...")
             )
 
         except Exception as e:
-            self.results.append(TestResult("Priority Routing", False, f"Error: {e!s}"))
+            self.results.append(QueueTestResult("Priority Routing", False, f"Error: {e!s}"))
 
     async def test_stuck_message_detection(self):
         """Test stuck message detection and handling"""
@@ -189,18 +189,18 @@ class MessageQueueTester:
             stuck = await detector.detect_stuck_messages()
 
             self.results.append(
-                TestResult("Stuck Message Detection", len(stuck) > 0, f"Detected {len(stuck)} stuck messages")
+                QueueTestResult("Stuck Message Detection", len(stuck) > 0, f"Detected {len(stuck)} stuck messages")
             )
 
             # Test recovery
             if stuck:
                 recovered = await detector.recover_stuck_message(stuck[0])
                 self.results.append(
-                    TestResult("Stuck Message Recovery", recovered, "Successfully recovered stuck message")
+                    QueueTestResult("Stuck Message Recovery", recovered, "Successfully recovered stuck message")
                 )
 
         except Exception as e:
-            self.results.append(TestResult("Stuck Message Detection", False, f"Error: {e!s}"))
+            self.results.append(QueueTestResult("Stuck Message Detection", False, f"Error: {e!s}"))
 
     async def test_crash_recovery(self):
         """Test crash recovery mechanisms"""
@@ -234,13 +234,13 @@ class MessageQueueTester:
                     recovered_count += 1
 
             self.results.append(
-                TestResult(
+                QueueTestResult(
                     "Crash Recovery", recovered_count == 5, f"Recovered {recovered_count}/5 messages after crash"
                 )
             )
 
         except Exception as e:
-            self.results.append(TestResult("Crash Recovery", False, f"Error: {e!s}"))
+            self.results.append(QueueTestResult("Crash Recovery", False, f"Error: {e!s}"))
 
     async def test_performance(self):
         """Test performance metrics"""
@@ -266,7 +266,7 @@ class MessageQueueTester:
             enqueue_rate = enqueue_count / enqueue_time
 
             self.results.append(
-                TestResult(
+                QueueTestResult(
                     "Performance: Enqueue Rate",
                     enqueue_rate > 50,  # Target: 50+ messages/second
                     f"{enqueue_rate:.1f} messages/second",
@@ -288,7 +288,7 @@ class MessageQueueTester:
             dequeue_rate = dequeue_count / dequeue_time
 
             self.results.append(
-                TestResult(
+                QueueTestResult(
                     "Performance: Dequeue Rate",
                     dequeue_rate > 30,  # Target: 30+ messages/second
                     f"{dequeue_rate:.1f} messages/second",
@@ -299,7 +299,7 @@ class MessageQueueTester:
             stats = await monitor.get_statistics()
 
             self.results.append(
-                TestResult(
+                QueueTestResult(
                     "Performance: Monitoring",
                     stats is not None,
                     f"Queue depth: {stats.get('queue_depth', 0)}, "
@@ -308,7 +308,7 @@ class MessageQueueTester:
             )
 
         except Exception as e:
-            self.results.append(TestResult("Performance Testing", False, f"Error: {e!s}"))
+            self.results.append(QueueTestResult("Performance Testing", False, f"Error: {e!s}"))
 
     async def test_dead_letter_queue(self):
         """Test dead letter queue functionality"""
@@ -330,13 +330,13 @@ class MessageQueueTester:
             # Add to DLQ
             added = await dlq.add_message(failed_msg, reason="Max retries exceeded", error_details="Simulated failure")
 
-            self.results.append(TestResult("DLQ: Add Message", added, "Failed message moved to DLQ"))
+            self.results.append(QueueTestResult("DLQ: Add Message", added, "Failed message moved to DLQ"))
 
             # Get DLQ messages
             dlq_messages = await dlq.get_messages(limit=10)
 
             self.results.append(
-                TestResult(
+                QueueTestResult(
                     "DLQ: Retrieve Messages", len(dlq_messages) > 0, f"Retrieved {len(dlq_messages)} messages from DLQ"
                 )
             )
@@ -345,11 +345,11 @@ class MessageQueueTester:
             if dlq_messages:
                 reprocessed = await dlq.reprocess_message(dlq_messages[0]["id"])
                 self.results.append(
-                    TestResult("DLQ: Reprocess Message", reprocessed, "Successfully reprocessed message from DLQ")
+                    QueueTestResult("DLQ: Reprocess Message", reprocessed, "Successfully reprocessed message from DLQ")
                 )
 
         except Exception as e:
-            self.results.append(TestResult("Dead Letter Queue", False, f"Error: {e!s}"))
+            self.results.append(QueueTestResult("Dead Letter Queue", False, f"Error: {e!s}"))
 
     async def run_all_tests(self):
         """Run all tests and generate report"""

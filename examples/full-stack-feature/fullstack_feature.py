@@ -9,6 +9,8 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
+
+from src.giljo_mcp.config_manager import Config
 from typing import Any, Optional
 
 from giljo_mcp.database import DatabaseManager

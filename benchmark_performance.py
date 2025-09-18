@@ -11,8 +11,11 @@ import statistics
 import sys
 import time
 import uuid
+import os
 from datetime import datetime
 from pathlib import Path
+
+from src.giljo_mcp.database import DatabaseManager, init_db
 from typing import Any
 
 import psutil
@@ -60,7 +63,7 @@ class PerformanceBenchmark:
         """Initialize test environment"""
 
         # Initialize database
-        self.db = Database("sqlite:///benchmark_test.db")
+        self.db = DatabaseManager("sqlite:///benchmark_test.db")
         await init_db(self.db.engine)
 
         # Initialize message queue

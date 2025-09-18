@@ -5,13 +5,14 @@ Tester Agent: Comprehensive integration testing for all components
 """
 
 import asyncio
-import httpx
 import json
 import time
-import websockets
 from datetime import datetime
-from typing import Dict, List, Any
-import sys
+from typing import Dict
+
+import httpx
+import websockets
+
 
 class IntegrationTester:
     def __init__(self):
@@ -211,7 +212,7 @@ class IntegrationTester:
         self.test_results["performance_metrics"] = metrics
 
         # Check against requirements
-        if metrics.get("template_list_avg_ms", float('inf')) < 500:
+        if metrics.get("template_list_avg_ms", float("inf")) < 500:
             print("[PASS] Template operations < 500ms requirement MET")
         else:
             self.test_results["bugs_found"].append({
@@ -282,7 +283,7 @@ class IntegrationTester:
         # Save results
         with open("integration_test_results.json", "w") as f:
             json.dump(self.test_results, f, indent=2)
-        print(f"\n[PASS] Full test results saved to integration_test_results.json")
+        print("\n[PASS] Full test results saved to integration_test_results.json")
 
         return self.test_results
 
@@ -293,6 +294,7 @@ async def main():
     # Exit with appropriate code
     if results["summary"]["failed"] > 0 or results["bugs_found"]:
         # sys.exit(1)  # Commented for pytest
+        pass
     # sys.exit(0)  # Commented for pytest
 
 if __name__ == "__main__":

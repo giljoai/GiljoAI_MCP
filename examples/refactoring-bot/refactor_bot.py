@@ -9,6 +9,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from src.giljo_mcp.config_manager import Config
+
 # GiljoAI MCP imports
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.orchestrator import ProjectOrchestrator

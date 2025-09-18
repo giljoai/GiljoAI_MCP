@@ -18,7 +18,16 @@
       "mcp__serena-mcp__find_symbol",
       "mcp__ake-mcp-v2__project_status",
       "mcp__serena-mcp__find_file",
-      "mcp__serena-mcp__read_memory"
+      "mcp__serena-mcp__read_memory",
+      "Bash(for f in tests/*websocket*.py)",
+      "Bash(head:*)",
+      "Bash(while read f)",
+      "Bash(grep:*)",
+      "mcp__ake-mcp-v2__decommission_agent",
+      "mcp__ake-mcp-v2__assign_job",
+      "mcp__ake-mcp-v2__send_message",
+      "mcp__serena-mcp__create_text_file",
+      "Bash(ruff check:*)"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",

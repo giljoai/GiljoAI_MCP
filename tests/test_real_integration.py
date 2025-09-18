@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.enums import AgentRole, ProjectType
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
+from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2 as MissionTemplateGenerator
 
 
 async def test_real_orchestrator_integration():

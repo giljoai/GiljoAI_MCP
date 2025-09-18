@@ -11,7 +11,7 @@ import websockets
 
 async def test_websocket():
     client_id = str(uuid.uuid4())
-    uri = f"ws://localhost:8000/ws/{client_id}"
+    uri = f"ws://localhost:6002/ws/{client_id}"
 
     try:
         async with websockets.connect(uri) as websocket:

@@ -9,7 +9,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator, ProjectState
+from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator
 
 
 class TestOrchestratorIntegration:
@@ -36,7 +37,7 @@ class TestOrchestratorIntegration:
         mock_project = MagicMock()
         mock_project.id = str(uuid4())
         mock_project.name = "Test Project"
-        mock_project.status = ProjectState.DRAFT.value
+        mock_project.status = ProjectStatus.DRAFT.value
         mock_project.tenant_key = "test-tenant-123"
 
         # Mock the database operations
@@ -50,36 +51,36 @@ class TestOrchestratorIntegration:
             result = await orchestrator.create_project(name="Test Project", mission="Test mission")
 
         assert result == mock_project
-        assert mock_project.status == ProjectState.DRAFT.value
+        assert mock_project.status == ProjectStatus.DRAFT.value
         mock_session.add.assert_called_once()
 
         # Test activate project
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
 
         result = await orchestrator.activate_project(mock_project.id)
-        assert mock_project.status == ProjectState.ACTIVE.value
+        assert mock_project.status == ProjectStatus.ACTIVE.value
 
         # Test pause project
         mock_agents = [MagicMock(status="active")]
         mock_session.execute.return_value.scalars.return_value.all.return_value = mock_agents
 
         result = await orchestrator.pause_project(mock_project.id)
-        assert mock_project.status == ProjectState.PAUSED.value
+        assert mock_project.status == ProjectStatus.PAUSED.value
         assert mock_agents[0].status == "paused"
 
         # Test resume project
         result = await orchestrator.resume_project(mock_project.id)
-        assert mock_project.status == ProjectState.ACTIVE.value
+        assert mock_project.status == ProjectStatus.ACTIVE.value
 
         # Test complete project
         mock_agents[0].status = "active"
         result = await orchestrator.complete_project(mock_project.id, summary="Project completed successfully")
-        assert mock_project.status == ProjectState.COMPLETED.value
+        assert mock_project.status == ProjectStatus.COMPLETED.value
         assert mock_project.completion_summary == "Project completed successfully"
 
         # Test archive project
         result = await orchestrator.archive_project(mock_project.id)
-        assert mock_project.status == ProjectState.ARCHIVED.value
+        assert mock_project.status == ProjectStatus.ARCHIVED.value
 
     @pytest.mark.asyncio
     async def test_agent_lifecycle_with_handoff(self):
@@ -99,7 +100,7 @@ class TestOrchestratorIntegration:
         # Create mock project
         mock_project = MagicMock()
         mock_project.id = str(uuid4())
-        mock_project.status = ProjectState.ACTIVE.value
+        mock_project.status = ProjectStatus.ACTIVE.value
 
         # Test spawning analyzer agent
         mock_session.execute.return_value.scalar_one_or_none.side_effect = [
@@ -194,13 +195,13 @@ class TestOrchestratorIntegration:
         # Create three projects with different priorities
         projects = [
             MagicMock(
-                id="proj1", name="Critical Project", status=ProjectState.ACTIVE.value, priority=1, context_budget=0
+                id="proj1", name="Critical Project", status=ProjectStatus.ACTIVE.value, priority=1, context_budget=0
             ),
             MagicMock(
-                id="proj2", name="Normal Project 1", status=ProjectState.ACTIVE.value, priority=2, context_budget=0
+                id="proj2", name="Normal Project 1", status=ProjectStatus.ACTIVE.value, priority=2, context_budget=0
             ),
             MagicMock(
-                id="proj3", name="Normal Project 2", status=ProjectState.ACTIVE.value, priority=2, context_budget=0
+                id="proj3", name="Normal Project 2", status=ProjectStatus.ACTIVE.value, priority=2, context_budget=0
             ),
         ]
 
@@ -238,7 +239,7 @@ class TestOrchestratorIntegration:
         # Create project and agent nearing context limit
         mock_project = MagicMock()
         mock_project.id = "test-project"
-        mock_project.status = ProjectState.ACTIVE.value
+        mock_project.status = ProjectStatus.ACTIVE.value
 
         mock_agent = MagicMock()
         mock_agent.id = "agent1"

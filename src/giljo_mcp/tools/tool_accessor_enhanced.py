@@ -16,12 +16,12 @@ from uuid import UUID, uuid4
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
-from giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.database import DatabaseManager
 
 # Import from centralized exceptions
-from giljo_mcp.exceptions import DatabaseError, RetryExhaustedError, ValidationError
-from giljo_mcp.models import Agent, Message, Project, Task
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.exceptions import DatabaseError, RetryExhaustedError, ValidationError
+from src.giljo_mcp.models import Agent, Message, Project, Task
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

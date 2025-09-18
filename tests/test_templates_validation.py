@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.enums import AgentRole, ProjectType
+from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2 as MissionTemplateGenerator
 from src.giljo_mcp.template_manager import get_template_manager
 
 
@@ -20,6 +21,7 @@ def test_all_methods():
     """Test every method in MissionTemplateGenerator."""
 
     template_manager = get_template_manager()
+    generator = MissionTemplateGenerator()
     results = []
 
     # Test 1: generate_orchestrator_mission
@@ -28,7 +30,7 @@ def test_all_methods():
         project_name="Test Project",
         project_mission="Test comprehensive mission generation",
         product_name="Test Product",
-        additional_context={"project_type": ProjectType.ORCHESTRATION},
+        additional_context="project_type: orchestration",
     )
     elapsed = (time.time() - start) * 1000
 
@@ -129,9 +131,10 @@ def test_all_methods():
 
 def test_project_type_customizations():
     """Test project type customizations."""
-
+    
     template_manager = get_template_manager()
-
+    generator = MissionTemplateGenerator()
+    
     project_types = [
         (ProjectType.FOUNDATION, "Database schema"),
         (ProjectType.MCP_INTEGRATION, "Protocol compliance"),
@@ -155,9 +158,10 @@ def test_project_type_customizations():
 
 def test_performance():
     """Test performance requirements."""
-
+    
     template_manager = get_template_manager()
-
+    generator = MissionTemplateGenerator()
+    
     # Test 100 template generations
     start = time.time()
 
@@ -180,9 +184,10 @@ def test_performance():
 
 def test_edge_cases():
     """Test edge cases."""
-
+    
     template_manager = get_template_manager()
-
+    generator = MissionTemplateGenerator()
+    
     # Test 1: Very long project name/mission
     long_name = "A" * 1000
     long_mission = "B" * 5000

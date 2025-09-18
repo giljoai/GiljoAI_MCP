@@ -16,12 +16,12 @@ from fastmcp import FastMCP
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.database import DatabaseManager
 
 # Import from centralized exceptions
-from giljo_mcp.exceptions import GitAuthenticationError, GitOperationError
-from giljo_mcp.models import GitCommit, GitConfig, Project
-from giljo_mcp.tenant import TenantManager, current_tenant
+from src.giljo_mcp.exceptions import GitAuthenticationError, GitOperationError
+from src.giljo_mcp.models import GitCommit, GitConfig, Project
+from src.giljo_mcp.tenant import TenantManager, current_tenant
 
 
 logger = logging.getLogger(__name__)

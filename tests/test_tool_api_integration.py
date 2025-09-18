@@ -22,13 +22,13 @@ from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 class TestToolAPIIntegration:
     """Comprehensive integration tests for Tool-API bridge"""
 
-    def __init__(self):
-        self.db_manager = None
-        self.tenant_manager = None
-        self.tool_accessor = None
-        self.test_project_id = None
-        self.test_agent_name = "test_agent"
-        self.performance_metrics = {}
+    # Class-level attributes instead of __init__
+    db_manager = None
+    tenant_manager = None
+    tool_accessor = None
+    test_project_id = None
+    test_agent_name = "test_agent"
+    performance_metrics = {}
 
     async def setup(self):
         """Setup test environment"""

@@ -9,6 +9,9 @@ import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+from src.giljo_mcp.config_manager import load_config
+from src.giljo_mcp.template_adapter import MissionTemplateGenerator
 from uuid import uuid4
 
 

@@ -8,7 +8,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator, ProjectState
+from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator
 
 
 @pytest.fixture
@@ -55,7 +56,7 @@ class TestProjectLifecycle:
 
         assert created_project is not None
         assert created_project.tenant_key == "test-tenant-123"
-        assert created_project.status == ProjectState.DRAFT.value
+        assert created_project.status == ProjectStatus.DRAFT.value
         assert created_project.name == "Test Project"
 
     @pytest.mark.asyncio
@@ -66,37 +67,37 @@ class TestProjectLifecycle:
         # Create mock project
         mock_project = MagicMock()
         mock_project.id = str(uuid4())
-        mock_project.status = ProjectState.DRAFT.value
+        mock_project.status = ProjectStatus.DRAFT.value
 
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
         mock_session.commit = AsyncMock()
 
         # Draft -> Active
         await orchestrator.activate_project(mock_project.id)
-        assert mock_project.status == ProjectState.ACTIVE.value
+        assert mock_project.status == ProjectStatus.ACTIVE.value
 
         # Active -> Paused (with agents)
         mock_agents = [MagicMock(status="active")]
         mock_session.execute.return_value.scalars.return_value.all.return_value = mock_agents
 
         await orchestrator.pause_project(mock_project.id)
-        assert mock_project.status == ProjectState.PAUSED.value
+        assert mock_project.status == ProjectStatus.PAUSED.value
         assert mock_agents[0].status == "paused"
 
         # Paused -> Active
         await orchestrator.resume_project(mock_project.id)
-        assert mock_project.status == ProjectState.ACTIVE.value
+        assert mock_project.status == ProjectStatus.ACTIVE.value
 
         # Active -> Completed
         mock_agents[0].status = "active"
         await orchestrator.complete_project(mock_project.id, "Done")
-        assert mock_project.status == ProjectState.COMPLETED.value
+        assert mock_project.status == ProjectStatus.COMPLETED.value
         assert mock_agents[0].status == "completed"
 
         # Completed -> Archived
         mock_session.execute.return_value.scalars.return_value.all.return_value = []
         await orchestrator.archive_project(mock_project.id)
-        assert mock_project.status == ProjectState.ARCHIVED.value
+        assert mock_project.status == ProjectStatus.ARCHIVED.value
 
     @pytest.mark.asyncio
     async def test_invalid_state_transitions(self, orchestrator):
@@ -108,17 +109,17 @@ class TestProjectLifecycle:
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
 
         # Can't pause draft project
-        mock_project.status = ProjectState.DRAFT.value
+        mock_project.status = ProjectStatus.DRAFT.value
         with pytest.raises(ValueError, match="Cannot pause"):
             await orchestrator.pause_project(mock_project.id)
 
         # Can't activate completed project
-        mock_project.status = ProjectState.COMPLETED.value
+        mock_project.status = ProjectStatus.COMPLETED.value
         with pytest.raises(ValueError, match="Cannot activate"):
             await orchestrator.activate_project(mock_project.id)
 
         # Can't archive active project
-        mock_project.status = ProjectState.ACTIVE.value
+        mock_project.status = ProjectStatus.ACTIVE.value
         with pytest.raises(ValueError, match="Only completed"):
             await orchestrator.archive_project(mock_project.id)
 
@@ -328,7 +329,7 @@ class TestMultiProjectSupport:
         """Test retrieving active projects for tenant."""
         mock_session = orchestrator._mock_session
 
-        mock_projects = [MagicMock(status=ProjectState.ACTIVE.value), MagicMock(status=ProjectState.ACTIVE.value)]
+        mock_projects = [MagicMock(status=ProjectStatus.ACTIVE.value), MagicMock(status=ProjectStatus.ACTIVE.value)]
         mock_session.execute.return_value.scalars.return_value.all.return_value = mock_projects
 
         result = await orchestrator.get_active_projects("tenant-key")
@@ -340,9 +341,9 @@ class TestMultiProjectSupport:
         mock_session = orchestrator._mock_session
 
         projects = [
-            MagicMock(id="p1", priority=1, status=ProjectState.ACTIVE.value),
-            MagicMock(id="p2", priority=2, status=ProjectState.ACTIVE.value),
-            MagicMock(id="p3", priority=2, status=ProjectState.ACTIVE.value),
+            MagicMock(id="p1", priority=1, status=ProjectStatus.ACTIVE.value),
+            MagicMock(id="p2", priority=2, status=ProjectStatus.ACTIVE.value),
+            MagicMock(id="p3", priority=2, status=ProjectStatus.ACTIVE.value),
         ]
 
         mock_session.execute.return_value.scalars.return_value.all.return_value = projects

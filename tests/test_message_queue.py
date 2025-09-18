@@ -10,8 +10,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Message
-from src.giljo_mcp.queue import (
+from src.giljo_mcp.message_queue import (
     CircuitBreaker,
     ContentRoutingRule,
     DeadLetterQueue,
@@ -22,6 +21,7 @@ from src.giljo_mcp.queue import (
     RoutingEngine,
     TypeRoutingRule,
 )
+from src.giljo_mcp.models import Message
 from src.giljo_mcp.tenant import TenantManager
 
 

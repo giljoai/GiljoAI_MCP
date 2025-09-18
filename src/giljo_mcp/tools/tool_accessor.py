@@ -10,9 +10,9 @@ from uuid import uuid4
 
 from sqlalchemy import select, update
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, Message, Project, Task
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Agent, Message, Project, Task
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class ToolAccessor:
                     # Get agent count and message count for this project
                     agent_count = 0
                     message_count = 0
-                    
+
                     project_list.append(
                         {
                             "id": str(project.id),

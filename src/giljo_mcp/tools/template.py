@@ -12,10 +12,10 @@ from fastmcp import FastMCP
 from sqlalchemy import and_, select, update
 from sqlalchemy.orm import selectinload
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
-from giljo_mcp.template_manager import extract_variables, process_template
-from giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from src.giljo_mcp.template_manager import extract_variables, process_template
+from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

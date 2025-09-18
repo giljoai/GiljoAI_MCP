@@ -9,9 +9,12 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.giljo_mcp.database import init_db
 from src.giljo_mcp.models import AgentInteraction
+from src.giljo_mcp.tools.agent import AgentTools
 
 
 class TestSubAgentLifecycle:

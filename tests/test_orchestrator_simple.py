@@ -4,7 +4,8 @@ Simple tests for ProjectOrchestrator that don't require database.
 
 import pytest
 
-from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator, ProjectState
+from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ContextStatus, ProjectOrchestrator
 
 
 class TestContextStatusIndicators:
@@ -87,16 +88,16 @@ class TestAgentMissionTemplates:
         assert "security best practices" in mission
 
 
-class TestProjectStates:
+class TestProjectStatuss:
     """Test project state transitions logic."""
 
     def test_state_enum_values(self):
         """Test state enum has correct values."""
-        assert ProjectState.DRAFT.value == "draft"
-        assert ProjectState.ACTIVE.value == "active"
-        assert ProjectState.PAUSED.value == "paused"
-        assert ProjectState.COMPLETED.value == "completed"
-        assert ProjectState.ARCHIVED.value == "archived"
+        assert ProjectStatus.DRAFT.value == "draft"
+        assert ProjectStatus.ACTIVE.value == "active"
+        assert ProjectStatus.PAUSED.value == "paused"
+        assert ProjectStatus.COMPLETED.value == "completed"
+        assert ProjectStatus.ARCHIVED.value == "archived"
 
 
 class TestHandoffLogic:

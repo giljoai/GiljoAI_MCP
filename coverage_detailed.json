@@ -1,0 +1,158 @@
+{
+  "coverage_analysis": {
+    "timestamp": "2025-09-17T23:28:56",
+    "baseline_coverage": "23.56%",
+    "gtm_target": "80.00%",
+    "coverage_gap": "56.44%",
+    "total_statements": 6018,
+    "covered_statements": 1655,
+    "uncovered_statements": 4363,
+    "analysis_method": "pytest --cov=src.giljo_mcp"
+  },
+  "priority_modules": {
+    "critical_for_gtm": [
+      {
+        "module": "src/giljo_mcp/api/app.py",
+        "current_coverage": "0.00%",
+        "priority": "CRITICAL",
+        "reason": "Main API entry point - essential for product functionality",
+        "statements": 11,
+        "missing": 11
+      },
+      {
+        "module": "src/giljo_mcp/api/websocket.py", 
+        "current_coverage": "0.00%",
+        "priority": "CRITICAL",
+        "reason": "Real-time communication core - product differentiator",
+        "statements": 75,
+        "missing": 75
+      },
+      {
+        "module": "src/giljo_mcp/api/endpoints/tasks.py",
+        "current_coverage": "0.00%",
+        "priority": "CRITICAL", 
+        "reason": "Task management API - core business logic",
+        "statements": 14,
+        "missing": 14
+      },
+      {
+        "module": "src/giljo_mcp/server.py",
+        "current_coverage": "0.00%",
+        "priority": "CRITICAL",
+        "reason": "MCP server implementation - product foundation",
+        "statements": 102,
+        "missing": 102
+      }
+    ],
+    "high_value_partially_covered": [
+      {
+        "module": "src/giljo_mcp/orchestrator.py",
+        "current_coverage": "39.82%",
+        "priority": "HIGH",
+        "reason": "Core orchestration logic - main product feature",
+        "statements": 260,
+        "covered": 109,
+        "missing": 151
+      },
+      {
+        "module": "src/giljo_mcp/message_queue.py",
+        "current_coverage": "49.80%", 
+        "priority": "HIGH",
+        "reason": "Message routing system - reliability critical",
+        "statements": 416,
+        "covered": 221,
+        "missing": 195
+      },
+      {
+        "module": "src/giljo_mcp/database.py",
+        "current_coverage": "57.89%",
+        "priority": "HIGH", 
+        "reason": "Data persistence layer - data integrity",
+        "statements": 150,
+        "covered": 96,
+        "missing": 54
+      },
+      {
+        "module": "src/giljo_mcp/config_manager.py",
+        "current_coverage": "48.50%",
+        "priority": "HIGH",
+        "reason": "Configuration management - deployment flexibility",
+        "statements": 539,
+        "covered": 290,
+        "missing": 249
+      }
+    ]
+  },
+  "coverage_by_category": {
+    "api_layer": {
+      "coverage": "0.00%",
+      "modules": ["api/app.py", "api/websocket.py", "api/endpoints/tasks.py"],
+      "total_statements": 100,
+      "covered": 0,
+      "impact": "BLOCKING - No API functionality tested"
+    },
+    "orchestration_core": {
+      "coverage": "39.82%", 
+      "modules": ["orchestrator.py", "message_queue.py"],
+      "total_statements": 676,
+      "covered": 330,
+      "impact": "HIGH - Core business logic partially validated"
+    },
+    "data_layer": {
+      "coverage": "57.89%",
+      "modules": ["database.py", "models.py"],
+      "total_statements": 547,
+      "covered": 408,
+      "impact": "MEDIUM - Data integrity mostly validated"
+    },
+    "tools_framework": {
+      "coverage": "6.85%",
+      "modules": ["tools/*.py"],
+      "total_statements": 2259,
+      "covered": 155,
+      "impact": "HIGH - Tool ecosystem largely untested"
+    }
+  },
+  "gtm_blocking_issues": [
+    {
+      "issue": "Zero API Coverage",
+      "description": "All API endpoints (0% coverage) represent complete product functionality gap",
+      "business_impact": "Cannot ship product without tested API layer",
+      "resolution": "Implement comprehensive API integration tests",
+      "effort_estimate": "5-8 days"
+    },
+    {
+      "issue": "WebSocket Infrastructure Untested", 
+      "description": "Real-time communication (0% coverage) - key differentiator",
+      "business_impact": "Product's real-time features are unreliable",
+      "resolution": "Create WebSocket integration test suite",
+      "effort_estimate": "3-5 days"
+    },
+    {
+      "issue": "Tools Framework Coverage Gap",
+      "description": "MCP tools (6.85% coverage) are the product's value proposition",
+      "business_impact": "Core functionality cannot be guaranteed",
+      "resolution": "Build comprehensive tools integration tests",
+      "effort_estimate": "8-12 days"
+    }
+  ],
+  "recommendations": {
+    "immediate_priority": [
+      "Implement API layer integration tests (blocking for GTM)",
+      "Create WebSocket test scenarios (product differentiator)",
+      "Build orchestrator workflow tests (core business logic)"
+    ],
+    "testing_strategy": {
+      "integration_tests": "Focus on end-to-end workflows",
+      "api_tests": "Test all endpoints with realistic scenarios", 
+      "performance_tests": "Validate under production load",
+      "error_handling": "Test failure modes and recovery"
+    },
+    "path_to_80_percent": {
+      "phase_1": "API & WebSocket coverage (estimated +30%)",
+      "phase_2": "Orchestrator workflow coverage (estimated +20%)", 
+      "phase_3": "Tools framework coverage (estimated +25%)",
+      "timeline": "3-4 weeks for GTM readiness"
+    }
+  }
+}

@@ -16,8 +16,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.giljo_mcp.enums import MessageStatus
+from src.giljo_mcp.message_queue import MessagePriority, MessageQueue
 from src.giljo_mcp.models import Message
-from src.giljo_mcp.queue import MessagePriority, MessageQueue
 from tests.fixtures.base_fixtures import TestData
 from tests.fixtures.base_test import BaseAsyncTest
 

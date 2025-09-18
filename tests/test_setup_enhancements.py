@@ -4,17 +4,17 @@ Comprehensive test suite for Project 5.2 Setup Enhancements
 Tests all new setup modules and functionality
 """
 
-import os
-import sys
 import json
-import time
+import os
 import platform
-import unittest
-import tempfile
 import shutil
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+import sys
+import tempfile
+import time
+import unittest
 from datetime import datetime
+from pathlib import Path
+
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -27,11 +27,11 @@ except ImportError:
     GUI_AVAILABLE = False
 
 try:
-    import setup_gui
-    import setup_platform
-    import setup_migration
-    import setup_dependencies
     import setup_config
+    import setup_dependencies
+    import setup_gui
+    import setup_migration
+    import setup_platform
     from setup import GiljoSetup
     MODULES_AVAILABLE = True
 except ImportError as e:
@@ -56,21 +56,21 @@ class TestPlatformDetection(unittest.TestCase):
     def test_os_detection(self):
         """Test operating system detection"""
         info = self.detector.get_full_info()
-        self.assertIn('system', info)
-        self.assertIn('version', info)
-        self.assertIn('architecture', info)
-        self.assertIn(info['system'], ['Windows', 'macOS', 'Linux'])
+        self.assertIn("system", info)
+        self.assertIn("version", info)
+        self.assertIn("architecture", info)
+        self.assertIn(info["system"], ["Windows", "macOS", "Linux"])
         print(f"✓ Platform detected: {info['system']} {info.get('version', 'unknown')} ({info['architecture']})")
 
     def test_package_manager_detection(self):
         """Test package manager detection"""
         info = self.detector.get_full_info()
-        managers = info.get('package_managers', [])
+        managers = info.get("package_managers", [])
         self.assertIsInstance(managers, list)
 
         # Windows should detect at least one package manager
-        if self.detector.system == 'Windows':
-            expected = ['pip', 'conda', 'choco', 'winget', 'scoop']
+        if self.detector.system == "Windows":
+            expected = ["pip", "conda", "choco", "winget", "scoop"]
             found = [m for m in managers if any(exp in m for exp in expected)]
             self.assertTrue(len(found) > 0 or len(managers) > 0,
                           f"Package managers found: {managers}")
@@ -80,19 +80,19 @@ class TestPlatformDetection(unittest.TestCase):
     def test_python_environment(self):
         """Test Python environment detection"""
         info = self.detector.get_full_info()
-        self.assertIn('python_version', info)
-        self.assertIn('virtual_env', info)
+        self.assertIn("python_version", info)
+        self.assertIn("virtual_env", info)
         print(f"✓ Python {info['python_version']}, Virtual env: {info.get('virtual_env', 'None')}")
 
     def test_system_capabilities(self):
         """Test system capabilities detection"""
         info = self.detector.get_full_info()
-        caps = info.get('capabilities', {})
+        caps = info.get("capabilities", {})
 
         # Check for various capabilities
-        has_git = 'git_version' in info or caps.get('git', False)
-        has_docker = caps.get('docker', False)
-        is_admin = caps.get('admin_rights', False) or info.get('admin_rights', False)
+        has_git = "git_version" in info or caps.get("git", False)
+        has_docker = caps.get("docker", False)
+        is_admin = caps.get("admin_rights", False) or info.get("admin_rights", False)
 
         print(f"✓ System capabilities: Admin={is_admin}, Git={has_git}, Docker={has_docker}")
 
@@ -127,10 +127,10 @@ class TestGUIWizard(unittest.TestCase):
         wizard = setup_gui.SetupWizard(show=False)
 
         # Test environment validation
-        is_valid = wizard.validate_page_1({'environment': 'dev'})
+        is_valid = wizard.validate_page_1({"environment": "dev"})
         self.assertTrue(is_valid)
 
-        is_valid = wizard.validate_page_1({'environment': 'invalid'})
+        is_valid = wizard.validate_page_1({"environment": "invalid"})
         self.assertFalse(is_valid)
         print("✓ GUI validation working")
 
@@ -157,7 +157,7 @@ class TestDependencyManagement(unittest.TestCase):
     def test_requirements_parsing(self):
         """Test requirements.txt parsing"""
         # Create temporary requirements file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("fastapi>=0.100.0\n")
             f.write("sqlalchemy[asyncio]>=2.0.0\n")
             f.write("# Optional dependencies\n")
@@ -169,8 +169,8 @@ class TestDependencyManagement(unittest.TestCase):
             core, optional = self.dep_manager.parse_requirements(temp_req)
             self.assertEqual(len(core), 2)
             self.assertEqual(len(optional), 2)
-            self.assertIn('fastapi', core[0])
-            self.assertIn('redis', optional[0])
+            self.assertIn("fastapi", core[0])
+            self.assertIn("redis", optional[0])
             print(f"✓ Parsed {len(core)} core and {len(optional)} optional dependencies")
         finally:
             os.unlink(temp_req)
@@ -179,31 +179,31 @@ class TestDependencyManagement(unittest.TestCase):
         """Test checking for installed packages"""
         installed = self.dep_manager.get_installed_packages()
         self.assertIsInstance(installed, dict)
-        self.assertIn('pip', installed)  # pip should always be installed
+        self.assertIn("pip", installed)  # pip should always be installed
         print(f"✓ Found {len(installed)} installed packages")
 
     def test_venv_detection(self):
         """Test virtual environment detection"""
         venv_info = self.dep_manager.detect_venv()
-        self.assertIn('active', venv_info)
-        self.assertIn('path', venv_info)
+        self.assertIn("active", venv_info)
+        self.assertIn("path", venv_info)
         print(f"✓ Virtual environment active: {venv_info['active']}")
 
     def test_install_script_generation(self):
         """Test installation script generation"""
-        deps = ['fastapi', 'sqlalchemy', 'httpx']
+        deps = ["fastapi", "sqlalchemy", "httpx"]
 
         # Windows script
-        if sys.platform == 'win32':
-            script = self.dep_manager.generate_install_script(deps, 'windows')
-            self.assertIn('.bat', script)
-            self.assertIn('pip install', script)
+        if sys.platform == "win32":
+            script = self.dep_manager.generate_install_script(deps, "windows")
+            self.assertIn(".bat", script)
+            self.assertIn("pip install", script)
             print("✓ Windows .bat script generated")
 
         # Unix script
-        script = self.dep_manager.generate_install_script(deps, 'unix')
-        self.assertIn('.sh', script)
-        self.assertIn('#!/bin/bash', script)
+        script = self.dep_manager.generate_install_script(deps, "unix")
+        self.assertIn(".sh", script)
+        self.assertIn("#!/bin/bash", script)
         print("✓ Unix .sh script generated")
 
 class TestMigrationTool(unittest.TestCase):
@@ -222,8 +222,8 @@ class TestMigrationTool(unittest.TestCase):
         ake_exists = self.migrator.detect_ake_mcp()
         if ake_exists:
             info = self.migrator.get_ake_info()
-            self.assertIn('path', info)
-            self.assertIn('database', info)
+            self.assertIn("path", info)
+            self.assertIn("database", info)
             print(f"✓ AKE-MCP detected at {info['path']}")
         else:
             print("✓ AKE-MCP not found at F:/AKE-MCP (expected in test environment)")
@@ -232,14 +232,14 @@ class TestMigrationTool(unittest.TestCase):
         """Test migration data structure creation"""
         # Create mock data
         mock_data = {
-            'projects': [
-                {'id': 'proj-1', 'name': 'Test Project', 'mission': 'Test mission'}
+            "projects": [
+                {"id": "proj-1", "name": "Test Project", "mission": "Test mission"}
             ],
-            'agents': [
-                {'id': 'agent-1', 'name': 'test_agent', 'project_id': 'proj-1'}
+            "agents": [
+                {"id": "agent-1", "name": "test_agent", "project_id": "proj-1"}
             ],
-            'messages': [
-                {'id': 'msg-1', 'from': 'agent-1', 'content': 'Test message'}
+            "messages": [
+                {"id": "msg-1", "from": "agent-1", "content": "Test message"}
             ]
         }
 
@@ -250,7 +250,7 @@ class TestMigrationTool(unittest.TestCase):
 
     def test_uuid_preservation(self):
         """Test UUID preservation during migration"""
-        original_uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+        original_uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         preserved = self.migrator.preserve_uuid(original_uuid)
         self.assertEqual(original_uuid, preserved)
         print("✓ UUID preservation working")
@@ -258,22 +258,22 @@ class TestMigrationTool(unittest.TestCase):
     def test_vision_document_copying(self):
         """Test vision document migration"""
         # Create mock vision directory
-        vision_dir = Path(self.test_dir) / 'Vision'
+        vision_dir = Path(self.test_dir) / "Vision"
         vision_dir.mkdir()
 
         # Create mock vision file
-        vision_file = vision_dir / 'test_vision.md'
+        vision_file = vision_dir / "test_vision.md"
         vision_file.write_text("# Test Vision Document\n\nThis is a test.")
 
         # Test copying
-        dest_dir = Path(self.test_dir) / 'dest'
+        dest_dir = Path(self.test_dir) / "dest"
         dest_dir.mkdir()
 
         success = self.migrator.copy_vision_documents(str(vision_dir), str(dest_dir))
         self.assertTrue(success)
 
         # Verify file was copied
-        copied_file = dest_dir / 'Vision' / 'test_vision.md'
+        copied_file = dest_dir / "Vision" / "test_vision.md"
         self.assertTrue(copied_file.exists())
         print("✓ Vision documents copied successfully")
 
@@ -290,26 +290,26 @@ class TestConfigurationManagement(unittest.TestCase):
     def test_config_export(self):
         """Test configuration export to JSON/YAML"""
         config = {
-            'environment': 'dev',
-            'database': {
-                'type': 'sqlite',
-                'path': 'test.db'
+            "environment": "dev",
+            "database": {
+                "type": "sqlite",
+                "path": "test.db"
             },
-            'api_keys': {
-                'openai': 'sk-test-key'
+            "api_keys": {
+                "openai": "sk-test-key"
             }
         }
 
         # Export to JSON
-        json_file = Path(self.test_dir) / 'config.json'
-        success = self.config_manager.export_config(config, str(json_file), format='json')
+        json_file = Path(self.test_dir) / "config.json"
+        success = self.config_manager.export_config(config, str(json_file), format="json")
         self.assertTrue(success)
         self.assertTrue(json_file.exists())
         print("✓ Configuration exported to JSON")
 
         # Export to YAML
-        yaml_file = Path(self.test_dir) / 'config.yaml'
-        success = self.config_manager.export_config(config, str(yaml_file), format='yaml')
+        yaml_file = Path(self.test_dir) / "config.yaml"
+        success = self.config_manager.export_config(config, str(yaml_file), format="yaml")
         self.assertTrue(success)
         self.assertTrue(yaml_file.exists())
         print("✓ Configuration exported to YAML")
@@ -318,61 +318,61 @@ class TestConfigurationManagement(unittest.TestCase):
         """Test configuration import from JSON/YAML"""
         # Create test config file
         config = {
-            'environment': 'prod',
-            'database': {'type': 'postgresql'}
+            "environment": "prod",
+            "database": {"type": "postgresql"}
         }
 
-        json_file = Path(self.test_dir) / 'import.json'
-        with open(json_file, 'w') as f:
+        json_file = Path(self.test_dir) / "import.json"
+        with open(json_file, "w") as f:
             json.dump(config, f)
 
         # Import configuration
         imported = self.config_manager.import_config(str(json_file))
         self.assertIsNotNone(imported)
-        self.assertEqual(imported['environment'], 'prod')
+        self.assertEqual(imported["environment"], "prod")
         print("✓ Configuration imported successfully")
 
     def test_config_encryption(self):
         """Test sensitive data encryption"""
         config = {
-            'api_keys': {
-                'openai': 'sk-sensitive-key',
-                'anthropic': 'ant-sensitive-key'
+            "api_keys": {
+                "openai": "sk-sensitive-key",
+                "anthropic": "ant-sensitive-key"
             }
         }
 
         # Encrypt sensitive fields
         encrypted = self.config_manager.encrypt_sensitive(config)
-        self.assertNotEqual(encrypted['api_keys']['openai'], 'sk-sensitive-key')
+        self.assertNotEqual(encrypted["api_keys"]["openai"], "sk-sensitive-key")
         print("✓ Sensitive data encrypted")
 
         # Decrypt
         decrypted = self.config_manager.decrypt_sensitive(encrypted)
-        self.assertEqual(decrypted['api_keys']['openai'], 'sk-sensitive-key')
+        self.assertEqual(decrypted["api_keys"]["openai"], "sk-sensitive-key")
         print("✓ Sensitive data decrypted")
 
     def test_profile_management(self):
         """Test configuration profiles"""
         # Create profiles
-        dev_profile = {'environment': 'dev', 'debug': True}
-        prod_profile = {'environment': 'prod', 'debug': False}
+        dev_profile = {"environment": "dev", "debug": True}
+        prod_profile = {"environment": "prod", "debug": False}
 
-        self.config_manager.save_profile('development', dev_profile)
-        self.config_manager.save_profile('production', prod_profile)
+        self.config_manager.save_profile("development", dev_profile)
+        self.config_manager.save_profile("production", prod_profile)
 
         # Load profiles
-        loaded_dev = self.config_manager.load_profile('development')
-        self.assertEqual(loaded_dev['environment'], 'dev')
+        loaded_dev = self.config_manager.load_profile("development")
+        self.assertEqual(loaded_dev["environment"], "dev")
 
-        loaded_prod = self.config_manager.load_profile('production')
-        self.assertEqual(loaded_prod['environment'], 'prod')
+        loaded_prod = self.config_manager.load_profile("production")
+        self.assertEqual(loaded_prod["environment"], "prod")
         print("✓ Configuration profiles working")
 
     def test_backup_restore(self):
         """Test configuration backup and restore"""
         original_config = {
-            'version': '1.0',
-            'environment': 'test'
+            "version": "1.0",
+            "environment": "test"
         }
 
         # Create backup
@@ -382,14 +382,14 @@ class TestConfigurationManagement(unittest.TestCase):
 
         # Modify config
         modified_config = {
-            'version': '2.0',
-            'environment': 'modified'
+            "version": "2.0",
+            "environment": "modified"
         }
 
         # Restore from backup
         restored = self.config_manager.restore_backup(backup_path)
-        self.assertEqual(restored['version'], '1.0')
-        self.assertEqual(restored['environment'], 'test')
+        self.assertEqual(restored["version"], "1.0")
+        self.assertEqual(restored["environment"], "test")
         print("✓ Configuration restored from backup")
 
 class TestPerformanceMetrics(unittest.TestCase):
@@ -415,9 +415,9 @@ class TestPerformanceMetrics(unittest.TestCase):
 
         # Test default configuration works without any input
         config = setup.get_default_config()
-        self.assertEqual(config['environment'], 'development')
-        self.assertEqual(config['database']['type'], 'sqlite')
-        self.assertEqual(config['api']['host'], 'localhost')
+        self.assertEqual(config["environment"], "development")
+        self.assertEqual(config["database"]["type"], "sqlite")
+        self.assertEqual(config["api"]["host"], "localhost")
         print("✓ Zero-config mode operational")
 
     def test_memory_usage(self):
@@ -447,22 +447,22 @@ class TestBackwardCompatibility(unittest.TestCase):
         setup = GiljoSetup()
 
         # Test original CLI methods exist
-        self.assertTrue(hasattr(setup, 'run'))
-        self.assertTrue(hasattr(setup, 'detect_platform'))
-        self.assertTrue(hasattr(setup, 'setup_database'))
-        self.assertTrue(hasattr(setup, 'create_directories'))
+        self.assertTrue(hasattr(setup, "run"))
+        self.assertTrue(hasattr(setup, "detect_platform"))
+        self.assertTrue(hasattr(setup, "setup_database"))
+        self.assertTrue(hasattr(setup, "create_directories"))
         print("✓ Original CLI methods preserved")
 
     def test_existing_config_compatibility(self):
         """Test existing configuration files still work"""
         # Create old-style config
         old_config = {
-            'database_url': 'sqlite:///giljo_mcp.db',
-            'api_port': 6002,
-            'websocket_port': 6003
+            "database_url": "sqlite:///giljo_mcp.db",
+            "api_port": 6002,
+            "websocket_port": 6003
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             import yaml
             yaml.dump(old_config, f)
             temp_config = f.name
@@ -480,18 +480,18 @@ class TestBackwardCompatibility(unittest.TestCase):
         """Test .env file generation compatibility"""
         setup = GiljoSetup()
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             env_path = f.name
 
         try:
-            setup.generate_env_file(env_path, environment='dev')
+            setup.generate_env_file(env_path, environment="dev")
 
             # Check env file contains expected variables
-            with open(env_path, 'r') as f:
+            with open(env_path) as f:
                 content = f.read()
-                self.assertIn('DATABASE_URL', content)
-                self.assertIn('API_HOST', content)
-                self.assertIn('API_PORT', content)
+                self.assertIn("DATABASE_URL", content)
+                self.assertIn("API_HOST", content)
+                self.assertIn("API_PORT", content)
             print("✓ .env file generation compatible")
         finally:
             os.unlink(env_path)
@@ -504,23 +504,23 @@ class TestCrossPlatformCompatibility(unittest.TestCase):
         from pathlib import Path
 
         # Test paths work across platforms
-        config_dir = Path.home() / '.giljo-mcp'
+        config_dir = Path.home() / ".giljo-mcp"
         self.assertIsInstance(config_dir, Path)
 
         # Test no hardcoded separators
-        test_path = Path('docs') / 'Vision' / 'test.md'
-        self.assertNotIn('\\', str(test_path).replace(os.sep, ''))
-        self.assertNotIn('//', str(test_path))
+        test_path = Path("docs") / "Vision" / "test.md"
+        self.assertNotIn("\\", str(test_path).replace(os.sep, ""))
+        self.assertNotIn("//", str(test_path))
         print("✓ Path handling is OS-neutral")
 
     def test_line_endings(self):
         """Test file line endings handled correctly"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("Line 1\nLine 2\r\nLine 3\r")
             temp_file = f.name
 
         try:
-            with open(temp_file, 'r') as f:
+            with open(temp_file) as f:
                 lines = f.readlines()
                 # Should handle all line ending types
                 self.assertTrue(len(lines) >= 3)
@@ -530,12 +530,12 @@ class TestCrossPlatformCompatibility(unittest.TestCase):
 
     def test_executable_permissions(self):
         """Test executable permissions on scripts"""
-        scripts = ['setup.py', 'setup_gui.py', 'setup_platform.py']
+        scripts = ["setup.py", "setup_gui.py", "setup_platform.py"]
 
         for script in scripts:
             if os.path.exists(script):
                 # On Windows, check file exists and is readable
-                if sys.platform == 'win32':
+                if sys.platform == "win32":
                     self.assertTrue(os.access(script, os.R_OK))
                 # On Unix, check executable bit
                 else:
@@ -545,25 +545,25 @@ class TestCrossPlatformCompatibility(unittest.TestCase):
 def generate_test_report(results):
     """Generate comprehensive test report"""
     report = {
-        'timestamp': datetime.now().isoformat(),
-        'platform': {
-            'system': platform.system(),
-            'release': platform.release(),
-            'architecture': platform.machine(),
-            'python': platform.python_version()
+        "timestamp": datetime.now().isoformat(),
+        "platform": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "architecture": platform.machine(),
+            "python": platform.python_version()
         },
-        'test_results': results,
-        'summary': {
-            'total': results['total'],
-            'passed': results['passed'],
-            'failed': results['failed'],
-            'skipped': results['skipped'],
-            'success_rate': f"{(results['passed'] / results['total'] * 100):.1f}%" if results['total'] > 0 else "0%"
+        "test_results": results,
+        "summary": {
+            "total": results["total"],
+            "passed": results["passed"],
+            "failed": results["failed"],
+            "skipped": results["skipped"],
+            "success_rate": f"{(results['passed'] / results['total'] * 100):.1f}%" if results["total"] > 0 else "0%"
         }
     }
 
     # Save report
-    with open('setup_enhancement_test_report.json', 'w') as f:
+    with open("setup_enhancement_test_report.json", "w") as f:
         json.dump(report, f, indent=2)
 
     return report
@@ -602,12 +602,12 @@ def main():
 
     # Generate results summary
     results = {
-        'total': result.testsRun,
-        'passed': result.testsRun - len(result.failures) - len(result.errors) - len(result.skipped),
-        'failed': len(result.failures) + len(result.errors),
-        'skipped': len(result.skipped),
-        'failures': [str(f) for f in result.failures],
-        'errors': [str(e) for e in result.errors]
+        "total": result.testsRun,
+        "passed": result.testsRun - len(result.failures) - len(result.errors) - len(result.skipped),
+        "failed": len(result.failures) + len(result.errors),
+        "skipped": len(result.skipped),
+        "failures": [str(f) for f in result.failures],
+        "errors": [str(e) for e in result.errors]
     }
 
     # Generate and print report
@@ -618,20 +618,21 @@ def main():
     print("=" * 70)
     print(f"Total Tests: {results['total']}")
     print(f"Passed: {results['passed']} ✓")
-    print(f"Failed: {results['failed']}" + (" ✗" if results['failed'] > 0 else ""))
+    print(f"Failed: {results['failed']}" + (" ✗" if results["failed"] > 0 else ""))
     print(f"Skipped: {results['skipped']}")
     print(f"Success Rate: {report['summary']['success_rate']}")
 
-    if results['failed'] > 0:
+    if results["failed"] > 0:
         print("\nFailed Tests:")
-        for failure in results['failures'] + results['errors']:
+        for failure in results["failures"] + results["errors"]:
             print(f"  - {failure[:100]}...")
 
-    print(f"\nDetailed report saved to: setup_enhancement_test_report.json")
+    print("\nDetailed report saved to: setup_enhancement_test_report.json")
     print("=" * 70)
 
     # Return exit code
-    return 0 if results['failed'] == 0 else 1
+    return 0 if results["failed"] == 0 else 1
 
 if __name__ == "__main__":
     # sys.exit(main())  # Commented for pytest
+    pass

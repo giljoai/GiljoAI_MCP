@@ -13,8 +13,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Note: project functions are now methods of ToolAccessor class
 from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.tools.project import (
+    activate_project,
+    close_project,
+    create_project,
+    get_project_status,
+    list_projects,
+    update_project,
+)
 from tests.fixtures.base_fixtures import TestData
 from tests.fixtures.base_test import BaseAsyncTest
 

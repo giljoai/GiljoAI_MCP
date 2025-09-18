@@ -8,9 +8,9 @@ from typing import Any, Optional
 
 from sqlalchemy import and_, select
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Task
-from giljo_mcp.template_manager import get_template_manager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Task
+from src.giljo_mcp.template_manager import get_template_manager
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def register_task_template_tools(mcp):
             Available conversion templates with descriptions
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:
@@ -169,7 +169,7 @@ def register_task_template_tools(mcp):
             Complete project configuration ready for creation
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:
@@ -270,7 +270,7 @@ def register_task_template_tools(mcp):
             Suggested template with confidence score and reasoning
         """
         try:
-            from giljo_mcp.tenant import tenant_manager
+            from src.giljo_mcp.tenant import tenant_manager
 
             tenant_key = tenant_manager.get_current_tenant()
             if not tenant_key:

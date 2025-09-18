@@ -12,9 +12,9 @@ from uuid import uuid4
 from fastmcp import FastMCP
 from sqlalchemy import select, update
 
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, Project, Session
-from giljo_mcp.tenant import TenantManager, current_tenant
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Agent, Project, Session
+from src.giljo_mcp.tenant import TenantManager, current_tenant
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
         try:
             async with db_manager.get_session() as session:
                 # Generate unique tenant key
-                tenant_key = f"tk_{uuid4().hex[:12]}"
+                tenant_key = f"tk_{uuid4().hex}"
 
                 # Create project
                 project = Project(
@@ -258,7 +258,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
                 # Trigger auto-commit if git is configured
                 try:
-                    from giljo_mcp.config_manager import get_config
+                    from src.giljo_mcp.config_manager import get_config
 
                     from .git import commit_changes
 
