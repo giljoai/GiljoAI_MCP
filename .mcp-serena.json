@@ -7,9 +7,9 @@
         "git+https://github.com/oraios/serena",
         "serena-mcp-server",
         "--context",
-        "giljo-mcp-orchestrator",
+        "desktop-app",
         "--project",
-        "F:\\GiljoAI_MCP"
+        "C:\\projects\\GiljoAI_MCP"
       ]
     }
   }

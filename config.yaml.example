@@ -1,0 +1,198 @@
+# GiljoAI MCP Orchestrator Configuration
+# Copy this file to config.yaml and adjust settings as needed
+
+# Database Configuration
+database:
+  # Database type: sqlite (default) or postgresql
+  database_type: sqlite
+
+  # SQLite configuration
+  path: ./data/giljo.db
+
+  # PostgreSQL configuration (uncomment for production)
+  # database_type: postgresql
+  # host: localhost
+  # port: 5432
+  # name: giljo_mcp
+  # user: giljo_user
+  # password: your_secure_password
+
+# Server Configuration
+server:
+  # Mode: local (single user), lan (network), or wan (internet)
+  mode: local
+  host: localhost
+  debug: false
+
+  # Service ports
+  ports:
+    mcp: 6001      # MCP server port
+    api: 6002      # REST API port
+    frontend: 6000 # Vue frontend port
+
+# Multi-Tenant Configuration
+tenant:
+  # Enable multi-tenant mode for enterprise deployments
+  enable_multi_tenant: false
+
+  # Default tenant key for single-tenant mode
+  default_key: "dev-default-key"
+
+  # Tenant key generation (for multi-tenant mode)
+  # key_length: 48  # 192-bit entropy
+
+# Application Configuration
+app:
+  name: "GiljoAI MCP Orchestrator"
+  version: "1.0.0"
+
+  # Directory paths (relative or absolute)
+  data_dir: "./data"
+  log_dir: "./logs"
+  config_dir: "./config"
+
+  # Vision document paths
+  vision_dir: "./docs/Vision"
+
+# Session Configuration
+session:
+  # Vision document chunking settings
+  vision_chunk_size: 50000  # Characters per chunk
+  vision_overlap: 1000      # Overlap between chunks
+  context_size: 100000      # Maximum context size
+
+  # Session timeout (seconds)
+  timeout: 3600
+
+# MCP Server Configuration
+mcp:
+  # Transport mode: stdio (default) or tcp
+  stdio_mode: true
+  transport: stdio
+
+  # TCP configuration (if not using stdio)
+  # tcp_host: localhost
+  # tcp_port: 6001
+
+# API Configuration
+api:
+  # CORS settings
+  cors_origins:
+    - "http://localhost:6000"
+    - "http://localhost:5500"
+
+  # Rate limiting
+  rate_limit: 100  # Requests per minute
+
+  # Authentication
+  require_api_key: false
+  # api_key_header: "X-API-Key"
+
+# WebSocket Configuration
+websocket:
+  # Heartbeat interval (seconds)
+  heartbeat_interval: 30
+
+  # Maximum connections per client
+  max_connections: 10
+
+  # Message queue size
+  queue_size: 1000
+
+# Logging Configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: INFO
+
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+  # Log file path
+  file: "./logs/giljo.log"
+
+  # Log rotation
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+  # Console output
+  console: true
+
+# Agent Configuration
+agents:
+  # Maximum concurrent agents
+  max_concurrent: 50
+
+  # Agent timeout (seconds)
+  timeout: 300
+
+  # Default agent capabilities
+  default_capabilities:
+    - code_analysis
+    - code_generation
+    - testing
+    - documentation
+
+# Template Configuration
+templates:
+  # Template cache settings
+  cache_enabled: true
+  cache_ttl: 3600  # Seconds
+
+  # Template generation performance target
+  generation_target_ms: 0.1
+
+# Security Configuration
+security:
+  # JWT settings
+  jwt_secret_key: "CHANGE_THIS_IN_PRODUCTION"
+  jwt_algorithm: "HS256"
+  jwt_expiry: 86400  # 24 hours
+
+  # Password requirements
+  min_password_length: 12
+  require_special_chars: true
+
+  # Session security
+  secure_cookies: false  # Set to true in production with HTTPS
+  session_cookie_name: "giljo_session"
+
+# Performance Configuration
+performance:
+  # Connection pooling
+  db_pool_size: 20
+  db_pool_overflow: 10
+
+  # Caching
+  enable_cache: true
+  cache_backend: "memory"  # or "redis" for production
+
+  # Request limits
+  max_request_size: 10485760  # 10MB
+
+# Development Configuration
+development:
+  # Hot reload
+  auto_reload: true
+
+  # Debug toolbar
+  debug_toolbar: false
+
+  # Profiling
+  enable_profiling: false
+
+# Production Configuration (uncomment for production)
+# production:
+#   # SSL/TLS
+#   ssl_cert: "/path/to/cert.pem"
+#   ssl_key: "/path/to/key.pem"
+#
+#   # Database connection pooling
+#   db_pool_size: 50
+#   db_pool_overflow: 20
+#
+#   # Redis cache
+#   redis_url: "redis://localhost:6379/0"
+#
+#   # Monitoring
+#   enable_metrics: true
+#   metrics_port: 9090

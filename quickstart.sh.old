@@ -1,0 +1,50 @@
+#!/bin/bash
+
+echo "=================================================="
+echo "GiljoAI MCP Orchestrator - Quick Start Setup"
+echo "=================================================="
+echo ""
+
+# Check Python installation
+if ! command -v python3 &> /dev/null; then
+    echo "ERROR: Python3 is not installed"
+    echo "Please install Python 3.11+ from https://www.python.org"
+    exit 1
+fi
+
+echo "[1/5] Creating virtual environment..."
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
+fi
+
+echo "[2/5] Activating virtual environment..."
+source venv/bin/activate
+
+echo "[3/5] Installing Python dependencies..."
+pip install -q --upgrade pip
+pip install -q -r requirements.txt
+
+echo "[4/5] Creating data directories..."
+mkdir -p data logs config
+
+echo "[5/5] Setting up environment..."
+if [ ! -f ".env" ]; then
+    cp .env.example .env
+fi
+
+echo ""
+echo "=================================================="
+echo "Setup Complete!"
+echo "=================================================="
+echo ""
+echo "To start the MCP server:"
+echo "  python -m src.giljo_mcp.mcp_server"
+echo ""
+echo "To start the API server:"
+echo "  python -m api.main"
+echo ""
+echo "To start the frontend (in a new terminal):"
+echo "  cd frontend"
+echo "  npm install"
+echo "  npm run dev"
+echo ""

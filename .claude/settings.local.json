@@ -28,12 +28,19 @@
       "mcp__ake-mcp-v2__send_message",
       "mcp__serena-mcp__create_text_file",
       "Bash(ruff check:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(pip --version)",
+      "Bash(uv:*)",
+      "Bash(pip install:*)",
+      "Bash(ping:*)",
+      "Bash(xcopy:*)",
+      "Bash(robocopy:*)"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",
       "F:\\Assistant",
-      "F:\\"
+      "F:\\",
+      "C:\\Projects"
     ]
   },
   "enableAllProjectMcpServers": true,

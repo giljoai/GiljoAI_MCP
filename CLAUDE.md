@@ -6,6 +6,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system being built using AKE-MCP server to orchestrate its own development through 20 focused projects over 4 weeks. The system transforms AI coding assistants into coordinated development teams that can tackle projects of unlimited complexity.
 
+## Installation System
+
+### New Advanced Installer (In Development)
+```bash
+# Single entry point for all platforms
+python bootstrap.py
+
+# The bootstrap will:
+# - Detect OS and GUI capability
+# - Launch appropriate installer (GUI or CLI)
+# - Check and install dependencies
+# - Configure services and create launchers
+```
+
+### Current Installation
+```bash
+# Windows
+quickstart.bat
+
+# Mac/Linux
+./quickstart.sh
+```
+
 ## Development Commands
 
 ### AKE-MCP Server (Orchestrator)

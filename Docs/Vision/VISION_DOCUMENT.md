@@ -261,6 +261,64 @@ This is the future we're building with GiljoAI MCP Coding Orchestrator.
 - $10M+ ARR
 - Acquisition offers (but we're not selling)
 
+### Installation and Packaging Strategy
+
+#### Zero-Friction Onboarding Vision
+
+**Our Goal**: From download to running system in under 5 minutes, regardless of technical expertise.
+
+**Installation Philosophy**:
+- **Intelligent**: Automatically detect and install missing dependencies
+- **Adaptive**: GUI installer for desktop users, CLI for servers
+- **Complete**: One installer handles everything from Python to Docker
+- **Professional**: Match the installation experience of commercial software
+
+**Advanced Installer Features**:
+1. **Intelligent Quickstart Layer** (CRITICAL)
+   - `quickstart.bat` (Windows) and `quickstart.sh` (Mac/Linux) are TRUE entry points
+   - These scripts require ZERO dependencies - only OS shell
+   - They detect and INSTALL Python if missing (multiple methods)
+   - Only after Python is confirmed do they launch bootstrap.py
+
+2. **Smart Bootstrap System**
+   - `bootstrap.py` is the secondary entry point (requires Python)
+   - Detects OS, GUI capability, and existing dependencies
+   - Runs comprehensive dependency checker
+   - Launches appropriate installer (GUI or CLI)
+
+3. **Dependency Management**
+   - Automatic detection of Python, Node.js, Docker, PostgreSQL
+   - Offers to install missing components
+   - Platform-specific installation methods (winget, brew, apt, etc.)
+   - Fallback to manual downloads if needed
+
+4. **Service Integration**
+   - Creates system services (systemd, Windows Service, launchd)
+   - Configures auto-start on boot
+   - Provides start/stop controls
+   - System tray integration for desktop users
+
+5. **Post-Install Experience**
+   - Desktop shortcuts and launcher creation
+   - Quick-start configuration with working defaults
+   - Built-in example agents and templates
+   - Immediate access to web dashboard
+
+**Distribution Channels**:
+- **Direct Download**: ZIP/TAR packages from website
+- **Package Managers**: pip, brew, winget, apt
+- **Containers**: Docker Hub with docker-compose
+- **Cloud Marketplaces**: AWS, Azure, Google Cloud
+- **Developer Platforms**: GitHub Releases, GitLab
+
+**Progressive Installation Modes**:
+```
+Quick Start → Custom Setup → Enterprise Deployment
+5 minutes  → 10 minutes   → Fully managed
+SQLite     → PostgreSQL   → Kubernetes
+Local only → LAN access   → Internet scale
+```
+
 ### Join Us
 
 We're not just building a tool – we're defining how the next generation of software will be created. Whether you're an individual developer hitting context limits or a team leader looking to amplify your team's capabilities, GiljoAI MCP Orchestrator is your path to truly productive AI-assisted development.
