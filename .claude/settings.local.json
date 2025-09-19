@@ -27,7 +27,8 @@
       "mcp__ake-mcp-v2__assign_job",
       "mcp__ake-mcp-v2__send_message",
       "mcp__serena-mcp__create_text_file",
-      "Bash(ruff check:*)"
+      "Bash(ruff check:*)",
+      "Bash(git log:*)"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",

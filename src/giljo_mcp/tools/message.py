@@ -49,7 +49,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Message sending confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Verify project exists
                 project_query = select(Project).where(Project.id == project_id)
                 project_result = await session.execute(project_query)
@@ -144,7 +144,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             List of pending messages for the agent
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Get project ID if not provided
                 if not project_id:
                     tenant_key = tenant_manager.get_current_tenant()
@@ -237,7 +237,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Acknowledgment confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find the message
                 message_query = select(Message).where(Message.id == message_id)
                 message_result = await session.execute(message_query)
@@ -315,7 +315,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Completion confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find the message
                 message_query = select(Message).where(Message.id == message_id)
                 message_result = await session.execute(message_query)
@@ -394,7 +394,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Broadcast confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Get all agents in the project
                 agent_query = select(Agent).where(
                     and_(Agent.project_id == project_id, Agent.status != "decommissioned")
@@ -474,7 +474,7 @@ def register_message_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "error": "No active project. Use switch_project first.",
                 }
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project by tenant key
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)

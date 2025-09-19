@@ -39,7 +39,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Agent details and status
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Check if project exists
                 project_query = select(Project).where(Project.id == project_id)
                 project_result = await session.execute(project_query)
@@ -113,7 +113,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Activation status and agent details
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # First ensure agent exists
                 ensure_result = await ensure_agent(project_id, agent_name, mission)
 
@@ -196,7 +196,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Job assignment details
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find the agent
                 agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
                 agent_result = await session.execute(agent_query)
@@ -291,7 +291,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Handoff confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find both agents
                 from_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == from_agent))
                 from_result = await session.execute(from_query)
@@ -372,7 +372,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Health status and metrics
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Get current tenant
                 tenant_key = tenant_manager.get_current_tenant()
                 if not tenant_key:
@@ -453,7 +453,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Decommission confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find the agent
                 agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
                 agent_result = await session.execute(agent_query)
@@ -519,7 +519,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Interaction details including interaction_id for later completion
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find the parent agent
                 parent_query = select(Agent).where(
                     and_(Agent.project_id == project_id, Agent.name == parent_agent_name)
@@ -626,7 +626,7 @@ def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manag
             Updated interaction details including duration
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find the interaction record
                 interaction_query = select(AgentInteraction).where(AgentInteraction.id == interaction_id)
                 interaction_result = await session.execute(interaction_query)

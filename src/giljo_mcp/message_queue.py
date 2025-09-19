@@ -100,8 +100,7 @@ class MessageQueue:
         if batch_size is None:
             batch_size = self._batch_size
 
-        async with self._isolation_manager.with_agent_lock(agent_name):
-            async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
                 try:
                     # Start transaction
                     await session.begin()
@@ -156,8 +155,7 @@ class MessageQueue:
         Returns:
             True if successful
         """
-        async with self._isolation_manager.with_message_lock(message_id):
-            async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
                 try:
                     await session.begin()
 
@@ -216,8 +214,7 @@ class MessageQueue:
         Returns:
             True if message was retried, False if moved to DLQ
         """
-        async with self._isolation_manager.with_message_lock(message_id):
-            async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
                 try:
                     await session.begin()
 
@@ -284,7 +281,7 @@ class MessageQueue:
         """
         logger.info("Starting crash recovery...")
 
-        async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             try:
                 await session.begin()
 
@@ -691,7 +688,7 @@ class StuckMessageDetector:
         if timeout_seconds is None:
             timeout_seconds = self.timeout_seconds
 
-        async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=timeout_seconds)
 
             # Check messages with processing_started_at in meta_data
@@ -726,7 +723,7 @@ class DeadLetterQueue:
 
     async def add_message(self, message: Message, reason: str):
         """Move message to DLQ with reason"""
-        async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             try:
                 await session.begin()
 
@@ -747,14 +744,14 @@ class DeadLetterQueue:
 
     async def get_size(self) -> int:
         """Get number of messages in DLQ"""
-        async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             stmt = select(func.count()).select_from(Message).where(Message.status == "dead_letter")
             result = await session.execute(stmt)
             return result.scalar() or 0
 
     async def reprocess_message(self, message_id: str) -> bool:
         """Attempt to reprocess a DLQ message"""
-        async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             try:
                 await session.begin()
 
@@ -799,7 +796,7 @@ class DurabilityManager:
         self._wal_entries.append(wal_entry)
 
         # Persist to database
-        async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             session.add(message)
             await session.commit()
 

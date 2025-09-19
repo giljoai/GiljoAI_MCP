@@ -45,7 +45,7 @@ class TemplateAdapter:
             # Check cache first
             cache_key = f"{role}_base"
             if cache_key not in self._template_cache:
-                async with self.db_manager.get_session() as session:
+                async with self.db_manager.get_session_async() as session:
                     # Query for the template
                     query = select(AgentTemplate).where(
                         AgentTemplate.role == role,
@@ -70,7 +70,8 @@ class TemplateAdapter:
                         await session.commit()
                     else:
                         logger.warning(f"No template found for role '{role}'")
-                        return f"No template available for role: {role}"
+                        # Return None to trigger fallback in caller
+                        return None
 
             # Get template content from cache
             content = self._template_cache.get(cache_key, "")
@@ -191,7 +192,9 @@ Your role is to review code and ensure quality."""
                     }
                 )
 
-            return await self.adapter.get_template(role=role.lower(), variables=variables, augmentations=augmentations)
+            template_result = await self.adapter.get_template(role=role.lower(), variables=variables, augmentations=augmentations)
+            if template_result is not None:
+                return template_result
         # Fallback to hardcoded templates
         template_map = {
             "analyzer": self.ANALYZER_TEMPLATE,

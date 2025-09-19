@@ -198,7 +198,7 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Check if configuration already exists
                 existing = await _get_git_config(session, product_id, tenant_key)
 
@@ -271,7 +271,7 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 git_config = await _get_git_config(session, product_id, tenant_key)
                 if not git_config:
                     return {
@@ -376,7 +376,7 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 git_config = await _get_git_config(session, product_id, tenant_key)
                 if not git_config:
                     return {"success": False, "error": "Git configuration not found"}
@@ -526,7 +526,7 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 git_config = await _get_git_config(session, product_id, tenant_key)
                 if not git_config:
                     return {"success": False, "error": "Git configuration not found"}
@@ -652,7 +652,7 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 git_config = await _get_git_config(session, product_id, tenant_key)
                 if not git_config:
                     return {"success": False, "error": "Git configuration not found"}
@@ -750,7 +750,7 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 git_config = await _get_git_config(session, product_id, tenant_key)
 
                 repo_path_obj = Path(repo_path)

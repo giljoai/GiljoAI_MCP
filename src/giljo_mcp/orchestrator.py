@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from .database import get_db_manager
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .models import Agent, Message, Project
+from .template_adapter import MissionTemplateGeneratorV2
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ class ProjectOrchestrator:
     - Context usage tracking with indicators
     - Multi-project support with tenant isolation
     """
+    
+    DEFAULT_AGENT_CONTEXT_BUDGET = 30000  # Default context budget per agent
 
     # Agent mission templates
     AGENT_MISSIONS = {
@@ -80,11 +83,8 @@ class ProjectOrchestrator:
         self.db_manager = get_db_manager()
         self._active_projects: dict[str, Project] = {}
         self._context_monitors: dict[str, asyncio.Task] = {}
-        # Use new template system
-        self.template_manager = None
-        if self.db_manager:
-            # Template manager will be initialized per-request with tenant context
-            pass
+        # Initialize template generator
+        self.template_generator = MissionTemplateGeneratorV2(self.db_manager)
 
     async def create_project(
         self,
@@ -114,7 +114,7 @@ class ProjectOrchestrator:
                 name=name,
                 mission=mission,
                 tenant_key=tenant_key,
-                status=ProjectStatus.DRAFT.value,
+                status=ProjectStatus.PLANNING.value,
                 context_budget=context_budget,
                 context_used=0,
             )
@@ -144,7 +144,7 @@ class ProjectOrchestrator:
                 raise ValueError(f"Project {project_id} not found")
 
             if project.status not in [
-                ProjectStatus.DRAFT.value,
+                ProjectStatus.PLANNING.value,
                 ProjectStatus.PAUSED.value,
             ]:
                 raise ValueError(f"Cannot activate project in {project.status} state")
@@ -300,15 +300,15 @@ class ProjectOrchestrator:
             if role == AgentRole.ORCHESTRATOR:
                 # Use comprehensive orchestrator template
                 additional_context = {"project_type": project_type} if project_type else None
-                mission = self.template_generator.generate_orchestrator_mission(
+                mission = await self.template_generator.generate_orchestrator_mission(
                     project_name=project.name,
                     project_mission=project.mission,
                     additional_context=additional_context,
                 )
             else:
                 # Use role-specific agent template
-                mission = self.template_generator.generate_agent_mission(
-                    role=role,
+                mission = await self.template_generator.generate_agent_mission(
+                    role=role.value,
                     project_name=project.name,
                     custom_mission=custom_mission,
                     additional_instructions=additional_instructions,
@@ -316,12 +316,12 @@ class ProjectOrchestrator:
 
             # Create agent
             agent = Agent(
+                tenant_key=project.tenant_key,
                 project_id=project_id,
                 name=role.value,
                 role=role.value,
                 mission=mission,
                 status="active",
-                context_budget=30000,  # Default budget per agent
                 context_used=0,
             )
 
@@ -396,22 +396,23 @@ class ProjectOrchestrator:
                 raise ValueError(f"Agent {agent_id} not found")
 
             # Check if approaching limit
-            usage_ratio = agent.context_used / agent.context_budget
+            usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
             if usage_ratio < 0.7:
                 return None
 
             # Generate context limit instructions
             instructions = self.template_generator.generate_context_limit_instructions(
-                agent_name=agent.name,
-                context_used=agent.context_used,
-                context_budget=agent.context_budget,
+                current_agent=agent.name,
+                next_agent="orchestrator",
+                reason=f"Context usage at {agent.context_used}/{self.DEFAULT_AGENT_CONTEXT_BUDGET} tokens",
             )
 
             # Create message with instructions
             message = Message(
+                tenant_key=agent.tenant_key,
                 project_id=agent.project_id,
-                from_agent="orchestrator",
-                to_agent=agent.name,
+                from_agent_id=None,  # System message
+                to_agents=[agent.name],
                 message_type="system",
                 content=instructions,
                 priority="high",
@@ -457,9 +458,9 @@ class ProjectOrchestrator:
             context_summary = context.get("summary", "Work completed by previous agent")
 
             handoff_instructions = self.template_generator.generate_handoff_instructions(
-                from_role=from_role,
-                to_role=to_role,
-                context_summary=context_summary,
+                from_agent=from_agent.name,
+                to_agent=to_agent.name,
+                handoff_context=context,
             )
 
             # Package handoff context
@@ -467,7 +468,7 @@ class ProjectOrchestrator:
                 "from_agent": from_agent.name,
                 "to_agent": to_agent.name,
                 "context_used": from_agent.context_used,
-                "context_budget": from_agent.context_budget,
+                "context_budget": self.DEFAULT_AGENT_CONTEXT_BUDGET,
                 "handoff_reason": self._get_handoff_reason(from_agent),
                 "transfer_data": context,
                 "handoff_instructions": handoff_instructions,
@@ -475,9 +476,10 @@ class ProjectOrchestrator:
 
             # Create handoff message
             message = Message(
+                tenant_key=from_agent.tenant_key,
                 project_id=from_agent.project_id,
-                from_agent=from_agent.name,
-                to_agent=to_agent.name,
+                from_agent_id=from_agent.id,
+                to_agents=[to_agent.name],
                 message_type="handoff",
                 content=str(handoff_context),
                 priority="high",
@@ -512,7 +514,7 @@ class ProjectOrchestrator:
             if not agent:
                 return False, None
 
-            usage_ratio = agent.context_used / agent.context_budget
+            usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
 
             if usage_ratio >= 0.8:
                 return True, "Context usage above 80% threshold"
@@ -625,14 +627,14 @@ class ProjectOrchestrator:
             if not agent:
                 raise ValueError(f"Agent {agent_id} not found")
 
-            usage_ratio = agent.context_used / agent.context_budget
-            status = self.get_context_status(agent.context_used, agent.context_budget)
+            usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
+            status = self.get_context_status(agent.context_used, self.DEFAULT_AGENT_CONTEXT_BUDGET)
 
             return {
                 "agent_id": agent.id,
                 "agent_name": agent.name,
                 "context_used": agent.context_used,
-                "context_budget": agent.context_budget,
+                "context_budget": self.DEFAULT_AGENT_CONTEXT_BUDGET,
                 "usage_ratio": usage_ratio,
                 "usage_percentage": round(usage_ratio * 100, 2),
                 "status": status.value,
@@ -689,7 +691,7 @@ class ProjectOrchestrator:
 
     def _get_handoff_reason(self, agent: Agent) -> str:
         """Get the reason for handoff based on agent state."""
-        usage_ratio = agent.context_used / agent.context_budget
+        usage_ratio = agent.context_used / self.DEFAULT_AGENT_CONTEXT_BUDGET
 
         if usage_ratio >= 0.8:
             return f"Context usage at {round(usage_ratio * 100)}%"

@@ -36,13 +36,13 @@ def generate_uuid():
 class Project(Base):
     """
     Project model - root entity for multi-tenant isolation.
-    Each project has a unique tenant_key for complete data isolation.
+    Multiple projects can share the same tenant_key for logical grouping.
     """
 
     __tablename__ = "projects"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    tenant_key = Column(String(36), nullable=False, unique=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, default=generate_uuid)
     name = Column(String(255), nullable=False)
     mission = Column(Text, nullable=False)
     status = Column(String(50), default="active")  # active, paused, completed, archived

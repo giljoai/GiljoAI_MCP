@@ -108,7 +108,7 @@ class PathResolver:
     async def _get_database_path(self, path_key: str, project_id: str) -> Optional[str]:
         """Get path override from database"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 config_query = select(Configuration).where(
                     Configuration.project_id == project_id,
                     Configuration.key == f"path.{path_key}",
@@ -309,7 +309,7 @@ class DiscoveryManager:
             vision_path = await self.path_resolver.resolve_path("vision", project_id)
 
             # Check if already indexed in database
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 vision_query = (
                     select(Vision).where(Vision.project_id == project_id).order_by(Vision.chunk_number).limit(1)
                 )
@@ -352,7 +352,7 @@ class DiscoveryManager:
             config_data = {}
 
             # Load from database
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 config_query = select(Configuration).where(Configuration.project_id == project_id)
                 result = await session.execute(config_query)
                 configs = result.scalars().all()

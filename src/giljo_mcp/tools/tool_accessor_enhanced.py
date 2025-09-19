@@ -117,7 +117,7 @@ class EnhancedToolAccessor:
     @asynccontextmanager
     async def _get_transactional_session(self):
         """Get a database session with proper transaction management"""
-        async with self.db_manager.get_session() as session:
+        async with self.db_manager.get_session_async() as session:
             try:
                 yield session
                 await session.commit()
@@ -188,7 +188,7 @@ class EnhancedToolAccessor:
     async def list_projects(self, status: Optional[str] = None) -> dict[str, Any]:
         """List all projects with optional status filter"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 query = select(Project)
                 if status:
                     query = query.where(Project.status == status)
@@ -230,7 +230,7 @@ class EnhancedToolAccessor:
     async def project_status(self, project_id: Optional[str] = None) -> dict[str, Any]:
         """Get comprehensive project status with validation"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Validate UUID if provided
                 if project_id:
                     project_uuid = validate_uuid(project_id, "project_id")
@@ -423,7 +423,7 @@ class EnhancedToolAccessor:
     async def agent_health(self, agent_name: Optional[str] = None) -> dict[str, Any]:
         """Check agent health and context usage with null safety"""
         try:
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 if agent_name:
                     result = await session.execute(select(Agent).where(Agent.name == agent_name))
                     agents = [result.scalar_one_or_none()]
@@ -723,7 +723,7 @@ class EnhancedToolAccessor:
         try:
             project_uuid = validate_uuid(project_id, "project_id")
 
-            async with self.db_manager.get_session() as session:
+            async with self.db_manager.get_session_async() as session:
                 # Get all agents in project
                 result = await session.execute(select(Agent).where(Agent.project_id == project_uuid))
                 agents = result.scalars().all()

@@ -53,7 +53,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "error": "No active project. Use switch_project first.",
                 }
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project by tenant key
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
@@ -253,7 +253,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "error": "No active project. Use switch_project first.",
                 }
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
@@ -394,7 +394,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "error": "No active project. Use switch_project first.",
                 }
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()
@@ -432,7 +432,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             project_id = None
 
             if tenant_key:
-                async with db_manager.get_session() as session:
+                async with db_manager.get_session_async() as session:
                     project_query = select(Project).where(Project.tenant_key == tenant_key)
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
@@ -505,7 +505,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             tenant_key = tenant_manager.get_current_tenant()
             project_id = None
             if tenant_key:
-                async with db_manager.get_session() as session:
+                async with db_manager.get_session_async() as session:
                     project_query = select(Project).where(Project.tenant_key == tenant_key)
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
@@ -623,7 +623,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "error": "No active project. Use switch_project first.",
                 }
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
@@ -694,7 +694,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     },
                 }
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
@@ -765,7 +765,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Recalibration confirmation
         """
         try:
-            async with db_manager.get_session():
+            async with db_manager.get_session_async():
                 # Broadcast mission change to all agents
                 from .message import broadcast
 
@@ -819,7 +819,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "error": "No active project. Use switch_project first.",
                 }
 
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
@@ -976,7 +976,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             project_id = None
 
             if tenant_key:
-                async with db_manager.get_session() as session:
+                async with db_manager.get_session_async() as session:
                     project_query = select(Project).where(Project.tenant_key == tenant_key)
                     project_result = await session.execute(project_query)
                     project = project_result.scalar_one_or_none()
@@ -1289,7 +1289,7 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
         project_id = None
 
         if tenant_key:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 project_query = select(Project).where(Project.tenant_key == tenant_key)
                 project_result = await session.execute(project_query)
                 project = project_result.scalar_one_or_none()

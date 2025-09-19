@@ -37,7 +37,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Project creation details including ID and tenant key
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Generate unique tenant key
                 tenant_key = f"tk_{uuid4().hex}"
 
@@ -103,7 +103,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             List of projects with details
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 query = select(Project)
 
                 if status:
@@ -153,7 +153,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Project details and activation status
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project
                 query = select(Project).where(Project.id == project_id)
                 result = await session.execute(query)
@@ -212,7 +212,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             Closure confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project
                 query = select(Project).where(Project.id == project_id)
                 result = await session.execute(query)
@@ -329,7 +329,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
             Update confirmation
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Find project
                 query = select(Project).where(Project.id == project_id)
                 result = await session.execute(query)
@@ -373,7 +373,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
             Detailed project status including agents, tasks, and messages
         """
         try:
-            async with db_manager.get_session() as session:
+            async with db_manager.get_session_async() as session:
                 # Get project ID from tenant context if not provided
                 if not project_id:
                     tenant_key = tenant_manager.get_current_tenant()

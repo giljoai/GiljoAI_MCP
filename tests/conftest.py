@@ -70,9 +70,9 @@ async def db_session(test_db) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def tenant_manager(test_db) -> TenantManager:
+async def tenant_manager() -> TenantManager:
     """Create tenant manager for testing"""
-    return TenantManager(test_db)
+    return TenantManager()
 
 
 @pytest.fixture
@@ -221,3 +221,198 @@ def sample_agent_data():
 def sample_message_data():
     """Sample message data for testing"""
     return {"from_agent": "orchestrator", "content": "Test message content", "type": "direct", "priority": "normal"}
+
+
+# Tools testing fixtures
+@pytest_asyncio.fixture(scope="function")
+async def mock_mcp_server():
+    """Mock FastMCP server for tools testing"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_server = MagicMock()
+    mock_server.tool = MagicMock()
+
+    # Create a decorator that stores the function for testing
+    def tool_decorator():
+        def decorator(func):
+            # Store the function for later testing
+            if not hasattr(mock_server, '_registered_tools'):
+                mock_server._registered_tools = {}
+            mock_server._registered_tools[func.__name__] = func
+            return func
+        return decorator
+
+    mock_server.tool.return_value = tool_decorator()
+    return mock_server
+
+
+@pytest_asyncio.fixture(scope="function")
+async def mock_discovery_manager():
+    """Mock DiscoveryManager for tools testing"""
+    from unittest.mock import AsyncMock, MagicMock
+    from pathlib import Path
+
+    mock_discovery = MagicMock()
+
+    # Mock discovery methods
+    mock_discovery.discover_context = AsyncMock(return_value={
+        "priority": {"vision": [], "sessions": [], "devlog": []},
+        "context_budget": 100000,
+        "agent_role": "default"
+    })
+
+    mock_discovery.get_discovery_paths = AsyncMock(return_value={
+        "vision": Path("docs/Vision"),
+        "sessions": Path("docs/Sessions"),
+        "devlog": Path("docs/devlog"),
+        "claude": Path("CLAUDE.md")
+    })
+
+    mock_discovery.detect_changes = AsyncMock(return_value={})
+    mock_discovery.PRIORITY_ORDER = ["vision", "sessions", "devlog", "claude"]
+
+    return mock_discovery
+
+
+@pytest_asyncio.fixture(scope="function")
+async def mock_path_resolver():
+    """Mock PathResolver for tools testing"""
+    from unittest.mock import AsyncMock, MagicMock
+    from pathlib import Path
+
+    mock_resolver = MagicMock()
+
+    # Mock path resolution
+    mock_resolver.resolve_path = AsyncMock(return_value=Path("tests/temp"))
+    mock_resolver.get_all_paths = AsyncMock(return_value={
+        "vision": Path("docs/Vision"),
+        "sessions": Path("docs/Sessions"),
+        "devlog": Path("docs/devlog")
+    })
+
+    mock_resolver.DEFAULT_PATHS = {
+        "vision": "docs/Vision",
+        "sessions": "docs/Sessions",
+        "devlog": "docs/devlog"
+    }
+
+    return mock_resolver
+
+
+@pytest_asyncio.fixture(scope="function")
+async def mock_chunker():
+    """Mock EnhancedChunker for tools testing"""
+    from unittest.mock import MagicMock
+
+    mock_chunker = MagicMock()
+
+    # Mock chunking methods
+    mock_chunker.chunk_multiple_documents.return_value = [
+        {
+            "document_name": "test.md",
+            "chunk_number": 1,
+            "total_chunks": 1,
+            "content": "Test content",
+            "tokens": 100,
+            "char_start": 0,
+            "char_end": 100,
+            "boundary_type": "document",
+            "keywords": ["test"],
+            "headers": ["# Test"]
+        }
+    ]
+
+    mock_chunker.chunk_content.return_value = [
+        {
+            "chunk_number": 1,
+            "total_chunks": 1,
+            "content": "Test content",
+            "tokens": 100,
+            "char_start": 0,
+            "char_end": 100,
+            "boundary_type": "document",
+            "keywords": ["test"],
+            "headers": ["# Test"]
+        }
+    ]
+
+    mock_chunker.estimate_tokens.return_value = 100
+    mock_chunker.extract_keywords.return_value = ["test", "content"]
+    mock_chunker.calculate_content_hash.return_value = "abc123"
+
+    return mock_chunker
+
+
+@pytest_asyncio.fixture(scope="function")
+async def tools_test_setup(test_db, tenant_manager, mock_mcp_server, mock_discovery_manager, mock_path_resolver, mock_chunker):
+    """Complete tools testing setup with all mocks"""
+    from unittest.mock import patch
+
+    # Patch the imports in tools modules
+    patches = [
+        patch('src.giljo_mcp.tools.context.DiscoveryManager', return_value=mock_discovery_manager),
+        patch('src.giljo_mcp.tools.context.PathResolver', return_value=mock_path_resolver),
+        patch('src.giljo_mcp.tools.context.EnhancedChunker', return_value=mock_chunker),
+    ]
+
+    for p in patches:
+        p.start()
+
+    yield {
+        'db_manager': test_db,
+        'tenant_manager': tenant_manager,
+        'mcp_server': mock_mcp_server,
+        'discovery_manager': mock_discovery_manager,
+        'path_resolver': mock_path_resolver
+    }
+
+    # Stop all patches
+    for p in patches:
+        p.stop()
+
+
+@pytest.fixture
+def vision_test_files(tmp_path):
+    """Create temporary vision files for testing"""
+    vision_dir = tmp_path / "docs" / "Vision"
+    vision_dir.mkdir(parents=True)
+
+    # Create test vision files
+    (vision_dir / "overview.md").write_text("""
+# Project Overview
+This is a test vision document with multiple sections.
+
+## Architecture
+The system follows a modular design.
+
+## Goals
+- Achieve 95% test coverage
+- Maintain code quality
+""")
+
+    (vision_dir / "technical_spec.md").write_text("""
+# Technical Specification
+Detailed technical requirements.
+
+## Database Design
+Using SQLAlchemy with async support.
+
+## API Design
+REST API with FastAPI framework.
+""")
+
+    return vision_dir
+
+
+@pytest.fixture
+def mock_message_queue():
+    """Mock message queue for testing"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_queue = MagicMock()
+    mock_queue.send_message = AsyncMock(return_value={"success": True, "message_id": "test-msg-123"})
+    mock_queue.get_messages = AsyncMock(return_value={"success": True, "messages": []})
+    mock_queue.acknowledge_message = AsyncMock(return_value={"success": True})
+    mock_queue.complete_message = AsyncMock(return_value={"success": True})
+
+    return mock_queue
