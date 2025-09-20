@@ -1,0 +1,106 @@
+{
+  "config_files": [],
+  "data_directories": [
+    "data",
+    "logs"
+  ],
+  "dependencies": [],
+  "directories": [
+    {
+      "absolute_path": "C:\\Projects\\GiljoAI_MCP\\data",
+      "category": "data",
+      "created": "2025-09-20T19:31:00.769654",
+      "is_user_data": true,
+      "relative_path": "data"
+    },
+    {
+      "absolute_path": "C:\\Projects\\GiljoAI_MCP\\logs",
+      "category": "data",
+      "created": "2025-09-20T19:31:00.770082",
+      "is_user_data": true,
+      "relative_path": "logs"
+    },
+    {
+      "absolute_path": "C:\\Projects\\GiljoAI_MCP\\config",
+      "category": "general",
+      "created": "2025-09-20T19:31:00.770489",
+      "is_user_data": false,
+      "relative_path": "config"
+    },
+    {
+      "absolute_path": "C:\\Projects\\GiljoAI_MCP\\Docs\\Vision",
+      "category": "general",
+      "created": "2025-09-20T19:31:00.770869",
+      "is_user_data": false,
+      "relative_path": "Docs\\Vision"
+    }
+  ],
+  "files": {
+    "open_dashboard.bat": {
+      "absolute_path": "C:\\Projects\\GiljoAI_MCP\\open_dashboard.bat",
+      "category": "script",
+      "created": "2025-09-20T19:31:00.843038",
+      "is_user_data": false,
+      "relative_path": "open_dashboard.bat",
+      "size": 40
+    },
+    "start_giljo.bat": {
+      "absolute_path": "C:\\Projects\\GiljoAI_MCP\\start_giljo.bat",
+      "category": "script",
+      "created": "2025-09-20T19:31:00.839736",
+      "is_user_data": false,
+      "relative_path": "start_giljo.bat",
+      "size": 1613
+    },
+    "stop_giljo.bat": {
+      "absolute_path": "C:\\Projects\\GiljoAI_MCP\\stop_giljo.bat",
+      "category": "script",
+      "created": "2025-09-20T19:31:00.841260",
+      "is_user_data": false,
+      "relative_path": "stop_giljo.bat",
+      "size": 587
+    }
+  },
+  "install_directory": "C:\\Projects\\GiljoAI_MCP",
+  "installation_date": "2025-09-20T19:31:00.710847",
+  "last_modified": "2025-09-20T19:31:01.365387",
+  "platform": "Windows",
+  "python_version": "3.13.7",
+  "registry_entries": [],
+  "services": [],
+  "shortcuts": [
+    {
+      "created": "2025-09-20T19:31:01.009038",
+      "path": "C:\\Users\\PatrikPettersson\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\GiljoAI MCP\\GiljoAI MCP Orchestrator.lnk",
+      "target": "C:\\Projects\\GiljoAI_MCP\\start_giljo.bat",
+      "type": "start_menu"
+    },
+    {
+      "created": "2025-09-20T19:31:01.087443",
+      "path": "C:\\Users\\PatrikPettersson\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\GiljoAI MCP\\Stop GiljoAI MCP.lnk",
+      "target": "C:\\Projects\\GiljoAI_MCP\\stop_giljo.bat",
+      "type": "start_menu"
+    },
+    {
+      "created": "2025-09-20T19:31:01.167207",
+      "path": "C:\\Users\\PatrikPettersson\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\GiljoAI MCP\\GiljoAI Dashboard.lnk",
+      "target": "C:\\Projects\\GiljoAI_MCP\\open_dashboard.bat",
+      "type": "start_menu"
+    },
+    {
+      "created": "2025-09-20T19:31:01.267712",
+      "path": "C:\\Users\\PatrikPettersson\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\GiljoAI MCP\\Configuration.lnk",
+      "target": "C:\\Projects\\GiljoAI_MCP\\config.yaml",
+      "type": "start_menu"
+    },
+    {
+      "created": "2025-09-20T19:31:01.365363",
+      "path": "C:\\Users\\PatrikPettersson\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\GiljoAI MCP\\Uninstall GiljoAI MCP.lnk",
+      "target": "C:\\Projects\\GiljoAI_MCP\\uninstall.py",
+      "type": "start_menu"
+    }
+  ],
+  "user_settings": {},
+  "version": "1.0.0",
+  "virtual_environments": []
+}

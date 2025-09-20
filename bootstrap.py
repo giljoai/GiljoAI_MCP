@@ -212,6 +212,61 @@ class Bootstrap:
                 return choice
             print(f"{self.colors['RED']}Invalid choice. Please enter 1, 2, or 3.{self.colors['ENDC']}")
     
+    def post_installation_setup(self) -> bool:
+        """Perform post-installation setup tasks"""
+        self.print_status("Running post-installation setup...", "info")
+        
+        success = True
+        
+        # Generate default configuration
+        try:
+            from installers.config_generator import ConfigGenerator
+            config_gen = ConfigGenerator(self.install_dir)
+            
+            # Create required directories
+            dir_success, dir_msg = config_gen.create_required_directories()
+            if dir_success:
+                self.print_status(dir_msg, "success")
+            else:
+                self.print_status(dir_msg, "warning")
+            
+            # Create config.yaml if it doesn't exist
+            config_success, config_msg = config_gen.create_config_file()
+            if config_success:
+                self.print_status(config_msg, "success")
+            elif "already exists" in config_msg:
+                self.print_status("Using existing config.yaml", "info")
+            else:
+                self.print_status(config_msg, "warning")
+                success = False
+        except Exception as e:
+            self.print_status(f"Config generation failed: {e}", "warning")
+            success = False
+        
+        # Create launchers and shortcuts
+        try:
+            from installers.launcher_creator import LauncherCreator
+            launcher = LauncherCreator(self.install_dir)
+            
+            self.print_status("Creating launch scripts and shortcuts...", "info")
+            results = launcher.create_all_launchers()
+            
+            # Show results
+            for name, (result_success, msg) in results.items():
+                if result_success:
+                    self.print_status(f"{name}: {msg}", "success")
+                else:
+                    self.print_status(f"{name}: {msg}", "warning")
+            
+            # Check if critical components were created
+            if not results.get('start_script', (False,))[0]:
+                success = False
+        except Exception as e:
+            self.print_status(f"Launcher creation failed: {e}", "warning")
+            success = False
+        
+        return success
+
     def launch_gui_installer(self) -> int:
         """Launch the GUI installer (setup_gui.py)"""
         self.print_status("Launching GUI installer...", "info")
@@ -228,10 +283,31 @@ class Bootstrap:
                 capture_output=False,
                 text=True
             )
+            
+            # If installation succeeded, run post-installation setup
+            if result.returncode == 0:
+                if self.post_installation_setup():
+                    self.print_status("Installation complete!", "success")
+                    print(f"
+{self.colors['GREEN']}You can now start GiljoAI MCP using:")
+                    print(f"
+{self.colors['GREEN']}You can now start GiljoAI MCP using:")
+                    if self.os_type == 'Windows':
+                        print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
+                        print(f"  - Start Menu: GiljoAI MCP Orchestrator")  
+                        print(f"  - Command line: start_giljo.bat")
+                    else:
+                        print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
+                        print(f"  - Command line: ./start_giljo.sh")
+                    print(f"{self.colors['ENDC']}")
+                else:
+                    self.print_status("Installation completed with warnings", "warning")
+            
             return result.returncode
         except Exception as e:
             self.print_status(f"GUI installer failed: {e}", "error")
-            print("\nFalling back to CLI installer...")
+            print("
+Falling back to CLI installer...")
             return self.launch_cli_installer()
     
     def launch_cli_installer(self) -> int:
@@ -251,6 +327,23 @@ class Bootstrap:
                 capture_output=False,
                 text=True
             )
+            
+            # If installation succeeded, run post-installation setup
+            if result.returncode == 0:
+                if self.post_installation_setup():
+                    self.print_status("Installation complete!", "success")
+                    print(f"
+{self.colors['GREEN']}You can now start GiljoAI MCP using:")
+                    if self.os_type == 'Windows':
+                        print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
+                        print(f"  - Command line: start_giljo.bat")
+                    else:
+                        print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
+                        print(f"  - Command line: ./start_giljo.sh")
+                    print(f"{self.colors['ENDC']}")
+                else:
+                    self.print_status("Installation completed with warnings", "warning")
+            
             return result.returncode
         except Exception as e:
             self.print_status(f"CLI installer failed: {e}", "error")

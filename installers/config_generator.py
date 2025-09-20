@@ -6,10 +6,17 @@ Generates default config.yaml with sensible defaults that work out-of-the-box.
 """
 
 import os
+import sys
 import secrets
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+# Try to import installation manifest
+try:
+    from installation_manifest import InstallationManifest
+except ImportError:
+    InstallationManifest = None
 
 
 class ConfigGenerator:
@@ -24,6 +31,14 @@ class ConfigGenerator:
         self.install_dir = Path(install_dir) if install_dir else Path.cwd()
         self.config_path = self.install_dir / "config.yaml"
         self.example_path = self.install_dir / "config.yaml.example"
+        
+        # Initialize installation manifest if available
+        self.manifest = None
+        if InstallationManifest:
+            try:
+                self.manifest = InstallationManifest(self.install_dir)
+            except Exception:
+                pass
         
     def generate_default_config(self) -> Dict[str, Any]:
         """Generate default configuration with working defaults
@@ -253,6 +268,11 @@ class ConfigGenerator:
                     indent=2
                 )
             
+            # Track in manifest
+            if self.manifest:
+                self.manifest.add_file(self.config_path, category="config", is_user_data=True)
+                self.manifest.save_manifest()
+            
             return True, f"Created default config: {self.config_path}"
             
         except Exception as e:
@@ -275,6 +295,18 @@ class ConfigGenerator:
             
             for dir_path in dirs:
                 dir_path.mkdir(parents=True, exist_ok=True)
+                
+                # Track in manifest
+                if self.manifest:
+                    # Mark data and logs as user data
+                    is_user_data = dir_path.name in ['data', 'logs']
+                    self.manifest.add_directory(dir_path, 
+                                               category="data" if is_user_data else "general",
+                                               is_user_data=is_user_data)
+            
+            # Save manifest after tracking all directories
+            if self.manifest:
+                self.manifest.save_manifest()
             
             return True, "Created all required directories"
             
@@ -405,16 +437,16 @@ def main():
     
     # Create directories
     success, msg = generator.create_required_directories()
-    print(f"{'✓' if success else '✗'} {msg}")
+    print(f"{'[OK]' if success else '[FAIL]'} {msg}")
     
     # Create config file
     success, msg = generator.create_config_file()
-    print(f"{'✓' if success else '✗'} {msg}")
+    print(f"{'[OK]' if success else '[FAIL]'} {msg}")
     
     if success:
         # Validate the created config
         valid, msg = generator.validate_config()
-        print(f"{'✓' if valid else '✗'} Validation: {msg}")
+        print(f"{'[OK]' if valid else '[FAIL]'} Validation: {msg}")
     
     return 0 if success else 1
 
