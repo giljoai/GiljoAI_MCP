@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Port Conflict Checker for GiljoAI MCP
-Ensures no conflicts with AKE-MCP or other services
+Ensures no conflicts with other services
 """
 
 import socket
@@ -13,12 +13,7 @@ import yaml
 
 # Port assignments for different services
 PORT_ASSIGNMENTS = {
-    # AKE-MCP (Currently in use)
-    "AKE-MCP Dashboard": 5000,
-    "AKE-MCP Server": 5001,
-    "AKE-MCP Lock": 5002,
-
-    # GiljoAI MCP (Planned)
+    # GiljoAI MCP Services
     "GiljoAI Dashboard": 6000,
     "GiljoAI MCP Server": 6001,
     "GiljoAI REST API": 6002,
@@ -103,18 +98,7 @@ def main():
     for service, port in available:
         pass
 
-    # Show AKE-MCP status
 
-    ake_running = False
-    for service, port in PORT_ASSIGNMENTS.items():
-        if service.startswith("AKE-MCP"):
-            if check_port(port):
-                ake_running = True
-            else:
-                pass
-
-    if ake_running:
-        pass
 
 
     return 0

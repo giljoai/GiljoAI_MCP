@@ -119,6 +119,9 @@ class GiljoSetup:
         # Install dependencies
         self._install_dependencies()
 
+        # Create desktop launcher
+        self._create_desktop_launcher()
+
         # Show summary
         self._show_summary()
 
@@ -140,9 +143,15 @@ class GiljoSetup:
         platform_table.add_column("Property", style="cyan")
         platform_table.add_column("Value", style="green")
 
-        platform_table.add_row("Operating System", f"{self.platform_info['system']} {self.platform_info['release']}")
-        platform_table.add_row("Python Version", self.platform_info["python"])
-        platform_table.add_row("Architecture", self.platform_info["arch"])
+        platform_table.add_row("Operating System", f"{self.platform_info.get('system', 'Unknown')} {self.platform_info.get('release', '')}")
+        # Handle both dict and string format for python version
+        python_version = self.platform_info["python"]
+        if isinstance(python_version, dict):
+            python_version = python_version.get("version", str(python_version))
+        platform_table.add_row("Python Version", str(python_version))
+        # Handle both 'arch' and 'architecture' keys
+        arch = self.platform_info.get("arch") or self.platform_info.get("architecture", "Unknown")
+        platform_table.add_row("Architecture", str(arch))
         platform_table.add_row("Installation Path", str(self.root_path))
 
         console.print(platform_table)
@@ -171,35 +180,31 @@ class GiljoSetup:
 
     def _check_ake_mcp(self, interactive=True):
         """Check for AKE-MCP installation and offer migration"""
-        console.print("\n[bold]Checking for AKE-MCP...[/bold]")
+        console.print("\n[bold]Checking for AKE-MCP installation...[/bold]")
+        
+        # Check if AKE-MCP is referenced in .mcp.json
+        mcp_config = self.root_path / ".mcp.json"
+        if mcp_config.exists():
+            with open(mcp_config) as f:
+                content = f.read()
+                if "AKE-MCP" in content or "ake-mcp" in content:
+                    console.print("[yellow]Found AKE-MCP configuration in .mcp.json[/yellow]")
+                    if interactive:
+                        if Confirm.ask("\nWould you like to remove AKE-MCP dependency and make GiljoAI standalone?"):
+                            console.print("[green]Will configure GiljoAI MCP as standalone[/green]")
+                            self.env_vars["STANDALONE_MODE"] = "true"
+                        else:
+                            console.print("[yellow]Keeping AKE-MCP integration[/yellow]")
+                else:
+                    console.print("[green]✓ No AKE-MCP dependency found[/green]")
+        else:
+            console.print("[green]✓ No .mcp.json found - clean installation[/green]")
 
-        ake_running = False
-        for service, port in PORT_ASSIGNMENTS.items():
-            if service.startswith("AKE-MCP") and check_port(port):
-                ake_running = True
-                console.print(f"  [green]✓[/green] {service} detected on port {port}")
+    def _check_legacy_installation(self, interactive=True):
+        """Check for any legacy installation"""
+        console.print("\n[bold]Checking for existing configuration...[/bold]")
 
-        if ake_running:
-            console.print("\n[yellow]AKE-MCP is currently running.[/yellow]")
-            console.print("GiljoAI MCP uses different ports, so both can run simultaneously.")
 
-            if interactive and Confirm.ask("\nWould you like to import configuration from AKE-MCP?"):
-                self._import_ake_config()
-
-    def _import_ake_config(self):
-        """Import configuration from AKE-MCP if available"""
-        ake_paths = [
-            Path.home() / ".ake-mcp" / "config.yaml",
-            Path("F:/AKE-MCP/config.yaml"),
-            Path("../AKE-MCP/config.yaml")
-        ]
-
-        for path in ake_paths:
-            if path.exists():
-                console.print(f"[green]Found AKE-MCP config at {path}[/green]")
-                # We'll note this for future use but won't directly copy
-                self.env_vars["AKE_MCP_CONFIG_PATH"] = str(path)
-                break
 
     def _check_ports(self):
         """Check port availability"""
@@ -576,6 +581,178 @@ class GiljoSetup:
                     )
                     console.print("[green]✓ PostgreSQL adapter installed[/green]")
 
+    def _create_desktop_launcher(self):
+        """Create desktop launcher/shortcut for the current OS"""
+        console.print("\n[bold]Creating Desktop Launcher...[/bold]")
+        
+        try:
+            if self.platform_info.get("is_windows"):
+                self._create_windows_shortcut()
+            elif self.platform_info.get("is_mac"):
+                self._create_mac_app()
+            elif self.platform_info.get("is_linux"):
+                self._create_linux_desktop_entry()
+            else:
+                console.print("[yellow]Desktop launcher not created - unknown OS[/yellow]")
+                return False
+            return True
+        except Exception as e:
+            console.print(f"[yellow]Could not create desktop launcher: {e}[/yellow]")
+            return False
+    
+    def _create_windows_shortcut(self):
+        """Create Windows desktop shortcut and Start Menu entry"""
+        try:
+            import win32com.client
+            import pythoncom
+        except ImportError:
+            # Fall back to creating just a batch file
+            self._create_windows_batch_launcher()
+            return
+        
+        # Get desktop path
+        desktop = Path.home() / "Desktop"
+        start_menu = Path.home() / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+        
+        # Create launcher batch file in installation directory
+        launcher_bat = self.root_path / "GiljoAI_MCP.bat"
+        with open(launcher_bat, "w") as f:
+            f.write(f'''@echo off
+cd /d "{self.root_path}"
+start "GiljoAI Dashboard" cmd /c "python -m giljo_mcp.server --dashboard"
+start http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}
+''')
+        
+        # Create shortcuts
+        pythoncom.CoInitialize()
+        shell = win32com.client.Dispatch("WScript.Shell")
+        
+        for location, path in [("Desktop", desktop), ("Start Menu", start_menu)]:
+            shortcut_path = path / "GiljoAI MCP.lnk"
+            shortcut = shell.CreateShortCut(str(shortcut_path))
+            shortcut.TargetPath = str(launcher_bat)
+            shortcut.WorkingDirectory = str(self.root_path)
+            shortcut.IconLocation = str(self.root_path / "frontend" / "public" / "favicon.ico")
+            shortcut.Description = "GiljoAI MCP Coding Orchestrator"
+            shortcut.save()
+            console.print(f"  [green]✓[/green] Created {location} shortcut")
+    
+    def _create_windows_batch_launcher(self):
+        """Create simple batch file launcher when pywin32 is not available"""
+        # Create launcher batch file on Desktop
+        desktop = Path.home() / "Desktop"
+        launcher_bat = desktop / "GiljoAI_MCP.bat"
+        
+        with open(launcher_bat, "w") as f:
+            f.write(f'''@echo off
+echo ============================================================
+echo GiljoAI MCP Coding Orchestrator
+echo ============================================================
+echo.
+cd /d "{self.root_path}"
+echo Starting GiljoAI MCP Server and Dashboard...
+start "GiljoAI Server" python -m giljo_mcp.server
+timeout /t 3 /nobreak > nul
+start http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}
+echo.
+echo Server is running. Close this window to stop.
+pause
+''')
+        
+        console.print(f"  [green]✓[/green] Created desktop launcher: {launcher_bat}")
+        console.print("  [yellow]Note: Install pywin32 for full shortcut support[/yellow]")
+        console.print("  [dim]pip install pywin32[/dim]")
+    
+    def _create_mac_app(self):
+        """Create macOS .app bundle in Applications"""
+        import plistlib
+        
+        app_name = "GiljoAI MCP"
+        app_path = Path("/Applications") / f"{app_name}.app"
+        contents_path = app_path / "Contents"
+        macos_path = contents_path / "MacOS"
+        resources_path = contents_path / "Resources"
+        
+        # Create directory structure
+        macos_path.mkdir(parents=True, exist_ok=True)
+        resources_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create launcher script
+        launcher_script = macos_path / "launcher"
+        with open(launcher_script, "w") as f:
+            f.write(f'''#!/bin/bash
+cd "{self.root_path}"
+python3 -m giljo_mcp.server --dashboard &
+sleep 2
+open "http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}"
+''')
+        launcher_script.chmod(0o755)
+        
+        # Create Info.plist
+        info_plist = {
+            "CFBundleName": app_name,
+            "CFBundleDisplayName": app_name,
+            "CFBundleIdentifier": "com.giljoai.mcp",
+            "CFBundleVersion": "1.0.0",
+            "CFBundleExecutable": "launcher",
+            "CFBundleIconFile": "icon",
+            "LSUIElement": False
+        }
+        
+        with open(contents_path / "Info.plist", "wb") as f:
+            plistlib.dump(info_plist, f)
+        
+        # Copy icon if available
+        icon_source = self.root_path / "frontend" / "public" / "icon.icns"
+        if icon_source.exists():
+            import shutil
+            shutil.copy2(icon_source, resources_path / "icon.icns")
+        
+        console.print(f"  [green]✓[/green] Created macOS app bundle in Applications")
+    
+    def _create_linux_desktop_entry(self):
+        """Create Linux .desktop file for application menu"""
+        desktop_dir = Path.home() / ".local" / "share" / "applications"
+        desktop_dir.mkdir(parents=True, exist_ok=True)
+        
+        desktop_file = desktop_dir / "giljoai-mcp.desktop"
+        
+        # Create launcher script
+        launcher_script = self.root_path / "launch_giljo.sh"
+        with open(launcher_script, "w") as f:
+            f.write(f'''#!/bin/bash
+cd "{self.root_path}"
+python3 -m giljo_mcp.server --dashboard &
+sleep 2
+xdg-open "http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}"
+''')
+        launcher_script.chmod(0o755)
+        
+        # Create .desktop entry
+        with open(desktop_file, "w") as f:
+            f.write(f'''[Desktop Entry]
+Name=GiljoAI MCP
+Comment=GiljoAI MCP Coding Orchestrator
+Exec={launcher_script}
+Icon={self.root_path}/frontend/public/icon.png
+Terminal=false
+Type=Application
+Categories=Development;IDE;
+''')
+        
+        # Make it executable
+        desktop_file.chmod(0o755)
+        
+        # Also create desktop shortcut if desktop exists
+        desktop = Path.home() / "Desktop"
+        if desktop.exists():
+            import shutil
+            shutil.copy2(desktop_file, desktop / "GiljoAI MCP.desktop")
+            (desktop / "GiljoAI MCP.desktop").chmod(0o755)
+            console.print("  [green]✓[/green] Created desktop shortcut")
+        
+        console.print("  [green]✓[/green] Created application menu entry")
+
     def _show_summary(self):
         """Show setup summary"""
         console.print("\n" + "="*60)
@@ -740,34 +917,27 @@ def validate_port_range(port: int) -> bool:
     """Validate port is in valid range"""
     return 1024 <= port <= 65535
 
-def detect_ake_mcp() -> dict[str, Any]:
-    """Detect AKE-MCP installation"""
-    ake_info = {
-        "found": False,  # Use 'found' for test compatibility
+def detect_legacy_installation() -> dict[str, Any]:
+    """Detect any legacy installation"""
+    legacy_info = {
+        "found": False,
         "services": {},
         "config_path": None
     }
 
-    # Check running services
-    for service, port in PORT_ASSIGNMENTS.items():
-        if service.startswith("AKE-MCP") and check_port(port):
-            ake_info["found"] = True
-            ake_info["services"][service] = port
-
-    # Check for config file
-    ake_paths = [
-        Path.home() / ".ake-mcp" / "config.yaml",
-        Path("F:/AKE-MCP/config.yaml"),
-        Path("../AKE-MCP/config.yaml")
+    # Check for existing config file
+    legacy_paths = [
+        Path.home() / ".giljo-mcp" / "config.yaml",
+        Path("./config.yaml")
     ]
 
-    for path in ake_paths:
+    for path in legacy_paths:
         if path.exists():
-            ake_info["config_path"] = str(path)
-            ake_info["found"] = True  # Also set found if config exists
+            legacy_info["config_path"] = str(path)
+            legacy_info["found"] = True
             break
 
-    return ake_info
+    return legacy_info
 
 def validate_path(path: str) -> bool:
     """Validate file path"""

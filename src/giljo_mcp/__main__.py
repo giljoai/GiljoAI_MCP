@@ -18,6 +18,7 @@ from giljo_mcp.auth import AuthManager
 from giljo_mcp.config_manager import DeploymentMode, get_config
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.server import create_server
+from giljo_mcp.lock_manager import get_lock_manager
 
 
 # Configure logging
@@ -97,6 +98,15 @@ async def startup_sequence():
         logger.info("=" * 60)
         logger.info("GiljoAI MCP Server Starting...")
         logger.info("=" * 60)
+
+        # Step 0: Acquire lock to ensure single instance
+        logger.info("Step 0: Acquiring instance lock...")
+        lock_manager = get_lock_manager()
+        if not lock_manager.acquire_lock():
+            logger.error("Another instance of GiljoAI MCP is already running.")
+            logger.error("Lock file location: ~/.giljo_mcp/locks/giljo_mcp.lock")
+            return False
+        logger.info("Instance lock acquired successfully")
 
         # Step 1: Load or create configuration
         logger.info("Step 1: Loading configuration...")
