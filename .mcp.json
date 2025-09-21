@@ -1,11 +1,14 @@
 {
   "mcpServers": {
-    "ake-mcp-v2": {
-      "command": "F:\\AKE-MCP\\venv\\Scripts\\python.exe",
+    "giljo-mcp": {
+      "command": "python",
       "args": [
-        "F:\\AKE-MCP\\server.py"
+        "-m",
+        "src.giljo_mcp.server"
       ],
       "env": {
+        "PYTHONPATH": "F:\\GiljoAI_MCP\\src",
+        "GILJO_MCP_DB": "F:\\GiljoAI_MCP\\data\\giljo_mcp.db",
         "ACTIVE_PRODUCT": "GiljoAI-MCP Coding Orchestrator"
       }
     },
@@ -18,7 +21,7 @@
         "--context",
         "desktop-app",
         "--project",
-        "C:\\projects\\GiljoAI_MCP"
+        "F:\\GiljoAI_MCP"
       ]
     }
   }

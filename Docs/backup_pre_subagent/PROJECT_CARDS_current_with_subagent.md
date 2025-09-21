@@ -2,7 +2,7 @@
 
 ## How to Use These Cards
 
-Each card below is ready to be created as a project in AKE-MCP. Copy the mission and use the suggested agents when creating the project through the dashboard or CLI.
+Each card below is ready to be created as a project in the orchestrator. Copy the mission and use the suggested agents when creating the project through the dashboard or CLI.
 
 ---
 
@@ -123,7 +123,7 @@ Agents: analyzer, implementer, tester, documenter
 **Create Project Command**:
 ```
 Name: GiljoAI Vision Chunking
-Mission: Port and enhance the vision document chunking system from AKE-MCP. Implement get_vision(part, max_tokens) that chunks documents over 25K tokens, breaks at natural line boundaries, returns total_parts and current_part metadata, creates vision index in database for navigation. Test with documents over 50K tokens ensuring reliable chunking.
+Mission: Port and enhance the vision document chunking system. Implement get_vision(part, max_tokens) that chunks documents over 25K tokens, breaks at natural line boundaries, returns total_parts and current_part metadata, creates vision index in database for navigation. Test with documents over 50K tokens ensuring reliable chunking.
 Agents: analyzer, implementer, tester
 ```
 
@@ -570,7 +570,7 @@ Agents: architect, implementer, tester, documenter
 **Create Project Command**:
 ```
 Name: GiljoAI Setup Enhancement
-Mission: Create polished setup experience with smart defaults. Enhance setup.py with optional GUI using tkinter, add platform detection for OS-specific setup, check for dependencies and offer installation, create first-run wizard walking through configuration, add migration tool from AKE-MCP database, and import/export configuration capabilities. Make onboarding delightful.
+Mission: Create polished setup experience with smart defaults. Enhance setup.py with optional GUI using tkinter, add platform detection for OS-specific setup, check for dependencies and offer installation, create first-run wizard walking through configuration, add migration tool for existing databases, and import/export configuration capabilities. Make onboarding delightful.
 Agents: analyzer, designer, implementer, tester
 ```
 
@@ -718,4 +718,4 @@ Agents: security_expert, implementer, compliance_auditor
 
 ---
 
-*These project cards are designed to be executed sequentially through the AKE-MCP orchestrator, building GiljoAI MCP systematically.*
+*These project cards are designed to be executed sequentially through the orchestrator, building GiljoAI MCP systematically.*

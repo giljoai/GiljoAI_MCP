@@ -1,13 +1,13 @@
 # AGENT INSTRUCTIONS - Critical Information for All Development Agents
 
-## ⚠️ PORT CONFIGURATION - AVOID CONFLICTS WITH AKE-MCP
+## ⚠️ PORT CONFIGURATION
 
-**CRITICAL**: AKE-MCP is running and must continue during development. Use these ports:
+**CRITICAL**: GiljoAI MCP runs independently. Use these ports:
 
-### Current Port Usage (DO NOT USE):
-- **5000** - AKE-MCP Dashboard (IN USE)
-- **5001** - AKE-MCP Server 
-- **5002** - AKE-MCP Lock
+### Reserved Ports (Legacy Compatibility):
+- **5000** - Reserved
+- **5001** - Reserved
+- **5002** - Reserved
 - **5432** - PostgreSQL (SHARED - OK to use)
 
 ### GiljoAI MCP Port Assignments (USE THESE):
@@ -87,7 +87,7 @@ config_dir = "~/.giljo-mcp"  # Unix only
 - Use provided assets in `/frontend/public/`
 - WCAG 2.1 AA accessibility
 
-### 5. Features to Preserve from AKE-MCP
+### 5. Core Features Implemented
 - Vision document chunking (50K+ tokens)
 - Message acknowledgment arrays (PostgreSQL)
 - Dynamic discovery (no static indexing)
@@ -140,8 +140,7 @@ http://localhost:6002  # NOT 5001!
 
 ## 📞 QUICK REFERENCE
 
-- **AKE-MCP Dashboard**: http://localhost:5000 (keep running)
-- **GiljoAI Dashboard**: http://localhost:6000 (when built)
+- **GiljoAI Dashboard**: http://localhost:6000
 - **Config**: `/config.yaml` and `.env`
 - **Port Checker**: `scripts/check_ports.py`
 - **Virtual Env**: `./venv/Scripts/python.exe`
@@ -150,4 +149,4 @@ http://localhost:6002  # NOT 5001!
 
 ---
 
-**REMEMBER**: AKE-MCP continues orchestrating until GiljoAI MCP alpha is ready. Both systems run in parallel without conflicts.
+**REMEMBER**: GiljoAI MCP is now fully independent with its own orchestration capabilities.

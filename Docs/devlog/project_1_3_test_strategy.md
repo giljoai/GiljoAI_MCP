@@ -86,14 +86,14 @@ This document outlines the comprehensive testing strategy for the GiljoAI MCP se
   - Integration with check_ports.py
   - Detection of occupied ports
   - Suggestion of alternative ports
-  - AKE-MCP conflict detection (ports 5000-5003)
+  - Service conflict detection (ports 5000-5003)
   - User-defined port validation
 
 ### 6. Migration Support
 
-#### AKE-MCP Migration
+#### Database Migration
 - **Test Cases:**
-  - Detection of existing AKE-MCP installation
+  - Detection of existing database installation
   - Migration prompt and confirmation
   - Configuration import
   - Database migration options
@@ -172,7 +172,7 @@ This document outlines the comprehensive testing strategy for the GiljoAI MCP se
 2. **Database Support**: Both SQLite and PostgreSQL flows work correctly
 3. **Error Recovery**: All error scenarios handled gracefully
 4. **User Experience**: Clear feedback and guidance throughout
-5. **Migration Support**: Smooth transition from AKE-MCP if present
+5. **Migration Support**: Smooth transition from existing installations if present
 6. **Configuration Validity**: Generated configs work with main application
 
 ## Risk Areas

@@ -190,7 +190,7 @@ onUnmounted(() => {
 ### Challenge 1: Agent Limit
 - **Issue**: Hit 8-agent global limit
 - **Solution**: Decommissioned completed agents to make room
-- **Learning**: Need to investigate AKE-MCP agent counting
+- **Learning**: Need to investigate agent counting methods
 
 ### Challenge 2: Background Monitoring
 - **Issue**: Initial monitors used wrong API endpoints

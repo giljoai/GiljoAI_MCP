@@ -21,7 +21,7 @@ After:
 setup.py (900 lines) → Entry point with --gui flag
 ├── setup_gui.py (~700 lines) → Tkinter wizard interface
 ├── setup_platform.py (~600 lines) → Enhanced OS detection
-├── setup_migration.py (~800 lines) → AKE-MCP migration
+├── setup_migration.py (~800 lines) → Database migration
 ├── setup_dependencies.py (~700 lines) → Smart dependencies
 └── setup_config.py (~700 lines) → Config management
 ```
@@ -72,7 +72,7 @@ class PlatformDetector:
 ```python
 class AKEMCPMigrator:
     def export_data(self):
-        # Export from AKE-MCP PostgreSQL
+        # Export from existing PostgreSQL
         data = {
             'projects': self.export_projects(),
             'agents': self.export_agents(),
@@ -212,7 +212,7 @@ kdf = PBKDF2HMAC(
 1. **Immediate**:
    - Add public method aliases for backward compatibility
    - Test on macOS and Linux
-   - Validate with production AKE-MCP data
+   - Validate with production data
 
 2. **Short-term**:
    - Add progress callbacks for long operations

@@ -1,7 +1,7 @@
 """
 Enhanced chunking utilities for GiljoAI MCP.
 Supports documents up to 100K+ tokens with natural boundary preservation.
-Based on AKE-MCP's proven chunking implementation with enhancements.
+Based on proven chunking implementation with enhancements.
 """
 
 import hashlib
@@ -19,7 +19,7 @@ class EnhancedChunker:
     Supports documents up to 100K+ tokens with natural breaks.
     """
 
-    # Token to character ratio (from AKE-MCP analysis)
+    # Token to character ratio (from analysis)
     TOKEN_CHAR_RATIO = 4
 
     # Maximum tokens per chunk (hard limit from MCP)
@@ -45,7 +45,7 @@ class EnhancedChunker:
     def estimate_tokens(self, content: str) -> int:
         """
         Estimate token count from character count.
-        Uses 1:4 token-to-character ratio from AKE-MCP.
+        Uses 1:4 token-to-character ratio.
 
         Args:
             content: Text content
@@ -189,7 +189,7 @@ class EnhancedChunker:
     def chunk_content(self, content: str, document_name: str = "document") -> list[dict[str, Any]]:
         """
         Chunk content into parts with natural boundaries.
-        Based on AKE-MCP's proven algorithm with enhancements.
+        Based on proven algorithm with enhancements.
 
         Args:
             content: Full content to chunk

@@ -39,7 +39,7 @@ frontend/src/
 ## Technical Decisions
 
 ### Port Configuration
-- Dashboard: 6000 (avoiding AKE-MCP's 5000)
+- Dashboard: 6000 (avoiding conflict with 5000)
 - REST API: 6002 (future)
 - WebSocket: 6003 (future)
 

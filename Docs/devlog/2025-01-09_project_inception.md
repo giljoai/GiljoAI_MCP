@@ -2,12 +2,12 @@
 ## Date: January 9, 2025
 
 ### Session Overview
-Initial setup and planning for GiljoAI MCP Coding Orchestrator - a complete rewrite of AKE-MCP with multi-tenant architecture.
+Initial setup and planning for GiljoAI MCP Coding Orchestrator - a complete multi-agent orchestration system with multi-tenant architecture.
 
 ### Major Decisions
 
 #### 1. Development Strategy
-- **Approach**: Use existing AKE-MCP to orchestrate its own development
+- **Approach**: Use orchestration to manage its own development
 - **Structure**: 20 focused projects across 5 phases
 - **Timeline**: 4 weeks to MVP
 - **Method**: Progressive enhancement (setup scripts from Day 1)
@@ -22,7 +22,7 @@ Initial setup and planning for GiljoAI MCP Coding Orchestrator - a complete rewr
 - **Deployment**: Docker, pip installable
 
 #### 3. Critical Features to Preserve
-From analysis of AKE-MCP, we identified proven features:
+From analysis, we identified proven features:
 1. Vision document chunking (handles 50K+ tokens)
 2. Message acknowledgment arrays (never lose messages)
 3. Dynamic discovery (no static indexing)
@@ -75,9 +75,9 @@ All visual assets are now ready for integration - agents should use these rather
    - `requirements.txt` - Python dependencies
    - `Sessions/session_001_initial_setup.md` - Initial decisions
 
-### Configuration in AKE-MCP
+### Configuration Setup
 
-Successfully configured GiljoAI MCP as a product in AKE-MCP with:
+Successfully configured GiljoAI MCP with:
 - Vision path: `F:\GiljoAI_MCP\Docs\Vision`
 - Documentation path: `F:\GiljoAI_MCP\Docs`
 - Sessions path: `F:\GiljoAI_MCP\Docs\Sessions`
@@ -110,7 +110,7 @@ Added comprehensive configuration:
 
 1. **Create Project 1.1**: Core Architecture & Database
    - Copy mission from PROJECT_CARDS.md
-   - Create in AKE-MCP dashboard
+   - Create in orchestrator dashboard
    - Let orchestrator build foundation
 
 2. **Monitor Progress**:
@@ -132,7 +132,7 @@ Added comprehensive configuration:
 
 **Mitigations**:
 - Extra testing for critical components
-- Port working code from AKE-MCP where possible
+- Port working code from proven patterns where possible
 - Graceful degradation for real-time features
 
 ### Metrics for Success

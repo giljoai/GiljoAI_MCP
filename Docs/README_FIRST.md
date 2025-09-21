@@ -2,7 +2,7 @@
 
 ## Welcome to GiljoAI MCP Development!
 
-This is the root directory for the **GiljoAI MCP Coding Orchestrator** project - a complete rewrite of AKE-MCP with multi-tenant architecture and enhanced capabilities.
+This is the root directory for the **GiljoAI MCP Coding Orchestrator** project - a complete multi-agent orchestration system with multi-tenant architecture and enhanced capabilities.
 
 ### 🚀 ARCHITECTURAL UPDATE: Sub-Agent Integration (January 2025)
 
@@ -21,7 +21,7 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
 - **CLAUDE.md** - AI assistant instructions and project context
 - **requirements.txt** - Python dependencies list
 - **config.yaml** - Project configuration settings
-- **.mcp.json** - MCP server configuration (AKE-MCP integration)
+- **.mcp.json** - MCP server configuration
 - **.env.example** - Environment variable template (copy to .env)
 - **docker-compose.yml** - Docker orchestration configuration
 - **alembic.ini** - Database migration configuration
@@ -47,7 +47,7 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
 #### 📄 Technical Documentation
 - `TECHNICAL_ARCHITECTURE.md` - System design with OS-neutral requirements
 - `PRODUCT_PROPOSAL.md` - Business case and market positioning
-- `PROVEN_FEATURES_TO_PRESERVE.md` - Critical features from AKE-MCP to maintain
+- `PROVEN_FEATURES_TO_PRESERVE.md` - Critical features to maintain
 - `MESSAGE_QUEUE_GUIDE.md` - Message queue system documentation
 - `AGENT_INSTRUCTIONS.md` - Agent behavior and coordination guidelines
 
@@ -159,7 +159,7 @@ Contains:
 - Phase 3: Projects 3.1-3.9.b (Orchestration) ✅
 **Performance**: Template generation <0.08ms (exceeds <0.1ms target)
 
-We're about to begin building this system using the AKE-MCP orchestrator to manage its own development through 20 focused projects.
+We're about to begin building this system using orchestration to manage its own development through 20 focused projects.
 
 ## 📝 How to Navigate This Project
 
@@ -180,7 +180,7 @@ We're about to begin building this system using the AKE-MCP orchestrator to mana
 
 4. **Tracking Progress?**
    - Check `/docs/devlog/` for daily development logs
-   - Review completed projects in AKE-MCP dashboard
+   - Review completed projects in orchestrator dashboard
    - Update session memories in `/docs/Sessions/`
 
 ## ⚠️ Critical Requirements
@@ -204,7 +204,7 @@ All code MUST work on Windows, Mac, and Linux:
 - No single-product limitations
 - Concurrent project support from day one
 
-### Preserved Features from AKE-MCP
+### Core Features Implemented
 - Vision document chunking (50K+ tokens)
 - Message acknowledgment arrays
 - Dynamic discovery (no static indexing)
@@ -212,7 +212,7 @@ All code MUST work on Windows, Mac, and Linux:
 
 ## 🎯 Development Workflow
 
-1. **Create Project in AKE-MCP**
+1. **Create Project in Orchestrator**
    - Use missions from `docs/PROJECT_CARDS.md`
    - Follow phase order in `docs/PROJECT_FLOW_VISUAL.md`
 
@@ -233,7 +233,7 @@ All code MUST work on Windows, Mac, and Linux:
 
 ## 📞 Quick References
 
-- **AKE-MCP Dashboard**: http://localhost:5000
+- **Orchestrator Dashboard**: http://localhost:5000
 - **Database**: PostgreSQL on localhost:5432
 - **Python Version**: 3.8+
 - **UI Framework**: Vue 3 + Vite
@@ -241,7 +241,7 @@ All code MUST work on Windows, Mac, and Linux:
 
 ## 🔄 Next Actions
 
-1. Open AKE-MCP dashboard
+1. Open orchestrator dashboard
 2. Create Project 1.1: "GiljoAI Core Architecture"
 3. Copy mission from `docs/PROJECT_CARDS.md`
 4. Let orchestrator begin building

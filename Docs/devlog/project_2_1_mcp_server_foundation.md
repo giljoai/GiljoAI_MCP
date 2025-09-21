@@ -79,7 +79,7 @@ Created the FastMCP server foundation for GiljoAI MCP Coding Orchestrator, estab
 ## Technical Achievements
 
 ### Core Implementation
-- **FastMCP Server**: Running on port 6001 (avoiding AKE-MCP conflict on 5001)
+- **FastMCP Server**: Running on port 6001 (avoiding conflict on 5001)
 - **Dual Database Support**: SQLite for local, PostgreSQL for production
 - **Async Operations**: Full async support with asyncpg
 - **Multi-tenant Ready**: Tenant isolation via ContextVar

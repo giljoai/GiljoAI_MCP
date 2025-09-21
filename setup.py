@@ -179,24 +179,24 @@ class GiljoSetup:
         return False
 
     def _check_ake_mcp(self, interactive=True):
-        """Check for AKE-MCP installation and offer migration"""
-        console.print("\n[bold]Checking for AKE-MCP installation...[/bold]")
+        """Check for legacy MCP configurations and offer migration"""
+        console.print("\n[bold]Checking for legacy MCP configurations...[/bold]")
         
-        # Check if AKE-MCP is referenced in .mcp.json
+        # Check if legacy MCP server is referenced in .mcp.json
         mcp_config = self.root_path / ".mcp.json"
         if mcp_config.exists():
             with open(mcp_config) as f:
                 content = f.read()
-                if "AKE-MCP" in content or "ake-mcp" in content:
-                    console.print("[yellow]Found AKE-MCP configuration in .mcp.json[/yellow]")
+                if "ake-mcp" in content.lower():
+                    console.print("[yellow]Found legacy MCP configuration in .mcp.json[/yellow]")
                     if interactive:
-                        if Confirm.ask("\nWould you like to remove AKE-MCP dependency and make GiljoAI standalone?"):
+                        if Confirm.ask("\nWould you like to remove legacy MCP dependency and make GiljoAI standalone?"):
                             console.print("[green]Will configure GiljoAI MCP as standalone[/green]")
                             self.env_vars["STANDALONE_MODE"] = "true"
                         else:
-                            console.print("[yellow]Keeping AKE-MCP integration[/yellow]")
+                            console.print("[yellow]Keeping legacy MCP integration[/yellow]")
                 else:
-                    console.print("[green]✓ No AKE-MCP dependency found[/green]")
+                    console.print("[green]✓ No legacy MCP dependency found[/green]")
         else:
             console.print("[green]✓ No .mcp.json found - clean installation[/green]")
 

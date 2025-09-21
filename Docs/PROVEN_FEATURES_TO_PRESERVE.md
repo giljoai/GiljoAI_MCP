@@ -1,8 +1,8 @@
-# Proven Features to Preserve from AKE-MCP
+# Proven Features to Preserve
 
 ## Critical Features Actually Implemented & Working
 
-After reviewing the AKE-MCP documentation and cross-referencing with the actual code, here are the **proven, working features** we must preserve in the rewrite:
+After reviewing the documentation and cross-referencing with the actual code, here are the **proven, working features** we must preserve:
 
 ### 1. Vision Document Chunking (FULLY IMPLEMENTED)
 **Location**: `server.py` lines 1345-1440  

@@ -446,7 +446,7 @@ giljo-mcp/
 
 ### Migration Strategy
 
-#### From Current AKE-MCP
+#### Core Features
 1. Export PostgreSQL data to SQL dump
 2. Run migration script to new schema
 3. Update project keys for multi-tenancy

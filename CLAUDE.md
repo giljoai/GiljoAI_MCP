@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system being built using AKE-MCP server to orchestrate its own development through 20 focused projects over 4 weeks. The system transforms AI coding assistants into coordinated development teams that can tackle projects of unlimited complexity.
+GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system with complete standalone orchestration capabilities, built through 20 focused projects over 4 weeks. The system transforms AI coding assistants into coordinated development teams that can tackle projects of unlimited complexity.
 
 ## Installation System
 
@@ -31,10 +31,10 @@ quickstart.bat
 
 ## Development Commands
 
-### AKE-MCP Server (Orchestrator)
-The project uses AKE-MCP server configured in `.mcp.json` for orchestration:
+### GiljoAI MCP Server (Orchestrator)
+The project has its own MCP server implementation configured in `.mcp.json`:
 ```bash
-# AKE-MCP is already configured and runs via MCP protocol
+# GiljoAI MCP server runs via MCP protocol
 # Active product: GiljoAI-MCP Coding Orchestrator
 ```
 
@@ -98,7 +98,7 @@ Building using 20 orchestrated projects across 5 phases:
 - Phase 4: User Interface
 - Phase 5: Deployment & Polish
 
-### Key Features to Preserve from AKE-MCP
+### Key Features Implemented
 - Vision document chunking (50K+ tokens)
 - Message acknowledgment arrays
 - Dynamic discovery via Serena MCP

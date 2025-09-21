@@ -1,7 +1,7 @@
 """
 Lock Manager for GiljoAI MCP
 Provides instance locking to prevent multiple servers from running
-Uses a custom lock file to avoid conflicts with AKE-MCP
+Uses a custom lock file to prevent conflicts with other MCP servers
 """
 
 import os
@@ -19,7 +19,7 @@ class LockManager:
         """Initialize lock manager with custom directory"""
         if lock_dir is None:
             # Use user's home directory for lock file
-            # This is different from AKE-MCP's location
+            # This is unique to GiljoAI MCP
             lock_dir = Path.home() / ".giljo_mcp" / "locks"
 
         lock_dir.mkdir(parents=True, exist_ok=True)

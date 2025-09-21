@@ -277,7 +277,7 @@ giljo_mcp/
 **Current Phase**: Orchestration Engine (Phase 3)
 **Latest Milestone**: Project 3.9.b Template Management v2 - 100% Complete!
 
-Building GiljoAI MCP using the AKE-MCP orchestrator through 20 focused projects:
+Building GiljoAI MCP through 20 focused projects:
 
 - [x] Phase 1: Foundation & Database (Projects 1.1-1.4) ✅
 - [x] Phase 2: MCP Integration (Projects 2.1-2.3) ✅
@@ -384,13 +384,13 @@ This project is currently in active development. Contributions welcome after ini
 - **Protocol**: Model Context Protocol (MCP)
 - **Deployment**: Docker, pip installable
 
-## Features Carried Forward from AKE-MCP
+## Core Features Implemented
 
 - ✅ Vision document chunking (50K+ tokens)
 - ✅ Message acknowledgment arrays
 - ✅ Dynamic discovery architecture
 - ✅ Database-first message queue
-- ✅ Orchestrator mission templates (now database-backed via template_manager.py)
+- ✅ Orchestrator mission templates (database-backed via template_manager.py)
 - ✅ Serena MCP integration with token optimization
 - ✅ Template consolidation from 3 systems to 1 unified solution
 
@@ -439,7 +439,7 @@ Built with:
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern web framework
 - [SQLAlchemy](https://www.sqlalchemy.org/) - Database ORM
 - [Vue 3](https://vuejs.org/) - Progressive UI framework
-- [AKE-MCP](https://github.com/yourusername/ake-mcp) - Orchestration inspiration
+
 
 ---
 

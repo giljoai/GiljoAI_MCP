@@ -23,7 +23,7 @@ This document provides a comprehensive index of all configuration, environment, 
 - **`CLAUDE.md`** - AI assistant instructions with template system documentation
 
 ### MCP Server Configuration
-- **`.mcp.json`** - Primary MCP server configuration (AKE-MCP)
+- **`.mcp.json`** - Primary MCP server configuration
 - **`.mcp-serena.json`** - Serena MCP server configuration
 - **`.serena/project.yml`** - Serena project settings
 

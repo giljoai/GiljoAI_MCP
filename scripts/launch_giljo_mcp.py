@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 GiljoAI MCP Standalone Launcher
-Launches GiljoAI MCP server independently without AKE-MCP
+Launches GiljoAI MCP server independently
 """
 
 import sys

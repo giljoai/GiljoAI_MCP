@@ -3,7 +3,7 @@
 
 ### CRITICAL: Development Approach
 
-**We are building GiljoAI MCP using AKE-MCP to orchestrate its own development through 20 focused projects over 4 weeks.**
+**We are building GiljoAI MCP through self-orchestrated development across 20 focused projects over 4 weeks.**
 
 ### Our Vision
 
@@ -32,7 +32,7 @@ To revolutionize software development by creating an intelligent orchestration l
 
 #### Current State (January 2025)
 
-We have built a functional proof-of-concept (AKE-MCP) that demonstrates the power of multi-agent orchestration:
+We have built a functional proof-of-concept that demonstrates the power of multi-agent orchestration:
 
 **Working Components:**
 - **FastMCP Server**: 20 essential tools for agent coordination

@@ -65,7 +65,7 @@ tests/
    
 5. **Integration Features**
    - check_ports.py integration
-   - AKE-MCP detection
+   - Service detection
    - Migration option prompt
 
 ### Testing Results

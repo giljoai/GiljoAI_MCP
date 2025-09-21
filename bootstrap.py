@@ -288,10 +288,7 @@ class Bootstrap:
             if result.returncode == 0:
                 if self.post_installation_setup():
                     self.print_status("Installation complete!", "success")
-                    print(f"
-{self.colors['GREEN']}You can now start GiljoAI MCP using:")
-                    print(f"
-{self.colors['GREEN']}You can now start GiljoAI MCP using:")
+                    print(f"\n{self.colors['GREEN']}You can now start GiljoAI MCP using:")
                     if self.os_type == 'Windows':
                         print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
                         print(f"  - Start Menu: GiljoAI MCP Orchestrator")  
@@ -306,8 +303,7 @@ class Bootstrap:
             return result.returncode
         except Exception as e:
             self.print_status(f"GUI installer failed: {e}", "error")
-            print("
-Falling back to CLI installer...")
+            print("\nFalling back to CLI installer...")
             return self.launch_cli_installer()
     
     def launch_cli_installer(self) -> int:
@@ -332,8 +328,7 @@ Falling back to CLI installer...")
             if result.returncode == 0:
                 if self.post_installation_setup():
                     self.print_status("Installation complete!", "success")
-                    print(f"
-{self.colors['GREEN']}You can now start GiljoAI MCP using:")
+                    print(f"\n{self.colors['GREEN']}You can now start GiljoAI MCP using:")
                     if self.os_type == 'Windows':
                         print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
                         print(f"  - Command line: start_giljo.bat")

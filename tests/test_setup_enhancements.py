@@ -207,7 +207,7 @@ class TestDependencyManagement(unittest.TestCase):
         print("✓ Unix .sh script generated")
 
 class TestMigrationTool(unittest.TestCase):
-    """Test AKE-MCP migration functionality"""
+    """Test legacy MCP migration functionality"""
 
     def setUp(self):
         self.migrator = setup_migration.AKEMigrator()
@@ -217,16 +217,16 @@ class TestMigrationTool(unittest.TestCase):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_ake_detection(self):
-        """Test AKE-MCP installation detection"""
-        # Check if F:/AKE-MCP exists
+        """Test legacy MCP installation detection"""
+        # Check if legacy MCP exists
         ake_exists = self.migrator.detect_ake_mcp()
         if ake_exists:
             info = self.migrator.get_ake_info()
             self.assertIn("path", info)
             self.assertIn("database", info)
-            print(f"✓ AKE-MCP detected at {info['path']}")
+            print(f"✓ Legacy MCP detected at {info['path']}")
         else:
-            print("✓ AKE-MCP not found at F:/AKE-MCP (expected in test environment)")
+            print("✓ Legacy MCP not found (expected in test environment)")
 
     def test_migration_data_structure(self):
         """Test migration data structure creation"""

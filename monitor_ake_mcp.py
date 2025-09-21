@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-UI-Analyzer Message Monitor with Real AKE-MCP Integration
-Monitors AKE-MCP for ui-analyzer agent messages every 10 seconds using actual MCP tools.
+UI-Analyzer Message Monitor with GiljoAI MCP Integration
+Monitors GiljoAI MCP for ui-analyzer agent messages every 10 seconds using MCP tools.
 """
 
 import asyncio
@@ -14,7 +14,7 @@ from datetime import datetime
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-class AKEMCPMonitor:
+class GiljoMCPMonitor:
     def __init__(self):
         self.agent_name = "ui-analyzer"
         self.check_interval = 10
@@ -28,17 +28,17 @@ class AKEMCPMonitor:
         print(f"[{timestamp}] {level}: {message}", flush=True)
 
     async def start_monitoring(self):
-        self.log("AKE-MCP UI-Analyzer Message Monitor Started")
+        self.log("GiljoAI MCP UI-Analyzer Message Monitor Started")
         self.log(f"Agent: {self.agent_name}")
         self.log(f"Check interval: {self.check_interval} seconds")
-        self.log("Monitoring for real AKE-MCP messages...")
+        self.log("Monitoring for GiljoAI MCP messages...")
         self.log("Press Ctrl+C to stop")
         print("=" * 70, flush=True)
 
         try:
             while self.running:
                 self.check_count += 1
-                await self.check_ake_mcp_messages()
+                await self.check_giljo_mcp_messages()
 
                 # Log status every 10 checks
                 if self.check_count % 10 == 0:

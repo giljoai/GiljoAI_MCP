@@ -212,7 +212,7 @@ The local-first, server-ready architecture ensures immediate value for individua
 
   1. ..\GiljoAI_MCP\PROJECT_ORCHESTRATION_PLAN.md
 
-  - Complete development strategy using AKE-MCP to build itself
+  - Complete development strategy using orchestration to build itself
   - Setup Script Strategy: Progressive enhancement from Day 1 (not waiting until MVP)
   - 5 phases with 20 total projects over 4 weeks
   - Detailed project descriptions with tasks and deliverables
@@ -221,7 +221,7 @@ The local-first, server-ready architecture ensures immediate value for individua
   2. ..\GiljoAI_MCP\PROJECT_CARDS.md
 
   - Ready-to-use project cards for each of the 20 projects
-  - Each card has the exact mission text to copy into AKE-MCP
+  - Each card has the exact mission text ready for orchestration
   - Success criteria checklists
   - Suggested agents for each project
   - Can be created directly in the orchestrator
@@ -249,7 +249,7 @@ The local-first, server-ready architecture ensures immediate value for individua
 
   Execution Strategy:
 
-  1. Use existing AKE-MCP to orchestrate each project
+  1. Use orchestration to manage each project
   2. 20 focused projects instead of one massive effort
   3. Clear dependencies but with parallel opportunities
   4. 4-week timeline to working product
@@ -262,7 +262,7 @@ The local-first, server-ready architecture ensures immediate value for individua
 
   How to Start:
 
-  1. Open AKE-MCP dashboard
+  1. Open orchestrator dashboard
   2. Create first project: "GiljoAI Core Architecture"
   3. Copy mission from PROJECT_CARDS.md
   4. Let orchestrator build the foundation
