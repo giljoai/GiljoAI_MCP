@@ -58,7 +58,7 @@ Each agent maintains focused context within limits while the orchestrator manage
 
 ```bash
 # 1. Clone and enter directory (30 seconds)
-git clone https://github.com/yourusername/giljo-mcp.git
+git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
 cd giljo-mcp
 
 # 2. Run interactive setup (2 minutes)
@@ -186,7 +186,7 @@ pip install giljo-mcp
 ### Option 2: From Source  
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/giljo-mcp.git
+git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
 cd giljo-mcp
 
 # Run interactive setup
@@ -413,8 +413,8 @@ MIT License - See [LICENSE](LICENSE) file for details
 ### Get Help
 - 📚 **Documentation**: [/Docs](Docs/) - Comprehensive guides
 - 💬 **Discord**: [Join our community](https://discord.gg/giljo-mcp) 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/giljo-mcp/issues)
-- 💡 **Discussions**: [GitHub Discussions](https://github.com/yourusername/giljo-mcp/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/patrik-giljoai/GiljoAI-MCP/issues)
+- 💡 **Discussions**: [GitHub Discussions](https://github.com/patrik-giljoai/GiljoAI-MCP/discussions)
 
 ### Quick Links
 - [Vision Document](Docs/Vision/VISION_DOCUMENT.md) - Our roadmap
