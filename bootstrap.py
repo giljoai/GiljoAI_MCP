@@ -212,10 +212,64 @@ class Bootstrap:
                 return choice
             print(f"{self.colors['RED']}Invalid choice. Please enter 1, 2, or 3.{self.colors['ENDC']}")
     
+    def show_platform_integration(self):
+        """Show instructions for integrating with various coding platforms"""
+        print(f"\n{self.colors['HEADER']}{'='*60}")
+        print("   Platform Integration - Final Step")
+        print(f"{'='*60}{self.colors['ENDC']}")
+
+        print(f"\n{self.colors['BOLD']}To activate GiljoAI-MCP in your coding platform:{self.colors['ENDC']}\n")
+
+        # Get the current directory for path
+        install_path = Path.cwd()
+
+        # Claude Desktop
+        print(f"{self.colors['BLUE']}For Claude Desktop:{self.colors['ENDC']}")
+        print("  1. Locate your Claude configuration file:")
+        if self.os_type == 'windows':
+            print(f"     %APPDATA%\\Claude\\claude_desktop_config.json")
+        elif self.os_type == 'darwin':
+            print(f"     ~/Library/Application Support/Claude/claude_desktop_config.json")
+        else:
+            print(f"     ~/.config/Claude/claude_desktop_config.json")
+        print("  2. Add this to the 'mcpServers' section:")
+        print(f"""
+    "giljo-mcp": {{
+      "command": "python",
+      "args": ["-m", "src.giljo_mcp.server"],
+      "env": {{
+        "PYTHONPATH": "{install_path / 'src'}",
+        "GILJO_MCP_DB": "{install_path / 'data' / 'giljo_mcp.db'}"
+      }}
+    }}
+""")
+        print("  3. Restart Claude Desktop\n")
+
+        # VS Code with Continue
+        print(f"{self.colors['BLUE']}For VS Code with Continue:{self.colors['ENDC']}")
+        print("  1. Open Continue extension settings")
+        print("  2. Add to config.json:")
+        print(f"""    "customCommands": [{{
+      "name": "giljo-mcp",
+      "command": "python -m src.giljo_mcp.server",
+      "cwd": "{install_path}"
+    }}]
+""")
+
+        # Generic MCP-compatible platforms
+        print(f"{self.colors['BLUE']}For other MCP-compatible platforms:{self.colors['ENDC']}")
+        print(f"  Server command: python -m src.giljo_mcp.server")
+        print(f"  Working directory: {install_path}")
+        print(f"  Python path: {install_path / 'src'}")
+        print(f"  Database: {install_path / 'data' / 'giljo_mcp.db'}")
+
+        print(f"\n{self.colors['YELLOW']}Note: After adding the configuration, restart your coding platform.{self.colors['ENDC']}")
+        print(f"{self.colors['GREEN']}GiljoAI-MCP will then be available as 'giljo-mcp' in your platform's MCP servers.{self.colors['ENDC']}\n")
+
     def post_installation_setup(self) -> bool:
         """Perform post-installation setup tasks"""
         self.print_status("Running post-installation setup...", "info")
-        
+
         success = True
         
         # Generate default configuration
@@ -289,16 +343,21 @@ class Bootstrap:
                 if self.post_installation_setup():
                     self.print_status("Installation complete!", "success")
                     print(f"\n{self.colors['GREEN']}You can now start GiljoAI MCP using:")
-                    if self.os_type == 'Windows':
+                    if self.os_type == 'windows':
                         print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
-                        print(f"  - Start Menu: GiljoAI MCP Orchestrator")  
+                        print(f"  - Start Menu: GiljoAI MCP Orchestrator")
                         print(f"  - Command line: start_giljo.bat")
                     else:
                         print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
                         print(f"  - Command line: ./start_giljo.sh")
                     print(f"{self.colors['ENDC']}")
+
+                    # Show platform integration instructions
+                    self.show_platform_integration()
                 else:
                     self.print_status("Installation completed with warnings", "warning")
+                    # Show platform integration even with warnings
+                    self.show_platform_integration()
             
             return result.returncode
         except Exception as e:
@@ -329,15 +388,20 @@ class Bootstrap:
                 if self.post_installation_setup():
                     self.print_status("Installation complete!", "success")
                     print(f"\n{self.colors['GREEN']}You can now start GiljoAI MCP using:")
-                    if self.os_type == 'Windows':
+                    if self.os_type == 'windows':
                         print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
                         print(f"  - Command line: start_giljo.bat")
                     else:
                         print(f"  - Desktop shortcut: GiljoAI MCP Orchestrator")
                         print(f"  - Command line: ./start_giljo.sh")
                     print(f"{self.colors['ENDC']}")
+
+                    # Show platform integration instructions
+                    self.show_platform_integration()
                 else:
                     self.print_status("Installation completed with warnings", "warning")
+                    # Show platform integration even with warnings
+                    self.show_platform_integration()
             
             return result.returncode
         except Exception as e:
