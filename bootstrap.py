@@ -179,10 +179,10 @@ class Bootstrap:
     def check_existing_installation(self) -> Optional[Dict]:
         """Check for existing GiljoAI MCP installation"""
         markers = [
-            'src/giljo_mcp',
-            '.env',
-            'venv',
-            'data/giljo.db'
+            'config.yaml',  # Generated during install
+            '.giljo_install_manifest.json',  # Created after install
+            'venv',  # Virtual environment
+            'data/giljo.db'  # Database created on first run
         ]
         
         found = []
