@@ -180,7 +180,6 @@ class Bootstrap:
         """Check for existing GiljoAI MCP installation"""
         markers = [
             'src/giljo_mcp',
-            'config.yaml',
             '.env',
             'venv',
             'data/giljo.db'
