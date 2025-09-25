@@ -34,3 +34,5 @@ tmp/
 temp/
 *.tmp
 *.bak
+venv/
+env/
