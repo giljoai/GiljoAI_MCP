@@ -323,6 +323,12 @@ class SecurityPage(WizardPage):
                        variable=self.enable_api_key_var,
                        command=self._on_api_toggle).pack(anchor="w")
 
+        # API Key explanation
+        api_help = ttk.Label(api_frame, text="📔 Used for REST API calls from CI/CD, external tools, or remote access.\n" +
+                                             "Enable this for LAN/WAN deployments. Save the key securely!",
+                            foreground="gray", wraplength=500)
+        api_help.pack(anchor="w", pady=(5, 10))
+
         self.api_key_var = tk.StringVar()
         self.api_frame_inner = ttk.Frame(api_frame)
 
@@ -331,9 +337,20 @@ class SecurityPage(WizardPage):
         ttk.Button(self.api_frame_inner, text="Generate",
                   command=self._generate_api_key).pack(side="left")
 
+        # Warning about saving the key
+        self.api_warning = ttk.Label(self.api_frame_inner, text="⚠️ Copy this key now! It won't be shown again.",
+                                     foreground="orange")
+        self.api_warning.pack(side="left", padx=10)
+
         # JWT Secret
         jwt_frame = ttk.LabelFrame(self, text="JWT Configuration", padding=10)
         jwt_frame.pack(padx=20, pady=10, fill="x")
+
+        # JWT explanation
+        jwt_help = ttk.Label(jwt_frame, text="🔐 Signs session tokens for the web dashboard. Prevents token tampering.\n" +
+                                             "Auto-generated for security. No need to copy unless integrating SSO.",
+                            foreground="gray", wraplength=500)
+        jwt_help.pack(anchor="w", pady=(0, 10))
 
         self.jwt_secret_var = tk.StringVar()
         jwt_inner = ttk.Frame(jwt_frame)
@@ -352,11 +369,23 @@ class SecurityPage(WizardPage):
         ttk.Checkbutton(cors_frame, text="Enable CORS",
                        variable=self.cors_enabled_var).pack(anchor="w")
 
+        # CORS explanation
+        cors_help = ttk.Label(cors_frame, text="🌐 Cross-Origin Resource Sharing - Browser security feature.\n" +
+                                               "Allows the dashboard to communicate with the API from different domains.\n" +
+                                               "Keep enabled unless you know you need it disabled.",
+                             foreground="gray", wraplength=500)
+        cors_help.pack(anchor="w", pady=(5, 10))
+
         self.cors_origins_var = tk.StringVar(value="http://localhost:*")
         origins_frame = ttk.Frame(cors_frame)
         origins_frame.pack(fill="x", pady=5)
         ttk.Label(origins_frame, text="Allowed Origins:").pack(side="left", padx=5)
         ttk.Entry(origins_frame, textvariable=self.cors_origins_var, width=40).pack(side="left", padx=5)
+
+        # CORS origin help
+        cors_origin_help = ttk.Label(cors_frame, text="Examples: http://localhost:* (dev), https://app.example.com (production)",
+                                     foreground="gray", font=("", 9))
+        cors_origin_help.pack(anchor="w", padx=(5, 0))
 
         # Initialize
         self._on_api_toggle()
@@ -420,41 +449,64 @@ class ReviewPage(WizardPage):
         config = self.get_config()
 
         # Format configuration
+        self.text.config(state="normal")
         self.text.delete(1.0, tk.END)
         self.text.insert(tk.END, "=" * 60 + "\n")
         self.text.insert(tk.END, "CONFIGURATION SUMMARY\n")
         self.text.insert(tk.END, "=" * 60 + "\n\n")
 
+        # Deployment Mode
+        self.text.insert(tk.END, "DEPLOYMENT MODE\n")
+        self.text.insert(tk.END, "-" * 30 + "\n")
+        self.text.insert(tk.END, f"Mode: {config.get('mode', 'local').capitalize()}\n\n")
+
         # Database
         self.text.insert(tk.END, "DATABASE CONFIGURATION\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
         if config.get("db_type") == "sqlite":
-            self.text.insert(tk.END, "Type: SQLite\n")
-            self.text.insert(tk.END, f"Path: {config.get('db_path')}\n")
+            self.text.insert(tk.END, "Type: SQLite (Local)\n")
+            self.text.insert(tk.END, f"Path: {config.get('db_path', 'data/giljo_mcp.db')}\n")
         else:
-            self.text.insert(tk.END, "Type: PostgreSQL\n")
-            self.text.insert(tk.END, f"Host: {config.get('pg_host')}\n")
-            self.text.insert(tk.END, f"Port: {config.get('pg_port')}\n")
-            self.text.insert(tk.END, f"Database: {config.get('pg_database')}\n")
-            self.text.insert(tk.END, f"User: {config.get('pg_user')}\n")
+            self.text.insert(tk.END, "Type: PostgreSQL (Production)\n")
+            self.text.insert(tk.END, f"Host: {config.get('pg_host', 'localhost')}\n")
+            self.text.insert(tk.END, f"Port: {config.get('pg_port', '5432')}\n")
+            self.text.insert(tk.END, f"Database: {config.get('pg_database', 'giljo_mcp')}\n")
+            self.text.insert(tk.END, f"User: {config.get('pg_user', 'postgres')}\n")
 
         # Ports
         self.text.insert(tk.END, "\nSERVER PORTS\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
         for service in PORT_ASSIGNMENTS:
             key = f"{service}_port"
-            if key in config:
-                self.text.insert(tk.END, f"{service}: {config[key]}\n")
+            port = config.get(key, PORT_ASSIGNMENTS[service])
+            self.text.insert(tk.END, f"{service.capitalize()}: {port}\n")
 
         # Security
         self.text.insert(tk.END, "\nSECURITY SETTINGS\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
         if config.get("api_key"):
-            self.text.insert(tk.END, f"API Key: {config['api_key'][:10]}...\n")
-        self.text.insert(tk.END, f"JWT Secret: {config.get('jwt_secret', '')[:10]}...\n")
-        self.text.insert(tk.END, f"CORS Enabled: {config.get('cors_enabled', False)}\n")
-        if config.get("cors_enabled"):
-            self.text.insert(tk.END, f"CORS Origins: {config.get('cors_origins')}\n")
+            self.text.insert(tk.END, f"API Key: {config['api_key'][:10]}... (SAVE THIS!)\n")
+        else:
+            self.text.insert(tk.END, "API Key: Disabled (Local mode)\n")
+
+        jwt_secret = config.get('jwt_secret', '')
+        if jwt_secret:
+            self.text.insert(tk.END, f"JWT Secret: {jwt_secret[:10]}... (Auto-saved)\n")
+        else:
+            self.text.insert(tk.END, "JWT Secret: Will be generated\n")
+
+        self.text.insert(tk.END, f"CORS Enabled: {config.get('cors_enabled', True)}\n")
+        if config.get("cors_enabled", True):
+            self.text.insert(tk.END, f"CORS Origins: {config.get('cors_origins', 'http://localhost:*')}\n")
+
+        # URLs
+        self.text.insert(tk.END, "\nACCESS URLS\n")
+        self.text.insert(tk.END, "-" * 30 + "\n")
+        dashboard_port = config.get('dashboard_port', PORT_ASSIGNMENTS['dashboard'])
+        api_port = config.get('api_port', PORT_ASSIGNMENTS['api'])
+        self.text.insert(tk.END, f"Dashboard: http://localhost:{dashboard_port}\n")
+        self.text.insert(tk.END, f"API: http://localhost:{api_port}\n")
+        self.text.insert(tk.END, f"WebSocket: ws://localhost:{config.get('websocket_port', PORT_ASSIGNMENTS['websocket'])}\n")
 
         self.text.config(state="disabled")
 
@@ -643,8 +695,9 @@ class GiljoSetupGUI(GiljoSetup):
         if not current.validate():
             return
 
-        # Store page data
+        # Store page data BEFORE moving to next page
         self.config_data.update(current.get_data())
+        current.on_exit()
 
         # Special handling for review page
         if self.current_page == len(self.pages) - 2:
@@ -652,7 +705,6 @@ class GiljoSetupGUI(GiljoSetup):
             self._show_page(self.current_page + 1)
             self._run_installation()
         elif self.current_page < len(self.pages) - 1:
-            current.on_exit()
             self._show_page(self.current_page + 1)
         else:
             # Finish

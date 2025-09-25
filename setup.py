@@ -396,19 +396,49 @@ class GiljoSetup:
         """Configure security settings"""
         if self.env_vars.get("GILJO_MCP_MODE") != "local":
             console.print("\n[bold]Security Configuration[/bold]")
+            console.print("[dim]Securing your orchestrator for network access...[/dim]\n")
+
+            # API Key explanation
+            console.print("[cyan]📔 API Key Authentication:[/cyan]")
+            console.print("  • [dim]Used for: REST API calls from external applications[/dim]")
+            console.print("  • [dim]When needed: LAN/WAN deployments, CI/CD integration[/dim]")
+            console.print("  • [dim]Security: Prevents unauthorized access to your orchestrator[/dim]")
 
             # Generate API key
             api_key = secrets.token_urlsafe(32)
             self.env_vars["GILJO_MCP_API_KEY"] = api_key
-            console.print("[green]✓ Generated API key[/green]")
+            console.print(f"  [green]✓ Generated API key:[/green] {api_key}")
+
+            # JWT explanation
+            console.print("\n[cyan]🔐 JWT Secret Key:[/cyan]")
+            console.print("  • [dim]Used for: Session tokens and WebSocket authentication[/dim]")
+            console.print("  • [dim]When needed: Web dashboard access, multi-user scenarios[/dim]")
+            console.print("  • [dim]Security: Signs tokens to prevent tampering[/dim]")
 
             # Generate secret key for sessions
             secret_key = secrets.token_hex(32)
             self.env_vars["GILJO_MCP_SECRET_KEY"] = secret_key
-            console.print("[green]✓ Generated secret key[/green]")
+            self.env_vars["JWT_SECRET"] = secret_key  # Also set JWT_SECRET
+            console.print(f"  [green]✓ Generated JWT secret[/green] (stored securely)")
 
-            console.print("\n[yellow]Important: Save these keys securely![/yellow]")
-            console.print(f"API Key: {api_key}")
+            # CORS explanation
+            console.print("\n[cyan]🌐 CORS Configuration:[/cyan]")
+            console.print("  • [dim]Used for: Web browser security[/dim]")
+            console.print("  • [dim]When needed: Dashboard accessed from different domains[/dim]")
+            console.print("  • [dim]Current: Allowing localhost connections only[/dim]")
+            self.env_vars["CORS_ENABLED"] = "true"
+            self.env_vars["CORS_ORIGINS"] = "http://localhost:*"
+            console.print("  [green]✓ CORS configured for local development[/green]")
+
+            console.print("\n[yellow]⚠️  IMPORTANT - SAVE THESE CREDENTIALS:[/yellow]")
+            console.print("┌─────────────────────────────────────────────────────────────┐")
+            console.print(f"│ API Key: {api_key}                 │")
+            console.print("│                                                             │")
+            console.print("│ [dim]Store this key securely! You'll need it to:[/dim]             │")
+            console.print("│ [dim]• Access the REST API[/dim]                                     │")
+            console.print("│ [dim]• Connect CI/CD pipelines[/dim]                                │")
+            console.print("│ [dim]• Integrate with external tools[/dim]                          │")
+            console.print("└─────────────────────────────────────────────────────────────┘")
 
     def _create_directories(self):
         """Create necessary directories with proper permissions"""
