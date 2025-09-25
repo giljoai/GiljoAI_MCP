@@ -6,6 +6,7 @@ Tests that frontend and backend integrate seamlessly without workarounds
 
 import asyncio
 import logging
+import sys
 from datetime import datetime
 
 import httpx
@@ -117,7 +118,9 @@ class IntegrationTester:
                     }
                 )
 
-            return all(r["success"] for r in self.results if r["test"].startswith("Create") or r["test"].startswith("Get"))
+            return all(
+                r["success"] for r in self.results if r["test"].startswith("Create") or r["test"].startswith("Get")
+            )
         except Exception as e:
             self.results.append({"test": "Projects CRUD", "success": False, "error": str(e)})
             return False
@@ -321,7 +324,9 @@ class IntegrationTester:
         failed = 0
         for result in self.results:
             status = "✅ PASS" if result.get("success") else "❌ FAIL"
-            logger.info(f"{status} - {result['test']}: {result.get('endpoint', 'N/A')} (Status: {result.get('status', 'ERROR')})")
+            logger.info(
+                f"{status} - {result['test']}: {result.get('endpoint', 'N/A')} (Status: {result.get('status', 'ERROR')})"
+            )
             if result.get("error"):
                 logger.error(f"  Error: {result['error']}")
             if result.get("success"):
@@ -350,4 +355,4 @@ async def main():
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())
-    exit(exit_code)
+    sys.exit(exit_code)

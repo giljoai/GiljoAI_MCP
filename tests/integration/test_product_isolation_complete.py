@@ -34,12 +34,9 @@ class ProductIsolationTestSuite:
         """Log test result"""
         result = {"test": name, "passed": passed, "details": details, "timestamp": datetime.now().isoformat()}
         self.test_results.append(result)
-        status = "[OK]" if passed else "[FAIL]"
-        print(f"{status} {name}: {details}")
 
     async def setup_test_data(self):
         """Set up test database and data"""
-        print("\n=== SETUP: Creating Test Data ===")
 
         # Create tables
         await self.db_manager.create_tables_async()
@@ -113,14 +110,13 @@ class ProductIsolationTestSuite:
 
     async def test_database_schema(self):
         """Test 1: Verify database schema has product_id"""
-        print("\n=== TEST 1: Database Schema ===")
 
         async with self.db_manager.get_session_async() as session:
             # Check if we can query by product_id
             try:
                 query = select(Task).where(Task.product_id == self.product1_id)
                 result = await session.execute(query)
-                tasks = result.scalars().all()
+                result.scalars().all()
 
                 self.log_test("Database Schema - product_id column", True, "Column exists and queryable")
             except Exception as e:
@@ -128,7 +124,6 @@ class ProductIsolationTestSuite:
 
     async def test_product_filtering(self):
         """Test 2: Test filtering by product_id"""
-        print("\n=== TEST 2: Product Filtering ===")
 
         async with self.db_manager.get_session_async() as session:
             # Test Product 1 filtering
@@ -148,7 +143,7 @@ class ProductIsolationTestSuite:
             self.log_test("Product 2 Filtering", test2_pass, f"Expected 3 tasks, got {len(product2_tasks)}")
 
             # Test NULL product filtering
-            query_null = select(Task).where(and_(Task.tenant_key == self.test_tenant, Task.product_id == None))
+            query_null = select(Task).where(and_(Task.tenant_key == self.test_tenant, Task.product_id is None))
             result_null = await session.execute(query_null)
             null_tasks = result_null.scalars().all()
 
@@ -157,7 +152,6 @@ class ProductIsolationTestSuite:
 
     async def test_product_isolation(self):
         """Test 3: Verify complete isolation between products"""
-        print("\n=== TEST 3: Product Isolation ===")
 
         async with self.db_manager.get_session_async() as session:
             # Get all tasks for Product 1
@@ -176,18 +170,17 @@ class ProductIsolationTestSuite:
             )
 
             # Verify categories are isolated
-            categories1 = set(t.category for t in product1_tasks)
+            categories1 = {t.category for t in product1_tasks}
 
             query2 = select(Task).where(and_(Task.tenant_key == self.test_tenant, Task.product_id == self.product2_id))
             result2 = await session.execute(query2)
             product2_tasks = result2.scalars().all()
-            categories2 = set(t.category for t in product2_tasks)
+            categories2 = {t.category for t in product2_tasks}
 
             self.log_test("Product Category Isolation", True, f"Product 1: {categories1}, Product 2: {categories2}")
 
     async def test_product_metrics(self):
         """Test 4: Test product-level metrics and aggregation"""
-        print("\n=== TEST 4: Product Metrics ===")
 
         async with self.db_manager.get_session_async() as session:
             # Get metrics for Product 1
@@ -219,7 +212,6 @@ class ProductIsolationTestSuite:
 
     async def test_cross_product_operations(self):
         """Test 5: Test operations across products"""
-        print("\n=== TEST 5: Cross-Product Operations ===")
 
         async with self.db_manager.get_session_async() as session:
             # Count total tasks across all products
@@ -256,7 +248,6 @@ class ProductIsolationTestSuite:
 
     async def test_task_updates_respect_isolation(self):
         """Test 6: Verify task updates respect product boundaries"""
-        print("\n=== TEST 6: Task Update Isolation ===")
 
         async with self.db_manager.get_session_async() as session:
             # Get a task from Product 1
@@ -286,7 +277,6 @@ class ProductIsolationTestSuite:
 
     async def test_frontend_integration_points(self):
         """Test 7: Verify frontend integration requirements"""
-        print("\n=== TEST 7: Frontend Integration Points ===")
 
         # Check if required frontend files exist
         frontend_files = [
@@ -301,27 +291,17 @@ class ProductIsolationTestSuite:
 
     def generate_report(self):
         """Generate comprehensive test report"""
-        print("\n" + "=" * 60)
-        print("PRODUCT ISOLATION TEST REPORT")
-        print("=" * 60)
 
         total = len(self.test_results)
         passed = sum(1 for r in self.test_results if r["passed"])
         failed = total - passed
 
-        print("\nTest Summary:")
-        print(f"  Total Tests: {total}")
-        print(f"  Passed: {passed}")
-        print(f"  Failed: {failed}")
-        print(f"  Success Rate: {(passed/total)*100:.1f}%")
 
         if failed > 0:
-            print("\nFailed Tests:")
             for result in self.test_results:
                 if not result["passed"]:
-                    print(f"  [FAIL] {result['test']}: {result['details']}")
+                    pass
 
-        print("\n" + "=" * 60)
 
         # Save detailed report
         report_dir = Path("test_reports")
@@ -340,17 +320,12 @@ class ProductIsolationTestSuite:
         with open(report_file, "w") as f:
             json.dump(report_data, f, indent=2)
 
-        print(f"Detailed report saved to: {report_file}")
 
         return passed == total
 
 
 async def main():
     """Run complete test suite"""
-    print("=" * 60)
-    print("PRODUCT/TASK ISOLATION COMPREHENSIVE TEST SUITE")
-    print("Project 5.1.e - Complete Testing")
-    print("=" * 60)
 
     tester = ProductIsolationTestSuite()
 
@@ -371,22 +346,13 @@ async def main():
         all_passed = tester.generate_report()
 
         if all_passed:
-            print("\n[SUCCESS] ALL TESTS PASSED SUCCESSFULLY!")
-            print("\nImplementation Status:")
-            print("  [OK] Database: product_id field implemented")
-            print("  [OK] Queries: Product filtering working")
-            print("  [OK] Isolation: No cross-product data leaks")
-            print("  [OK] Metrics: Product-level aggregation working")
-            print("  [OK] Frontend: Components implemented")
-            print("\n[COMPLETE] Project 5.1.e: Product/Task Isolation - COMPLETE")
+            pass
         else:
-            print("\n[WARNING] SOME TESTS FAILED")
-            print("Review the report for details and fixes needed.")
+            pass
 
         return all_passed
 
-    except Exception as e:
-        print(f"\n[ERROR] TEST SUITE ERROR: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()

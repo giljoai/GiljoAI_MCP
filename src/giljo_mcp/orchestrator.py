@@ -36,7 +36,7 @@ class ProjectOrchestrator:
     - Context usage tracking with indicators
     - Multi-project support with tenant isolation
     """
-    
+
     DEFAULT_AGENT_CONTEXT_BUDGET = 30000  # Default context budget per agent
 
     # Agent mission templates
@@ -453,9 +453,9 @@ class ProjectOrchestrator:
                 raise ValueError("Agents must be in same project")
 
             # Generate handoff instructions
-            from_role = AgentRole(from_agent.role)
-            to_role = AgentRole(to_agent.role)
-            context_summary = context.get("summary", "Work completed by previous agent")
+            AgentRole(from_agent.role)
+            AgentRole(to_agent.role)
+            context.get("summary", "Work completed by previous agent")
 
             handoff_instructions = self.template_generator.generate_handoff_instructions(
                 from_agent=from_agent.name,
@@ -679,9 +679,7 @@ class ProjectOrchestrator:
                         if agent.status == "active":
                             needs_handoff, reason = await self.check_handoff_needed(agent.id)
                             if needs_handoff:
-                                logger.warning(
-                                    f"Agent {agent.name} in project {project.name} " f"needs handoff: {reason}"
-                                )
+                                logger.warning(f"Agent {agent.name} in project {project.name} needs handoff: {reason}")
 
             except asyncio.CancelledError:
                 break

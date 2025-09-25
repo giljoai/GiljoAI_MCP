@@ -26,7 +26,7 @@ class CIPerformanceAnalyzer:
             "vision_processing": False,
             "critical_failures": [],
             "recommendations": [],
-            "test_summary": {}
+            "test_summary": {},
         }
 
     def load_test_results(self):
@@ -40,7 +40,7 @@ class CIPerformanceAnalyzer:
             "test_multi_tenant_load_report.json",
             "test_vision_chunking_load_report.json",
             "performance_test_report.json",
-            "stress_test_report.json"
+            "stress_test_report.json",
         ]
 
         for result_file in result_files:
@@ -50,9 +50,8 @@ class CIPerformanceAnalyzer:
                     with open(file_path) as f:
                         data = json.load(f)
                         self.test_results[result_file] = data
-                        print(f"✅ Loaded {result_file}")
-                except Exception as e:
-                    print(f"⚠️  Failed to load {result_file}: {e}")
+                except Exception:
+                    pass
 
         # Also look for results in artifact directories
         artifact_dirs = [d for d in Path().iterdir() if d.is_dir() and "performance" in d.name]
@@ -62,18 +61,13 @@ class CIPerformanceAnalyzer:
                     with open(result_file) as f:
                         data = json.load(f)
                         self.test_results[result_file.name] = data
-                        print(f"✅ Loaded {result_file}")
-                except Exception as e:
-                    print(f"⚠️  Failed to load {result_file}: {e}")
+                except Exception:
+                    pass
 
-        print(f"\nTotal result files loaded: {len(self.test_results)}")
 
     def analyze_agent_performance(self):
         """Analyze agent scalability performance"""
-        agent_tests = [
-            "test_concurrent_agents_report.json",
-            "baseline_report.json"
-        ]
+        agent_tests = ["test_concurrent_agents_report.json", "baseline_report.json"]
 
         passed_tests = 0
         total_tests = 0
@@ -114,7 +108,7 @@ class CIPerformanceAnalyzer:
             "passed": passed_tests,
             "total": total_tests,
             "success_rate": success_rate,
-            "critical_issues": len(critical_issues)
+            "critical_issues": len(critical_issues),
         }
 
     def analyze_message_performance(self):
@@ -150,7 +144,7 @@ class CIPerformanceAnalyzer:
             "passed": passed_tests,
             "total": total_tests,
             "success_rate": success_rate,
-            "throughput_issues": len(throughput_issues)
+            "throughput_issues": len(throughput_issues),
         }
 
     def analyze_database_performance(self):
@@ -186,7 +180,7 @@ class CIPerformanceAnalyzer:
             "passed": passed_tests,
             "total": total_tests,
             "success_rate": success_rate,
-            "latency_issues": len(latency_issues)
+            "latency_issues": len(latency_issues),
         }
 
     def analyze_websocket_performance(self):
@@ -221,7 +215,7 @@ class CIPerformanceAnalyzer:
             "passed": passed_tests,
             "total": total_tests,
             "success_rate": success_rate,
-            "connection_issues": len(connection_issues)
+            "connection_issues": len(connection_issues),
         }
 
     def analyze_vision_performance(self):
@@ -256,7 +250,7 @@ class CIPerformanceAnalyzer:
             "passed": passed_tests,
             "total": total_tests,
             "success_rate": success_rate,
-            "chunking_issues": len(chunking_issues)
+            "chunking_issues": len(chunking_issues),
         }
 
     def calculate_overall_score(self):
@@ -265,8 +259,8 @@ class CIPerformanceAnalyzer:
             "agent_scalability": 30,  # 30% weight
             "message_throughput": 25,  # 25% weight
             "database_performance": 20,  # 20% weight
-            "websocket_capacity": 15,   # 15% weight
-            "vision_processing": 10     # 10% weight
+            "websocket_capacity": 15,  # 15% weight
+            "vision_processing": 10,  # 10% weight
         }
 
         total_score = 0
@@ -315,43 +309,43 @@ class CIPerformanceAnalyzer:
                 <div class="header">
                     <h1>🚀 CI Performance Test Report</h1>
                     <p>Automated Performance Analysis</p>
-                    <div class="timestamp">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
+                    <div class="timestamp">Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")}</div>
                 </div>
 
                 <div class="score-card">
                     <h2>Overall Performance Score</h2>
-                    <div style="font-size: 48px; font-weight: bold;" class="status-{'good' if self.analysis['overall_score'] >= 75 else 'poor'}">
-                        {self.analysis['overall_score']}%
+                    <div style="font-size: 48px; font-weight: bold;" class="status-{"good" if self.analysis["overall_score"] >= 75 else "poor"}">
+                        {self.analysis["overall_score"]}%
                     </div>
                     <div style="font-size: 18px; margin-top: 10px;">
-                        Status: <span class="status-{'good' if self.analysis['status'] in ['PRODUCTION_READY', 'MOSTLY_READY'] else 'poor'}">{self.analysis['status'].replace('_', ' ')}</span>
+                        Status: <span class="status-{"good" if self.analysis["status"] in ["PRODUCTION_READY", "MOSTLY_READY"] else "poor"}">{self.analysis["status"].replace("_", " ")}</span>
                     </div>
                 </div>
 
                 <div class="metric-grid">
-                    <div class="metric-card {'good' if self.analysis['agent_scalability'] else 'critical'}">
+                    <div class="metric-card {"good" if self.analysis["agent_scalability"] else "critical"}">
                         <h3>Agent Scalability</h3>
-                        <div>Status: {'✅ PASS' if self.analysis['agent_scalability'] else '❌ FAIL'}</div>
+                        <div>Status: {"✅ PASS" if self.analysis["agent_scalability"] else "❌ FAIL"}</div>
                         <div>Weight: 30%</div>
                     </div>
-                    <div class="metric-card {'good' if self.analysis['message_throughput'] else 'critical'}">
+                    <div class="metric-card {"good" if self.analysis["message_throughput"] else "critical"}">
                         <h3>Message Throughput</h3>
-                        <div>Status: {'✅ PASS' if self.analysis['message_throughput'] else '❌ FAIL'}</div>
+                        <div>Status: {"✅ PASS" if self.analysis["message_throughput"] else "❌ FAIL"}</div>
                         <div>Weight: 25%</div>
                     </div>
-                    <div class="metric-card {'good' if self.analysis['database_performance'] else 'critical'}">
+                    <div class="metric-card {"good" if self.analysis["database_performance"] else "critical"}">
                         <h3>Database Performance</h3>
-                        <div>Status: {'✅ PASS' if self.analysis['database_performance'] else '❌ FAIL'}</div>
+                        <div>Status: {"✅ PASS" if self.analysis["database_performance"] else "❌ FAIL"}</div>
                         <div>Weight: 20%</div>
                     </div>
-                    <div class="metric-card {'good' if self.analysis['websocket_capacity'] else 'warning'}">
+                    <div class="metric-card {"good" if self.analysis["websocket_capacity"] else "warning"}">
                         <h3>WebSocket Capacity</h3>
-                        <div>Status: {'✅ PASS' if self.analysis['websocket_capacity'] else '⚠️ WARN'}</div>
+                        <div>Status: {"✅ PASS" if self.analysis["websocket_capacity"] else "⚠️ WARN"}</div>
                         <div>Weight: 15%</div>
                     </div>
-                    <div class="metric-card {'good' if self.analysis['vision_processing'] else 'warning'}">
+                    <div class="metric-card {"good" if self.analysis["vision_processing"] else "warning"}">
                         <h3>Vision Processing</h3>
-                        <div>Status: {'✅ PASS' if self.analysis['vision_processing'] else '⚠️ WARN'}</div>
+                        <div>Status: {"✅ PASS" if self.analysis["vision_processing"] else "⚠️ WARN"}</div>
                         <div>Weight: 10%</div>
                     </div>
                 </div>
@@ -371,8 +365,8 @@ class CIPerformanceAnalyzer:
 
                 html_content += f"""
                     <div class="metric-card {status_class}">
-                        <h3>{test_type.replace('_', ' ').title()}</h3>
-                        <div>Passed: {summary.get('passed', 0)}/{summary.get('total', 0)}</div>
+                        <h3>{test_type.replace("_", " ").title()}</h3>
+                        <div>Passed: {summary.get("passed", 0)}/{summary.get("total", 0)}</div>
                         <div>Success Rate: {success_rate:.1f}%</div>
                     </div>
                 """
@@ -413,13 +407,11 @@ class CIPerformanceAnalyzer:
 
     def run_analysis(self):
         """Run complete performance analysis"""
-        print("🔍 Starting CI performance analysis...")
 
         # Load test results
         self.load_test_results()
 
         if not self.test_results:
-            print("⚠️  No test results found. Creating minimal report.")
             self.analysis["status"] = "NO_DATA"
             self.analysis["recommendations"].append("No performance test data available")
         else:
@@ -444,17 +436,10 @@ class CIPerformanceAnalyzer:
         with open("ci_performance_analysis.json", "w") as f:
             json.dump(self.analysis, f, indent=2, default=str)
 
-        print("\n✅ CI Performance Analysis Complete")
-        print(f"   Overall Score: {self.analysis['overall_score']}%")
-        print(f"   Status: {self.analysis['status']}")
-        print(f"   Critical Failures: {len(self.analysis['critical_failures'])}")
-        print(f"   Recommendations: {len(self.analysis['recommendations'])}")
 
         # Return exit code based on performance
         if self.analysis["overall_score"] < 50 or len(self.analysis["critical_failures"]) > 0:
-            print("❌ Performance below acceptable threshold")
             return 1
-        print("✅ Performance acceptable")
         return 0
 
 

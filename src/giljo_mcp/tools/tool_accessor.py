@@ -105,7 +105,9 @@ class ToolAccessor:
                             "status": project.status,
                             "tenant_key": project.tenant_key,
                             "created_at": project.created_at.isoformat(),
-                            "updated_at": (project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()),
+                            "updated_at": (
+                                project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
+                            ),
                             "context_budget": project.context_budget,
                             "context_used": project.context_used,
                             "agent_count": agent_count,
@@ -230,10 +232,7 @@ class ToolAccessor:
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
                 # Get project with tenant filtering
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
 
@@ -243,9 +242,7 @@ class ToolAccessor:
                 # Check if agent exists
                 agent_result = await session.execute(
                     select(Agent).where(
-                        Agent.name == agent_name,
-                        Agent.project_id == project_id,
-                        Agent.tenant_key == tenant_key
+                        Agent.name == agent_name, Agent.project_id == project_id, Agent.tenant_key == tenant_key
                     )
                 )
                 agent = agent_result.scalar_one_or_none()
@@ -291,16 +288,11 @@ class ToolAccessor:
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
                 if agent_name:
                     result = await session.execute(
-                        select(Agent).where(
-                            Agent.name == agent_name,
-                            Agent.tenant_key == tenant_key
-                        )
+                        select(Agent).where(Agent.name == agent_name, Agent.tenant_key == tenant_key)
                     )
                     agents = [result.scalar_one_or_none()]
                 else:
-                    result = await session.execute(
-                        select(Agent).where(Agent.tenant_key == tenant_key)
-                    )
+                    result = await session.execute(select(Agent).where(Agent.tenant_key == tenant_key))
                     agents = result.scalars().all()
 
                 if not agents or (len(agents) == 1 and not agents[0]):

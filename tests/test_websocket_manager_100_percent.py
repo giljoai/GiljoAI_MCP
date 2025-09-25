@@ -92,9 +92,7 @@ class TestWebSocketManager100Percent:
         ws_manager.notify_entity_update = AsyncMock()
 
         with patch("api.websocket.logger") as mock_logger:
-            await ws_manager.broadcast_agent_update(
-                agent_id, agent_name, project_id, tenant_key, "in_progress", 500
-            )
+            await ws_manager.broadcast_agent_update(agent_id, agent_name, project_id, tenant_key, "in_progress", 500)
 
             # Verify exception was logged
             mock_logger.exception.assert_called()
@@ -117,9 +115,7 @@ class TestWebSocketManager100Percent:
         ws_manager.notify_entity_update = AsyncMock()
 
         with patch("api.websocket.logger") as mock_logger:
-            await ws_manager.broadcast_template_update(
-                template_id, template_name, "update", tenant_key, product_id
-            )
+            await ws_manager.broadcast_template_update(template_id, template_name, "update", tenant_key, product_id)
 
             # Verify exception was logged
             mock_logger.exception.assert_called()
@@ -189,9 +185,7 @@ class TestWebSocketManager100Percent:
         )
 
         # Test broadcast_agent_spawn without optional parameters
-        await ws_manager.broadcast_agent_spawn(
-            "agent_001", "test_agent", None, "proj_001", "tenant_a", "worker"
-        )
+        await ws_manager.broadcast_agent_spawn("agent_001", "test_agent", None, "proj_001", "tenant_a", "worker")
 
         # Test broadcast_agent_complete without optional parameters
         await ws_manager.broadcast_agent_complete(
@@ -199,14 +193,10 @@ class TestWebSocketManager100Percent:
         )
 
         # Test broadcast_agent_update without optional parameters
-        await ws_manager.broadcast_agent_update(
-            "agent_001", "test_agent", "proj_001", "tenant_a", "active", 500
-        )
+        await ws_manager.broadcast_agent_update("agent_001", "test_agent", "proj_001", "tenant_a", "active", 500)
 
         # Test broadcast_template_update without optional parameters
-        await ws_manager.broadcast_template_update(
-            "tmpl_001", "test_template", "delete", "tenant_a", "prod_001"
-        )
+        await ws_manager.broadcast_template_update("tmpl_001", "test_template", "delete", "tenant_a", "prod_001")
 
     async def test_subscription_edge_cases(self, ws_manager):
         """Test subscription edge cases"""

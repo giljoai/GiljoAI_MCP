@@ -45,7 +45,7 @@ class VisionDocumentGenerator:
                 "The sophisticated orchestration framework leverages advanced design patterns including Observer, Strategy, and Command patterns to facilitate seamless communication between distributed microservices while maintaining strict adherence to SOLID principles and ensuring optimal resource utilization across heterogeneous deployment environments. ",
                 "Machine learning pipelines integrate multiple algorithms including gradient boosting, neural networks, and ensemble methods to process large-scale datasets with petabytes of information, requiring sophisticated data preprocessing, feature engineering, and model validation techniques that ensure statistical significance and practical applicability. ",
                 "Distributed systems architecture employs consensus algorithms, eventual consistency models, and sophisticated load balancing strategies to maintain high availability and fault tolerance while processing millions of transactions per second across geographically distributed data centers with sub-millisecond latency requirements. ",
-            ]
+            ],
         }
 
         patterns = base_patterns.get(complexity, base_patterns["medium"])
@@ -66,7 +66,7 @@ class VisionDocumentGenerator:
             "Deployment Strategy",
             "Monitoring and Observability",
             "Scalability Considerations",
-            "Future Roadmap"
+            "Future Roadmap",
         ]
 
         for section in sections:
@@ -105,7 +105,7 @@ class VisionDocumentGenerator:
             "estimated_tokens": estimated_tokens,
             "character_count": len(final_content),
             "word_count": len(final_content.split()),
-            "complexity": complexity
+            "complexity": complexity,
         }
 
 
@@ -125,24 +125,13 @@ class TestVisionChunkingLoad:
         benchmark = PerformanceBenchmark(target_time_ms=5000.0)  # 5 second target for 10K tokens
 
         async def chunk_document():
-            return await chunking_tools.chunk_document(
-                content=doc["content"],
-                max_tokens=2000
-            )
+            return await chunking_tools.chunk_document(content=doc["content"], max_tokens=2000)
 
         # Benchmark document chunking
         result = await benchmark.benchmark_async(
-            "single_document_chunking_10k",
-            chunk_document,
-            iterations=10,
-            warmup=2
+            "single_document_chunking_10k", chunk_document, iterations=10, warmup=2
         )
 
-        print("\n✅ Single Document Chunking (10K tokens):")
-        print(f"   Document Size: {doc['estimated_tokens']} tokens, {doc['character_count']} chars")
-        print(f"   Average Time: {result.avg_time:.2f}ms")
-        print(f"   P95: {result.p95:.2f}ms")
-        print(f"   Success Rate: {result.success_rate:.1f}%")
 
         assert result.success_rate > 95.0, f"Chunking success rate too low: {result.success_rate:.1f}%"
         assert result.avg_time < 5000, f"Chunking too slow: {result.avg_time:.2f}ms > 5s"
@@ -160,17 +149,11 @@ class TestVisionChunkingLoad:
 
         chunks = await chunking_tools.chunk_document(
             content=doc["content"],
-            max_tokens=20000  # Production chunk size
+            max_tokens=20000,  # Production chunk size
         )
 
         chunking_time = (time.perf_counter() - start_time) * 1000
 
-        print("\n🚀 PRODUCTION VALIDATION: 50K+ Token Document Chunking")
-        print(f"   Document Size: {doc['estimated_tokens']} tokens, {doc['character_count']} chars")
-        print(f"   Chunking Time: {chunking_time:.2f}ms ({chunking_time/1000:.2f}s)")
-        print(f"   Chunks Created: {len(chunks)}")
-        print(f"   Avg Time per Chunk: {chunking_time/len(chunks):.2f}ms")
-        print(f"   Tokens per Second: {doc['estimated_tokens']/(chunking_time/1000):.0f}")
 
         # PRODUCTION REQUIREMENTS VALIDATION
         assert len(chunks) > 0, "No chunks created from large document"
@@ -195,8 +178,6 @@ class TestVisionChunkingLoad:
             f"Significant content loss during chunking process."
         )
 
-        print(f"   Content Preservation: {content_preservation:.1f}%")
-        print("   ✅ MEETS 50K+ TOKEN PROCESSING REQUIREMENTS")
 
     async def test_concurrent_document_chunking_load(self, chunking_tools):
         """Test concurrent processing of multiple documents"""
@@ -212,10 +193,7 @@ class TestVisionChunkingLoad:
         # Process all documents concurrently
         chunking_tasks = []
         for i, doc in enumerate(documents):
-            task = chunking_tools.chunk_document(
-                content=doc["content"],
-                max_tokens=5000
-            )
+            task = chunking_tools.chunk_document(content=doc["content"], max_tokens=5000)
             chunking_tasks.append(task)
 
         results = await asyncio.gather(*chunking_tasks, return_exceptions=True)
@@ -223,19 +201,11 @@ class TestVisionChunkingLoad:
 
         # Analyze concurrent processing results
         successful_results = [r for r in results if not isinstance(r, Exception)]
-        failed_results = [r for r in results if isinstance(r, Exception)]
+        [r for r in results if isinstance(r, Exception)]
 
-        total_tokens = sum(doc["estimated_tokens"] for doc in documents)
-        total_chunks = sum(len(chunks) for chunks in successful_results)
+        sum(doc["estimated_tokens"] for doc in documents)
+        sum(len(chunks) for chunks in successful_results)
 
-        print("\n✅ Concurrent Document Chunking (10 documents):")
-        print(f"   Total Documents: {len(documents)}")
-        print(f"   Total Tokens: {total_tokens}")
-        print(f"   Total Time: {total_time:.2f}ms ({total_time/1000:.2f}s)")
-        print(f"   Successful: {len(successful_results)}")
-        print(f"   Failed: {len(failed_results)}")
-        print(f"   Total Chunks: {total_chunks}")
-        print(f"   Tokens/Second: {total_tokens/(total_time/1000):.0f}")
 
         success_rate = len(successful_results) / len(documents) * 100
         assert success_rate > 90.0, f"Concurrent chunking success rate too low: {success_rate:.1f}%"
@@ -245,10 +215,7 @@ class TestVisionChunkingLoad:
         """Test chunk retrieval performance under load"""
         # First, create a document and chunk it
         doc = VisionDocumentGenerator.generate_document(target_tokens=20000)
-        chunks = await chunking_tools.chunk_document(
-            content=doc["content"],
-            max_tokens=5000
-        )
+        chunks = await chunking_tools.chunk_document(content=doc["content"], max_tokens=5000)
 
         if not chunks:
             pytest.skip("No chunks created for retrieval testing")
@@ -261,25 +228,21 @@ class TestVisionChunkingLoad:
 
             # Simulate chunk access (in real implementation, this would be database retrieval)
             chunk_index = len(retrieval_times) % len(chunks)
-            accessed_chunk = chunks[chunk_index]
+            chunks[chunk_index]
 
             retrieval_time = (time.perf_counter() - start_time) * 1000
             retrieval_times.append(retrieval_time)
 
         avg_retrieval_time = mean(retrieval_times)
-        max_retrieval_time = max(retrieval_times)
+        max(retrieval_times)
 
-        print("\n✅ Chunk Retrieval Performance:")
-        print(f"   Chunks Available: {len(chunks)}")
-        print(f"   Retrieval Operations: {len(retrieval_times)}")
-        print(f"   Avg Retrieval Time: {avg_retrieval_time:.3f}ms")
-        print(f"   Max Retrieval Time: {max_retrieval_time:.3f}ms")
 
         assert avg_retrieval_time < 10.0, f"Chunk retrieval too slow: {avg_retrieval_time:.3f}ms > 10ms"
 
     async def test_memory_usage_large_documents(self, chunking_tools):
         """Test memory usage when processing large documents"""
         import psutil
+
         process = psutil.Process()
 
         # Baseline memory
@@ -295,33 +258,27 @@ class TestVisionChunkingLoad:
             before_memory = process.memory_info().rss / (1024 * 1024)
 
             # Chunk the document
-            chunks = await chunking_tools.chunk_document(
-                content=doc["content"],
-                max_tokens=10000
-            )
+            chunks = await chunking_tools.chunk_document(content=doc["content"], max_tokens=10000)
 
             # Measure memory after chunking
             after_memory = process.memory_info().rss / (1024 * 1024)
             memory_growth = after_memory - before_memory
 
-            memory_measurements.append({
-                "doc_size": doc_size,
-                "memory_before": before_memory,
-                "memory_after": after_memory,
-                "memory_growth": memory_growth,
-                "chunks_created": len(chunks),
-                "memory_per_token": memory_growth / doc_size if doc_size > 0 else 0
-            })
+            memory_measurements.append(
+                {
+                    "doc_size": doc_size,
+                    "memory_before": before_memory,
+                    "memory_after": after_memory,
+                    "memory_growth": memory_growth,
+                    "chunks_created": len(chunks),
+                    "memory_per_token": memory_growth / doc_size if doc_size > 0 else 0,
+                }
+            )
 
-            print(f"   {doc_size:,} tokens: {memory_growth:.1f}MB growth, {len(chunks)} chunks")
 
         final_memory = process.memory_info().rss / (1024 * 1024)
         total_memory_growth = final_memory - baseline_memory
 
-        print("\n✅ Memory Usage Analysis:")
-        print(f"   Baseline Memory: {baseline_memory:.1f}MB")
-        print(f"   Final Memory: {final_memory:.1f}MB")
-        print(f"   Total Growth: {total_memory_growth:.1f}MB")
 
         # Validate memory usage is reasonable
         max_growth = max(m["memory_growth"] for m in memory_measurements)
@@ -341,8 +298,7 @@ class TestVisionChunkingLoad:
         documents = []
         for i in range(5):
             doc = VisionDocumentGenerator.generate_document(
-                target_tokens=15000 + (i * 5000),
-                complexity=["simple", "medium", "complex"][i % 3]
+                target_tokens=15000 + (i * 5000), complexity=["simple", "medium", "complex"][i % 3]
             )
             doc["id"] = f"vision_doc_{i}"
             doc["title"] = f"Vision Document {i}"
@@ -355,10 +311,7 @@ class TestVisionChunkingLoad:
         indexing_tasks = []
 
         for doc in documents:
-            task = chunking_tools.chunk_document(
-                content=doc["content"],
-                max_tokens=8000
-            )
+            task = chunking_tools.chunk_document(content=doc["content"], max_tokens=8000)
             indexing_tasks.append((doc["id"], task))
 
         # Process all indexing tasks
@@ -369,17 +322,10 @@ class TestVisionChunkingLoad:
         indexing_time = (time.perf_counter() - start_time) * 1000
 
         # Analyze indexing performance
-        total_documents = len(documents)
-        total_tokens = sum(doc["estimated_tokens"] for doc in documents)
+        len(documents)
+        sum(doc["estimated_tokens"] for doc in documents)
         total_chunks = sum(len(chunks) for chunks in document_chunks.values())
 
-        print("\n✅ Vision Document Indexing Performance:")
-        print(f"   Documents Indexed: {total_documents}")
-        print(f"   Total Tokens: {total_tokens:,}")
-        print(f"   Total Chunks: {total_chunks}")
-        print(f"   Indexing Time: {indexing_time:.2f}ms ({indexing_time/1000:.2f}s)")
-        print(f"   Tokens/Second: {total_tokens/(indexing_time/1000):.0f}")
-        print(f"   Documents/Second: {total_documents/(indexing_time/1000):.1f}")
 
         assert indexing_time < 60000, f"Document indexing too slow: {indexing_time:.2f}ms > 60s"
         assert total_chunks > 0, "No chunks created during indexing"
@@ -395,16 +341,12 @@ class TestVisionChunkingLoad:
             for i, chunk in enumerate(chunks):
                 chunk_content = chunk.get("content", "") if isinstance(chunk, dict) else str(chunk)
                 if search_term.lower() in chunk_content.lower():
-                    search_results.append({
-                        "doc_id": doc_id,
-                        "chunk_index": i,
-                        "content_preview": chunk_content[:100] + "..."
-                    })
+                    search_results.append(
+                        {"doc_id": doc_id, "chunk_index": i, "content_preview": chunk_content[:100] + "..."}
+                    )
 
         search_time = (time.perf_counter() - search_start) * 1000
 
-        print(f"   Search Results: {len(search_results)} matches")
-        print(f"   Search Time: {search_time:.2f}ms")
 
         assert search_time < 1000, f"Search too slow: {search_time:.2f}ms > 1s"
 
@@ -415,54 +357,41 @@ class TestVisionChunkingLoad:
         for i in range(5):
             doc = VisionDocumentGenerator.generate_document(
                 target_tokens=40000 + (i * 10000),  # 40K to 80K tokens
-                complexity="complex"
+                complexity="complex",
             )
             large_documents.append(doc)
 
-        print("\n🔥 Vision Chunking Stress Test:")
-        print(f"   Documents: {len(large_documents)}")
-        print("   Token Range: 40K-80K per document")
 
         start_time = time.perf_counter()
 
         # Process all large documents concurrently
         stress_tasks = []
         for i, doc in enumerate(large_documents):
-            task = chunking_tools.chunk_document(
-                content=doc["content"],
-                max_tokens=15000
-            )
+            task = chunking_tools.chunk_document(content=doc["content"], max_tokens=15000)
             stress_tasks.append(task)
 
         results = await asyncio.gather(*stress_tasks, return_exceptions=True)
-        total_time = (time.perf_counter() - start_time) * 1000
+        (time.perf_counter() - start_time) * 1000
 
         # Analyze stress test results
         successful_results = [r for r in results if not isinstance(r, Exception)]
         failed_results = [r for r in results if isinstance(r, Exception)]
 
-        total_tokens = sum(doc["estimated_tokens"] for doc in large_documents)
-        total_chunks = sum(len(chunks) for chunks in successful_results)
+        sum(doc["estimated_tokens"] for doc in large_documents)
+        sum(len(chunks) for chunks in successful_results)
 
-        print(f"   Total Tokens: {total_tokens:,}")
-        print(f"   Total Time: {total_time:.2f}ms ({total_time/1000:.2f}s)")
-        print(f"   Successful: {len(successful_results)}/{len(large_documents)}")
-        print(f"   Failed: {len(failed_results)}")
-        print(f"   Total Chunks: {total_chunks}")
-        print(f"   Tokens/Second: {total_tokens/(total_time/1000):.0f}")
 
         success_rate = len(successful_results) / len(large_documents) * 100
 
         if success_rate < 80:
-            print("   ⚠️  System shows stress with large concurrent documents")
+            pass
         else:
-            print("   ✅ System handles large concurrent documents well")
+            pass
 
         # Log any failures for analysis
         if failed_results:
-            print("   Failures detected:")
-            for i, error in enumerate(failed_results[:3]):
-                print(f"     {i+1}. {type(error).__name__}: {str(error)[:100]}")
+            for i, _error in enumerate(failed_results[:3]):
+                pass
 
 
 if __name__ == "__main__":

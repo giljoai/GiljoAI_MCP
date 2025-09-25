@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.api.app import create_app
+
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.config_manager import ConfigManager
 
@@ -216,7 +217,9 @@ class AuthTestSuite:
 
         # Generate key with rate limit
         key = await self.auth_manager.generate_api_key(
-            name="rate_limit_test", permissions=["projects.read"], rate_limit=10  # 10 requests per minute
+            name="rate_limit_test",
+            permissions=["projects.read"],
+            rate_limit=10,  # 10 requests per minute
         )
 
         if key:
@@ -358,7 +361,7 @@ class AuthTestSuite:
             self.record_test(
                 "Timing attack resistance",
                 max_deviation < 0.01,  # Less than 10ms deviation
-                f"Max deviation: {max_deviation*1000:.2f}ms",
+                f"Max deviation: {max_deviation * 1000:.2f}ms",
             )
 
     async def run_all_tests(self):

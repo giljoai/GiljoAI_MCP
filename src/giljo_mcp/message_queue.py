@@ -101,48 +101,48 @@ class MessageQueue:
             batch_size = self._batch_size
 
         async with self.db_manager.get_session_async() as session:
-                try:
-                    # Start transaction
-                    await session.begin()
+            try:
+                # Start transaction
+                await session.begin()
 
-                    # Get messages for this agent ordered by priority
-                    # Using FOR UPDATE to lock rows
-                    stmt = (
-                        select(Message)
-                        .where(
-                            and_(
-                                Message.status == "pending",
-                                Message.to_agents.contains([agent_name]),
-                            )
+                # Get messages for this agent ordered by priority
+                # Using FOR UPDATE to lock rows
+                stmt = (
+                    select(Message)
+                    .where(
+                        and_(
+                            Message.status == "pending",
+                            Message.to_agents.contains([agent_name]),
                         )
-                        .order_by(Message.priority.desc(), Message.created_at)
-                        .limit(batch_size)
-                        .with_for_update()
                     )
+                    .order_by(Message.priority.desc(), Message.created_at)
+                    .limit(batch_size)
+                    .with_for_update()
+                )
 
-                    result = await session.execute(stmt)
-                    messages = result.scalars().all()
+                result = await session.execute(stmt)
+                messages = result.scalars().all()
 
-                    # Update status to processing
-                    for message in messages:
-                        message.status = "processing"
-                        message.meta_data = message.meta_data or {}
-                        message.meta_data["processing_started_at"] = datetime.now(timezone.utc).isoformat()
-                        message.meta_data["processing_agent"] = agent_name
+                # Update status to processing
+                for message in messages:
+                    message.status = "processing"
+                    message.meta_data = message.meta_data or {}
+                    message.meta_data["processing_started_at"] = datetime.now(timezone.utc).isoformat()
+                    message.meta_data["processing_agent"] = agent_name
 
-                        # Record dequeue metrics
-                        await self._monitor.record_dequeue(message, agent_name)
+                    # Record dequeue metrics
+                    await self._monitor.record_dequeue(message, agent_name)
 
-                    # Commit transaction
-                    await session.commit()
+                # Commit transaction
+                await session.commit()
 
-                    logger.info(f"Dequeued {len(messages)} messages for agent {agent_name}")
-                    return messages
+                logger.info(f"Dequeued {len(messages)} messages for agent {agent_name}")
+                return messages
 
-                except Exception as e:
-                    await session.rollback()
-                    logger.exception(f"Failed to dequeue messages: {e}")
-                    raise QueueException(f"Dequeue failed: {e}")
+            except Exception as e:
+                await session.rollback()
+                logger.exception(f"Failed to dequeue messages: {e}")
+                raise QueueException(f"Dequeue failed: {e}")
 
     async def process_message(self, message_id: str, agent_name: str) -> bool:
         """
@@ -156,37 +156,37 @@ class MessageQueue:
             True if successful
         """
         async with self.db_manager.get_session_async() as session:
-                try:
-                    await session.begin()
+            try:
+                await session.begin()
 
-                    # Get and lock the message
-                    stmt = select(Message).where(Message.id == message_id).with_for_update()
-                    result = await session.execute(stmt)
-                    message = result.scalar_one_or_none()
+                # Get and lock the message
+                stmt = select(Message).where(Message.id == message_id).with_for_update()
+                result = await session.execute(stmt)
+                message = result.scalar_one_or_none()
 
-                    if not message:
-                        raise QueueException(f"Message {message_id} not found")
+                if not message:
+                    raise QueueException(f"Message {message_id} not found")
 
-                    # Validate state transition
-                    if message.status not in ["pending", "acknowledged"]:
-                        raise ConsistencyError(f"Invalid state transition from {message.status}")
+                # Validate state transition
+                if message.status not in ["pending", "acknowledged"]:
+                    raise ConsistencyError(f"Invalid state transition from {message.status}")
 
-                    # Update message
-                    message.status = "processing"
-                    message.meta_data = message.meta_data or {}
-                    message.meta_data["processing_started_at"] = datetime.now(timezone.utc).isoformat()
-                    message.meta_data["processing_agent"] = agent_name
+                # Update message
+                message.status = "processing"
+                message.meta_data = message.meta_data or {}
+                message.meta_data["processing_started_at"] = datetime.now(timezone.utc).isoformat()
+                message.meta_data["processing_agent"] = agent_name
 
-                    # Record processing time
-                    await self._monitor.record_processing_start(message_id, agent_name)
+                # Record processing time
+                await self._monitor.record_processing_start(message_id, agent_name)
 
-                    await session.commit()
-                    return True
+                await session.commit()
+                return True
 
-                except Exception as e:
-                    await session.rollback()
-                    logger.exception(f"Failed to process message: {e}")
-                    return False
+            except Exception as e:
+                await session.rollback()
+                logger.exception(f"Failed to process message: {e}")
+                return False
 
     async def detect_stuck_messages(self, timeout_seconds: Optional[int] = None) -> list[Message]:
         """
@@ -215,47 +215,47 @@ class MessageQueue:
             True if message was retried, False if moved to DLQ
         """
         async with self.db_manager.get_session_async() as session:
-                try:
-                    await session.begin()
+            try:
+                await session.begin()
 
-                    # Get the message
-                    stmt = select(Message).where(Message.id == message_id).with_for_update()
-                    result = await session.execute(stmt)
-                    message = result.scalar_one_or_none()
+                # Get the message
+                stmt = select(Message).where(Message.id == message_id).with_for_update()
+                result = await session.execute(stmt)
+                message = result.scalar_one_or_none()
 
-                    if not message:
-                        return False
-
-                    # Check retry count
-                    message.meta_data = message.meta_data or {}
-                    retry_count = message.meta_data.get("retry_count", 0)
-
-                    if retry_count >= self._max_retries:
-                        # Move to DLQ
-                        await self._dead_letter_queue.add_message(message, f"Max retries exceeded: {reason}")
-                        await session.commit()
-                        return False
-
-                    # Calculate backoff
-                    backoff_seconds = (2**retry_count) * 60  # Exponential backoff
-                    retry_after = datetime.now(timezone.utc) + timedelta(seconds=backoff_seconds)
-
-                    # Update message for retry
-                    message.status = "pending"
-                    message.meta_data["retry_count"] = retry_count + 1
-                    message.meta_data["retry_reason"] = reason
-                    message.meta_data["retry_after"] = retry_after.isoformat()
-                    message.meta_data["last_retry_at"] = datetime.now(timezone.utc).isoformat()
-
-                    await session.commit()
-
-                    logger.info(f"Message {message_id} scheduled for retry #{retry_count + 1}")
-                    return True
-
-                except Exception as e:
-                    await session.rollback()
-                    logger.exception(f"Failed to retry message: {e}")
+                if not message:
                     return False
+
+                # Check retry count
+                message.meta_data = message.meta_data or {}
+                retry_count = message.meta_data.get("retry_count", 0)
+
+                if retry_count >= self._max_retries:
+                    # Move to DLQ
+                    await self._dead_letter_queue.add_message(message, f"Max retries exceeded: {reason}")
+                    await session.commit()
+                    return False
+
+                # Calculate backoff
+                backoff_seconds = (2**retry_count) * 60  # Exponential backoff
+                retry_after = datetime.now(timezone.utc) + timedelta(seconds=backoff_seconds)
+
+                # Update message for retry
+                message.status = "pending"
+                message.meta_data["retry_count"] = retry_count + 1
+                message.meta_data["retry_reason"] = reason
+                message.meta_data["retry_after"] = retry_after.isoformat()
+                message.meta_data["last_retry_at"] = datetime.now(timezone.utc).isoformat()
+
+                await session.commit()
+
+                logger.info(f"Message {message_id} scheduled for retry #{retry_count + 1}")
+                return True
+
+            except Exception as e:
+                await session.rollback()
+                logger.exception(f"Failed to retry message: {e}")
+                return False
 
     async def get_statistics(self) -> dict[str, Any]:
         """

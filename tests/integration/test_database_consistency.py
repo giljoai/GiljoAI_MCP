@@ -5,16 +5,14 @@ across all Tools Framework modules
 """
 
 import asyncio
-import uuid
-from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.tools.agent import _ensure_agent, _decommission_agent
-from src.giljo_mcp.tools.message import _send_message, _get_pending_messages
+from src.giljo_mcp.tools.agent import _decommission_agent, _ensure_agent
+from src.giljo_mcp.tools.message import _get_pending_messages, _send_message
 from src.giljo_mcp.tools.task import _create_task, _update_task_status
-from src.giljo_mcp.tools.template import _create_template, _archive_template
+from src.giljo_mcp.tools.template import _archive_template, _create_template
 from tests.utils.tools_helpers import ToolsTestHelper
 
 
@@ -25,8 +23,8 @@ class TestDatabaseConsistency:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -38,11 +36,7 @@ class TestDatabaseConsistency:
         """Test foreign key constraints are properly enforced"""
         # 1. Create agent
         agent_result = await _ensure_agent(
-            self.db_manager,
-            self.tenant_manager,
-            "fk_test_agent",
-            "Agent for foreign key testing",
-            "worker"
+            self.db_manager, self.tenant_manager, "fk_test_agent", "Agent for foreign key testing", "worker"
         )
         assert agent_result["success"] is True
         agent_name = agent_result["agent_name"]
@@ -53,46 +47,31 @@ class TestDatabaseConsistency:
             self.tenant_manager,
             "FK test task",
             "Task to test foreign key integrity",
-            assignee=agent_name
+            assignee=agent_name,
         )
         assert task_result["success"] is True
-        task_id = task_result["task_id"]
+        task_result["task_id"]
 
         # 3. Send message to agent
         message_result = await _send_message(
-            self.db_manager,
-            self.tenant_manager,
-            [agent_name],
-            "Test message for FK integrity",
-            "test"
+            self.db_manager, self.tenant_manager, [agent_name], "Test message for FK integrity", "test"
         )
         assert message_result["success"] is True
 
         # 4. Verify relationships exist
-        messages = await _get_pending_messages(
-            self.db_manager,
-            self.tenant_manager,
-            agent_name
-        )
+        messages = await _get_pending_messages(self.db_manager, self.tenant_manager, agent_name)
         assert messages["success"] is True
         assert len(messages["messages"]) >= 1
 
         # 5. Decommission agent
         decommission_result = await _decommission_agent(
-            self.db_manager,
-            self.tenant_manager,
-            agent_name,
-            "Testing FK integrity"
+            self.db_manager, self.tenant_manager, agent_name, "Testing FK integrity"
         )
         assert decommission_result["success"] is True
 
         # 6. Verify dependent records are handled properly
         # Messages should still exist but agent should be marked as decommissioned
-        messages_after = await _get_pending_messages(
-            self.db_manager,
-            self.tenant_manager,
-            agent_name
-        )
+        await _get_pending_messages(self.db_manager, self.tenant_manager, agent_name)
         # Depending on implementation, this might succeed or fail gracefully
 
     @pytest.mark.asyncio
@@ -102,11 +81,7 @@ class TestDatabaseConsistency:
 
         # 1. Create valid agent
         agent_result = await _ensure_agent(
-            self.db_manager,
-            self.tenant_manager,
-            "rollback_agent",
-            "Agent for rollback testing",
-            "worker"
+            self.db_manager, self.tenant_manager, "rollback_agent", "Agent for rollback testing", "worker"
         )
         assert agent_result["success"] is True
 
@@ -118,7 +93,7 @@ class TestDatabaseConsistency:
             self.tenant_manager,
             long_title,
             "Task with extremely long title to test limits",
-            assignee="rollback_agent"
+            assignee="rollback_agent",
         )
 
         # Result should be handled gracefully
@@ -126,11 +101,7 @@ class TestDatabaseConsistency:
 
         # Agent should still exist and be functional
         subsequent_task = await _create_task(
-            self.db_manager,
-            self.tenant_manager,
-            "Normal task",
-            "Task with normal title",
-            assignee="rollback_agent"
+            self.db_manager, self.tenant_manager, "Normal task", "Task with normal title", assignee="rollback_agent"
         )
         assert subsequent_task["success"] is True
 
@@ -139,11 +110,7 @@ class TestDatabaseConsistency:
         """Test database consistency under concurrent operations"""
         # 1. Create base agent
         agent_result = await _ensure_agent(
-            self.db_manager,
-            self.tenant_manager,
-            "concurrent_agent",
-            "Agent for concurrency testing",
-            "worker"
+            self.db_manager, self.tenant_manager, "concurrent_agent", "Agent for concurrency testing", "worker"
         )
         assert agent_result["success"] is True
         agent_name = agent_result["agent_name"]
@@ -156,7 +123,7 @@ class TestDatabaseConsistency:
                 self.tenant_manager,
                 f"Concurrent task {i}",
                 f"Task {i} for concurrency testing",
-                assignee=agent_name
+                assignee=agent_name,
             )
             task_operations.append(operation)
 
@@ -171,11 +138,7 @@ class TestDatabaseConsistency:
         message_operations = []
         for i in range(5):
             operation = _send_message(
-                self.db_manager,
-                self.tenant_manager,
-                [agent_name],
-                f"Concurrent message {i}",
-                "concurrency_test"
+                self.db_manager, self.tenant_manager, [agent_name], f"Concurrent message {i}", "concurrency_test"
             )
             message_operations.append(operation)
 
@@ -184,11 +147,7 @@ class TestDatabaseConsistency:
         assert len(successful_messages) == 5
 
         # 6. Verify all messages were delivered
-        messages = await _get_pending_messages(
-            self.db_manager,
-            self.tenant_manager,
-            agent_name
-        )
+        messages = await _get_pending_messages(self.db_manager, self.tenant_manager, agent_name)
         assert messages["success"] is True
         assert len(messages["messages"]) >= 5
 
@@ -199,11 +158,7 @@ class TestDatabaseConsistency:
         original_tenant = self.tenant_manager.get_current_tenant()
 
         agent1_result = await _ensure_agent(
-            self.db_manager,
-            self.tenant_manager,
-            "tenant1_agent",
-            "Agent in first tenant",
-            "worker"
+            self.db_manager, self.tenant_manager, "tenant1_agent", "Agent in first tenant", "worker"
         )
         assert agent1_result["success"] is True
 
@@ -213,7 +168,7 @@ class TestDatabaseConsistency:
             "tenant1_template",
             "specialist",
             "Template in first tenant",
-            "testing"
+            "testing",
         )
         assert template1_result["success"] is True
 
@@ -229,7 +184,7 @@ class TestDatabaseConsistency:
             self.tenant_manager,
             "tenant1_agent",  # Same name, different tenant
             "Agent in second tenant",
-            "worker"
+            "worker",
         )
         assert agent2_result["success"] is True
 
@@ -239,7 +194,7 @@ class TestDatabaseConsistency:
             "tenant1_template",  # Same name, different tenant
             "analyst",
             "Template in second tenant",
-            "analysis"
+            "analysis",
         )
         assert template2_result["success"] is True
 
@@ -248,21 +203,13 @@ class TestDatabaseConsistency:
         self.tenant_manager.set_current_tenant(original_tenant)
 
         # Resources in first tenant should still exist and be unchanged
-        messages1 = await _get_pending_messages(
-            self.db_manager,
-            self.tenant_manager,
-            "tenant1_agent"
-        )
+        messages1 = await _get_pending_messages(self.db_manager, self.tenant_manager, "tenant1_agent")
         assert messages1["success"] is True
 
         # 5. Switch to second tenant and verify isolation
         self.tenant_manager.set_current_tenant(project2.tenant_key)
 
-        messages2 = await _get_pending_messages(
-            self.db_manager,
-            self.tenant_manager,
-            "tenant1_agent"
-        )
+        messages2 = await _get_pending_messages(self.db_manager, self.tenant_manager, "tenant1_agent")
         assert messages2["success"] is True
 
         # 6. Cleanup - switch back to original tenant
@@ -278,7 +225,7 @@ class TestDatabaseConsistency:
             "cascade_template",
             "orchestrator",
             "Template for cascade testing",
-            "orchestration"
+            "orchestration",
         )
         assert template_result["success"] is True
 
@@ -288,7 +235,7 @@ class TestDatabaseConsistency:
             self.tenant_manager,
             "cascade_agent",
             "Agent created from template for cascade testing",
-            "orchestrator"
+            "orchestrator",
         )
         assert agent_result["success"] is True
 
@@ -300,7 +247,7 @@ class TestDatabaseConsistency:
                 self.tenant_manager,
                 f"Cascade task {i}",
                 f"Task {i} for cascade testing",
-                assignee="cascade_agent"
+                assignee="cascade_agent",
             )
             assert task_result["success"] is True
             task_ids.append(task_result["task_id"])
@@ -308,40 +255,25 @@ class TestDatabaseConsistency:
         # 4. Create messages for agent
         for i in range(2):
             message_result = await _send_message(
-                self.db_manager,
-                self.tenant_manager,
-                ["cascade_agent"],
-                f"Cascade message {i}",
-                "cascade_test"
+                self.db_manager, self.tenant_manager, ["cascade_agent"], f"Cascade message {i}", "cascade_test"
             )
             assert message_result["success"] is True
 
         # 5. Archive template (should not affect existing agent)
         archive_result = await _archive_template(
-            self.db_manager,
-            self.tenant_manager,
-            "cascade_template",
-            "Testing cascade operations"
+            self.db_manager, self.tenant_manager, "cascade_template", "Testing cascade operations"
         )
         assert archive_result["success"] is True
 
         # 6. Verify agent and related entities still function
-        messages = await _get_pending_messages(
-            self.db_manager,
-            self.tenant_manager,
-            "cascade_agent"
-        )
+        messages = await _get_pending_messages(self.db_manager, self.tenant_manager, "cascade_agent")
         assert messages["success"] is True
         assert len(messages["messages"]) >= 2
 
         # 7. Update task statuses
         for task_id in task_ids:
             update_result = await _update_task_status(
-                self.db_manager,
-                self.tenant_manager,
-                task_id,
-                "completed",
-                "cascade_agent"
+                self.db_manager, self.tenant_manager, task_id, "completed", "cascade_agent"
             )
             assert update_result["success"] is True
 
@@ -351,21 +283,13 @@ class TestDatabaseConsistency:
         # 1. Test unique constraints
         # Create agent
         agent_result = await _ensure_agent(
-            self.db_manager,
-            self.tenant_manager,
-            "unique_agent",
-            "First agent with this name",
-            "worker"
+            self.db_manager, self.tenant_manager, "unique_agent", "First agent with this name", "worker"
         )
         assert agent_result["success"] is True
 
         # Try to create another agent with same name (should be idempotent)
         duplicate_result = await _ensure_agent(
-            self.db_manager,
-            self.tenant_manager,
-            "unique_agent",
-            "Another agent with same name",
-            "specialist"
+            self.db_manager, self.tenant_manager, "unique_agent", "Another agent with same name", "specialist"
         )
         # Should succeed as ensure_agent is idempotent
         assert duplicate_result["success"] is True
@@ -388,7 +312,7 @@ class TestDatabaseConsistency:
             self.tenant_manager,
             "Invalid priority task",
             "Task with invalid priority value",
-            priority="super_mega_ultra_high"  # Invalid priority
+            priority="super_mega_ultra_high",  # Invalid priority
         )
         # Should handle gracefully, possibly defaulting to valid priority
         assert isinstance(invalid_priority_task, dict)
@@ -402,11 +326,7 @@ class TestDatabaseConsistency:
         # Create multiple agents in different "sessions"
         for i in range(5):
             operation = _ensure_agent(
-                self.db_manager,
-                self.tenant_manager,
-                f"session_agent_{i}",
-                f"Agent {i} for session testing",
-                "worker"
+                self.db_manager, self.tenant_manager, f"session_agent_{i}", f"Agent {i} for session testing", "worker"
             )
             operations.append(operation)
 
@@ -416,11 +336,7 @@ class TestDatabaseConsistency:
 
         # 2. Verify all operations persisted correctly
         for i in range(5):
-            messages = await _get_pending_messages(
-                self.db_manager,
-                self.tenant_manager,
-                f"session_agent_{i}"
-            )
+            messages = await _get_pending_messages(self.db_manager, self.tenant_manager, f"session_agent_{i}")
             assert messages["success"] is True
 
         # 3. Test session cleanup under error conditions
@@ -431,7 +347,7 @@ class TestDatabaseConsistency:
                 self.tenant_manager,
                 "Session test task",
                 "Task to test session cleanup",
-                assignee="nonexistent_agent_that_should_not_exist"
+                assignee="nonexistent_agent_that_should_not_exist",
             )
             # Should handle gracefully
             assert isinstance(invalid_operation, dict)
@@ -441,10 +357,6 @@ class TestDatabaseConsistency:
 
         # Verify system still functional after potential error
         recovery_agent = await _ensure_agent(
-            self.db_manager,
-            self.tenant_manager,
-            "recovery_agent",
-            "Agent to test recovery",
-            "worker"
+            self.db_manager, self.tenant_manager, "recovery_agent", "Agent to test recovery", "worker"
         )
         assert recovery_agent["success"] is True

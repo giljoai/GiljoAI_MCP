@@ -13,7 +13,7 @@ Tests all git tool functions and helpers:
 
 import subprocess
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -28,7 +28,6 @@ from src.giljo_mcp.tools.git import (
     register_git_tools,
 )
 from tests.utils.tools_helpers import (
-    AssertionHelpers,
     MockMCPToolRegistrar,
     ToolsTestHelper,
 )
@@ -41,9 +40,9 @@ class TestGitTools:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -65,16 +64,16 @@ class TestGitTools:
 
     def test_get_encryption_key(self):
         """Test encryption key generation"""
-        with patch.dict('os.environ', {'GILJO_MCP_ENCRYPTION_KEY': 'test_key_123'}):
+        with patch.dict("os.environ", {"GILJO_MCP_ENCRYPTION_KEY": "test_key_123"}):
             key = _get_encryption_key()
             assert key is not None
             assert len(key) == 32  # Fernet requires 32-byte key
 
     def test_get_encryption_key_generated(self):
         """Test encryption key generation when not provided"""
-        with patch.dict('os.environ', {}, clear=True):
-            with patch('src.giljo_mcp.tools.git.Fernet.generate_key') as mock_generate:
-                mock_generate.return_value = b'test_generated_key_32_bytes_long'
+        with patch.dict("os.environ", {}, clear=True):
+            with patch("src.giljo_mcp.tools.git.Fernet.generate_key") as mock_generate:
+                mock_generate.return_value = b"test_generated_key_32_bytes_long"
                 key = _get_encryption_key()
                 assert key is not None
                 mock_generate.assert_called_once()
@@ -97,45 +96,30 @@ class TestGitTools:
         assert _encrypt_credential(None) is None
         assert _decrypt_credential(None) is None
 
-    @patch('src.giljo_mcp.tools.git.subprocess.run')
+    @patch("src.giljo_mcp.tools.git.subprocess.run")
     def test_get_git_config_success(self, mock_run):
         """Test successful git config retrieval"""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="John Doe",
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="John Doe", stderr="")
 
         result = _get_git_config("user.name")
 
         assert result == "John Doe"
         mock_run.assert_called_once_with(
-            ["git", "config", "--get", "user.name"],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["git", "config", "--get", "user.name"], capture_output=True, text=True, timeout=10
         )
 
-    @patch('src.giljo_mcp.tools.git.subprocess.run')
+    @patch("src.giljo_mcp.tools.git.subprocess.run")
     def test_get_git_config_not_found(self, mock_run):
         """Test git config when key not found"""
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="error: key does not exist"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error: key does not exist")
 
         result = _get_git_config("nonexistent.key")
         assert result is None
 
-    @patch('src.giljo_mcp.tools.git.subprocess.run')
+    @patch("src.giljo_mcp.tools.git.subprocess.run")
     def test_run_git_command_success(self, mock_run):
         """Test successful git command execution"""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="On branch main\nnothing to commit",
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="On branch main\nnothing to commit", stderr="")
 
         result = _run_git_command(["status"])
 
@@ -143,21 +127,17 @@ class TestGitTools:
         assert "On branch main" in result["output"]
         assert result["error"] == ""
 
-    @patch('src.giljo_mcp.tools.git.subprocess.run')
+    @patch("src.giljo_mcp.tools.git.subprocess.run")
     def test_run_git_command_failure(self, mock_run):
         """Test git command execution failure"""
-        mock_run.return_value = MagicMock(
-            returncode=128,
-            stdout="",
-            stderr="fatal: not a git repository"
-        )
+        mock_run.return_value = MagicMock(returncode=128, stdout="", stderr="fatal: not a git repository")
 
         result = _run_git_command(["status"])
 
         assert result["success"] is False
         assert "not a git repository" in result["error"]
 
-    @patch('src.giljo_mcp.tools.git.subprocess.run')
+    @patch("src.giljo_mcp.tools.git.subprocess.run")
     def test_run_git_command_timeout(self, mock_run):
         """Test git command timeout"""
         mock_run.side_effect = subprocess.TimeoutExpired(["git", "status"], 30)
@@ -167,7 +147,7 @@ class TestGitTools:
         assert result["success"] is False
         assert "timeout" in result["error"].lower()
 
-    @patch('src.giljo_mcp.tools.git.subprocess.run')
+    @patch("src.giljo_mcp.tools.git.subprocess.run")
     def test_run_git_command_exception(self, mock_run):
         """Test git command with other exceptions"""
         mock_run.side_effect = OSError("Git not found")
@@ -212,12 +192,8 @@ class TestGitTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch('src.giljo_mcp.tools.git._run_git_command') as mock_git:
-            mock_git.return_value = {
-                "success": True,
-                "output": "On branch main\nnothing to commit",
-                "error": ""
-            }
+        with patch("src.giljo_mcp.tools.git._run_git_command") as mock_git:
+            mock_git.return_value = {"success": True, "output": "On branch main\nnothing to commit", "error": ""}
 
             register_git_tools(mock_server, self.db_manager, self.tenant_manager)
 
@@ -232,7 +208,7 @@ class TestGitTools:
         mock_server = registrar.create_tool_decorator()
 
         # Test with exception during registration
-        with patch('src.giljo_mcp.tools.git._get_git_config') as mock_config:
+        with patch("src.giljo_mcp.tools.git._get_git_config") as mock_config:
             mock_config.side_effect = Exception("Git configuration error")
 
             try:
@@ -257,22 +233,18 @@ class TestGitTools:
         encrypted_long = _encrypt_credential(long_cred)
         assert _decrypt_credential(encrypted_long) == long_cred
 
-    @patch('src.giljo_mcp.tools.git.subprocess.run')
+    @patch("src.giljo_mcp.tools.git.subprocess.run")
     def test_git_config_various_keys(self, mock_run):
         """Test git config with various configuration keys"""
         configs = {
             "user.name": "Test User",
             "user.email": "test@example.com",
             "core.editor": "vim",
-            "remote.origin.url": "https://github.com/user/repo.git"
+            "remote.origin.url": "https://github.com/user/repo.git",
         }
 
         for key, value in configs.items():
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout=value,
-                stderr=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout=value, stderr="")
 
             result = _get_git_config(key)
             assert result == value
@@ -285,7 +257,7 @@ class TestGitTools:
             ["fix: resolve memory leak in parser"],
             ["docs: update API documentation"],
             ["refactor: reorganize utility functions"],
-            ["test: add unit tests for validation"]
+            ["test: add unit tests for validation"],
         ]
 
         for changes in changes_types:
@@ -294,17 +266,13 @@ class TestGitTools:
             assert len(message) > 0
             assert "🤖 Generated with [Claude Code]" in message
 
-    @patch('src.giljo_mcp.tools.git.Path.cwd')
+    @patch("src.giljo_mcp.tools.git.Path.cwd")
     def test_git_working_directory_detection(self, mock_cwd):
         """Test git working directory detection"""
         mock_cwd.return_value = Path("/fake/git/repo")
 
-        with patch('src.giljo_mcp.tools.git._run_git_command') as mock_git:
-            mock_git.return_value = {
-                "success": True,
-                "output": "/fake/git/repo",
-                "error": ""
-            }
+        with patch("src.giljo_mcp.tools.git._run_git_command") as mock_git:
+            mock_git.return_value = {"success": True, "output": "/fake/git/repo", "error": ""}
 
             # Test that git commands work with working directory
             result = _run_git_command(["rev-parse", "--show-toplevel"])

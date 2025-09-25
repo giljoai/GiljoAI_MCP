@@ -10,14 +10,13 @@ Tests the ToolAccessor class and its methods:
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 from tests.utils.tools_helpers import (
-    AssertionHelpers,
     ToolsTestHelper,
 )
 
@@ -29,8 +28,8 @@ class TestToolAccessor:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -43,15 +42,11 @@ class TestToolAccessor:
 
         assert accessor.db_manager == self.db_manager
         assert accessor.tenant_manager == self.tenant_manager
-        assert hasattr(accessor, 'registered_tools')
+        assert hasattr(accessor, "registered_tools")
 
     def test_tool_accessor_initialization_with_config(self):
         """Test ToolAccessor initialization with configuration"""
-        config = {
-            "retry_attempts": 5,
-            "timeout": 30,
-            "enable_caching": True
-        }
+        config = {"retry_attempts": 5, "timeout": 30, "enable_caching": True}
 
         accessor = ToolAccessor(self.db_manager, self.tenant_manager, config=config)
 
@@ -67,10 +62,10 @@ class TestToolAccessor:
         mock_tools = {
             "create_task": {"description": "Create a new task", "parameters": []},
             "list_tasks": {"description": "List all tasks", "parameters": []},
-            "send_message": {"description": "Send a message", "parameters": []}
+            "send_message": {"description": "Send a message", "parameters": []},
         }
 
-        with patch.object(accessor, '_discover_available_tools', return_value=mock_tools):
+        with patch.object(accessor, "_discover_available_tools", return_value=mock_tools):
             discovered_tools = await accessor.discover_tools()
 
             assert len(discovered_tools) == 3
@@ -85,11 +80,7 @@ class TestToolAccessor:
 
         # Test registering a tool
         tool_name = "test_tool"
-        tool_config = {
-            "description": "A test tool",
-            "parameters": ["param1", "param2"],
-            "handler": AsyncMock()
-        }
+        tool_config = {"description": "A test tool", "parameters": ["param1", "param2"], "handler": AsyncMock()}
 
         success = await accessor.register_tool(tool_name, tool_config)
 
@@ -105,10 +96,7 @@ class TestToolAccessor:
         mock_handler = AsyncMock(return_value={"success": True, "result": "Tool executed"})
 
         # Register mock tool
-        await accessor.register_tool("mock_tool", {
-            "description": "Mock tool",
-            "handler": mock_handler
-        })
+        await accessor.register_tool("mock_tool", {"description": "Mock tool", "handler": mock_handler})
 
         # Invoke tool
         result = await accessor.invoke_tool("mock_tool", {"param1": "value1"})
@@ -133,16 +121,13 @@ class TestToolAccessor:
         accessor = ToolAccessor(self.db_manager, self.tenant_manager)
 
         # Mock tool handler that fails first time, succeeds second time
-        mock_handler = AsyncMock(side_effect=[
-            Exception("Temporary failure"),
-            {"success": True, "result": "Success on retry"}
-        ])
+        mock_handler = AsyncMock(
+            side_effect=[Exception("Temporary failure"), {"success": True, "result": "Success on retry"}]
+        )
 
-        await accessor.register_tool("retry_tool", {
-            "description": "Tool with retry",
-            "handler": mock_handler,
-            "retry_attempts": 3
-        })
+        await accessor.register_tool(
+            "retry_tool", {"description": "Tool with retry", "handler": mock_handler, "retry_attempts": 3}
+        )
 
         result = await accessor.invoke_tool("retry_tool", {})
 
@@ -160,11 +145,14 @@ class TestToolAccessor:
             await asyncio.sleep(2)
             return {"success": True}
 
-        await accessor.register_tool("slow_tool", {
-            "description": "Slow tool",
-            "handler": slow_handler,
-            "timeout": 0.5  # 0.5 second timeout
-        })
+        await accessor.register_tool(
+            "slow_tool",
+            {
+                "description": "Slow tool",
+                "handler": slow_handler,
+                "timeout": 0.5,  # 0.5 second timeout
+            },
+        )
 
         result = await accessor.invoke_tool("slow_tool", {})
 
@@ -179,10 +167,7 @@ class TestToolAccessor:
         # Mock tool handler that raises exception
         mock_handler = AsyncMock(side_effect=ValueError("Invalid parameter"))
 
-        await accessor.register_tool("error_tool", {
-            "description": "Tool that errors",
-            "handler": mock_handler
-        })
+        await accessor.register_tool("error_tool", {"description": "Tool that errors", "handler": mock_handler})
 
         result = await accessor.invoke_tool("error_tool", {})
 
@@ -198,20 +183,17 @@ class TestToolAccessor:
         tools = {
             "tool1": AsyncMock(return_value={"success": True, "result": "Result 1"}),
             "tool2": AsyncMock(return_value={"success": True, "result": "Result 2"}),
-            "tool3": AsyncMock(return_value={"success": True, "result": "Result 3"})
+            "tool3": AsyncMock(return_value={"success": True, "result": "Result 3"}),
         }
 
         for name, handler in tools.items():
-            await accessor.register_tool(name, {
-                "description": f"Tool {name}",
-                "handler": handler
-            })
+            await accessor.register_tool(name, {"description": f"Tool {name}", "handler": handler})
 
         # Batch invoke
         batch_requests = [
             {"tool": "tool1", "params": {"a": 1}},
             {"tool": "tool2", "params": {"b": 2}},
-            {"tool": "tool3", "params": {"c": 3}}
+            {"tool": "tool3", "params": {"c": 3}},
         ]
 
         results = await accessor.batch_invoke(batch_requests)
@@ -223,10 +205,7 @@ class TestToolAccessor:
     @pytest.mark.asyncio
     async def test_tool_caching(self):
         """Test tool result caching"""
-        accessor = ToolAccessor(self.db_manager, self.tenant_manager, {
-            "enable_caching": True,
-            "cache_ttl": 300
-        })
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager, {"enable_caching": True, "cache_ttl": 300})
 
         call_count = 0
 
@@ -235,11 +214,9 @@ class TestToolAccessor:
             call_count += 1
             return {"success": True, "result": f"Call {call_count}"}
 
-        await accessor.register_tool("cached_tool", {
-            "description": "Cached tool",
-            "handler": cached_handler,
-            "cacheable": True
-        })
+        await accessor.register_tool(
+            "cached_tool", {"description": "Cached tool", "handler": cached_handler, "cacheable": True}
+        )
 
         # First call
         result1 = await accessor.invoke_tool("cached_tool", {"key": "value"})
@@ -262,12 +239,15 @@ class TestToolAccessor:
 
         mock_handler = AsyncMock(return_value={"success": True})
 
-        await accessor.register_tool("validated_tool", {
-            "description": "Tool with validation",
-            "handler": mock_handler,
-            "required_params": ["param1", "param2"],
-            "optional_params": ["param3"]
-        })
+        await accessor.register_tool(
+            "validated_tool",
+            {
+                "description": "Tool with validation",
+                "handler": mock_handler,
+                "required_params": ["param1", "param2"],
+                "optional_params": ["param3"],
+            },
+        )
 
         # Test with missing required parameters
         result1 = await accessor.invoke_tool("validated_tool", {"param1": "value1"})
@@ -275,25 +255,17 @@ class TestToolAccessor:
         assert "required" in result1["error"].lower()
 
         # Test with all required parameters
-        result2 = await accessor.invoke_tool("validated_tool", {
-            "param1": "value1",
-            "param2": "value2"
-        })
+        result2 = await accessor.invoke_tool("validated_tool", {"param1": "value1", "param2": "value2"})
         assert result2["success"] is True
 
     @pytest.mark.asyncio
     async def test_tool_metrics_collection(self):
         """Test tool execution metrics collection"""
-        accessor = ToolAccessor(self.db_manager, self.tenant_manager, {
-            "collect_metrics": True
-        })
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager, {"collect_metrics": True})
 
         mock_handler = AsyncMock(return_value={"success": True})
 
-        await accessor.register_tool("metrics_tool", {
-            "description": "Tool with metrics",
-            "handler": mock_handler
-        })
+        await accessor.register_tool("metrics_tool", {"description": "Tool with metrics", "handler": mock_handler})
 
         # Invoke tool multiple times
         for i in range(3):
@@ -328,10 +300,7 @@ class TestToolAccessor:
 
         # Register and invoke tool
         mock_handler = AsyncMock(return_value={"success": True})
-        await accessor.register_tool("event_tool", {
-            "description": "Tool with events",
-            "handler": mock_handler
-        })
+        await accessor.register_tool("event_tool", {"description": "Tool with events", "handler": mock_handler})
 
         await accessor.invoke_tool("event_tool", {})
 
@@ -346,13 +315,9 @@ class TestToolAccessor:
         accessor = ToolAccessor(self.db_manager, self.tenant_manager)
 
         # Mock module discovery
-        mock_modules = [
-            "src.giljo_mcp.tools.task",
-            "src.giljo_mcp.tools.agent",
-            "src.giljo_mcp.tools.message"
-        ]
+        mock_modules = ["src.giljo_mcp.tools.task", "src.giljo_mcp.tools.agent", "src.giljo_mcp.tools.message"]
 
-        with patch.object(accessor, '_scan_tool_modules', return_value=mock_modules):
+        with patch.object(accessor, "_scan_tool_modules", return_value=mock_modules):
             discovered = await accessor.auto_discover_tools()
 
             assert isinstance(discovered, dict)
@@ -366,7 +331,7 @@ class TestToolAccessor:
             "enable_caching": True,
             "cache_ttl": 600,
             "collect_metrics": True,
-            "batch_size": 10
+            "batch_size": 10,
         }
 
         accessor = ToolAccessor(self.db_manager, self.tenant_manager, config)
@@ -382,10 +347,7 @@ class TestToolAccessor:
 
         # Register tool
         mock_handler = AsyncMock()
-        await accessor.register_tool("temp_tool", {
-            "description": "Temporary tool",
-            "handler": mock_handler
-        })
+        await accessor.register_tool("temp_tool", {"description": "Temporary tool", "handler": mock_handler})
 
         assert "temp_tool" in accessor.registered_tools
 
@@ -403,10 +365,7 @@ class TestToolAccessor:
         # Register some tools
         tools = ["tool1", "tool2", "tool3"]
         for tool in tools:
-            await accessor.register_tool(tool, {
-                "description": f"Description for {tool}",
-                "handler": AsyncMock()
-            })
+            await accessor.register_tool(tool, {"description": f"Description for {tool}", "handler": AsyncMock()})
 
         # List tools
         tool_list = accessor.list_tools()
@@ -418,10 +377,7 @@ class TestToolAccessor:
     @pytest.mark.asyncio
     async def test_tool_accessor_error_recovery(self):
         """Test error recovery mechanisms"""
-        accessor = ToolAccessor(self.db_manager, self.tenant_manager, {
-            "error_recovery": True,
-            "circuit_breaker": True
-        })
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager, {"error_recovery": True, "circuit_breaker": True})
 
         failure_count = 0
 
@@ -432,11 +388,9 @@ class TestToolAccessor:
                 raise Exception("Simulated failure")
             return {"success": True, "recovered": True}
 
-        await accessor.register_tool("unreliable_tool", {
-            "description": "Unreliable tool",
-            "handler": unreliable_handler,
-            "retry_attempts": 5
-        })
+        await accessor.register_tool(
+            "unreliable_tool", {"description": "Unreliable tool", "handler": unreliable_handler, "retry_attempts": 5}
+        )
 
         result = await accessor.invoke_tool("unreliable_tool", {})
 

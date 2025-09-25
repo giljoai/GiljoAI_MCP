@@ -11,6 +11,7 @@ PRODUCTION REQUIREMENTS:
 """
 
 import asyncio
+import contextlib
 import json
 import time
 import uuid
@@ -40,24 +41,16 @@ class WebSocketTestClient:
         """Connect to WebSocket server"""
         try:
             start_time = time.perf_counter()
-            self.websocket = await websockets.connect(
-                self.uri,
-                timeout=10
-            )
+            self.websocket = await websockets.connect(self.uri, timeout=10)
             self.connection_time = (time.perf_counter() - start_time) * 1000
             self.is_connected = True
 
             # Send authentication/identification
-            auth_message = {
-                "type": "auth",
-                "client_id": self.client_id,
-                "project_id": self.project_id
-            }
+            auth_message = {"type": "auth", "client_id": self.client_id, "project_id": self.project_id}
             await self.websocket.send(json.dumps(auth_message))
             return True
 
-        except Exception as e:
-            print(f"Connection failed for {self.client_id}: {e}")
+        except Exception:
             return False
 
     async def send_message(self, message):
@@ -80,14 +73,8 @@ class WebSocketTestClient:
         try:
             while time.time() < end_time:
                 try:
-                    message = await asyncio.wait_for(
-                        self.websocket.recv(),
-                        timeout=1.0
-                    )
-                    self.received_messages.append({
-                        "message": message,
-                        "timestamp": time.time()
-                    })
+                    message = await asyncio.wait_for(self.websocket.recv(), timeout=1.0)
+                    self.received_messages.append({"message": message, "timestamp": time.time()})
                 except asyncio.TimeoutError:
                     continue
                 except ConnectionClosed:
@@ -99,10 +86,8 @@ class WebSocketTestClient:
     async def disconnect(self):
         """Disconnect from WebSocket"""
         if self.websocket:
-            try:
+            with contextlib.suppress(Exception):
                 await self.websocket.close()
-            except Exception:
-                pass
         self.is_connected = False
 
 
@@ -143,17 +128,8 @@ class TestWebSocketStress:
             pytest.skip("WebSocket server not available for testing")
 
         # Benchmark connection establishment
-        result = await benchmark.benchmark_async(
-            "websocket_connection",
-            create_connection,
-            iterations=20,
-            warmup=3
-        )
+        result = await benchmark.benchmark_async("websocket_connection", create_connection, iterations=20, warmup=3)
 
-        print("\n✅ Single WebSocket Connection Performance:")
-        print(f"   Average: {result.avg_time:.2f}ms")
-        print(f"   P95: {result.p95:.2f}ms")
-        print(f"   Success Rate: {result.success_rate:.1f}%")
 
         assert result.success_rate > 90.0, f"Connection success rate too low: {result.success_rate:.1f}%"
 
@@ -164,11 +140,7 @@ class TestWebSocketStress:
 
         # Create 10 clients
         for i in range(10):
-            client = WebSocketTestClient(
-                websocket_uri,
-                f"concurrent_client_{i}",
-                test_project_id
-            )
+            client = WebSocketTestClient(websocket_uri, f"concurrent_client_{i}", test_project_id)
             clients.append(client)
 
         # Connect all clients concurrently
@@ -177,7 +149,7 @@ class TestWebSocketStress:
 
         try:
             results = await asyncio.gather(*connection_tasks, return_exceptions=True)
-            total_time = (time.perf_counter() - start_time) * 1000
+            (time.perf_counter() - start_time) * 1000
 
             # Analyze results
             successful_connections = sum(1 for r in results if r is True)
@@ -188,12 +160,8 @@ class TestWebSocketStress:
                 if client.is_connected:
                     connection_times.append(client.connection_time)
 
-            print("\n✅ 10 Concurrent WebSocket Connections:")
-            print(f"   Total Time: {total_time:.2f}ms")
-            print(f"   Successful: {successful_connections}/{len(clients)}")
-            print(f"   Success Rate: {success_rate:.1f}%")
             if connection_times:
-                print(f"   Avg Connection Time: {mean(connection_times):.2f}ms")
+                pass
 
             assert success_rate > 80.0, f"Connection success rate too low: {success_rate:.1f}%"
 
@@ -209,11 +177,7 @@ class TestWebSocketStress:
 
         # Create 50 clients
         for i in range(50):
-            client = WebSocketTestClient(
-                websocket_uri,
-                f"mid_scale_client_{i}",
-                test_project_id
-            )
+            client = WebSocketTestClient(websocket_uri, f"mid_scale_client_{i}", test_project_id)
             clients.append(client)
 
         # Connect all clients concurrently
@@ -222,7 +186,7 @@ class TestWebSocketStress:
 
         try:
             results = await asyncio.gather(*connection_tasks, return_exceptions=True)
-            total_time = (time.perf_counter() - start_time) * 1000
+            (time.perf_counter() - start_time) * 1000
 
             # Analyze results
             successful_connections = sum(1 for r in results if r is True)
@@ -233,12 +197,8 @@ class TestWebSocketStress:
                 if client.is_connected:
                     connection_times.append(client.connection_time)
 
-            print("\n✅ 50 Concurrent WebSocket Connections:")
-            print(f"   Total Time: {total_time:.2f}ms")
-            print(f"   Successful: {successful_connections}/{len(clients)}")
-            print(f"   Success Rate: {success_rate:.1f}%")
             if connection_times:
-                print(f"   Avg Connection Time: {mean(connection_times):.2f}ms")
+                pass
 
             assert success_rate > 70.0, f"Connection success rate too low: {success_rate:.1f}%"
 
@@ -258,11 +218,7 @@ class TestWebSocketStress:
 
         # Create exactly 100 clients (production requirement)
         for i in range(100):
-            client = WebSocketTestClient(
-                websocket_uri,
-                f"production_ws_client_{i}",
-                test_project_id
-            )
+            client = WebSocketTestClient(websocket_uri, f"production_ws_client_{i}", test_project_id)
             clients.append(client)
 
         # Connect all clients concurrently
@@ -296,14 +252,8 @@ class TestWebSocketStress:
                 connection_times.append(client.connection_time)
 
         try:
-            print("\n🚀 PRODUCTION VALIDATION: 100 Concurrent WebSocket Connections")
-            print(f"   Total Time: {total_time:.2f}ms ({total_time/1000:.2f}s)")
-            print(f"   Successful: {successful_connections}/{len(clients)}")
-            print(f"   Failed: {failed_connections}")
-            print(f"   Success Rate: {success_rate:.1f}%")
             if connection_times:
-                print(f"   Avg Connection Time: {mean(connection_times):.2f}ms")
-                print(f"   Max Connection Time: {max(connection_times):.2f}ms")
+                pass
 
             # PRODUCTION REQUIREMENTS VALIDATION
             assert success_rate >= 80.0, (
@@ -324,7 +274,6 @@ class TestWebSocketStress:
                     f"This indicates the WebSocket server cannot handle production load."
                 )
 
-            print("   ✅ MEETS PRODUCTION WEBSOCKET REQUIREMENTS")
 
             # Test message broadcast to all connected clients
             await self._test_broadcast_to_connected_clients(clients, successful_connections)
@@ -341,7 +290,6 @@ class TestWebSocketStress:
 
         # Find connected clients
         connected_clients = [c for c in clients if c.is_connected]
-        print(f"\n   Testing broadcast to {len(connected_clients)} connected clients...")
 
         # Start listening on all connected clients
         listen_tasks = []
@@ -356,22 +304,19 @@ class TestWebSocketStress:
         broadcast_message = {
             "type": "broadcast",
             "content": "WebSocket stress test broadcast",
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         # Send to first client as a test (in real system this would be server-side broadcast)
         if connected_clients:
-            try:
+            with contextlib.suppress(Exception):
                 await connected_clients[0].send_message(broadcast_message)
-            except Exception as e:
-                print(f"   Broadcast test failed: {e}")
 
         # Wait for listening to complete
         await asyncio.gather(*listen_tasks, return_exceptions=True)
 
         # Analyze broadcast results
-        clients_with_messages = [c for c in connected_clients if c.received_messages]
-        print(f"   Clients received messages: {len(clients_with_messages)}/{len(connected_clients)}")
+        [c for c in connected_clients if c.received_messages]
 
     @pytest.mark.stress
     async def test_websocket_connection_stability_under_load(self, websocket_uri, test_project_id):
@@ -381,11 +326,7 @@ class TestWebSocketStress:
 
         # Create clients
         for i in range(num_clients):
-            client = WebSocketTestClient(
-                websocket_uri,
-                f"stability_client_{i}",
-                test_project_id
-            )
+            client = WebSocketTestClient(websocket_uri, f"stability_client_{i}", test_project_id)
             clients.append(client)
 
         try:
@@ -394,10 +335,8 @@ class TestWebSocketStress:
             await asyncio.gather(*connection_tasks, return_exceptions=True)
 
             connected_clients = [c for c in clients if c.is_connected]
-            print(f"\n🔄 WebSocket Stability Test: {len(connected_clients)}/{num_clients} connected")
 
             # Send messages continuously for 30 seconds
-            test_duration = 30  # seconds
             messages_per_client = 10
             start_time = time.time()
 
@@ -408,7 +347,7 @@ class TestWebSocketStress:
                         "type": "test",
                         "client_id": client.client_id,
                         "message_number": i,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
                     }
                     task = client.send_message(message)
                     message_tasks.append(task)
@@ -420,12 +359,8 @@ class TestWebSocketStress:
             stable_connections = [c for c in connected_clients if c.is_connected]
             stability_rate = len(stable_connections) / len(connected_clients) * 100
 
-            elapsed_time = time.time() - start_time
+            time.time() - start_time
 
-            print(f"   Test Duration: {elapsed_time:.1f}s")
-            print(f"   Messages Sent: {len(message_tasks)}")
-            print(f"   Stable Connections: {len(stable_connections)}/{len(connected_clients)}")
-            print(f"   Stability Rate: {stability_rate:.1f}%")
 
             assert stability_rate > 85.0, (
                 f"Connection stability too low: {stability_rate:.1f}% < 85%\n"
@@ -453,11 +388,7 @@ class TestWebSocketStress:
             for i in range(50):
                 send_time = time.perf_counter()
 
-                message = {
-                    "type": "latency_test",
-                    "message_id": i,
-                    "send_timestamp": send_time
-                }
+                message = {"type": "latency_test", "message_id": i, "send_timestamp": send_time}
 
                 success = await client.send_message(message)
                 if success:
@@ -471,14 +402,9 @@ class TestWebSocketStress:
 
             if latencies:
                 avg_latency = mean(latencies)
-                max_latency = max(latencies)
-                min_latency = min(latencies)
+                max(latencies)
+                min(latencies)
 
-                print("\n✅ WebSocket Message Latency:")
-                print(f"   Messages Tested: {len(latencies)}")
-                print(f"   Average Latency: {avg_latency:.2f}ms")
-                print(f"   Min Latency: {min_latency:.2f}ms")
-                print(f"   Max Latency: {max_latency:.2f}ms")
 
                 assert avg_latency < 100.0, (
                     f"WebSocket latency too high: {avg_latency:.2f}ms > 100ms\n"
@@ -497,7 +423,7 @@ class TestWebSocketStress:
 
         try:
             # Test 5 reconnection cycles
-            for cycle in range(5):
+            for _cycle in range(5):
                 # Initial connection
                 connected = await client.connect()
                 if not connected:
@@ -518,13 +444,8 @@ class TestWebSocketStress:
                 await asyncio.sleep(0.5)  # Delay between cycles
 
             if reconnection_times:
-                avg_reconnection_time = mean(reconnection_times)
+                mean(reconnection_times)
 
-                print("\n✅ WebSocket Reconnection Test:")
-                print("   Reconnection Cycles: 5")
-                print(f"   Successful: {successful_reconnections}/5")
-                print(f"   Success Rate: {successful_reconnections/5*100:.1f}%")
-                print(f"   Avg Reconnection Time: {avg_reconnection_time:.2f}ms")
 
                 assert successful_reconnections >= 4, (
                     f"Reconnection success rate too low: {successful_reconnections}/5\n"

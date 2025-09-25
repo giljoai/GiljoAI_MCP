@@ -17,13 +17,12 @@ Tests all template tool functions:
 
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateAugmentation, TemplateUsageStats
+from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.tools.template import register_template_tools
 from tests.utils.tools_helpers import (
     AssertionHelpers,
@@ -39,9 +38,9 @@ class TestTemplateTools:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -49,11 +48,7 @@ class TestTemplateTools:
             self.tenant_manager.set_current_tenant(self.project.tenant_key)
 
     async def create_test_template(
-        self,
-        session,
-        name: str = "test_template",
-        role: str = "analyzer",
-        category: str = "role"
+        self, session, name: str = "test_template", role: str = "analyzer", category: str = "role"
     ) -> AgentTemplate:
         """Helper to create test template"""
         template = AgentTemplate(
@@ -72,7 +67,7 @@ class TestTemplateTools:
             tags=["test", "analysis"],
             tenant_key=self.project.tenant_key,
             product_id=self.project.id,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(template)
         await session.commit()
@@ -98,7 +93,7 @@ class TestTemplateTools:
             "create_template_augmentation",
             "restore_template_version",
             "suggest_template",
-            "get_template_stats"
+            "get_template_stats",
         ]
 
         registered_tools = registrar.get_all_tools()
@@ -163,7 +158,7 @@ class TestTemplateTools:
 
         # Create active and inactive templates
         async with self.db_manager.get_session_async() as session:
-            active_template = await self.create_test_template(session, "active", "analyzer", "role")
+            await self.create_test_template(session, "active", "analyzer", "role")
 
             inactive_template = AgentTemplate(
                 id=str(uuid.uuid4()),
@@ -179,7 +174,7 @@ class TestTemplateTools:
                 usage_count=0,
                 tenant_key=self.project.tenant_key,
                 product_id=self.project.id,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(inactive_template)
             await session.commit()
@@ -226,7 +221,7 @@ class TestTemplateTools:
 
         # Create test template
         async with self.db_manager.get_session_async() as session:
-            template = await self.create_test_template(session, "unique_template")
+            await self.create_test_template(session, "unique_template")
 
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         get_template = registrar.get_registered_tool("get_agent_template")
@@ -257,17 +252,16 @@ class TestTemplateTools:
 
         # Create test template with variables
         async with self.db_manager.get_session_async() as session:
-            template = await self.create_test_template(session, "parameterized_template")
+            await self.create_test_template(session, "parameterized_template")
 
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         get_template = registrar.get_registered_tool("get_agent_template")
 
-        with patch('src.giljo_mcp.tools.template.process_template') as mock_process:
+        with patch("src.giljo_mcp.tools.template.process_template") as mock_process:
             mock_process.return_value = "Processed mission template"
 
             result = await get_template(
-                name="parameterized_template",
-                variables={"component": "authentication", "project_name": "TestProject"}
+                name="parameterized_template", variables={"component": "authentication", "project_name": "TestProject"}
             )
 
         AssertionHelpers.assert_success_response(result, ["template", "processed_mission"])
@@ -291,7 +285,7 @@ class TestTemplateTools:
             description="Template for testing",
             mission_template="Test {component} thoroughly",
             variables=["component"],
-            tags=["testing", "qa"]
+            tags=["testing", "qa"],
         )
 
         AssertionHelpers.assert_success_response(result, ["template_id", "created"])
@@ -312,10 +306,7 @@ class TestTemplateTools:
         create_template = registrar.get_registered_tool("create_agent_template")
 
         result = await create_template(
-            name="duplicate_name",
-            category="role",
-            role="analyzer",
-            mission_template="Test mission"
+            name="duplicate_name", category="role", role="analyzer", mission_template="Test mission"
         )
 
         AssertionHelpers.assert_error_response(result, "already exists")
@@ -331,7 +322,7 @@ class TestTemplateTools:
 
         result = await create_template(
             category="role",
-            role="analyzer"
+            role="analyzer",
             # Missing name and mission_template
         )
 
@@ -355,7 +346,7 @@ class TestTemplateTools:
             template_id=template.id,
             description="Updated description",
             mission_template="Updated mission for {component}",
-            tags=["updated", "modified"]
+            tags=["updated", "modified"],
         )
 
         AssertionHelpers.assert_success_response(result, ["template", "updated"])
@@ -370,10 +361,7 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         update_template = registrar.get_registered_tool("update_agent_template")
 
-        result = await update_template(
-            template_id=str(uuid.uuid4()),
-            description="New description"
-        )
+        result = await update_template(template_id=str(uuid.uuid4()), description="New description")
 
         AssertionHelpers.assert_error_response(result, "Template not found")
 
@@ -391,10 +379,7 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         update_template = registrar.get_registered_tool("update_agent_template")
 
-        result = await update_template(
-            template_id=template.id,
-            mission_template="Updated mission template"
-        )
+        result = await update_template(template_id=template.id, mission_template="Updated mission template")
 
         AssertionHelpers.assert_success_response(result)
         assert result["template"]["version"] != original_version
@@ -413,10 +398,7 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         archive_template = registrar.get_registered_tool("archive_template")
 
-        result = await archive_template(
-            template_id=template.id,
-            reason="No longer needed"
-        )
+        result = await archive_template(template_id=template.id, reason="No longer needed")
 
         AssertionHelpers.assert_success_response(result, ["archived", "archive_id"])
         assert result["archived"] is True
@@ -452,7 +434,7 @@ class TestTemplateTools:
             template_id=template.id,
             augmentation_name="security_focus",
             augmentation_content="Focus particularly on security aspects",
-            context="security review"
+            context="security review",
         )
 
         AssertionHelpers.assert_success_response(result, ["augmentation_id", "created"])
@@ -468,9 +450,7 @@ class TestTemplateTools:
         create_augmentation = registrar.get_registered_tool("create_template_augmentation")
 
         result = await create_augmentation(
-            template_id=str(uuid.uuid4()),
-            augmentation_name="test_aug",
-            augmentation_content="Test content"
+            template_id=str(uuid.uuid4()), augmentation_name="test_aug", augmentation_content="Test content"
         )
 
         AssertionHelpers.assert_error_response(result, "Template not found")
@@ -494,11 +474,11 @@ class TestTemplateTools:
                 archived_data={
                     "name": template.name,
                     "mission_template": template.mission_template,
-                    "description": template.description
+                    "description": template.description,
                 },
                 reason="backup",
                 tenant_key=self.project.tenant_key,
-                archived_at=datetime.now(timezone.utc)
+                archived_at=datetime.now(timezone.utc),
             )
             session.add(archive)
             await session.commit()
@@ -506,10 +486,7 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         restore_version = registrar.get_registered_tool("restore_template_version")
 
-        result = await restore_version(
-            template_id=template.id,
-            archive_id=archive.id
-        )
+        result = await restore_version(template_id=template.id, archive_id=archive.id)
 
         AssertionHelpers.assert_success_response(result, ["restored", "template"])
         assert result["restored"] is True
@@ -523,10 +500,7 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         restore_version = registrar.get_registered_tool("restore_template_version")
 
-        result = await restore_version(
-            template_id=str(uuid.uuid4()),
-            archive_id=str(uuid.uuid4())
-        )
+        result = await restore_version(template_id=str(uuid.uuid4()), archive_id=str(uuid.uuid4()))
 
         AssertionHelpers.assert_error_response(result, "not found")
 
@@ -550,11 +524,7 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         suggest_template = registrar.get_registered_tool("suggest_template")
 
-        result = await suggest_template(
-            role="analyzer",
-            project_type="test",
-            context="code analysis needed"
-        )
+        result = await suggest_template(role="analyzer", project_type="test", context="code analysis needed")
 
         AssertionHelpers.assert_success_response(result, ["suggestions", "criteria"])
         assert len(result["suggestions"]) > 0
@@ -569,10 +539,7 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         suggest_template = registrar.get_registered_tool("suggest_template")
 
-        result = await suggest_template(
-            role="nonexistent_role",
-            project_type="unknown"
-        )
+        result = await suggest_template(role="nonexistent_role", project_type="unknown")
 
         AssertionHelpers.assert_success_response(result, ["suggestions"])
         assert len(result["suggestions"]) == 0
@@ -587,7 +554,7 @@ class TestTemplateTools:
         # Create test templates and usage stats
         async with self.db_manager.get_session_async() as session:
             template1 = await self.create_test_template(session, "popular_template", "analyzer")
-            template2 = await self.create_test_template(session, "unused_template", "orchestrator")
+            await self.create_test_template(session, "unused_template", "orchestrator")
 
             # Create usage stats
             stats = TemplateUsageStats(
@@ -597,7 +564,7 @@ class TestTemplateTools:
                 last_used=datetime.now(timezone.utc),
                 avg_performance_score=8.5,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(stats)
             await session.commit()
@@ -637,7 +604,7 @@ class TestTemplateTools:
         mock_server = registrar.create_tool_decorator()
 
         # Mock database to raise exception
-        with patch.object(self.db_manager, 'get_session_async') as mock_get_session:
+        with patch.object(self.db_manager, "get_session_async") as mock_get_session:
             mock_get_session.side_effect = Exception("Database connection failed")
 
             register_template_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -656,14 +623,14 @@ class TestTemplateTools:
         register_template_tools(mock_server, self.db_manager, self.tenant_manager)
         create_template = registrar.get_registered_tool("create_agent_template")
 
-        with patch('src.giljo_mcp.tools.template.extract_variables') as mock_extract:
+        with patch("src.giljo_mcp.tools.template.extract_variables") as mock_extract:
             mock_extract.return_value = ["project_name", "component", "deadline"]
 
             result = await create_template(
                 name="variable_template",
                 category="role",
                 role="analyzer",
-                mission_template="Analyze {component} for {project_name} by {deadline}"
+                mission_template="Analyze {component} for {project_name} by {deadline}",
             )
 
         AssertionHelpers.assert_success_response(result)
@@ -689,7 +656,7 @@ class TestTemplateTools:
                 avg_performance_score=9.2,
                 success_rate=0.95,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(stats)
             await session.commit()
@@ -713,30 +680,21 @@ class TestTemplateTools:
         create_template = registrar.get_registered_tool("create_agent_template")
         update_template = registrar.get_registered_tool("update_agent_template")
         archive_template = registrar.get_registered_tool("archive_template")
-        restore_version = registrar.get_registered_tool("restore_template_version")
+        registrar.get_registered_tool("restore_template_version")
 
         # Create template
         create_result = await create_template(
-            name="versioned_template",
-            category="role",
-            role="analyzer",
-            mission_template="Original mission v1.0"
+            name="versioned_template", category="role", role="analyzer", mission_template="Original mission v1.0"
         )
         AssertionHelpers.assert_success_response(create_result)
         template_id = create_result["template_id"]
 
         # Update template (creates new version)
-        update_result = await update_template(
-            template_id=template_id,
-            mission_template="Updated mission v2.0"
-        )
+        update_result = await update_template(template_id=template_id, mission_template="Updated mission v2.0")
         AssertionHelpers.assert_success_response(update_result)
 
         # Archive current version
-        archive_result = await archive_template(
-            template_id=template_id,
-            reason="Testing versioning"
-        )
+        archive_result = await archive_template(template_id=template_id, reason="Testing versioning")
         AssertionHelpers.assert_success_response(archive_result)
 
         # The complete workflow demonstrates versioning capabilities
@@ -760,15 +718,12 @@ class TestTemplateTools:
         aug_result = await create_augmentation(
             template_id=template.id,
             augmentation_name="security_focus",
-            augmentation_content="Pay special attention to security vulnerabilities"
+            augmentation_content="Pay special attention to security vulnerabilities",
         )
         AssertionHelpers.assert_success_response(aug_result)
 
         # Get template with augmentation
-        template_result = await get_template(
-            template_id=template.id,
-            augmentations=["security_focus"]
-        )
+        template_result = await get_template(template_id=template.id, augmentations=["security_focus"])
         AssertionHelpers.assert_success_response(template_result)
 
     @pytest.mark.asyncio
@@ -780,16 +735,12 @@ class TestTemplateTools:
         # Create templates with various attributes
         async with self.db_manager.get_session_async() as session:
             # High usage template
-            popular_template = await self.create_test_template(
-                session, "popular_analyzer", "analyzer", "role"
-            )
+            popular_template = await self.create_test_template(session, "popular_analyzer", "analyzer", "role")
             popular_template.usage_count = 100
             popular_template.tags = ["popular", "reliable"]
 
             # New template
-            new_template = await self.create_test_template(
-                session, "new_orchestrator", "orchestrator", "role"
-            )
+            new_template = await self.create_test_template(session, "new_orchestrator", "orchestrator", "role")
             new_template.usage_count = 2
             new_template.tags = ["new", "experimental"]
 
@@ -799,10 +750,7 @@ class TestTemplateTools:
         list_templates = registrar.get_registered_tool("list_agent_templates")
 
         # Test multiple filters
-        result = await list_templates(
-            category="role",
-            role="analyzer"
-        )
+        result = await list_templates(category="role", role="analyzer")
         AssertionHelpers.assert_success_response(result)
         assert result["count"] == 1
         assert result["templates"][0]["name"] == "popular_analyzer"

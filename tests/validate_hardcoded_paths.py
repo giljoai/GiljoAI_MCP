@@ -65,7 +65,6 @@ def check_discovery_manager():
 
 
 if __name__ == "__main__":
-
     paths_ok = check_hardcoded_paths()
 
     config_ok = check_configuration_manager()

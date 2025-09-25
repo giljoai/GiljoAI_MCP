@@ -20,6 +20,7 @@ from websocket import WebSocketException, create_connection
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.api.app import create_app
+
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.config_manager import ConfigManager
 from src.giljo_mcp.database import DatabaseManager
@@ -138,7 +139,9 @@ class TestWebSocketSecurity:
         try:
             # Connect with limited permissions
             limited_jwt = self.auth_manager.generate_jwt_token(
-                user_id="limited_user", tenant_key="tenant_a", permissions=["read:messages"]  # No project permission
+                user_id="limited_user",
+                tenant_key="tenant_a",
+                permissions=["read:messages"],  # No project permission
             )
 
             ws = create_connection(f"ws://localhost:8000/ws/test_client?token={limited_jwt}", timeout=5)

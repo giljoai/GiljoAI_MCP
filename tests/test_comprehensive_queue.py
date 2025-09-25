@@ -74,7 +74,9 @@ class MessageQueueTester:
                 # Test atomic enqueue
                 result = await self.message_queue.enqueue(msg)
                 if result:
-                    self.results.append(QueueTestResult("ACID: Atomicity - Enqueue", True, "Message enqueued atomically"))
+                    self.results.append(
+                        QueueTestResult("ACID: Atomicity - Enqueue", True, "Message enqueued atomically")
+                    )
 
             # Test Consistency
             is_consistent = await self.message_queue.validate_consistency()
@@ -156,7 +158,9 @@ class MessageQueueTester:
                     break
 
             self.results.append(
-                QueueTestResult("Priority Routing", is_ordered, f"Messages dequeued in priority order: {dequeued[:5]}...")
+                QueueTestResult(
+                    "Priority Routing", is_ordered, f"Messages dequeued in priority order: {dequeued[:5]}..."
+                )
             )
 
         except Exception as e:
@@ -167,7 +171,9 @@ class MessageQueueTester:
 
         try:
             detector = StuckMessageDetector(
-                self.db_manager, self.tenant_manager, timeout_seconds=1  # Very short for testing
+                self.db_manager,
+                self.tenant_manager,
+                timeout_seconds=1,  # Very short for testing
             )
 
             # Create a message that will become stuck
@@ -412,7 +418,7 @@ class MessageQueueTester:
             total = len(self.results)
             passed = sum(1 for r in self.results if r.passed)
             f.write("-" * 60 + "\n")
-            f.write(f"Summary: {passed}/{total} tests passed ({passed/total*100:.1f}%)\n")
+            f.write(f"Summary: {passed}/{total} tests passed ({passed / total * 100:.1f}%)\n")
 
 
 async def main():

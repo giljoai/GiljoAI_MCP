@@ -27,12 +27,7 @@ class DatabaseBenchmarkRunner:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self.test_data = {
-            "projects": [],
-            "agents": [],
-            "messages": [],
-            "tasks": []
-        }
+        self.test_data = {"projects": [], "agents": [], "messages": [], "tasks": []}
 
     async def setup_test_data(self, num_projects=10, agents_per_project=20):
         """Set up test data for benchmarks"""
@@ -44,7 +39,7 @@ class DatabaseBenchmarkRunner:
                     name=f"Benchmark Project {i}",
                     mission=f"Performance test project {i}",
                     status="active",
-                    tenant_key=str(uuid.uuid4())
+                    tenant_key=str(uuid.uuid4()),
                 )
                 session.add(project)
                 self.test_data["projects"].append(project)
@@ -56,7 +51,7 @@ class DatabaseBenchmarkRunner:
                         project_id=project.id,
                         name=f"agent_{i}_{j}",
                         role="worker",
-                        status="active"
+                        status="active",
                     )
                     session.add(agent)
                     self.test_data["agents"].append(agent)
@@ -88,6 +83,7 @@ class TestDatabaseBenchmarks:
     async def sqlite_db_manager(self):
         """Create SQLite database manager for testing"""
         import tempfile
+
         temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         temp_db.close()
 
@@ -99,6 +95,7 @@ class TestDatabaseBenchmarks:
 
         await db_manager.close_async()
         import os
+
         os.unlink(temp_db.name)
 
     @pytest_asyncio.fixture
@@ -122,21 +119,14 @@ class TestDatabaseBenchmarks:
                     name="Latency Test Project",
                     mission="Single operation latency test",
                     status="active",
-                    tenant_key=str(uuid.uuid4())
+                    tenant_key=str(uuid.uuid4()),
                 )
                 session.add(project)
                 await session.commit()
                 return project
 
-        result = await benchmark.benchmark_async(
-            "single_project_creation",
-            create_project,
-            iterations=50,
-            warmup=5
-        )
+        result = await benchmark.benchmark_async("single_project_creation", create_project, iterations=50, warmup=5)
 
-        print("\n✅ Single Record Operations Latency:")
-        print(f"   Project Creation - Avg: {result.avg_time:.2f}ms, P95: {result.p95:.2f}ms")
 
         assert result.avg_time < 100.0, f"Project creation too slow: {result.avg_time:.2f}ms > 100ms"
         assert result.success_rate > 95.0, f"Project creation success rate too low: {result.success_rate:.1f}%"
@@ -151,20 +141,14 @@ class TestDatabaseBenchmarks:
                     project_id=test_project.id,
                     name=f"latency_agent_{uuid.uuid4().hex[:8]}",
                     role="worker",
-                    status="active"
+                    status="active",
                 )
                 session.add(agent)
                 await session.commit()
                 return agent
 
-        result = await benchmark.benchmark_async(
-            "single_agent_creation",
-            create_agent,
-            iterations=50,
-            warmup=5
-        )
+        result = await benchmark.benchmark_async("single_agent_creation", create_agent, iterations=50, warmup=5)
 
-        print(f"   Agent Creation - Avg: {result.avg_time:.2f}ms, P95: {result.p95:.2f}ms")
 
         assert result.avg_time < 100.0, f"Agent creation too slow: {result.avg_time:.2f}ms > 100ms"
 
@@ -187,7 +171,7 @@ class TestDatabaseBenchmarks:
                         project_id=test_project.id,
                         name=f"bulk_agent_{i}_{uuid.uuid4().hex[:8]}",
                         role="worker",
-                        status="active"
+                        status="active",
                     )
                     agents.append(agent)
                     session.add(agent)
@@ -196,10 +180,6 @@ class TestDatabaseBenchmarks:
 
             bulk_time = (time.perf_counter() - start_time) * 1000
 
-            print(f"\n✅ Bulk Insert Performance ({bulk_size} records):")
-            print(f"   Total Time: {bulk_time:.2f}ms")
-            print(f"   Time per Record: {bulk_time/bulk_size:.2f}ms")
-            print(f"   Records/Second: {bulk_size/(bulk_time/1000):.0f}")
 
             # Validate bulk performance
             if bulk_size <= 100:
@@ -227,7 +207,7 @@ class TestDatabaseBenchmarks:
                     content=f"Query test message {i} with some content for searching",
                     message_type="direct",
                     priority="normal",
-                    status="pending"
+                    status="pending",
                 )
                 messages.append(message)
                 session.add(message)
@@ -243,15 +223,8 @@ class TestDatabaseBenchmarks:
                 result = await session.get(Project, test_project.id)
                 return result
 
-        result = await benchmark.benchmark_async(
-            "query_project_by_id",
-            query_project_by_id,
-            iterations=100,
-            warmup=10
-        )
+        result = await benchmark.benchmark_async("query_project_by_id", query_project_by_id, iterations=100, warmup=10)
 
-        print("\n✅ Query Performance:")
-        print(f"   Project by ID - Avg: {result.avg_time:.2f}ms, P95: {result.p95:.2f}ms")
 
         assert result.avg_time < 50.0, f"Project query too slow: {result.avg_time:.2f}ms > 50ms"
 
@@ -259,18 +232,15 @@ class TestDatabaseBenchmarks:
         async def query_agents_by_project():
             async with db_manager.get_session_async() as session:
                 from sqlalchemy import select
+
                 stmt = select(Agent).where(Agent.project_id == test_project.id)
                 result = await session.execute(stmt)
                 return result.scalars().all()
 
         result = await benchmark.benchmark_async(
-            "query_agents_by_project",
-            query_agents_by_project,
-            iterations=100,
-            warmup=10
+            "query_agents_by_project", query_agents_by_project, iterations=100, warmup=10
         )
 
-        print(f"   Agents by Project - Avg: {result.avg_time:.2f}ms, P95: {result.p95:.2f}ms")
 
         assert result.avg_time < 200.0, f"Agents query too slow: {result.avg_time:.2f}ms > 200ms"
 
@@ -278,18 +248,15 @@ class TestDatabaseBenchmarks:
         async def query_messages_by_project():
             async with db_manager.get_session_async() as session:
                 from sqlalchemy import select
+
                 stmt = select(Message).where(Message.project_id == test_project.id).limit(50)
                 result = await session.execute(stmt)
                 return result.scalars().all()
 
         result = await benchmark.benchmark_async(
-            "query_messages_by_project",
-            query_messages_by_project,
-            iterations=100,
-            warmup=10
+            "query_messages_by_project", query_messages_by_project, iterations=100, warmup=10
         )
 
-        print(f"   Messages by Project - Avg: {result.avg_time:.2f}ms, P95: {result.p95:.2f}ms")
 
         assert result.avg_time < 500.0, f"Messages query too slow: {result.avg_time:.2f}ms > 500ms"
 
@@ -307,7 +274,7 @@ class TestDatabaseBenchmarks:
                     project_id=test_project.id,
                     name=f"trans_agent_{uuid.uuid4().hex[:8]}",
                     role="worker",
-                    status="active"
+                    status="active",
                 )
                 session.add(agent)
 
@@ -318,7 +285,7 @@ class TestDatabaseBenchmarks:
                     agent_name=agent.name,
                     description="Transaction test task",
                     status="pending",
-                    priority="normal"
+                    priority="normal",
                 )
                 session.add(task)
 
@@ -331,7 +298,7 @@ class TestDatabaseBenchmarks:
                     content="Transaction test message",
                     message_type="direct",
                     priority="normal",
-                    status="pending"
+                    status="pending",
                 )
                 session.add(message)
 
@@ -340,16 +307,8 @@ class TestDatabaseBenchmarks:
 
         benchmark = PerformanceBenchmark(target_time_ms=1000.0)
 
-        result = await benchmark.benchmark_async(
-            "complex_transaction",
-            complex_transaction,
-            iterations=50,
-            warmup=5
-        )
+        result = await benchmark.benchmark_async("complex_transaction", complex_transaction, iterations=50, warmup=5)
 
-        print("\n✅ Transaction Performance:")
-        print(f"   Complex Transaction - Avg: {result.avg_time:.2f}ms, P95: {result.p95:.2f}ms")
-        print(f"   Success Rate: {result.success_rate:.1f}%")
 
         assert result.avg_time < 1000.0, f"Complex transaction too slow: {result.avg_time:.2f}ms > 1s"
         assert result.success_rate > 95.0, f"Transaction success rate too low: {result.success_rate:.1f}%"
@@ -373,7 +332,7 @@ class TestDatabaseBenchmarks:
                         project_id=proj.id,
                         name=f"concurrent_agent_{idx}_{uuid.uuid4().hex[:8]}",
                         role="worker",
-                        status="active"
+                        status="active",
                     )
                     session.add(agent)
 
@@ -386,7 +345,7 @@ class TestDatabaseBenchmarks:
                         content=f"Concurrent test message {idx}",
                         message_type="direct",
                         priority="normal",
-                        status="pending"
+                        status="pending",
                     )
                     session.add(message)
 
@@ -402,15 +361,9 @@ class TestDatabaseBenchmarks:
 
         # Analyze concurrent performance
         successful_ops = [r for r in results if not isinstance(r, Exception)]
-        failed_ops = [r for r in results if isinstance(r, Exception)]
+        [r for r in results if isinstance(r, Exception)]
         success_rate = len(successful_ops) / len(results) * 100
 
-        print("\n✅ Concurrent Database Operations (50 operations):")
-        print(f"   Total Time: {total_time:.2f}ms ({total_time/1000:.2f}s)")
-        print(f"   Successful: {len(successful_ops)}")
-        print(f"   Failed: {len(failed_ops)}")
-        print(f"   Success Rate: {success_rate:.1f}%")
-        print(f"   Operations/Second: {len(successful_ops)/(total_time/1000):.1f}")
 
         assert success_rate > 90.0, f"Concurrent operation success rate too low: {success_rate:.1f}%"
         assert total_time < 30000, f"Concurrent operations too slow: {total_time:.2f}ms > 30s"
@@ -426,9 +379,10 @@ class TestDatabaseBenchmarks:
             async with db_manager.get_session_async() as session:
                 # Quick query
                 from sqlalchemy import select
+
                 stmt = select(Project).limit(1)
                 result = await session.execute(stmt)
-                project = result.scalar()
+                result.scalar()
                 return f"operation_{operation_id}_complete"
 
         # Create 100 concurrent quick operations
@@ -441,15 +395,9 @@ class TestDatabaseBenchmarks:
         total_time = (time.perf_counter() - start_time) * 1000
 
         successful_connections = [r for r in results if not isinstance(r, Exception)]
-        failed_connections = [r for r in results if isinstance(r, Exception)]
+        [r for r in results if isinstance(r, Exception)]
         success_rate = len(successful_connections) / len(results) * 100
 
-        print("\n✅ Connection Pool Stress Test (100 connections):")
-        print(f"   Total Time: {total_time:.2f}ms ({total_time/1000:.2f}s)")
-        print(f"   Successful: {len(successful_connections)}")
-        print(f"   Failed: {len(failed_connections)}")
-        print(f"   Success Rate: {success_rate:.1f}%")
-        print(f"   Connections/Second: {len(successful_connections)/(total_time/1000):.1f}")
 
         assert success_rate > 95.0, f"Connection pool success rate too low: {success_rate:.1f}%"
         assert total_time < 20000, f"Connection pool operations too slow: {total_time:.2f}ms > 20s"
@@ -457,6 +405,7 @@ class TestDatabaseBenchmarks:
     async def test_database_memory_usage_under_load(self, benchmark_runner):
         """Test database memory usage under sustained load"""
         import psutil
+
         db_manager = benchmark_runner.db_manager
         process = psutil.Process()
 
@@ -481,7 +430,7 @@ class TestDatabaseBenchmarks:
                         project_id=test_project.id,
                         name=f"memory_agent_{record_id}",
                         role="worker",
-                        status="active"
+                        status="active",
                     )
                     session.add(agent)
 
@@ -494,7 +443,7 @@ class TestDatabaseBenchmarks:
                         content=f"Memory test message {record_id} with substantial content " * 10,
                         message_type="direct",
                         priority="normal",
-                        status="pending"
+                        status="pending",
                     )
                     session.add(message)
 
@@ -503,19 +452,12 @@ class TestDatabaseBenchmarks:
             # Check memory usage every 5 batches
             if batch_start % (batch_size * 5) == 0:
                 current_memory = process.memory_info().rss / (1024 * 1024)
-                memory_growth = current_memory - baseline_memory
-                records_created = batch_start + batch_size
-                print(f"   Records {records_created}: Memory growth {memory_growth:.1f}MB")
+                current_memory - baseline_memory
+                batch_start + batch_size
 
         final_memory = process.memory_info().rss / (1024 * 1024)
         total_memory_growth = final_memory - baseline_memory
 
-        print("\n✅ Database Memory Usage Under Load:")
-        print(f"   Baseline Memory: {baseline_memory:.1f}MB")
-        print(f"   Final Memory: {final_memory:.1f}MB")
-        print(f"   Total Growth: {total_memory_growth:.1f}MB")
-        print(f"   Records Created: {total_records * 2}")  # agents + messages
-        print(f"   Memory per Record: {total_memory_growth/(total_records*2)*1024:.1f}KB")
 
         # Validate memory usage is reasonable
         assert total_memory_growth < 1000, (
@@ -541,7 +483,7 @@ class TestDatabaseBenchmarks:
                     project_id=test_project.id,
                     name=f"temp_agent_{i}",
                     role="worker",
-                    status="completed"  # Mark for cleanup
+                    status="completed",  # Mark for cleanup
                 )
                 temp_agents.append(agent)
                 session.add(agent)
@@ -554,7 +496,7 @@ class TestDatabaseBenchmarks:
                     content=f"Temporary message {i}",
                     message_type="direct",
                     priority="normal",
-                    status="acknowledged"  # Mark for cleanup
+                    status="acknowledged",  # Mark for cleanup
                 )
                 temp_messages.append(message)
                 session.add(message)
@@ -580,10 +522,6 @@ class TestDatabaseBenchmarks:
 
         cleanup_time = (time.perf_counter() - start_time) * 1000
 
-        print("\n✅ Database Cleanup Performance:")
-        print(f"   Records Cleaned: {len(temp_agents) + len(temp_messages)}")
-        print(f"   Cleanup Time: {cleanup_time:.2f}ms")
-        print(f"   Records/Second: {(len(temp_agents) + len(temp_messages))/(cleanup_time/1000):.0f}")
 
         assert cleanup_time < 5000, f"Database cleanup too slow: {cleanup_time:.2f}ms > 5s"
 

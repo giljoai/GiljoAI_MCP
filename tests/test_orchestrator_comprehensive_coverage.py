@@ -3,13 +3,15 @@ Comprehensive tests for orchestrator.py to achieve 95%+ coverage.
 Focuses on uncovered code paths identified in coverage analysis.
 """
 
+import asyncio
+from unittest.mock import patch
+
 import pytest
 import pytest_asyncio
-import asyncio
-from unittest.mock import AsyncMock, patch
+
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.orchestrator import ProjectOrchestrator, AgentRole
 from src.giljo_mcp.enums import ProjectStatus, ProjectType
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 @pytest_asyncio.fixture
@@ -36,8 +38,7 @@ class TestOrchestratorComprehensiveCoverage:
         """Test spawning multiple agents in parallel."""
         # Create project
         project = await orchestrator.create_project(
-            name="Parallel Test Project", 
-            mission="Test parallel agent spawning"
+            name="Parallel Test Project", mission="Test parallel agent spawning"
         )
 
         # Define agents to spawn in parallel
@@ -49,9 +50,7 @@ class TestOrchestratorComprehensiveCoverage:
 
         # Spawn agents in parallel
         created_agents = await orchestrator.spawn_agents_parallel(
-            project_id=project.id,
-            agents=agents_to_spawn,
-            project_type=ProjectType.FOUNDATION
+            project_id=project.id, agents=agents_to_spawn, project_type=ProjectType.FOUNDATION
         )
 
         # Verify all agents were created
@@ -135,20 +134,16 @@ class TestOrchestratorComprehensiveCoverage:
         tenant_key = "test-tenant-comprehensive"
 
         # Create multiple projects for the tenant
-        project1 = await orchestrator.create_project(
-            name="Tenant Project 1", 
-            mission="Mission 1", 
-            tenant_key=tenant_key
+        await orchestrator.create_project(
+            name="Tenant Project 1", mission="Mission 1", tenant_key=tenant_key
         )
-        project2 = await orchestrator.create_project(
-            name="Tenant Project 2", 
-            mission="Mission 2", 
-            tenant_key=tenant_key
+        await orchestrator.create_project(
+            name="Tenant Project 2", mission="Mission 2", tenant_key=tenant_key
         )
 
         # Get all projects for tenant
         tenant_projects = await orchestrator.get_tenant_projects(tenant_key)
-        
+
         assert len(tenant_projects) == 2
         project_names = [p.name for p in tenant_projects]
         assert "Tenant Project 1" in project_names
@@ -159,17 +154,11 @@ class TestOrchestratorComprehensiveCoverage:
         tenant_key = "resource-test-tenant"
 
         # Create one project (under limit)
-        await orchestrator.create_project(
-            name="Resource Project", 
-            mission="Resource test", 
-            tenant_key=tenant_key
-        )
+        await orchestrator.create_project(name="Resource Project", mission="Resource test", tenant_key=tenant_key)
 
         # Test resource allocation
         allocation = await orchestrator.allocate_resources(
-            tenant_key=tenant_key,
-            max_concurrent_projects=5,
-            total_context_budget=500000
+            tenant_key=tenant_key, max_concurrent_projects=5, total_context_budget=500000
         )
 
         assert allocation["can_create_new"] is True
@@ -183,9 +172,7 @@ class TestOrchestratorComprehensiveCoverage:
         # Create and activate maximum projects
         for i in range(3):
             project = await orchestrator.create_project(
-                name=f"Limit Project {i+1}",
-                mission=f"Mission {i+1}",
-                tenant_key=tenant_key
+                name=f"Limit Project {i + 1}", mission=f"Mission {i + 1}", tenant_key=tenant_key
             )
             await orchestrator.activate_project(project.id)
 
@@ -193,7 +180,7 @@ class TestOrchestratorComprehensiveCoverage:
         allocation = await orchestrator.allocate_resources(
             tenant_key=tenant_key,
             max_concurrent_projects=3,  # At limit
-            total_context_budget=500000
+            total_context_budget=500000,
         )
 
         assert allocation["can_create_new"] is False
@@ -218,8 +205,9 @@ class TestOrchestratorComprehensiveCoverage:
         # This tests the error path in _get_handoff_reason
         async with orchestrator.db_manager.get_session_async() as session:
             from sqlalchemy import update
+
             from src.giljo_mcp.models import Agent
-            
+
             stmt = update(Agent).where(Agent.id == agent.id).values(status="error")
             await session.execute(stmt)
             await session.commit()
@@ -261,7 +249,7 @@ class TestOrchestratorComprehensiveCoverage:
         # Test handoff with agents in different projects
         project1 = await orchestrator.create_project(name="Project 1", mission="Mission 1")
         project2 = await orchestrator.create_project(name="Project 2", mission="Mission 2")
-        
+
         agent1 = await orchestrator.spawn_agent(project1.id, AgentRole.ANALYZER)
         agent2 = await orchestrator.spawn_agent(project2.id, AgentRole.IMPLEMENTER)
 
@@ -282,19 +270,17 @@ class TestOrchestratorComprehensiveCoverage:
 
         # Test exact boundary conditions
         assert orchestrator.get_context_status(50, 100).value == "yellow"  # Exactly 50%
-        assert orchestrator.get_context_status(80, 100).value == "red"     # Exactly 80%
+        assert orchestrator.get_context_status(80, 100).value == "red"  # Exactly 80%
 
     async def test_spawn_agent_with_project_type(self, orchestrator):
         """Test spawning orchestrator agent with project type."""
         project = await orchestrator.create_project(name="Type Test", mission="Test project type")
-        
+
         # Test spawning orchestrator with project type
         orch_agent = await orchestrator.spawn_agent(
-            project_id=project.id,
-            role=AgentRole.ORCHESTRATOR,
-            project_type=ProjectType.GENERAL
+            project_id=project.id, role=AgentRole.ORCHESTRATOR, project_type=ProjectType.GENERAL
         )
-        
+
         assert orch_agent.role == "orchestrator"
         # Mission might be None if template fails, but should contain project info if successful
         if orch_agent.mission is not None:

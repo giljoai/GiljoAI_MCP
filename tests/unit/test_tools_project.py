@@ -20,7 +20,6 @@ import pytest_asyncio
 
 from src.giljo_mcp.tools.project import register_project_tools
 from tests.utils.tools_helpers import (
-    AssertionHelpers,
     MockMCPToolRegistrar,
     ToolsTestHelper,
 )
@@ -33,9 +32,9 @@ class TestProjectTools:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -53,10 +52,19 @@ class TestProjectTools:
 
         # Should register project management tools
         registered_tools = registrar.get_all_tools()
-        expected_tools = ["create_project", "list_projects", "switch_project", "close_project", "update_project_mission", "project_status"]
+        expected_tools = [
+            "create_project",
+            "list_projects",
+            "switch_project",
+            "close_project",
+            "update_project_mission",
+            "project_status",
+        ]
 
         for tool_name in expected_tools:
-            assert any(tool_name in tool_info.get("name", "") for tool_info in registered_tools), f"Tool {tool_name} not registered"
+            assert any(tool_name in tool_info.get("name", "") for tool_info in registered_tools), (
+                f"Tool {tool_name} not registered"
+            )
 
     @pytest.mark.asyncio
     async def test_create_project_tool(self):
@@ -65,7 +73,7 @@ class TestProjectTools:
         mock_server = registrar.create_tool_decorator()
 
         # Mock database operations
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -80,9 +88,7 @@ class TestProjectTools:
             mock_db_session.add = MagicMock()
 
             result = await create_project(
-                name="Test Project",
-                mission="Test mission for project",
-                agents=["agent1", "agent2"]
+                name="Test Project", mission="Test mission for project", agents=["agent1", "agent2"]
             )
 
             # Should handle project creation
@@ -94,7 +100,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -124,7 +130,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -153,7 +159,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -172,10 +178,7 @@ class TestProjectTools:
             register_project_tools(mock_server, self.db_manager, self.tenant_manager)
             close_project = registrar.get_registered_tool("close_project")
 
-            result = await close_project(
-                project_id=str(uuid.uuid4()),
-                summary="Project completed successfully"
-            )
+            result = await close_project(project_id=str(uuid.uuid4()), summary="Project completed successfully")
             assert isinstance(result, dict)
 
     @pytest.mark.asyncio
@@ -184,7 +187,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -202,10 +205,7 @@ class TestProjectTools:
             register_project_tools(mock_server, self.db_manager, self.tenant_manager)
             update_mission = registrar.get_registered_tool("update_project_mission")
 
-            result = await update_mission(
-                project_id=str(uuid.uuid4()),
-                mission="Updated mission statement"
-            )
+            result = await update_mission(project_id=str(uuid.uuid4()), mission="Updated mission statement")
             assert isinstance(result, dict)
 
     @pytest.mark.asyncio
@@ -214,7 +214,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -255,7 +255,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             # Mock database error
             mock_session.side_effect = Exception("Database connection failed")
 
@@ -272,7 +272,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -299,12 +299,12 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
             # Mock tenant context
-            with patch.object(self.tenant_manager, 'get_current_tenant') as mock_tenant:
+            with patch.object(self.tenant_manager, "get_current_tenant") as mock_tenant:
                 mock_tenant.return_value = "tk_" + "x" * 32
 
                 # Mock project lookup
@@ -336,7 +336,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -356,7 +356,7 @@ class TestProjectTools:
             result = await create_project(
                 name="Multi-Agent Project",
                 mission="Project with multiple agents",
-                agents=["analyzer", "implementer", "tester"]
+                agents=["analyzer", "implementer", "tester"],
             )
 
             assert isinstance(result, dict)
@@ -367,7 +367,7 @@ class TestProjectTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch.object(self.db_manager, 'get_session') as mock_session:
+        with patch.object(self.db_manager, "get_session") as mock_session:
             mock_db_session = AsyncMock()
             mock_session.return_value.__aenter__.return_value = mock_db_session
 
@@ -384,10 +384,7 @@ class TestProjectTools:
             register_project_tools(mock_server, self.db_manager, self.tenant_manager)
             close_project = registrar.get_registered_tool("close_project")
 
-            result = await close_project(
-                project_id=str(uuid.uuid4()),
-                summary="Trying to close completed project"
-            )
+            result = await close_project(project_id=str(uuid.uuid4()), summary="Trying to close completed project")
 
             assert isinstance(result, dict)
             # Should indicate error for non-active project

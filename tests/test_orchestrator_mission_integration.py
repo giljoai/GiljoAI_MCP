@@ -138,7 +138,6 @@ async def test_template_manager_methods():
         assert isinstance(template, str)
         assert len(template) > 0
         assert role in template.lower() or "agent" in template.lower()
-        print(f"✓ Template generated for role: {role}")
 
     # Test behavioral rules and success criteria
     for role in ["orchestrator", "analyzer", "implementer"]:
@@ -149,7 +148,6 @@ async def test_template_manager_methods():
         assert isinstance(criteria, list)
         assert len(rules) > 0
         assert len(criteria) > 0
-        print(f"✓ Rules and criteria available for role: {role}")
 
     return True
 

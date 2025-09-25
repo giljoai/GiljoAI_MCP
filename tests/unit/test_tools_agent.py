@@ -20,9 +20,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
-from src.giljo_mcp.models import Agent, Job, Project
+from src.giljo_mcp.models import Agent, Job
 from src.giljo_mcp.tools.agent import register_agent_tools
 from tests.utils.tools_helpers import (
     AssertionHelpers,
@@ -38,9 +37,9 @@ class TestAgentTools:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -65,7 +64,7 @@ class TestAgentTools:
             "agent_health",
             "decommission_agent",
             "spawn_and_log_sub_agent",
-            "log_sub_agent_completion"
+            "log_sub_agent_completion",
         ]
 
         registered_tools = registrar.get_all_tools()
@@ -84,11 +83,7 @@ class TestAgentTools:
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         ensure_agent = registrar.get_registered_tool("ensure_agent")
 
-        result = await ensure_agent(
-            project_id=self.project.id,
-            agent_name="test_agent",
-            mission="Test agent mission"
-        )
+        result = await ensure_agent(project_id=self.project.id, agent_name="test_agent", mission="Test agent mission")
 
         AssertionHelpers.assert_success_response(result, ["agent", "job_id", "context"])
         assert result["agent"] == "test_agent"
@@ -102,17 +97,12 @@ class TestAgentTools:
 
         # Create existing agent
         async with self.db_manager.get_session_async() as session:
-            existing_agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "test_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "test_agent")
 
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         ensure_agent = registrar.get_registered_tool("ensure_agent")
 
-        result = await ensure_agent(
-            project_id=self.project.id,
-            agent_name="test_agent"
-        )
+        result = await ensure_agent(project_id=self.project.id, agent_name="test_agent")
 
         AssertionHelpers.assert_success_response(result, ["agent", "is_reopen"])
         assert result["agent"] == "test_agent"
@@ -129,7 +119,7 @@ class TestAgentTools:
 
         result = await ensure_agent(
             project_id=str(uuid.uuid4()),  # Non-existent project
-            agent_name="test_agent"
+            agent_name="test_agent",
         )
 
         AssertionHelpers.assert_error_response(result, "Project not found")
@@ -144,17 +134,13 @@ class TestAgentTools:
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         activate_agent = registrar.get_registered_tool("activate_agent")
 
-        with patch('src.giljo_mcp.tools.agent.DiscoveryManager') as mock_discovery:
+        with patch("src.giljo_mcp.tools.agent.DiscoveryManager") as mock_discovery:
             mock_discovery_instance = MagicMock()
-            mock_discovery_instance.discover_context = AsyncMock(return_value={
-                "context": "test_context"
-            })
+            mock_discovery_instance.discover_context = AsyncMock(return_value={"context": "test_context"})
             mock_discovery.return_value = mock_discovery_instance
 
             result = await activate_agent(
-                project_id=self.project.id,
-                agent_name="orchestrator3",
-                mission="Orchestrate project development"
+                project_id=self.project.id, agent_name="orchestrator3", mission="Orchestrate project development"
             )
 
         AssertionHelpers.assert_success_response(result, ["agent", "context", "discovery"])
@@ -170,9 +156,7 @@ class TestAgentTools:
         activate_agent = registrar.get_registered_tool("activate_agent")
 
         result = await activate_agent(
-            project_id=self.project.id,
-            agent_name="worker_agent",
-            mission="Work on specific tasks"
+            project_id=self.project.id, agent_name="worker_agent", mission="Work on specific tasks"
         )
 
         AssertionHelpers.assert_success_response(result, ["agent", "context"])
@@ -187,9 +171,7 @@ class TestAgentTools:
 
         # Create test agent
         async with self.db_manager.get_session_async() as session:
-            agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "test_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "test_agent")
 
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         assign_job = registrar.get_registered_tool("assign_job")
@@ -200,7 +182,7 @@ class TestAgentTools:
             project_id=self.project.id,
             tasks=["Analyze requirements", "Create documentation"],
             scope_boundary="Focus on API analysis only",
-            vision_alignment="Align with project goals"
+            vision_alignment="Align with project goals",
         )
 
         AssertionHelpers.assert_success_response(result, ["job_id", "agent", "job_type"])
@@ -215,9 +197,7 @@ class TestAgentTools:
 
         # Create test agent and existing job
         async with self.db_manager.get_session_async() as session:
-            agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "test_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "test_agent")
 
             existing_job = Job(
                 id=str(uuid.uuid4()),
@@ -226,7 +206,7 @@ class TestAgentTools:
                 status="active",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(existing_job)
             await session.commit()
@@ -235,10 +215,7 @@ class TestAgentTools:
         assign_job = registrar.get_registered_tool("assign_job")
 
         result = await assign_job(
-            agent_name="test_agent",
-            job_type="implementation",
-            project_id=self.project.id,
-            tasks=["Implement features"]
+            agent_name="test_agent", job_type="implementation", project_id=self.project.id, tasks=["Implement features"]
         )
 
         AssertionHelpers.assert_success_response(result, ["job_id", "updated"])
@@ -253,11 +230,7 @@ class TestAgentTools:
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         assign_job = registrar.get_registered_tool("assign_job")
 
-        result = await assign_job(
-            agent_name="nonexistent_agent",
-            job_type="analysis",
-            project_id=self.project.id
-        )
+        result = await assign_job(agent_name="nonexistent_agent", job_type="analysis", project_id=self.project.id)
 
         AssertionHelpers.assert_error_response(result, "Agent not found")
 
@@ -270,27 +243,16 @@ class TestAgentTools:
 
         # Create source and target agents
         async with self.db_manager.get_session_async() as session:
-            source_agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "source_agent"
-            )
-            target_agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "target_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "source_agent")
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "target_agent")
 
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         handoff = registrar.get_registered_tool("handoff")
 
-        context = {
-            "completed_tasks": ["Task 1", "Task 2"],
-            "pending_work": ["Task 3"],
-            "notes": "Handoff notes"
-        }
+        context = {"completed_tasks": ["Task 1", "Task 2"], "pending_work": ["Task 3"], "notes": "Handoff notes"}
 
         result = await handoff(
-            from_agent="source_agent",
-            to_agent="target_agent",
-            project_id=self.project.id,
-            context=context
+            from_agent="source_agent", to_agent="target_agent", project_id=self.project.id, context=context
         )
 
         AssertionHelpers.assert_success_response(result, ["handoff_id", "from_agent", "to_agent"])
@@ -310,7 +272,7 @@ class TestAgentTools:
             from_agent="nonexistent_source",
             to_agent="nonexistent_target",
             project_id=self.project.id,
-            context={"test": "data"}
+            context={"test": "data"},
         )
 
         AssertionHelpers.assert_error_response(result, "Agent not found")
@@ -324,9 +286,7 @@ class TestAgentTools:
 
         # Create test agent with job
         async with self.db_manager.get_session_async() as session:
-            agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "test_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "test_agent")
 
             job = Job(
                 id=str(uuid.uuid4()),
@@ -335,7 +295,7 @@ class TestAgentTools:
                 status="active",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(job)
             await session.commit()
@@ -379,17 +339,13 @@ class TestAgentTools:
 
         # Create test agent
         async with self.db_manager.get_session_async() as session:
-            agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "test_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "test_agent")
 
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         decommission_agent = registrar.get_registered_tool("decommission_agent")
 
         result = await decommission_agent(
-            agent_name="test_agent",
-            project_id=self.project.id,
-            reason="Task completed successfully"
+            agent_name="test_agent", project_id=self.project.id, reason="Task completed successfully"
         )
 
         AssertionHelpers.assert_success_response(result, ["agent", "status", "reason"])
@@ -405,10 +361,7 @@ class TestAgentTools:
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         decommission_agent = registrar.get_registered_tool("decommission_agent")
 
-        result = await decommission_agent(
-            agent_name="nonexistent_agent",
-            project_id=self.project.id
-        )
+        result = await decommission_agent(agent_name="nonexistent_agent", project_id=self.project.id)
 
         AssertionHelpers.assert_error_response(result, "Agent not found")
 
@@ -421,9 +374,7 @@ class TestAgentTools:
 
         # Create parent agent
         async with self.db_manager.get_session_async() as session:
-            parent_agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "parent_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "parent_agent")
 
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         spawn_sub_agent = registrar.get_registered_tool("spawn_and_log_sub_agent")
@@ -434,7 +385,7 @@ class TestAgentTools:
             sub_agent_type="analyzer",
             mission="Analyze specific component",
             project_id=self.project.id,
-            scope="Limited to authentication module"
+            scope="Limited to authentication module",
         )
 
         AssertionHelpers.assert_success_response(result, ["sub_agent_id", "log_id", "spawned"])
@@ -455,7 +406,7 @@ class TestAgentTools:
             sub_agent_name="sub_agent",
             sub_agent_type="analyzer",
             mission="Test mission",
-            project_id=self.project.id
+            project_id=self.project.id,
         )
 
         AssertionHelpers.assert_error_response(result, "Parent agent not found")
@@ -469,9 +420,7 @@ class TestAgentTools:
 
         # Create parent agent and sub-agent log
         async with self.db_manager.get_session_async() as session:
-            parent_agent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "parent_agent"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "parent_agent")
 
             # SubAgentLog model not available - skip this test section
             # sub_agent_log = SubAgentLog(
@@ -495,7 +444,7 @@ class TestAgentTools:
             sub_agent_log_id=sub_agent_log.id,
             completion_status="success",
             results_summary="Successfully analyzed authentication module",
-            artifacts_created=["analysis_report.md", "test_results.json"]
+            artifacts_created=["analysis_report.md", "test_results.json"],
         )
 
         AssertionHelpers.assert_success_response(result, ["log_id", "status", "completion_time"])
@@ -511,9 +460,7 @@ class TestAgentTools:
         log_completion = registrar.get_registered_tool("log_sub_agent_completion")
 
         result = await log_completion(
-            sub_agent_log_id=str(uuid.uuid4()),
-            completion_status="success",
-            results_summary="Test summary"
+            sub_agent_log_id=str(uuid.uuid4()), completion_status="success", results_summary="Test summary"
         )
 
         AssertionHelpers.assert_error_response(result, "Sub-agent log not found")
@@ -530,10 +477,7 @@ class TestAgentTools:
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         ensure_agent = registrar.get_registered_tool("ensure_agent")
 
-        result = await ensure_agent(
-            project_id=self.project.id,
-            agent_name="test_agent"
-        )
+        result = await ensure_agent(project_id=self.project.id, agent_name="test_agent")
 
         AssertionHelpers.assert_error_response(result, "No active project")
 
@@ -544,7 +488,7 @@ class TestAgentTools:
         mock_server = registrar.create_tool_decorator()
 
         # Mock database to raise exception
-        with patch.object(self.db_manager, 'get_session_async') as mock_get_session:
+        with patch.object(self.db_manager, "get_session_async") as mock_get_session:
             mock_get_session.side_effect = Exception("Database connection failed")
 
             register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -570,7 +514,7 @@ class TestAgentTools:
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 context_used=95000,  # High usage
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(agent)
             await session.commit()
@@ -594,24 +538,15 @@ class TestAgentTools:
         decommission_agent = registrar.get_registered_tool("decommission_agent")
 
         # Create agent (active)
-        result1 = await ensure_agent(
-            project_id=self.project.id,
-            agent_name="test_agent"
-        )
+        result1 = await ensure_agent(project_id=self.project.id, agent_name="test_agent")
         AssertionHelpers.assert_success_response(result1)
 
         # Decommission agent (active -> decommissioned)
-        result2 = await decommission_agent(
-            agent_name="test_agent",
-            project_id=self.project.id
-        )
+        result2 = await decommission_agent(agent_name="test_agent", project_id=self.project.id)
         AssertionHelpers.assert_success_response(result2)
 
         # Ensure same agent again (should reactivate)
-        result3 = await ensure_agent(
-            project_id=self.project.id,
-            agent_name="test_agent"
-        )
+        result3 = await ensure_agent(project_id=self.project.id, agent_name="test_agent")
         AssertionHelpers.assert_success_response(result3)
         assert result3["is_reopen"] is True
 
@@ -627,13 +562,7 @@ class TestAgentTools:
         ensure_agent = registrar.get_registered_tool("ensure_agent")
 
         # Run multiple concurrent agent creations
-        tasks = [
-            ensure_agent(
-                project_id=self.project.id,
-                agent_name=f"agent_{i}"
-            )
-            for i in range(5)
-        ]
+        tasks = [ensure_agent(project_id=self.project.id, agent_name=f"agent_{i}") for i in range(5)]
         results = await asyncio.gather(*tasks)
 
         # All should succeed
@@ -648,9 +577,7 @@ class TestAgentTools:
 
         # Create parent agent
         async with self.db_manager.get_session_async() as session:
-            parent = await ToolsTestHelper.create_test_agent(
-                session, self.project.id, "orchestrator"
-            )
+            await ToolsTestHelper.create_test_agent(session, self.project.id, "orchestrator")
 
         register_agent_tools(mock_server, self.db_manager, self.tenant_manager)
         spawn_sub_agent = registrar.get_registered_tool("spawn_and_log_sub_agent")
@@ -662,15 +589,13 @@ class TestAgentTools:
             sub_agent_name="analyzer",
             sub_agent_type="code_analyzer",
             mission="Analyze codebase",
-            project_id=self.project.id
+            project_id=self.project.id,
         )
         AssertionHelpers.assert_success_response(spawn_result)
 
         # Complete sub-agent work
         completion_result = await log_completion(
-            sub_agent_log_id=spawn_result["log_id"],
-            completion_status="success",
-            results_summary="Analysis completed"
+            sub_agent_log_id=spawn_result["log_id"], completion_status="success", results_summary="Analysis completed"
         )
         AssertionHelpers.assert_success_response(completion_result)
 

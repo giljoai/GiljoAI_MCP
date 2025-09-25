@@ -121,9 +121,7 @@ class TestMessageQueue(BaseAsyncTest):
         ]
 
         mock_query = Mock()
-        mock_query.filter_by.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value = (
-            messages
-        )
+        mock_query.filter_by.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value = messages
         mock_session.query.return_value = mock_query
 
         result = await self.queue.get_pending_messages(

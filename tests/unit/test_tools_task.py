@@ -16,13 +16,12 @@ Tests all task tool functions:
 
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
-from src.giljo_mcp.models import Project, Task
+from src.giljo_mcp.models import Task
 from src.giljo_mcp.tools.task import register_task_tools
 from tests.utils.tools_helpers import (
     AssertionHelpers,
@@ -38,9 +37,9 @@ class TestTaskTools:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -65,7 +64,7 @@ class TestTaskTools:
             "get_task_dependencies",
             "bulk_update_tasks",
             "create_task_conversion_history",
-            "get_conversion_history"
+            "get_conversion_history",
         ]
 
         registered_tools = registrar.get_all_tools()
@@ -85,10 +84,7 @@ class TestTaskTools:
         create_task = registrar.get_registered_tool("create_task")
 
         result = await create_task(
-            title="Test Task",
-            description="Test task description",
-            priority="high",
-            status="pending"
+            title="Test Task", description="Test task description", priority="high", status="pending"
         )
 
         AssertionHelpers.assert_success_response(result, ["task_id", "created"])
@@ -103,21 +99,12 @@ class TestTaskTools:
 
         # Create parent task first
         async with self.db_manager.get_session_async() as session:
-            parent_task = await ToolsTestHelper.create_test_task(
-                session,
-                self.project.id,
-                "Parent Task",
-                "pending"
-            )
+            parent_task = await ToolsTestHelper.create_test_task(session, self.project.id, "Parent Task", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         create_task = registrar.get_registered_tool("create_task")
 
-        result = await create_task(
-            title="Child Task",
-            description="Child task description",
-            parent_id=parent_task.id
-        )
+        result = await create_task(title="Child Task", description="Child task description", parent_id=parent_task.id)
 
         AssertionHelpers.assert_success_response(result, ["task_id", "created"])
         assert result["task"]["parent_id"] == parent_task.id
@@ -146,7 +133,7 @@ class TestTaskTools:
 
         result = await create_task(
             title="Test Task",
-            parent_id=str(uuid.uuid4())  # Non-existent parent
+            parent_id=str(uuid.uuid4()),  # Non-existent parent
         )
 
         AssertionHelpers.assert_error_response(result, "Parent task not found")
@@ -210,7 +197,7 @@ class TestTaskTools:
                 status="pending",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             task2 = Task(
                 id=str(uuid.uuid4()),
@@ -220,7 +207,7 @@ class TestTaskTools:
                 status="pending",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add_all([task1, task2])
             await session.commit()
@@ -243,9 +230,7 @@ class TestTaskTools:
         # Create multiple test tasks
         async with self.db_manager.get_session_async() as session:
             for i in range(5):
-                await ToolsTestHelper.create_test_task(
-                    session, self.project.id, f"Task {i+1}", "pending"
-                )
+                await ToolsTestHelper.create_test_task(session, self.project.id, f"Task {i + 1}", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         list_tasks = registrar.get_registered_tool("list_tasks")
@@ -265,9 +250,7 @@ class TestTaskTools:
 
         # Create test task
         async with self.db_manager.get_session_async() as session:
-            task = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Test Task", "pending"
-            )
+            task = await ToolsTestHelper.create_test_task(session, self.project.id, "Test Task", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         update_task = registrar.get_registered_tool("update_task")
@@ -285,18 +268,13 @@ class TestTaskTools:
 
         # Create test task
         async with self.db_manager.get_session_async() as session:
-            task = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Test Task", "pending"
-            )
+            task = await ToolsTestHelper.create_test_task(session, self.project.id, "Test Task", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         update_task = registrar.get_registered_tool("update_task")
 
         result = await update_task(
-            task_id=task.id,
-            status="in_progress",
-            priority="high",
-            description="Updated description"
+            task_id=task.id, status="in_progress", priority="high", description="Updated description"
         )
 
         AssertionHelpers.assert_success_response(result, ["task"])
@@ -351,9 +329,7 @@ class TestTaskTools:
 
         # Create parent and child tasks
         async with self.db_manager.get_session_async() as session:
-            parent_task = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Parent Task", "pending"
-            )
+            parent_task = await ToolsTestHelper.create_test_task(session, self.project.id, "Parent Task", "pending")
 
             child_task = Task(
                 id=str(uuid.uuid4()),
@@ -364,7 +340,7 @@ class TestTaskTools:
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 parent_id=parent_task.id,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(child_task)
             await session.commit()
@@ -399,7 +375,7 @@ class TestTaskTools:
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 parent_id=grandparent.id,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(parent)
             await session.commit()
@@ -414,7 +390,7 @@ class TestTaskTools:
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 parent_id=parent.id,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(child)
             await session.commit()
@@ -439,19 +415,15 @@ class TestTaskTools:
 
         # Create test tasks
         async with self.db_manager.get_session_async() as session:
-            task1 = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Task 1", "pending"
-            )
-            task2 = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Task 2", "pending"
-            )
+            task1 = await ToolsTestHelper.create_test_task(session, self.project.id, "Task 1", "pending")
+            task2 = await ToolsTestHelper.create_test_task(session, self.project.id, "Task 2", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         bulk_update = registrar.get_registered_tool("bulk_update_tasks")
 
         updates = [
             {"task_id": task1.id, "status": "in_progress", "priority": "high"},
-            {"task_id": task2.id, "status": "completed", "priority": "medium"}
+            {"task_id": task2.id, "status": "completed", "priority": "medium"},
         ]
 
         result = await bulk_update(updates=updates)
@@ -468,16 +440,14 @@ class TestTaskTools:
 
         # Create one valid task
         async with self.db_manager.get_session_async() as session:
-            task1 = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Task 1", "pending"
-            )
+            task1 = await ToolsTestHelper.create_test_task(session, self.project.id, "Task 1", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         bulk_update = registrar.get_registered_tool("bulk_update_tasks")
 
         updates = [
             {"task_id": task1.id, "status": "in_progress"},
-            {"task_id": str(uuid.uuid4()), "status": "completed"}  # Invalid ID
+            {"task_id": str(uuid.uuid4()), "status": "completed"},  # Invalid ID
         ]
 
         result = await bulk_update(updates=updates)
@@ -495,9 +465,7 @@ class TestTaskTools:
 
         # Create test task
         async with self.db_manager.get_session_async() as session:
-            task = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Test Task", "pending"
-            )
+            task = await ToolsTestHelper.create_test_task(session, self.project.id, "Test Task", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         create_history = registrar.get_registered_tool("create_task_conversion_history")
@@ -506,7 +474,7 @@ class TestTaskTools:
             task_id=task.id,
             conversion_type="template_to_task",
             original_data={"template_id": "test_template"},
-            conversion_metadata={"agent": "test_agent"}
+            conversion_metadata={"agent": "test_agent"},
         )
 
         AssertionHelpers.assert_success_response(result, ["history_id", "created"])
@@ -521,9 +489,7 @@ class TestTaskTools:
 
         # Create test task and history
         async with self.db_manager.get_session_async() as session:
-            task = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Test Task", "pending"
-            )
+            task = await ToolsTestHelper.create_test_task(session, self.project.id, "Test Task", "pending")
 
             # TaskConversionHistory model not available - skip this test section
             # history = TaskConversionHistory(
@@ -570,7 +536,7 @@ class TestTaskTools:
         mock_server = registrar.create_tool_decorator()
 
         # Mock database to raise exception
-        with patch.object(self.db_manager, 'get_session_async') as mock_get_session:
+        with patch.object(self.db_manager, "get_session_async") as mock_get_session:
             mock_get_session.side_effect = Exception("Database connection failed")
 
             register_task_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -588,9 +554,7 @@ class TestTaskTools:
 
         # Create parent and child tasks
         async with self.db_manager.get_session_async() as session:
-            parent = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Parent Task", "pending"
-            )
+            parent = await ToolsTestHelper.create_test_task(session, self.project.id, "Parent Task", "pending")
 
             child = Task(
                 id=str(uuid.uuid4()),
@@ -601,7 +565,7 @@ class TestTaskTools:
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 parent_id=parent.id,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(child)
             await session.commit()
@@ -622,9 +586,7 @@ class TestTaskTools:
 
         # Create test task
         async with self.db_manager.get_session_async() as session:
-            task = await ToolsTestHelper.create_test_task(
-                session, self.project.id, "Test Task", "pending"
-            )
+            task = await ToolsTestHelper.create_test_task(session, self.project.id, "Test Task", "pending")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         update_task = registrar.get_registered_tool("update_task")
@@ -656,7 +618,7 @@ class TestTaskTools:
                 priority="high",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             task2 = Task(
                 id=str(uuid.uuid4()),
@@ -666,7 +628,7 @@ class TestTaskTools:
                 priority="medium",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add_all([task1, task2])
             await session.commit()

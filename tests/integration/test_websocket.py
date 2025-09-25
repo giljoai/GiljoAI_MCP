@@ -19,7 +19,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import threading
 
 import uvicorn
-
 from src.giljo_mcp.api.app import create_app
 
 
@@ -89,7 +88,7 @@ class WebSocketTestSuite:
             async with websockets.connect(f"{self.base_url}/ws/test_client_1") as ws:
                 connect_time = time.time() - start_time
 
-                self.record_test("WebSocket connection established", True, f"Connected in {connect_time*1000:.2f}ms")
+                self.record_test("WebSocket connection established", True, f"Connected in {connect_time * 1000:.2f}ms")
 
                 # Test ping/pong
                 await ws.send(json.dumps({"type": "ping"}))
@@ -119,7 +118,7 @@ class WebSocketTestSuite:
             self.record_test(
                 f"Create {num_clients} concurrent connections",
                 len(connections) == num_clients,
-                f"Connected {num_clients} clients in {connect_time*1000:.2f}ms",
+                f"Connected {num_clients} clients in {connect_time * 1000:.2f}ms",
             )
 
             # Test simultaneous messaging
@@ -243,7 +242,7 @@ class WebSocketTestSuite:
             ws = await websockets.connect(f"{self.base_url}/ws/resilience_test")
             reconnect_time = time.time() - start_time
 
-            self.record_test("Reconnection after disconnect", True, f"Reconnected in {reconnect_time*1000:.2f}ms")
+            self.record_test("Reconnection after disconnect", True, f"Reconnected in {reconnect_time * 1000:.2f}ms")
 
             await ws.close()
 
@@ -310,11 +309,13 @@ class WebSocketTestSuite:
             avg_subscription = sum(metrics["subscription_times"]) / len(metrics["subscription_times"])
 
             # Test against targets (from vision doc)
-            self.record_test("Connection time < 50ms", avg_connection < 0.05, f"Avg: {avg_connection*1000:.2f}ms")
+            self.record_test("Connection time < 50ms", avg_connection < 0.05, f"Avg: {avg_connection * 1000:.2f}ms")
 
-            self.record_test("Message round trip < 10ms", avg_round_trip < 0.01, f"Avg: {avg_round_trip*1000:.2f}ms")
+            self.record_test("Message round trip < 10ms", avg_round_trip < 0.01, f"Avg: {avg_round_trip * 1000:.2f}ms")
 
-            self.record_test("Subscription time < 20ms", avg_subscription < 0.02, f"Avg: {avg_subscription*1000:.2f}ms")
+            self.record_test(
+                "Subscription time < 20ms", avg_subscription < 0.02, f"Avg: {avg_subscription * 1000:.2f}ms"
+            )
 
             # Store for summary
             self.performance_metrics = {

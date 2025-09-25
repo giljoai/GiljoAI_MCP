@@ -48,7 +48,7 @@ class TestAPIComprehensive:
             "message_id": None,
             "task_id": None,
             "template_id": None,
-            "created_resources": []
+            "created_resources": [],
         }
 
     # ==================== HEALTH AND ROOT ENDPOINTS ====================
@@ -78,7 +78,7 @@ class TestAPIComprehensive:
         project_data = {
             "name": "API Test Project",
             "mission": "Comprehensive API testing project",
-            "agents": ["analyzer", "implementer", "tester"]
+            "agents": ["analyzer", "implementer", "tester"],
         }
 
         response = client.post("/api/v1/projects/", json=project_data)
@@ -128,10 +128,7 @@ class TestAPIComprehensive:
     def test_update_project(self, client, test_data):
         """Test updating a project"""
         if test_data["project_id"]:
-            update_data = {
-                "mission": "Updated mission for comprehensive testing",
-                "status": "active"
-            }
+            update_data = {"mission": "Updated mission for comprehensive testing", "status": "active"}
 
             response = client.patch(f"/api/v1/projects/{test_data['project_id']}", json=update_data)
             # Should either succeed or fail gracefully
@@ -157,7 +154,7 @@ class TestAPIComprehensive:
             agent_data = {
                 "project_id": test_data["project_id"],
                 "agent_name": test_data["agent_name"],
-                "mission": "Test agent for API validation"
+                "mission": "Test agent for API validation",
             }
 
             response = client.post("/api/v1/agents/", json=agent_data)
@@ -176,7 +173,7 @@ class TestAPIComprehensive:
             agent_data = {
                 "project_id": test_data["project_id"],
                 "agent_name": "orchestrator_test",
-                "mission": "Test orchestrator agent"
+                "mission": "Test orchestrator agent",
             }
 
             response = client.post("/api/v1/agents/activate", json=agent_data)
@@ -189,13 +186,9 @@ class TestAPIComprehensive:
                 "agent_name": test_data["agent_name"],
                 "job_type": "analysis",
                 "project_id": test_data["project_id"],
-                "tasks": [
-                    "Analyze code structure",
-                    "Identify potential improvements",
-                    "Generate recommendations"
-                ],
+                "tasks": ["Analyze code structure", "Identify potential improvements", "Generate recommendations"],
                 "scope_boundary": "Focus on core functionality only",
-                "vision_alignment": "Align with project goals"
+                "vision_alignment": "Align with project goals",
             }
 
             response = client.post("/api/v1/agents/assign-job", json=job_data)
@@ -220,8 +213,8 @@ class TestAPIComprehensive:
                 "context": {
                     "analysis_complete": True,
                     "findings": "Code structure analysis completed",
-                    "next_steps": ["Begin implementation", "Create unit tests"]
-                }
+                    "next_steps": ["Begin implementation", "Create unit tests"],
+                },
             }
 
             response = client.post("/api/v1/agents/handoff", json=handoff_data)
@@ -245,8 +238,8 @@ class TestAPIComprehensive:
                 params={
                     "project_id": test_data["project_id"],
                     "sub_agent_name": "sub_analyzer",
-                    "mission": "Detailed code analysis"
-                }
+                    "mission": "Detailed code analysis",
+                },
             )
             assert response.status_code in [200, 400, 500]
 
@@ -261,7 +254,7 @@ class TestAPIComprehensive:
                 "project_id": test_data["project_id"],
                 "message_type": "direct",
                 "priority": "high",
-                "from_agent": "orchestrator"
+                "from_agent": "orchestrator",
             }
 
             response = client.post("/api/v1/messages/send", json=message_data)
@@ -289,7 +282,7 @@ class TestAPIComprehensive:
         if test_data["message_id"]:
             response = client.post(
                 f"/api/v1/messages/{test_data['message_id']}/acknowledge",
-                params={"agent_name": test_data["agent_name"]}
+                params={"agent_name": test_data["agent_name"]},
             )
             assert response.status_code in [200, 400, 404, 500]
 
@@ -299,13 +292,10 @@ class TestAPIComprehensive:
             completion_data = {
                 "agent_name": test_data["agent_name"],
                 "result": "Message processed successfully",
-                "completion_notes": "API test completion"
+                "completion_notes": "API test completion",
             }
 
-            response = client.post(
-                f"/api/v1/messages/{test_data['message_id']}/complete",
-                json=completion_data
-            )
+            response = client.post(f"/api/v1/messages/{test_data['message_id']}/complete", json=completion_data)
             assert response.status_code in [200, 400, 404, 500]
 
     def test_broadcast_message(self, client, test_data):
@@ -314,7 +304,7 @@ class TestAPIComprehensive:
             broadcast_data = {
                 "content": "Broadcast message for all agents",
                 "project_id": test_data["project_id"],
-                "priority": "normal"
+                "priority": "normal",
             }
 
             response = client.post("/api/v1/messages/broadcast", json=broadcast_data)
@@ -322,21 +312,14 @@ class TestAPIComprehensive:
 
     def test_log_task_message(self, client):
         """Test logging a task"""
-        task_data = {
-            "content": "API test task logging",
-            "category": "testing",
-            "priority": "medium"
-        }
+        task_data = {"content": "API test task logging", "category": "testing", "priority": "medium"}
 
         response = client.post("/api/v1/messages/log-task", json=task_data)
         assert response.status_code in [200, 400, 500]
 
     def test_list_messages(self, client, test_data):
         """Test listing messages"""
-        params = {
-            "limit": 10,
-            "offset": 0
-        }
+        params = {"limit": 10, "offset": 0}
         if test_data["project_id"]:
             params["project_id"] = test_data["project_id"]
 
@@ -352,7 +335,7 @@ class TestAPIComprehensive:
             "description": "Task created for API testing",
             "category": "testing",
             "priority": "high",
-            "project_id": test_data["project_id"]
+            "project_id": test_data["project_id"],
         }
 
         response = client.post("/api/v1/tasks/", json=task_data)
@@ -369,9 +352,7 @@ class TestAPIComprehensive:
 
     def test_list_tasks(self, client, test_data):
         """Test listing tasks"""
-        params = {
-            "limit": 20
-        }
+        params = {"limit": 20}
         if test_data["project_id"]:
             params["project_id"] = test_data["project_id"]
 
@@ -387,11 +368,7 @@ class TestAPIComprehensive:
     def test_update_task(self, client, test_data):
         """Test updating a task"""
         if test_data["task_id"]:
-            update_data = {
-                "status": "in_progress",
-                "priority": "critical",
-                "description": "Updated task description"
-            }
+            update_data = {"status": "in_progress", "priority": "critical", "description": "Updated task description"}
 
             response = client.patch(f"/api/v1/tasks/{test_data['task_id']}", json=update_data)
             assert response.status_code in [200, 400, 404, 500]
@@ -401,11 +378,7 @@ class TestAPIComprehensive:
         if test_data["task_id"]:
             response = client.get(
                 f"/api/v1/tasks/{test_data['task_id']}/dependencies",
-                params={
-                    "include_subtasks": True,
-                    "include_parent": True,
-                    "max_depth": 3
-                }
+                params={"include_subtasks": True, "include_parent": True, "max_depth": 3},
             )
             assert response.status_code in [200, 404, 500]
 
@@ -414,11 +387,8 @@ class TestAPIComprehensive:
         if test_data["task_id"]:
             bulk_data = {
                 "task_ids": [test_data["task_id"]],
-                "updates": {
-                    "status": "completed",
-                    "priority": "low"
-                },
-                "operation_type": "update"
+                "updates": {"status": "completed", "priority": "low"},
+                "operation_type": "update",
             }
 
             response = client.post("/api/v1/tasks/bulk-update", json=bulk_data)
@@ -457,18 +427,10 @@ class TestAPIComprehensive:
             "template_content": "Test template for {project_name} with {agent_role}",
             "role": "tester",
             "description": "API testing template",
-            "behavioral_rules": [
-                "Always validate inputs",
-                "Provide clear error messages",
-                "Test edge cases"
-            ],
-            "success_criteria": [
-                "All tests pass",
-                "100% code coverage",
-                "No security vulnerabilities"
-            ],
+            "behavioral_rules": ["Always validate inputs", "Provide clear error messages", "Test edge cases"],
+            "success_criteria": ["All tests pass", "100% code coverage", "No security vulnerabilities"],
             "tags": ["testing", "api", "validation"],
-            "is_default": False
+            "is_default": False,
         }
 
         response = client.post("/api/v1/templates/", json=template_data)
@@ -487,10 +449,7 @@ class TestAPIComprehensive:
         """Test getting a template"""
         get_data = {
             "name": "api_test_template",
-            "variables": {
-                "project_name": "API Test Project",
-                "agent_role": "tester"
-            }
+            "variables": {"project_name": "API Test Project", "agent_role": "tester"},
         }
 
         response = client.post("/api/v1/templates/get", json=get_data)
@@ -503,7 +462,7 @@ class TestAPIComprehensive:
                 "template_content": "Updated template for {project_name} with enhanced {agent_role}",
                 "description": "Updated API testing template",
                 "tags": ["testing", "api", "validation", "updated"],
-                "archive_reason": "API test update"
+                "archive_reason": "API test update",
             }
 
             response = client.patch(f"/api/v1/templates/{test_data['template_id']}", json=update_data)
@@ -514,10 +473,7 @@ class TestAPIComprehensive:
         if test_data["template_id"]:
             response = client.post(
                 f"/api/v1/templates/{test_data['template_id']}/archive",
-                params={
-                    "reason": "API test archival",
-                    "archive_type": "manual"
-                }
+                params={"reason": "API test archival", "archive_type": "manual"},
             )
             assert response.status_code in [200, 404, 500]
 
@@ -529,11 +485,8 @@ class TestAPIComprehensive:
                 "name": "api_test_augmentation",
                 "augmentation_type": "append",
                 "content": "\\n\\nAdditional API testing instructions...",
-                "conditions": {
-                    "project_type": "api",
-                    "testing_required": True
-                },
-                "priority": 1
+                "conditions": {"project_type": "api", "testing_required": True},
+                "priority": 1,
             }
 
             response = client.post("/api/v1/templates/augmentations", json=augmentation_data)
@@ -541,13 +494,7 @@ class TestAPIComprehensive:
 
     def test_suggest_template(self, client):
         """Test template suggestion"""
-        response = client.get(
-            "/api/v1/templates/suggest",
-            params={
-                "project_type": "api_testing",
-                "role": "tester"
-            }
-        )
+        response = client.get("/api/v1/templates/suggest", params={"project_type": "api_testing", "role": "tester"})
         assert response.status_code in [200, 404, 500]
 
     def test_get_template_stats(self, client, test_data):
@@ -570,7 +517,7 @@ class TestAPIComprehensive:
             f"/api/v1/agents/{fake_id}/health",
             f"/api/v1/messages/agent/{fake_id}",
             f"/api/v1/tasks/{fake_id}",
-            f"/api/v1/templates/{fake_id}"
+            f"/api/v1/templates/{fake_id}",
         ]
 
         for endpoint in endpoints_404:
@@ -614,7 +561,7 @@ class TestAPIComprehensive:
             "/api/v1/agents/",
             "/api/v1/messages/",
             "/api/v1/tasks/",
-            "/api/v1/templates/"
+            "/api/v1/templates/",
         ]
 
         for endpoint in fast_endpoints:
@@ -678,27 +625,21 @@ class TestAPIComprehensive:
         for resource_type, resource_id in test_data.get("created_resources", []):
             try:
                 if resource_type == "project" and resource_id:
-                    response = client.delete(
-                        f"/api/v1/projects/{resource_id}",
-                        params={"summary": "API test cleanup"}
-                    )
+                    client.delete(f"/api/v1/projects/{resource_id}", params={"summary": "API test cleanup"})
                     # Don't assert success as cleanup may not be fully implemented
 
                 elif resource_type == "agent" and resource_id and test_data.get("project_id"):
-                    response = client.delete(
+                    client.delete(
                         f"/api/v1/agents/{resource_id}",
-                        params={
-                            "project_id": test_data["project_id"],
-                            "reason": "API test cleanup"
-                        }
+                        params={"project_id": test_data["project_id"], "reason": "API test cleanup"},
                     )
 
                 elif resource_type == "task" and resource_id:
-                    response = client.delete(f"/api/v1/tasks/{resource_id}")
+                    client.delete(f"/api/v1/tasks/{resource_id}")
 
-            except Exception as e:
+            except Exception:
                 # Cleanup failures are not critical for tests
-                print(f"Cleanup warning: Failed to clean up {resource_type} {resource_id}: {e}")
+                pass
 
     # ==================== INTEGRATION TEST ====================
 
@@ -710,7 +651,7 @@ class TestAPIComprehensive:
         project_data = {
             "name": "Integration Test Project",
             "mission": "Complete workflow testing",
-            "agents": ["orchestrator", "worker"]
+            "agents": ["orchestrator", "worker"],
         }
 
         response = client.post("/api/v1/projects/", json=project_data)
@@ -724,7 +665,7 @@ class TestAPIComprehensive:
                 agent_data = {
                     "project_id": workflow_data["project_id"],
                     "agent_name": agent_name,
-                    "mission": f"Integration test {agent_name}"
+                    "mission": f"Integration test {agent_name}",
                 }
 
                 response = client.post("/api/v1/agents/", json=agent_data)
@@ -736,7 +677,7 @@ class TestAPIComprehensive:
             "description": "Task for full workflow test",
             "category": "integration",
             "priority": "high",
-            "project_id": workflow_data.get("project_id")
+            "project_id": workflow_data.get("project_id"),
         }
 
         response = client.post("/api/v1/tasks/", json=task_data)
@@ -752,7 +693,7 @@ class TestAPIComprehensive:
                 "project_id": workflow_data["project_id"],
                 "message_type": "direct",
                 "priority": "normal",
-                "from_agent": "orchestrator"
+                "from_agent": "orchestrator",
             }
 
             response = client.post("/api/v1/messages/send", json=message_data)

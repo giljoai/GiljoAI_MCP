@@ -203,7 +203,7 @@ class TenantIsolationHelper:
                 continue
 
             if child.tenant_key != parent_key:
-                errors.append(f"Child {child.id} has tenant_key {child.tenant_key}, " f"expected {parent_key}")
+                errors.append(f"Child {child.id} has tenant_key {child.tenant_key}, expected {parent_key}")
 
         return len(errors) == 0, errors
 

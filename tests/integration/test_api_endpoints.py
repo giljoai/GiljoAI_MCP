@@ -15,8 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 from fastapi.testclient import TestClient
-
 from src.giljo_mcp.api.app import create_app
+
 from src.giljo_mcp.database import DatabaseManager
 
 
@@ -58,7 +58,6 @@ class PerformanceMetrics:
         m["status_codes"][status] = m["status_codes"].get(status, 0) + 1
 
     def print_summary(self):
-
         for _metrics in self.metrics.values():
             pass
 
@@ -138,7 +137,9 @@ class APITestSuite:
         # Test root endpoint
         response, duration = self.api_call("GET", "/")
         self.record_test(
-            "Root endpoint", response.status_code == 200, f"Status: {response.status_code}, Time: {duration*1000:.2f}ms"
+            "Root endpoint",
+            response.status_code == 200,
+            f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
         )
 
         # Test health check
@@ -146,7 +147,7 @@ class APITestSuite:
         self.record_test(
             "Health check endpoint",
             response.status_code == 200 and response.json()["status"] in ["healthy", "degraded"],
-            f"Status: {response.json().get('status')}, Time: {duration*1000:.2f}ms",
+            f"Status: {response.json().get('status')}, Time: {duration * 1000:.2f}ms",
         )
 
     async def test_project_endpoints(self):
@@ -163,7 +164,7 @@ class APITestSuite:
         self.record_test(
             "Create project",
             response.status_code == 200,
-            f"Status: {response.status_code}, Time: {duration*1000:.2f}ms",
+            f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
         )
 
         if response.status_code == 200:
@@ -174,7 +175,7 @@ class APITestSuite:
         self.record_test(
             "List projects",
             response.status_code == 200 and isinstance(response.json(), list),
-            f"Count: {len(response.json())}, Time: {duration*1000:.2f}ms",
+            f"Count: {len(response.json())}, Time: {duration * 1000:.2f}ms",
         )
 
         # Get specific project
@@ -183,7 +184,7 @@ class APITestSuite:
             self.record_test(
                 "Get project details",
                 response.status_code == 200,
-                f"Status: {response.status_code}, Time: {duration*1000:.2f}ms",
+                f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
             )
 
         # Update project
@@ -195,7 +196,7 @@ class APITestSuite:
             self.record_test(
                 "Update project",
                 response.status_code == 200,
-                f"Status: {response.status_code}, Time: {duration*1000:.2f}ms",
+                f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
             )
 
     async def test_agent_endpoints(self):
@@ -213,7 +214,9 @@ class APITestSuite:
 
         response, duration = self.api_call("POST", "/api/v1/agents/", json=agent_data)
         self.record_test(
-            "Create agent", response.status_code == 200, f"Status: {response.status_code}, Time: {duration*1000:.2f}ms"
+            "Create agent",
+            response.status_code == 200,
+            f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
         )
 
         # Get agent health
@@ -221,7 +224,7 @@ class APITestSuite:
         self.record_test(
             "Get agent health",
             response.status_code == 200,
-            f"Status: {response.status_code}, Time: {duration*1000:.2f}ms",
+            f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
         )
 
     async def test_message_endpoints(self):
@@ -241,7 +244,9 @@ class APITestSuite:
 
         response, duration = self.api_call("POST", "/api/v1/messages/send", json=message_data)
         self.record_test(
-            "Send message", response.status_code == 200, f"Status: {response.status_code}, Time: {duration*1000:.2f}ms"
+            "Send message",
+            response.status_code == 200,
+            f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
         )
 
         if response.status_code == 200:
@@ -254,7 +259,7 @@ class APITestSuite:
         self.record_test(
             "Get messages for agent",
             response.status_code == 200 and isinstance(response.json(), list),
-            f"Count: {len(response.json())}, Time: {duration*1000:.2f}ms",
+            f"Count: {len(response.json())}, Time: {duration * 1000:.2f}ms",
         )
 
         # Acknowledge message
@@ -267,7 +272,7 @@ class APITestSuite:
             self.record_test(
                 "Acknowledge message",
                 response.status_code == 200,
-                f"Status: {response.status_code}, Time: {duration*1000:.2f}ms",
+                f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
             )
 
     async def test_context_endpoints(self):
@@ -278,7 +283,7 @@ class APITestSuite:
         self.record_test(
             "Get context index",
             response.status_code in [200, 404],  # 404 is ok if no context
-            f"Status: {response.status_code}, Time: {duration*1000:.2f}ms",
+            f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
         )
 
         # Get vision document
@@ -286,7 +291,7 @@ class APITestSuite:
         self.record_test(
             "Get vision document",
             response.status_code in [200, 404],  # 404 is ok if no vision
-            f"Status: {response.status_code}, Time: {duration*1000:.2f}ms",
+            f"Status: {response.status_code}, Time: {duration * 1000:.2f}ms",
         )
 
     async def test_error_handling(self):
@@ -313,12 +318,12 @@ class APITestSuite:
         fast_endpoints = ["/", "/health"]
         for endpoint in fast_endpoints:
             response, duration = self.api_call("GET", endpoint)
-            self.record_test(f"Performance {endpoint} < 100ms", duration < 0.1, f"Time: {duration*1000:.2f}ms")
+            self.record_test(f"Performance {endpoint} < 100ms", duration < 0.1, f"Time: {duration * 1000:.2f}ms")
 
         # Target: Database operations < 20ms
         if "project_id" in self.test_data:
             _response, duration = self.api_call("GET", f"/api/v1/projects/{self.test_data['project_id']}")
-            self.record_test("Database query < 20ms", duration < 0.02, f"Time: {duration*1000:.2f}ms (Target: <20ms)")
+            self.record_test("Database query < 20ms", duration < 0.02, f"Time: {duration * 1000:.2f}ms (Target: <20ms)")
 
     async def run_all_tests(self):
         """Run complete test suite"""

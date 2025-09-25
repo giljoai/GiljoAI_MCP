@@ -80,10 +80,7 @@ class TestGiljoMCPServer:
         assert server.config == mock_config
 
         # Verify FastMCP was initialized with proper parameters
-        mock_fastmcp_class.assert_called_once_with(
-            name="GiljoAI MCP Server",
-            lifespan=server._lifespan
-        )
+        mock_fastmcp_class.assert_called_once_with(name="GiljoAI MCP Server", lifespan=server._lifespan)
         assert server.mcp == mock_fastmcp_instance
 
         # Verify initial state
@@ -170,11 +167,7 @@ class TestGiljoMCPServer:
 
             # Verify PostgreSQL URL was built with first host
             mock_db_class.build_postgresql_url.assert_called_once_with(
-                host="localhost",
-                port=5432,
-                database="test_db",
-                username="test_user",
-                password="test_pass"
+                host="localhost", port=5432, database="test_db", username="test_user", password="test_pass"
             )
 
             # Verify DatabaseManager was created
@@ -195,7 +188,7 @@ class TestGiljoMCPServer:
             # First host fails, second succeeds
             mock_db_class.side_effect = [
                 Exception("First host failed"),  # First attempt fails
-                AsyncMock()  # Second attempt succeeds
+                AsyncMock(),  # Second attempt succeeds
             ]
             mock_db_class.build_postgresql_url.return_value = "postgresql+asyncpg://test"
 
@@ -237,13 +230,14 @@ class TestGiljoMCPServer:
         server.tenant_manager = MagicMock()
 
         # Mock all tool registration functions - they're imported inside the method
-        with patch("src.giljo_mcp.tools.project.register_project_tools") as mock_project, \
-             patch("src.giljo_mcp.tools.agent.register_agent_tools") as mock_agent, \
-             patch("src.giljo_mcp.tools.message.register_message_tools") as mock_message, \
-             patch("src.giljo_mcp.tools.context.register_context_tools") as mock_context, \
-             patch("src.giljo_mcp.tools.template.register_template_tools") as mock_template, \
-             patch("src.giljo_mcp.tools.git.register_git_tools") as mock_git:
-
+        with (
+            patch("src.giljo_mcp.tools.project.register_project_tools") as mock_project,
+            patch("src.giljo_mcp.tools.agent.register_agent_tools") as mock_agent,
+            patch("src.giljo_mcp.tools.message.register_message_tools") as mock_message,
+            patch("src.giljo_mcp.tools.context.register_context_tools") as mock_context,
+            patch("src.giljo_mcp.tools.template.register_template_tools") as mock_template,
+            patch("src.giljo_mcp.tools.git.register_git_tools") as mock_git,
+        ):
             await server._register_tools()
 
             # Verify all tool groups were registered with correct parameters
@@ -262,9 +256,10 @@ class TestGiljoMCPServer:
         server.tenant_manager = MagicMock()
 
         # Mock import error for one tool group
-        with patch("src.giljo_mcp.tools.project.register_project_tools", side_effect=ImportError("Module not found")), \
-             patch("src.giljo_mcp.server.logger") as mock_logger:
-
+        with (
+            patch("src.giljo_mcp.tools.project.register_project_tools", side_effect=ImportError("Module not found")),
+            patch("src.giljo_mcp.server.logger") as mock_logger,
+        ):
             # Should not raise exception, just log warning
             await server._register_tools()
 
@@ -280,10 +275,12 @@ class TestGiljoMCPServer:
 
         # Track calls to mcp.tool decorator
         mock_tool_calls = []
+
         def mock_tool_decorator():
             def decorator(func):
                 mock_tool_calls.append(func.__name__)
                 return func
+
             return decorator
 
         server.mcp.tool = mock_tool_decorator
@@ -304,10 +301,8 @@ class TestGiljoMCPServer:
         server._register_info_endpoints()
 
         # Get the health function from the mcp.tool calls
-        health_func = None
         for call_args in server.mcp.tool.call_args_list:
             if hasattr(call_args, "__name__") and call_args.__name__ == "health":
-                health_func = call_args
                 break
 
         # We need to test the actual endpoint logic, so let's mock it properly
@@ -473,9 +468,10 @@ class TestGiljoMCPServer:
     @pytest.mark.asyncio
     async def test_main_function(self):
         """Test main entry point function"""
-        with patch("src.giljo_mcp.server.get_config") as mock_get_config, \
-             patch("src.giljo_mcp.server.create_server") as mock_create_server:
-
+        with (
+            patch("src.giljo_mcp.server.get_config") as mock_get_config,
+            patch("src.giljo_mcp.server.create_server") as mock_create_server,
+        ):
             mock_config = MagicMock()
             mock_get_config.return_value = mock_config
 
@@ -520,6 +516,7 @@ class TestGiljoMCPServer:
             def decorator(func):
                 endpoint_functions[func.__name__] = func
                 return func
+
             return decorator
 
         server.mcp.tool = mock_tool_decorator
@@ -583,6 +580,7 @@ class TestGiljoMCPServer:
             def decorator(func):
                 endpoint_functions[func.__name__] = func
                 return func
+
             return decorator
 
         server.mcp.tool = mock_tool_decorator

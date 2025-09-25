@@ -14,7 +14,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import psutil
 
@@ -31,19 +31,16 @@ class PerformanceDashboard:
             "database_query_ms": 50,
             "vision_chunking_ms": 5000,
             "memory_usage_mb": 2000,
-            "cpu_usage_percent": 80
+            "cpu_usage_percent": 80,
         }
         self.dashboard_data = {
             "current_metrics": {},
             "alerts": [],
             "trend_data": {},
-            "production_readiness": {
-                "score": 0,
-                "components": {}
-            }
+            "production_readiness": {"score": 0, "components": {}},
         }
 
-    def capture_system_metrics(self) -> Dict[str, Any]:
+    def capture_system_metrics(self) -> dict[str, Any]:
         """Capture current system performance metrics"""
         try:
             memory = psutil.virtual_memory()
@@ -59,22 +56,22 @@ class PerformanceDashboard:
                     "memory_total_gb": memory.total / (1024**3),
                     "memory_available_gb": memory.available / (1024**3),
                     "memory_used_percent": memory.percent,
-                    "process_memory_mb": process_memory
+                    "process_memory_mb": process_memory,
                 },
                 "performance": {
                     "agent_creation_ms": None,  # To be updated by tests
                     "message_send_ms": None,
                     "websocket_connection_ms": None,
                     "database_query_ms": None,
-                    "vision_chunking_ms": None
-                }
+                    "vision_chunking_ms": None,
+                },
             }
         except Exception as e:
             return {
                 "timestamp": datetime.now().isoformat(),
                 "error": f"Failed to capture metrics: {e}",
                 "system": {},
-                "performance": {}
+                "performance": {},
             }
 
     def update_performance_metric(self, metric_name: str, value: float):
@@ -105,7 +102,7 @@ class PerformanceDashboard:
                 "value": value,
                 "threshold": threshold,
                 "severity": "HIGH" if value > threshold * 2 else "MEDIUM",
-                "message": f"{metric_name} ({value:.2f}) exceeds threshold ({threshold})"
+                "message": f"{metric_name} ({value:.2f}) exceeds threshold ({threshold})",
             }
             self.dashboard_data["alerts"].append(alert)
 
@@ -117,18 +114,14 @@ class PerformanceDashboard:
         if metric_name not in self.dashboard_data["trend_data"]:
             self.dashboard_data["trend_data"][metric_name] = []
 
-        trend_point = {
-            "timestamp": datetime.now().isoformat(),
-            "value": value
-        }
+        trend_point = {"timestamp": datetime.now().isoformat(), "value": value}
 
         self.dashboard_data["trend_data"][metric_name].append(trend_point)
 
         # Keep only last 100 data points per metric
-        self.dashboard_data["trend_data"][metric_name] = \
-            self.dashboard_data["trend_data"][metric_name][-100:]
+        self.dashboard_data["trend_data"][metric_name] = self.dashboard_data["trend_data"][metric_name][-100:]
 
-    def calculate_production_readiness_score(self) -> Dict[str, Any]:
+    def calculate_production_readiness_score(self) -> dict[str, Any]:
         """Calculate overall production readiness score"""
         current_metrics = self.dashboard_data["current_metrics"]
         if not current_metrics.get("performance"):
@@ -141,60 +134,73 @@ class PerformanceDashboard:
 
         # Agent Performance (25% weight)
         if performance.get("agent_creation_ms") is not None:
-            agent_score = 100 if performance["agent_creation_ms"] <= 100 else \
-                         max(0, 100 - (performance["agent_creation_ms"] - 100))
+            agent_score = (
+                100
+                if performance["agent_creation_ms"] <= 100
+                else max(0, 100 - (performance["agent_creation_ms"] - 100))
+            )
             components["agent_performance"] = {
                 "score": agent_score,
                 "weight": 0.25,
-                "status": "GOOD" if agent_score >= 80 else "POOR"
+                "status": "GOOD" if agent_score >= 80 else "POOR",
             }
             total_score += agent_score * 0.25
             component_count += 1
 
         # Message Queue Performance (25% weight)
         if performance.get("message_send_ms") is not None:
-            message_score = 100 if performance["message_send_ms"] <= 100 else \
-                           max(0, 100 - (performance["message_send_ms"] - 100))
+            message_score = (
+                100 if performance["message_send_ms"] <= 100 else max(0, 100 - (performance["message_send_ms"] - 100))
+            )
             components["message_performance"] = {
                 "score": message_score,
                 "weight": 0.25,
-                "status": "GOOD" if message_score >= 80 else "POOR"
+                "status": "GOOD" if message_score >= 80 else "POOR",
             }
             total_score += message_score * 0.25
             component_count += 1
 
         # WebSocket Performance (20% weight)
         if performance.get("websocket_connection_ms") is not None:
-            ws_score = 100 if performance["websocket_connection_ms"] <= 1000 else \
-                      max(0, 100 - (performance["websocket_connection_ms"] - 1000) / 20)
+            ws_score = (
+                100
+                if performance["websocket_connection_ms"] <= 1000
+                else max(0, 100 - (performance["websocket_connection_ms"] - 1000) / 20)
+            )
             components["websocket_performance"] = {
                 "score": ws_score,
                 "weight": 0.20,
-                "status": "GOOD" if ws_score >= 80 else "POOR"
+                "status": "GOOD" if ws_score >= 80 else "POOR",
             }
             total_score += ws_score * 0.20
             component_count += 1
 
         # Database Performance (20% weight)
         if performance.get("database_query_ms") is not None:
-            db_score = 100 if performance["database_query_ms"] <= 50 else \
-                      max(0, 100 - (performance["database_query_ms"] - 50) * 2)
+            db_score = (
+                100
+                if performance["database_query_ms"] <= 50
+                else max(0, 100 - (performance["database_query_ms"] - 50) * 2)
+            )
             components["database_performance"] = {
                 "score": db_score,
                 "weight": 0.20,
-                "status": "GOOD" if db_score >= 80 else "POOR"
+                "status": "GOOD" if db_score >= 80 else "POOR",
             }
             total_score += db_score * 0.20
             component_count += 1
 
         # Vision Processing Performance (10% weight)
         if performance.get("vision_chunking_ms") is not None:
-            vision_score = 100 if performance["vision_chunking_ms"] <= 5000 else \
-                          max(0, 100 - (performance["vision_chunking_ms"] - 5000) / 100)
+            vision_score = (
+                100
+                if performance["vision_chunking_ms"] <= 5000
+                else max(0, 100 - (performance["vision_chunking_ms"] - 5000) / 100)
+            )
             components["vision_performance"] = {
                 "score": vision_score,
                 "weight": 0.10,
-                "status": "GOOD" if vision_score >= 80 else "POOR"
+                "status": "GOOD" if vision_score >= 80 else "POOR",
             }
             total_score += vision_score * 0.10
             component_count += 1
@@ -208,7 +214,7 @@ class PerformanceDashboard:
             "cpu_score": cpu_health,
             "memory_score": memory_health,
             "overall_score": (cpu_health + memory_health) / 2,
-            "status": "GOOD" if (cpu_health + memory_health) / 2 >= 80 else "POOR"
+            "status": "GOOD" if (cpu_health + memory_health) / 2 >= 80 else "POOR",
         }
 
         overall_score = total_score if component_count > 0 else 0
@@ -216,7 +222,7 @@ class PerformanceDashboard:
         return {
             "score": round(overall_score, 1),
             "components": components,
-            "status": self._get_status_label(overall_score)
+            "status": self._get_status_label(overall_score),
         }
 
     def _get_status_label(self, score: float) -> str:
@@ -265,18 +271,18 @@ class PerformanceDashboard:
                 <div class="header">
                     <h1>🚀 GiljoAI MCP Performance Dashboard</h1>
                     <p>Production Readiness Monitoring for 100+ Concurrent Agents</p>
-                    <div class="timestamp">Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+                    <div class="timestamp">Last Updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</div>
                 </div>
 
                 <div class="score-card">
                     <h2>Production Readiness Score</h2>
-                    <div class="metric-value status-{'good' if readiness['score'] >= 75 else 'poor'}">
-                        {readiness['score']:.1f}%
+                    <div class="metric-value status-{"good" if readiness["score"] >= 75 else "poor"}">
+                        {readiness["score"]:.1f}%
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: {readiness['score']}%"></div>
+                        <div class="progress-fill" style="width: {readiness["score"]}%"></div>
                     </div>
-                    <p><strong>Status:</strong> <span class="status-{'good' if readiness['status'] == 'PRODUCTION_READY' else 'poor'}">{readiness['status'].replace('_', ' ')}</span></p>
+                    <p><strong>Status:</strong> <span class="status-{"good" if readiness["status"] == "PRODUCTION_READY" else "poor"}">{readiness["status"].replace("_", " ")}</span></p>
                 </div>
 
                 <div class="metric-grid">
@@ -291,7 +297,7 @@ class PerformanceDashboard:
                 ("Message Send", "message_send_ms", "ms", 100),
                 ("WebSocket Connection", "websocket_connection_ms", "ms", 1000),
                 ("Database Query", "database_query_ms", "ms", 50),
-                ("Vision Chunking", "vision_chunking_ms", "ms", 5000)
+                ("Vision Chunking", "vision_chunking_ms", "ms", 5000),
             ]
 
             for name, key, unit, threshold in metrics_to_show:
@@ -313,17 +319,17 @@ class PerformanceDashboard:
             html += f"""
             <div class="metric-card">
                 <div class="metric-label">CPU Usage</div>
-                <div class="metric-value status-{'good' if sys.get('cpu_percent', 0) < 80 else 'poor'}">{sys.get('cpu_percent', 0):.1f}%</div>
+                <div class="metric-value status-{"good" if sys.get("cpu_percent", 0) < 80 else "poor"}">{sys.get("cpu_percent", 0):.1f}%</div>
                 <div>Threshold: 80%</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Memory Usage</div>
-                <div class="metric-value status-{'good' if sys.get('memory_used_percent', 0) < 90 else 'poor'}">{sys.get('memory_used_percent', 0):.1f}%</div>
-                <div>Available: {sys.get('memory_available_gb', 0):.1f}GB</div>
+                <div class="metric-value status-{"good" if sys.get("memory_used_percent", 0) < 90 else "poor"}">{sys.get("memory_used_percent", 0):.1f}%</div>
+                <div>Available: {sys.get("memory_available_gb", 0):.1f}GB</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Process Memory</div>
-                <div class="metric-value status-{'good' if sys.get('process_memory_mb', 0) < 2000 else 'poor'}">{sys.get('process_memory_mb', 0):.1f} MB</div>
+                <div class="metric-value status-{"good" if sys.get("process_memory_mb", 0) < 2000 else "poor"}">{sys.get("process_memory_mb", 0):.1f} MB</div>
                 <div>Threshold: 2000 MB</div>
             </div>
             """
@@ -343,8 +349,8 @@ class PerformanceDashboard:
                 alert_class = "alert-high" if alert.get("severity") == "HIGH" else "alert"
                 html += f"""
                 <div class="{alert_class}">
-                    <strong>{alert.get('type', 'ALERT')}:</strong> {alert.get('message', 'Unknown alert')}
-                    <div class="timestamp">{alert.get('timestamp', 'Unknown time')}</div>
+                    <strong>{alert.get("type", "ALERT")}:</strong> {alert.get("message", "Unknown alert")}
+                    <div class="timestamp">{alert.get("timestamp", "Unknown time")}</div>
                 </div>
                 """
 
@@ -364,9 +370,9 @@ class PerformanceDashboard:
                     status_class = "status-good" if score >= 80 else "status-poor"
                     html += f"""
                     <div class="metric-card">
-                        <div class="metric-label">{component.replace('_', ' ').title()}</div>
+                        <div class="metric-label">{component.replace("_", " ").title()}</div>
                         <div class="metric-value {status_class}">{score:.1f}%</div>
-                        <div>Weight: {data.get('weight', 0)*100:.0f}%</div>
+                        <div>Weight: {data.get("weight", 0) * 100:.0f}%</div>
                     </div>
                     """
 
@@ -392,7 +398,6 @@ class PerformanceDashboard:
         with open(dashboard_file, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        print(f"📊 Performance dashboard saved to: {dashboard_file}")
         return dashboard_file
 
     def export_metrics_json(self, filename: str = "performance_metrics.json"):
@@ -403,52 +408,41 @@ class PerformanceDashboard:
         export_data = {
             "export_timestamp": datetime.now().isoformat(),
             "dashboard_data": self.dashboard_data,
-            "thresholds": self.performance_thresholds
+            "thresholds": self.performance_thresholds,
         }
 
         json_file = Path(filename)
         with open(json_file, "w") as f:
             json.dump(export_data, f, indent=2, default=str)
 
-        print(f"📁 Metrics exported to: {json_file}")
         return json_file
 
     def print_realtime_summary(self):
         """Print real-time summary to console"""
-        readiness = self.calculate_production_readiness_score()
+        self.calculate_production_readiness_score()
         current_metrics = self.dashboard_data["current_metrics"]
 
-        print(f"\n{'='*60}")
-        print("🚀 REAL-TIME PERFORMANCE SUMMARY")
-        print(f"{'='*60}")
-        print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Production Readiness: {readiness['score']:.1f}% ({readiness['status'].replace('_', ' ')})")
 
         if current_metrics.get("performance"):
-            print("\n📈 Performance Metrics:")
             perf = current_metrics["performance"]
 
             for metric, value in perf.items():
                 if value is not None:
-                    threshold = self.performance_thresholds.get(metric, 0)
-                    status = "✅" if value <= threshold else "❌"
-                    print(f"   {metric}: {value:.2f} {status}")
+                    self.performance_thresholds.get(metric, 0)
 
         if current_metrics.get("system"):
-            print("\n💻 System Health:")
-            sys = current_metrics["system"]
-            print(f"   CPU: {sys.get('cpu_percent', 0):.1f}%")
-            print(f"   Memory: {sys.get('memory_used_percent', 0):.1f}%")
-            print(f"   Process Memory: {sys.get('process_memory_mb', 0):.1f}MB")
+            current_metrics["system"]
 
         # Show recent alerts
-        recent_alerts = [a for a in self.dashboard_data["alerts"]
-                        if datetime.fromisoformat(a["timestamp"]) > datetime.now() - timedelta(minutes=5)]
+        recent_alerts = [
+            a
+            for a in self.dashboard_data["alerts"]
+            if datetime.fromisoformat(a["timestamp"]) > datetime.now() - timedelta(minutes=5)
+        ]
 
         if recent_alerts:
-            print(f"\n⚠️  Recent Alerts ({len(recent_alerts)}):")
-            for alert in recent_alerts[-3:]:  # Show last 3
-                print(f"   {alert['message']}")
+            for _alert in recent_alerts[-3:]:  # Show last 3
+                pass
 
 
 class PerformanceMonitor:
@@ -461,7 +455,6 @@ class PerformanceMonitor:
     async def start_monitoring(self, interval_seconds: int = 5):
         """Start continuous performance monitoring"""
         self.monitoring = True
-        print(f"🔄 Starting performance monitoring (interval: {interval_seconds}s)")
 
         while self.monitoring:
             try:
@@ -479,21 +472,19 @@ class PerformanceMonitor:
 
                 await asyncio.sleep(interval_seconds)
 
-            except Exception as e:
-                print(f"Monitoring error: {e}")
+            except Exception:
                 await asyncio.sleep(interval_seconds)
 
     def stop_monitoring(self):
         """Stop performance monitoring"""
         self.monitoring = False
-        print("⏹️  Performance monitoring stopped")
 
 
 # Example usage and testing
 async def demo_dashboard():
     """Demonstrate dashboard functionality"""
     dashboard = PerformanceDashboard()
-    monitor = PerformanceMonitor(dashboard)
+    PerformanceMonitor(dashboard)
 
     # Simulate some performance metrics
     dashboard.update_performance_metric("agent_creation_ms", 85.5)
@@ -507,9 +498,6 @@ async def demo_dashboard():
     dashboard.export_metrics_json()
     dashboard.print_realtime_summary()
 
-    print("\n📊 Dashboard demo completed!")
-    print("   - performance_dashboard.html: Web dashboard")
-    print("   - performance_metrics.json: Raw metrics data")
 
 
 if __name__ == "__main__":

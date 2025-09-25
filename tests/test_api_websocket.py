@@ -15,7 +15,6 @@ async def test_websocket():
 
     try:
         async with websockets.connect(uri) as websocket:
-
             # Send a ping
             await websocket.send(json.dumps({"type": "ping"}))
 

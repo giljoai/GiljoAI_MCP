@@ -37,7 +37,7 @@ class TestAPISecurity:
             "permissions": ["read", "write", "admin"],
             "exp": datetime.utcnow() + timedelta(hours=1),
             "iat": datetime.utcnow(),
-            "iss": "giljo-mcp-test"
+            "iss": "giljo-mcp-test",
         }
 
         # Use a test secret (in production this would be from config)
@@ -54,7 +54,7 @@ class TestAPISecurity:
             "permissions": ["read", "write"],
             "exp": datetime.utcnow() - timedelta(hours=1),  # Expired
             "iat": datetime.utcnow() - timedelta(hours=2),
-            "iss": "giljo-mcp-test"
+            "iss": "giljo-mcp-test",
         }
 
         test_secret = "test_secret_key_for_api_testing"
@@ -92,7 +92,7 @@ class TestAPISecurity:
             "X-Content-Type-Options",
             "X-Frame-Options",
             "X-XSS-Protection",
-            "Strict-Transport-Security"
+            "Strict-Transport-Security",
         ]
 
         # Don't fail if headers aren't present (they may not be implemented)
@@ -108,7 +108,7 @@ class TestAPISecurity:
             "1' OR '1'='1",
             "admin'/*",
             "1; SELECT * FROM users; --",
-            "' UNION SELECT * FROM sensitive_data --"
+            "' UNION SELECT * FROM sensitive_data --",
         ]
 
         for payload in malicious_payloads:
@@ -128,16 +128,12 @@ class TestAPISecurity:
             "javascript:alert('xss')",
             "<img src=x onerror=alert('xss')>",
             "'><script>alert('xss')</script>",
-            "\"><script>alert('xss')</script>"
+            "\"><script>alert('xss')</script>",
         ]
 
         for payload in xss_payloads:
             # Test XSS in project creation
-            project_data = {
-                "name": payload,
-                "mission": "Test mission",
-                "agents": ["test"]
-            }
+            project_data = {"name": payload, "mission": "Test mission", "agents": ["test"]}
 
             response = client.post("/api/v1/projects/", json=project_data)
             # Should handle malicious input gracefully
@@ -152,22 +148,11 @@ class TestAPISecurity:
 
     def test_command_injection_protection(self, client):
         """Test protection against command injection"""
-        command_payloads = [
-            "; ls -la",
-            "| cat /etc/passwd",
-            "&& rm -rf /",
-            "`whoami`",
-            "$(id)",
-            "; cat /etc/shadow"
-        ]
+        command_payloads = ["; ls -la", "| cat /etc/passwd", "&& rm -rf /", "`whoami`", "$(id)", "; cat /etc/shadow"]
 
         for payload in command_payloads:
             # Test in various string fields
-            test_data = {
-                "name": f"test{payload}",
-                "mission": f"mission{payload}",
-                "agents": [f"agent{payload}"]
-            }
+            test_data = {"name": f"test{payload}", "mission": f"mission{payload}", "agents": [f"agent{payload}"]}
 
             response = client.post("/api/v1/projects/", json=test_data)
             # Should not execute commands and should handle gracefully
@@ -178,12 +163,7 @@ class TestAPISecurity:
     def test_unauthenticated_access(self, client):
         """Test access without authentication"""
         # Public endpoints should work without auth
-        public_endpoints = [
-            "/",
-            "/health",
-            "/docs",
-            "/redoc"
-        ]
+        public_endpoints = ["/", "/health", "/docs", "/redoc"]
 
         for endpoint in public_endpoints:
             response = client.get(endpoint)
@@ -197,7 +177,7 @@ class TestAPISecurity:
             "/api/v1/agents/",
             "/api/v1/messages/send",
             "/api/v1/tasks/",
-            "/api/v1/templates/"
+            "/api/v1/templates/",
         ]
 
         for endpoint in protected_endpoints:
@@ -251,17 +231,9 @@ class TestAPISecurity:
     def test_tenant_isolation(self, client):
         """Test that tenant isolation is enforced"""
         # Create projects with different tenant contexts
-        tenant1_data = {
-            "name": "Tenant 1 Project",
-            "mission": "Project for tenant 1",
-            "agents": ["agent1"]
-        }
+        tenant1_data = {"name": "Tenant 1 Project", "mission": "Project for tenant 1", "agents": ["agent1"]}
 
-        tenant2_data = {
-            "name": "Tenant 2 Project",
-            "mission": "Project for tenant 2",
-            "agents": ["agent2"]
-        }
+        tenant2_data = {"name": "Tenant 2 Project", "mission": "Project for tenant 2", "agents": ["agent2"]}
 
         # Create projects (may fail if auth not implemented)
         response1 = client.post("/api/v1/projects/", json=tenant1_data)
@@ -282,7 +254,7 @@ class TestAPISecurity:
             (read_only_token, "GET", "/api/v1/projects/", [200, 400, 401, 500]),
             (read_only_token, "POST", "/api/v1/projects/", [200, 400, 401, 403, 500]),
             (write_token, "POST", "/api/v1/projects/", [200, 400, 401, 500]),
-            (admin_token, "DELETE", "/api/v1/projects/test", [200, 400, 401, 404, 500])
+            (admin_token, "DELETE", "/api/v1/projects/test", [200, 400, 401, 404, 500]),
         ]
 
         for token, method, endpoint, expected_codes in test_cases:
@@ -305,7 +277,7 @@ class TestAPISecurity:
             "permissions": permissions,
             "exp": datetime.utcnow() + timedelta(hours=1),
             "iat": datetime.utcnow(),
-            "iss": "giljo-mcp-test"
+            "iss": "giljo-mcp-test",
         }
 
         test_secret = "test_secret_key_for_api_testing"
@@ -318,7 +290,7 @@ class TestAPISecurity:
         # Make multiple rapid requests to test rate limiting
         responses = []
 
-        for i in range(20):  # Make 20 rapid requests
+        for _i in range(20):  # Make 20 rapid requests
             response = client.get("/health")
             responses.append(response.status_code)
 
@@ -379,7 +351,7 @@ class TestAPISecurity:
         large_project_data = {
             "name": "Test Project",
             "mission": large_content,  # Very large mission
-            "agents": ["agent1"]
+            "agents": ["agent1"],
         }
 
         response = client.post("/api/v1/projects/", json=large_project_data)
@@ -391,7 +363,7 @@ class TestAPISecurity:
         special_chars_data = {
             "name": "Test 🚀 Project with émojis and ñ characters",
             "mission": "Mission with special chars: \u0000\u001f\u007f\uffff",
-            "agents": ["agënt_1", "агент_2", "エージェント"]
+            "agents": ["agënt_1", "агент_2", "エージェント"],
         }
 
         response = client.post("/api/v1/projects/", json=special_chars_data)
@@ -400,18 +372,10 @@ class TestAPISecurity:
 
     def test_null_byte_injection(self, client):
         """Test protection against null byte injection"""
-        null_byte_payloads = [
-            "test\x00.txt",
-            "project\x00name",
-            "mission\x00\x00content"
-        ]
+        null_byte_payloads = ["test\x00.txt", "project\x00name", "mission\x00\x00content"]
 
         for payload in null_byte_payloads:
-            test_data = {
-                "name": payload,
-                "mission": "Test mission",
-                "agents": ["agent1"]
-            }
+            test_data = {"name": payload, "mission": "Test mission", "agents": ["agent1"]}
 
             response = client.post("/api/v1/projects/", json=test_data)
             # Should handle null bytes safely
@@ -459,11 +423,7 @@ class TestAPISecurity:
     def test_deprecated_endpoint_access(self, client):
         """Test access to deprecated endpoints"""
         # Test old-style endpoints that might exist
-        old_endpoints = [
-            "/projects/",
-            "/agents/",
-            "/messages/"
-        ]
+        old_endpoints = ["/projects/", "/agents/", "/messages/"]
 
         for endpoint in old_endpoints:
             response = client.get(endpoint)
@@ -484,7 +444,7 @@ class TestAPISecurity:
             "/api/v1/agents/",
             "/api/v1/messages/",
             "/api/v1/tasks/",
-            "/api/v1/templates/"
+            "/api/v1/templates/",
         ]
 
         for endpoint in test_endpoints:
@@ -496,9 +456,16 @@ class TestAPISecurity:
                     # Check if error reveals sensitive information
                     error_text = response.text.lower()
                     sensitive_keywords = [
-                        "password", "secret", "key", "token",
-                        "stacktrace", "exception", "database",
-                        "file path", "directory", "config"
+                        "password",
+                        "secret",
+                        "key",
+                        "token",
+                        "stacktrace",
+                        "exception",
+                        "database",
+                        "file path",
+                        "directory",
+                        "config",
                     ]
 
                     for keyword in sensitive_keywords:
@@ -514,9 +481,8 @@ class TestAPISecurity:
 
         # Log security issues but don't fail the test
         if security_issues:
-            print(f"\\nSecurity scan found {len(security_issues)} potential issues:")
-            for issue in security_issues[:10]:  # Limit output
-                print(f"  - {issue}")
+            for _issue in security_issues[:10]:  # Limit output
+                pass
 
         # Test passes if system remains stable during security scan
         assert True

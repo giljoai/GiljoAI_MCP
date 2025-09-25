@@ -43,7 +43,7 @@ class TestMessageQueueLoad:
             name="Message Queue Load Test",
             mission="Test message queue with 100+ agents",
             status="active",
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
         db_session.add(project)
 
@@ -51,11 +51,7 @@ class TestMessageQueueLoad:
         agents = []
         for i in range(100):
             agent = Agent(
-                id=str(uuid.uuid4()),
-                project_id=project_id,
-                name=f"queue_agent_{i}",
-                role="worker",
-                status="active"
+                id=str(uuid.uuid4()), project_id=project_id, name=f"queue_agent_{i}", role="worker", status="active"
             )
             agents.append(agent)
             db_session.add(agent)
@@ -75,26 +71,16 @@ class TestMessageQueueLoad:
                 to_agents=[agents[0].name],
                 content="Performance test message",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
 
         # Benchmark single message send
-        result = await benchmark.benchmark_async(
-            "single_message_send",
-            send_single_message,
-            iterations=100,
-            warmup=10
-        )
+        result = await benchmark.benchmark_async("single_message_send", send_single_message, iterations=100, warmup=10)
 
         # Validate requirements
         assert result.avg_time < 100.0, f"Message send too slow: {result.avg_time:.2f}ms > 100ms"
         assert result.success_rate > 99.0, f"Message success rate too low: {result.success_rate:.1f}%"
 
-        print("\n✅ Single Message Send Performance:")
-        print(f"   Average: {result.avg_time:.2f}ms")
-        print(f"   P95: {result.p95:.2f}ms")
-        print(f"   P99: {result.p99:.2f}ms")
-        print(f"   Success Rate: {result.success_rate:.1f}%")
 
     async def test_message_retrieval_latency(self, message_tools, test_project_with_agents):
         """Test message retrieval performance"""
@@ -108,31 +94,19 @@ class TestMessageQueueLoad:
                 to_agents=[agents[0].name],
                 content=f"Test message {i}",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
 
         benchmark = PerformanceBenchmark(target_time_ms=50.0)
 
         async def get_messages():
-            return await message_tools.get_messages(
-                agent_name=agents[0].name,
-                project_id=project.id
-            )
+            return await message_tools.get_messages(agent_name=agents[0].name, project_id=project.id)
 
         # Benchmark message retrieval
-        result = await benchmark.benchmark_async(
-            "message_retrieval",
-            get_messages,
-            iterations=100,
-            warmup=10
-        )
+        result = await benchmark.benchmark_async("message_retrieval", get_messages, iterations=100, warmup=10)
 
         assert result.avg_time < 50.0, f"Message retrieval too slow: {result.avg_time:.2f}ms > 50ms"
 
-        print("\n✅ Message Retrieval Performance:")
-        print(f"   Average: {result.avg_time:.2f}ms")
-        print(f"   P95: {result.p95:.2f}ms")
-        print(f"   Success Rate: {result.success_rate:.1f}%")
 
     async def test_broadcast_to_100_agents(self, message_tools, test_project_with_agents):
         """Test broadcast message to 100 agents"""
@@ -145,14 +119,11 @@ class TestMessageQueueLoad:
             project_id=project.id,
             content="Broadcast performance test message",
             from_agent="orchestrator",
-            priority="normal"
+            priority="normal",
         )
 
         broadcast_time = (time.perf_counter() - start_time) * 1000
 
-        print("\n✅ Broadcast to 100 Agents:")
-        print(f"   Total Time: {broadcast_time:.2f}ms")
-        print(f"   Time per Agent: {broadcast_time/100:.2f}ms")
 
         # Validate broadcast performance
         assert broadcast_time < 5000, f"Broadcast too slow: {broadcast_time:.2f}ms > 5s"
@@ -160,14 +131,10 @@ class TestMessageQueueLoad:
         # Verify all agents received the message
         received_count = 0
         for agent in agents[:10]:  # Check first 10 agents as sample
-            messages = await message_tools.get_messages(
-                agent_name=agent.name,
-                project_id=project.id
-            )
+            messages = await message_tools.get_messages(agent_name=agent.name, project_id=project.id)
             if messages:
                 received_count += 1
 
-        print(f"   Sample Delivery: {received_count}/10 agents received message")
 
     @pytest.mark.slow
     async def test_message_saturation_1000_messages(self, message_tools, test_project_with_agents):
@@ -186,7 +153,7 @@ class TestMessageQueueLoad:
                 to_agents=[agent_target.name],
                 content=f"Saturation test message {i}",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
             tasks.append(task)
 
@@ -202,13 +169,6 @@ class TestMessageQueueLoad:
         messages_per_second = 1000 / (total_time / 1000)
         messages_per_minute = messages_per_second * 60
 
-        print("\n🚀 Message Saturation Test (1000 messages):")
-        print(f"   Total Time: {total_time:.2f}ms ({total_time/1000:.2f}s)")
-        print(f"   Success Rate: {success_rate:.1f}%")
-        print(f"   Successful: {len(successful_sends)}")
-        print(f"   Failed: {len(failed_sends)}")
-        print(f"   Messages/second: {messages_per_second:.1f}")
-        print(f"   Messages/minute: {messages_per_minute:.0f}")
 
         # PRODUCTION REQUIREMENTS VALIDATION
         assert success_rate >= 95.0, (
@@ -227,7 +187,6 @@ class TestMessageQueueLoad:
             f"This indicates severe performance bottlenecks in message processing."
         )
 
-        print("   ✅ MEETS PRODUCTION THROUGHPUT REQUIREMENTS")
 
     @pytest.mark.stress
     async def test_message_saturation_10000_stress_test(self, message_tools, test_project_with_agents):
@@ -253,7 +212,7 @@ class TestMessageQueueLoad:
                     to_agents=[agent_target.name],
                     content=f"Stress test message {i}",
                     message_type="direct",
-                    priority="normal"
+                    priority="normal",
                 )
                 batch_tasks.append(task)
 
@@ -268,24 +227,17 @@ class TestMessageQueueLoad:
 
         # Analyze stress test results
         successful_sends = [r for r in all_results if not isinstance(r, Exception)]
-        failed_sends = [r for r in all_results if isinstance(r, Exception)]
+        [r for r in all_results if isinstance(r, Exception)]
         success_rate = len(successful_sends) / len(all_results) * 100
 
         messages_per_second = 10000 / (total_time / 1000)
-        messages_per_minute = messages_per_second * 60
+        messages_per_second * 60
 
-        print("\n🔥 STRESS TEST: 10,000 Messages")
-        print(f"   Total Time: {total_time:.2f}ms ({total_time/1000:.2f}s)")
-        print(f"   Success Rate: {success_rate:.1f}%")
-        print(f"   Successful: {len(successful_sends)}")
-        print(f"   Failed: {len(failed_sends)}")
-        print(f"   Messages/second: {messages_per_second:.1f}")
-        print(f"   Messages/minute: {messages_per_minute:.0f}")
 
         if success_rate < 90:
-            print("   ⚠️  System shows stress at 10,000 messages")
+            pass
         else:
-            print("   ✅ System handles 10,000 messages well - excellent capacity")
+            pass
 
     async def test_message_acknowledgment_performance(self, message_tools, test_project_with_agents):
         """Test message acknowledgment performance under load"""
@@ -300,7 +252,7 @@ class TestMessageQueueLoad:
                 to_agents=[agents[i % 10].name],  # Use first 10 agents
                 content=f"Ack test message {i}",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
             message_ids.append(message_id)
 
@@ -310,10 +262,7 @@ class TestMessageQueueLoad:
 
         for i, message_id in enumerate(message_ids):
             agent_name = agents[i % 10].name
-            task = message_tools.acknowledge_message(
-                message_id=message_id,
-                agent_name=agent_name
-            )
+            task = message_tools.acknowledge_message(message_id=message_id, agent_name=agent_name)
             ack_tasks.append(task)
 
         ack_results = await asyncio.gather(*ack_tasks, return_exceptions=True)
@@ -322,11 +271,6 @@ class TestMessageQueueLoad:
         successful_acks = [r for r in ack_results if not isinstance(r, Exception)]
         success_rate = len(successful_acks) / len(ack_results) * 100
 
-        print("\n✅ Message Acknowledgment Performance:")
-        print(f"   Messages Acknowledged: {len(message_ids)}")
-        print(f"   Total Time: {ack_time:.2f}ms")
-        print(f"   Avg per Ack: {ack_time/len(message_ids):.2f}ms")
-        print(f"   Success Rate: {success_rate:.1f}%")
 
         # Validate acknowledgment performance
         avg_ack_time = ack_time / len(message_ids)
@@ -350,7 +294,7 @@ class TestMessageQueueLoad:
                 to_agents=[agents[i % 10].name],
                 content=f"Normal priority message {i}",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
             tasks.append(task1)
 
@@ -361,7 +305,7 @@ class TestMessageQueueLoad:
                 to_agents=[agents[i % 10].name],
                 content=f"High priority message {i}",
                 message_type="direct",
-                priority="high"
+                priority="high",
             )
             tasks.append(task2)
 
@@ -371,12 +315,6 @@ class TestMessageQueueLoad:
         successful_sends = [r for r in results if not isinstance(r, Exception)]
         success_rate = len(successful_sends) / len(results) * 100
 
-        print("\n✅ Priority Message Handling:")
-        print(f"   Total Messages: {len(tasks)}")
-        print("   Normal Priority: 50")
-        print("   High Priority: 50")
-        print(f"   Total Time: {total_time:.2f}ms")
-        print(f"   Success Rate: {success_rate:.1f}%")
 
         assert success_rate > 95, f"Priority message success rate too low: {success_rate:.1f}%"
         assert total_time < 10000, f"Priority message handling too slow: {total_time:.2f}ms > 10s"
@@ -386,6 +324,7 @@ class TestMessageQueueLoad:
         project, agents = test_project_with_agents
 
         import psutil
+
         process = psutil.Process()
 
         # Baseline memory
@@ -401,23 +340,17 @@ class TestMessageQueueLoad:
                 to_agents=[agents[i % 100].name],
                 content=f"Memory test {i}: {large_content}",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
 
             # Check memory every 100 messages
             if i % 100 == 0:
                 current_memory = process.memory_info().rss / (1024 * 1024)
-                memory_growth = current_memory - baseline_memory
-                print(f"   Messages {i}: Memory growth {memory_growth:.1f}MB")
+                current_memory - baseline_memory
 
         final_memory = process.memory_info().rss / (1024 * 1024)
         total_memory_growth = final_memory - baseline_memory
 
-        print("\n✅ Message Queue Memory Usage:")
-        print(f"   Baseline Memory: {baseline_memory:.1f}MB")
-        print(f"   Final Memory: {final_memory:.1f}MB")
-        print(f"   Total Growth: {total_memory_growth:.1f}MB")
-        print(f"   Growth per Message: {total_memory_growth/1000*1024:.1f}KB")
 
         # Validate memory usage is reasonable
         assert total_memory_growth < 500, (

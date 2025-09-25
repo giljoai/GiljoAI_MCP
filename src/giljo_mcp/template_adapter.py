@@ -192,7 +192,9 @@ Your role is to review code and ensure quality."""
                     }
                 )
 
-            template_result = await self.adapter.get_template(role=role.lower(), variables=variables, augmentations=augmentations)
+            template_result = await self.adapter.get_template(
+                role=role.lower(), variables=variables, augmentations=augmentations
+            )
             if template_result is not None:
                 return template_result
         # Fallback to hardcoded templates

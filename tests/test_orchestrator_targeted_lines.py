@@ -3,12 +3,14 @@ Target specific uncovered lines for 90%+ coverage breakthrough.
 Focuses on the easier lines to cover: 180, 223, 229-231, 258, 567-570, 593-596.
 """
 
+from unittest.mock import patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import patch
+
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.orchestrator import ProjectOrchestrator, AgentRole
 from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 @pytest_asyncio.fixture
@@ -35,7 +37,7 @@ class TestOrchestratorTargetedLines:
         """Target line 180: 'Can only pause active projects' error."""
         # Create project but keep it in PLANNING state (don't activate)
         project = await orchestrator.create_project(name="Line 180 Test", mission="Test line 180")
-        
+
         # Project is in PLANNING state, try to pause it (should hit line 180)
         with pytest.raises(ValueError, match="Can only pause active projects"):
             await orchestrator.pause_project(project.id)
@@ -45,7 +47,7 @@ class TestOrchestratorTargetedLines:
         # Create and activate project (but don't complete it)
         project = await orchestrator.create_project(name="Line 223 Test", mission="Test line 223")
         await orchestrator.activate_project(project.id)
-        
+
         # Try to archive active project (should hit line 223)
         with pytest.raises(ValueError, match="Can only archive completed projects"):
             await orchestrator.archive_project(project.id)
@@ -56,7 +58,7 @@ class TestOrchestratorTargetedLines:
         project = await orchestrator.create_project(name="Lines 229-231 Test", mission="Test lines 229-231")
         await orchestrator.activate_project(project.id)
         await orchestrator.pause_project(project.id)
-        
+
         # Resume project (should hit lines 229-231)
         resumed_project = await orchestrator.resume_project(project.id)
         assert resumed_project.status == ProjectStatus.ACTIVE.value
@@ -66,7 +68,7 @@ class TestOrchestratorTargetedLines:
         # Create and activate project
         project = await orchestrator.create_project(name="Line 258 Test", mission="Test line 258")
         await orchestrator.activate_project(project.id)
-        
+
         # Complete project without summary (should hit line 258)
         completed_project = await orchestrator.complete_project(project.id, summary=None)
         assert completed_project.status == ProjectStatus.COMPLETED.value
@@ -79,11 +81,11 @@ class TestOrchestratorTargetedLines:
         project = await orchestrator.create_project(name="Lines 567-570 Test", mission="Test lines 567-570")
         await orchestrator.activate_project(project.id)
         agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
-        
+
         # Update context usage (should hit lines 567-570 where it updates project total_context_used)
         updated_agent = await orchestrator.update_context_usage(agent.id, 15000)
         assert updated_agent.context_used == 15000
-        
+
         # Verify project's total context was also updated
         projects = await orchestrator.get_active_projects()
         project_updated = next(p for p in projects if p.id == project.id)
@@ -92,23 +94,19 @@ class TestOrchestratorTargetedLines:
     async def test_lines_593_596_get_active_projects_with_tenant(self, orchestrator):
         """Target lines 593-596: get_active_projects with specific tenant."""
         tenant_key = "specific-tenant-593-596"
-        
+
         # Create and activate project for specific tenant
         project1 = await orchestrator.create_project(
-            name="Lines 593-596 Test 1", 
-            mission="Test lines 593-596",
-            tenant_key=tenant_key
+            name="Lines 593-596 Test 1", mission="Test lines 593-596", tenant_key=tenant_key
         )
         await orchestrator.activate_project(project1.id)
-        
+
         # Create project for different tenant
         project2 = await orchestrator.create_project(
-            name="Lines 593-596 Test 2", 
-            mission="Test lines 593-596",
-            tenant_key="different-tenant"
+            name="Lines 593-596 Test 2", mission="Test lines 593-596", tenant_key="different-tenant"
         )
         await orchestrator.activate_project(project2.id)
-        
+
         # Get active projects for specific tenant (should hit lines 593-596)
         tenant_projects = await orchestrator.get_active_projects(tenant_key)
         assert len(tenant_projects) == 1
@@ -121,12 +119,12 @@ class TestOrchestratorTargetedLines:
         await orchestrator.activate_project(project1.id)
         completed = await orchestrator.complete_project(project1.id, summary="")
         assert completed.status == ProjectStatus.COMPLETED.value
-        
+
         # Test pause project that is already paused (edge case)
         project2 = await orchestrator.create_project(name="Already Paused", mission="Test already paused")
         await orchestrator.activate_project(project2.id)
         await orchestrator.pause_project(project2.id)
-        
+
         # Try to pause already paused project
         with pytest.raises(ValueError, match="Can only pause active projects"):
             await orchestrator.pause_project(project2.id)
@@ -136,14 +134,14 @@ class TestOrchestratorTargetedLines:
         # Create project and multiple agents
         project = await orchestrator.create_project(name="Context Edge", mission="Test context edge cases")
         await orchestrator.activate_project(project.id)
-        
+
         agent1 = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
         agent2 = await orchestrator.spawn_agent(project.id, AgentRole.IMPLEMENTER)
-        
+
         # Update context for multiple agents to ensure project total is calculated correctly
         await orchestrator.update_context_usage(agent1.id, 10000)
         await orchestrator.update_context_usage(agent2.id, 8000)
-        
+
         # Verify total context calculation
         projects = await orchestrator.get_active_projects()
         project_updated = next(p for p in projects if p.id == project.id)
@@ -154,13 +152,13 @@ class TestOrchestratorTargetedLines:
         # Test completing -> archiving workflow
         project = await orchestrator.create_project(name="State Transitions", mission="Test state transitions")
         await orchestrator.activate_project(project.id)
-        
+
         # Complete with detailed summary
         summary = "Detailed completion summary for testing"
         completed = await orchestrator.complete_project(project.id, summary=summary)
         assert completed.status == ProjectStatus.COMPLETED.value
         assert completed.meta_data["completion_summary"] == summary
-        
+
         # Archive completed project
         archived = await orchestrator.archive_project(project.id)
         assert archived.status == ProjectStatus.ARCHIVED.value

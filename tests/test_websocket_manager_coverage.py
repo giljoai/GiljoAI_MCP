@@ -35,7 +35,7 @@ class TestWebSocketManagerCoverage:
             "status": "active",
             "mission": "Test mission",
             "context_used": 1500,
-            "context_budget": 5000
+            "context_budget": 5000,
         }
 
         ws_manager.notify_entity_update = AsyncMock()
@@ -85,8 +85,7 @@ class TestWebSocketManagerCoverage:
         ws_manager.notify_entity_update = AsyncMock()
 
         await ws_manager.broadcast_sub_agent_spawned(
-            interaction_id, parent_agent_name, sub_agent_name,
-            project_id, mission, start_time, meta_data
+            interaction_id, parent_agent_name, sub_agent_name, project_id, mission, start_time, meta_data
         )
 
         # Should call notify_entity_update twice (project + parent agent)
@@ -124,9 +123,16 @@ class TestWebSocketManagerCoverage:
         ws_manager.notify_entity_update = AsyncMock()
 
         await ws_manager.broadcast_sub_agent_completed(
-            interaction_id, sub_agent_name, parent_agent_name,
-            project_id, status, duration_seconds, tokens_used,
-            result, None, meta_data
+            interaction_id,
+            sub_agent_name,
+            parent_agent_name,
+            project_id,
+            status,
+            duration_seconds,
+            tokens_used,
+            result,
+            None,
+            meta_data,
         )
 
         # Should call notify_entity_update twice
@@ -154,9 +160,16 @@ class TestWebSocketManagerCoverage:
         ws_manager.notify_entity_update = AsyncMock()
 
         await ws_manager.broadcast_sub_agent_completed(
-            interaction_id, sub_agent_name, parent_agent_name,
-            project_id, status, duration_seconds, None,
-            None, error_message, None
+            interaction_id,
+            sub_agent_name,
+            parent_agent_name,
+            project_id,
+            status,
+            duration_seconds,
+            None,
+            None,
+            error_message,
+            None,
         )
 
         # Verify error event type
@@ -183,23 +196,18 @@ class TestWebSocketManagerCoverage:
         client_b = AsyncMock()
         client_other = AsyncMock()
 
-        ws_manager.active_connections = {
-            "client_a": client_a,
-            "client_b": client_b,
-            "client_other": client_other
-        }
+        ws_manager.active_connections = {"client_a": client_a, "client_b": client_b, "client_other": client_other}
 
         ws_manager.auth_contexts = {
             "client_a": {"tenant_key": "tenant_a"},
             "client_b": {"tenant_key": "tenant_a"},
-            "client_other": {"tenant_key": "tenant_b"}  # Different tenant
+            "client_other": {"tenant_key": "tenant_b"},  # Different tenant
         }
 
         ws_manager.notify_entity_update = AsyncMock()
 
         await ws_manager.broadcast_agent_spawn(
-            agent_id, agent_name, parent_agent_id, project_id,
-            tenant_key, role, mission, initial_status, meta_data
+            agent_id, agent_name, parent_agent_id, project_id, tenant_key, role, mission, initial_status, meta_data
         )
 
         # Only clients with matching tenant should receive broadcast
@@ -236,9 +244,15 @@ class TestWebSocketManagerCoverage:
         ws_manager.notify_entity_update = AsyncMock()
 
         await ws_manager.broadcast_agent_complete(
-            agent_id, agent_name, project_id, tenant_key,
-            duration_seconds, final_status, context_usage,
-            completion_reason, meta_data
+            agent_id,
+            agent_name,
+            project_id,
+            tenant_key,
+            duration_seconds,
+            final_status,
+            context_usage,
+            completion_reason,
+            meta_data,
         )
 
         # Verify broadcast to matching tenant
@@ -265,9 +279,7 @@ class TestWebSocketManagerCoverage:
         ws_manager.auth_contexts = {"client": {"tenant_key": "tenant_a"}}
         ws_manager.notify_entity_update = AsyncMock()
 
-        await ws_manager.broadcast_agent_spawn(
-            agent_id, agent_name, None, project_id, tenant_key, role
-        )
+        await ws_manager.broadcast_agent_spawn(agent_id, agent_name, None, project_id, tenant_key, role)
 
         # Should only notify project (no parent agent)
         ws_manager.notify_entity_update.assert_called_once_with("project", project_id, ANY)
@@ -279,14 +291,9 @@ class TestWebSocketManagerCoverage:
         client_2.send_json.side_effect = Exception("Connection failed")
 
         ws_manager.active_connections = {"client_1": client_1, "client_2": client_2}
-        ws_manager.auth_contexts = {
-            "client_1": {"tenant_key": "tenant_a"},
-            "client_2": {"tenant_key": "tenant_a"}
-        }
+        ws_manager.auth_contexts = {"client_1": {"tenant_key": "tenant_a"}, "client_2": {"tenant_key": "tenant_a"}}
 
-        await ws_manager.broadcast_agent_spawn(
-            "agent_001", "test_agent", None, "proj_001", "tenant_a", "worker"
-        )
+        await ws_manager.broadcast_agent_spawn("agent_001", "test_agent", None, "proj_001", "tenant_a", "worker")
 
         # Working client should receive message
         client_1.send_json.assert_called_once()
@@ -297,9 +304,7 @@ class TestWebSocketManagerCoverage:
         ws_manager.notify_entity_update = AsyncMock()
 
         # Should not raise exception with empty connections
-        await ws_manager.broadcast_agent_spawn(
-            "agent_001", "test_agent", None, "proj_001", "tenant_a", "worker"
-        )
+        await ws_manager.broadcast_agent_spawn("agent_001", "test_agent", None, "proj_001", "tenant_a", "worker")
 
         # Entity notifications should still work
         ws_manager.notify_entity_update.assert_called_once()

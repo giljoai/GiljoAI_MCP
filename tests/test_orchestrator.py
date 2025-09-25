@@ -137,7 +137,8 @@ class TestAgentManagement:
 
         assert agent.name == "analyzer"
         assert agent.role == "analyzer"
-        assert "Analyzer Agent" in agent.mission and "Test Project" in agent.mission
+        assert "Analyzer Agent" in agent.mission
+        assert "Test Project" in agent.mission
         assert agent.status == "active"
         # Agent model doesn't have context_budget field
 
@@ -336,7 +337,7 @@ class TestMultiProjectSupport:
         projects = []
         for i in range(3):
             project = await orchestrator.create_project(
-                name=f"Project {i+1}", mission=f"Mission {i+1}", tenant_key=tenant_key
+                name=f"Project {i + 1}", mission=f"Mission {i + 1}", tenant_key=tenant_key
             )
             await orchestrator.activate_project(project.id)
             projects.append(project)
@@ -356,7 +357,7 @@ class TestMultiProjectSupport:
         # Create projects with context usage
         for i in range(3):
             project = await orchestrator.create_project(
-                name=f"Project {i+1}", mission=f"Mission {i+1}", tenant_key=tenant_key, context_budget=100000
+                name=f"Project {i + 1}", mission=f"Mission {i + 1}", tenant_key=tenant_key, context_budget=100000
             )
             if i < 2:  # Activate first 2
                 await orchestrator.activate_project(project.id)
@@ -383,13 +384,15 @@ class TestMultiProjectSupport:
         # Create max concurrent projects
         for i in range(3):
             project = await orchestrator.create_project(
-                name=f"Project {i+1}", mission=f"Mission {i+1}", tenant_key=tenant_key
+                name=f"Project {i + 1}", mission=f"Mission {i + 1}", tenant_key=tenant_key
             )
             await orchestrator.activate_project(project.id)
 
         # Check allocation with limit reached
         allocation = await orchestrator.allocate_resources(
-            tenant_key, max_concurrent_projects=3, total_context_budget=500000  # Same as created
+            tenant_key,
+            max_concurrent_projects=3,
+            total_context_budget=500000,  # Same as created
         )
 
         assert allocation["can_create_new"] is False

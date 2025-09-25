@@ -299,6 +299,7 @@ class TestConfigManagerEdgeCases:
                 except PermissionError:
                     # On Windows, add a small delay and retry
                     import time
+
                     time.sleep(0.1)
                     try:
                         os.unlink(temp_file)

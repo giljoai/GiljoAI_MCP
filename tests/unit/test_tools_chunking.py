@@ -12,13 +12,9 @@ Tests the EnhancedChunker class and its methods:
 - Multi-document processing
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from src.giljo_mcp.tools.chunking import EnhancedChunker
-from tests.utils.tools_helpers import FileSystemTestHelpers
 
 
 class TestEnhancedChunker:
@@ -34,7 +30,7 @@ class TestEnhancedChunker:
 
         assert chunker.max_tokens == 20000
         assert chunker.overlap_tokens == 500
-        assert hasattr(chunker, 'boundary_patterns')
+        assert hasattr(chunker, "boundary_patterns")
 
     def test_chunker_initialization_custom(self):
         """Test EnhancedChunker initialization with custom parameters"""
@@ -222,7 +218,7 @@ Concluding remarks here.
         documents = [
             {"name": "doc1.md", "content": "First document content with substantial text."},
             {"name": "doc2.md", "content": "Second document with different content and information."},
-            {"name": "doc3.md", "content": "Third document containing more detailed technical specifications."}
+            {"name": "doc3.md", "content": "Third document containing more detailed technical specifications."},
         ]
 
         chunks = self.chunker.chunk_multiple_documents(documents)
@@ -240,7 +236,7 @@ Concluding remarks here.
         large_content = "Substantial content section. " * 200
         documents = [
             {"name": "large1.md", "content": f"# Large Doc 1\n\n{large_content}"},
-            {"name": "large2.md", "content": f"# Large Doc 2\n\n{large_content}"}
+            {"name": "large2.md", "content": f"# Large Doc 2\n\n{large_content}"},
         ]
 
         chunker = EnhancedChunker(max_tokens=1000)
@@ -329,6 +325,7 @@ Testing UTF-8 encoding: café, naïve, résumé.
         large_content = "Performance test content. " * 5000
 
         import time
+
         start_time = time.time()
 
         chunks = self.chunker.chunk_content(large_content, "performance.md")
@@ -387,9 +384,9 @@ Content for section 2.
     def test_chunker_with_custom_patterns(self):
         """Test chunker with custom boundary patterns"""
         custom_patterns = [
-            r'^---\s*$',  # Horizontal rule
-            r'^\*\*\*\s*$',  # Triple asterisk
-            r'^Chapter \d+',  # Chapter headers
+            r"^---\s*$",  # Horizontal rule
+            r"^\*\*\*\s*$",  # Triple asterisk
+            r"^Chapter \d+",  # Chapter headers
         ]
 
         chunker = EnhancedChunker(boundary_patterns=custom_patterns)
@@ -412,7 +409,7 @@ Final content here.
         chunks = chunker.chunk_content(content, "custom.md")
 
         # Should detect custom boundaries
-        boundary_types = [chunk["boundary_type"] for chunk in chunks]
+        [chunk["boundary_type"] for chunk in chunks]
         assert len(chunks) > 1
 
     def test_chunk_content_json_document(self):

@@ -120,7 +120,6 @@ async def test_tool_registration():
         # Test help() tool specifically
 
         if "help" in registered_tools:
-
             try:
                 # Call the help tool
                 help_func = registered_tools["help"].func

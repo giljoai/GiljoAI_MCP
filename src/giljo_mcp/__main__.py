@@ -17,8 +17,8 @@ if str(src_dir) not in sys.path:
 from giljo_mcp.auth import AuthManager
 from giljo_mcp.config_manager import DeploymentMode, get_config
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.server import create_server
 from giljo_mcp.lock_manager import get_lock_manager
+from giljo_mcp.server import create_server
 
 
 # Configure logging

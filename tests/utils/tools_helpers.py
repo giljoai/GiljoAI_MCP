@@ -6,12 +6,12 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any, Optional
+from unittest.mock import MagicMock
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Agent, Message, Project, Task, Vision, ContextIndex, Configuration
+from src.giljo_mcp.models import Agent, Configuration, ContextIndex, Message, Project, Task, Vision
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -29,7 +29,7 @@ class ToolsTestHelper:
             tenant_key=TenantManager.generate_tenant_key(name),
             context_budget=100000,
             context_used=0,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(project)
         await session.commit()
@@ -46,7 +46,7 @@ class ToolsTestHelper:
             status="active",
             project_id=project_id,
             tenant_key=TenantManager.generate_tenant_key(name),
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(agent)
         await session.commit()
@@ -59,7 +59,7 @@ class ToolsTestHelper:
         project_id: str,
         from_agent: str = "orchestrator",
         to_agent: str = "test_agent",
-        content: str = "Test message"
+        content: str = "Test message",
     ) -> Message:
         """Create a test message in the database"""
         message = Message(
@@ -72,7 +72,7 @@ class ToolsTestHelper:
             status="pending",
             project_id=project_id,
             tenant_key=TenantManager.generate_tenant_key(),
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(message)
         await session.commit()
@@ -81,10 +81,7 @@ class ToolsTestHelper:
 
     @staticmethod
     async def create_test_task(
-        session: AsyncSession,
-        project_id: str,
-        title: str = "Test Task",
-        status: str = "pending"
+        session: AsyncSession, project_id: str, title: str = "Test Task", status: str = "pending"
     ) -> Task:
         """Create a test task in the database"""
         task = Task(
@@ -95,7 +92,7 @@ class ToolsTestHelper:
             priority="medium",
             project_id=project_id,
             tenant_key=TenantManager.generate_tenant_key(),
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(task)
         await session.commit()
@@ -108,7 +105,7 @@ class ToolsTestHelper:
         project_id: str,
         tenant_key: str,
         document_name: str = "test.md",
-        content: str = "Test vision content"
+        content: str = "Test vision content",
     ) -> Vision:
         """Create a test vision document in the database"""
         vision = Vision(
@@ -125,7 +122,7 @@ class ToolsTestHelper:
             boundary_type="document",
             keywords=["test"],
             headers=["# Test"],
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(vision)
         await session.commit()
@@ -134,10 +131,7 @@ class ToolsTestHelper:
 
     @staticmethod
     async def create_test_context_index(
-        session: AsyncSession,
-        project_id: str,
-        tenant_key: str,
-        document_name: str = "test.md"
+        session: AsyncSession, project_id: str, tenant_key: str, document_name: str = "test.md"
     ) -> ContextIndex:
         """Create a test context index in the database"""
         index = ContextIndex(
@@ -152,7 +146,7 @@ class ToolsTestHelper:
             keywords=["test"],
             full_path=f"docs/Vision/{document_name}",
             content_hash="abc123",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(index)
         await session.commit()
@@ -161,11 +155,7 @@ class ToolsTestHelper:
 
     @staticmethod
     async def create_test_configuration(
-        session: AsyncSession,
-        project_id: str,
-        tenant_key: str,
-        key: str = "test_config",
-        value: str = "test_value"
+        session: AsyncSession, project_id: str, tenant_key: str, key: str = "test_config", value: str = "test_value"
     ) -> Configuration:
         """Create a test configuration in the database"""
         config = Configuration(
@@ -175,7 +165,7 @@ class ToolsTestHelper:
             key=key,
             value=value,
             category="test",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         session.add(config)
         await session.commit()
@@ -193,10 +183,12 @@ class MockMCPToolRegistrar:
 
     def create_tool_decorator(self):
         """Create a tool decorator that captures registered functions"""
+
         def tool_decorator():
             def decorator(func):
                 self.registered_tools[func.__name__] = func
                 return func
+
             return decorator
 
         self.mock_server.tool.return_value = tool_decorator()
@@ -206,7 +198,7 @@ class MockMCPToolRegistrar:
         """Get a registered tool function by name"""
         return self.registered_tools.get(name)
 
-    def get_all_tools(self) -> List[str]:
+    def get_all_tools(self) -> list[str]:
         """Get names of all registered tools"""
         return list(self.registered_tools.keys())
 
@@ -215,7 +207,7 @@ class AssertionHelpers:
     """Collection of assertion helpers for tools testing"""
 
     @staticmethod
-    def assert_success_response(response: Dict[str, Any], expected_keys: Optional[List[str]] = None):
+    def assert_success_response(response: dict[str, Any], expected_keys: Optional[list[str]] = None):
         """Assert that a response indicates success and has expected keys"""
         assert response.get("success") is True, f"Expected success=True, got: {response}"
 
@@ -224,15 +216,13 @@ class AssertionHelpers:
                 assert key in response, f"Expected key '{key}' in response: {response}"
 
     @staticmethod
-    def assert_error_response(response: Dict[str, Any], expected_error: Optional[str] = None):
+    def assert_error_response(response: dict[str, Any], expected_error: Optional[str] = None):
         """Assert that a response indicates failure with optional error message check"""
         assert response.get("success") is False, f"Expected success=False, got: {response}"
         assert "error" in response, f"Expected 'error' key in response: {response}"
 
         if expected_error:
-            assert expected_error in response["error"], (
-                f"Expected error '{expected_error}' in '{response['error']}'"
-            )
+            assert expected_error in response["error"], f"Expected error '{expected_error}' in '{response['error']}'"
 
     @staticmethod
     def assert_tool_registered(registrar: MockMCPToolRegistrar, tool_name: str):
@@ -243,14 +233,10 @@ class AssertionHelpers:
 
     @staticmethod
     def assert_database_state(
-        session: AsyncSession,
-        model_class,
-        expected_count: int,
-        filters: Optional[Dict[str, Any]] = None
+        session: AsyncSession, model_class, expected_count: int, filters: Optional[dict[str, Any]] = None
     ):
         """Assert the state of the database for a given model"""
         # This would need to be implemented as an async function in actual usage
-        pass
 
 
 class PerformanceTestHelpers:
@@ -268,27 +254,15 @@ class PerformanceTestHelpers:
         return (end_time - start_time) * 1000  # Convert to milliseconds
 
     @staticmethod
-    async def run_performance_benchmark(
-        tool_func,
-        iterations: int = 10,
-        *args,
-        **kwargs
-    ) -> Dict[str, float]:
+    async def run_performance_benchmark(tool_func, iterations: int = 10, *args, **kwargs) -> dict[str, float]:
         """Run a performance benchmark for a tool function"""
         times = []
 
         for _ in range(iterations):
-            execution_time = await PerformanceTestHelpers.measure_tool_performance(
-                tool_func, *args, **kwargs
-            )
+            execution_time = await PerformanceTestHelpers.measure_tool_performance(tool_func, *args, **kwargs)
             times.append(execution_time)
 
-        return {
-            "average": sum(times) / len(times),
-            "min": min(times),
-            "max": max(times),
-            "iterations": iterations
-        }
+        return {"average": sum(times) / len(times), "min": min(times), "max": max(times), "iterations": iterations}
 
 
 class FileSystemTestHelpers:
@@ -330,7 +304,7 @@ Functional and non-functional requirements.
 ## Non-functional
 - Performance
 - Security
-"""
+""",
         }
 
         for filename, content in files.items():
@@ -349,7 +323,7 @@ Functional and non-functional requirements.
         sections_needed = (size_kb * 1024) // len(section_content)
 
         for i in range(sections_needed):
-            content += f"## Section {i+1}\n\n{section_content}\n\n"
+            content += f"## Section {i + 1}\n\n{section_content}\n\n"
 
         path.write_text(content)
         return path
@@ -359,11 +333,7 @@ class AsyncTestHelpers:
     """Helpers for async testing scenarios"""
 
     @staticmethod
-    async def wait_for_condition(
-        condition_func,
-        timeout_seconds: float = 5.0,
-        check_interval: float = 0.1
-    ) -> bool:
+    async def wait_for_condition(condition_func, timeout_seconds: float = 5.0, check_interval: float = 0.1) -> bool:
         """Wait for a condition to become true with timeout"""
         start_time = asyncio.get_event_loop().time()
 

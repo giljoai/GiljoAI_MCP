@@ -70,7 +70,7 @@ class TestDocumentGenerator:
                 section = f"### Key Points {section_num}\n\n"
                 num_items = min(10, remaining // 100)
                 for i in range(num_items):
-                    section += f"- Point {i+1}: {TestDocumentGenerator.generate_lorem_ipsum(1)[:100]}\n"
+                    section += f"- Point {i + 1}: {TestDocumentGenerator.generate_lorem_ipsum(1)[:100]}\n"
 
             elif section_type == "code":
                 section = f"### Code Example {section_num}\n\n"
@@ -88,7 +88,7 @@ class TestDocumentGenerator:
                 section += "|----------|----------|----------|\n"
                 num_rows = min(5, remaining // 150)
                 for i in range(num_rows):
-                    section += f"| Data {i+1}A | Data {i+1}B | Data {i+1}C |\n"
+                    section += f"| Data {i + 1}A | Data {i + 1}B | Data {i + 1}C |\n"
                 section += "\n"
 
             content.append(section)
@@ -340,7 +340,7 @@ class TestFixtures:
         # Document with deeply nested structure
         nested = ""
         for i in range(10):
-            nested += "#" * (i + 1) + f" Level {i+1}\n\n"
+            nested += "#" * (i + 1) + f" Level {i + 1}\n\n"
             nested += generator.generate_lorem_ipsum(5) + "\n\n"
 
         # Document with special characters

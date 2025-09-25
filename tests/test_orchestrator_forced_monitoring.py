@@ -3,13 +3,15 @@ Force execution of specific monitoring loop lines to push coverage above 90%.
 Direct approach to trigger lines 667-682.
 """
 
-import pytest
-import pytest_asyncio
 import asyncio
-from unittest.mock import patch, AsyncMock
+import contextlib
+from unittest.mock import patch
+
+import pytest_asyncio
+
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.orchestrator import ProjectOrchestrator, AgentRole
 from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 @pytest_asyncio.fixture
@@ -41,7 +43,7 @@ class TestOrchestratorForcedMonitoring:
         # Create agents with high context usage
         agent1 = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
         agent2 = await orchestrator.spawn_agent(project.id, AgentRole.IMPLEMENTER)
-        
+
         # Set high context usage to trigger handoff checks
         await orchestrator.update_context_usage(agent1.id, 25000)  # 83.3%
         await orchestrator.update_context_usage(agent2.id, 27000)  # 90%
@@ -51,20 +53,20 @@ class TestOrchestratorForcedMonitoring:
         try:
             # Call the monitoring task directly (it will run once and then we'll stop it)
             monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
-            
+
             # Let it run briefly to execute the monitoring loop
             await asyncio.sleep(0.1)
-            
+
             # Cancel the task to stop the infinite loop
             monitor_task.cancel()
-            
+
             # Wait for cancellation to complete
             try:
                 await monitor_task
             except asyncio.CancelledError:
                 pass  # Expected when cancelling
-                
-        except Exception as e:
+
+        except Exception:
             # Monitor may raise exceptions, that's part of the code we want to cover
             pass
 
@@ -83,16 +85,16 @@ class TestOrchestratorForcedMonitoring:
 
         # Start monitoring task
         monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
-        
+
         # Let monitoring run briefly
         await asyncio.sleep(0.05)
-        
+
         # Pause project to trigger the break condition (line 673)
         await orchestrator.pause_project(project.id)
-        
+
         # Let monitoring detect the inactive status and break
         await asyncio.sleep(0.1)
-        
+
         # The monitoring task should have stopped due to inactive project
         # This should have executed lines 667-682 including the break condition
         assert monitor_task.done() or monitor_task.cancelled()
@@ -104,11 +106,11 @@ class TestOrchestratorForcedMonitoring:
         await orchestrator.activate_project(project.id)
 
         # Create agent
-        agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
+        await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # Mock check_handoff_needed to raise an exception
         original_method = orchestrator.check_handoff_needed
-        
+
         async def failing_check_handoff(*args, **kwargs):
             raise Exception("Forced exception for coverage")
 
@@ -117,18 +119,16 @@ class TestOrchestratorForcedMonitoring:
         try:
             # Start monitoring task
             monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
-            
+
             # Let it run and hit the exception
             await asyncio.sleep(0.1)
-            
+
             # Cancel the task
             monitor_task.cancel()
-            
-            try:
+
+            with contextlib.suppress(asyncio.CancelledError):
                 await monitor_task
-            except asyncio.CancelledError:
-                pass
-                
+
         finally:
             # Restore original method
             orchestrator.check_handoff_needed = original_method
@@ -144,35 +144,34 @@ class TestOrchestratorForcedMonitoring:
 
         # Create agents in different states
         active_agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
-        handoff_agent = await orchestrator.spawn_agent(project.id, AgentRole.IMPLEMENTER) 
+        handoff_agent = await orchestrator.spawn_agent(project.id, AgentRole.IMPLEMENTER)
         idle_agent = await orchestrator.spawn_agent(project.id, AgentRole.TESTER)
 
         # Set up different scenarios
         await orchestrator.update_context_usage(active_agent.id, 15000)  # Normal usage
         await orchestrator.update_context_usage(handoff_agent.id, 26000)  # Needs handoff
-        await orchestrator.update_context_usage(idle_agent.id, 10000)   # Low usage
+        await orchestrator.update_context_usage(idle_agent.id, 10000)  # Low usage
 
         # Set one agent to idle status
         async with orchestrator.db_manager.get_session_async() as session:
             from sqlalchemy import update
+
             from src.giljo_mcp.models import Agent
-            
+
             stmt = update(Agent).where(Agent.id == idle_agent.id).values(status="idle")
             await session.execute(stmt)
             await session.commit()
 
         # Run monitoring multiple times to ensure all paths are hit
-        for i in range(3):
+        for _i in range(3):
             monitor_task = asyncio.create_task(orchestrator._monitor_project_context(project.id))
             await asyncio.sleep(0.05)  # Let one cycle run
             monitor_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await monitor_task
-            except asyncio.CancelledError:
-                pass
 
         # Verify handoff was detected for the high usage agent
-        needs_handoff, reason = await orchestrator.check_handoff_needed(handoff_agent.id)
+        needs_handoff, _reason = await orchestrator.check_handoff_needed(handoff_agent.id)
         assert needs_handoff is True
 
         # Complete project
@@ -185,31 +184,32 @@ class TestOrchestratorForcedMonitoring:
         await orchestrator.activate_project(project.id)
 
         # Create agent
-        agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
+        await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # The goal is to execute the select statement in lines 669-671
         # which gets the project with agents using selectinload
-        
+
         # Manually call the monitoring method multiple times
         async def single_monitor_cycle():
             """Run one monitoring cycle to hit the select statement."""
             async with orchestrator.db_manager.get_session_async() as session:
                 from sqlalchemy import select
                 from sqlalchemy.orm import selectinload
+
                 from src.giljo_mcp.models import Project
-                
+
                 # This mirrors the exact code in lines 669-671
                 result = await session.execute(
                     select(Project).where(Project.id == project.id).options(selectinload(Project.agents))
                 )
                 project_obj = result.scalar_one_or_none()
-                
+
                 if project_obj and project_obj.status == ProjectStatus.ACTIVE.value:
                     # Process agents (line 676-682)
                     for agent_obj in project_obj.agents:
                         if agent_obj.status == "active":
                             # This hits the check_handoff_needed call
-                            needs_handoff, reason = await orchestrator.check_handoff_needed(agent_obj.id)
+                            needs_handoff, _reason = await orchestrator.check_handoff_needed(agent_obj.id)
                             if needs_handoff:
                                 # This would hit the logger.warning line
                                 pass

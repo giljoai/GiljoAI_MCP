@@ -30,7 +30,6 @@ class TestResults:
             self.failed += 1
 
     def print_summary(self):
-
         if self.failed > 0:
             for r in self.results:
                 if not r["passed"]:
@@ -277,7 +276,6 @@ async def test_criterion_7_token_optimization(results):
 
 
 async def main():
-
     results = TestResults()
 
     # Run all tests

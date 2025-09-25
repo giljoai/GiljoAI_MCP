@@ -321,14 +321,14 @@ def _generate_project_mission(
 PROJECT GOAL: {task.title}
 
 ORIGIN: Converted from Task ID {task.id}
-CATEGORY: {template_config['name']}
+CATEGORY: {template_config["name"]}
 PRIORITY: {task.priority.upper()}
 
 DESCRIPTION:
-{task.description or 'No detailed description provided - agents should investigate and define scope.'}
+{task.description or "No detailed description provided - agents should investigate and define scope."}
 
 TEMPLATE APPROACH:
-{template_config['description']}
+{template_config["description"]}
 
 SUCCESS CRITERIA:
 """

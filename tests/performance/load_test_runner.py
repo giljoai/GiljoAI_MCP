@@ -13,7 +13,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Optional
 
 import psutil
 import pytest
@@ -39,12 +39,12 @@ class PerformanceTestSuite:
                 "tenant_isolation": False,
                 "vision_processing": False,
                 "database_performance": False,
-                "overall_score": 0
+                "overall_score": 0,
             },
-            "recommendations": []
+            "recommendations": [],
         }
 
-    def get_system_info(self) -> Dict[str, Any]:
+    def get_system_info(self) -> dict[str, Any]:
         """Capture system information for the test report"""
         return {
             "cpu_count": psutil.cpu_count(),
@@ -53,14 +53,11 @@ class PerformanceTestSuite:
             "cpu_percent": psutil.cpu_percent(interval=1),
             "python_version": sys.version,
             "platform": sys.platform,
-            "process_id": os.getpid()
+            "process_id": os.getpid(),
         }
 
-    async def run_test_module(self, module_name: str, test_filter: str = None) -> Dict[str, Any]:
+    async def run_test_module(self, module_name: str, test_filter: Optional[str] = None) -> dict[str, Any]:
         """Run a specific test module and capture results"""
-        print(f"\n{'='*60}")
-        print(f"RUNNING: {module_name}")
-        print(f"{'='*60}")
 
         start_time = time.perf_counter()
 
@@ -71,7 +68,7 @@ class PerformanceTestSuite:
             "-s",
             "--tb=short",
             "--json-report",
-            f"--json-report-file=performance_{module_name}_report.json"
+            f"--json-report-file=performance_{module_name}_report.json",
         ]
 
         if test_filter:
@@ -91,22 +88,21 @@ class PerformanceTestSuite:
                 with open(report_file) as f:
                     test_details = json.load(f)
                 report_file.unlink()  # Clean up
-            except Exception as e:
-                print(f"Warning: Could not load test report for {module_name}: {e}")
+            except Exception:
+                pass
 
         return {
             "module": module_name,
             "exit_code": exit_code,
             "execution_time_ms": execution_time,
             "status": "PASSED" if exit_code == 0 else "FAILED",
-            "details": test_details
+            "details": test_details,
         }
 
-    async def run_concurrent_agent_tests(self) -> Dict[str, Any]:
+    async def run_concurrent_agent_tests(self) -> dict[str, Any]:
         """Run concurrent agent performance tests"""
         result = await self.run_test_module(
-            "test_concurrent_agents.py",
-            "test_concurrent_agent_spawning_100_production_requirement"
+            "test_concurrent_agents.py", "test_concurrent_agent_spawning_100_production_requirement"
         )
 
         # Validate production requirements
@@ -114,7 +110,7 @@ class PerformanceTestSuite:
             self.results["production_readiness"]["agent_scalability"] = True
             self.results["performance_metrics"]["agent_spawning"] = {
                 "100_agents_supported": True,
-                "latency_requirement_met": True
+                "latency_requirement_met": True,
             }
         else:
             self.results["recommendations"].append(
@@ -123,19 +119,16 @@ class PerformanceTestSuite:
 
         return result
 
-    async def run_message_queue_tests(self) -> Dict[str, Any]:
+    async def run_message_queue_tests(self) -> dict[str, Any]:
         """Run message queue performance tests"""
-        result = await self.run_test_module(
-            "test_message_queue_load.py",
-            "test_message_saturation_1000_messages"
-        )
+        result = await self.run_test_module("test_message_queue_load.py", "test_message_saturation_1000_messages")
 
         # Validate production requirements
         if result["status"] == "PASSED":
             self.results["production_readiness"]["message_throughput"] = True
             self.results["performance_metrics"]["message_queue"] = {
                 "10k_messages_per_minute": True,
-                "broadcast_to_100_agents": True
+                "broadcast_to_100_agents": True,
             }
         else:
             self.results["recommendations"].append(
@@ -144,11 +137,10 @@ class PerformanceTestSuite:
 
         return result
 
-    async def run_websocket_tests(self) -> Dict[str, Any]:
+    async def run_websocket_tests(self) -> dict[str, Any]:
         """Run WebSocket stress tests"""
         result = await self.run_test_module(
-            "test_websocket_stress.py",
-            "test_concurrent_websocket_connections_100_production_requirement"
+            "test_websocket_stress.py", "test_concurrent_websocket_connections_100_production_requirement"
         )
 
         # Validate production requirements
@@ -156,7 +148,7 @@ class PerformanceTestSuite:
             self.results["production_readiness"]["websocket_capacity"] = True
             self.results["performance_metrics"]["websocket"] = {
                 "100_concurrent_connections": True,
-                "real_time_latency": True
+                "real_time_latency": True,
             }
         else:
             self.results["recommendations"].append(
@@ -165,19 +157,16 @@ class PerformanceTestSuite:
 
         return result
 
-    async def run_multi_tenant_tests(self) -> Dict[str, Any]:
+    async def run_multi_tenant_tests(self) -> dict[str, Any]:
         """Run multi-tenant isolation tests"""
-        result = await self.run_test_module(
-            "test_multi_tenant_load.py",
-            "test_five_tenant_concurrent_load"
-        )
+        result = await self.run_test_module("test_multi_tenant_load.py", "test_five_tenant_concurrent_load")
 
         # Validate production requirements
         if result["status"] == "PASSED":
             self.results["production_readiness"]["tenant_isolation"] = True
             self.results["performance_metrics"]["multi_tenant"] = {
                 "data_isolation_verified": True,
-                "performance_isolation_verified": True
+                "performance_isolation_verified": True,
             }
         else:
             self.results["recommendations"].append(
@@ -186,19 +175,16 @@ class PerformanceTestSuite:
 
         return result
 
-    async def run_vision_chunking_tests(self) -> Dict[str, Any]:
+    async def run_vision_chunking_tests(self) -> dict[str, Any]:
         """Run vision document chunking tests"""
-        result = await self.run_test_module(
-            "test_vision_chunking_load.py",
-            "test_large_document_chunking_50k_tokens"
-        )
+        result = await self.run_test_module("test_vision_chunking_load.py", "test_large_document_chunking_50k_tokens")
 
         # Validate production requirements
         if result["status"] == "PASSED":
             self.results["production_readiness"]["vision_processing"] = True
             self.results["performance_metrics"]["vision_chunking"] = {
                 "50k_tokens_supported": True,
-                "chunking_performance_acceptable": True
+                "chunking_performance_acceptable": True,
             }
         else:
             self.results["recommendations"].append(
@@ -207,11 +193,11 @@ class PerformanceTestSuite:
 
         return result
 
-    async def run_database_tests(self) -> Dict[str, Any]:
+    async def run_database_tests(self) -> dict[str, Any]:
         """Run database performance tests"""
         result = await self.run_test_module(
             "test_database_benchmarks.py",
-            "test_single_record_operations_latency or test_concurrent_database_operations"
+            "test_single_record_operations_latency or test_concurrent_database_operations",
         )
 
         # Validate production requirements
@@ -219,7 +205,7 @@ class PerformanceTestSuite:
             self.results["production_readiness"]["database_performance"] = True
             self.results["performance_metrics"]["database"] = {
                 "sub_100ms_operations": True,
-                "concurrent_load_supported": True
+                "concurrent_load_supported": True,
             }
         else:
             self.results["recommendations"].append(
@@ -230,10 +216,6 @@ class PerformanceTestSuite:
 
     async def run_complete_test_suite(self):
         """Run the complete performance test suite"""
-        print("\n" + "="*80)
-        print("GILJO AI MCP PERFORMANCE TEST SUITE")
-        print("Production Readiness Validation for 100+ Concurrent Agents")
-        print("="*80)
 
         start_time = time.perf_counter()
 
@@ -244,37 +226,29 @@ class PerformanceTestSuite:
             ("WebSocket Stress Tests", self.run_websocket_tests()),
             ("Multi-Tenant Tests", self.run_multi_tenant_tests()),
             ("Vision Chunking Tests", self.run_vision_chunking_tests()),
-            ("Database Benchmark Tests", self.run_database_tests())
+            ("Database Benchmark Tests", self.run_database_tests()),
         ]
 
         # Execute all tests
         for test_name, test_coro in test_modules:
-            print(f"\n🚀 Starting {test_name}...")
             try:
                 result = await test_coro
                 self.results["test_results"][test_name] = result
 
                 if result["status"] == "PASSED":
-                    print(f"✅ {test_name} PASSED ({result['execution_time_ms']:.2f}ms)")
+                    pass
                 else:
-                    print(f"❌ {test_name} FAILED ({result['execution_time_ms']:.2f}ms)")
+                    pass
 
             except Exception as e:
-                print(f"💥 {test_name} CRASHED: {e}")
-                self.results["test_results"][test_name] = {
-                    "status": "CRASHED",
-                    "error": str(e),
-                    "execution_time_ms": 0
-                }
+                self.results["test_results"][test_name] = {"status": "CRASHED", "error": str(e), "execution_time_ms": 0}
 
         total_time = (time.perf_counter() - start_time) * 1000
 
         # Calculate overall production readiness score
         readiness_checks = self.results["production_readiness"]
-        passed_checks = sum(1 for check, passed in readiness_checks.items()
-                          if isinstance(passed, bool) and passed)
-        total_checks = sum(1 for check, passed in readiness_checks.items()
-                         if isinstance(passed, bool))
+        passed_checks = sum(1 for check, passed in readiness_checks.items() if isinstance(passed, bool) and passed)
+        total_checks = sum(1 for check, passed in readiness_checks.items() if isinstance(passed, bool))
 
         overall_score = (passed_checks / total_checks * 100) if total_checks > 0 else 0
         self.results["production_readiness"]["overall_score"] = overall_score
@@ -282,12 +256,9 @@ class PerformanceTestSuite:
         self.results["execution_summary"] = {
             "total_execution_time_ms": total_time,
             "total_execution_time_minutes": total_time / 60000,
-            "tests_passed": sum(1 for r in self.results["test_results"].values()
-                              if r.get("status") == "PASSED"),
-            "tests_failed": sum(1 for r in self.results["test_results"].values()
-                              if r.get("status") == "FAILED"),
-            "tests_crashed": sum(1 for r in self.results["test_results"].values()
-                               if r.get("status") == "CRASHED")
+            "tests_passed": sum(1 for r in self.results["test_results"].values() if r.get("status") == "PASSED"),
+            "tests_failed": sum(1 for r in self.results["test_results"].values() if r.get("status") == "FAILED"),
+            "tests_crashed": sum(1 for r in self.results["test_results"].values() if r.get("status") == "CRASHED"),
         }
 
         # Generate final report
@@ -295,75 +266,38 @@ class PerformanceTestSuite:
 
     def generate_final_report(self):
         """Generate comprehensive performance test report"""
-        print("\n" + "="*80)
-        print("PERFORMANCE TEST SUITE RESULTS")
-        print("="*80)
 
         # System Information
-        sys_info = self.results["system_info"]
-        print("\n📊 SYSTEM INFORMATION:")
-        print(f"   CPU Cores: {sys_info['cpu_count']}")
-        print(f"   Total Memory: {sys_info['memory_gb']:.1f}GB")
-        print(f"   Available Memory: {sys_info['available_memory_gb']:.1f}GB")
-        print(f"   CPU Usage: {sys_info['cpu_percent']:.1f}%")
-        print(f"   Platform: {sys_info['platform']}")
+        self.results["system_info"]
 
         # Execution Summary
-        summary = self.results["execution_summary"]
-        print("\n⏱️  EXECUTION SUMMARY:")
-        print(f"   Total Time: {summary['total_execution_time_minutes']:.1f} minutes")
-        print(f"   Tests Passed: {summary['tests_passed']}")
-        print(f"   Tests Failed: {summary['tests_failed']}")
-        print(f"   Tests Crashed: {summary['tests_crashed']}")
+        self.results["execution_summary"]
 
         # Production Readiness Assessment
         readiness = self.results["production_readiness"]
-        print("\n🎯 PRODUCTION READINESS ASSESSMENT:")
-        print(f"   Overall Score: {readiness['overall_score']:.1f}%")
-        print(f"   Agent Scalability (100+): {'✅' if readiness['agent_scalability'] else '❌'}")
-        print(f"   Message Throughput (10K+/min): {'✅' if readiness['message_throughput'] else '❌'}")
-        print(f"   WebSocket Capacity (100+): {'✅' if readiness['websocket_capacity'] else '❌'}")
-        print(f"   Tenant Isolation: {'✅' if readiness['tenant_isolation'] else '❌'}")
-        print(f"   Vision Processing (50K+ tokens): {'✅' if readiness['vision_processing'] else '❌'}")
-        print(f"   Database Performance (<100ms): {'✅' if readiness['database_performance'] else '❌'}")
 
         # Performance Metrics
-        print("\n📈 PERFORMANCE METRICS:")
-        for category, metrics in self.results["performance_metrics"].items():
-            print(f"   {category.title()}:")
-            for metric, value in metrics.items():
-                status = "✅" if value else "❌"
-                print(f"     {metric}: {status}")
+        for metrics in self.results["performance_metrics"].values():
+            for _metric, _value in metrics.items():
+                pass
 
         # Recommendations
         if self.results["recommendations"]:
-            print("\n🔧 RECOMMENDATIONS:")
-            for i, rec in enumerate(self.results["recommendations"], 1):
-                print(f"   {i}. {rec}")
+            for _i, _rec in enumerate(self.results["recommendations"], 1):
+                pass
 
         # Overall Assessment
-        print("\n" + "="*80)
-        if readiness["overall_score"] >= 90:
-            print("🚀 PRODUCTION READY: System meets all performance requirements!")
-            print("   ✅ Ready for commercial deployment with 100+ concurrent agents")
-        elif readiness["overall_score"] >= 75:
-            print("⚠️  MOSTLY READY: System meets most requirements with minor issues")
-            print("   🔧 Address recommendations before production deployment")
-        elif readiness["overall_score"] >= 50:
-            print("🔄 NEEDS IMPROVEMENT: System has significant performance issues")
-            print("   ❌ Major optimizations required before production")
+        if readiness["overall_score"] >= 90 or readiness["overall_score"] >= 75 or readiness["overall_score"] >= 50:
+            pass
         else:
-            print("🚨 NOT READY: System fails to meet production requirements")
-            print("   ❌ Critical performance issues must be resolved")
+            pass
 
-        print("="*80)
 
         # Save detailed report to file
         report_file = Path("performance_test_report.json")
         with open(report_file, "w") as f:
             json.dump(self.results, f, indent=2, default=str)
 
-        print(f"\n📁 Detailed report saved to: {report_file}")
 
         # Generate CSV summary for spreadsheet analysis
         self.generate_csv_summary()
@@ -378,24 +312,32 @@ class PerformanceTestSuite:
             writer = csv.writer(f)
 
             # Headers
-            writer.writerow([
-                "Timestamp", "Test Category", "Status", "Execution Time (ms)",
-                "Production Ready", "Score", "Recommendations"
-            ])
+            writer.writerow(
+                [
+                    "Timestamp",
+                    "Test Category",
+                    "Status",
+                    "Execution Time (ms)",
+                    "Production Ready",
+                    "Score",
+                    "Recommendations",
+                ]
+            )
 
             # Data rows
             for test_name, result in self.results["test_results"].items():
-                writer.writerow([
-                    self.results["timestamp"],
-                    test_name,
-                    result.get("status", "UNKNOWN"),
-                    result.get("execution_time_ms", 0),
-                    "Yes" if self.results["production_readiness"]["overall_score"] >= 90 else "No",
-                    f"{self.results['production_readiness']['overall_score']:.1f}%",
-                    "; ".join(self.results["recommendations"][:2])  # First 2 recommendations
-                ])
+                writer.writerow(
+                    [
+                        self.results["timestamp"],
+                        test_name,
+                        result.get("status", "UNKNOWN"),
+                        result.get("execution_time_ms", 0),
+                        "Yes" if self.results["production_readiness"]["overall_score"] >= 90 else "No",
+                        f"{self.results['production_readiness']['overall_score']:.1f}%",
+                        "; ".join(self.results["recommendations"][:2]),  # First 2 recommendations
+                    ]
+                )
 
-        print(f"📊 CSV summary saved to: {csv_file}")
 
 
 async def main():
@@ -406,8 +348,6 @@ async def main():
     project_root = Path(__file__).parent.parent.parent
     os.chdir(project_root)
 
-    print("Starting Performance Test Suite...")
-    print(f"Working directory: {os.getcwd()}")
 
     # Create and run test suite
     test_suite = PerformanceTestSuite()

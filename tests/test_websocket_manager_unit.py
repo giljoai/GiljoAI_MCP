@@ -112,6 +112,7 @@ class TestWebSocketManager:
 
         # Should raise HTTPException
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             await ws_manager.subscribe(client_id, entity_type, entity_id, "test_tenant")
 
@@ -189,11 +190,7 @@ class TestWebSocketManager:
         message = "Broadcast message"
 
         # Setup multiple clients
-        clients = {
-            "client_1": AsyncMock(),
-            "client_2": AsyncMock(),
-            "client_3": AsyncMock()
-        }
+        clients = {"client_1": AsyncMock(), "client_2": AsyncMock(), "client_3": AsyncMock()}
         ws_manager.active_connections = clients
 
         await ws_manager.broadcast(message)
@@ -212,11 +209,7 @@ class TestWebSocketManager:
         client_2.send_text.side_effect = Exception("Connection lost")
         client_3 = AsyncMock()
 
-        ws_manager.active_connections = {
-            "client_1": client_1,
-            "client_2": client_2,
-            "client_3": client_3
-        }
+        ws_manager.active_connections = {"client_1": client_1, "client_2": client_2, "client_3": client_3}
 
         await ws_manager.broadcast(message)
 
@@ -263,7 +256,7 @@ class TestWebSocketManager:
             "type": "entity_update",
             "entity_type": entity_type,
             "entity_id": entity_id,
-            "data": update_data
+            "data": update_data,
         }
 
         client_1.send_json.assert_called_once_with(expected_message)
@@ -274,11 +267,7 @@ class TestWebSocketManager:
         assert ws_manager.get_connection_count() == 0
 
         # Add connections
-        ws_manager.active_connections = {
-            "client_1": MagicMock(),
-            "client_2": MagicMock(),
-            "client_3": MagicMock()
-        }
+        ws_manager.active_connections = {"client_1": MagicMock(), "client_2": MagicMock(), "client_3": MagicMock()}
 
         assert ws_manager.get_connection_count() == 3
 
@@ -292,10 +281,7 @@ class TestWebSocketManager:
 
         # Add subscribers
         ws_manager.entity_subscribers[entity_key] = {"client_1", "client_2"}
-        ws_manager.subscriptions = {
-            "client_1": {entity_key},
-            "client_2": {entity_key, "agent:test_agent"}
-        }
+        ws_manager.subscriptions = {"client_1": {entity_key}, "client_2": {entity_key, "agent:test_agent"}}
 
         assert ws_manager.get_subscription_count("project", "test_project") == 2
         assert ws_manager.get_subscription_count() == 3  # Total subscriptions
@@ -344,7 +330,7 @@ class TestWebSocketManagerBroadcasts:
             "to_agents": ["agent_1"],
             "content": "Test message",
             "priority": "normal",
-            "status": "pending"
+            "status": "pending",
         }
 
         # Mock notify_entity_update
@@ -404,9 +390,7 @@ class TestWebSocketManagerBroadcasts:
         """Test system notification broadcasting to all clients"""
         ws_manager.broadcast_json = AsyncMock()
 
-        await ws_manager.broadcast_notification(
-            "info", "System Update", "System maintenance completed"
-        )
+        await ws_manager.broadcast_notification("info", "System Update", "System maintenance completed")
 
         # Should broadcast to all
         ws_manager.broadcast_json.assert_called_once()
@@ -433,11 +417,7 @@ class TestWebSocketManagerBroadcasts:
         client_2 = AsyncMock()
         client_3 = AsyncMock()  # Should not receive
 
-        ws_manager.active_connections = {
-            "client_1": client_1,
-            "client_2": client_2,
-            "client_3": client_3
-        }
+        ws_manager.active_connections = {"client_1": client_1, "client_2": client_2, "client_3": client_3}
 
         await ws_manager.broadcast_notification(
             "error", "Error Alert", "Something went wrong", target_clients=target_clients
@@ -455,11 +435,7 @@ class TestWebSocketManagerBroadcasts:
         client_3 = AsyncMock()
         client_3.send_json.side_effect = Exception("Connection lost")
 
-        ws_manager.active_connections = {
-            "client_1": client_1,
-            "client_2": client_2,
-            "client_3": client_3
-        }
+        ws_manager.active_connections = {"client_1": client_1, "client_2": client_2, "client_3": client_3}
 
         await ws_manager.send_heartbeat()
 
@@ -498,23 +474,17 @@ class TestWebSocketManagerMultiTenant:
         client_a2 = AsyncMock()
         client_b = AsyncMock()
 
-        ws_manager.active_connections = {
-            "client_a1": client_a1,
-            "client_a2": client_a2,
-            "client_b": client_b
-        }
+        ws_manager.active_connections = {"client_a1": client_a1, "client_a2": client_a2, "client_b": client_b}
 
         ws_manager.auth_contexts = {
             "client_a1": {"tenant_key": "tenant_a"},
             "client_a2": {"tenant_key": "tenant_a"},
-            "client_b": {"tenant_key": "tenant_b"}
+            "client_b": {"tenant_key": "tenant_b"},
         }
 
         ws_manager.notify_entity_update = AsyncMock()
 
-        await ws_manager.broadcast_agent_update(
-            agent_id, agent_name, project_id, tenant_key, "in_progress", 1000
-        )
+        await ws_manager.broadcast_agent_update(agent_id, agent_name, project_id, tenant_key, "in_progress", 1000)
 
         # Only tenant_a clients should receive broadcast
         client_a1.send_json.assert_called_once()
@@ -536,10 +506,7 @@ class TestWebSocketManagerMultiTenant:
         client_b = AsyncMock()
 
         ws_manager.active_connections = {"client_a": client_a, "client_b": client_b}
-        ws_manager.auth_contexts = {
-            "client_a": {"tenant_key": "tenant_a"},
-            "client_b": {"tenant_key": "tenant_b"}
-        }
+        ws_manager.auth_contexts = {"client_a": {"tenant_key": "tenant_a"}, "client_b": {"tenant_key": "tenant_b"}}
 
         ws_manager.notify_entity_update = AsyncMock()
 

@@ -30,7 +30,7 @@ from src.giljo_mcp.tenant import TenantManager
 def db_manager():
     """Mock database manager with proper async context manager"""
     db_manager = Mock(spec=DatabaseManager)
-    
+
     # Create proper async context manager mock
     async_session_mock = AsyncMock()
     async_session_mock.__aenter__ = AsyncMock()
@@ -40,12 +40,12 @@ def db_manager():
     async_session_mock.rollback = AsyncMock()
     async_session_mock.add = Mock()
     async_session_mock.execute = AsyncMock()
-    
+
     # Mock BOTH get_session and get_session_async to return the async context manager
     db_manager.get_session = Mock(return_value=async_session_mock)
     db_manager.get_session_async = Mock(return_value=async_session_mock)
     async_session_mock.__aenter__.return_value = async_session_mock
-    
+
     return db_manager
 
 
@@ -66,7 +66,7 @@ def message_queue(db_manager, tenant_manager):
 @pytest.fixture
 def sample_message():
     """Create a sample message"""
-    from uuid import uuid4
+
     return Message(
         id=uuid4(),
         tenant_key="test-tenant-123",
@@ -113,25 +113,11 @@ class TestMessageQueue:
 
         # Create messages with different priorities and proper meta_data
         critical_msg = Mock(
-            priority="critical", 
-            created_at=datetime.now(timezone.utc), 
-            id="1",
-            status="pending",
-            meta_data={}
+            priority="critical", created_at=datetime.now(timezone.utc), id="1", status="pending", meta_data={}
         )
-        high_msg = Mock(
-            priority="high", 
-            created_at=datetime.now(timezone.utc), 
-            id="2",
-            status="pending",
-            meta_data={}
-        )
+        high_msg = Mock(priority="high", created_at=datetime.now(timezone.utc), id="2", status="pending", meta_data={})
         normal_msg = Mock(
-            priority="normal", 
-            created_at=datetime.now(timezone.utc), 
-            id="3",
-            status="pending",
-            meta_data={}
+            priority="normal", created_at=datetime.now(timezone.utc), id="3", status="pending", meta_data={}
         )
 
         # Mock execute to return messages in priority order
@@ -278,15 +264,12 @@ class TestRoutingEngine:
         agents = [Mock(name="agent1"), Mock(name="agent2"), Mock(name="agent3")]
 
         # Mock message with to_agents that exist
-        message = Mock(
-            message_type="task", 
-            to_agents=["agent1", "agent2", "agent3"], 
-            priority="normal"
-        )
+        message = Mock(message_type="task", to_agents=["agent1", "agent2", "agent3"], priority="normal")
 
         # Add a default routing rule to handle the message
         engine._routing_rules = []  # Clear default rules
         from src.giljo_mcp.message_queue import TypeRoutingRule
+
         engine._routing_rules.append(TypeRoutingRule("task", ["agent1", "agent2", "agent3"]))
 
         # Route message
@@ -623,10 +606,10 @@ class TestMessageQueueErrorHandling:
         """Test process_message with invalid state transition"""
         # Setup mock session
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         # Create message with invalid status for processing
         invalid_msg = Mock(id="invalid-123", status="completed", meta_data={})
-        
+
         result_mock = Mock()
         result_mock.scalar_one_or_none.return_value = invalid_msg
         session_mock.execute = AsyncMock(return_value=result_mock)
@@ -640,7 +623,7 @@ class TestMessageQueueErrorHandling:
         """Test process_message with non-existent message"""
         # Setup mock session
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         result_mock = Mock()
         result_mock.scalar_one_or_none.return_value = None  # Message not found
         session_mock.execute = AsyncMock(return_value=result_mock)
@@ -654,7 +637,7 @@ class TestMessageQueueErrorHandling:
         """Test retry with non-existent message"""
         # Setup mock session
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         result_mock = Mock()
         result_mock.scalar_one_or_none.return_value = None  # Message not found
         session_mock.execute = AsyncMock(return_value=result_mock)
@@ -667,10 +650,10 @@ class TestMessageQueueErrorHandling:
     async def test_dlq_get_size(self, db_manager):
         """Test DeadLetterQueue size calculation"""
         dlq = DeadLetterQueue(db_manager)
-        
+
         # Setup mock session
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         result_mock = Mock()
         result_mock.scalar.return_value = 5  # 5 messages in DLQ
         session_mock.execute = AsyncMock(return_value=result_mock)
@@ -682,10 +665,10 @@ class TestMessageQueueErrorHandling:
     async def test_dlq_reprocess_invalid_message(self, db_manager):
         """Test reprocessing message not in DLQ"""
         dlq = DeadLetterQueue(db_manager)
-        
+
         # Setup mock session
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         # Mock message with wrong status
         normal_msg = Mock(id="normal-123", status="pending")
         result_mock = Mock()
@@ -700,7 +683,7 @@ class TestMessageQueueErrorHandling:
     async def test_routing_engine_affinity(self):
         """Test agent affinity calculation"""
         engine = RoutingEngine()
-        
+
         # Test affinity method
         has_affinity = engine._has_affinity("test_agent", "test_type")
         assert has_affinity is False  # Default implementation returns False
@@ -708,20 +691,21 @@ class TestMessageQueueErrorHandling:
     @pytest.mark.asyncio
     async def test_routing_engine_circuit_breaker_timeout(self):
         """Test circuit breaker timeout behavior"""
-        engine = RoutingEngine()
-        
+        RoutingEngine()
+
         # Create circuit breaker and simulate failure
         breaker = CircuitBreaker("test_agent", failure_threshold=2, timeout=1)
-        
+
         # Record failures to open circuit
         breaker.record_failure()
         breaker.record_failure()
         assert breaker.is_open() is True
-        
+
         # Simulate timeout passage
         import time
+
         time.sleep(1.1)  # Wait for timeout
-        
+
         # Should transition to half-open
         assert breaker.is_open() is False
 
@@ -729,19 +713,20 @@ class TestMessageQueueErrorHandling:
     async def test_queue_monitor_cleanup(self):
         """Test QueueMonitor throughput window cleanup"""
         monitor = QueueMonitor()
-        
+
         # Add old entries
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
         old_time = datetime.now(timezone.utc) - timedelta(minutes=2)
         monitor._throughput_window.append((old_time, 1))
-        
+
         # Add recent entry
         recent_time = datetime.now(timezone.utc)
         monitor._throughput_window.append((recent_time, 1))
-        
+
         # Cleanup should remove old entries
         monitor._cleanup_throughput_window()
-        
+
         # Should only have recent entry
         assert len(monitor._throughput_window) == 1
 
@@ -749,21 +734,23 @@ class TestMessageQueueErrorHandling:
     async def test_durability_manager_wal_recovery(self):
         """Test WAL recovery functionality"""
         from src.giljo_mcp.message_queue import DurabilityManager
-        
+
         db_manager = Mock()
         durability_mgr = DurabilityManager(db_manager)
-        
+
         # Add uncommitted WAL entry
-        durability_mgr._wal_entries.append({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "operation": "enqueue",
-            "message_id": "test-123",
-            "committed": False,
-        })
-        
+        durability_mgr._wal_entries.append(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "operation": "enqueue",
+                "message_id": "test-123",
+                "committed": False,
+            }
+        )
+
         # Recovery should handle uncommitted entries
         await durability_mgr.recover_from_crash()
-        
+
         # Should have processed the uncommitted entry
         assert len(durability_mgr._wal_entries) == 1
 
@@ -772,10 +759,10 @@ class TestMessageQueueErrorHandling:
         """Test checkpoint functionality"""
         # Should complete without error
         await message_queue.checkpoint()
-        
+
         # Verify durability manager and monitor checkpoints
-        assert hasattr(message_queue._durability_manager, '_wal_entries')
-        assert hasattr(message_queue._monitor, '_metrics')
+        assert hasattr(message_queue._durability_manager, "_wal_entries")
+        assert hasattr(message_queue._monitor, "_metrics")
 
 
 class TestMessageQueueAdvancedScenarios:
@@ -786,16 +773,12 @@ class TestMessageQueueAdvancedScenarios:
         """Test dequeue with custom batch size"""
         # Setup mock session
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         # Create multiple messages
         messages = []
         for i in range(5):
             msg = Mock(
-                priority="normal", 
-                created_at=datetime.now(timezone.utc), 
-                id=f"msg-{i}",
-                status="pending",
-                meta_data={}
+                priority="normal", created_at=datetime.now(timezone.utc), id=f"msg-{i}", status="pending", meta_data={}
             )
             messages.append(msg)
 
@@ -811,19 +794,16 @@ class TestMessageQueueAdvancedScenarios:
     async def test_agent_capability_matching(self):
         """Test routing based on agent capabilities"""
         engine = RoutingEngine()
-        
+
         # Set up agent capabilities
-        engine._agent_capabilities = {
-            "analyzer": ["analysis", "review"],
-            "implementer": ["implementation", "coding"]
-        }
-        
+        engine._agent_capabilities = {"analyzer": ["analysis", "review"], "implementer": ["implementation", "coding"]}
+
         # Create mock agents with proper name attribute
         analyzer = Mock()
         analyzer.name = "analyzer"
         implementer = Mock()
         implementer.name = "implementer"
-        
+
         # Test capability matching
         analysis_msg = Mock(message_type="analysis", to_agents=[], priority="normal")
         assert engine._can_handle(analyzer, analysis_msg) is True
@@ -833,22 +813,23 @@ class TestMessageQueueAdvancedScenarios:
     async def test_routing_with_wildcards(self):
         """Test wildcard routing"""
         engine = RoutingEngine()
-        
+
         # Add wildcard rule
         from src.giljo_mcp.message_queue import TypeRoutingRule
+
         engine._routing_rules.append(TypeRoutingRule("broadcast", ["*"]))
-        
+
         # Create agents with proper name attributes
         agents = []
         for i in range(1, 4):
             agent = Mock()
             agent.name = f"agent{i}"
             agents.append(agent)
-        
+
         # Test wildcard routing
         broadcast_msg = Mock(message_type="broadcast", to_agents=[], priority="normal")
         routed = await engine.route_message(broadcast_msg, agents)
-        
+
         # Should route to all agents
         assert len(routed) == 3
         assert all(agent in ["agent1", "agent2", "agent3"] for agent in routed)
@@ -858,23 +839,21 @@ class TestMessageQueueAdvancedScenarios:
         """Test stuck message detection with processing time filter"""
         # Setup mock session
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         # Create message with processing_started_at
         processing_msg = Mock(
             id="processing-123",
             status="processing",
             created_at=datetime.now(timezone.utc) - timedelta(minutes=5),
-            meta_data={
-                "processing_started_at": (datetime.now(timezone.utc) - timedelta(minutes=6)).isoformat()
-            }
+            meta_data={"processing_started_at": (datetime.now(timezone.utc) - timedelta(minutes=6)).isoformat()},
         )
-        
+
         # Create message without processing_started_at but old
         old_msg = Mock(
-            id="old-123", 
+            id="old-123",
             status="acknowledged",
             created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-            meta_data={}
+            meta_data={},
         )
 
         result_mock = Mock()
@@ -883,7 +862,7 @@ class TestMessageQueueAdvancedScenarios:
 
         # Detect stuck messages with 5-minute timeout
         stuck = await message_queue.detect_stuck_messages(timeout_seconds=300)
-        
+
         # Should find both messages
         assert len(stuck) == 2
 
@@ -896,7 +875,7 @@ class TestMessageQueueFinalCoverage:
         """Test retry_message with database failure"""
         # Setup mock session that fails during commit
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
-        
+
         # Create message for retry
         retry_msg = Mock(id="retry-123", meta_data={"retry_count": 1})
         result_mock = Mock()
@@ -919,14 +898,14 @@ class TestMessageQueueFinalCoverage:
         # Should raise QueueException
         with pytest.raises(QueueException, match="Recovery failed"):
             await message_queue.recover_from_crash()
-        
+
         session_mock.rollback.assert_called()
 
     @pytest.mark.asyncio
     async def test_queue_monitor_no_samples(self):
         """Test QueueMonitor with no samples"""
         monitor = QueueMonitor()
-        
+
         # Test percentiles with no samples
         percentiles = monitor._calculate_latency_percentiles()
         assert percentiles["p50"] == 0
@@ -937,15 +916,15 @@ class TestMessageQueueFinalCoverage:
     async def test_queue_monitor_processing_time_tracking_success_failure(self):
         """Test QueueMonitor processing time tracking with success and failure"""
         monitor = QueueMonitor()
-        
+
         # Test processing end with success
         await monitor.record_processing_start("msg-1", "agent1")
         await monitor.record_processing_end("msg-1", "agent1", success=True)
-        
+
         # Test processing end with failure
         await monitor.record_processing_start("msg-2", "agent1")
         await monitor.record_processing_end("msg-2", "agent1", success=False)
-        
+
         # Should have recorded error
         assert monitor._metrics["error_rate"] == 1
 
@@ -953,14 +932,14 @@ class TestMessageQueueFinalCoverage:
     async def test_routing_engine_response_time_tracking(self):
         """Test RoutingEngine response time tracking"""
         engine = RoutingEngine()
-        
+
         # Record some response times
         engine.record_response_time("agent1", 0.5)
         engine.record_response_time("agent1", 0.3)
-        
+
         # Test that times are recorded
         assert len(engine._response_times["agent1"]) == 2
-        
+
         # Test score calculation with response times
         score = engine._calculate_agent_score("agent1", Mock(message_type="test"))
         assert score > 0  # Should include response time in score
@@ -969,11 +948,11 @@ class TestMessageQueueFinalCoverage:
     async def test_routing_engine_load_tracking(self):
         """Test RoutingEngine load tracking"""
         engine = RoutingEngine()
-        
+
         # Update agent load
         engine.update_agent_load("agent1", 5)
         assert engine._agent_load["agent1"] == 5
-        
+
         # Update again
         engine.update_agent_load("agent1", -2)
         assert engine._agent_load["agent1"] == 3
@@ -982,7 +961,7 @@ class TestMessageQueueFinalCoverage:
     async def test_dlq_reprocess_no_message(self, db_manager):
         """Test DLQ reprocess with no message found"""
         dlq = DeadLetterQueue(db_manager)
-        
+
         # Setup mock session with no message
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
         result_mock = Mock()
@@ -997,7 +976,7 @@ class TestMessageQueueFinalCoverage:
     async def test_dlq_reprocess_database_error(self, db_manager):
         """Test DLQ reprocess with database error"""
         dlq = DeadLetterQueue(db_manager)
-        
+
         # Setup mock session that fails
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
         session_mock.execute = AsyncMock(side_effect=Exception("Database error"))
@@ -1010,20 +989,20 @@ class TestMessageQueueFinalCoverage:
     async def test_durability_manager_checkpoint(self):
         """Test DurabilityManager checkpoint operations"""
         from src.giljo_mcp.message_queue import DurabilityManager
-        
+
         db_manager = Mock()
         durability_mgr = DurabilityManager(db_manager)
-        
+
         # Add some committed and uncommitted entries
         durability_mgr._wal_entries = [
             {"committed": True, "operation": "test1"},
             {"committed": False, "operation": "test2"},
             {"committed": True, "operation": "test3"},
         ]
-        
+
         # Checkpoint should clear committed entries
         await durability_mgr.checkpoint()
-        
+
         # Should only have uncommitted entry
         assert len(durability_mgr._wal_entries) == 1
         assert durability_mgr._wal_entries[0]["operation"] == "test2"
@@ -1034,13 +1013,13 @@ class TestMessageQueueFinalCoverage:
         # Mock stuck message detector
         stuck_msg = Mock(id="stuck-1")
         message_queue._stuck_detector.detect_stuck_messages = AsyncMock(return_value=[stuck_msg])
-        
+
         # Mock DLQ size
         message_queue._dead_letter_queue.get_size = AsyncMock(return_value=3)
-        
+
         # Get statistics
         stats = await message_queue.get_statistics()
-        
+
         # Verify all stats are included
         assert "stuck_count" in stats
         assert "dlq_count" in stats
@@ -1051,18 +1030,18 @@ class TestMessageQueueFinalCoverage:
     async def test_circuit_breaker_half_open_failure(self):
         """Test circuit breaker failure in half-open state"""
         breaker = CircuitBreaker("test_agent", failure_threshold=2, timeout=1)
-        
+
         # Open the circuit
         breaker.record_failure()
         breaker.record_failure()
         assert breaker.state == "open"
-        
+
         # Force half-open state
         breaker.state = "half-open"
-        
+
         # Record another failure
         breaker.record_failure()
-        
+
         # Should still be open
         assert breaker.failure_count == 3
 
@@ -1070,9 +1049,9 @@ class TestMessageQueueFinalCoverage:
     async def test_content_routing_rule_no_match(self):
         """Test ContentRoutingRule with no match"""
         from src.giljo_mcp.message_queue import ContentRoutingRule
-        
+
         rule = ContentRoutingRule(r"ERROR|CRITICAL", ["error_handler"])
-        
+
         # Test message that doesn't match
         normal_msg = Mock(content="INFO: Everything is fine")
         assert rule.matches(normal_msg) is False
@@ -1081,12 +1060,12 @@ class TestMessageQueueFinalCoverage:
     async def test_queue_monitor_processing_time_limits(self):
         """Test QueueMonitor processing time sample limits"""
         monitor = QueueMonitor()
-        
+
         # Add many processing times for one agent
         for i in range(150):  # More than the 100 limit
             await monitor.record_processing_start(f"msg-{i}", "agent1")
             await monitor.record_processing_end(f"msg-{i}", "agent1", success=True)
-        
+
         # Should only keep last 100
         assert len(monitor._metrics["processing_time"]["agent1"]) == 100
 
@@ -1094,15 +1073,12 @@ class TestMessageQueueFinalCoverage:
     async def test_queue_monitor_latency_sample_limits(self):
         """Test QueueMonitor latency sample limits"""
         monitor = QueueMonitor()
-        
+
         # Add many latency samples
         for i in range(1100):  # More than the 1000 limit
-            msg = Mock(
-                priority="normal", 
-                created_at=datetime.now(timezone.utc) - timedelta(seconds=i)
-            )
+            msg = Mock(priority="normal", created_at=datetime.now(timezone.utc) - timedelta(seconds=i))
             await monitor.record_dequeue(msg, "test_agent")
-        
+
         # Should only keep last 1000
         assert len(monitor._latency_samples) == 1000
 
@@ -1110,11 +1086,11 @@ class TestMessageQueueFinalCoverage:
     async def test_routing_engine_response_time_limits(self):
         """Test RoutingEngine response time limits"""
         engine = RoutingEngine()
-        
+
         # Add many response times
         for i in range(150):  # More than the 100 limit
             engine.record_response_time("agent1", 0.1 * i)
-        
+
         # Should only keep last 100
         assert len(engine._response_times["agent1"]) == 100
 

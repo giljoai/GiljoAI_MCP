@@ -3,13 +3,13 @@ Final push to get orchestrator coverage above 90%.
 Targets specific uncovered lines in the monitoring loop.
 """
 
-import pytest
-import pytest_asyncio
 import asyncio
 from unittest.mock import patch
+
+import pytest_asyncio
+
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.orchestrator import ProjectOrchestrator, AgentRole
-from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 @pytest_asyncio.fixture
@@ -41,26 +41,26 @@ class TestOrchestratorFinalCoveragePush:
         # Create agents with varied context usage
         agent1 = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
         agent2 = await orchestrator.spawn_agent(project.id, AgentRole.IMPLEMENTER)
-        
+
         # Set context usage that will trigger handoff checks
         await orchestrator.update_context_usage(agent1.id, 24000)  # 80% - border case
         await orchestrator.update_context_usage(agent2.id, 26000)  # 86.7% - needs handoff
 
         # Verify monitoring started
         assert project.id in orchestrator._context_monitors
-        
+
         # Let monitoring loop run multiple cycles to hit all code paths
         # This should cover lines 667-682 completely
-        for i in range(5):
+        for _i in range(5):
             await asyncio.sleep(0.05)  # Short sleeps to let monitoring run
-            
+
         # Verify handoff detection occurred
-        needs_handoff2, reason2 = await orchestrator.check_handoff_needed(agent2.id)
+        needs_handoff2, _reason2 = await orchestrator.check_handoff_needed(agent2.id)
         assert needs_handoff2 is True
-        
+
         # Complete project to stop monitoring gracefully
         await orchestrator.complete_project(project.id)
-        
+
         # Verify monitoring stopped
         assert project.id not in orchestrator._context_monitors
 
@@ -71,12 +71,12 @@ class TestOrchestratorFinalCoveragePush:
         await orchestrator.activate_project(project.id)
 
         # Create agent
-        agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
+        await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # Patch check_handoff_needed to simulate intermittent failures
         original_method = orchestrator.check_handoff_needed
         call_count = 0
-        
+
         async def failing_check_handoff(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -94,10 +94,10 @@ class TestOrchestratorFinalCoveragePush:
 
         # Verify monitoring continued despite exceptions
         assert project.id in orchestrator._context_monitors
-        
+
         # Complete project
         await orchestrator.complete_project(project.id)
-        
+
         # Verify exceptions may or may not have occurred depending on timing
         assert call_count >= 0
 
@@ -108,7 +108,7 @@ class TestOrchestratorFinalCoveragePush:
         await orchestrator.activate_project(project.id)
 
         # Create agent
-        agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
+        await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # Verify monitoring started
         assert project.id in orchestrator._context_monitors
@@ -161,8 +161,9 @@ class TestOrchestratorFinalCoveragePush:
         # Manually set one agent to inactive status
         async with orchestrator.db_manager.get_session_async() as session:
             from sqlalchemy import update
+
             from src.giljo_mcp.models import Agent
-            
+
             stmt = update(Agent).where(Agent.id == inactive_agent.id).values(status="idle")
             await session.execute(stmt)
             await session.commit()

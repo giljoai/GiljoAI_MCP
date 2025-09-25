@@ -3,6 +3,7 @@
 Comprehensive test script for all 20 GiljoAI MCP tools
 Tests functionality and error handling for each tool category
 """
+
 import asyncio
 import json
 import sys

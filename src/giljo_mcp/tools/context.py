@@ -1347,7 +1347,7 @@ async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool
 
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()
-    path_resolver = PathResolver(db_manager, tenant_manager)
+    PathResolver(db_manager, tenant_manager)
 
     try:
         tenant_key = tenant_manager.get_current_tenant()
@@ -1363,10 +1363,11 @@ async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool
                 return {"success": False, "error": "Project not found"}
 
             # Check for existing vision chunks in database
-            vision_query = select(Vision).where(
-                Vision.project_id == project.id,
-                Vision.tenant_key == tenant_key
-            ).order_by(Vision.chunk_number)
+            vision_query = (
+                select(Vision)
+                .where(Vision.project_id == project.id, Vision.tenant_key == tenant_key)
+                .order_by(Vision.chunk_number)
+            )
             vision_result = await session.execute(vision_query)
             visions = vision_result.scalars().all()
 
@@ -1403,7 +1404,7 @@ async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool
                 "headers": ["Vision Document"],
                 "has_more": False,
                 "indexed": False,
-                "message": "No vision documents found - returning placeholder"
+                "message": "No vision documents found - returning placeholder",
             }
 
     except Exception as e:
@@ -1422,7 +1423,7 @@ async def get_vision_index() -> dict[str, Any]:
 
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()
-    path_resolver = PathResolver(db_manager, tenant_manager)
+    PathResolver(db_manager, tenant_manager)
 
     try:
         tenant_key = tenant_manager.get_current_tenant()
@@ -1476,8 +1477,8 @@ async def get_vision_index() -> dict[str, Any]:
                     "total_files": 0,
                     "chunks": {},
                     "from_database": False,
-                    "message": "No vision index found - use MCP tools to initialize vision documents"
-                }
+                    "message": "No vision index found - use MCP tools to initialize vision documents",
+                },
             }
 
     except Exception as e:

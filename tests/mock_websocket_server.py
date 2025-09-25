@@ -382,7 +382,11 @@ async def run_mock_server(host: str = "localhost", port: int = 8001):
     logger.info(f"Starting mock WebSocket server on {host}:{port}")
 
     async with websockets.serve(
-        manager.handle_connection, host, port, ping_interval=None, ping_timeout=None  # We handle our own heartbeat
+        manager.handle_connection,
+        host,
+        port,
+        ping_interval=None,
+        ping_timeout=None,  # We handle our own heartbeat
     ):
         manager.running = True
         logger.info(f"Mock WebSocket server listening on ws://{host}:{port}")

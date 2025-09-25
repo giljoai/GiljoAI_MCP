@@ -17,26 +17,12 @@ Tests all context tool functions:
 - help
 """
 
-import json
-import uuid
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
-from src.giljo_mcp.models import (
-    Agent,
-    Configuration,
-    ContextIndex,
-    LargeDocumentIndex,
-    Message,
-    Project,
-    Vision,
-)
-from src.giljo_mcp.models import Session as DBSession
 from src.giljo_mcp.tools.context import register_context_tools
 from tests.utils.tools_helpers import (
     AssertionHelpers,
@@ -52,11 +38,11 @@ class TestContextTools:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
-        self.discovery_manager = tools_test_setup['discovery_manager']
-        self.path_resolver = tools_test_setup['path_resolver']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
+        self.discovery_manager = tools_test_setup["discovery_manager"]
+        self.path_resolver = tools_test_setup["path_resolver"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -84,7 +70,7 @@ class TestContextTools:
             "recalibrate_mission",
             "get_large_document",
             "get_discovery_paths",
-            "help"
+            "help",
         ]
 
         registered_tools = registrar.get_all_tools()
@@ -134,12 +120,12 @@ class TestContextTools:
 
         # Create vision documents in database
         async with self.db_manager.get_session_async() as session:
-            vision = await ToolsTestHelper.create_test_vision(
+            await ToolsTestHelper.create_test_vision(
                 session,
                 self.project.id,
                 self.project.tenant_key,
                 "test_vision.md",
-                "# Test Vision\nThis is test content"
+                "# Test Vision\nThis is test content",
             )
 
         register_context_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -161,11 +147,7 @@ class TestContextTools:
 
         # Create existing vision documents
         async with self.db_manager.get_session_async() as session:
-            await ToolsTestHelper.create_test_vision(
-                session,
-                self.project.id,
-                self.project.tenant_key
-            )
+            await ToolsTestHelper.create_test_vision(session, self.project.id, self.project.tenant_key)
 
         # Mock path resolver to return test files
         test_vision_dir = Path("tests/temp/docs/Vision")
@@ -206,11 +188,7 @@ class TestContextTools:
 
         # Create one vision document
         async with self.db_manager.get_session_async() as session:
-            await ToolsTestHelper.create_test_vision(
-                session,
-                self.project.id,
-                self.project.tenant_key
-            )
+            await ToolsTestHelper.create_test_vision(session, self.project.id, self.project.tenant_key)
 
         register_context_tools(mock_server, self.db_manager, self.tenant_manager)
         get_vision = registrar.get_registered_tool("get_vision")
@@ -229,10 +207,7 @@ class TestContextTools:
         # Create context index in database
         async with self.db_manager.get_session_async() as session:
             await ToolsTestHelper.create_test_context_index(
-                session,
-                self.project.id,
-                self.project.tenant_key,
-                "test.md"
+                session, self.project.id, self.project.tenant_key, "test.md"
             )
 
         register_context_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -297,9 +272,7 @@ class TestContextTools:
 
         AssertionHelpers.assert_success_response(result, ["context", "project"])
         self.discovery_manager.discover_context.assert_called_once_with(
-            agent_role="orchestrator",
-            project_id=self.project.id,
-            force_refresh=False
+            agent_role="orchestrator", project_id=self.project.id, force_refresh=False
         )
 
     @pytest.mark.asyncio
@@ -345,7 +318,7 @@ class TestContextTools:
         test_file.parent.mkdir(parents=True, exist_ok=True)
         test_file.write_text("# Claude Instructions\n\n## Setup\nTest setup instructions")
 
-        with patch('pathlib.Path', return_value=test_file):
+        with patch("pathlib.Path", return_value=test_file):
             register_context_tools(mock_server, self.db_manager, self.tenant_manager)
             get_context_section = registrar.get_registered_tool("get_context_section")
 
@@ -376,7 +349,7 @@ Testing instructions here
 """
         test_file.write_text(content)
 
-        with patch('pathlib.Path', return_value=test_file):
+        with patch("pathlib.Path", return_value=test_file):
             register_context_tools(mock_server, self.db_manager, self.tenant_manager)
             get_context_section = registrar.get_registered_tool("get_context_section")
 
@@ -408,11 +381,7 @@ Testing instructions here
         # Create test configuration
         async with self.db_manager.get_session_async() as session:
             await ToolsTestHelper.create_test_configuration(
-                session,
-                self.project.id,
-                self.project.tenant_key,
-                "test_setting",
-                "test_value"
+                session, self.project.id, self.project.tenant_key, "test_setting", "test_value"
             )
 
         register_context_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -486,18 +455,14 @@ Testing instructions here
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch('src.giljo_mcp.tools.context.broadcast') as mock_broadcast:
-            mock_broadcast.return_value = {
-                "success": True,
-                "broadcast_to": ["agent1", "agent2"]
-            }
+        with patch("src.giljo_mcp.tools.context.broadcast") as mock_broadcast:
+            mock_broadcast.return_value = {"success": True, "broadcast_to": ["agent1", "agent2"]}
 
             register_context_tools(mock_server, self.db_manager, self.tenant_manager)
             recalibrate_mission = registrar.get_registered_tool("recalibrate_mission")
 
             result = await recalibrate_mission(
-                project_id=self.project.id,
-                changes_summary="Updated mission with new requirements"
+                project_id=self.project.id, changes_summary="Updated mission with new requirements"
             )
 
         AssertionHelpers.assert_success_response(result, ["project_id", "agents_notified", "summary"])
@@ -515,7 +480,7 @@ Testing instructions here
         test_doc.parent.mkdir(parents=True, exist_ok=True)
         test_doc.write_text("# Large Document\n\nThis is a large document for testing.")
 
-        with patch('pathlib.Path', return_value=test_doc):
+        with patch("pathlib.Path", return_value=test_doc):
             register_context_tools(mock_server, self.db_manager, self.tenant_manager)
             get_large_document = registrar.get_registered_tool("get_large_document")
 
@@ -530,7 +495,7 @@ Testing instructions here
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch('pathlib.Path') as mock_path:
+        with patch("pathlib.Path") as mock_path:
             mock_path.return_value.exists.return_value = False
 
             register_context_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -584,7 +549,7 @@ Testing instructions here
         mock_server = registrar.create_tool_decorator()
 
         # Mock database to raise exception
-        with patch.object(self.db_manager, 'get_session') as mock_get_session:
+        with patch.object(self.db_manager, "get_session") as mock_get_session:
             mock_get_session.side_effect = Exception("Database connection failed")
 
             register_context_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -631,11 +596,7 @@ Testing instructions here
 
         # Create vision document
         async with self.db_manager.get_session_async() as session:
-            await ToolsTestHelper.create_test_vision(
-                session,
-                self.project.id,
-                self.project.tenant_key
-            )
+            await ToolsTestHelper.create_test_vision(session, self.project.id, self.project.tenant_key)
 
         register_context_tools(mock_server, self.db_manager, self.tenant_manager)
         get_vision = registrar.get_registered_tool("get_vision")

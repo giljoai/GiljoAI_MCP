@@ -4,10 +4,9 @@ Provides instance locking to prevent multiple servers from running
 Uses a custom lock file to prevent conflicts with other MCP servers
 """
 
+import atexit
 import os
 import sys
-import time
-import atexit
 from pathlib import Path
 from typing import Optional
 
@@ -34,23 +33,20 @@ class LockManager:
             if self.lock_file.exists():
                 # Read the PID from the lock file
                 try:
-                    with open(self.lock_file, 'r') as f:
+                    with open(self.lock_file) as f:
                         old_pid = int(f.read().strip())
 
                     # Check if the process is still running
                     if self._is_process_running(old_pid):
-                        print(f"Another GiljoAI MCP instance is running (PID: {old_pid})")
                         return False
-                    else:
-                        # Old process is dead, remove stale lock
-                        print(f"Removing stale lock file (PID: {old_pid})")
-                        self.lock_file.unlink()
+                    # Old process is dead, remove stale lock
+                    self.lock_file.unlink()
                 except (ValueError, OSError):
                     # Invalid lock file, remove it
                     self.lock_file.unlink()
 
             # Create new lock file with our PID
-            with open(self.lock_file, 'w') as f:
+            with open(self.lock_file, "w") as f:
                 f.write(str(self.pid))
 
             self.locked = True
@@ -58,8 +54,7 @@ class LockManager:
             atexit.register(self.release_lock)
             return True
 
-        except Exception as e:
-            print(f"Error acquiring lock: {e}")
+        except Exception:
             return False
 
     def release_lock(self):
@@ -67,7 +62,7 @@ class LockManager:
         if self.locked and self.lock_file.exists():
             try:
                 # Only remove if it's our lock
-                with open(self.lock_file, 'r') as f:
+                with open(self.lock_file) as f:
                     if int(f.read().strip()) == self.pid:
                         self.lock_file.unlink()
                         self.locked = False
@@ -78,12 +73,10 @@ class LockManager:
         """Check if a process with given PID is running"""
         if sys.platform == "win32":
             import subprocess
+
             try:
                 result = subprocess.run(
-                    ["tasklist", "/FI", f"PID eq {pid}"],
-                    capture_output=True,
-                    text=True,
-                    check=False
+                    ["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, check=False
                 )
                 return str(pid) in result.stdout
             except Exception:

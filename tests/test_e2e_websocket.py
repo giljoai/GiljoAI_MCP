@@ -27,7 +27,6 @@ class E2EWebSocketTester:
         try:
             ws_url = f"{self.ws_url}/test_backend_client"
             async with websockets.connect(ws_url) as websocket:
-
                 # Test ping-pong
                 start = time.time()
                 await websocket.send(json.dumps({"type": "ping", "timestamp": start}))
@@ -97,7 +96,6 @@ class E2EWebSocketTester:
             # Simulate frontend WebSocket connection
             ws_url = f"{self.ws_url}/frontend_client_001"
             async with websockets.connect(ws_url) as websocket:
-
                 # Test subscription
                 await websocket.send(json.dumps({"type": "subscribe", "entities": ["agents", "messages", "projects"]}))
 

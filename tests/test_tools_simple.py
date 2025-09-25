@@ -122,7 +122,6 @@ async def test_tools():
                 break
 
         if help_tool:
-
             # Call the help tool
             result = await help_tool.func()
 

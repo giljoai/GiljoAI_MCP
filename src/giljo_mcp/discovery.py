@@ -438,9 +438,7 @@ class DiscoveryManager:
                     sessions_path.glob("*.md"),
                     key=lambda x: x.stat().st_mtime,
                     reverse=True,
-                )[
-                    :5
-                ]  # Last 5 sessions
+                )[:5]  # Last 5 sessions
 
                 for file in session_files:
                     if tokens_used >= max_tokens:

@@ -3,13 +3,13 @@ Final targeted test to push coverage above 90%.
 Specifically targets the context monitoring background task loop.
 """
 
-import pytest
-import pytest_asyncio
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
+
+import pytest_asyncio
+
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.orchestrator import ProjectOrchestrator, AgentRole
-from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 @pytest_asyncio.fixture
@@ -54,9 +54,9 @@ class TestOrchestratorFinalNinety:
             await asyncio.sleep(0.1)  # Let monitoring task run
 
         # Verify high usage agents were detected
-        needs_handoff2, reason2 = await orchestrator.check_handoff_needed(agent2.id)
-        needs_handoff3, reason3 = await orchestrator.check_handoff_needed(agent3.id)
-        
+        needs_handoff2, _reason2 = await orchestrator.check_handoff_needed(agent2.id)
+        needs_handoff3, _reason3 = await orchestrator.check_handoff_needed(agent3.id)
+
         assert needs_handoff2 is True
         assert needs_handoff3 is True
 
@@ -70,12 +70,13 @@ class TestOrchestratorFinalNinety:
         await orchestrator.activate_project(project.id)
 
         # Create agent
-        agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
+        await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # Store original check_handoff_needed method
         original_check_handoff = orchestrator.check_handoff_needed
 
         exception_count = 0
+
         async def failing_check_handoff(*args, **kwargs):
             nonlocal exception_count
             exception_count += 1
@@ -109,7 +110,7 @@ class TestOrchestratorFinalNinety:
         await orchestrator.activate_project(project.id)
 
         # Create agent
-        agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
+        await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # Verify monitoring is running
         assert project.id in orchestrator._context_monitors
@@ -155,7 +156,7 @@ class TestOrchestratorFinalNinety:
 
         # Create agent
         agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
-        
+
         # Set high context usage
         await orchestrator.update_context_usage(agent.id, 26000)  # 86.7%
 
@@ -165,8 +166,9 @@ class TestOrchestratorFinalNinety:
         # Manually set agent status to inactive
         async with orchestrator.db_manager.get_session_async() as session:
             from sqlalchemy import update
+
             from src.giljo_mcp.models import Agent
-            
+
             stmt = update(Agent).where(Agent.id == agent.id).values(status="idle")
             await session.execute(stmt)
             await session.commit()
@@ -188,13 +190,12 @@ class TestOrchestratorFinalNinety:
         await orchestrator.update_context_usage(agent.id, 29000)  # 96.7% - critical
 
         # Capture logs to verify warning was logged
-        import logging
-        
+
         # Let monitoring run and log warning
         await asyncio.sleep(0.2)
 
         # Verify agent needs handoff (which triggers the warning log)
-        needs_handoff, reason = await orchestrator.check_handoff_needed(agent.id)
+        needs_handoff, _reason = await orchestrator.check_handoff_needed(agent.id)
         assert needs_handoff is True
 
         # Complete project

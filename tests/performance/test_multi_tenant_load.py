@@ -41,11 +41,11 @@ class TenantTestEnvironment:
         # Create project for this tenant
         self.project_id = str(uuid.uuid4())
 
-        project = await orchestrator.create_project(
+        await orchestrator.create_project(
             project_id=self.project_id,
             name=f"Tenant {self.tenant_id} Load Test",
             mission=f"Multi-tenant performance test for tenant {self.tenant_id}",
-            tenant_key=self.tenant_key
+            tenant_key=self.tenant_key,
         )
 
         # Create agents for this tenant
@@ -54,11 +54,7 @@ class TenantTestEnvironment:
 
         for i in range(self.num_agents):
             agent_name = f"tenant_{self.tenant_id}_agent_{i}"
-            task = orchestrator.spawn_agent(
-                project_id=self.project_id,
-                agent_name=agent_name,
-                role="worker"
-            )
+            task = orchestrator.spawn_agent(project_id=self.project_id, agent_name=agent_name, role="worker")
             agent_tasks.append(task)
 
         self.agents = await asyncio.gather(*agent_tasks, return_exceptions=True)
@@ -82,9 +78,7 @@ class TenantTestEnvironment:
 
         # Each agent sends messages periodically
         for agent in self.agents:
-            task = self._agent_message_workload(
-                message_tools, agent, start_time, end_time
-            )
+            task = self._agent_message_workload(message_tools, agent, start_time, end_time)
             workload_tasks.append(task)
 
         # Execute workload
@@ -102,9 +96,7 @@ class TenantTestEnvironment:
             try:
                 # Send message to another random agent in the same tenant
                 if len(self.agents) > 1:
-                    target_agent = self.agents[
-                        (self.agents.index(agent) + 1) % len(self.agents)
-                    ]
+                    target_agent = self.agents[(self.agents.index(agent) + 1) % len(self.agents)]
 
                     await message_tools.send_message(
                         project_id=self.project_id,
@@ -112,7 +104,7 @@ class TenantTestEnvironment:
                         to_agents=[target_agent.name],
                         content=f"Workload message {agent_messages} from {agent.name}",
                         message_type="direct",
-                        priority="normal"
+                        priority="normal",
                     )
 
                     agent_messages += 1
@@ -159,16 +151,13 @@ class TestMultiTenantLoad:
 
         metrics = tenant_env.performance_metrics
 
-        print("\n✅ Single Tenant Baseline (50 agents):")
-        print(f"   Setup Time: {metrics['setup_time_ms']:.2f}ms")
-        print(f"   Agents Created: {metrics['agents_created']}/{metrics['agents_requested']}")
-        print(f"   Messages Sent: {metrics['messages_sent']}")
-        print(f"   Messages/second: {metrics['messages_per_second']:.1f}")
 
         # Baseline validation
         assert metrics["setup_time_ms"] < 30000, f"Baseline setup too slow: {metrics['setup_time_ms']:.2f}ms"
         assert metrics["agents_created"] >= 45, f"Too few agents created: {metrics['agents_created']}/50"
-        assert metrics["messages_per_second"] >= 40, f"Baseline throughput too low: {metrics['messages_per_second']:.1f}/s"
+        assert metrics["messages_per_second"] >= 40, (
+            f"Baseline throughput too low: {metrics['messages_per_second']:.1f}/s"
+        )
 
     async def test_dual_tenant_isolation_performance(self, orchestrator, message_tools, db_session):
         """Test performance with 2 tenants running concurrently"""
@@ -181,34 +170,24 @@ class TestMultiTenantLoad:
 
         # Setup both tenants concurrently
         setup_start = time.perf_counter()
-        setup_tasks = [
-            tenant1.setup(orchestrator, db_session),
-            tenant2.setup(orchestrator, db_session)
-        ]
+        setup_tasks = [tenant1.setup(orchestrator, db_session), tenant2.setup(orchestrator, db_session)]
         setup_results = await asyncio.gather(*setup_tasks, return_exceptions=True)
-        total_setup_time = (time.perf_counter() - setup_start) * 1000
+        (time.perf_counter() - setup_start) * 1000
 
         assert all(setup_results), "Failed to set up dual tenant environments"
 
         # Run concurrent workloads
         workload_tasks = [
             tenant1.simulate_workload(message_tools, duration_seconds=15),
-            tenant2.simulate_workload(message_tools, duration_seconds=15)
+            tenant2.simulate_workload(message_tools, duration_seconds=15),
         ]
         await asyncio.gather(*workload_tasks, return_exceptions=True)
 
         # Analyze isolation and performance
-        print("\n✅ Dual Tenant Performance:")
-        print(f"   Total Setup Time: {total_setup_time:.2f}ms")
-        print(f"   Tenant 1 - Agents: {tenant1.performance_metrics['agents_created']}/30")
-        print(f"   Tenant 1 - Messages/s: {tenant1.performance_metrics['messages_per_second']:.1f}")
-        print(f"   Tenant 2 - Agents: {tenant2.performance_metrics['agents_created']}/30")
-        print(f"   Tenant 2 - Messages/s: {tenant2.performance_metrics['messages_per_second']:.1f}")
 
         # Validate tenant isolation doesn't impact performance significantly
         combined_throughput = (
-            tenant1.performance_metrics["messages_per_second"] +
-            tenant2.performance_metrics["messages_per_second"]
+            tenant1.performance_metrics["messages_per_second"] + tenant2.performance_metrics["messages_per_second"]
         )
 
         assert combined_throughput >= 50, (
@@ -235,20 +214,18 @@ class TestMultiTenantLoad:
         setup_start = time.perf_counter()
         setup_tasks = [tenant.setup(orchestrator, db_session) for tenant in tenants]
         setup_results = await asyncio.gather(*setup_tasks, return_exceptions=True)
-        total_setup_time = (time.perf_counter() - setup_start) * 1000
+        (time.perf_counter() - setup_start) * 1000
 
         successful_setups = sum(1 for r in setup_results if r is True)
 
-        print("\n🚀 Five Tenant Concurrent Load:")
-        print(f"   Total Setup Time: {total_setup_time:.2f}ms")
-        print(f"   Successful Tenant Setups: {successful_setups}/5")
 
         assert successful_setups >= 4, f"Too many tenant setup failures: {successful_setups}/5"
 
         # Run concurrent workloads for all tenants
         workload_tasks = [
             tenant.simulate_workload(message_tools, duration_seconds=20)
-            for tenant in tenants if tenant.performance_metrics.get("agents_created", 0) > 0
+            for tenant in tenants
+            if tenant.performance_metrics.get("agents_created", 0) > 0
         ]
 
         await asyncio.gather(*workload_tasks, return_exceptions=True)
@@ -257,13 +234,9 @@ class TestMultiTenantLoad:
         total_agents = sum(t.performance_metrics.get("agents_created", 0) for t in tenants)
         total_throughput = sum(t.performance_metrics.get("messages_per_second", 0) for t in tenants)
 
-        print(f"   Total Agents Across All Tenants: {total_agents}")
-        print(f"   Total Throughput: {total_throughput:.1f} messages/s")
 
         for i, tenant in enumerate(tenants):
-            metrics = tenant.performance_metrics
-            print(f"   Tenant {i} - Agents: {metrics.get('agents_created', 0)}/20, "
-                  f"Throughput: {metrics.get('messages_per_second', 0):.1f}/s")
+            pass
 
         # PRODUCTION REQUIREMENTS VALIDATION
         assert total_agents >= 80, (
@@ -276,7 +249,6 @@ class TestMultiTenantLoad:
             f"This indicates performance degradation under multi-tenant load."
         )
 
-        print("   ✅ MEETS MULTI-TENANT PRODUCTION REQUIREMENTS")
 
     async def test_tenant_data_isolation_verification(self, orchestrator, message_tools, db_session):
         """Verify complete data isolation between tenants"""
@@ -300,7 +272,7 @@ class TestMultiTenantLoad:
                 to_agents=[tenant1.agents[0].name],
                 content=f"Tenant 1 secret message {i}",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
 
             # Tenant 2 messages
@@ -310,23 +282,18 @@ class TestMultiTenantLoad:
                 to_agents=[tenant2.agents[0].name],
                 content=f"Tenant 2 secret message {i}",
                 message_type="direct",
-                priority="normal"
+                priority="normal",
             )
 
         # Verify tenant 1 cannot access tenant 2's messages and vice versa
         tenant1_messages = await message_tools.get_messages(
-            agent_name=tenant1.agents[0].name,
-            project_id=tenant1.project_id
+            agent_name=tenant1.agents[0].name, project_id=tenant1.project_id
         )
 
         tenant2_messages = await message_tools.get_messages(
-            agent_name=tenant2.agents[0].name,
-            project_id=tenant2.project_id
+            agent_name=tenant2.agents[0].name, project_id=tenant2.project_id
         )
 
-        print("\n✅ Tenant Data Isolation Verification:")
-        print(f"   Tenant 1 Messages: {len(tenant1_messages)}")
-        print(f"   Tenant 2 Messages: {len(tenant2_messages)}")
 
         # Verify isolation
         assert len(tenant1_messages) >= 5, "Tenant 1 missing its own messages"
@@ -348,7 +315,6 @@ class TestMultiTenantLoad:
         assert tenant2_has_own_data, "Tenant 2 doesn't have access to its own data"
         assert not tenant2_has_other_data, "Tenant 2 has access to Tenant 1's data - SECURITY BREACH"
 
-        print("   ✅ COMPLETE DATA ISOLATION VERIFIED")
 
     async def test_tenant_performance_isolation(self, orchestrator, message_tools, db_session):
         """Test that one tenant's heavy load doesn't impact another tenant's performance"""
@@ -367,7 +333,7 @@ class TestMultiTenantLoad:
         baseline_start = time.perf_counter()
         await normal_tenant.simulate_workload(message_tools, duration_seconds=10)
         baseline_performance = normal_tenant.performance_metrics["messages_per_second"]
-        baseline_time = (time.perf_counter() - baseline_start) * 1000
+        (time.perf_counter() - baseline_start) * 1000
 
         # Reset normal tenant metrics
         normal_tenant.messages_sent = 0
@@ -377,22 +343,17 @@ class TestMultiTenantLoad:
         concurrent_start = time.perf_counter()
         concurrent_tasks = [
             heavy_tenant.simulate_workload(message_tools, duration_seconds=15),
-            normal_tenant.simulate_workload(message_tools, duration_seconds=15)
+            normal_tenant.simulate_workload(message_tools, duration_seconds=15),
         ]
         await asyncio.gather(*concurrent_tasks, return_exceptions=True)
-        concurrent_time = (time.perf_counter() - concurrent_start) * 1000
+        (time.perf_counter() - concurrent_start) * 1000
 
         concurrent_performance = normal_tenant.performance_metrics["messages_per_second"]
-        heavy_load_performance = heavy_tenant.performance_metrics["messages_per_second"]
+        heavy_tenant.performance_metrics["messages_per_second"]
 
         # Calculate performance impact
         performance_degradation = (baseline_performance - concurrent_performance) / baseline_performance * 100
 
-        print("\n✅ Tenant Performance Isolation Test:")
-        print(f"   Normal Tenant Baseline: {baseline_performance:.1f} messages/s")
-        print(f"   Normal Tenant Under Heavy Load: {concurrent_performance:.1f} messages/s")
-        print(f"   Heavy Tenant Performance: {heavy_load_performance:.1f} messages/s")
-        print(f"   Performance Degradation: {performance_degradation:.1f}%")
 
         # PRODUCTION ISOLATION REQUIREMENTS
         assert performance_degradation < 25.0, (
@@ -407,7 +368,6 @@ class TestMultiTenantLoad:
             f"This indicates severe performance isolation issues."
         )
 
-        print("   ✅ TENANT PERFORMANCE ISOLATION VERIFIED")
 
     async def test_tenant_resource_allocation_fairness(self, orchestrator, message_tools, db_session):
         """Test fair resource allocation across multiple tenants"""
@@ -426,10 +386,7 @@ class TestMultiTenantLoad:
         await asyncio.gather(*setup_tasks, return_exceptions=True)
 
         # Run equal workloads on all tenants
-        workload_tasks = [
-            tenant.simulate_workload(message_tools, duration_seconds=20)
-            for tenant in tenants
-        ]
+        workload_tasks = [tenant.simulate_workload(message_tools, duration_seconds=20) for tenant in tenants]
         await asyncio.gather(*workload_tasks, return_exceptions=True)
 
         # Analyze resource allocation fairness
@@ -439,19 +396,14 @@ class TestMultiTenantLoad:
         avg_performance = mean(performances)
         avg_agents = mean(agent_counts)
 
-        print("\n✅ Resource Allocation Fairness Test:")
-        print(f"   Average Performance: {avg_performance:.1f} messages/s")
-        print(f"   Average Agents: {avg_agents:.1f}")
 
         for i, tenant in enumerate(tenants):
             metrics = tenant.performance_metrics
             perf = metrics.get("messages_per_second", 0)
             agents = metrics.get("agents_created", 0)
-            perf_variance = abs(perf - avg_performance) / avg_performance * 100
-            agent_variance = abs(agents - avg_agents) / avg_agents * 100
+            abs(perf - avg_performance) / avg_performance * 100
+            abs(agents - avg_agents) / avg_agents * 100
 
-            print(f"   Tenant {i} - Performance: {perf:.1f}/s ({perf_variance:.1f}% variance), "
-                  f"Agents: {agents} ({agent_variance:.1f}% variance)")
 
         # Check fairness - no tenant should have significantly different performance
         max_perf_variance = max(abs(p - avg_performance) / avg_performance * 100 for p in performances)
@@ -467,7 +419,6 @@ class TestMultiTenantLoad:
             f"Agent creation is not fair across tenants."
         )
 
-        print("   ✅ FAIR RESOURCE ALLOCATION VERIFIED")
 
 
 if __name__ == "__main__":

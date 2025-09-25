@@ -3,13 +3,15 @@ Targeted tests to push orchestrator coverage above 90%.
 Focuses on specific uncovered lines identified in coverage analysis.
 """
 
+import asyncio
+from unittest.mock import patch
+
 import pytest
 import pytest_asyncio
-import asyncio
-from unittest.mock import AsyncMock, patch
+
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.orchestrator import ProjectOrchestrator, AgentRole
 from src.giljo_mcp.enums import ProjectStatus
+from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
 
 
 @pytest_asyncio.fixture
@@ -133,17 +135,13 @@ class TestOrchestratorNinetyPlusCoverage:
 
         # Create and activate projects for specific tenant
         project1 = await orchestrator.create_project(
-            name="Tenant Project 1", 
-            mission="Mission 1", 
-            tenant_key=tenant_key
+            name="Tenant Project 1", mission="Mission 1", tenant_key=tenant_key
         )
         await orchestrator.activate_project(project1.id)
 
         # Create project for different tenant
         project2 = await orchestrator.create_project(
-            name="Other Project", 
-            mission="Mission 2", 
-            tenant_key="other-tenant"
+            name="Other Project", mission="Mission 2", tenant_key="other-tenant"
         )
         await orchestrator.activate_project(project2.id)
 
@@ -166,7 +164,7 @@ class TestOrchestratorNinetyPlusCoverage:
         await asyncio.sleep(0.2)
 
         # Verify the agent was detected as needing handoff
-        needs_handoff, reason = await orchestrator.check_handoff_needed(agent.id)
+        needs_handoff, _reason = await orchestrator.check_handoff_needed(agent.id)
         assert needs_handoff is True
 
         # Complete project to stop monitoring
@@ -192,13 +190,13 @@ class TestOrchestratorNinetyPlusCoverage:
 
     async def test_context_monitoring_cancellation_cleanup(self, orchestrator):
         """Test context monitoring task cancellation (lines 688-690)."""
-        # Create and activate project  
+        # Create and activate project
         project = await orchestrator.create_project(name="Cancel Test", mission="Test")
         await orchestrator.activate_project(project.id)
 
         # Verify monitoring started
         assert project.id in orchestrator._context_monitors
-        monitor_task = orchestrator._context_monitors[project.id]
+        orchestrator._context_monitors[project.id]
 
         # Force stop monitoring (simulates cancellation)
         await orchestrator._stop_context_monitor(project.id)
@@ -214,7 +212,7 @@ class TestOrchestratorNinetyPlusCoverage:
         await orchestrator.activate_project(project.id)
 
         # Create agent
-        agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
+        await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
 
         # Mock check_handoff_needed to raise exception
         original_method = orchestrator.check_handoff_needed
@@ -239,13 +237,9 @@ class TestOrchestratorNinetyPlusCoverage:
         tenant_key = "budget-test"
 
         # Create project and use some context
-        project = await orchestrator.create_project(
-            name="Budget Project",
-            mission="Test budget",
-            tenant_key=tenant_key
-        )
+        project = await orchestrator.create_project(name="Budget Project", mission="Test budget", tenant_key=tenant_key)
         await orchestrator.activate_project(project.id)
-        
+
         # Create agent and use significant context
         agent = await orchestrator.spawn_agent(project.id, AgentRole.ANALYZER)
         await orchestrator.update_context_usage(agent.id, 20000)
@@ -254,7 +248,7 @@ class TestOrchestratorNinetyPlusCoverage:
         allocation = await orchestrator.allocate_resources(
             tenant_key=tenant_key,
             max_concurrent_projects=10,
-            total_context_budget=50000  # Tight budget
+            total_context_budget=50000,  # Tight budget
         )
 
         assert allocation["can_create_new"] is True
@@ -264,17 +258,17 @@ class TestOrchestratorNinetyPlusCoverage:
     async def test_spawn_orchestrator_agent_additional_context(self, orchestrator):
         """Test spawning orchestrator agent with additional context parameter."""
         project = await orchestrator.create_project(name="Orch Context", mission="Test orchestrator context")
-        
+
         # Test spawning orchestrator with additional context
         from src.giljo_mcp.enums import ProjectType
-        
+
         orch_agent = await orchestrator.spawn_agent(
             project_id=project.id,
             role=AgentRole.ORCHESTRATOR,
             project_type=ProjectType.FOUNDATION,
-            additional_instructions="Special orchestrator instructions"
+            additional_instructions="Special orchestrator instructions",
         )
-        
+
         assert orch_agent.role == "orchestrator"
         assert orch_agent.name == "orchestrator"
         # Mission might be None if template generation fails
@@ -289,7 +283,7 @@ class TestOrchestratorNinetyPlusCoverage:
         with pytest.raises(ValueError, match="Can only pause active projects"):
             await orchestrator.pause_project(project.id)
 
-        # Test line 223 - archive non-completed project  
+        # Test line 223 - archive non-completed project
         project2 = await orchestrator.create_project(name="Line 223", mission="Test")
         await orchestrator.activate_project(project2.id)
         with pytest.raises(ValueError, match="Can only archive completed projects"):

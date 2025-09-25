@@ -227,7 +227,7 @@ def sample_message_data():
 @pytest_asyncio.fixture(scope="function")
 async def mock_mcp_server():
     """Mock FastMCP server for tools testing"""
-    from unittest.mock import AsyncMock, MagicMock
+    from unittest.mock import MagicMock
 
     mock_server = MagicMock()
     mock_server.tool = MagicMock()
@@ -236,10 +236,11 @@ async def mock_mcp_server():
     def tool_decorator():
         def decorator(func):
             # Store the function for later testing
-            if not hasattr(mock_server, '_registered_tools'):
+            if not hasattr(mock_server, "_registered_tools"):
                 mock_server._registered_tools = {}
             mock_server._registered_tools[func.__name__] = func
             return func
+
         return decorator
 
     mock_server.tool.return_value = tool_decorator()
@@ -249,24 +250,28 @@ async def mock_mcp_server():
 @pytest_asyncio.fixture(scope="function")
 async def mock_discovery_manager():
     """Mock DiscoveryManager for tools testing"""
-    from unittest.mock import AsyncMock, MagicMock
     from pathlib import Path
+    from unittest.mock import AsyncMock, MagicMock
 
     mock_discovery = MagicMock()
 
     # Mock discovery methods
-    mock_discovery.discover_context = AsyncMock(return_value={
-        "priority": {"vision": [], "sessions": [], "devlog": []},
-        "context_budget": 100000,
-        "agent_role": "default"
-    })
+    mock_discovery.discover_context = AsyncMock(
+        return_value={
+            "priority": {"vision": [], "sessions": [], "devlog": []},
+            "context_budget": 100000,
+            "agent_role": "default",
+        }
+    )
 
-    mock_discovery.get_discovery_paths = AsyncMock(return_value={
-        "vision": Path("docs/Vision"),
-        "sessions": Path("docs/Sessions"),
-        "devlog": Path("docs/devlog"),
-        "claude": Path("CLAUDE.md")
-    })
+    mock_discovery.get_discovery_paths = AsyncMock(
+        return_value={
+            "vision": Path("docs/Vision"),
+            "sessions": Path("docs/Sessions"),
+            "devlog": Path("docs/devlog"),
+            "claude": Path("CLAUDE.md"),
+        }
+    )
 
     mock_discovery.detect_changes = AsyncMock(return_value={})
     mock_discovery.PRIORITY_ORDER = ["vision", "sessions", "devlog", "claude"]
@@ -277,24 +282,18 @@ async def mock_discovery_manager():
 @pytest_asyncio.fixture(scope="function")
 async def mock_path_resolver():
     """Mock PathResolver for tools testing"""
-    from unittest.mock import AsyncMock, MagicMock
     from pathlib import Path
+    from unittest.mock import AsyncMock, MagicMock
 
     mock_resolver = MagicMock()
 
     # Mock path resolution
     mock_resolver.resolve_path = AsyncMock(return_value=Path("tests/temp"))
-    mock_resolver.get_all_paths = AsyncMock(return_value={
-        "vision": Path("docs/Vision"),
-        "sessions": Path("docs/Sessions"),
-        "devlog": Path("docs/devlog")
-    })
+    mock_resolver.get_all_paths = AsyncMock(
+        return_value={"vision": Path("docs/Vision"), "sessions": Path("docs/Sessions"), "devlog": Path("docs/devlog")}
+    )
 
-    mock_resolver.DEFAULT_PATHS = {
-        "vision": "docs/Vision",
-        "sessions": "docs/Sessions",
-        "devlog": "docs/devlog"
-    }
+    mock_resolver.DEFAULT_PATHS = {"vision": "docs/Vision", "sessions": "docs/Sessions", "devlog": "docs/devlog"}
 
     return mock_resolver
 
@@ -318,7 +317,7 @@ async def mock_chunker():
             "char_end": 100,
             "boundary_type": "document",
             "keywords": ["test"],
-            "headers": ["# Test"]
+            "headers": ["# Test"],
         }
     ]
 
@@ -332,7 +331,7 @@ async def mock_chunker():
             "char_end": 100,
             "boundary_type": "document",
             "keywords": ["test"],
-            "headers": ["# Test"]
+            "headers": ["# Test"],
         }
     ]
 
@@ -344,26 +343,28 @@ async def mock_chunker():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def tools_test_setup(test_db, tenant_manager, mock_mcp_server, mock_discovery_manager, mock_path_resolver, mock_chunker):
+async def tools_test_setup(
+    test_db, tenant_manager, mock_mcp_server, mock_discovery_manager, mock_path_resolver, mock_chunker
+):
     """Complete tools testing setup with all mocks"""
     from unittest.mock import patch
 
     # Patch the imports in tools modules
     patches = [
-        patch('src.giljo_mcp.tools.context.DiscoveryManager', return_value=mock_discovery_manager),
-        patch('src.giljo_mcp.tools.context.PathResolver', return_value=mock_path_resolver),
-        patch('src.giljo_mcp.tools.context.EnhancedChunker', return_value=mock_chunker),
+        patch("src.giljo_mcp.tools.context.DiscoveryManager", return_value=mock_discovery_manager),
+        patch("src.giljo_mcp.tools.context.PathResolver", return_value=mock_path_resolver),
+        patch("src.giljo_mcp.tools.context.EnhancedChunker", return_value=mock_chunker),
     ]
 
     for p in patches:
         p.start()
 
     yield {
-        'db_manager': test_db,
-        'tenant_manager': tenant_manager,
-        'mcp_server': mock_mcp_server,
-        'discovery_manager': mock_discovery_manager,
-        'path_resolver': mock_path_resolver
+        "db_manager": test_db,
+        "tenant_manager": tenant_manager,
+        "mcp_server": mock_mcp_server,
+        "discovery_manager": mock_discovery_manager,
+        "path_resolver": mock_path_resolver,
     }
 
     # Stop all patches

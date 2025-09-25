@@ -54,7 +54,6 @@ def test_agent_templates():
     roles_to_test = [AgentRole.ANALYZER, AgentRole.IMPLEMENTER, AgentRole.TESTER, AgentRole.REVIEWER]
 
     for role in roles_to_test:
-
         mission = generator.generate_agent_mission(role=role, project_name="Test Project")
 
         # Print sample

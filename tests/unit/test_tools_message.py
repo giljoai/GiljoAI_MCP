@@ -14,13 +14,12 @@ Tests all message tool functions:
 
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
-from src.giljo_mcp.models import Agent, Message, Project, Task
+from src.giljo_mcp.models import Message
 from src.giljo_mcp.tools.message import register_message_tools
 from tests.utils.tools_helpers import (
     AssertionHelpers,
@@ -36,9 +35,9 @@ class TestMessageTools:
     async def setup_method(self, tools_test_setup, mock_message_queue):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
         self.mock_queue = mock_message_queue
 
         # Create test project and set as current tenant
@@ -67,7 +66,7 @@ class TestMessageTools:
             "acknowledge_message",
             "complete_message",
             "broadcast",
-            "log_task"
+            "log_task",
         ]
 
         registered_tools = registrar.get_all_tools()
@@ -91,7 +90,7 @@ class TestMessageTools:
             content="Test message content",
             project_id=self.project.id,
             message_type="direct",
-            priority="normal"
+            priority="normal",
         )
 
         AssertionHelpers.assert_success_response(result, ["message_id", "to_agents", "delivery"])
@@ -113,7 +112,7 @@ class TestMessageTools:
             content="Broadcast test message",
             project_id=self.project.id,
             message_type="broadcast",
-            priority="high"
+            priority="high",
         )
 
         AssertionHelpers.assert_success_response(result, ["message_id", "to_agents", "delivery"])
@@ -129,11 +128,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         send_message = registrar.get_registered_tool("send_message")
 
-        result = await send_message(
-            to_agents=["nonexistent_agent"],
-            content="Test message",
-            project_id=self.project.id
-        )
+        result = await send_message(to_agents=["nonexistent_agent"], content="Test message", project_id=self.project.id)
 
         AssertionHelpers.assert_success_response(result, ["delivery"])
         assert result["delivery"]["failed"] == 1
@@ -151,7 +146,7 @@ class TestMessageTools:
         result = await send_message(
             to_agents=["agent1", "nonexistent_agent", "agent2"],
             content="Mixed recipient test",
-            project_id=self.project.id
+            project_id=self.project.id,
         )
 
         AssertionHelpers.assert_success_response(result, ["delivery"])
@@ -169,11 +164,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         send_message = registrar.get_registered_tool("send_message")
 
-        result = await send_message(
-            to_agents=["agent1"],
-            content="Test message",
-            project_id=self.project.id
-        )
+        result = await send_message(to_agents=["agent1"], content="Test message", project_id=self.project.id)
 
         AssertionHelpers.assert_error_response(result, "No active project")
 
@@ -186,10 +177,10 @@ class TestMessageTools:
 
         # Create test messages
         async with self.db_manager.get_session_async() as session:
-            message1 = await ToolsTestHelper.create_test_message(
+            await ToolsTestHelper.create_test_message(
                 session, self.project.id, "orchestrator", "agent1", "Message 1"
             )
-            message2 = await ToolsTestHelper.create_test_message(
+            await ToolsTestHelper.create_test_message(
                 session, self.project.id, "orchestrator", "agent1", "Message 2"
             )
 
@@ -221,7 +212,7 @@ class TestMessageTools:
                 status="pending",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
 
             acknowledged_msg = Message(
@@ -234,7 +225,7 @@ class TestMessageTools:
                 status="acknowledged",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
 
             session.add_all([pending_msg, acknowledged_msg])
@@ -259,7 +250,7 @@ class TestMessageTools:
         async with self.db_manager.get_session_async() as session:
             for i in range(5):
                 await ToolsTestHelper.create_test_message(
-                    session, self.project.id, "orchestrator", "agent1", f"Message {i+1}"
+                    session, self.project.id, "orchestrator", "agent1", f"Message {i + 1}"
                 )
 
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -300,10 +291,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         acknowledge_message = registrar.get_registered_tool("acknowledge_message")
 
-        result = await acknowledge_message(
-            message_id=message.id,
-            agent_name="agent1"
-        )
+        result = await acknowledge_message(message_id=message.id, agent_name="agent1")
 
         AssertionHelpers.assert_success_response(result, ["message_id", "status", "acknowledged_by"])
         assert result["message_id"] == message.id
@@ -319,10 +307,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         acknowledge_message = registrar.get_registered_tool("acknowledge_message")
 
-        result = await acknowledge_message(
-            message_id=str(uuid.uuid4()),
-            agent_name="agent1"
-        )
+        result = await acknowledge_message(message_id=str(uuid.uuid4()), agent_name="agent1")
 
         AssertionHelpers.assert_error_response(result, "Message not found")
 
@@ -342,10 +327,7 @@ class TestMessageTools:
         acknowledge_message = registrar.get_registered_tool("acknowledge_message")
 
         # Try to acknowledge with agent2
-        result = await acknowledge_message(
-            message_id=message.id,
-            agent_name="agent2"
-        )
+        result = await acknowledge_message(message_id=message.id, agent_name="agent2")
 
         AssertionHelpers.assert_error_response(result, "not authorized")
 
@@ -368,7 +350,7 @@ class TestMessageTools:
                 status="acknowledged",  # Already acknowledged
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(message)
             await session.commit()
@@ -378,9 +360,7 @@ class TestMessageTools:
         complete_message = registrar.get_registered_tool("complete_message")
 
         result = await complete_message(
-            message_id=message.id,
-            agent_name="agent1",
-            result="Task completed successfully"
+            message_id=message.id, agent_name="agent1", result="Task completed successfully"
         )
 
         AssertionHelpers.assert_success_response(result, ["message_id", "status", "completed_by"])
@@ -402,11 +382,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         complete_message = registrar.get_registered_tool("complete_message")
 
-        result = await complete_message(
-            message_id=message.id,
-            agent_name="agent1",
-            result="Attempted completion"
-        )
+        result = await complete_message(message_id=message.id, agent_name="agent1", result="Attempted completion")
 
         AssertionHelpers.assert_error_response(result, "not acknowledged")
 
@@ -421,9 +397,7 @@ class TestMessageTools:
         broadcast = registrar.get_registered_tool("broadcast")
 
         result = await broadcast(
-            content="Important announcement to all agents",
-            project_id=self.project.id,
-            priority="high"
+            content="Important announcement to all agents", project_id=self.project.id, priority="high"
         )
 
         AssertionHelpers.assert_success_response(result, ["message_id", "broadcast_to", "count"])
@@ -443,10 +417,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         broadcast = registrar.get_registered_tool("broadcast")
 
-        result = await broadcast(
-            content="Broadcast to empty project",
-            project_id=empty_project.id
-        )
+        result = await broadcast(content="Broadcast to empty project", project_id=empty_project.id)
 
         AssertionHelpers.assert_success_response(result)
         assert result["count"] == 0
@@ -461,10 +432,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         broadcast = registrar.get_registered_tool("broadcast")
 
-        result = await broadcast(
-            content="Broadcast to invalid project",
-            project_id=str(uuid.uuid4())
-        )
+        result = await broadcast(content="Broadcast to invalid project", project_id=str(uuid.uuid4()))
 
         AssertionHelpers.assert_error_response(result, "Project not found")
 
@@ -478,11 +446,7 @@ class TestMessageTools:
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         log_task = registrar.get_registered_tool("log_task")
 
-        result = await log_task(
-            content="Implement new feature X",
-            category="development",
-            priority="high"
-        )
+        result = await log_task(content="Implement new feature X", category="development", priority="high")
 
         AssertionHelpers.assert_success_response(result, ["task_id", "logged"])
         assert result["task"]["content"] == "Implement new feature X"
@@ -527,7 +491,7 @@ class TestMessageTools:
         mock_server = registrar.create_tool_decorator()
 
         # Mock database to raise exception
-        with patch.object(self.db_manager, 'get_session_async') as mock_get_session:
+        with patch.object(self.db_manager, "get_session_async") as mock_get_session:
             mock_get_session.side_effect = Exception("Database connection failed")
 
             register_message_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -556,7 +520,7 @@ class TestMessageTools:
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
                 acknowledgment_array=[],  # Empty initially
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
             session.add(message)
             await session.commit()
@@ -566,17 +530,11 @@ class TestMessageTools:
         acknowledge_message = registrar.get_registered_tool("acknowledge_message")
 
         # First acknowledgment
-        result1 = await acknowledge_message(
-            message_id=message.id,
-            agent_name="agent1"
-        )
+        result1 = await acknowledge_message(message_id=message.id, agent_name="agent1")
         AssertionHelpers.assert_success_response(result1)
 
         # Second acknowledgment
-        result2 = await acknowledge_message(
-            message_id=message.id,
-            agent_name="agent2"
-        )
+        result2 = await acknowledge_message(message_id=message.id, agent_name="agent2")
         AssertionHelpers.assert_success_response(result2)
 
         # Verify acknowledgment array tracking
@@ -604,7 +562,7 @@ class TestMessageTools:
                 status="pending",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
 
             high_msg = Message(
@@ -617,7 +575,7 @@ class TestMessageTools:
                 status="pending",
                 project_id=self.project.id,
                 tenant_key=self.project.tenant_key,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             )
 
             session.add_all([low_msg, high_msg])
@@ -646,11 +604,7 @@ class TestMessageTools:
 
         # Run multiple concurrent message sends
         tasks = [
-            send_message(
-                to_agents=["agent1"],
-                content=f"Concurrent message {i}",
-                project_id=self.project.id
-            )
+            send_message(to_agents=["agent1"], content=f"Concurrent message {i}", project_id=self.project.id)
             for i in range(5)
         ]
         results = await asyncio.gather(*tasks)
@@ -673,9 +627,7 @@ class TestMessageTools:
 
         # 1. Send message
         send_result = await send_message(
-            to_agents=["agent1"],
-            content="Lifecycle test message",
-            project_id=self.project.id
+            to_agents=["agent1"], content="Lifecycle test message", project_id=self.project.id
         )
         AssertionHelpers.assert_success_response(send_result)
         message_id = send_result["message_id"]
@@ -686,17 +638,12 @@ class TestMessageTools:
         assert get_result["count"] >= 1
 
         # 3. Acknowledge message
-        ack_result = await acknowledge_message(
-            message_id=message_id,
-            agent_name="agent1"
-        )
+        ack_result = await acknowledge_message(message_id=message_id, agent_name="agent1")
         AssertionHelpers.assert_success_response(ack_result)
 
         # 4. Complete message
         complete_result = await complete_message(
-            message_id=message_id,
-            agent_name="agent1",
-            result="Lifecycle test completed"
+            message_id=message_id, agent_name="agent1", result="Lifecycle test completed"
         )
         AssertionHelpers.assert_success_response(complete_result)
 
@@ -713,11 +660,7 @@ class TestMessageTools:
         send_message = registrar.get_registered_tool("send_message")
 
         # Mock message queue is injected via fixture
-        result = await send_message(
-            to_agents=["agent1"],
-            content="Queue integration test",
-            project_id=self.project.id
-        )
+        result = await send_message(to_agents=["agent1"], content="Queue integration test", project_id=self.project.id)
 
         AssertionHelpers.assert_success_response(result)
         # Message should be processed through the queue

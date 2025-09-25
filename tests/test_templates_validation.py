@@ -20,7 +20,7 @@ from src.giljo_mcp.template_manager import get_template_manager
 def test_all_methods():
     """Test every method in MissionTemplateGenerator."""
 
-    template_manager = get_template_manager()
+    get_template_manager()
     generator = MissionTemplateGenerator()
     results = []
 
@@ -131,10 +131,10 @@ def test_all_methods():
 
 def test_project_type_customizations():
     """Test project type customizations."""
-    
-    template_manager = get_template_manager()
+
+    get_template_manager()
     generator = MissionTemplateGenerator()
-    
+
     project_types = [
         (ProjectType.FOUNDATION, "Database schema"),
         (ProjectType.MCP_INTEGRATION, "Protocol compliance"),
@@ -158,16 +158,17 @@ def test_project_type_customizations():
 
 def test_performance():
     """Test performance requirements."""
-    
-    template_manager = get_template_manager()
+
+    get_template_manager()
     generator = MissionTemplateGenerator()
-    
+
     # Test 100 template generations
     start = time.time()
 
     for i in range(100):
         generator.generate_orchestrator_mission(
-            project_name=f"Project {i}", project_mission=f"Mission {i}" * 10  # Make it longer
+            project_name=f"Project {i}",
+            project_mission=f"Mission {i}" * 10,  # Make it longer
         )
 
     elapsed = time.time() - start
@@ -184,10 +185,10 @@ def test_performance():
 
 def test_edge_cases():
     """Test edge cases."""
-    
-    template_manager = get_template_manager()
+
+    get_template_manager()
     generator = MissionTemplateGenerator()
-    
+
     # Test 1: Very long project name/mission
     long_name = "A" * 1000
     long_mission = "B" * 5000

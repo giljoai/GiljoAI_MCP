@@ -60,7 +60,6 @@ def test_database_sync():
                 [row[0] for row in result]
 
         except Exception:
-
             # Try with IP address
             if "localhost" in connection_string:
                 connection_string = connection_string.replace("localhost", "10.1.0.164")

@@ -17,7 +17,6 @@ async def test_websocket():
 
     try:
         async with websockets.connect(uri) as websocket:
-
             # Test 1: Handle ping-pong
             async def handle_messages():
                 async for message in websocket:
@@ -97,6 +96,5 @@ async def test_broadcast_triggers():
 
 
 if __name__ == "__main__":
-
     # Run the WebSocket test
     asyncio.run(test_websocket())

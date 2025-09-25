@@ -8,8 +8,7 @@ Tests all task template functions:
 - _analyze_task_for_template
 """
 
-import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -20,7 +19,6 @@ from src.giljo_mcp.tools.task_templates import (
     register_task_template_tools,
 )
 from tests.utils.tools_helpers import (
-    AssertionHelpers,
     MockMCPToolRegistrar,
     ToolsTestHelper,
 )
@@ -33,9 +31,9 @@ class TestTaskTemplateTools:
     async def setup_method(self, tools_test_setup):
         """Setup for each test method"""
         self.setup = tools_test_setup
-        self.db_manager = tools_test_setup['db_manager']
-        self.tenant_manager = tools_test_setup['tenant_manager']
-        self.mock_server = tools_test_setup['mcp_server']
+        self.db_manager = tools_test_setup["db_manager"]
+        self.tenant_manager = tools_test_setup["tenant_manager"]
+        self.mock_server = tools_test_setup["mcp_server"]
 
         # Create test project and set as current tenant
         async with self.db_manager.get_session_async() as session:
@@ -79,7 +77,7 @@ class TestTaskTemplateTools:
             "predictive analytics",
             "interactive visualizations",
             "user role management",
-            "API integration"
+            "API integration",
         ]
 
         mission = _generate_project_mission(project_name, project_type, requirements)
@@ -200,7 +198,9 @@ class TestTaskTemplateTools:
     def test_analyze_task_for_template_effort_estimation(self):
         """Test effort estimation in task analysis"""
         task_title = "Refactor authentication middleware"
-        task_description = "Reorganize and optimize the authentication middleware for better performance and maintainability"
+        task_description = (
+            "Reorganize and optimize the authentication middleware for better performance and maintainability"
+        )
 
         analysis = _analyze_task_for_template(task_title, task_description)
 
@@ -211,7 +211,9 @@ class TestTaskTemplateTools:
     def test_analyze_task_for_template_suggested_template(self):
         """Test template suggestion in task analysis"""
         task_title = "Implement payment processing"
-        task_description = "Integrate with Stripe API for secure payment processing including webhooks and error handling"
+        task_description = (
+            "Integrate with Stripe API for secure payment processing including webhooks and error handling"
+        )
 
         analysis = _analyze_task_for_template(task_title, task_description)
 
@@ -246,12 +248,12 @@ class TestTaskTemplateTools:
         registrar = MockMCPToolRegistrar()
         mock_server = registrar.create_tool_decorator()
 
-        with patch('src.giljo_mcp.tools.task_templates._analyze_task_for_template') as mock_analyze:
+        with patch("src.giljo_mcp.tools.task_templates._analyze_task_for_template") as mock_analyze:
             mock_analyze.return_value = {
                 "category": "development",
                 "complexity": "medium",
                 "suggested_template": "feature_implementation",
-                "estimated_effort": "3-5 days"
+                "estimated_effort": "3-5 days",
             }
 
             register_task_template_tools(mock_server, self.db_manager, self.tenant_manager)
@@ -267,7 +269,7 @@ class TestTaskTemplateTools:
             ("desktop application", ["cross-platform", "file management"]),
             ("web service", ["REST API", "database integration"]),
             ("machine learning model", ["data preprocessing", "model training"]),
-            ("IoT solution", ["sensor integration", "real-time monitoring"])
+            ("IoT solution", ["sensor integration", "real-time monitoring"]),
         ]
 
         for project_type, requirements in project_types:
@@ -283,7 +285,7 @@ class TestTaskTemplateTools:
             ("Implement user interface", "development", ["implement", "interface", "UI"]),
             ("Write integration tests", "testing", ["test", "integration", "coverage"]),
             ("Deploy to production", "deployment", ["deploy", "production", "release"]),
-            ("Fix security vulnerability", "bug_fix", ["fix", "security", "vulnerability"])
+            ("Fix security vulnerability", "bug_fix", ["fix", "security", "vulnerability"]),
         ]
 
         for title, expected_category, expected_keywords in test_cases:
@@ -297,14 +299,12 @@ class TestTaskTemplateTools:
     def test_mission_generation_formatting(self):
         """Test that generated missions are well-formatted"""
         mission = _generate_project_mission(
-            "Test Project",
-            "web application",
-            ["authentication", "data visualization", "API integration"]
+            "Test Project", "web application", ["authentication", "data visualization", "API integration"]
         )
 
         # Should be properly formatted
         assert mission[0].isupper()  # Starts with capital letter
-        assert mission.endswith(('.', '!'))  # Ends with punctuation
+        assert mission.endswith((".", "!"))  # Ends with punctuation
         assert len(mission.split()) >= 10  # Substantial content
         assert not mission.startswith("The ")  # Avoid redundant starts
 
@@ -313,7 +313,7 @@ class TestTaskTemplateTools:
         similar_tasks = [
             ("Implement login functionality", "Create user authentication system"),
             ("Add login feature", "Build authentication module"),
-            ("Create login system", "Develop user login capability")
+            ("Create login system", "Develop user login capability"),
         ]
 
         categories = []

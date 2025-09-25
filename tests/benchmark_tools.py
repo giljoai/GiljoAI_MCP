@@ -185,8 +185,8 @@ class PerformanceBenchmark:
                     "max": f"{max(results):.2f}" if results else "0",
                     "avg": f"{statistics.mean(results):.2f}" if results else "0",
                     "median": f"{statistics.median(results):.2f}" if results else "0",
-                    "p95": f"{sorted(results)[int(len(results)*0.95)]:.2f}" if results else "0",
-                    "p99": f"{sorted(results)[int(len(results)*0.99)]:.2f}" if results else "0",
+                    "p95": f"{sorted(results)[int(len(results) * 0.95)]:.2f}" if results else "0",
+                    "p99": f"{sorted(results)[int(len(results) * 0.99)]:.2f}" if results else "0",
                 }
                 if results
                 else {}
@@ -241,7 +241,7 @@ class PerformanceBenchmark:
                 f"  Total Tests: {total}",
                 f"  Passing (<{self.target_time_ms}ms): {passing}",
                 f"  Failing: {total - passing}",
-                f"  Pass Rate: {(passing/total*100):.1f}%" if total > 0 else "N/A",
+                f"  Pass Rate: {(passing / total * 100):.1f}%" if total > 0 else "N/A",
                 "=" * 80,
             ]
         )

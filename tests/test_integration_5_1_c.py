@@ -8,7 +8,6 @@ import asyncio
 import json
 import time
 from datetime import datetime
-from typing import Dict
 
 import httpx
 import websockets
@@ -25,10 +24,10 @@ class IntegrationTester:
             "tests": [],
             "performance_metrics": {},
             "bugs_found": [],
-            "summary": {}
+            "summary": {},
         }
 
-    async def test_api_health(self) -> Dict:
+    async def test_api_health(self) -> dict:
         """Test API health endpoint"""
         test_name = "API Health Check"
         try:
@@ -38,18 +37,14 @@ class IntegrationTester:
                     "name": test_name,
                     "status": "PASSED" if response.status_code == 200 else "FAILED",
                     "response_time": response.elapsed.total_seconds() * 1000,
-                    "details": response.json() if response.status_code == 200 else str(response.status_code)
+                    "details": response.json() if response.status_code == 200 else str(response.status_code),
                 }
         except Exception as e:
-            result = {
-                "name": test_name,
-                "status": "FAILED",
-                "error": str(e)
-            }
+            result = {"name": test_name, "status": "FAILED", "error": str(e)}
         self.test_results["tests"].append(result)
         return result
 
-    async def test_template_endpoints(self) -> Dict:
+    async def test_template_endpoints(self) -> dict:
         """Test template management endpoints"""
         test_name = "Template Management Endpoints"
         results = []
@@ -68,31 +63,28 @@ class IntegrationTester:
                         response = await client.get(f"{self.api_base}{endpoint}")
                     response_time = (time.time() - start_time) * 1000
 
-                    results.append({
-                        "endpoint": endpoint,
-                        "method": method,
-                        "status_code": response.status_code,
-                        "response_time_ms": response_time,
-                        "success": response.status_code == 200
-                    })
+                    results.append(
+                        {
+                            "endpoint": endpoint,
+                            "method": method,
+                            "status_code": response.status_code,
+                            "response_time_ms": response_time,
+                            "success": response.status_code == 200,
+                        }
+                    )
                 except Exception as e:
-                    results.append({
-                        "endpoint": endpoint,
-                        "method": method,
-                        "error": str(e),
-                        "success": False
-                    })
+                    results.append({"endpoint": endpoint, "method": method, "error": str(e), "success": False})
 
         test_result = {
             "name": test_name,
             "status": "PASSED" if all(r.get("success", False) for r in results) else "FAILED",
             "endpoints_tested": len(endpoints),
-            "details": results
+            "details": results,
         }
         self.test_results["tests"].append(test_result)
         return test_result
 
-    async def test_agent_metrics_endpoint(self) -> Dict:
+    async def test_agent_metrics_endpoint(self) -> dict:
         """Test agent metrics endpoints"""
         test_name = "Agent Metrics Endpoints"
         results = []
@@ -111,29 +103,27 @@ class IntegrationTester:
                     response = await client.get(f"{self.api_base}{endpoint}")
                     response_time = (time.time() - start_time) * 1000
 
-                    results.append({
-                        "endpoint": endpoint,
-                        "status_code": response.status_code,
-                        "response_time_ms": response_time,
-                        "success": response.status_code in [200, 404]  # 404 ok if no agents
-                    })
+                    results.append(
+                        {
+                            "endpoint": endpoint,
+                            "status_code": response.status_code,
+                            "response_time_ms": response_time,
+                            "success": response.status_code in [200, 404],  # 404 ok if no agents
+                        }
+                    )
                 except Exception as e:
-                    results.append({
-                        "endpoint": endpoint,
-                        "error": str(e),
-                        "success": False
-                    })
+                    results.append({"endpoint": endpoint, "error": str(e), "success": False})
 
         test_result = {
             "name": test_name,
             "status": "PASSED" if all(r.get("success", False) for r in results) else "FAILED",
             "endpoints_tested": len(endpoints),
-            "details": results
+            "details": results,
         }
         self.test_results["tests"].append(test_result)
         return test_result
 
-    async def test_websocket_connection(self) -> Dict:
+    async def test_websocket_connection(self) -> dict:
         """Test WebSocket connectivity and real-time updates"""
         test_name = "WebSocket Real-time Updates"
         result = {"name": test_name}
@@ -141,10 +131,7 @@ class IntegrationTester:
         try:
             async with websockets.connect(self.ws_url) as websocket:
                 # Send a test message
-                test_message = {
-                    "type": "ping",
-                    "timestamp": datetime.now().isoformat()
-                }
+                test_message = {"type": "ping", "timestamp": datetime.now().isoformat()}
                 await websocket.send(json.dumps(test_message))
 
                 # Wait for response with timeout
@@ -164,7 +151,7 @@ class IntegrationTester:
         self.test_results["tests"].append(result)
         return result
 
-    async def test_frontend_accessibility(self) -> Dict:
+    async def test_frontend_accessibility(self) -> dict:
         """Test frontend is accessible"""
         test_name = "Frontend Accessibility"
 
@@ -176,14 +163,10 @@ class IntegrationTester:
                     "status": "PASSED" if response.status_code == 200 else "FAILED",
                     "status_code": response.status_code,
                     "response_time_ms": response.elapsed.total_seconds() * 1000,
-                    "content_type": response.headers.get("content-type", "")
+                    "content_type": response.headers.get("content-type", ""),
                 }
         except Exception as e:
-            result = {
-                "name": test_name,
-                "status": "FAILED",
-                "error": str(e)
-            }
+            result = {"name": test_name, "status": "FAILED", "error": str(e)}
 
         self.test_results["tests"].append(result)
         return result
@@ -213,44 +196,30 @@ class IntegrationTester:
 
         # Check against requirements
         if metrics.get("template_list_avg_ms", float("inf")) < 500:
-            print("[PASS] Template operations < 500ms requirement MET")
+            pass
         else:
-            self.test_results["bugs_found"].append({
-                "severity": "HIGH",
-                "component": "Template Manager",
-                "issue": f"Template operations exceed 500ms requirement: {metrics.get('template_list_avg_ms', 'N/A')}ms"
-            })
+            self.test_results["bugs_found"].append(
+                {
+                    "severity": "HIGH",
+                    "component": "Template Manager",
+                    "issue": f"Template operations exceed 500ms requirement: {metrics.get('template_list_avg_ms', 'N/A')}ms",
+                }
+            )
 
     async def run_all_tests(self):
         """Run all integration tests"""
-        print("\n" + "="*60)
-        print("INTEGRATION TEST SUITE - Project 5.1.c")
-        print("Dashboard Sub-Agent Visualization")
-        print("="*60 + "\n")
 
         # Run tests
-        print("1. Testing API Health...")
-        api_health = await self.test_api_health()
-        print(f"   Status: {api_health['status']}")
+        await self.test_api_health()
 
-        print("\n2. Testing Template Management Endpoints...")
-        template_test = await self.test_template_endpoints()
-        print(f"   Status: {template_test['status']}")
-        print(f"   Endpoints tested: {template_test.get('endpoints_tested', 0)}")
+        await self.test_template_endpoints()
 
-        print("\n3. Testing Agent Metrics Endpoints...")
-        metrics_test = await self.test_agent_metrics_endpoint()
-        print(f"   Status: {metrics_test['status']}")
+        await self.test_agent_metrics_endpoint()
 
-        print("\n4. Testing WebSocket Connection...")
-        ws_test = await self.test_websocket_connection()
-        print(f"   Status: {ws_test['status']}")
+        await self.test_websocket_connection()
 
-        print("\n5. Testing Frontend Accessibility...")
-        frontend_test = await self.test_frontend_accessibility()
-        print(f"   Status: {frontend_test['status']}")
+        await self.test_frontend_accessibility()
 
-        print("\n6. Measuring Performance Metrics...")
         await self.measure_performance_metrics()
 
         # Calculate summary
@@ -263,29 +232,21 @@ class IntegrationTester:
             "passed": passed_tests,
             "failed": failed_tests,
             "pass_rate": (passed_tests / total_tests * 100) if total_tests > 0 else 0,
-            "bugs_found": len(self.test_results["bugs_found"])
+            "bugs_found": len(self.test_results["bugs_found"]),
         }
 
         # Print summary
-        print("\n" + "="*60)
-        print("TEST SUMMARY")
-        print("="*60)
-        print(f"Total Tests: {total_tests}")
-        print(f"Passed: {passed_tests} ({self.test_results['summary']['pass_rate']:.1f}%)")
-        print(f"Failed: {failed_tests}")
-        print(f"Bugs Found: {len(self.test_results['bugs_found'])}")
 
         if self.test_results["bugs_found"]:
-            print("\n[WARNING] BUGS/ISSUES FOUND:")
-            for bug in self.test_results["bugs_found"]:
-                print(f"  - [{bug['severity']}] {bug['component']}: {bug['issue']}")
+            for _bug in self.test_results["bugs_found"]:
+                pass
 
         # Save results
         with open("integration_test_results.json", "w") as f:
             json.dump(self.test_results, f, indent=2)
-        print("\n[PASS] Full test results saved to integration_test_results.json")
 
         return self.test_results
+
 
 async def main():
     tester = IntegrationTester()
@@ -296,6 +257,7 @@ async def main():
         # sys.exit(1)  # Commented for pytest
         pass
     # sys.exit(0)  # Commented for pytest
+
 
 if __name__ == "__main__":
     asyncio.run(main())

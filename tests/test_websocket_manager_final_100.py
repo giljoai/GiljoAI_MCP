@@ -130,6 +130,7 @@ class TestWebSocketManagerFinal100:
         # Test with check_subscription_permission returning False
         with patch("api.websocket.check_subscription_permission", return_value=False):
             from fastapi import HTTPException
+
             with pytest.raises(HTTPException) as exc_info:
                 await ws_manager.subscribe(client_id, "project", "test_project", "test_tenant")
 
@@ -145,7 +146,7 @@ class TestWebSocketManagerFinal100:
         ws_manager.active_connections = {
             "client_a": client_a,
             "client_b": client_b,
-            "client_no_context": client_no_context
+            "client_no_context": client_no_context,
         }
 
         ws_manager.auth_contexts = {
@@ -157,9 +158,7 @@ class TestWebSocketManagerFinal100:
         ws_manager.notify_entity_update = AsyncMock()
 
         # Test broadcast with tenant filtering
-        await ws_manager.broadcast_agent_update(
-            "agent_001", "test_agent", "proj_001", "tenant_1", "active", 100
-        )
+        await ws_manager.broadcast_agent_update("agent_001", "test_agent", "proj_001", "tenant_1", "active", 100)
 
         # Only client_a should receive the message (matching tenant)
         client_a.send_json.assert_called_once()
