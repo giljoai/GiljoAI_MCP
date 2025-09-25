@@ -2,9 +2,10 @@
 
 <div align="center">
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-green)](https://fastapi.tiangolo.com/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.0%2B-brightgreen)](https://vuejs.org/)
+[![Security](https://img.shields.io/badge/Security-Scanned-success)](SECURITY.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Setup Time](https://img.shields.io/badge/Setup-5%20minutes-success)]()
 [![Context](https://img.shields.io/badge/Context-Unlimited-orange)]()
@@ -371,6 +372,13 @@ orchestrator.execute([
 ### Testing Documentation
 - [Test Documentation](Docs/tests/CONSOLIDATED_TEST_DOCUMENTATION.md) - Complete testing guide
 - [Docker Tests](Docs/docker/tests/) - Container testing reports
+
+## Security
+
+GiljoAI MCP implements comprehensive security scanning and best practices. See [SECURITY.md](SECURITY.md) for:
+- Security scanning policies and intentional exceptions
+- Deployment security guidelines
+- How to report security issues
 
 ## Contributing
 
