@@ -279,9 +279,9 @@ class PortsPage(WizardPage):
         """Check if a port is available"""
         port = int(self.port_vars[service].get())
         if check_port(port):
-            self.status_labels[service].config(text="✓ Available", foreground="green")
-        else:
             self.status_labels[service].config(text="✗ In use", foreground="red")
+        else:
+            self.status_labels[service].config(text="✓ Available", foreground="green")
 
     def _check_all_ports(self):
         """Check all ports"""
