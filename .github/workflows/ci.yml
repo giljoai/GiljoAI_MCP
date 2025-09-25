@@ -44,9 +44,9 @@ jobs:
         bandit -r src/ -f json -o bandit-report.json || true
 
         # Run strict check that blocks on medium+ severity issues
-        # Skip B101 (assert_used) and B601 (paramiko) as they're often false positives
+        # Skip B101 (assert_used), B601 (paramiko), B104 (bind all interfaces - intentional for servers)
         echo "Running security scan for medium+ severity issues..."
-        bandit -r src/ -ll --skip B101,B601
+        bandit -r src/ -ll --skip B101,B601,B104
 
         # This will fail the build if any medium/high security issues are found
 

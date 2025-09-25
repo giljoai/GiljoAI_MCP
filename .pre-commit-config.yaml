@@ -63,7 +63,7 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: ['-ll', '--skip', 'B101,B601']
+        args: ['-ll', '--skip', 'B101,B601,B104']
         exclude: ^(tests/|examples/)
 
   # Frontend checks (if ESLint/Prettier are installed)

@@ -349,4 +349,4 @@ class EnhancedChunker:
         Returns:
             MD5 hash string
         """
-        return hashlib.md5(content.encode("utf-8")).hexdigest()
+        return hashlib.md5(content.encode("utf-8"), usedforsecurity=False).hexdigest()

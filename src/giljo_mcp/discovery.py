@@ -501,7 +501,7 @@ class DiscoveryManager:
 
     def calculate_content_hash(self, content: str) -> str:
         """Calculate MD5 hash of content for change detection"""
-        return hashlib.md5(content.encode()).hexdigest()
+        return hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
 
     async def detect_changes(self, project_id: str) -> dict[str, bool]:
         """
