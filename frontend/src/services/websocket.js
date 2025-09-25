@@ -469,9 +469,6 @@ class WebSocketService {
     return []
   }
 
-    return queueSize
-  }
-
   /**
    * Get debug info
    */
