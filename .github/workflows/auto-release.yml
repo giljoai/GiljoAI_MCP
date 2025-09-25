@@ -16,6 +16,10 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   sync-to-release:
     name: Sync Master to Release Branch
@@ -71,13 +75,25 @@ jobs:
           # Process each pattern in .release-ignore
           while IFS= read -r pattern || [ -n "$pattern" ]; do
             # Skip comments and empty lines
-            if [[ "$pattern" =~ ^#.*$ ]] || [ -z "$pattern" ]; then
+            if [[ "$pattern" =~ ^[[:space:]]*#.*$ ]] || [[ -z "$pattern" ]] || [[ "$pattern" =~ ^[[:space:]]*$ ]]; then
               continue
             fi
 
-            # Remove files matching pattern
-            find . -name "$pattern" -type f -delete 2>/dev/null || true
-            find . -name "$pattern" -type d -exec rm -rf {} + 2>/dev/null || true
+            # Trim whitespace
+            pattern=$(echo "$pattern" | xargs)
+
+            echo "Processing pattern: $pattern"
+
+            # Remove files matching pattern (use -path for full path patterns)
+            if [[ "$pattern" == *"/"* ]]; then
+              # Pattern contains directory separator, use -path
+              find . -path "./$pattern" -type f -delete 2>/dev/null || true
+              find . -path "./$pattern" -type d -exec rm -rf {} + 2>/dev/null || true
+            else
+              # Simple pattern, use -name
+              find . -name "$pattern" -type f -delete 2>/dev/null || true
+              find . -name "$pattern" -type d -exec rm -rf {} + 2>/dev/null || true
+            fi
 
             # Also use git rm for tracked files
             git rm -rf --ignore-unmatch "$pattern" 2>/dev/null || true
@@ -114,8 +130,20 @@ jobs:
 
     - name: Push to release branch
       run: |
-        git push origin release-giljoai-mcp --force-with-lease || git push origin release-giljoai-mcp --force
-        echo "✅ Successfully synced master to release-giljoai-mcp branch"
+        # Try to push with lease first (safer)
+        if git push origin release-giljoai-mcp --force-with-lease; then
+          echo "✅ Successfully synced master to release-giljoai-mcp branch (with lease)"
+        else
+          echo "⚠️ Force-with-lease failed, attempting regular push..."
+          # Try without force first
+          if git push origin release-giljoai-mcp; then
+            echo "✅ Successfully synced master to release-giljoai-mcp branch"
+          else
+            echo "❌ Failed to push to release branch"
+            echo "This might be due to branch protection rules or conflicts"
+            exit 1
+          fi
+        fi
 
     - name: Create Release Summary
       run: |
