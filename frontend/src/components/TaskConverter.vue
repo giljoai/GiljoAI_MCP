@@ -17,9 +17,7 @@
           @click="$emit('close')"
         />
       </v-card-title>
-
       <v-divider />
-
       <!-- Wizard Steps -->
       <v-stepper
         v-model="currentStep"
@@ -33,7 +31,6 @@
             <p class="text-body-2 text-medium-emphasis mb-4">
               Review the {{ tasksToConvert.length }} task{{ tasksToConvert.length > 1 ? 's' : '' }} selected for conversion. You can modify the selection or proceed to configure project details.
             </p>
-
             <!-- Task Selection Summary -->
             <v-row class="mb-4">
               <v-col cols="12" md="4">
@@ -58,7 +55,6 @@
                 </v-card>
               </v-col>
             </v-row>
-
             <!-- Selected Tasks List -->
             <v-card variant="outlined">
               <v-card-title class="text-subtitle-1 py-3">
@@ -101,7 +97,6 @@
                 </v-list-item>
               </v-list>
             </v-card>
-
             <!-- Conversion Strategy Selection -->
             <v-row class="mt-6">
               <v-col>
@@ -130,16 +125,13 @@
             </v-row>
           </div>
         </template>
-
         <!-- Step 2: Project Details -->
         <template v-slot:item.2>
           <div class="pa-6">
-
             <h3 class="text-h6 mb-3">Project Configuration</h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
               Configure the project details based on your conversion strategy. The form will auto-populate with intelligent suggestions based on your selected tasks.
             </p>
-
             <!-- Single Project Configuration -->
             <div v-if="conversionStrategy === 'single'">
               <v-text-field
@@ -164,7 +156,6 @@
                 persistent-hint
                 class="mb-4"
               />
-
               <v-row>
                 <v-col cols="6">
                   <v-select
@@ -190,7 +181,6 @@
                 </v-col>
               </v-row>
             </div>
-
             <!-- Multiple Projects Preview -->
             <div v-else>
               <v-alert
@@ -208,7 +198,6 @@
                   {{ Object.keys(taskGroups).length }} projects will be created, grouped by category.
                 </div>
               </v-alert>
-
               <!-- Project Preview Cards -->
               <v-row>
                 <v-col
@@ -241,16 +230,13 @@
             </div>
           </div>
         </template>
-
         <!-- Step 3: Dependencies -->
         <template v-slot:item.3>
           <div class="pa-6">
-
             <h3 class="text-h6 mb-3">Task Dependencies & Relationships</h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
               Define relationships between tasks and how they should be handled during conversion.
             </p>
-
             <!-- Enhanced Dependency Analysis -->
             <v-card variant="outlined" class="mb-4">
               <v-card-title class="text-subtitle-1 py-3 d-flex align-center">
@@ -348,7 +334,6 @@
                     </v-expansion-panels>
                   </div>
                 </div>
-
                 <!-- Graph View -->
                 <div v-else-if="dependencyViewMode === 'graph'" class="dependency-graph-container">
                   <div v-if="taskDependencies.length === 0" class="text-center py-8">
@@ -386,7 +371,6 @@
                           {{ task.title.length > 10 ? task.title.substring(0, 10) + '...' : task.title }}
                         </text>
                       </g>
-
                       <!-- Dependency Lines -->
                       <g v-for="dep in taskDependencies" :key="`${dep.from}-${dep.to}`">
                         <line
@@ -400,7 +384,6 @@
                           marker-end="url(#arrowhead)"
                         />
                       </g>
-
                       <!-- Arrow marker definition -->
                       <defs>
                         <marker
@@ -415,7 +398,6 @@
                         </marker>
                       </defs>
                     </svg>
-
                     <!-- Graph Legend -->
                     <div class="graph-legend mt-4">
                       <v-row>
@@ -444,7 +426,6 @@
                 </div>
               </v-card-text>
             </v-card>
-
             <!-- Relationship Handling Options -->
             <v-card variant="outlined">
               <v-card-title class="text-subtitle-1 py-3">
@@ -470,16 +451,13 @@
             </v-card>
           </div>
         </template>
-
         <!-- Step 4: Confirm -->
         <template v-slot:item.4>
           <div class="pa-6">
-
             <h3 class="text-h6 mb-3">Conversion Summary</h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
               Review the final conversion plan before proceeding. All projects will be created with the specified configuration.
             </p>
-
             <!-- Summary Stats -->
             <v-row class="mb-4">
               <v-col cols="12" md="3">
@@ -511,7 +489,6 @@
                 </v-card>
               </v-col>
             </v-row>
-
             <!-- Conversion Preview -->
             <v-expansion-panels variant="accordion" multiple>
               <v-expansion-panel
@@ -557,7 +534,6 @@
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
-
             <!-- Conversion Options Summary -->
             <v-card variant="outlined" class="mt-4">
               <v-card-title class="text-subtitle-1 py-3">
@@ -600,8 +576,6 @@
           </div>
         </template>
       </v-stepper>
-      </v-card-text>
-
       <!-- Wizard Navigation -->
       <v-divider />
       <v-card-actions class="pa-4">
@@ -645,54 +619,44 @@
     </v-card>
   </v-dialog>
 </template>
-
 <style scoped>
 .dependency-graph-container {
   background: #fafafa;
   border-radius: 8px;
   padding: 16px;
 }
-
 .dependency-svg {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   background: white;
 }
-
 .task-node {
   cursor: pointer;
   transition: all 0.2s ease;
 }
-
 .task-node:hover {
   stroke-width: 2 !important;
   filter: brightness(1.1);
 }
-
 .task-label {
   pointer-events: none;
   font-weight: 500;
 }
-
 .graph-legend {
   border-top: 1px solid #e0e0e0;
   padding-top: 16px;
 }
-
 .legend-line {
   width: 20px;
   height: 3px;
   border-radius: 2px;
 }
-
 .legend-line.strong {
   background-color: #f44336;
 }
-
 .legend-line.medium {
   background-color: #ff9800;
 }
-
 .legend-line.weak {
   background-color: #2196f3;
   background-image: repeating-linear-gradient(
@@ -704,13 +668,11 @@
   );
 }
 </style>
-
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
-
 // Props
 const props = defineProps({
   show: {
@@ -722,15 +684,12 @@ const props = defineProps({
     default: () => []
   }
 })
-
 // Emits
 const emit = defineEmits(['close', 'converted'])
-
 // Stores
 const taskStore = useTaskStore()
 const projectStore = useProjectStore()
 const productStore = useProductStore()
-
 // State
 const currentStep = ref(1)
 const conversionStrategy = ref('single')
@@ -738,20 +697,17 @@ const converting = ref(false)
 const dependencyHandling = ref('preserve')
 const dependencyViewMode = ref('list')
 const selectedDependencyTask = ref(null)
-
 // Graph dimensions for dependency visualization
 const graphDimensions = ref({
   width: 600,
   height: 400
 })
-
 const projectConfig = ref({
   name: '',
   mission: '',
   priority: 'medium',
   category: 'general'
 })
-
 // Wizard step configuration
 const stepperItems = ref([
   { title: 'Review Tasks', value: 1 },
@@ -759,28 +715,23 @@ const stepperItems = ref([
   { title: 'Dependencies', value: 3 },
   { title: 'Confirm', value: 4 }
 ])
-
 const options = ref({
   preserveTaskLinks: true,
   markTasksConverted: true,
   assignToCurrentAgent: false,
   inheritTaskPriority: true
 })
-
 // Computed
 const tasksToConvert = computed(() => {
   return taskStore.tasks.filter(task => props.selectedTaskIds.includes(task.id))
 })
-
 // Wizard-specific computed properties
 const uniqueCategories = computed(() => {
   return [...new Set(tasksToConvert.value.map(t => t.category))]
 })
-
 const highPriorityCount = computed(() => {
   return tasksToConvert.value.filter(t => ['high', 'critical'].includes(t.priority)).length
 })
-
 const taskDependencies = computed(() => {
   // Enhanced dependency detection based on task relationships
   const dependencies = []
@@ -838,7 +789,6 @@ const taskDependencies = computed(() => {
     index === self.findIndex(d => d.from === dep.from && d.to === dep.to)
   )
 })
-
 const taskGroups = computed(() => {
   const groups = {}
   tasksToConvert.value.forEach(task => {
@@ -850,7 +800,6 @@ const taskGroups = computed(() => {
   })
   return groups
 })
-
 const projectPreviews = computed(() => {
   switch (conversionStrategy.value) {
     case 'individual':
@@ -878,7 +827,6 @@ const projectPreviews = computed(() => {
       return []
   }
 })
-
 const finalConversionPreview = computed(() => {
   if (conversionStrategy.value === 'single') {
     return [{
@@ -891,7 +839,6 @@ const finalConversionPreview = computed(() => {
   }
   return projectPreviews.value
 })
-
 const canProceedToNextStep = computed(() => {
   switch (currentStep.value) {
     case 1:
@@ -907,31 +854,24 @@ const canProceedToNextStep = computed(() => {
       return true
   }
 })
-
 // Dependency categorization
 const strongDependencies = computed(() => 
   taskDependencies.value.filter(dep => dep.strength === 'strong')
 )
-
 const mediumDependencies = computed(() => 
   taskDependencies.value.filter(dep => dep.strength === 'medium')
 )
-
 const weakDependencies = computed(() => 
   taskDependencies.value.filter(dep => dep.strength === 'weak')
 )
-
 const canConvert = computed(() => {
   return finalConversionPreview.value.length > 0 && canProceedToNextStep.value
 })
-
 // Options
 const priorityOptions = ['low', 'medium', 'high', 'critical']
 const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'documentation', 'testing']
-
 const conversionPreview = computed(() => {
   if (!tasksToConvert.value.length) return []
-
   switch (conversionStrategy.value) {
     case 'single':
       return [{
@@ -970,7 +910,6 @@ const conversionPreview = computed(() => {
       return []
   }
 })
-
 // Methods
 function getPriorityColor(priority) {
   const colors = {
@@ -981,32 +920,27 @@ function getPriorityColor(priority) {
   }
   return colors[priority] || 'grey'
 }
-
 // Wizard navigation methods
 function nextStep() {
   if (currentStep.value < 4 && canProceedToNextStep.value) {
     currentStep.value++
   }
 }
-
 function previousStep() {
   if (currentStep.value > 1) {
     currentStep.value--
   }
 }
-
 function removeTaskFromSelection(taskId) {
   const updatedSelection = props.selectedTaskIds.filter(id => id !== taskId)
   // We would need to emit this change back to parent
   // For now, this is a placeholder
   console.log('Remove task:', taskId)
 }
-
 function getTaskTitle(taskId) {
   const task = tasksToConvert.value.find(t => t.id === taskId)
   return task ? task.title : 'Unknown Task'
 }
-
 // Graph visualization methods
 function getTaskPosition(taskId) {
   const taskIndex = tasksToConvert.value.findIndex(t => t.id === taskId)
@@ -1032,7 +966,6 @@ function getTaskPosition(taskId) {
     }
   }
 }
-
 function getTaskRadius(task) {
   // Base radius on task complexity (description length + priority)
   const baseRadius = 25
@@ -1041,7 +974,6 @@ function getTaskRadius(task) {
   
   return baseRadius + (complexityFactor * priorityFactor * 5)
 }
-
 function getDependencyColor(strength) {
   const colors = {
     strong: '#f44336',    // red
@@ -1050,7 +982,6 @@ function getDependencyColor(strength) {
   }
   return colors[strength] || '#666'
 }
-
 function getDependencyWidth(strength) {
   const widths = {
     strong: 3,
@@ -1059,11 +990,9 @@ function getDependencyWidth(strength) {
   }
   return widths[strength] || 1
 }
-
 function selectDependencyTask(taskId) {
   selectedDependencyTask.value = selectedDependencyTask.value === taskId ? null : taskId
 }
-
 async function performConversion() {
   if (!canConvert.value) return
   
@@ -1157,7 +1086,6 @@ async function performConversion() {
     converting.value = false
   }
 }
-
 // Auto-generate project name for single conversion
 watch([tasksToConvert, conversionStrategy], () => {
   if (conversionStrategy.value === 'single' && tasksToConvert.value.length > 0) {
@@ -1176,7 +1104,6 @@ watch([tasksToConvert, conversionStrategy], () => {
     }
   }
 }, { immediate: true })
-
 // Reset form when dialog closes
 watch(() => props.show, (newVal) => {
   if (!newVal) {

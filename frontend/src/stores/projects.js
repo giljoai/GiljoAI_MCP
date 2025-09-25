@@ -26,7 +26,7 @@ export const useProjectStore = defineStore('projects', () => {
     try {
       const response = await axios.get(
         API_CONFIG.ENDPOINTS.projects,
-        baseURL: API_CONFIG.REST_API.baseURL,
+        { baseURL: API_CONFIG.REST_API.baseURL },
       })
       projects.value = response.data
     } catch (err) {
@@ -42,8 +42,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const url = API_CONFIG.ENDPOINTS.project.replace(':id', id)
-      const response = await axios.get(url, {
-        baseURL: API_CONFIG.REST_API.baseURL,
+      const response = await axios.get(url, { baseURL: API_CONFIG.REST_API.baseURL },
       })
       currentProject.value = response.data
 
@@ -67,7 +66,7 @@ export const useProjectStore = defineStore('projects', () => {
       const response = await axios.post(
         API_CONFIG.ENDPOINTS.projects,
         projectData,
-        baseURL: API_CONFIG.REST_API.baseURL,
+        { baseURL: API_CONFIG.REST_API.baseURL },
       })
       projects.value.push(response.data)
       return response.data
@@ -85,8 +84,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const url = API_CONFIG.ENDPOINTS.project.replace(':id', id)
-      const response = await axios.put(url, updates, {
-        baseURL: API_CONFIG.REST_API.baseURL,
+      const response = await axios.put(url, updates, { baseURL: API_CONFIG.REST_API.baseURL },
       })
 
       const index = projects.value.findIndex((p) => p.id === id)
@@ -113,8 +111,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const url = API_CONFIG.ENDPOINTS.project.replace(':id', id)
-      await axios.delete(url, {
-        baseURL: API_CONFIG.REST_API.baseURL,
+      await axios.delete(url, { baseURL: API_CONFIG.REST_API.baseURL },
       })
 
       projects.value = projects.value.filter((p) => p.id !== id)
