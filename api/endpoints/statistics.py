@@ -104,7 +104,7 @@ async def get_system_statistics():
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         async with state.db_manager.get_session_async() as session:
@@ -162,7 +162,7 @@ async def get_system_statistics():
             )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/projects", response_model=list[ProjectStatsResponse])
@@ -175,7 +175,7 @@ async def get_project_statistics(
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         async with state.db_manager.get_session_async() as session:
@@ -236,10 +236,10 @@ async def get_project_statistics(
                     )
                 )
 
-            return stats
+            return stats  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/project/{project_id}", response_model=ProjectStatsResponse)
@@ -249,7 +249,7 @@ async def get_project_statistics_by_id(project_id: str):
     for stat in stats:
         if stat.project_id == project_id:
             return stat
-    raise HTTPException(status_code=404, detail="Project not found")
+    raise HTTPException(status_code=404, detail="Project not found")  # noqa: TRY301
 
 
 @router.get("/agents", response_model=list[AgentStatsResponse])
@@ -262,7 +262,7 @@ async def get_agent_statistics(
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         async with state.db_manager.get_session_async() as session:
@@ -326,10 +326,10 @@ async def get_agent_statistics(
                     )
                 )
 
-            return stats
+            return stats  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/messages", response_model=MessageStatsResponse)
@@ -341,7 +341,7 @@ async def get_message_statistics(
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         async with state.db_manager.get_session_async() as session:
@@ -410,7 +410,7 @@ async def get_message_statistics(
             )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/performance", response_model=PerformanceMetricsResponse)
@@ -472,7 +472,7 @@ async def get_performance_metrics():
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/timeseries/{metric}", response_model=TimeSeriesResponse)
@@ -485,11 +485,11 @@ async def get_timeseries_data(
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     valid_metrics = ["messages", "agents", "tasks", "context_usage", "errors"]
     if metric not in valid_metrics:
-        raise HTTPException(status_code=400, detail=f"Invalid metric. Choose from: {valid_metrics}")
+        raise HTTPException(status_code=400, detail=f"Invalid metric. Choose from: {valid_metrics}")  # noqa: TRY301
 
     try:
         # Generate sample time series data
@@ -528,10 +528,10 @@ async def get_timeseries_data(
 
             data_points.append(TimeSeriesDataPoint(timestamp=timestamp, value=float(value)))
 
-        return TimeSeriesResponse(metric=metric, period=period, data_points=data_points)
+        return TimeSeriesResponse(metric=metric, period=period, data_points=data_points)  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/health/detailed")

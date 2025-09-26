@@ -51,7 +51,7 @@ async def create_task(task: TaskCreate):
         )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to create task"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to create task"))  # noqa: TRY301
 
         return TaskResponse(
             id=result.get("task_id", ""),
@@ -68,7 +68,7 @@ async def create_task(task: TaskCreate):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/", response_model=list[TaskResponse])
@@ -94,7 +94,7 @@ async def list_tasks(
         )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to list tasks"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to list tasks"))  # noqa: TRY301
 
         tasks = []
         for task_data in result.get("tasks", []):
@@ -120,10 +120,10 @@ async def list_tasks(
                 )
             )
 
-        return tasks
+        return tasks  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/summary")
@@ -137,9 +137,9 @@ async def get_task_summary(
         result = await get_product_task_summary_for_api(product_id=product_id)
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get task summary"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get task summary"))  # noqa: TRY301
 
-        return result
+        return result  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301

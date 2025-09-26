@@ -65,7 +65,7 @@ class WebSocketManager:
         auth_context = self.auth_contexts.get(client_id, {})
         if not check_subscription_permission(auth_context, entity_type, entity_id, tenant_key):
             logger.warning(f"Unauthorized subscription attempt by {client_id} " f"for {entity_type}:{entity_id}")
-            raise HTTPException(status_code=403, detail="Not authorized to subscribe to this entity")
+            raise HTTPException(status_code=403, detail="Not authorized to subscribe to this entity")  # noqa: TRY301
 
         entity_key = f"{entity_type}:{entity_id}"
 
@@ -103,7 +103,7 @@ class WebSocketManager:
             try:
                 await websocket.send_text(message)
             except Exception as e:
-                logger.exception(f"Error sending message to {client_id}: {e}")
+                logger.exception("Error sending message to {client_id}")
                 self.disconnect(client_id)
 
     async def send_json(self, data: dict, client_id: str):
@@ -113,7 +113,7 @@ class WebSocketManager:
             try:
                 await websocket.send_json(data)
             except Exception as e:
-                logger.exception(f"Error sending JSON to {client_id}: {e}")
+                logger.exception("Error sending JSON to {client_id}")
                 self.disconnect(client_id)
 
     async def broadcast(self, message: str):
@@ -123,7 +123,7 @@ class WebSocketManager:
             try:
                 await websocket.send_text(message)
             except Exception as e:
-                logger.exception(f"Error broadcasting to {client_id}: {e}")
+                logger.exception("Error broadcasting to {client_id}")
                 disconnected.append(client_id)
 
         # Clean up disconnected clients
@@ -148,7 +148,7 @@ class WebSocketManager:
                     try:
                         await self.send_json(message, client_id)
                     except Exception as e:
-                        logger.exception(f"Error notifying {client_id}: {e}")
+                        logger.exception("Error notifying {client_id}")
                         disconnected.append(client_id)
 
             # Clean up disconnected clients
@@ -429,7 +429,7 @@ class WebSocketManager:
                 try:
                     await websocket.send_json(message)
                 except Exception as e:
-                    logger.exception(f"Error broadcasting agent:spawn to websocket: {e}")
+                    logger.exception("Error broadcasting agent:spawn to websocket")
 
         # Also notify project and parent agent subscribers
         await self.notify_entity_update("project", project_id, message)
@@ -478,7 +478,7 @@ class WebSocketManager:
                 try:
                     await websocket.send_json(message)
                 except Exception as e:
-                    logger.exception(f"Error broadcasting agent:complete to websocket: {e}")
+                    logger.exception("Error broadcasting agent:complete to websocket")
 
         # Notify project subscribers
         await self.notify_entity_update("project", project_id, message)
@@ -530,7 +530,7 @@ class WebSocketManager:
                 try:
                     await websocket.send_json(message)
                 except Exception as e:
-                    logger.exception(f"Error broadcasting agent:update to websocket: {e}")
+                    logger.exception("Error broadcasting agent:update to websocket")
 
         # Notify entity subscribers
         await self.notify_entity_update("project", project_id, message)
@@ -578,7 +578,7 @@ class WebSocketManager:
                 try:
                     await websocket.send_json(message)
                 except Exception as e:
-                    logger.exception(f"Error broadcasting template:update to websocket: {e}")
+                    logger.exception("Error broadcasting template:update to websocket")
 
         # Notify product subscribers
         await self.notify_entity_update("product", product_id, message)

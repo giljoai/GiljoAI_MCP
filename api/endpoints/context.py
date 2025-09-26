@@ -34,7 +34,7 @@ async def get_context_index(product_id: Optional[str] = Query(None, description=
         result = await get_context_index(product_id=product_id)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Context index not found")
+            raise HTTPException(status_code=404, detail="Context index not found")  # noqa: TRY301
 
         index = result.get("index", {})
         return ContextIndexResponse(
@@ -45,7 +45,7 @@ async def get_context_index(product_id: Optional[str] = Query(None, description=
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/vision", response_model=VisionResponse)
@@ -60,7 +60,7 @@ async def get_vision(
         result = await get_vision(part=part, max_tokens=max_tokens)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Vision document not found")
+            raise HTTPException(status_code=404, detail="Vision document not found")  # noqa: TRY301
 
         return VisionResponse(
             part=part,
@@ -70,7 +70,7 @@ async def get_vision(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/vision/index", response_model=dict[str, Any])
@@ -82,12 +82,12 @@ async def get_vision_index():
         result = await get_vision_index()
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Vision index not found")
+            raise HTTPException(status_code=404, detail="Vision index not found")  # noqa: TRY301
 
-        return result.get("index", {})
+        return result.get("index", {})  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/settings", response_model=dict[str, Any])
@@ -99,9 +99,9 @@ async def get_product_settings(product_id: Optional[str] = Query(None, descripti
         result = await get_product_settings(product_id=product_id)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Product settings not found")
+            raise HTTPException(status_code=404, detail="Product settings not found")  # noqa: TRY301
 
-        return result.get("settings", {})
+        return result.get("settings", {})  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301

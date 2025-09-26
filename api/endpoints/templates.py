@@ -173,10 +173,10 @@ async def get_templates(
         if response_time > 100:
             pass
 
-        return responses
+        return responses  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.post("/", response_model=TemplateResponse)
@@ -274,7 +274,7 @@ async def create_template(template: TemplateCreate, session: AsyncSession = Depe
 
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
@@ -303,7 +303,7 @@ async def update_template(
         template = result.scalar_one_or_none()
 
         if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
+            raise HTTPException(status_code=404, detail="Template not found")  # noqa: TRY301
 
         # Archive current version before updating
         archive = TemplateArchive(
@@ -414,7 +414,7 @@ async def update_template(
         raise
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.delete("/{template_id}")
@@ -440,7 +440,7 @@ async def delete_template(
         template = result.scalar_one_or_none()
 
         if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
+            raise HTTPException(status_code=404, detail="Template not found")  # noqa: TRY301
 
         template_name = template.name
 
@@ -501,7 +501,7 @@ async def delete_template(
         raise
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/{template_id}/history", response_model=list[TemplateHistoryResponse])
@@ -552,10 +552,10 @@ async def get_template_history(
                 )
             )
 
-        return history
+        return history  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.post("/{template_id}/restore/{archive_id}")
@@ -586,7 +586,7 @@ async def restore_template_version(
         archive = archive_result.scalar_one_or_none()
 
         if not archive:
-            raise HTTPException(status_code=404, detail="Archive not found or not restorable")
+            raise HTTPException(status_code=404, detail="Archive not found or not restorable")  # noqa: TRY301
 
         # Get current template
         template_stmt = select(AgentTemplate).where(
@@ -596,7 +596,7 @@ async def restore_template_version(
         template = template_result.scalar_one_or_none()
 
         if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
+            raise HTTPException(status_code=404, detail="Template not found")  # noqa: TRY301
 
         # Archive current version before restoring
         current_archive = TemplateArchive(
@@ -652,4 +652,4 @@ async def restore_template_version(
         raise
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301

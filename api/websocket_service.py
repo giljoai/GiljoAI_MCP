@@ -33,7 +33,7 @@ class WebSocketService:
                 meta_data=kwargs.get("meta_data", {}),
             )
         except Exception as e:
-            logger.exception(f"Failed to broadcast agent status: {e}")
+            logger.exception("Failed to broadcast agent status")
 
     @staticmethod
     async def notify_message(websocket_manager, message_id: str, project_id: str, update_type: str, **kwargs):
@@ -46,7 +46,7 @@ class WebSocketService:
                 message_id=message_id, project_id=project_id, update_type=update_type, message_data=kwargs
             )
         except Exception as e:
-            logger.exception(f"Failed to broadcast message update: {e}")
+            logger.exception("Failed to broadcast message update")
 
     @staticmethod
     async def notify_progress(
@@ -61,7 +61,7 @@ class WebSocketService:
                 operation_id=operation_id, project_id=project_id, percentage=percentage, message=message, details=kwargs
             )
         except Exception as e:
-            logger.exception(f"Failed to broadcast progress: {e}")
+            logger.exception("Failed to broadcast progress")
 
     @staticmethod
     async def notify_project(websocket_manager, project_id: str, update_type: str, **kwargs):
@@ -74,7 +74,7 @@ class WebSocketService:
                 project_id=project_id, update_type=update_type, project_data=kwargs
             )
         except Exception as e:
-            logger.exception(f"Failed to broadcast project update: {e}")
+            logger.exception("Failed to broadcast project update")
 
     @staticmethod
     async def send_notification(
@@ -98,7 +98,7 @@ class WebSocketService:
                 target_clients=target_clients,
             )
         except Exception as e:
-            logger.exception(f"Failed to send notification: {e}")
+            logger.exception("Failed to send notification")
 
     @staticmethod
     async def notify_long_operation_start(
@@ -207,7 +207,7 @@ class WebSocketService:
                 meta_data=kwargs,
             )
         except Exception as e:
-            logger.exception(f"Failed to broadcast sub-agent spawn: {e}")
+            logger.exception("Failed to broadcast sub-agent spawn")
 
     @staticmethod
     async def notify_sub_agent_completed(
@@ -238,7 +238,7 @@ class WebSocketService:
                 meta_data=kwargs.get("meta_data"),
             )
         except Exception as e:
-            logger.exception(f"Failed to broadcast sub-agent completion: {e}")
+            logger.exception("Failed to broadcast sub-agent completion")
 
     @staticmethod
     def get_connection_stats(websocket_manager) -> dict[str, Any]:

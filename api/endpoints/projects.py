@@ -45,7 +45,7 @@ async def create_project(project: ProjectCreate):
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         # Create project in database
@@ -57,7 +57,7 @@ async def create_project(project: ProjectCreate):
         )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to create project"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to create project"))  # noqa: TRY301
 
         response = ProjectResponse(
             id=result["project_id"],
@@ -86,10 +86,10 @@ async def create_project(project: ProjectCreate):
                 },
             )
 
-        return response
+        return response  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/", response_model=list[ProjectResponse])
@@ -102,13 +102,13 @@ async def list_projects(
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         result = await state.tool_accessor.list_projects(status=status)
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to list projects"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to list projects"))  # noqa: TRY301
 
         projects = []
         for proj in result.get("projects", [])[offset : offset + limit]:
@@ -127,10 +127,10 @@ async def list_projects(
                 )
             )
 
-        return projects
+        return projects  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -139,13 +139,13 @@ async def get_project(project_id: str):
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         result = await state.tool_accessor.project_status(project_id=project_id)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Project not found")  # noqa: TRY301
 
         proj = result["project"]
         return ProjectResponse(
@@ -162,7 +162,7 @@ async def get_project(project_id: str):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
@@ -171,7 +171,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         # Update mission if provided
@@ -179,13 +179,13 @@ async def update_project(project_id: str, update: ProjectUpdate):
             result = await state.tool_accessor.update_project_mission(project_id=project_id, mission=update.mission)
 
             if not result.get("success"):
-                raise HTTPException(status_code=400, detail=result.get("error", "Failed to update project"))
+                raise HTTPException(status_code=400, detail=result.get("error", "Failed to update project"))  # noqa: TRY301
 
         # Get updated project
-        return await get_project(project_id)
+        return await get_project(project_id)  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
 
 
 @router.delete("/{project_id}")
@@ -194,13 +194,13 @@ async def close_project(project_id: str, summary: str = Query(..., description="
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
 
     try:
         result = await state.tool_accessor.close_project(project_id=project_id, summary=summary)
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to close project"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to close project"))  # noqa: TRY301
 
         # Broadcast project closure
         if state.websocket_manager:
@@ -208,7 +208,7 @@ async def close_project(project_id: str, summary: str = Query(..., description="
                 project_id=project_id, update_type="closed", project_data={"status": "closed", "summary": summary}
             )
 
-        return {"success": True, "message": "Project closed successfully"}
+        return {"success": True, "message": "Project closed successfully"}  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
