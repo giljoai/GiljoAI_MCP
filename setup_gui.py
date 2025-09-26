@@ -100,15 +100,15 @@ class ProfileSelectionPage(WizardPage):
         title_label.pack(pady=20)
 
         # Description
-        desc_text = """Select the profile that best matches your needs. This will customize the installation 
+        desc_text = """Select the profile that best matches your needs. This will customize the installation
 process and default configurations for your specific use case."""
-        
+
         desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
         desc_label.pack(padx=20, pady=10)
 
         # Profile selection
         self.profile_var = tk.StringVar(value="developer")
-        
+
         # Create profile frames
         profiles_frame = ttk.Frame(self)
         profiles_frame.pack(padx=20, pady=10, fill="both", expand=True)
@@ -116,87 +116,87 @@ process and default configurations for your specific use case."""
         # Developer Profile
         dev_frame = ttk.LabelFrame(profiles_frame, text="Developer Profile", padding=10)
         dev_frame.pack(fill="x", pady=5)
-        
+
         ttk.Radiobutton(
-            dev_frame, 
-            text="Individual Developer", 
-            variable=self.profile_var, 
+            dev_frame,
+            text="Individual Developer",
+            variable=self.profile_var,
             value="developer",
             command=self._on_profile_change
         ).pack(anchor="w")
-        
+
         dev_desc = """• Personal coding assistant with local SQLite database
 • Minimal setup with default ports (8000 for API, 8001 for WebSocket)
 • Single-user authentication with simple API key
 • Optimized for individual productivity and learning
 • Ideal for: Solo developers, hobbyists, students"""
-        
+
         ttk.Label(dev_frame, text=dev_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
 
         # Team Profile
         team_frame = ttk.LabelFrame(profiles_frame, text="Team Profile", padding=10)
         team_frame.pack(fill="x", pady=5)
-        
+
         ttk.Radiobutton(
-            team_frame, 
-            text="Development Team", 
-            variable=self.profile_var, 
+            team_frame,
+            text="Development Team",
+            variable=self.profile_var,
             value="team",
             command=self._on_profile_change
         ).pack(anchor="w")
-        
+
         team_desc = """• Shared PostgreSQL database for team collaboration
 • Network-accessible with configurable ports
 • Multi-user authentication with role-based access
 • Project isolation and team management features
 • Ideal for: Small to medium development teams, startups"""
-        
+
         ttk.Label(team_frame, text=team_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
 
         # Enterprise Profile
         enterprise_frame = ttk.LabelFrame(profiles_frame, text="Enterprise Profile", padding=10)
         enterprise_frame.pack(fill="x", pady=5)
-        
+
         ttk.Radiobutton(
-            enterprise_frame, 
-            text="Enterprise Deployment", 
-            variable=self.profile_var, 
+            enterprise_frame,
+            text="Enterprise Deployment",
+            variable=self.profile_var,
             value="enterprise",
             command=self._on_profile_change
         ).pack(anchor="w")
-        
+
         enterprise_desc = """• Production-grade PostgreSQL with replication support
 • Advanced security with OAuth2/SAML integration
 • High availability and load balancing ready
 • Audit logging and compliance features
 • Ideal for: Large organizations, regulated industries"""
-        
+
         ttk.Label(enterprise_frame, text=enterprise_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
 
         # Research Profile
         research_frame = ttk.LabelFrame(profiles_frame, text="Research Profile", padding=10)
         research_frame.pack(fill="x", pady=5)
-        
+
         ttk.Radiobutton(
-            research_frame, 
-            text="AI Research & Education", 
-            variable=self.profile_var, 
+            research_frame,
+            text="AI Research & Education",
+            variable=self.profile_var,
             value="research",
             command=self._on_profile_change
         ).pack(anchor="w")
-        
+
         research_desc = """• Flexible configuration for experimentation
 • Extended agent templates for research scenarios
 • Detailed logging and metrics collection
 • Educational resources and examples included
 • Ideal for: Researchers, educators, AI labs"""
-        
+
         ttk.Label(research_frame, text=research_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
 
         # Status label for profile details
         self.status_frame = ttk.Frame(self)
         self.status_frame.pack(padx=20, pady=10, fill="x")
-        
+
         self.status_label = ttk.Label(self.status_frame, text="", foreground="blue")
         self.status_label.pack()
 
@@ -206,14 +206,14 @@ process and default configurations for your specific use case."""
     def _on_profile_change(self):
         """Update status based on selected profile"""
         profile = self.profile_var.get()
-        
+
         status_messages = {
             "developer": "✓ Ready for quick setup with minimal configuration",
             "team": "✓ Will configure network settings and multi-user support",
             "enterprise": "✓ Will enable enterprise features and security options",
             "research": "✓ Will include research templates and educational content"
         }
-        
+
         self.status_label.config(text=status_messages.get(profile, ""))
 
     def get_data(self) -> dict:
@@ -378,24 +378,24 @@ class DatabasePage(WizardPage):
         parent = self.parent
         while parent and not hasattr(parent, 'config_data'):
             parent = parent.master
-        
+
         if parent and hasattr(parent, 'config_data'):
             profile = parent.config_data.get('profile', 'developer')
-            
+
             # Set defaults based on profile
             if profile == 'developer':
                 # Default to SQLite for individual developers
                 self.db_type_var.set('sqlite')
                 self.db_path_var.set('data/giljo_mcp.db')
                 self._on_db_type_change()
-                
+
             elif profile == 'team':
                 # Default to PostgreSQL for teams
                 self.db_type_var.set('postgresql')
                 self.pg_database_var.set('giljo_mcp_team')
                 self.pg_user_var.set('giljo_team')
                 self._on_db_type_change()
-                
+
             elif profile == 'enterprise':
                 # PostgreSQL with enterprise defaults
                 self.db_type_var.set('postgresql')
@@ -403,16 +403,16 @@ class DatabasePage(WizardPage):
                 self.pg_user_var.set('giljo_enterprise')
                 self.pg_port_var.set('5432')
                 self._on_db_type_change()
-                
+
             elif profile == 'research':
                 # Flexible setup, default to SQLite but show both options
                 self.db_type_var.set('sqlite')
                 self.db_path_var.set('data/research_giljo.db')
                 self._on_db_type_change()
-                
+
             # Update the instructions based on profile
             self._update_instructions(profile)
-    
+
     def _update_instructions(self, profile: str):
         """Update the page title and instructions based on profile"""
         profile_titles = {
@@ -421,7 +421,7 @@ class DatabasePage(WizardPage):
             'enterprise': 'Database Configuration - Enterprise Profile',
             'research': 'Database Configuration - Research Profile'
         }
-        
+
         if hasattr(self, 'title'):
             self.title = profile_titles.get(profile, 'Database Configuration')
 
@@ -502,10 +502,10 @@ class PortsPage(WizardPage):
         parent = self.parent
         while parent and not hasattr(parent, 'config_data'):
             parent = parent.master
-        
+
         if parent and hasattr(parent, 'config_data'):
             profile = parent.config_data.get('profile', 'developer')
-            
+
             # Set port recommendations based on profile
             if profile == 'enterprise':
                 # Enterprise uses standard ports for production
@@ -523,7 +523,7 @@ class PortsPage(WizardPage):
                 # Developer and Research use default development ports
                 # These are already set in __init__, but we ensure they're correct
                 pass
-            
+
             # Check all ports after setting them
             self._check_all_ports()
 
@@ -667,34 +667,34 @@ class SecurityPage(WizardPage):
         parent = self.parent
         while parent and not hasattr(parent, 'config_data'):
             parent = parent.master
-        
+
         if parent and hasattr(parent, 'config_data'):
             profile = parent.config_data.get('profile', 'developer')
-            
+
             # Set security defaults based on profile
             if profile == 'developer':
                 # Developer: Simple API key, local CORS
                 self.enable_api_key_var.set(True)
                 self.cors_origins_var.set('http://localhost:*')
-                
+
             elif profile == 'team':
                 # Team: Required API key, network CORS
                 self.enable_api_key_var.set(True)
                 self.cors_origins_var.set('http://localhost:*, http://192.168.*.*')
                 self._generate_api_key()  # Auto-generate for teams
-                
+
             elif profile == 'enterprise':
                 # Enterprise: Strong security, specific CORS
                 self.enable_api_key_var.set(True)
                 self.cors_origins_var.set('https://your-domain.com')
                 self._generate_api_key()  # Auto-generate strong key
                 self._generate_jwt_secret()  # Auto-generate JWT
-                
+
             elif profile == 'research':
                 # Research: Flexible security for experimentation
                 self.enable_api_key_var.set(False)  # Optional for local research
                 self.cors_origins_var.set('*')  # Allow all for research
-            
+
             # Update UI state
             self._toggle_api_key()
 
@@ -821,9 +821,9 @@ class ServiceControlPage(WizardPage):
         title_label.pack(pady=20)
 
         # Description
-        desc_text = """Configure and manage your services. Services will be automatically installed 
+        desc_text = """Configure and manage your services. Services will be automatically installed
 and configured based on your profile selection."""
-        
+
         desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
         desc_label.pack(padx=20, pady=10)
 
@@ -880,21 +880,21 @@ and configured based on your profile selection."""
         buttons_frame.pack(fill="x", pady=5)
 
         # Control buttons
-        start_btn = ttk.Button(buttons_frame, text="Start", 
+        start_btn = ttk.Button(buttons_frame, text="Start",
                               command=lambda: self._start_service(service_name))
         start_btn.pack(side="left", padx=2)
 
-        stop_btn = ttk.Button(buttons_frame, text="Stop", 
+        stop_btn = ttk.Button(buttons_frame, text="Stop",
                              command=lambda: self._stop_service(service_name))
         stop_btn.pack(side="left", padx=2)
 
-        restart_btn = ttk.Button(buttons_frame, text="Restart", 
+        restart_btn = ttk.Button(buttons_frame, text="Restart",
                                 command=lambda: self._restart_service(service_name))
         restart_btn.pack(side="left", padx=2)
 
         # Auto-start checkbox
         autostart_var = tk.BooleanVar()
-        autostart_check = ttk.Checkbutton(buttons_frame, text="Auto-start on boot", 
+        autostart_check = ttk.Checkbutton(buttons_frame, text="Auto-start on boot",
                                          variable=autostart_var,
                                          command=lambda: self._toggle_autostart(service_name, autostart_var.get()))
         autostart_check.pack(side="right")
@@ -919,7 +919,7 @@ and configured based on your profile selection."""
 
         if parent and hasattr(parent, 'config_data'):
             profile = parent.config_data.get('profile', 'developer')
-            
+
             # Clear existing widgets
             for widget in self.service_widgets.values():
                 widget.destroy()
@@ -928,13 +928,13 @@ and configured based on your profile selection."""
 
             # Determine services based on profile
             services_frame = self.children['!frame']  # Get the services frame
-            
+
             if profile == 'developer':
                 # Developer may have PostgreSQL if selected, always has app service
                 if parent.config_data.get('db_type') == 'postgresql':
                     self.services.append(('postgresql', 'PostgreSQL Database'))
                 self.services.append(('giljo_app', 'GiljoAI Application'))
-                
+
             elif profile in ['team', 'enterprise']:
                 # Network profiles have all services
                 self.services.extend([
@@ -943,7 +943,7 @@ and configured based on your profile selection."""
                     ('giljo_app', 'GiljoAI Application'),
                     ('giljo_worker', 'GiljoAI Worker')
                 ])
-                
+
             elif profile == 'research':
                 # Research profile has flexible services
                 if parent.config_data.get('db_type') == 'postgresql':
@@ -983,7 +983,7 @@ and configured based on your profile selection."""
             try:
                 status = service_manager.get_service_status(service_name)
                 status_text = status.value.upper()
-                
+
                 # Update status display with color
                 status_var = self.service_statuses[service_name]
                 if status.name == 'RUNNING':
@@ -1035,10 +1035,10 @@ and configured based on your profile selection."""
                 self.status_var.set(f"✅ {service_name} started")
             else:
                 self.status_var.set(f"❌ Failed to start {service_name}")
-            
+
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
-            
+
         except Exception as e:
             self.status_var.set(f"Error starting {service_name}: {e}")
 
@@ -1055,10 +1055,10 @@ and configured based on your profile selection."""
                 self.status_var.set(f"✅ {service_name} stopped")
             else:
                 self.status_var.set(f"❌ Failed to stop {service_name}")
-            
+
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
-            
+
         except Exception as e:
             self.status_var.set(f"Error stopping {service_name}: {e}")
 
@@ -1075,10 +1075,10 @@ and configured based on your profile selection."""
                 self.status_var.set(f"✅ {service_name} restarted")
             else:
                 self.status_var.set(f"❌ Failed to restart {service_name}")
-            
+
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
-            
+
         except Exception as e:
             self.status_var.set(f"Error restarting {service_name}: {e}")
 
@@ -1095,12 +1095,12 @@ and configured based on your profile selection."""
             else:
                 success = service_manager.disable_autostart(service_name)
                 action = "disabled"
-            
+
             if success:
                 self.status_var.set(f"✅ Auto-start {action} for {service_name}")
             else:
                 self.status_var.set(f"❌ Failed to {action.replace('d', '')} auto-start for {service_name}")
-                
+
         except Exception as e:
             self.status_var.set(f"Error configuring auto-start for {service_name}: {e}")
 
@@ -1112,7 +1112,7 @@ and configured based on your profile selection."""
 
         try:
             self.status_var.set("Auto-configuring services...")
-            
+
             # Install and configure each service
             for service_name, display_name in self.services:
                 try:
@@ -1120,20 +1120,20 @@ and configured based on your profile selection."""
                     if not service_manager.is_service_installed(service_name):
                         self.status_var.set(f"Installing {display_name}...")
                         service_manager.install_service(service_name)
-                    
+
                     # Enable auto-start for critical services
                     if service_name in ['postgresql', 'redis', 'giljo_app']:
                         service_manager.enable_autostart(service_name)
-                    
+
                 except Exception as e:
                     self.status_var.set(f"Error configuring {service_name}: {e}")
                     continue
 
             self.status_var.set("✅ Auto-configuration complete")
-            
+
             # Refresh all statuses
             self.after(1000, self._refresh_all_services)
-            
+
         except Exception as e:
             self.status_var.set(f"Auto-configuration error: {e}")
 
@@ -1147,7 +1147,7 @@ and configured based on your profile selection."""
             "services_configured": len(self.services),
             "service_list": [name for name, _ in self.services],
             "autostart_services": [
-                name for name, _ in self.services 
+                name for name, _ in self.services
                 if self.autostart_vars.get(name, tk.BooleanVar()).get()
             ]
         }
@@ -1175,49 +1175,49 @@ class ProgressPage(WizardPage):
         # PostgreSQL tab
         self.pg_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.pg_frame, text="PostgreSQL")
-        
+
         self.pg_progress_var = tk.IntVar(value=0)
         self.pg_progress = ttk.Progressbar(self.pg_frame, variable=self.pg_progress_var, maximum=100)
         self.pg_progress.pack(padx=10, pady=10, fill="x")
-        
+
         self.pg_status_var = tk.StringVar(value="Not started")
         ttk.Label(self.pg_frame, textvariable=self.pg_status_var).pack(padx=10, pady=5)
-        
+
         self.pg_text = tk.Text(self.pg_frame, height=8, width=60)
         self.pg_text.pack(padx=10, pady=5, fill="both", expand=True)
-        
+
         # Redis tab
         self.redis_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.redis_frame, text="Redis")
-        
+
         self.redis_progress_var = tk.IntVar(value=0)
         self.redis_progress = ttk.Progressbar(self.redis_frame, variable=self.redis_progress_var, maximum=100)
         self.redis_progress.pack(padx=10, pady=10, fill="x")
-        
+
         self.redis_status_var = tk.StringVar(value="Not started")
         ttk.Label(self.redis_frame, textvariable=self.redis_status_var).pack(padx=10, pady=5)
-        
+
         self.redis_text = tk.Text(self.redis_frame, height=8, width=60)
         self.redis_text.pack(padx=10, pady=5, fill="both", expand=True)
 
         # Docker tab (for containerized profile)
         self.docker_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.docker_frame, text="Docker")
-        
+
         self.docker_progress_var = tk.IntVar(value=0)
         self.docker_progress = ttk.Progressbar(self.docker_frame, variable=self.docker_progress_var, maximum=100)
         self.docker_progress.pack(padx=10, pady=10, fill="x")
-        
+
         self.docker_status_var = tk.StringVar(value="Not started")
         ttk.Label(self.docker_frame, textvariable=self.docker_status_var).pack(padx=10, pady=5)
-        
+
         self.docker_text = tk.Text(self.docker_frame, height=8, width=60)
         self.docker_text.pack(padx=10, pady=5, fill="both", expand=True)
-        
+
         # System tab for general logs
         self.system_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.system_frame, text="System")
-        
+
         self.system_text = tk.Text(self.system_frame, height=12, width=60)
         self.system_text.pack(padx=10, pady=5, fill="both", expand=True)
 
@@ -1226,9 +1226,8 @@ class ProgressPage(WizardPage):
     def log(self, message: str, target: str = "system"):
         """Log message to appropriate target"""
         timestamp = time.strftime("%H:%M:%S")
-        formatted = f"[{timestamp}] {message}
-"
-        
+        formatted = f"[{timestamp}] {message}\n"
+
         if target == "postgresql":
             self.pg_text.insert(tk.END, formatted)
             self.pg_text.see(tk.END)
@@ -1241,7 +1240,7 @@ class ProgressPage(WizardPage):
         else:
             self.system_text.insert(tk.END, formatted)
             self.system_text.see(tk.END)
-        
+
         self.update_idletasks()
 
     def set_progress(self, value: int, target: str = "main"):
@@ -1255,7 +1254,7 @@ class ProgressPage(WizardPage):
         else:
             self.progress_var.set(value)
         self.update_idletasks()
-    
+
     def set_status(self, status: str, target: str = "main"):
         """Update status for specific target"""
         if target == "postgresql":
@@ -1272,15 +1271,15 @@ class ProgressPage(WizardPage):
         """Run installation based on profile and configuration"""
         import threading
         import time
-        
+
         profile = config.get('profile', 'developer')
         self.log(f"Starting installation for {profile} profile", "system")
-        
+
         # Determine which installers to run based on profile
         run_postgresql = False
         run_redis = False
         run_docker = False
-        
+
         if profile in ['team', 'enterprise']:
             # Network profiles need both databases
             run_postgresql = True
@@ -1298,12 +1297,12 @@ class ProgressPage(WizardPage):
             if config.get('db_type') == 'postgresql':
                 run_postgresql = True
             # Could optionally install Redis for caching
-        
+
         # Check for containerized deployment
         if config.get('deployment_mode') == 'containerized' or profile == 'containerized':
             run_docker = True
             self.log("Containerized deployment - will check Docker installation", "system")
-            
+
         # Calculate total steps
         total_steps = 10  # Base system steps
         if run_postgresql:
@@ -1312,47 +1311,47 @@ class ProgressPage(WizardPage):
             total_steps += 10
         if run_docker:
             total_steps += 10
-            
+
         current_step = 0
-        
+
         def update_main_progress():
             nonlocal current_step
             current_step += 1
             self.set_progress(int((current_step / total_steps) * 100))
-        
+
         # PostgreSQL installation callback
         def postgresql_progress(message: str, progress: int):
             self.log(message, "postgresql")
             self.set_progress(progress, "postgresql")
             if progress == 100:
                 update_main_progress()
-        
-        # Redis installation callback  
+
+        # Redis installation callback
         def redis_progress(message: str, progress: int):
             self.log(message, "redis")
             self.set_progress(progress, "redis")
             if progress == 100:
                 update_main_progress()
-        
+
         # Run parallel installations
         threads = []
-        
+
         if run_postgresql:
             def install_postgresql():
                 try:
                     from installer.dependencies.postgresql import PostgreSQLInstaller, PostgreSQLConfig
-                    
+
                     self.set_status("Installing PostgreSQL...", "postgresql")
-                    
+
                     pg_config = PostgreSQLConfig(
                         version="16.0",
                         port=int(config.get('pg_port', 5432)),
                         data_dir="C:/PostgreSQL/16/data",
                         install_dir="C:/PostgreSQL/16"
                     )
-                    
+
                     installer = PostgreSQLInstaller(pg_config, progress_callback=postgresql_progress)
-                    
+
                     if installer.is_postgresql_installed():
                         self.log("PostgreSQL already installed, verifying...", "postgresql")
                         if installer.test_connection():
@@ -1364,58 +1363,58 @@ class ProgressPage(WizardPage):
                     else:
                         result = installer.install()
                         self.log(f"PostgreSQL installed: {result.connection_string}", "postgresql")
-                    
+
                     self.set_status("PostgreSQL installed ✓", "postgresql")
-                    
+
                 except Exception as e:
                     self.log(f"PostgreSQL installation error: {e}", "postgresql")
                     self.set_status(f"Failed: {e}", "postgresql")
-            
+
             pg_thread = threading.Thread(target=install_postgresql)
             threads.append(pg_thread)
             pg_thread.start()
-        
+
         if run_redis:
             def install_redis():
                 try:
                     # Placeholder for Redis installer integration
                     self.set_status("Installing Redis...", "redis")
-                    
+
                     # Simulate Redis installation for now
                     for i in range(0, 101, 10):
                         redis_progress(f"Installing Redis... {i}%", i)
                         time.sleep(0.5)
-                    
+
                     self.set_status("Redis installed ✓", "redis")
-                    
+
                 except Exception as e:
                     self.log(f"Redis installation error: {e}", "redis")
                     self.set_status(f"Failed: {e}", "redis")
-            
+
             redis_thread = threading.Thread(target=install_redis)
             threads.append(redis_thread)
             redis_thread.start()
-        
+
         if run_docker:
             def install_docker():
                 try:
                     from installer.dependencies.docker import DockerInstaller, DockerConfig
-                    
+
                     self.set_status("Checking Docker installation...", "docker")
-                    
+
                     docker_config = DockerConfig(
                         profile=profile,
                         compose_version="2.23.0"
                     )
-                    
+
                     def docker_progress(message: str, progress: int):
                         self.log(message, "docker")
                         self.set_progress(progress, "docker")
                         if progress == 100:
                             update_main_progress()
-                    
+
                     installer = DockerInstaller(docker_config, progress_callback=docker_progress)
-                    
+
                     if installer.is_docker_installed():
                         self.log("Docker already installed, verifying...", "docker")
                         if installer.test_docker_daemon():
@@ -1430,9 +1429,9 @@ class ProgressPage(WizardPage):
                         if result.success:
                             self.log(f"Docker installation guide provided", "docker")
                             self.log("Please follow the instructions to install Docker", "docker")
-                        
+
                     self.set_status("Docker check complete ✓", "docker")
-                    
+
                 except ImportError:
                     self.log("Docker installer not available yet (DOC-01 in progress)", "docker")
                     self.set_status("Docker installer pending", "docker")
@@ -1440,24 +1439,24 @@ class ProgressPage(WizardPage):
                 except Exception as e:
                     self.log(f"Docker installation error: {e}", "docker")
                     self.set_status(f"Failed: {e}", "docker")
-            
+
             docker_thread = threading.Thread(target=install_docker)
             threads.append(docker_thread)
             docker_thread.start()
-        
+
         # System configuration steps
         self.set_status("Configuring system...")
         self.log("Creating configuration files...", "system")
-        
+
         # Use Configuration Manager to generate config files
         try:
             from installer.config.config_manager import ConfigurationManager
-            
+
             config_mgr = ConfigurationManager()
-            
+
             # Generate configuration based on profile
             self.log(f"Generating configuration for {profile} profile...", "system")
-            
+
             # Prepare configuration values from GUI inputs
             config_values = {
                 'profile': profile,
@@ -1470,7 +1469,7 @@ class ProgressPage(WizardPage):
                 'jwt_secret': config.get('jwt_secret', ''),
                 'cors_origins': config.get('cors_origins', 'http://localhost:*')
             }
-            
+
             # Add PostgreSQL settings if applicable
             if config.get('db_type') == 'postgresql':
                 config_values.update({
@@ -1482,299 +1481,75 @@ class ProgressPage(WizardPage):
                 })
             else:
                 config_values['db_path'] = config.get('db_path', 'data/giljo_mcp.db')
-            
+
             # Generate .env file
             env_result = config_mgr.generate_from_profile(profile, config_values)
             if env_result:
                 self.log("✅ Generated .env file", "system")
-            
+
             # Generate config.yaml
             yaml_config = config_mgr.generate_yaml_config(config_values)
             if yaml_config:
                 self.log("✅ Generated config.yaml", "system")
-            
+
             # Validate configuration
             is_valid, errors = config_mgr.validate_configuration(config_values)
             if is_valid:
                 self.log("✅ Configuration validated successfully", "system")
             else:
                 self.log(f"⚠️ Configuration warnings: {errors}", "system")
-                
+
         except ImportError:
             self.log("Configuration Manager not available, using basic config", "system")
         except Exception as e:
             self.log(f"Configuration error: {e}", "system")
-        
+
         update_main_progress()
         time.sleep(0.5)
-        
+
         self.log("Setting up directories...", "system")
         update_main_progress()
         time.sleep(0.5)
-        
+
         self.log("Initializing database schema...", "system")
         update_main_progress()
         time.sleep(0.5)
-        
+
         # Wait for parallel installations
         for thread in threads:
             thread.join()
-        
+
         # Health checks
         self.set_status("Running health checks...")
         self.log("Verifying installations...", "system")
-        
+
         # Integrate health check system
         try:
             from installer.health_check import run_health_checks_for_gui
-            
+
             def health_progress(message: str, progress: int):
                 self.log(f"Health check: {message}", "system")
-            
+
             health_results = run_health_checks_for_gui(config, health_progress)
-            
+
             if health_results['healthy']:
                 self.log("✅ " + health_results['summary'], "system")
             else:
                 self.log("⚠️ " + health_results['summary'], "system")
-            
+
             for detail in health_results['details']:
                 status = "✅" if detail['healthy'] else "❌"
                 self.log(f"  {status} {detail['name']}: {detail['message']}", "system")
-                
+
         except ImportError:
             self.log("Health check module not available, skipping...", "system")
         except Exception as e:
             self.log(f"Health check error: {e}", "system")
-        
+
         update_main_progress()
-        
+
         self.set_status("Installation complete!")
         self.log("✅ All components installed successfully", "system")
         self.set_progress(100)
-        
+
         self.completed = True
-
-        except Exception as e:
-            self.log(f"\n✗ Setup failed: {e!s}")
-            messagebox.showerror("Setup Failed", str(e))
-
-
-class GiljoSetupGUI(GiljoSetup):
-    """GUI extension of GiljoSetup using tkinter"""
-
-    def __init__(self):
-        super().__init__()
-        self.root = tk.Tk()
-        self.root.title("GiljoAI MCP Setup Wizard")
-        self.root.geometry("800x600")
-        self.root.resizable(False, False)
-
-        # Configure style
-        self.style = ttk.Style()
-        self.style.theme_use("clam")
-
-        # Current page tracking
-        self.current_page = 0
-        self.pages = []
-        self.config_data = {}
-
-        # Create main frames
-        self._create_frames()
-
-        # Create pages
-        self._create_pages()
-
-        # Show first page
-        self._show_page(0)
-
-    def _create_frames(self):
-        """Create the main layout frames"""
-        # Header frame
-        header_frame = ttk.Frame(self.root, relief="ridge", borderwidth=2)
-        header_frame.pack(fill="x", padx=5, pady=5)
-
-        self.title_label = ttk.Label(header_frame, text="Welcome", font=("Helvetica", 14, "bold"))
-        self.title_label.pack(pady=10)
-
-        # Content frame
-        self.content_frame = ttk.Frame(self.root)
-        self.content_frame.pack(fill="both", expand=True, padx=5, pady=5)
-
-        # Button frame
-        button_frame = ttk.Frame(self.root)
-        button_frame.pack(fill="x", padx=5, pady=5)
-
-        # Navigation buttons
-        self.back_btn = ttk.Button(button_frame, text="< Back", command=self._prev_page)
-        self.back_btn.pack(side="left", padx=5)
-
-        self.next_btn = ttk.Button(button_frame, text="Next >", command=self._next_page)
-        self.next_btn.pack(side="right", padx=5)
-
-        self.cancel_btn = ttk.Button(button_frame, text="Cancel", command=self._cancel)
-        self.cancel_btn.pack(side="right", padx=5)
-
-    def _create_pages(self):
-        """Create all wizard pages"""
-        self.pages = [
-            WelcomePage(self.content_frame),
-            ProfileSelectionPage(self.content_frame),
-            DatabasePage(self.content_frame),
-            PortsPage(self.content_frame),
-            SecurityPage(self.content_frame),
-            ServiceControlPage(self.content_frame),
-            ReviewPage(self.content_frame, self._get_all_config),
-            ProgressPage(self.content_frame),
-        ]
-
-    def _show_page(self, index: int):
-        """Show specific page"""
-        # Hide all pages
-        for page in self.pages:
-            page.pack_forget()
-
-        # Show current page
-        self.current_page = index
-        page = self.pages[index]
-        page.pack(fill="both", expand=True)
-
-        # Update title
-        self.title_label.config(text=page.title)
-
-        # Update buttons
-        self.back_btn.config(state="normal" if index > 0 else "disabled")
-
-        if index == len(self.pages) - 1:
-            self.next_btn.config(text="Finish", state="disabled")
-        elif index == len(self.pages) - 2:
-            self.next_btn.config(text="Install >", state="normal")
-        else:
-            self.next_btn.config(text="Next >", state="normal")
-
-        # Call page enter method
-        page.on_enter()
-
-    def _next_page(self):
-        """Go to next page"""
-        current = self.pages[self.current_page]
-
-        # Validate current page
-        if not current.validate():
-            return
-
-        # Store page data BEFORE moving to next page
-        self.config_data.update(current.get_data())
-        current.on_exit()
-
-        # Special handling for review page
-        if self.current_page == len(self.pages) - 2:
-            # Moving to progress page - start installation
-            self._show_page(self.current_page + 1)
-            self._run_installation()
-        elif self.current_page < len(self.pages) - 1:
-            self._show_page(self.current_page + 1)
-        else:
-            # Finish
-            self.root.quit()
-
-    def _prev_page(self):
-        """Go to previous page"""
-        if self.current_page > 0:
-            self.pages[self.current_page].on_exit()
-            self._show_page(self.current_page - 1)
-
-    def _cancel(self):
-        """Cancel setup"""
-        if messagebox.askyesno("Cancel Setup", "Are you sure you want to cancel setup?"):
-            self.root.quit()
-
-    def _get_all_config(self) -> dict:
-        """Get all configuration data"""
-        return self.config_data
-
-    def _run_installation(self):
-        """Run the actual installation in a thread"""
-        progress_page = self.pages[-1]
-        
-        # Pass the complete configuration to the progress page
-        def install():
-            try:
-                # Call the new run_setup method with full config
-                progress_page.run_setup(self.config_data)
-                
-                # Enable finish button when complete
-                self.next_btn.config(state="normal")
-                
-            except Exception as e:
-                progress_page.log(f"\n✗ Setup failed: {e!s}")
-                messagebox.showerror("Setup Failed", str(e))
-        
-        # Run in thread
-        thread = threading.Thread(target=install)
-        thread.start()
-
-    def _convert_config(self):
-        """Convert GUI config to setup config format"""
-        # Database configuration
-        if self.config_data.get("db_type") == "sqlite":
-            db_path = Path(self.config_data.get("db_path", "data/giljo_mcp.db"))
-            self.env_vars["DATABASE_URL"] = f"sqlite:///{db_path.as_posix()}"
-            self.env_vars["DB_TYPE"] = "sqlite"
-        else:
-            self.env_vars["DB_TYPE"] = "postgresql"
-            self.env_vars["DB_HOST"] = self.config_data.get("pg_host", "localhost")
-            self.env_vars["DB_PORT"] = self.config_data.get("pg_port", "5432")
-            self.env_vars["DB_NAME"] = self.config_data.get("pg_database", "giljo_mcp")
-            self.env_vars["DB_USER"] = self.config_data.get("pg_user", "postgres")
-            self.env_vars["DB_PASSWORD"] = self.config_data.get("pg_password", "")
-            self.env_vars["DATABASE_URL"] = self._build_pg_url()
-
-        # Ports
-        for service in PORT_ASSIGNMENTS:
-            key = f"{service}_port"
-            if key in self.config_data:
-                env_key = f"GILJO_MCP_{service.upper()}_PORT"
-                self.env_vars[env_key] = self.config_data[key]
-
-        # Security
-        if self.config_data.get("api_key"):
-            self.env_vars["GILJO_MCP_API_KEY"] = self.config_data["api_key"]
-
-        self.env_vars["JWT_SECRET"] = self.config_data.get("jwt_secret", "")
-        self.env_vars["CORS_ENABLED"] = str(self.config_data.get("cors_enabled", True))
-        self.env_vars["CORS_ORIGINS"] = self.config_data.get("cors_origins", "http://localhost:*")
-
-        # Mode
-        self.env_vars["GILJO_MCP_MODE"] = self.config_data.get("mode", "local")
-        self.env_vars["DEBUG"] = "true" if self.config_data.get("mode") == "local" else "false"
-
-    def _build_pg_url(self) -> str:
-        """Build PostgreSQL URL from config"""
-        host = self.config_data.get("pg_host", "localhost")
-        port = self.config_data.get("pg_port", "5432")
-        database = self.config_data.get("pg_database", "giljo_mcp")
-        user = self.config_data.get("pg_user", "postgres")
-        password = self.config_data.get("pg_password", "")
-
-        if password:
-            return f"postgresql://{user}:{password}@{host}:{port}/{database}"
-        return f"postgresql://{user}@{host}:{port}/{database}"
-
-    def run(self):
-        """Run the GUI wizard"""
-        # Center window
-        self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
-
-        # Run main loop
-        self.root.mainloop()
-
-
-if __name__ == "__main__":
-    gui = GiljoSetupGUI()
-    gui.run()
