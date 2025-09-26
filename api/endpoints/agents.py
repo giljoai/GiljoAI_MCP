@@ -4,7 +4,7 @@ Agent management API endpoints
 
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -43,7 +43,7 @@ async def create_agent(agent: AgentCreate):
         )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to create agent"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to create agent"))  # noqa: TRY301
 
         response = AgentResponse(
             id=result.get("agent_id", agent.agent_name),
@@ -69,10 +69,10 @@ async def create_agent(agent: AgentCreate):
                     meta_data={"health": response.health, "mission": agent.mission},
                 )
 
-        return response
+        return response  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{agent_name}/health", response_model=dict)
@@ -84,12 +84,12 @@ async def get_agent_health(agent_name: str):
         result = await state.tool_accessor.agent_health(agent_name=agent_name)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Agent not found")
+            raise HTTPException(status_code=404, detail="Agent not found")  # noqa: TRY301
 
         return result.get("health", {})
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/{agent_name}/decommission")
@@ -107,7 +107,7 @@ async def decommission_agent(
         )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to decommission agent"))
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to decommission agent"))  # noqa: TRY301
 
         # Broadcast agent decommission
         if state.websocket_manager and state.tenant_manager:
@@ -121,12 +121,12 @@ async def decommission_agent(
                     status="decommissioned",
                     context_usage=0,
                     meta_data={"reason": reason},
-            )
+                )
 
-        return {"success": True, "message": f"Agent {agent_name} decommissioned"}
+        return {"success": True, "message": f"Agent {agent_name} decommissioned"}  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Tree structure response models
@@ -137,7 +137,7 @@ class AgentNode(BaseModel):
     status: str
     project_id: str
     parent_id: Optional[str] = None
-    children: List["AgentNode"] = []
+    children: list["AgentNode"] = []
     mission: Optional[str] = None
     context_used: int = 0
     created_at: datetime
@@ -151,7 +151,7 @@ class AgentTreeResponse(BaseModel):
     project_id: str
     total_agents: int
     active_agents: int
-    tree: List[AgentNode]
+    tree: list[AgentNode]
     response_time_ms: float
 
 
@@ -164,10 +164,10 @@ class AgentMetrics(BaseModel):
     total_messages: int
     total_jobs: int
     avg_agent_duration_minutes: float
-    agent_by_role: Dict[str, int]
-    agent_by_status: Dict[str, int]
-    hourly_activity: List[Dict[str, Any]]
-    token_usage_by_agent: List[Dict[str, Any]]
+    agent_by_role: dict[str, int]
+    agent_by_status: dict[str, int]
+    hourly_activity: list[dict[str, Any]]
+    token_usage_by_agent: list[dict[str, Any]]
     response_time_ms: float
 
 
@@ -182,7 +182,8 @@ async def get_db_session():
 
 @router.get("/tree", response_model=AgentTreeResponse)
 async def get_agents_tree(
-    project_id: str = Query(..., description="Project ID"), session: AsyncSession = Depends(get_db_session)
+    project_id: str = Query(..., description="Project ID"),
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
 ):
     """
     Get hierarchical tree structure of agents in a project.
@@ -259,7 +260,7 @@ async def get_agents_tree(
                     node.parent_id = orchestrator.id
 
         # Build parent-child relationships
-        for agent_id, node in agent_nodes.items():
+        for node in agent_nodes.values():
             if node.parent_id and node.parent_id in agent_nodes:
                 agent_nodes[node.parent_id].children.append(node)
 
@@ -278,14 +279,14 @@ async def get_agents_tree(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/metrics", response_model=AgentMetrics)
 async def get_agents_metrics(
     project_id: Optional[str] = Query(None, description="Project ID (optional for all projects)"),
     hours: int = Query(24, description="Number of hours for activity data"),
-    session: AsyncSession = Depends(get_db_session),
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008,
 ):
     """
     Get performance metrics and statistics for agents.
@@ -385,7 +386,7 @@ async def get_agents_metrics(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Fix forward reference for Pydantic models

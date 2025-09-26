@@ -124,8 +124,8 @@ async def validate_websocket_auth(credentials: dict[str, Any], auth_manager: Any
                 )
             return AuthResult(is_valid=False, error_message="Invalid API key")
 
-        except Exception as e:
-            logger.exception(f"Error validating API key: {e}")
+        except Exception:
+            logger.exception("Error validating API key")
             return AuthResult(is_valid=False, error_message="Authentication error")
 
     # JWT Token authentication
@@ -146,15 +146,18 @@ async def validate_websocket_auth(credentials: dict[str, Any], auth_manager: Any
                 )
             return AuthResult(is_valid=False, error_message="Invalid or expired token")
 
-        except Exception as e:
-            logger.exception(f"Error validating JWT token: {e}")
+        except Exception:
+            logger.exception("Error validating JWT token")
             return AuthResult(is_valid=False, error_message="Token validation error")
 
     return AuthResult(is_valid=False, error_message="Unknown authentication type")
 
 
 def check_subscription_permission(
-    auth_context: dict[str, Any], entity_type: str, entity_id: str, tenant_key: Optional[str] = None
+    auth_context: dict[str, Any],
+    entity_type: str,
+    entity_id: str,  # noqa: ARG001
+    tenant_key: Optional[str] = None,
 ) -> bool:
     """
     Check if authenticated user can subscribe to entity
