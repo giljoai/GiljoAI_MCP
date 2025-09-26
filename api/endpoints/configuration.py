@@ -65,7 +65,9 @@ async def get_system_configuration():
                 "echo": state.config.get("database.echo", False),
             },
             "api": {
-                "host": state.config.get("api.host", "0.0.0.0"),
+                "host": state.config.get(
+                    "api.host", "0.0.0.0"
+                ),  # noqa: S104  # Binding to all interfaces needed for Docker
                 "port": state.config.get("api.port", 8000),
                 "workers": state.config.get("api.workers", 1),
                 "cors_origins": state.config.get("api.cors_origins", ["*"]),
@@ -98,7 +100,7 @@ async def get_system_configuration():
         return SystemConfigResponse(**config)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/key/{key_path}", response_model=ConfigurationResponse)
@@ -115,19 +117,19 @@ async def get_configuration(key_path: str, default: Optional[Any] = None):
         value = state.config.get(key, default)
 
         if value is None and default is None:
-            raise HTTPException(status_code=404, detail=f"Configuration key '{key}' not found")
+            raise HTTPException(status_code=404, detail=f"Configuration key '{key}' not found")  # noqa: TRY301
 
         # Determine source
         source = "default"
-        if hasattr(state.config, "_sources") and key in state.config._sources:
-            source = state.config._sources[key]
+        if hasattr(state.config, "_sources") and key in state.config._sources:  # noqa: SLF001
+            source = state.config._sources[key]  # noqa: SLF001
 
         return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/key/{key_path}")
@@ -144,17 +146,22 @@ async def set_configuration(key_path: str, config: ConfigurationSet):
 
         # Validate key format
         if not key or ".." in key:
-            raise HTTPException(status_code=400, detail="Invalid configuration key")
+            raise HTTPException(status_code=400, detail="Invalid configuration key")  # noqa: TRY301
 
         # Set configuration value
         state.config.set(key, config.value)
 
-        return {"success": True, "key": key, "value": config.value, "message": "Configuration updated (runtime only)"}
+        return {
+            "success": True,
+            "key": key,
+            "value": config.value,
+            "message": "Configuration updated (runtime only)",
+        }  # noqa: TRY300
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.patch("/")
@@ -173,7 +180,7 @@ async def update_configurations(update: ConfigurationUpdate):
             try:
                 state.config.set(key, value)
                 updated.append(key)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001, PERF203
                 failed.append({"key": key, "error": str(e)})
 
         return {
@@ -184,7 +191,7 @@ async def update_configurations(update: ConfigurationUpdate):
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/reload")
@@ -199,10 +206,10 @@ async def reload_configuration():
         # Reload configuration
         state.config.reload()
 
-        return {"success": True, "message": "Configuration reloaded successfully"}
+        return {"success": True, "message": "Configuration reloaded successfully"}  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/tenants", response_model=list[str])
@@ -227,7 +234,7 @@ async def list_tenant_configurations():
             return tenants
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/tenant/{tenant_key}", response_model=dict[str, Any])
@@ -248,7 +255,9 @@ async def get_tenant_configuration(tenant_key: str):
             configs = result.scalars().all()
 
             if not configs:
-                raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
+                raise HTTPException(
+                    status_code=404, detail=f"No configuration found for tenant '{tenant_key}'"
+                )  # noqa: TRY301
 
             # Build configuration dictionary
             tenant_config = {}
@@ -260,12 +269,13 @@ async def get_tenant_configuration(tenant_key: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/tenant/{tenant_key}")
 async def set_tenant_configuration(
-    tenant_key: str, configurations: dict[str, Any] = Body(..., description="Tenant-specific configurations")
+    tenant_key: str,
+    configurations: dict[str, Any] = Body(..., description="Tenant-specific configurations"),  # noqa: B008
 ):
     """Set tenant-specific configuration"""
     from api.app import state
@@ -307,7 +317,7 @@ async def set_tenant_configuration(
             }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/tenant/{tenant_key}")
@@ -329,7 +339,9 @@ async def delete_tenant_configuration(tenant_key: str):
             await session.commit()
 
             if result.rowcount == 0:
-                raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
+                raise HTTPException(
+                    status_code=404, detail=f"No configuration found for tenant '{tenant_key}'"
+                )  # noqa: TRY301
 
             return {
                 "success": True,
@@ -341,4 +353,4 @@ async def delete_tenant_configuration(tenant_key: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
