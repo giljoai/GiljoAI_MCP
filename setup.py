@@ -52,6 +52,20 @@ except ImportError:
     print("[red]Error: check_ports.py not found in scripts directory[/red]")
     sys.exit(1)
 
+# Import Phase 2 installer components
+try:
+    from installer.core.profile import ProfileManager, ProfileType
+    from installer.config.config_manager import ConfigurationManager
+    from installer.services.service_manager import ServiceManager
+    from installer.dependencies.postgresql import PostgreSQLInstaller
+    from installer.dependencies.redis import RedisInstaller
+    from installer.dependencies.docker import DockerInstaller
+    from installer.core.health import HealthChecker
+    PHASE2_AVAILABLE = True
+except ImportError as e:
+    print(f"[yellow]Warning: Some Phase 2 components not available: {e}[/yellow]")
+    PHASE2_AVAILABLE = False
+
 
 class GiljoSetup:
     """Interactive setup for GiljoAI MCP"""

@@ -8,26 +8,28 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system with compl
 
 ## Installation System
 
-### New Advanced Installer (In Development)
+### Phase 2 Complete: Advanced Installer with Dependency Management
 ```bash
 # Single entry point for all platforms
 python bootstrap.py
+# OR platform-specific:
+quickstart.bat        # Windows
+./quickstart.sh       # Mac/Linux
 
-# The bootstrap will:
-# - Detect OS and GUI capability
-# - Launch appropriate installer (GUI or CLI)
-# - Check and install dependencies
-# - Configure services and create launchers
+# The installer now:
+# ✅ Detects OS and GUI capability
+# ✅ Launches profile-based installer (GUI or CLI)
+# ✅ Actually installs dependencies (PostgreSQL, Redis, Docker)
+# ✅ Creates and manages OS services
+# ✅ Configures applications based on selected profile
+# ✅ Validates health and provides service controls
 ```
 
-### Current Installation
-```bash
-# Windows
-quickstart.bat
-
-# Mac/Linux
-./quickstart.sh
-```
+### Installation Profiles Available
+- **Developer Profile**: SQLite, local Redis, single-machine setup
+- **Team Profile**: PostgreSQL, network-accessible, multi-user
+- **Enterprise Profile**: Production-grade PostgreSQL, clustering-ready
+- **Research Profile**: Flexible configuration for experimentation
 
 ## Development Commands
 

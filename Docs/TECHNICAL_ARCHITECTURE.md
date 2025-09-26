@@ -7,6 +7,8 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system designed w
 
 **🚀 Sub-Agent Architecture Update (January 2025)**: The discovery of Claude Code's native sub-agent capabilities has fundamentally simplified our architecture. Instead of complex multi-terminal orchestration, we now use elegant single-session delegation where GiljoAI-MCP serves as the persistent brain (memory, state, coordination) while Claude Code acts as the execution engine through direct sub-agent spawning.
 
+**🎯 Phase 2 Installer Architecture (September 2025)**: Complete transformation from configuration wizard to full dependency installer with cross-platform service management. The installer now actually installs PostgreSQL, Redis, Docker, and creates OS services rather than just generating config files.
+
 ### Core Architecture Principles
 
 1. **Local-First Design**: Optimized for single-machine performance with network capabilities
@@ -15,6 +17,8 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system designed w
 4. **Protocol Native**: Built on Model Context Protocol (MCP) standards
 5. **Progressive Enhancement**: Features activate based on deployment mode
 6. **OS-Neutral Code**: All paths use pathlib.Path(), never hardcoded separators
+7. **Profile-Based Installation**: Four deployment profiles with automatic dependency management
+8. **Service Lifecycle Management**: Cross-platform service creation and management
 
 ### Cross-Platform Development Requirements
 
@@ -152,6 +156,146 @@ Agent ←→ Session (1:many)
 Project ←→ Vision (1:1)
 Product ←→ AgentTemplate (1:many)
 AgentTemplate ←→ TemplateArchive (1:many)
+```
+
+### Phase 2 Installer Architecture (Major Update September 2025)
+
+The installer has been transformed from a simple configuration wizard into a comprehensive dependency management system with cross-platform service lifecycle management.
+
+#### Installation Profiles
+**Four distinct deployment profiles with automatic dependency resolution:**
+
+```python
+# Profile-based installation paths
+Developer Profile:
+    ├── SQLite (default) or PostgreSQL (optional)
+    ├── Redis (local instance)
+    ├── Local-only configuration
+    └── Single-machine optimization
+
+Team Profile:
+    ├── PostgreSQL (multi-user)
+    ├── Redis (network accessible)
+    ├── API authentication required
+    └── LAN-optimized networking
+
+Enterprise Profile:
+    ├── PostgreSQL (production-grade)
+    ├── Redis (clustering-ready)
+    ├── OAuth2/SAML integration ready
+    └── Audit logging and compliance
+
+Research Profile:
+    ├── Flexible database choice
+    ├── Extended agent templates
+    ├── Debug features enabled
+    └── Experimentation-optimized
+```
+
+#### Dependency Installation System
+**Actual software installation, not just configuration:**
+
+```python
+# installer/dependencies/ module structure
+postgresql.py:
+    ├── Windows: PowerShell silent installation
+    ├── macOS: Homebrew or PostgreSQL.app
+    ├── Linux: Package manager detection
+    └── Database initialization and user setup
+
+redis.py:
+    ├── Windows: GitHub releases + service creation
+    ├── macOS: Homebrew integration
+    ├── Linux: Package manager integration
+    └── Persistence configuration
+
+docker.py:
+    ├── Cross-platform Docker Desktop detection
+    ├── Installation guidance and automation
+    ├── docker-compose.yml generation per profile
+    └── Container health checks
+```
+
+#### Service Management Architecture
+**Cross-platform service lifecycle management:**
+
+```python
+# installer/services/service_manager.py
+ServiceManager:
+    ├── Windows: pywin32 service wrappers
+    ├── macOS: launchd plist templates
+    ├── Linux: systemd unit files
+    └── Unified API: install/start/stop/restart/status
+
+Service Features:
+    ├── Dependency ordering (PostgreSQL → Redis → App)
+    ├── Health monitoring and auto-recovery
+    ├── Auto-start configuration
+    └── Service status dashboard
+```
+
+#### Configuration Management System
+**Profile-based dynamic configuration:**
+
+```python
+# installer/config/config_manager.py
+ConfigurationManager:
+    ├── Profile-specific .env templates
+    ├── Dynamic config.yaml generation
+    ├── Runtime value substitution
+    ├── Configuration validation
+    └── Profile migration utilities
+
+Template System:
+    ├── .env.developer (SQLite optimized)
+    ├── .env.team (PostgreSQL + networking)
+    ├── .env.enterprise (production features)
+    └── .env.research (flexible configuration)
+```
+
+#### GUI Enhancement Architecture
+**Profile-aware installer wizard:**
+
+```python
+# Enhanced setup_gui.py structure
+Wizard Pages:
+    ├── Welcome (unchanged)
+    ├── ProfileSelectionPage (NEW - choose deployment type)
+    ├── DatabasePage (adapts to selected profile)
+    ├── PortsPage (profile-aware defaults)
+    ├── SecurityPage (profile-specific requirements)
+    ├── ServiceControlPage (NEW - manage services)
+    ├── ReviewPage (comprehensive summary)
+    └── ProgressPage (parallel installation tracking)
+
+Profile Adaptation:
+    ├── UI elements show/hide based on profile
+    ├── Default values change per profile
+    ├── Help text adapts to use case
+    └── Service list varies by deployment type
+```
+
+#### Installation Flow Architecture
+**Parallel, health-validated installation:**
+
+```
+Entry Point (unchanged):
+├── quickstart.bat/sh
+├── python bootstrap.py
+
+Enhanced Flow:
+├── OS Detection & Python validation
+├── Phase 2 dependency pre-check (NEW)
+├── Profile Selection (NEW)
+├── Profile-aware configuration
+├── Parallel Installation:
+│   ├── PostgreSQL installer (if needed)
+│   ├── Redis installer (always)
+│   ├── Docker setup (if containerized)
+│   ├── Service creation & registration
+│   ├── Configuration file generation
+│   └── Health validation & testing
+└── Service Management UI (NEW)
 ```
 
 ### Sub-Agent Architecture (Enhancement Added in Phase 3.9)

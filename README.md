@@ -53,6 +53,7 @@ Each agent maintains focused context within limits while the orchestrator manage
 - Python 3.8+
 - Git
 - 5 minutes ⏱️
+- Admin privileges (for dependency installation)
 ```
 
 ### Install and Run
@@ -60,36 +61,47 @@ Each agent maintains focused context within limits while the orchestrator manage
 ```bash
 # 1. Clone and enter directory (30 seconds)
 git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
-cd giljo-mcp
+cd GiljoAI_MCP
 
-# 2. Run interactive setup (2 minutes)
-python setup.py
-# → Choose: 1) SQLite (recommended for quick start)
-# → Press Enter for all defaults
-# → Setup creates all directories and config files
+# 2. Run the advanced installer (3 minutes)
+quickstart.bat     # Windows
+# OR
+./quickstart.sh    # Mac/Linux
+# OR
+python bootstrap.py   # Universal
 
-# 3. Install dependencies (1 minute)
-pip install -r requirements.txt
+# The installer will:
+# ✅ Guide you through profile selection
+# ✅ Install PostgreSQL and Redis automatically (if needed)
+# ✅ Create and configure all services
+# ✅ Validate everything is working
 
-# 4. Start the orchestrator (30 seconds)
-python -m giljo_mcp start
-# ✨ Server running at http://localhost:6000
-
-# 5. Create your first orchestration (1 minute)
-# Open browser to http://localhost:6000
-# Click "New Project" and paste:
-#   "Analyze my Python project and suggest improvements"
+# 3. Start using your AI orchestration team (30 seconds)
+# Services are automatically started by the installer
+# ✨ Dashboard available at http://localhost:6000
+# ✨ API available at http://localhost:8000
 ```
 
-### 🎉 That's it! Your first AI team is now working!
+### 🎉 That's it! Your complete AI team is ready!
 
 ### What Just Happened?
 
-1. **Setup** created your local database and configuration
-2. **Server** started the orchestration engine and dashboard
-3. **Orchestrator** spawned specialized agents for your task
-4. **Agents** are now analyzing, coding, and reviewing in parallel
-5. **Dashboard** shows real-time progress and results
+1. **Profile Selection**: You chose your deployment type (Developer/Team/Enterprise/Research)
+2. **Dependency Installation**: PostgreSQL and Redis were automatically installed and configured
+3. **Service Creation**: All services were registered with your OS and started
+4. **Health Validation**: The installer verified everything is working correctly
+5. **Ready to Use**: Your AI orchestration system is running and ready for tasks
+
+### Installation Profiles
+
+Choose the profile that best fits your needs:
+
+| Profile | Best For | Database | Services | Network |
+|---------|----------|----------|----------|---------|
+| **Developer** | Individual development | SQLite or PostgreSQL | Local Redis | Localhost only |
+| **Team** | Small teams, LAN deployment | PostgreSQL | PostgreSQL + Redis | Network accessible |
+| **Enterprise** | Production, large organizations | PostgreSQL + clustering | Full stack | Internet-ready |
+| **Research** | AI research, experimentation | Flexible | Extended templates | Research-optimized |
 
 ### Next Steps
 

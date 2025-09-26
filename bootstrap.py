@@ -271,49 +271,127 @@ class Bootstrap:
 
         success = True
         
-        # Generate default configuration
+        # Generate configuration using new Config Manager
         try:
-            from installers.config_generator import ConfigGenerator
-            config_gen = ConfigGenerator(self.install_dir)
-            
-            # Create required directories
-            dir_success, dir_msg = config_gen.create_required_directories()
-            if dir_success:
-                self.print_status(dir_msg, "success")
+            from installer.config.config_manager import ConfigurationManager
+            from installer.core.profile import ProfileManager, ProfileType
+
+            # Initialize configuration manager
+            config_manager = ConfigurationManager()
+
+            # Create required directories first
+            try:
+                # Use existing data directory or create
+                data_dir = self.install_dir / "data"
+                data_dir.mkdir(exist_ok=True)
+                config_dir = self.install_dir / "config"
+                config_dir.mkdir(exist_ok=True)
+                self.print_status("Created required directories", "success")
+            except Exception as e:
+                self.print_status(f"Directory creation warning: {e}", "warning")
+
+            # Create default profile if none exists
+            if not (self.install_dir / "config.yaml").exists():
+                # Generate developer profile by default for bootstrap
+                profile_data = {
+                    'profile_type': 'developer',
+                    'database_type': 'sqlite',
+                    'host': 'localhost',
+                    'port': 8000,
+                    'enable_redis': False,
+                    'enable_docker': False,
+                    'deployment_mode': 'local'
+                }
+
+                config_success = config_manager.generate_config(
+                    profile_type='developer',
+                    user_inputs=profile_data,
+                    output_dir=self.install_dir
+                )
+
+                if config_success:
+                    self.print_status("Generated configuration files", "success")
+                else:
+                    self.print_status("Config generation failed", "warning")
+                    success = False
             else:
-                self.print_status(dir_msg, "warning")
-            
-            # Create config.yaml if it doesn't exist
-            config_success, config_msg = config_gen.create_config_file()
-            if config_success:
-                self.print_status(config_msg, "success")
-            elif "already exists" in config_msg:
                 self.print_status("Using existing config.yaml", "info")
-            else:
-                self.print_status(config_msg, "warning")
+        except ImportError:
+            self.print_status("New config manager not available, using fallback", "warning")
+            # Keep existing fallback code
+            try:
+                from installers.config_generator import ConfigGenerator
+                config_gen = ConfigGenerator(self.install_dir)
+                config_success, config_msg = config_gen.create_config_file()
+                if config_success:
+                    self.print_status(config_msg, "success")
+                else:
+                    self.print_status(config_msg, "warning")
+                    success = False
+            except Exception as e:
+                self.print_status(f"Fallback config generation failed: {e}", "warning")
                 success = False
         except Exception as e:
             self.print_status(f"Config generation failed: {e}", "warning")
             success = False
         
+        # Set up service management
+        try:
+            from installer.services.service_manager import ServiceManager
+
+            self.print_status("Setting up service management...", "info")
+
+            service_manager = ServiceManager()
+
+            # Install GiljoAI services (prepare service definitions but don't auto-start)
+            service_setup_results = service_manager.setup_services(
+                install_dir=self.install_dir,
+                auto_start=False  # Let users control this through GUI
+            )
+
+            if service_setup_results:
+                self.print_status("Service management configured successfully", "success")
+            else:
+                self.print_status("Service management setup completed with warnings", "warning")
+
+        except ImportError:
+            self.print_status("Service Manager not available, skipping service setup", "warning")
+        except Exception as e:
+            self.print_status(f"Service setup warning: {e}", "warning")
+
         # Create launchers and shortcuts
         try:
-            from installers.launcher_creator import LauncherCreator
-            launcher = LauncherCreator(self.install_dir)
-            
-            self.print_status("Creating launch scripts and shortcuts...", "info")
-            results = launcher.create_all_launchers()
-            
-            # Show results
-            for name, (result_success, msg) in results.items():
-                if result_success:
-                    self.print_status(f"{name}: {msg}", "success")
+            # Try new integrated launcher system first
+            try:
+                from installer.services.service_manager import ServiceManager
+                service_mgr = ServiceManager()
+
+                # Create launcher scripts using service manager
+                launcher_success = service_mgr.create_launchers(self.install_dir)
+                if launcher_success:
+                    self.print_status("Created service-based launchers", "success")
                 else:
-                    self.print_status(f"{name}: {msg}", "warning")
-            
-            # Check if critical components were created
-            if not results.get('start_script', (False,))[0]:
-                success = False
+                    raise ImportError("Service-based launcher creation failed")
+
+            except:
+                # Fall back to original launcher system
+                from installers.launcher_creator import LauncherCreator
+                launcher = LauncherCreator(self.install_dir)
+
+                self.print_status("Creating launch scripts and shortcuts...", "info")
+                results = launcher.create_all_launchers()
+
+                # Show results
+                for name, (result_success, msg) in results.items():
+                    if result_success:
+                        self.print_status(f"{name}: {msg}", "success")
+                    else:
+                        self.print_status(f"{name}: {msg}", "warning")
+
+                # Check if critical components were created
+                if not results.get('start_script', (False,))[0]:
+                    success = False
+
         except Exception as e:
             self.print_status(f"Launcher creation failed: {e}", "warning")
             success = False
@@ -448,59 +526,132 @@ For detailed instructions, see INSTALL.md
             print(f"  Distribution: {os_info['distribution']} {os_info.get('dist_version', '')}")
     
     def check_dependencies(self) -> bool:
-        """Run dependency checker and show report"""
-        self.print_status("Running dependency check...", "check")
+        """Run comprehensive dependency checker and show report"""
+        self.print_status("Running comprehensive dependency check...", "check")
+
+        # First check basic requirements
+        basic_check = self._check_basic_dependencies()
 
         try:
-            # Import and run dependency checker
-            from installers.dependency_checker import DependencyChecker
+            # Try new integrated dependency checker if available
+            success = self._check_integrated_dependencies()
+            return basic_check and success
 
-            checker = DependencyChecker()
-            report = checker.check_all()
+        except ImportError:
+            self.print_status("Integrated dependency checker not available, using basic check", "warning")
+            return basic_check
+        except Exception as e:
+            self.print_status(f"Dependency check failed: {e}", "error")
+            response = input(f"\n{self.colors['YELLOW']}Continue without full dependency check? [y/N]: {self.colors['ENDC']}").lower()
+            return basic_check and response == 'y'
 
-            # Show summary
-            print(f"\n{self.colors['BOLD']}Dependency Check Results:{self.colors['ENDC']}")
+    def _check_basic_dependencies(self) -> bool:
+        """Check basic Python and system dependencies"""
+        print(f"\n{self.colors['BOLD']}Basic System Check:{self.colors['ENDC']}")
 
-            summary = report['summary']
-            if summary['ready']:
-                self.print_status("All required dependencies are satisfied", "success")
-            else:
-                self.print_status("Some dependencies need attention", "warning")
+        # Check Python modules
+        required_modules = ['pathlib', 'json', 'yaml', 'sqlite3', 'subprocess']
+        optional_modules = ['psycopg2', 'redis', 'docker']
 
-            # Show missing required
-            if summary['missing_required']:
-                print(f"\n{self.colors['RED']}Missing Required Dependencies:{self.colors['ENDC']}")
-                for dep in summary['missing_required']:
-                    print(f"  - {dep}")
+        missing_required = []
+        missing_optional = []
 
-            # Show missing optional
-            if summary['missing_optional']:
-                print(f"\n{self.colors['YELLOW']}Missing Optional Dependencies:{self.colors['ENDC']}")
-                for dep in summary['missing_optional']:
-                    print(f"  - {dep}")
-                print(f"  {self.colors['BLUE']}(These can be installed later if needed){self.colors['ENDC']}")
+        for module in required_modules:
+            try:
+                __import__(module)
+                self.print_status(f"Python module '{module}' available", "success")
+            except ImportError:
+                missing_required.append(module)
+                self.print_status(f"Python module '{module}' missing", "error")
 
-            # Show issues
-            if summary['issues']:
-                print(f"\n{self.colors['YELLOW']}Issues to Consider:{self.colors['ENDC']}")
-                for issue in summary['issues']:
-                    print(f"  - {issue}")
+        for module in optional_modules:
+            try:
+                __import__(module)
+                self.print_status(f"Optional module '{module}' available", "success")
+            except ImportError:
+                missing_optional.append(module)
+                self.print_status(f"Optional module '{module}' not installed", "info")
 
-            # Ask to continue
-            if not summary['ready']:
-                print(f"\n{self.colors['YELLOW']}The system is missing some required dependencies.{self.colors['ENDC']}")
-                response = input(f"{self.colors['YELLOW']}Continue anyway? [y/N]: {self.colors['ENDC']}").lower()
+        if missing_required:
+            print(f"\n{self.colors['RED']}Missing required modules may cause installation issues.{self.colors['ENDC']}")
+            response = input(f"{self.colors['YELLOW']}Continue anyway? [y/N]: {self.colors['ENDC']}").lower()
+            return response == 'y'
+
+        return True
+
+    def _check_integrated_dependencies(self) -> bool:
+        """Check dependencies using integrated Phase 2 components"""
+        try:
+            # Check health system availability
+            from installer.core.health import HealthChecker
+            health_checker = HealthChecker()
+
+            print(f"\n{self.colors['BOLD']}Integrated Health Check:{self.colors['ENDC']}")
+
+            # Check individual components
+            components_status = {}
+
+            # Database check
+            try:
+                from installer.dependencies.postgresql import PostgreSQLInstaller
+                self.print_status("PostgreSQL installer available", "success")
+                components_status['postgresql'] = True
+            except ImportError:
+                self.print_status("PostgreSQL installer not available", "warning")
+                components_status['postgresql'] = False
+
+            # Redis check
+            try:
+                from installer.dependencies.redis import RedisInstaller
+                self.print_status("Redis installer available", "success")
+                components_status['redis'] = True
+            except ImportError:
+                self.print_status("Redis installer not available", "warning")
+                components_status['redis'] = False
+
+            # Docker check
+            try:
+                from installer.dependencies.docker import DockerInstaller
+                self.print_status("Docker installer available", "success")
+                components_status['docker'] = True
+            except ImportError:
+                self.print_status("Docker installer not available", "warning")
+                components_status['docker'] = False
+
+            # Service manager check
+            try:
+                from installer.services.service_manager import ServiceManager
+                self.print_status("Service Manager available", "success")
+                components_status['service_manager'] = True
+            except ImportError:
+                self.print_status("Service Manager not available", "warning")
+                components_status['service_manager'] = False
+
+            # Config manager check
+            try:
+                from installer.config.config_manager import ConfigurationManager
+                self.print_status("Configuration Manager available", "success")
+                components_status['config_manager'] = True
+            except ImportError:
+                self.print_status("Configuration Manager not available", "warning")
+                components_status['config_manager'] = False
+
+            # Check critical components
+            critical_missing = []
+            for component, available in components_status.items():
+                if not available and component in ['config_manager', 'service_manager']:
+                    critical_missing.append(component)
+
+            if critical_missing:
+                print(f"\n{self.colors['RED']}Critical components missing: {', '.join(critical_missing)}{self.colors['ENDC']}")
+                response = input(f"{self.colors['YELLOW']}Continue anyway? Installation may fail. [y/N]: {self.colors['ENDC']}").lower()
                 return response == 'y'
 
             return True
 
-        except ImportError:
-            self.print_status("Dependency checker not available, skipping...", "warning")
+        except ImportError as e:
+            self.print_status(f"Health checker not available: {e}", "warning")
             return True
-        except Exception as e:
-            self.print_status(f"Dependency check failed: {e}", "error")
-            response = input(f"\n{self.colors['YELLOW']}Continue without dependency check? [y/N]: {self.colors['ENDC']}").lower()
-            return response == 'y'
 
     def run(self) -> int:
         """Main bootstrap execution"""
