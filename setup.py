@@ -400,9 +400,9 @@ class GiljoSetup:
 
             # API Key explanation
             console.print("[cyan]📔 API Key Authentication:[/cyan]")
-            console.print("  • [dim]Used for: REST API calls from external applications[/dim]")
-            console.print("  • [dim]When needed: LAN/WAN deployments, CI/CD integration[/dim]")
-            console.print("  • [dim]Security: Prevents unauthorized access to your orchestrator[/dim]")
+            console.print("  • [dim]Used for: Building your own applications and integrating with GiljoAI MCP[/dim]")
+            console.print("  • [dim]Examples: Custom tools, local LLM integrations, automation scripts[/dim]")
+            console.print("  • [dim]Note: MCP clients (Claude, etc.) don't need this - they use MCP protocol[/dim]")
 
             # Generate API key
             api_key = secrets.token_urlsafe(32)
@@ -421,14 +421,14 @@ class GiljoSetup:
             self.env_vars["JWT_SECRET"] = secret_key  # Also set JWT_SECRET
             console.print(f"  [green]✓ Generated JWT secret[/green] (stored securely)")
 
-            # CORS explanation
-            console.print("\n[cyan]🌐 CORS Configuration (For Web Dashboard):[/cyan]")
-            console.print("  • [dim]What it is: Allows your web dashboard to talk to the API[/dim]")
-            console.print("  • [dim]Why needed: Browsers block dashboard→API calls without this[/dim]")
-            console.print("  • [dim]Note: MCP clients ignore this - it's only for the web UI[/dim]")
-            self.env_vars["CORS_ENABLED"] = "true"
+            # CORS configuration (always enabled)
+            console.print("\n[cyan]🌐 CORS Origin (Required for Web Dashboard):[/cyan]")
+            console.print("  • [dim]Default: http://localhost:* (for local access)[/dim]")
+            console.print("  • [dim]LAN Setup: Change to http://YOUR-SERVER-IP:* in .env file[/dim]")
+            console.print("  • [dim]WAN Setup: Change to https://your-domain.com in .env file[/dim]")
+            self.env_vars["CORS_ENABLED"] = "true"  # Always enabled
             self.env_vars["CORS_ORIGINS"] = "http://localhost:*"
-            console.print("  [green]✓ CORS configured for local development[/green]")
+            console.print("  [green]✓ CORS enabled with localhost origin (edit .env for LAN/WAN)[/green]")
 
             console.print("\n[yellow]⚠️  IMPORTANT - SAVE THESE CREDENTIALS:[/yellow]")
             console.print("┌─────────────────────────────────────────────────────────────┐")

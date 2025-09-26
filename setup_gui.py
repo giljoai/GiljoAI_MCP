@@ -324,8 +324,9 @@ class SecurityPage(WizardPage):
                        command=self._on_api_toggle).pack(anchor="w")
 
         # API Key explanation
-        api_help = ttk.Label(api_frame, text="📔 Used for REST API calls from CI/CD, external tools, or remote access.\n" +
-                                             "Enable this for LAN/WAN deployments. Save the key securely!",
+        api_help = ttk.Label(api_frame, text="📔 For building your own applications and integrating with GiljoAI MCP.\n" +
+                                             "Examples: Custom tools, local LLM integrations, automation scripts.\n" +
+                                             "Note: MCP clients (Claude, etc.) use MCP protocol, not this.",
                             foreground="gray", wraplength=500)
         api_help.pack(anchor="w", pady=(5, 10))
 
@@ -361,31 +362,29 @@ class SecurityPage(WizardPage):
         ttk.Button(jwt_inner, text="Generate",
                   command=self._generate_jwt_secret).pack(side="left")
 
-        # CORS settings
-        cors_frame = ttk.LabelFrame(self, text="CORS Settings", padding=10)
+        # CORS settings (always enabled)
+        cors_frame = ttk.LabelFrame(self, text="CORS Origin Configuration (Required for Dashboard)", padding=10)
         cors_frame.pack(padx=20, pady=10, fill="x")
 
-        self.cors_enabled_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(cors_frame, text="Enable CORS",
-                       variable=self.cors_enabled_var).pack(anchor="w")
-
         # CORS explanation
-        cors_help = ttk.Label(cors_frame, text="🌐 For Web Dashboard Only - NOT for MCP clients!\n" +
-                                               "Allows the built-in web dashboard (port 6000) to call the API (port 6002).\n" +
-                                               "Without this, your browser blocks the dashboard. MCP clients ignore this setting.",
+        cors_help = ttk.Label(cors_frame, text="🌐 Dashboard Access Configuration\n" +
+                                               "Default works for local access. Change for LAN/WAN:\n" +
+                                               "• Local: http://localhost:* (default)\n" +
+                                               "• LAN: http://YOUR-SERVER-IP:* (e.g., http://192.168.1.100:*)\n" +
+                                               "• WAN: https://your-domain.com",
                              foreground="gray", wraplength=500)
-        cors_help.pack(anchor="w", pady=(5, 10))
+        cors_help.pack(anchor="w", pady=(0, 10))
 
         self.cors_origins_var = tk.StringVar(value="http://localhost:*")
         origins_frame = ttk.Frame(cors_frame)
-        origins_frame.pack(fill="x", pady=5)
-        ttk.Label(origins_frame, text="Allowed Origins:").pack(side="left", padx=5)
-        ttk.Entry(origins_frame, textvariable=self.cors_origins_var, width=40).pack(side="left", padx=5)
+        origins_frame.pack(fill="x")
+        ttk.Label(origins_frame, text="Allowed Origin:").pack(side="left", padx=5)
+        ttk.Entry(origins_frame, textvariable=self.cors_origins_var, width=45).pack(side="left", padx=5)
 
-        # CORS origin help
-        cors_origin_help = ttk.Label(cors_frame, text="Examples: http://localhost:* (local), http://192.168.1.100:* (LAN), https://dashboard.yourcompany.com (WAN)",
-                                     foreground="gray", font=("", 9))
-        cors_origin_help.pack(anchor="w", padx=(5, 0))
+        # Note about editing
+        cors_note = ttk.Label(cors_frame, text="💡 Tip: You can change this later in the .env file if your network setup changes",
+                             foreground="blue", font=("", 9))
+        cors_note.pack(anchor="w", pady=(5, 0))
 
         # Initialize
         self._on_api_toggle()
@@ -415,7 +414,7 @@ class SecurityPage(WizardPage):
     def get_data(self) -> dict:
         data = {
             "jwt_secret": self.jwt_secret_var.get(),
-            "cors_enabled": self.cors_enabled_var.get(),
+            "cors_enabled": True,  # Always enabled
             "cors_origins": self.cors_origins_var.get()
         }
         if self.enable_api_key_var.get():
@@ -495,9 +494,8 @@ class ReviewPage(WizardPage):
         else:
             self.text.insert(tk.END, "JWT Secret: Will be generated\n")
 
-        self.text.insert(tk.END, f"CORS Enabled: {config.get('cors_enabled', True)}\n")
-        if config.get("cors_enabled", True):
-            self.text.insert(tk.END, f"CORS Origins: {config.get('cors_origins', 'http://localhost:*')}\n")
+        self.text.insert(tk.END, "CORS: Enabled (Required)\n")
+        self.text.insert(tk.END, f"CORS Origin: {config.get('cors_origins', 'http://localhost:*')}\n")
 
         # URLs
         self.text.insert(tk.END, "\nACCESS URLS\n")
