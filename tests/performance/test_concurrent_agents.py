@@ -61,7 +61,6 @@ class TestConcurrentAgents:
         assert result.avg_time < 100.0, f"Agent creation too slow: {result.avg_time:.2f}ms > 100ms"
         assert result.success_rate > 95.0, f"Success rate too low: {result.success_rate:.1f}%"
 
-
     async def test_concurrent_agent_spawning_10(self, orchestrator, test_project):
         """Test spawning 10 agents concurrently (baseline)"""
         start_time = time.perf_counter()
@@ -83,7 +82,6 @@ class TestConcurrentAgents:
         assert success_rate > 95.0, f"Too many failures in 10 agent test: {success_rate:.1f}%"
         assert total_time < 2000, f"10 agents took too long: {total_time:.2f}ms"
 
-
     async def test_concurrent_agent_spawning_50(self, orchestrator, test_project):
         """Test spawning 50 agents concurrently (mid-scale)"""
         start_time = time.perf_counter()
@@ -104,7 +102,6 @@ class TestConcurrentAgents:
 
         assert success_rate > 90.0, f"Too many failures in 50 agent test: {success_rate:.1f}%"
         assert total_time < 10000, f"50 agents took too long: {total_time:.2f}ms"
-
 
     @pytest.mark.slow
     async def test_concurrent_agent_spawning_100_production_requirement(self, orchestrator, test_project):
@@ -152,7 +149,6 @@ class TestConcurrentAgents:
             f"This indicates the system cannot scale to commercial requirements."
         )
 
-
     @pytest.mark.stress
     async def test_concurrent_agent_spawning_150_stress_test(self, orchestrator, test_project):
         """
@@ -175,7 +171,6 @@ class TestConcurrentAgents:
         successful_agents = [a for a in agents if not isinstance(a, Exception)]
         [a for a in agents if isinstance(a, Exception)]
         success_rate = len(successful_agents) / len(agents) * 100
-
 
         if success_rate < 80:
             pass
@@ -208,7 +203,6 @@ class TestConcurrentAgents:
         await asyncio.gather(*handoff_tasks, return_exceptions=True)
         handoff_time = (time.perf_counter() - start_time) * 1000
 
-
         # Validate handoff performance
         avg_handoff_time = handoff_time / len(handoff_tasks)
         assert avg_handoff_time < 500, f"Handoff too slow: {avg_handoff_time:.2f}ms > 500ms"
@@ -234,7 +228,6 @@ class TestConcurrentAgents:
         context_time = (time.perf_counter() - start_time) * 1000
 
         successful_contexts = [r for r in context_results if not isinstance(r, Exception)]
-
 
         # Validate context switching performance
         avg_context_time = context_time / len(context_tasks)

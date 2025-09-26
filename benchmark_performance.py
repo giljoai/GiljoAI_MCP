@@ -11,14 +11,13 @@ import statistics
 import sys
 import time
 import uuid
-import os
 from datetime import datetime
 from pathlib import Path
-
-from src.giljo_mcp.database import DatabaseManager, init_db
 from typing import Any
 
 import psutil
+
+from src.giljo_mcp.database import DatabaseManager, init_db
 
 
 # Add src to path
@@ -41,10 +40,7 @@ class PerformanceBenchmark:
             "system_info": self.get_system_info(),
             "benchmarks": {},
             "memory_profile": {},
-            "latency_targets": {
-                "target": "sub-100ms",
-                "operations": {}
-            }
+            "latency_targets": {"target": "sub-100ms", "operations": {}},
         }
         self.db = None
         self.queue = None
@@ -56,7 +52,7 @@ class PerformanceBenchmark:
             "memory_gb": round(psutil.virtual_memory().total / (1024**3), 2),
             "python_version": sys.version,
             "platform": sys.platform,
-            "process_id": os.getpid()
+            "process_id": os.getpid(),
         }
 
     async def setup(self):
@@ -73,7 +69,6 @@ class PerformanceBenchmark:
         self.project_tools = ProjectTools(self.db)
         self.agent_tools = AgentTools(self.db, self.queue)
         self.message_tools = MessageTools(self.db, self.queue)
-
 
     async def cleanup(self):
         """Clean up test environment"""
@@ -92,8 +87,7 @@ class PerformanceBenchmark:
         # Test 1: Single record insert
         start = time.perf_counter()
         project = await self.db.create_project(
-            name=f"benchmark_{uuid.uuid4().hex[:8]}",
-            mission="Performance test project"
+            name=f"benchmark_{uuid.uuid4().hex[:8]}", mission="Performance test project"
         )
         results["single_insert_ms"] = (time.perf_counter() - start) * 1000
 
@@ -101,12 +95,7 @@ class PerformanceBenchmark:
         start = time.perf_counter()
         agents = []
         for i in range(100):
-            agent = await self.db.create_agent(
-                project_id=project.id,
-                name=f"agent_{i}",
-                role="worker",
-                status="active"
-            )
+            agent = await self.db.create_agent(project_id=project.id, name=f"agent_{i}", role="worker", status="active")
             agents.append(agent)
         results["bulk_insert_100_ms"] = (time.perf_counter() - start) * 1000
         results["avg_insert_ms"] = results["bulk_insert_100_ms"] / 100
@@ -134,7 +123,7 @@ class PerformanceBenchmark:
                     content=f"Message {i}",
                     message_type="direct",
                     priority="normal",
-                    status="pending"
+                    status="pending",
                 )
                 session.add(message)
             await session.commit()
@@ -147,10 +136,7 @@ class PerformanceBenchmark:
         results = {}
 
         # Create test project
-        project = await self.db.create_project(
-            name="queue_benchmark",
-            mission="Queue performance test"
-        )
+        project = await self.db.create_project(name="queue_benchmark", mission="Queue performance test")
 
         # Test 1: Single message send
         start = time.perf_counter()
@@ -159,18 +145,14 @@ class PerformanceBenchmark:
             from_agent="orchestrator",
             to_agents=["agent_1"],
             content="Test message",
-            message_type="direct"
+            message_type="direct",
         )
         results["single_send_ms"] = (time.perf_counter() - start) * 1000
 
         # Test 2: Broadcast to 100 agents
         [f"agent_{i}" for i in range(100)]
         start = time.perf_counter()
-        await self.queue.broadcast(
-            project_id=project.id,
-            content="Broadcast message",
-            from_agent="orchestrator"
-        )
+        await self.queue.broadcast(project_id=project.id, content="Broadcast message", from_agent="orchestrator")
         results["broadcast_100_ms"] = (time.perf_counter() - start) * 1000
 
         # Test 3: Message retrieval
@@ -193,7 +175,7 @@ class PerformanceBenchmark:
                 from_agent="orchestrator",
                 to_agents=[f"agent_{i % 10}"],
                 content=f"Saturation test {i}",
-                message_type="direct"
+                message_type="direct",
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
@@ -207,25 +189,16 @@ class PerformanceBenchmark:
         results = {}
 
         # Create test project
-        project = await self.db.create_project(
-            name="concurrency_test",
-            mission="Concurrent agent stress test"
-        )
+        project = await self.db.create_project(name="concurrency_test", mission="Concurrent agent stress test")
 
         # Test different concurrency levels
         for agent_count in [10, 50, 100]:
-
             # Create agents
             agents = []
             start = time.perf_counter()
             agent_tasks = []
             for i in range(agent_count):
-                task = self.db.create_agent(
-                    project_id=project.id,
-                    name=f"worker_{i}",
-                    role="worker",
-                    status="active"
-                )
+                task = self.db.create_agent(project_id=project.id, name=f"worker_{i}", role="worker", status="active")
                 agent_tasks.append(task)
             agents = await asyncio.gather(*agent_tasks)
             create_time = (time.perf_counter() - start) * 1000
@@ -239,9 +212,9 @@ class PerformanceBenchmark:
                     task = self.queue.send_message(
                         project_id=project.id,
                         from_agent=agent.name,
-                        to_agents=[agents[(i+1) % len(agents)].name],
+                        to_agents=[agents[(i + 1) % len(agents)].name],
                         content=f"Work item {j}",
-                        message_type="direct"
+                        message_type="direct",
                     )
                     work_tasks.append(task)
             await asyncio.gather(*work_tasks)
@@ -251,7 +224,7 @@ class PerformanceBenchmark:
                 "create_time_ms": create_time,
                 "work_time_ms": work_time,
                 "total_messages": agent_count * 10,
-                "msg_per_second": (agent_count * 10) / (work_time / 1000)
+                "msg_per_second": (agent_count * 10) / (work_time / 1000),
             }
 
         return results
@@ -259,24 +232,16 @@ class PerformanceBenchmark:
     async def profile_memory_usage(self) -> dict[str, Any]:
         """Profile memory usage under load"""
         process = psutil.Process()
-        results = {
-            "baseline_mb": process.memory_info().rss / (1024 * 1024)
-        }
+        results = {"baseline_mb": process.memory_info().rss / (1024 * 1024)}
 
         # Create large dataset
-        project = await self.db.create_project(
-            name="memory_test",
-            mission="Memory profiling"
-        )
+        project = await self.db.create_project(name="memory_test", mission="Memory profiling")
 
         # Test 1: Create 1000 agents
         agents = []
         for i in range(1000):
             agent = await self.db.create_agent(
-                project_id=project.id,
-                name=f"mem_agent_{i}",
-                role="worker",
-                status="active"
+                project_id=project.id, name=f"mem_agent_{i}", role="worker", status="active"
             )
             agents.append(agent)
 
@@ -289,18 +254,14 @@ class PerformanceBenchmark:
                 from_agent="orchestrator",
                 to_agents=[f"mem_agent_{i % 1000}"],
                 content=f"Memory test message {i} " * 10,  # Larger content
-                message_type="direct"
+                message_type="direct",
             )
 
         results["after_10000_messages_mb"] = process.memory_info().rss / (1024 * 1024)
 
         # Calculate growth
-        results["agent_memory_growth_mb"] = (
-            results["after_1000_agents_mb"] - results["baseline_mb"]
-        )
-        results["message_memory_growth_mb"] = (
-            results["after_10000_messages_mb"] - results["after_1000_agents_mb"]
-        )
+        results["agent_memory_growth_mb"] = results["after_1000_agents_mb"] - results["baseline_mb"]
+        results["message_memory_growth_mb"] = results["after_10000_messages_mb"] - results["after_1000_agents_mb"]
 
         return results
 
@@ -309,31 +270,29 @@ class PerformanceBenchmark:
         results = {}
 
         # Create test project
-        project = await self.db.create_project(
-            name="latency_test",
-            mission="Latency validation"
-        )
+        project = await self.db.create_project(name="latency_test", mission="Latency validation")
 
         # Define critical operations
         test_operations = [
-            ("create_agent", lambda: self.db.create_agent(
-                project_id=project.id,
-                name=f"latency_agent_{uuid.uuid4().hex[:8]}",
-                role="worker",
-                status="active"
-            )),
-            ("send_message", lambda: self.queue.send_message(
-                project_id=project.id,
-                from_agent="orchestrator",
-                to_agents=["agent_1"],
-                content="Latency test",
-                message_type="direct"
-            )),
+            (
+                "create_agent",
+                lambda: self.db.create_agent(
+                    project_id=project.id, name=f"latency_agent_{uuid.uuid4().hex[:8]}", role="worker", status="active"
+                ),
+            ),
+            (
+                "send_message",
+                lambda: self.queue.send_message(
+                    project_id=project.id,
+                    from_agent="orchestrator",
+                    to_agents=["agent_1"],
+                    content="Latency test",
+                    message_type="direct",
+                ),
+            ),
             ("get_project_status", lambda: self.db.get_project(project.id)),
             ("get_messages", lambda: self.queue.get_messages("agent_1", project.id)),
-            ("acknowledge_message", lambda: self.queue.acknowledge_message(
-                str(uuid.uuid4()), "agent_1"
-            ))
+            ("acknowledge_message", lambda: self.queue.acknowledge_message(str(uuid.uuid4()), "agent_1")),
         ]
 
         # Run each operation 100 times and measure
@@ -357,7 +316,7 @@ class PerformanceBenchmark:
                 "median_ms": statistics.median(latencies),
                 "p95_ms": statistics.quantiles(latencies, n=20)[18],  # 95th percentile
                 "p99_ms": statistics.quantiles(latencies, n=100)[98],  # 99th percentile
-                "meets_target": statistics.median(latencies) < 100
+                "meets_target": statistics.median(latencies) < 100,
             }
 
         return results
@@ -373,10 +332,7 @@ class PerformanceBenchmark:
 
         # Test chunking performance
         start = time.perf_counter()
-        chunks = await chunking_tools.chunk_document(
-            content=large_doc,
-            max_tokens=20000
-        )
+        chunks = await chunking_tools.chunk_document(content=large_doc, max_tokens=20000)
         results["chunk_50k_doc_ms"] = (time.perf_counter() - start) * 1000
         results["num_chunks"] = len(chunks)
 
@@ -407,6 +363,7 @@ class PerformanceBenchmark:
 
         except Exception:
             import traceback
+
             traceback.print_exc()
         finally:
             await self.cleanup()
@@ -451,10 +408,12 @@ class PerformanceBenchmark:
         with open("performance_report.json", "w") as f:
             json.dump(self.results, f, indent=2, default=str)
 
+
 async def main():
     """Main entry point"""
     benchmark = PerformanceBenchmark()
     await benchmark.run_all_benchmarks()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -16,23 +16,15 @@
         @update:model-value="(val) => !val && removeToast(index)"
       >
         <div class="d-flex align-center">
-          <v-icon
-            v-if="toast.icon"
-            :icon="toast.icon"
-            class="mr-3"
-          />
+          <v-icon v-if="toast.icon" :icon="toast.icon" class="mr-3" />
           <div class="flex-grow-1">
             <div v-if="toast.title" class="font-weight-bold">{{ toast.title }}</div>
             <div>{{ toast.message }}</div>
           </div>
         </div>
-        
+
         <template v-slot:actions>
-          <v-btn
-            v-if="toast.action"
-            variant="text"
-            @click="handleAction(toast)"
-          >
+          <v-btn v-if="toast.action" variant="text" @click="handleAction(toast)">
             {{ toast.action.label }}
           </v-btn>
           <v-btn
@@ -56,19 +48,24 @@ const props = defineProps({
   position: {
     type: String,
     default: 'bottom-right',
-    validator: (value) => [
-      'top-left', 'top-center', 'top-right',
-      'bottom-left', 'bottom-center', 'bottom-right'
-    ].includes(value)
+    validator: (value) =>
+      [
+        'top-left',
+        'top-center',
+        'top-right',
+        'bottom-left',
+        'bottom-center',
+        'bottom-right',
+      ].includes(value),
   },
   defaultTimeout: {
     type: Number,
-    default: 5000
+    default: 5000,
   },
   maxToasts: {
     type: Number,
-    default: 5
-  }
+    default: 5,
+  },
 })
 
 // State
@@ -81,30 +78,30 @@ const toastTypes = {
   success: {
     color: 'success',
     icon: 'mdi-check-circle',
-    timeout: 4000
+    timeout: 4000,
   },
   error: {
     color: 'error',
     icon: 'mdi-alert-circle',
-    timeout: 0 // No auto-dismiss for errors
+    timeout: 0, // No auto-dismiss for errors
   },
   warning: {
     color: 'warning',
     icon: 'mdi-alert',
-    timeout: 6000
+    timeout: 6000,
   },
   info: {
     color: 'info',
     icon: 'mdi-information',
-    timeout: 5000
-  }
+    timeout: 5000,
+  },
 }
 
 // Methods
 function showToast(options) {
   // Get type configuration
   const typeConfig = toastTypes[options.type] || {}
-  
+
   // Create toast object
   const toast = {
     id: ++toastId.value,
@@ -113,29 +110,29 @@ function showToast(options) {
     title: options.title,
     type: options.type || 'info',
     color: options.color || typeConfig.color || 'grey',
-    icon: options.icon !== false ? (options.icon || typeConfig.icon) : null,
+    icon: options.icon !== false ? options.icon || typeConfig.icon : null,
     timeout: options.timeout !== undefined ? options.timeout : typeConfig.timeout,
     multiLine: options.multiLine || false,
-    action: options.action
+    action: options.action,
   }
-  
+
   // Limit number of toasts
   if (toasts.value.length >= props.maxToasts) {
     toasts.value.shift()
   }
-  
+
   toasts.value.push(toast)
-  
+
   // Auto-remove after timeout if specified
   if (toast.timeout > 0) {
     setTimeout(() => {
-      const index = toasts.value.findIndex(t => t.id === toast.id)
+      const index = toasts.value.findIndex((t) => t.id === toast.id)
       if (index !== -1) {
         toasts.value[index].show = false
       }
     }, toast.timeout)
   }
-  
+
   return toast.id
 }
 
@@ -162,14 +159,14 @@ function handleToastEvent(event) {
 // Expose methods for external use
 defineExpose({
   showToast,
-  clearToasts
+  clearToasts,
 })
 
 // Lifecycle
 onMounted(() => {
   // Listen for global toast events
   window.addEventListener('show-toast', handleToastEvent)
-  
+
   // Register toast methods globally
   window.$toast = {
     show: showToast,
@@ -177,7 +174,7 @@ onMounted(() => {
     error: (message, options = {}) => showToast({ ...options, message, type: 'error' }),
     warning: (message, options = {}) => showToast({ ...options, message, type: 'warning' }),
     info: (message, options = {}) => showToast({ ...options, message, type: 'info' }),
-    clear: clearToasts
+    clear: clearToasts,
   }
 })
 
@@ -214,17 +211,17 @@ onUnmounted(() => {
 }
 
 /* For left-positioned toasts */
-.toast-manager[data-position*="left"] .toast-enter-from,
-.toast-manager[data-position*="left"] .toast-leave-to {
+.toast-manager[data-position*='left'] .toast-enter-from,
+.toast-manager[data-position*='left'] .toast-leave-to {
   transform: translateX(-100%);
 }
 
 /* For top-positioned toasts */
-.toast-manager[data-position^="top"] .toast-enter-from {
+.toast-manager[data-position^='top'] .toast-enter-from {
   transform: translateY(-100%);
 }
 
-.toast-manager[data-position^="top"] .toast-leave-to {
+.toast-manager[data-position^='top'] .toast-leave-to {
   transform: translateY(-100%);
 }
 </style>

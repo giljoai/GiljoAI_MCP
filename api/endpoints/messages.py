@@ -79,7 +79,7 @@ async def send_message(message: MessageSend):
         return response  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/agent/{agent_name}", response_model=list[MessageResponse])
@@ -111,7 +111,7 @@ async def get_messages(agent_name: str, project_id: Optional[str] = Query(None, 
         return messages  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{message_id}/acknowledge")
@@ -125,7 +125,7 @@ async def acknowledge_message(
         result = await state.tool_accessor.acknowledge_message(message_id=message_id, agent_name=agent_name)
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to acknowledge message"))  # noqa: TRY301
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to acknowledge message"))
 
         # Broadcast message acknowledgment
         if state.websocket_manager:
@@ -141,7 +141,7 @@ async def acknowledge_message(
         return {"success": True, "message": "Message acknowledged"}  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{message_id}/complete")
@@ -159,7 +159,7 @@ async def complete_message(
         )
 
         if not complete_result.get("success"):
-            raise HTTPException(status_code=400, detail=complete_result.get("error", "Failed to complete message"))  # noqa: TRY301
+            raise HTTPException(status_code=400, detail=complete_result.get("error", "Failed to complete message"))
 
         # Broadcast message completion
         if state.websocket_manager:
@@ -173,4 +173,4 @@ async def complete_message(
         return {"success": True, "message": "Message completed", "result": result}  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))

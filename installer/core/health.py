@@ -20,18 +20,21 @@ from typing import Any, Optional
 
 try:
     import psycopg2
+
     HAS_PSYCOPG2 = True
 except ImportError:
     HAS_PSYCOPG2 = False
 
 try:
     import redis
+
     HAS_REDIS = True
 except ImportError:
     HAS_REDIS = False
 
 try:
     import docker
+
     HAS_DOCKER = True
 except ImportError:
     HAS_DOCKER = False
@@ -39,6 +42,7 @@ except ImportError:
 
 class HealthStatus(Enum):
     """Health check status levels"""
+
     HEALTHY = "healthy"
     WARNING = "warning"
     ERROR = "error"
@@ -49,6 +53,7 @@ class HealthStatus(Enum):
 @dataclass
 class ComponentHealth:
     """Health status for a single component"""
+
     name: str
     status: HealthStatus
     message: str
@@ -64,13 +69,14 @@ class ComponentHealth:
             "message": self.message,
             "details": self.details,
             "check_time": self.check_time,
-            "timestamp": self.timestamp.isoformat()
+            "timestamp": self.timestamp.isoformat(),
         }
 
 
 @dataclass
 class HealthReport:
     """Comprehensive health check report"""
+
     overall_status: HealthStatus
     components: list[ComponentHealth]
     total_check_time: float
@@ -84,7 +90,7 @@ class HealthReport:
             "components": [c.to_dict() for c in self.components],
             "total_check_time": self.total_check_time,
             "timestamp": self.timestamp.isoformat(),
-            "system_info": self.system_info
+            "system_info": self.system_info,
         }
 
     def get_summary(self) -> str:
@@ -94,7 +100,7 @@ class HealthReport:
             f"Overall Status: {self.overall_status.value.upper()}",
             f"Total Check Time: {self.total_check_time:.2f}s",
             "",
-            "Component Status:"
+            "Component Status:",
         ]
 
         for comp in self.components:
@@ -104,7 +110,7 @@ class HealthReport:
                 HealthStatus.WARNING: "[WARN]",
                 HealthStatus.ERROR: "[ERR]",
                 HealthStatus.UNKNOWN: "[?]",
-                HealthStatus.NOT_INSTALLED: "[N/A]"
+                HealthStatus.NOT_INSTALLED: "[N/A]",
             }.get(comp.status, "[?]")
 
             lines.append(f"  {status_symbol} {comp.name}: {comp.message} ({comp.check_time:.3f}s)")
@@ -131,7 +137,7 @@ class HealthChecker:
         Returns:
             Health report focused on database services
         """
-        return await self.check_all(['postgresql', 'redis', 'ports'])
+        return await self.check_all(["postgresql", "redis", "ports"])
 
     async def check_installation_readiness(self) -> HealthReport:
         """
@@ -140,7 +146,7 @@ class HealthChecker:
         Returns:
             Health report for installation prerequisites
         """
-        return await self.check_all(['system', 'python', 'network', 'ports'])
+        return await self.check_all(["system", "python", "network", "ports"])
 
     async def check_all(self, components: Optional[list[str]] = None) -> HealthReport:
         """
@@ -159,10 +165,7 @@ class HealthChecker:
         if components:
             checks_to_run = components
         else:
-            checks_to_run = [
-                "system", "postgresql", "redis", "docker",
-                "ports", "services", "python", "network"
-            ]
+            checks_to_run = ["system", "postgresql", "redis", "docker", "ports", "services", "python", "network"]
 
         # Run checks
         check_tasks = []
@@ -196,7 +199,7 @@ class HealthChecker:
             overall_status=overall_status,
             components=self.components,
             total_check_time=time.time() - start_time,
-            system_info=self._get_system_info()
+            system_info=self._get_system_info(),
         )
 
         return report
@@ -210,7 +213,7 @@ class HealthChecker:
                 "platform": platform.system(),
                 "version": platform.version(),
                 "architecture": platform.machine(),
-                "python_version": platform.python_version()
+                "python_version": platform.python_version(),
             }
 
             # Check disk space
@@ -234,13 +237,11 @@ class HealthChecker:
             message = f"System check failed: {e!s}"
             details = {}
 
-        self.components.append(ComponentHealth(
-            name="System",
-            status=status,
-            message=message,
-            details=details,
-            check_time=time.time() - start_time
-        ))
+        self.components.append(
+            ComponentHealth(
+                name="System", status=status, message=message, details=details, check_time=time.time() - start_time
+            )
+        )
 
     async def _check_postgresql(self) -> None:
         """Check PostgreSQL connectivity and status"""
@@ -258,24 +259,28 @@ class HealthChecker:
                 # Test connection using installer
                 conn_result = installer.test_connection()
                 if conn_result["success"]:
-                    self.components.append(ComponentHealth(
-                        name="PostgreSQL",
-                        status=HealthStatus.HEALTHY,
-                        message=f"PostgreSQL {conn_result.get('version', 'unknown')} is operational",
-                        details=conn_result.get("details", {}),
-                        check_time=time.time() - start_time
-                    ))
+                    self.components.append(
+                        ComponentHealth(
+                            name="PostgreSQL",
+                            status=HealthStatus.HEALTHY,
+                            message=f"PostgreSQL {conn_result.get('version', 'unknown')} is operational",
+                            details=conn_result.get("details", {}),
+                            check_time=time.time() - start_time,
+                        )
+                    )
                     return
         except ImportError:
             pass  # Fall back to standard check
 
         if not HAS_PSYCOPG2:
-            self.components.append(ComponentHealth(
-                name="PostgreSQL",
-                status=HealthStatus.NOT_INSTALLED,
-                message="psycopg2 module not installed",
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="PostgreSQL",
+                    status=HealthStatus.NOT_INSTALLED,
+                    message="psycopg2 module not installed",
+                    check_time=time.time() - start_time,
+                )
+            )
             return
 
         try:
@@ -289,12 +294,7 @@ class HealthChecker:
 
             # Try to connect
             conn = psycopg2.connect(
-                host=host,
-                port=port,
-                database=database,
-                user=user,
-                password=password,
-                connect_timeout=1
+                host=host, port=port, database=database, user=user, password=password, connect_timeout=1
             )
 
             # Get version info
@@ -303,10 +303,12 @@ class HealthChecker:
             version = cursor.fetchone()[0]
 
             # Get database size
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT pg_database_size(current_database()) as size,
                        current_database() as name
-            """)
+            """
+            )
             db_info = cursor.fetchone()
 
             cursor.close()
@@ -317,16 +319,18 @@ class HealthChecker:
                 "host": host,
                 "port": port,
                 "database": database,
-                "size_mb": round(db_info[0] / (1024*1024), 2) if db_info else 0
+                "size_mb": round(db_info[0] / (1024 * 1024), 2) if db_info else 0,
             }
 
-            self.components.append(ComponentHealth(
-                name="PostgreSQL",
-                status=HealthStatus.HEALTHY,
-                message=f"Connected to PostgreSQL at {host}:{port}",
-                details=details,
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="PostgreSQL",
+                    status=HealthStatus.HEALTHY,
+                    message=f"Connected to PostgreSQL at {host}:{port}",
+                    details=details,
+                    check_time=time.time() - start_time,
+                )
+            )
 
         except psycopg2.OperationalError as e:
             # Check if PostgreSQL is installed but not running
@@ -337,34 +341,40 @@ class HealthChecker:
                 status = HealthStatus.NOT_INSTALLED
                 message = "PostgreSQL not installed"
 
-            self.components.append(ComponentHealth(
-                name="PostgreSQL",
-                status=status,
-                message=message,
-                details={"error": str(e)},
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="PostgreSQL",
+                    status=status,
+                    message=message,
+                    details={"error": str(e)},
+                    check_time=time.time() - start_time,
+                )
+            )
 
         except Exception as e:
-            self.components.append(ComponentHealth(
-                name="PostgreSQL",
-                status=HealthStatus.ERROR,
-                message="PostgreSQL check failed",
-                details={"error": str(e)},
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="PostgreSQL",
+                    status=HealthStatus.ERROR,
+                    message="PostgreSQL check failed",
+                    details={"error": str(e)},
+                    check_time=time.time() - start_time,
+                )
+            )
 
     async def _check_redis(self) -> None:
         """Check Redis connectivity and status"""
         start_time = time.time()
 
         if not HAS_REDIS:
-            self.components.append(ComponentHealth(
-                name="Redis",
-                status=HealthStatus.NOT_INSTALLED,
-                message="redis module not installed",
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Redis",
+                    status=HealthStatus.NOT_INSTALLED,
+                    message="redis module not installed",
+                    check_time=time.time() - start_time,
+                )
+            )
             return
 
         try:
@@ -377,12 +387,7 @@ class HealthChecker:
 
             # Try to connect
             client = redis.Redis(
-                host=host,
-                port=port,
-                db=db,
-                password=password,
-                socket_connect_timeout=1,
-                socket_timeout=1
+                host=host, port=port, db=db, password=password, socket_connect_timeout=1, socket_timeout=1
             )
 
             # Ping server
@@ -395,20 +400,22 @@ class HealthChecker:
                 "version": info.get("redis_version", "unknown"),
                 "host": host,
                 "port": port,
-                "used_memory_mb": round(info.get("used_memory", 0) / (1024*1024), 2),
+                "used_memory_mb": round(info.get("used_memory", 0) / (1024 * 1024), 2),
                 "connected_clients": info.get("connected_clients", 0),
-                "uptime_days": round(info.get("uptime_in_seconds", 0) / 86400, 2)
+                "uptime_days": round(info.get("uptime_in_seconds", 0) / 86400, 2),
             }
 
             client.close()
 
-            self.components.append(ComponentHealth(
-                name="Redis",
-                status=HealthStatus.HEALTHY,
-                message=f"Connected to Redis at {host}:{port}",
-                details=details,
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Redis",
+                    status=HealthStatus.HEALTHY,
+                    message=f"Connected to Redis at {host}:{port}",
+                    details=details,
+                    check_time=time.time() - start_time,
+                )
+            )
 
         except redis.ConnectionError as e:
             # Check if Redis is installed but not running
@@ -419,22 +426,26 @@ class HealthChecker:
                 status = HealthStatus.NOT_INSTALLED
                 message = "Redis not installed"
 
-            self.components.append(ComponentHealth(
-                name="Redis",
-                status=status,
-                message=message,
-                details={"error": str(e)},
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Redis",
+                    status=status,
+                    message=message,
+                    details={"error": str(e)},
+                    check_time=time.time() - start_time,
+                )
+            )
 
         except Exception as e:
-            self.components.append(ComponentHealth(
-                name="Redis",
-                status=HealthStatus.ERROR,
-                message="Redis check failed",
-                details={"error": str(e)},
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Redis",
+                    status=HealthStatus.ERROR,
+                    message="Redis check failed",
+                    details={"error": str(e)},
+                    check_time=time.time() - start_time,
+                )
+            )
 
     async def _check_docker(self) -> None:
         """Check Docker daemon status"""
@@ -446,28 +457,33 @@ class HealthChecker:
                 try:
                     result = subprocess.run(
                         ["docker", "version", "--format", "{{.Server.Version}}"],
-                        check=False, capture_output=True,
+                        check=False,
+                        capture_output=True,
                         text=True,
-                        timeout=1
+                        timeout=1,
                     )
                     if result.returncode == 0:
-                        self.components.append(ComponentHealth(
-                            name="Docker",
-                            status=HealthStatus.HEALTHY,
-                            message="Docker CLI available",
-                            details={"version": result.stdout.strip()},
-                            check_time=time.time() - start_time
-                        ))
+                        self.components.append(
+                            ComponentHealth(
+                                name="Docker",
+                                status=HealthStatus.HEALTHY,
+                                message="Docker CLI available",
+                                details={"version": result.stdout.strip()},
+                                check_time=time.time() - start_time,
+                            )
+                        )
                         return
                 except:
                     pass
 
-            self.components.append(ComponentHealth(
-                name="Docker",
-                status=HealthStatus.NOT_INSTALLED,
-                message="Docker module not installed",
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Docker",
+                    status=HealthStatus.NOT_INSTALLED,
+                    message="Docker module not installed",
+                    check_time=time.time() - start_time,
+                )
+            )
             return
 
         try:
@@ -488,18 +504,20 @@ class HealthChecker:
                 "arch": version.get("Arch", "unknown"),
                 "containers_total": len(containers),
                 "containers_running": len([c for c in containers if c.status == "running"]),
-                "images": len(images)
+                "images": len(images),
             }
 
             client.close()
 
-            self.components.append(ComponentHealth(
-                name="Docker",
-                status=HealthStatus.HEALTHY,
-                message="Docker daemon is running",
-                details=details,
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Docker",
+                    status=HealthStatus.HEALTHY,
+                    message="Docker daemon is running",
+                    details=details,
+                    check_time=time.time() - start_time,
+                )
+            )
 
         except docker.errors.DockerException as e:
             # Check if Docker is installed but not running
@@ -510,35 +528,35 @@ class HealthChecker:
                 status = HealthStatus.NOT_INSTALLED
                 message = "Docker not installed"
 
-            self.components.append(ComponentHealth(
-                name="Docker",
-                status=status,
-                message=message,
-                details={"error": str(e)},
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Docker",
+                    status=status,
+                    message=message,
+                    details={"error": str(e)},
+                    check_time=time.time() - start_time,
+                )
+            )
 
         except Exception as e:
-            self.components.append(ComponentHealth(
-                name="Docker",
-                status=HealthStatus.ERROR,
-                message="Docker check failed",
-                details={"error": str(e)},
-                check_time=time.time() - start_time
-            ))
+            self.components.append(
+                ComponentHealth(
+                    name="Docker",
+                    status=HealthStatus.ERROR,
+                    message="Docker check failed",
+                    details={"error": str(e)},
+                    check_time=time.time() - start_time,
+                )
+            )
 
     async def _check_ports(self) -> None:
         """Check port availability for services"""
         start_time = time.time()
 
         # Default ports to check
-        ports_to_check = self.config.get("ports", {
-            "api": 8000,
-            "frontend": 3000,
-            "postgresql": 5432,
-            "redis": 6379,
-            "websocket": 8001
-        })
+        ports_to_check = self.config.get(
+            "ports", {"api": 8000, "frontend": 3000, "postgresql": 5432, "redis": 6379, "websocket": 8001}
+        )
 
         details = {}
         blocked_ports = []
@@ -556,13 +574,11 @@ class HealthChecker:
             status = HealthStatus.HEALTHY
             message = "All required ports are available"
 
-        self.components.append(ComponentHealth(
-            name="Ports",
-            status=status,
-            message=message,
-            details=details,
-            check_time=time.time() - start_time
-        ))
+        self.components.append(
+            ComponentHealth(
+                name="Ports", status=status, message=message, details=details, check_time=time.time() - start_time
+            )
+        )
 
     async def _check_services(self) -> None:
         """Check status of system services"""
@@ -577,10 +593,7 @@ class HealthChecker:
                 for service_name in ["postgresql-x64-14", "redis"]:
                     try:
                         result = subprocess.run(
-                            ["sc", "query", service_name],
-                            check=False, capture_output=True,
-                            text=True,
-                            timeout=1
+                            ["sc", "query", service_name], check=False, capture_output=True, text=True, timeout=1
                         )
                         if result.returncode == 0:
                             if "RUNNING" in result.stdout:
@@ -595,9 +608,7 @@ class HealthChecker:
                         details[service_name] = "check_failed"
 
         elif platform.system() in ["Linux", "Darwin"]:
-            services_to_check = self.config.get("services", [
-                "postgresql", "redis", "docker"
-            ])
+            services_to_check = self.config.get("services", ["postgresql", "redis", "docker"])
 
             for service_name in services_to_check:
                 if self._is_service_available("systemctl"):
@@ -605,9 +616,10 @@ class HealthChecker:
                     try:
                         result = subprocess.run(
                             ["systemctl", "is-active", service_name],
-                            check=False, capture_output=True,
+                            check=False,
+                            capture_output=True,
                             text=True,
-                            timeout=1
+                            timeout=1,
                         )
                         details[service_name] = result.stdout.strip()
                     except:
@@ -617,10 +629,7 @@ class HealthChecker:
                     # macOS
                     try:
                         result = subprocess.run(
-                            ["launchctl", "list"],
-                            check=False, capture_output=True,
-                            text=True,
-                            timeout=1
+                            ["launchctl", "list"], check=False, capture_output=True, text=True, timeout=1
                         )
                         if service_name in result.stdout:
                             details[service_name] = "loaded"
@@ -646,13 +655,11 @@ class HealthChecker:
             status = HealthStatus.UNKNOWN
             message = "Service checks not available on this platform"
 
-        self.components.append(ComponentHealth(
-            name="Services",
-            status=status,
-            message=message,
-            details=details,
-            check_time=time.time() - start_time
-        ))
+        self.components.append(
+            ComponentHealth(
+                name="Services", status=status, message=message, details=details, check_time=time.time() - start_time
+            )
+        )
 
     async def _check_python(self) -> None:
         """Check Python environment and packages"""
@@ -660,21 +667,16 @@ class HealthChecker:
 
         try:
             import sys
+
             details = {
                 "version": platform.python_version(),
                 "executable": sys.executable,
                 "prefix": sys.prefix,
-                "path_entries": len(sys.path)
+                "path_entries": len(sys.path),
             }
 
             # Check for required packages
-            required_packages = {
-                "fastmcp": None,
-                "fastapi": None,
-                "sqlalchemy": None,
-                "httpx": None,
-                "pyyaml": None
-            }
+            required_packages = {"fastmcp": None, "fastapi": None, "sqlalchemy": None, "httpx": None, "pyyaml": None}
 
             for package_name in required_packages:
                 try:
@@ -702,13 +704,11 @@ class HealthChecker:
             message = f"Python check failed: {e!s}"
             details = {}
 
-        self.components.append(ComponentHealth(
-            name="Python",
-            status=status,
-            message=message,
-            details=details,
-            check_time=time.time() - start_time
-        ))
+        self.components.append(
+            ComponentHealth(
+                name="Python", status=status, message=message, details=details, check_time=time.time() - start_time
+            )
+        )
 
     async def _check_network(self) -> None:
         """Check network connectivity"""
@@ -723,7 +723,7 @@ class HealthChecker:
 
             details = {
                 "localhost": "reachable" if localhost_ok else "unreachable",
-                "external": "reachable" if external_ok else "unreachable"
+                "external": "reachable" if external_ok else "unreachable",
             }
 
             if localhost_ok and external_ok:
@@ -741,13 +741,11 @@ class HealthChecker:
             message = f"Network check failed: {e!s}"
             details = {}
 
-        self.components.append(ComponentHealth(
-            name="Network",
-            status=status,
-            message=message,
-            details=details,
-            check_time=time.time() - start_time
-        ))
+        self.components.append(
+            ComponentHealth(
+                name="Network", status=status, message=message, details=details, check_time=time.time() - start_time
+            )
+        )
 
     async def _is_port_available(self, host: str, port: int) -> bool:
         """Check if a port is available for binding"""
@@ -801,14 +799,12 @@ class HealthChecker:
             "architecture": platform.machine(),
             "processor": platform.processor(),
             "python_version": platform.python_version(),
-            "hostname": socket.gethostname()
+            "hostname": socket.gethostname(),
         }
 
 
 async def run_health_check(
-    config: Optional[dict[str, Any]] = None,
-    components: Optional[list[str]] = None,
-    output_format: str = "summary"
+    config: Optional[dict[str, Any]] = None, components: Optional[list[str]] = None, output_format: str = "summary"
 ) -> HealthReport:
     """
     Convenience function to run health checks
@@ -828,6 +824,7 @@ async def run_health_check(
         print(report.get_summary())
     elif output_format == "json":
         import json
+
         print(json.dumps(report.to_dict(), indent=2))
     elif output_format == "dict":
         print(report.to_dict())
@@ -849,10 +846,7 @@ if __name__ == "__main__":
     print("-" * 60)
 
     # Run async health check
-    report = asyncio.run(run_health_check(
-        components=components_to_check,
-        output_format="summary"
-    ))
+    report = asyncio.run(run_health_check(components=components_to_check, output_format="summary"))
 
     # Exit with appropriate code
     if report.overall_status == HealthStatus.ERROR:

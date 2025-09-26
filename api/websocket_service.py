@@ -32,7 +32,7 @@ class WebSocketService:
                 progress_percentage=kwargs.get("progress_percentage"),
                 meta_data=kwargs.get("meta_data", {}),
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to broadcast agent status")
 
     @staticmethod
@@ -45,7 +45,7 @@ class WebSocketService:
             await websocket_manager.broadcast_message_update(
                 message_id=message_id, project_id=project_id, update_type=update_type, message_data=kwargs
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to broadcast message update")
 
     @staticmethod
@@ -60,7 +60,7 @@ class WebSocketService:
             await websocket_manager.broadcast_progress(
                 operation_id=operation_id, project_id=project_id, percentage=percentage, message=message, details=kwargs
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to broadcast progress")
 
     @staticmethod
@@ -73,7 +73,7 @@ class WebSocketService:
             await websocket_manager.broadcast_project_update(
                 project_id=project_id, update_type=update_type, project_data=kwargs
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to broadcast project update")
 
     @staticmethod
@@ -97,7 +97,7 @@ class WebSocketService:
                 project_id=project_id,
                 target_clients=target_clients,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to send notification")
 
     @staticmethod
@@ -206,7 +206,7 @@ class WebSocketService:
                 start_time=start_time,
                 meta_data=kwargs,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to broadcast sub-agent spawn")
 
     @staticmethod
@@ -237,7 +237,7 @@ class WebSocketService:
                 error_message=kwargs.get("error_message"),
                 meta_data=kwargs.get("meta_data"),
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to broadcast sub-agent completion")
 
     @staticmethod

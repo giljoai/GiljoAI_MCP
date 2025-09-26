@@ -8,18 +8,18 @@ import asyncio
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-
-from src.giljo_mcp.config_manager import Config
 from typing import Any, Optional
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.orchestrator import ProjectOrchestrator
 from giljo_mcp.template_manager import TemplateManager
+from src.giljo_mcp.config_manager import Config
 
 
 @dataclass
 class CodeSymbol:
     """Represents a code symbol found during scanning"""
+
     name: str
     type: str  # function, class, method, variable
     file: str
@@ -33,6 +33,7 @@ class CodeSymbol:
 @dataclass
 class DocumentationSection:
     """Represents a section of documentation"""
+
     title: str
     content: str
     format: str = "markdown"
@@ -43,6 +44,7 @@ class DocumentationSection:
 @dataclass
 class DiagramSpec:
     """Specification for a diagram"""
+
     type: str  # architecture, sequence, class, dependency
     title: str
     elements: list[dict[str, Any]]
@@ -53,12 +55,7 @@ class DiagramSpec:
 class DocumentationOrchestrator:
     """Orchestrates documentation generation across multiple agents"""
 
-    def __init__(
-        self,
-        source_path: Path,
-        output_path: Path,
-        tenant_key: str = "doc-gen-demo"
-    ):
+    def __init__(self, source_path: Path, output_path: Path, tenant_key: str = "doc-gen-demo"):
         """
         Initialize the documentation orchestrator
 
@@ -85,15 +82,11 @@ class DocumentationOrchestrator:
         """Initialize database and orchestrator"""
         await self.db.initialize()
 
-        self.orchestrator = ProjectOrchestrator(
-            db=self.db,
-            tenant_key=self.tenant_key
-        )
+        self.orchestrator = ProjectOrchestrator(db=self.db, tenant_key=self.tenant_key)
 
         # Create project
         self.project = await self.orchestrator.create_project(
-            name=f"Document {self.source_path.name}",
-            mission=self._create_mission()
+            name=f"Document {self.source_path.name}", mission=self._create_mission()
         )
 
         print(f"✅ Documentation project created: {self.project.id}")
@@ -128,11 +121,7 @@ class DocumentationOrchestrator:
 
     async def spawn_agents(self):
         """Create specialized documentation agents"""
-        tm = TemplateManager(
-            session=self.db.session,
-            tenant_key=self.tenant_key,
-            product_id=self.project.id
-        )
+        tm = TemplateManager(session=self.db.session, tenant_key=self.tenant_key, product_id=self.project.id)
 
         agent_configs = [
             {
@@ -141,8 +130,8 @@ class DocumentationOrchestrator:
                 "template": await tm.get_template(
                     name="scanner",
                     augmentations="Focus on Python, JavaScript, and YAML files",
-                    variables={"source": str(self.source_path)}
-                )
+                    variables={"source": str(self.source_path)},
+                ),
             },
             {
                 "name": "parser",
@@ -150,8 +139,8 @@ class DocumentationOrchestrator:
                 "template": await tm.get_template(
                     name="parser",
                     augmentations="Extract complete AST, docstrings, and type hints",
-                    variables={"extract_examples": True}
-                )
+                    variables={"extract_examples": True},
+                ),
             },
             {
                 "name": "writer",
@@ -159,8 +148,8 @@ class DocumentationOrchestrator:
                 "template": await tm.get_template(
                     name="writer",
                     augmentations="Clear, concise technical writing with examples",
-                    variables={"style_guide": "Google Developer Documentation"}
-                )
+                    variables={"style_guide": "Google Developer Documentation"},
+                ),
             },
             {
                 "name": "diagram",
@@ -168,8 +157,8 @@ class DocumentationOrchestrator:
                 "template": await tm.get_template(
                     name="diagram",
                     augmentations="Create Mermaid diagrams for architecture and flows",
-                    variables={"formats": ["mermaid", "svg"]}
-                )
+                    variables={"formats": ["mermaid", "svg"]},
+                ),
             },
             {
                 "name": "publisher",
@@ -177,16 +166,14 @@ class DocumentationOrchestrator:
                 "template": await tm.get_template(
                     name="publisher",
                     augmentations="Generate MkDocs site with Material theme",
-                    variables={"deploy_target": "github-pages"}
-                )
-            }
+                    variables={"deploy_target": "github-pages"},
+                ),
+            },
         ]
 
         for config in agent_configs:
             agent = await self.orchestrator.spawn_agent(
-                name=config["name"],
-                mission=config["template"],
-                project_id=self.project.id
+                name=config["name"], mission=config["template"], project_id=self.project.id
             )
             self.agents[config["name"]] = agent
             print(f"🤖 Spawned {config['name']}: {config['role']}")
@@ -228,8 +215,8 @@ class DocumentationOrchestrator:
                 "task": "scan_codebase",
                 "path": str(self.source_path),
                 "patterns": ["*.py", "*.js", "*.ts", "*.yaml", "*.json"],
-                "exclude": ["__pycache__", "node_modules", ".git"]
-            }
+                "exclude": ["__pycache__", "node_modules", ".git"],
+            },
         )
 
         # Simulate receiving scan results
@@ -241,12 +228,7 @@ class DocumentationOrchestrator:
 
         # Create symbol index
         await self.orchestrator.send_message(
-            from_agent="orchestrator",
-            to_agent="scanner",
-            content={
-                "task": "create_symbol_index",
-                "files": files_found
-            }
+            from_agent="orchestrator", to_agent="scanner", content={"task": "create_symbol_index", "files": files_found}
         )
 
         symbol_index = await self._wait_for_response("scanner", timeout=45)
@@ -275,8 +257,8 @@ class DocumentationOrchestrator:
                     "task": "parse_file",
                     "file": file_path,
                     "symbols": [asdict(s) for s in symbols],
-                    "extract": ["docstrings", "types", "examples", "dependencies"]
-                }
+                    "extract": ["docstrings", "types", "examples", "dependencies"],
+                },
             )
 
             result = await self._wait_for_response("parser", timeout=20)
@@ -300,16 +282,12 @@ class DocumentationOrchestrator:
                 "task": "generate_api_reference",
                 "symbols": [asdict(s) for s in self.symbols],
                 "format": "markdown",
-                "include_examples": True
-            }
+                "include_examples": True,
+            },
         )
 
         api_ref = await self._wait_for_response("writer", timeout=60)
-        sections.append(DocumentationSection(
-            title="API Reference",
-            content=api_ref.get("content", ""),
-            order=1
-        ))
+        sections.append(DocumentationSection(title="API Reference", content=api_ref.get("content", ""), order=1))
 
         # User Guide
         await self.orchestrator.send_message(
@@ -318,33 +296,22 @@ class DocumentationOrchestrator:
             content={
                 "task": "generate_user_guide",
                 "source_path": str(self.source_path),
-                "key_features": self._identify_key_features()
-            }
+                "key_features": self._identify_key_features(),
+            },
         )
 
         user_guide = await self._wait_for_response("writer", timeout=45)
-        sections.append(DocumentationSection(
-            title="User Guide",
-            content=user_guide.get("content", ""),
-            order=2
-        ))
+        sections.append(DocumentationSection(title="User Guide", content=user_guide.get("content", ""), order=2))
 
         # Configuration Guide
         await self.orchestrator.send_message(
             from_agent="orchestrator",
             to_agent="writer",
-            content={
-                "task": "generate_config_guide",
-                "config_files": self._find_config_files()
-            }
+            content={"task": "generate_config_guide", "config_files": self._find_config_files()},
         )
 
         config_guide = await self._wait_for_response("writer", timeout=30)
-        sections.append(DocumentationSection(
-            title="Configuration",
-            content=config_guide.get("content", ""),
-            order=3
-        ))
+        sections.append(DocumentationSection(title="Configuration", content=config_guide.get("content", ""), order=3))
 
         self.sections = sections
         print(f"  ✅ Generated {len(sections)} documentation sections")
@@ -360,17 +327,19 @@ class DocumentationOrchestrator:
             content={
                 "task": "generate_architecture_diagram",
                 "components": self._identify_components(),
-                "format": "mermaid"
-            }
+                "format": "mermaid",
+            },
         )
 
         arch_diagram = await self._wait_for_response("diagram", timeout=30)
-        diagrams.append(DiagramSpec(
-            type="architecture",
-            title="System Architecture",
-            elements=arch_diagram.get("elements", []),
-            relationships=arch_diagram.get("relationships", [])
-        ))
+        diagrams.append(
+            DiagramSpec(
+                type="architecture",
+                title="System Architecture",
+                elements=arch_diagram.get("elements", []),
+                relationships=arch_diagram.get("relationships", []),
+            )
+        )
 
         # Class diagram for main classes
         main_classes = [s for s in self.symbols if s.type == "class"][:10]
@@ -378,19 +347,18 @@ class DocumentationOrchestrator:
             await self.orchestrator.send_message(
                 from_agent="orchestrator",
                 to_agent="diagram",
-                content={
-                    "task": "generate_class_diagram",
-                    "classes": [asdict(c) for c in main_classes]
-                }
+                content={"task": "generate_class_diagram", "classes": [asdict(c) for c in main_classes]},
             )
 
             class_diagram = await self._wait_for_response("diagram", timeout=30)
-            diagrams.append(DiagramSpec(
-                type="class",
-                title="Class Diagram",
-                elements=class_diagram.get("elements", []),
-                relationships=class_diagram.get("relationships", [])
-            ))
+            diagrams.append(
+                DiagramSpec(
+                    type="class",
+                    title="Class Diagram",
+                    elements=class_diagram.get("elements", []),
+                    relationships=class_diagram.get("relationships", []),
+                )
+            )
 
         self.diagrams = diagrams
         print(f"  ✅ Generated {len(diagrams)} diagrams")
@@ -401,11 +369,7 @@ class DocumentationOrchestrator:
         all_content = {
             "sections": [asdict(s) for s in self.sections],
             "diagrams": [asdict(d) for d in self.diagrams],
-            "metadata": {
-                "project": self.source_path.name,
-                "generated": datetime.now().isoformat(),
-                "version": "1.0.0"
-            }
+            "metadata": {"project": self.source_path.name, "generated": datetime.now().isoformat(), "version": "1.0.0"},
         }
 
         # Generate MkDocs site
@@ -417,8 +381,8 @@ class DocumentationOrchestrator:
                 "content": all_content,
                 "output_path": str(self.output_path),
                 "theme": "material",
-                "features": ["search", "navigation.tabs", "content.code.copy"]
-            }
+                "features": ["search", "navigation.tabs", "content.code.copy"],
+            },
         )
 
         mkdocs_result = await self._wait_for_response("publisher", timeout=60)
@@ -555,39 +519,31 @@ Get started with {self.source_path.name} in minutes:
                     "toc.integrate",
                     "search.suggest",
                     "search.highlight",
-                    "content.code.copy"
+                    "content.code.copy",
                 ],
-                "palette": {
-                    "scheme": "default",
-                    "primary": "indigo",
-                    "accent": "indigo"
-                }
+                "palette": {"scheme": "default", "primary": "indigo", "accent": "indigo"},
             },
             "nav": [
                 {"Home": "index.md"},
                 {"User Guide": "user-guide.md"},
-                {"API Reference": [
-                    {"Overview": "api-reference.md"}
-                ] + [
-                    {s.name: f"api/{s.name.lower()}.md"}
-                    for s in self.symbols if s.type == "class"
-                ]},
+                {
+                    "API Reference": [{"Overview": "api-reference.md"}]
+                    + [{s.name: f"api/{s.name.lower()}.md"} for s in self.symbols if s.type == "class"]
+                },
                 {"Configuration": "configuration.md"},
-                {"Architecture": [
-                    {"Overview": "diagrams/architecture.md"},
-                    {"Class Diagram": "diagrams/class.md"}
-                ]}
+                {"Architecture": [{"Overview": "diagrams/architecture.md"}, {"Class Diagram": "diagrams/class.md"}]},
             ],
             "plugins": ["search", "mermaid2"],
             "markdown_extensions": [
                 "pymdownx.highlight",
                 "pymdownx.superfences",
                 "pymdownx.inlinehilite",
-                "pymdownx.snippets"
-            ]
+                "pymdownx.snippets",
+            ],
         }
 
         import yaml
+
         return yaml.dump(config, default_flow_style=False)
 
     def _parse_symbols(self, symbol_index: dict) -> list[CodeSymbol]:
@@ -603,7 +559,7 @@ Get started with {self.source_path.name} in minutes:
                     docstring=sym.get("docstring"),
                     signature=sym.get("signature"),
                     parent=sym.get("parent"),
-                    children=sym.get("children", [])
+                    children=sym.get("children", []),
                 )
                 symbols.append(symbol)
         return symbols
@@ -624,7 +580,7 @@ Get started with {self.source_path.name} in minutes:
             "Type hints throughout",
             "Comprehensive error handling",
             "Modular architecture",
-            "Extensive test coverage"
+            "Extensive test coverage",
         ]
 
     def _format_key_features(self) -> str:
@@ -648,14 +604,14 @@ Get started with {self.source_path.name} in minutes:
             {"id": "core", "label": "Core Logic", "type": "library"},
             {"id": "db", "label": "Database", "type": "storage"},
             {"id": "cache", "label": "Cache", "type": "storage"},
-            {"id": "queue", "label": "Message Queue", "type": "service"}
+            {"id": "queue", "label": "Message Queue", "type": "service"},
         ]
 
     async def _generate_summary(self):
         """Generate documentation summary"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("DOCUMENTATION GENERATION COMPLETE")
-        print("="*60)
+        print("=" * 60)
         print(f"📁 Source: {self.source_path}")
         print(f"📄 Output: {self.output_path}")
         print("\n📊 Statistics:")

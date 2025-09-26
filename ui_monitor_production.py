@@ -17,6 +17,7 @@ from datetime import datetime
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
+
 class ProductionUIMonitor:
     def __init__(self):
         self.agent_name = "ui-analyzer"
@@ -31,14 +32,7 @@ class ProductionUIMonitor:
     def log(self, message, level="INFO"):
         """Log with timestamp and level."""
         datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        {
-            "INFO": "INFO",
-            "WARN": "WARN",
-            "ERROR": "ERROR",
-            "HIGH": "HIGH",
-            "URGENT": "URGENT"
-        }.get(level, "INFO")
-
+        {"INFO": "INFO", "WARN": "WARN", "ERROR": "ERROR", "HIGH": "HIGH", "URGENT": "URGENT"}.get(level, "INFO")
 
     async def start_monitoring(self):
         """Start the continuous monitoring loop."""
@@ -120,18 +114,20 @@ class ProductionUIMonitor:
                 "id": f"demo_msg_{int(time.time())}_{random.randint(1000, 9999)}",
                 "from_agent": random.choice(["orchestrator", "implementer", "tester", "analyzer"]),
                 "to_agent": self.agent_name,
-                "content": random.choice([
-                    "Analyze dashboard component accessibility compliance",
-                    "Review navigation UX patterns for mobile devices",
-                    "Evaluate color contrast ratios across all UI elements",
-                    "Assess user interaction flow bottlenecks",
-                    "Validate responsive design breakpoints",
-                    "Check form validation user experience"
-                ]),
+                "content": random.choice(
+                    [
+                        "Analyze dashboard component accessibility compliance",
+                        "Review navigation UX patterns for mobile devices",
+                        "Evaluate color contrast ratios across all UI elements",
+                        "Assess user interaction flow bottlenecks",
+                        "Validate responsive design breakpoints",
+                        "Check form validation user experience",
+                    ]
+                ),
                 "priority": random.choice(["normal", "normal", "high", "urgent"]),  # Weighted toward normal
                 "message_type": "direct",
                 "timestamp": datetime.now().isoformat(),
-                "project_id": "ui-analysis-project"
+                "project_id": "ui-analysis-project",
             }
 
             if message["id"] not in self.processed_messages:
@@ -268,10 +264,12 @@ class ProductionUIMonitor:
 
         self.log("Monitor shutdown complete")
 
+
 async def main():
     """Main entry point for production monitor."""
     monitor = ProductionUIMonitor()
     await monitor.start_monitoring()
+
 
 if __name__ == "__main__":
     try:

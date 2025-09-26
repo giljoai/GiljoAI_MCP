@@ -62,6 +62,7 @@ python load_test_runner.py
 ```
 
 This generates:
+
 - `performance_test_report.json` - Detailed test results
 - `performance_summary.csv` - Spreadsheet-friendly summary
 - `performance_dashboard.html` - Visual dashboard
@@ -87,6 +88,7 @@ Creates a live HTML dashboard with real-time metrics and alerts.
 - **Lifecycle Tests:** Agent handoffs and context switching under load
 
 **Key Metrics:**
+
 - Agent creation latency < 100ms
 - 100 agents spawn in < 30 seconds
 - 95%+ success rate required
@@ -102,6 +104,7 @@ Creates a live HTML dashboard with real-time metrics and alerts.
 - **Priority Handling:** High/normal priority message processing
 
 **Key Metrics:**
+
 - Message send latency < 100ms
 - Throughput ≥ 10,000 messages/minute
 - Zero message loss under load
@@ -117,6 +120,7 @@ Creates a live HTML dashboard with real-time metrics and alerts.
 - **Reconnection Capability:** Network interruption recovery
 
 **Key Metrics:**
+
 - 100 concurrent connections supported
 - Connection latency < 1 second
 - 80%+ connection success rate
@@ -132,6 +136,7 @@ Creates a live HTML dashboard with real-time metrics and alerts.
 - **Resource Fairness:** Equal resource allocation across tenants
 
 **Key Metrics:**
+
 - Complete data isolation verified
 - <25% performance degradation between tenants
 - Fair resource allocation
@@ -147,6 +152,7 @@ Creates a live HTML dashboard with real-time metrics and alerts.
 - **Chunk Retrieval:** Individual chunk access performance
 
 **Key Metrics:**
+
 - 50K+ tokens processed in < 60 seconds
 - Memory usage < 1GB growth
 - Chunk retrieval < 10ms
@@ -163,6 +169,7 @@ Creates a live HTML dashboard with real-time metrics and alerts.
 - **Connection Pool Stress:** 100+ concurrent connections
 
 **Key Metrics:**
+
 - Single operations < 100ms
 - Query performance < 500ms
 - 95%+ transaction success rate
@@ -172,6 +179,7 @@ Creates a live HTML dashboard with real-time metrics and alerts.
 The performance dashboard provides real-time monitoring and historical analysis:
 
 ### Features:
+
 - **Real-time Metrics:** Live performance data
 - **Production Readiness Score:** Overall system health (0-100%)
 - **Component Breakdown:** Individual subsystem performance
@@ -180,6 +188,7 @@ The performance dashboard provides real-time monitoring and historical analysis:
 - **Web Interface:** HTML dashboard for easy viewing
 
 ### Usage:
+
 ```bash
 # Generate static dashboard
 python performance_dashboard.py
@@ -206,25 +215,28 @@ The test suite integrates with GitHub Actions for automated performance validati
 name: Performance Testing Suite
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   schedule:
-    - cron: '0 2 * * *'  # Nightly at 2 AM UTC
+    - cron: "0 2 * * *" # Nightly at 2 AM UTC
 ```
 
 ### Test Levels:
+
 - **Standard:** Core performance tests (30 min)
 - **Comprehensive:** Full test suite (90 min)
 - **Stress:** Beyond-requirements testing (120 min)
 
 ### Automated Reporting:
+
 - Performance score comments on PRs
 - Slack notifications for failures
 - GitHub Pages dashboard deployment
 - Trend analysis and alerts
 
 ### Setup CI/CD:
+
 1. Copy `ci_performance_config.yml` to `.github/workflows/performance.yml`
 2. Configure secrets: `SLACK_WEBHOOK` (optional)
 3. Enable GitHub Pages for dashboard deployment
@@ -232,6 +244,7 @@ on:
 ## 📈 Performance Thresholds
 
 ### Critical Thresholds (Production Requirements):
+
 ```python
 PRODUCTION_THRESHOLDS = {
     "agent_creation_ms": 100,        # Agent spawn latency
@@ -248,6 +261,7 @@ PRODUCTION_THRESHOLDS = {
 ```
 
 ### Scoring System:
+
 - **Agent Scalability:** 30% weight
 - **Message Throughput:** 25% weight
 - **Database Performance:** 20% weight
@@ -255,6 +269,7 @@ PRODUCTION_THRESHOLDS = {
 - **Vision Processing:** 10% weight
 
 ### Production Readiness Levels:
+
 - **90-100%:** Production Ready ✅
 - **75-89%:** Mostly Ready ⚠️
 - **50-74%:** Needs Improvement 🔄
@@ -293,6 +308,7 @@ htop  # or top on macOS/Linux
 ```
 
 ### Test Markers:
+
 - `@pytest.mark.slow` - Tests taking >60 seconds
 - `@pytest.mark.stress` - Stress tests beyond requirements
 - No marker - Standard performance tests
@@ -302,42 +318,49 @@ htop  # or top on macOS/Linux
 Before production deployment, ensure all tests pass:
 
 ### Agent Scalability ✅
+
 - [ ] 100 agents spawn successfully (95%+ success rate)
 - [ ] Agent creation latency < 100ms average
 - [ ] Context switching performs efficiently
 - [ ] Agent handoffs work under load
 
 ### Message Throughput ✅
+
 - [ ] 10,000+ messages/minute sustained
 - [ ] Message latency < 100ms
 - [ ] Broadcast to 100+ agents works
 - [ ] Zero message loss under saturation
 
 ### WebSocket Capacity ✅
+
 - [ ] 100+ concurrent connections supported
 - [ ] Connection latency < 1 second
 - [ ] Stable connections under load
 - [ ] Reconnection works reliably
 
 ### Multi-Tenant Isolation ✅
+
 - [ ] Complete data isolation verified
 - [ ] Performance isolation maintained
 - [ ] Fair resource allocation
 - [ ] Security boundaries enforced
 
 ### Vision Processing ✅
+
 - [ ] 50K+ token documents process successfully
 - [ ] Reasonable memory usage (<1GB growth)
 - [ ] Concurrent document handling works
 - [ ] Chunk retrieval is fast (<10ms)
 
 ### Database Performance ✅
+
 - [ ] Sub-100ms operation latency
 - [ ] Concurrent operations handle properly
 - [ ] Transaction reliability high (>95%)
 - [ ] Connection pooling scales
 
 ### System Health ✅
+
 - [ ] Memory usage reasonable (<2GB)
 - [ ] CPU usage manageable (<80%)
 - [ ] No memory leaks detected
@@ -348,6 +371,7 @@ Before production deployment, ensure all tests pass:
 ### Common Issues:
 
 #### Agent Spawning Failures
+
 ```bash
 # Check database connections
 pytest tests/performance/test_database_benchmarks.py::TestDatabaseBenchmarks::test_single_record_operations_latency -v
@@ -357,6 +381,7 @@ pytest tests/performance/test_concurrent_agents.py::TestConcurrentAgents::test_s
 ```
 
 #### Message Queue Issues
+
 ```bash
 # Test message tools
 pytest tests/performance/test_message_queue_load.py::TestMessageQueueLoad::test_single_message_latency -v
@@ -366,6 +391,7 @@ pytest tests/performance/test_database_benchmarks.py -k "message" -v
 ```
 
 #### WebSocket Connection Problems
+
 ```bash
 # Verify WebSocket server is running
 python -c "import websockets; print('WebSocket client available')"
@@ -375,6 +401,7 @@ pytest tests/performance/test_websocket_stress.py::TestWebSocketStress::test_con
 ```
 
 #### Memory Issues
+
 ```bash
 # Monitor memory during tests
 python -c "
@@ -390,16 +417,19 @@ while True:
 ### Performance Optimization Tips:
 
 1. **Database Optimization:**
+
    - Ensure proper indexing on frequently queried fields
    - Use connection pooling
    - Optimize query patterns
 
 2. **Message Queue Optimization:**
+
    - Implement message batching
    - Use asynchronous processing
    - Consider message prioritization
 
 3. **Agent Management:**
+
    - Implement agent pooling
    - Optimize context switching
    - Use efficient serialization

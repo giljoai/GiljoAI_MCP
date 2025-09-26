@@ -22,7 +22,7 @@ class VisualIntegrationTester:
             "responsive_tests": [],
             "theme_tests": [],
             "bugs_found": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
     async def test_dashboard_components(self):
@@ -42,40 +42,27 @@ class VisualIntegrationTester:
                     if response.status_code == 200:
                         # Check if component is referenced in HTML
                         if component.lower() in response.text.lower():
-                            self.test_report["visual_tests"].append({
-                                "component": component,
-                                "status": "FOUND",
-                                "route": route
-                            })
+                            self.test_report["visual_tests"].append(
+                                {"component": component, "status": "FOUND", "route": route}
+                            )
                         else:
-                            self.test_report["visual_tests"].append({
-                                "component": component,
-                                "status": "LAZY_LOADED",
-                                "route": route
-                            })
+                            self.test_report["visual_tests"].append(
+                                {"component": component, "status": "LAZY_LOADED", "route": route}
+                            )
                 except Exception as e:
-                    self.test_report["bugs_found"].append({
-                        "severity": "MEDIUM",
-                        "component": component,
-                        "issue": str(e)
-                    })
+                    self.test_report["bugs_found"].append(
+                        {"severity": "MEDIUM", "component": component, "issue": str(e)}
+                    )
 
     async def test_responsive_breakpoints(self):
         """Test responsive design breakpoints"""
 
-        breakpoints = {
-            "Mobile": 320,
-            "Tablet": 768,
-            "Desktop": 1024,
-            "Wide": 1920
-        }
+        breakpoints = {"Mobile": 320, "Tablet": 768, "Desktop": 1024, "Wide": 1920}
 
         for name, width in breakpoints.items():
-            self.test_report["responsive_tests"].append({
-                "breakpoint": name,
-                "width": width,
-                "status": "MANUAL_VERIFICATION_REQUIRED"
-            })
+            self.test_report["responsive_tests"].append(
+                {"breakpoint": name, "width": width, "status": "MANUAL_VERIFICATION_REQUIRED"}
+            )
 
     async def test_theme_consistency(self):
         """Test theme colors and consistency"""
@@ -85,15 +72,13 @@ class VisualIntegrationTester:
             "dark_background": "#0e1c2d",
             "primary": "#ffc300",
             "secondary": "#13344F",
-            "accent": "#82b1ff"
+            "accent": "#82b1ff",
         }
 
         for name, color in expected_colors.items():
-            self.test_report["theme_tests"].append({
-                "color_name": name,
-                "expected": color,
-                "status": "MANUAL_VERIFICATION_REQUIRED"
-            })
+            self.test_report["theme_tests"].append(
+                {"color_name": name, "expected": color, "status": "MANUAL_VERIFICATION_REQUIRED"}
+            )
 
     async def test_websocket_realtime(self):
         """Test WebSocket real-time updates"""
@@ -101,6 +86,7 @@ class VisualIntegrationTester:
         try:
             # Test WebSocket connection
             import websockets
+
             async with websockets.connect("ws://localhost:8000/ws/test") as ws:
                 # Send test message
                 await ws.send(json.dumps({"type": "ping"}))
@@ -115,11 +101,9 @@ class VisualIntegrationTester:
                     pass
 
         except Exception as e:
-            self.test_report["bugs_found"].append({
-                "severity": "HIGH",
-                "component": "WebSocket",
-                "issue": f"WebSocket connection failed: {e}"
-            })
+            self.test_report["bugs_found"].append(
+                {"severity": "HIGH", "component": "WebSocket", "issue": f"WebSocket connection failed: {e}"}
+            )
 
     async def test_api_integration(self):
         """Test API endpoints integration"""
@@ -137,11 +121,13 @@ class VisualIntegrationTester:
                     if response.status_code in [200, 404]:  # 404 ok if no data
                         pass
                     else:
-                        self.test_report["bugs_found"].append({
-                            "severity": "LOW",
-                            "component": name,
-                            "issue": f"Unexpected status code: {response.status_code}"
-                        })
+                        self.test_report["bugs_found"].append(
+                            {
+                                "severity": "LOW",
+                                "component": name,
+                                "issue": f"Unexpected status code: {response.status_code}",
+                            }
+                        )
                 except Exception:
                     pass
 
@@ -151,7 +137,6 @@ class VisualIntegrationTester:
         # Summary
         total_bugs = len(self.test_report["bugs_found"])
         critical_bugs = sum(1 for b in self.test_report["bugs_found"] if b["severity"] == "HIGH")
-
 
         if self.test_report["bugs_found"]:
             for _bug in self.test_report["bugs_found"]:
@@ -163,7 +148,7 @@ class VisualIntegrationTester:
             "2. Implement proper error handling for missing project_id",
             "3. Add loading states for all async operations",
             "4. Verify WCAG 2.1 AA compliance with automated tools",
-            "5. Test with real agent data for timeline and tree visualizations"
+            "5. Test with real agent data for timeline and tree visualizations",
         ]
 
         for _rec in self.test_report["recommendations"]:
@@ -196,6 +181,7 @@ class VisualIntegrationTester:
         success = await self.generate_report()
         return success
 
+
 async def main():
     tester = VisualIntegrationTester()
     success = await tester.run_all_tests()
@@ -205,6 +191,7 @@ async def main():
         pass
     else:
         pass
+
 
 if __name__ == "__main__":
     asyncio.run(main())

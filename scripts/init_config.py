@@ -43,6 +43,7 @@ def init_lan_config():
 
     # Generate API key
     import secrets
+
     config.server.api_key = secrets.token_urlsafe(32)
 
     # Prefer PostgreSQL for LAN
@@ -63,6 +64,7 @@ def init_wan_config():
 
     # Generate strong keys
     import secrets
+
     config.server.api_key = secrets.token_urlsafe(32)
 
     # Require PostgreSQL for WAN
@@ -77,7 +79,6 @@ def validate_config(config_path: Optional[Path] = None):
     try:
         config = ConfigManager(config_path=config_path)
         config.validate()
-
 
         # Test database connection
         if config.database.type == "postgresql":
@@ -97,7 +98,6 @@ def show_config(config_path: Optional[Path] = None):
     try:
         config = ConfigManager(config_path=config_path)
         config.get_all_settings()
-
 
     except Exception:
         pass
@@ -191,44 +191,16 @@ Examples:
   %(prog)s --migrate        # Migrate from .env to config.yaml
   %(prog)s --test           # Test configuration integration
   %(prog)s --sample         # Generate sample config.yaml
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--mode",
-        choices=["local", "lan", "wan"],
-        help="Initialize configuration for specified mode"
-    )
-    parser.add_argument(
-        "--validate",
-        action="store_true",
-        help="Validate existing configuration"
-    )
-    parser.add_argument(
-        "--show",
-        action="store_true",
-        help="Display current configuration"
-    )
-    parser.add_argument(
-        "--migrate",
-        action="store_true",
-        help="Migrate from .env to config.yaml"
-    )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Test configuration integration"
-    )
-    parser.add_argument(
-        "--sample",
-        action="store_true",
-        help="Generate sample config.yaml"
-    )
-    parser.add_argument(
-        "--config",
-        type=Path,
-        help="Path to config.yaml (default: ./config.yaml)"
-    )
+    parser.add_argument("--mode", choices=["local", "lan", "wan"], help="Initialize configuration for specified mode")
+    parser.add_argument("--validate", action="store_true", help="Validate existing configuration")
+    parser.add_argument("--show", action="store_true", help="Display current configuration")
+    parser.add_argument("--migrate", action="store_true", help="Migrate from .env to config.yaml")
+    parser.add_argument("--test", action="store_true", help="Test configuration integration")
+    parser.add_argument("--sample", action="store_true", help="Generate sample config.yaml")
+    parser.add_argument("--config", type=Path, help="Path to config.yaml (default: ./config.yaml)")
 
     args = parser.parse_args()
 

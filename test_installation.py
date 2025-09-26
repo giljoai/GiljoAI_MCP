@@ -8,8 +8,10 @@ Tests launcher creator and config generator
 import sys
 from pathlib import Path
 
+
 # Add installers to path
-sys.path.insert(0, str(Path.cwd() / 'installers'))
+sys.path.insert(0, str(Path.cwd() / "installers"))
+
 
 def test_config_generator():
     """Test configuration generator"""
@@ -17,6 +19,7 @@ def test_config_generator():
     print("-" * 40)
 
     from config_generator import ConfigGenerator
+
     generator = ConfigGenerator()
 
     # Test directory creation
@@ -28,11 +31,12 @@ def test_config_generator():
     print(f"[{'OK' if success else 'FAIL'}] {msg}")
 
     # Test validation
-    if Path('config.yaml').exists():
+    if Path("config.yaml").exists():
         valid, msg = generator.validate_config()
         print(f"[{'OK' if valid else 'FAIL'}] Validation: {msg}")
 
     print()
+
 
 def test_launcher_creator():
     """Test launcher creator"""
@@ -40,6 +44,7 @@ def test_launcher_creator():
     print("-" * 40)
 
     from launcher_creator import LauncherCreator
+
     creator = LauncherCreator()
 
     # Test creating all launchers
@@ -50,6 +55,7 @@ def test_launcher_creator():
         print(f"[{'OK' if success else 'FAIL'}] {name}: {msg}")
 
     print()
+
 
 def main():
     """Main test function"""
@@ -70,12 +76,7 @@ def main():
 
     # Show what's been created
     print("\nCreated files:")
-    files = [
-        'config.yaml',
-        'start_giljo.bat',
-        'stop_giljo.bat',
-        'open_dashboard.bat'
-    ]
+    files = ["config.yaml", "start_giljo.bat", "stop_giljo.bat", "open_dashboard.bat"]
 
     for file in files:
         path = Path(file)
@@ -83,6 +84,7 @@ def main():
             print(f"  [OK] {file}")
         else:
             print(f"  [MISSING] {file}")
+
 
 if __name__ == "__main__":
     main()

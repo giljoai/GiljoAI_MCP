@@ -6,9 +6,9 @@ Quick WebSocket connection test to verify server is running
 import asyncio
 import json
 import uuid
+
 import websockets
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
-import socket
 
 
 async def test_websocket_connection():
@@ -36,15 +36,14 @@ async def test_websocket_connection():
                 if data.get("type") == "pong":
                     print("[OK] Ping/pong successful")
                     return True
-                else:
-                    print(f"[ERROR] Unexpected response type: {data.get('type')}")
-                    return False
+                print(f"[ERROR] Unexpected response type: {data.get('type')}")
+                return False
 
             except asyncio.TimeoutError:
                 print("[ERROR] Timeout waiting for response")
                 return False
 
-    except (ConnectionRefusedError, OSError, socket.error) as e:
+    except (ConnectionRefusedError, OSError) as e:
         print(f"[ERROR] Connection refused - server not running on port 6002: {e}")
         return False
     except (ConnectionClosedError, ConnectionClosedOK) as e:

@@ -9,11 +9,13 @@ This guide explains how to migrate from the legacy Python-based template system 
 ### What Changed
 
 #### Before: Three Overlapping Systems
+
 1. **Project 3.4**: Original `mission_templates.py` with Python classes
 2. **Project 3.9.a**: Initial database models without full implementation
 3. **Project 3.9.b**: Attempted parallel system before consolidation
 
 #### After: One Unified System
+
 - **Single Source**: `template_manager.py` manages everything
 - **Database Storage**: SQLAlchemy models in `models.py`
 - **MCP Tools**: 9 tools for template operations
@@ -35,6 +37,7 @@ python -m giljo_mcp migrate-templates
 ```
 
 Expected output:
+
 ```
 Migrating templates from mission_templates.py...
 ✅ Migrated: orchestrator (v1.0.0)
@@ -50,6 +53,7 @@ Duration: 145ms
 ### Step 2: Update Import Statements
 
 #### Old Code
+
 ```python
 from giljo_mcp.mission_templates import MissionTemplateGenerator
 
@@ -65,6 +69,7 @@ class Orchestrator:
 ```
 
 #### New Code (Option 1: Direct Migration)
+
 ```python
 from giljo_mcp.template_manager import TemplateManager
 
@@ -80,6 +85,7 @@ class Orchestrator:
 ```
 
 #### New Code (Option 2: Using Adapter)
+
 ```python
 from giljo_mcp.template_adapter import TemplateAdapter
 
@@ -101,12 +107,14 @@ class Orchestrator:
 #### Adding Runtime Augmentation
 
 Old approach (modifying template):
+
 ```python
 mission = template_gen.get_agent_mission(role="analyzer")
 mission += "\n\nAlso focus on security vulnerabilities."
 ```
 
 New approach (proper augmentation):
+
 ```python
 mission = await template_mgr.get_template(
     name="analyzer",
@@ -117,6 +125,7 @@ mission = await template_mgr.get_template(
 #### Using Variables
 
 Old approach:
+
 ```python
 mission = template_gen.generate_mission(
     role="implementer",
@@ -126,6 +135,7 @@ mission = template_gen.generate_mission(
 ```
 
 New approach:
+
 ```python
 mission = await template_mgr.get_template(
     name="implementer",
@@ -139,6 +149,7 @@ mission = await template_mgr.get_template(
 ### Step 4: Remove Duplicate Code
 
 #### Files to Remove/Deprecate
+
 ```bash
 # After successful migration, these can be removed:
 src/giljo_mcp/mission_templates.py  # Keep temporarily for reference
@@ -157,6 +168,7 @@ The consolidation eliminated these duplicates:
 ### Step 5: Update Configuration
 
 #### Database Schema
+
 ```sql
 -- New tables are automatically created
 -- Run this to verify:
@@ -165,6 +177,7 @@ SELECT COUNT(*) FROM template_archives;
 ```
 
 #### Environment Variables
+
 ```bash
 # Add to .env if using template suggestions
 TEMPLATE_EMBEDDING_MODEL=text-embedding-ada-002  # Optional
@@ -174,6 +187,7 @@ TEMPLATE_CACHE_TTL=60  # Cache timeout in seconds
 ## Testing the Migration
 
 ### Verification Script
+
 ```python
 # verify_migration.py
 from giljo_mcp.template_manager import TemplateManager
@@ -226,18 +240,22 @@ use_legacy_mode(True)
 ## Common Migration Issues
 
 ### Issue 1: Missing Templates
+
 **Symptom**: `TemplateNotFound` errors
 
 **Solution**:
+
 ```python
 # Re-run migration
 python -m giljo_mcp migrate-templates --force
 ```
 
 ### Issue 2: Variable Substitution Errors
+
 **Symptom**: `{variable}` appearing in output
 
 **Solution**:
+
 ```python
 # Ensure all variables are provided
 variables = {
@@ -248,9 +266,11 @@ variables = {
 ```
 
 ### Issue 3: Performance Degradation
+
 **Symptom**: Slower template generation
 
 **Solution**:
+
 ```python
 # Enable caching
 tm = TemplateManager(session, tenant_key, product_id)
@@ -260,6 +280,7 @@ tm.enable_cache(ttl=60)  # 60 second cache
 ## Architecture Benefits Post-Migration
 
 ### Before Migration
+
 - **Hardcoded**: Templates in Python files
 - **Inflexible**: Required code changes for updates
 - **No Versioning**: Lost history on changes
@@ -267,6 +288,7 @@ tm.enable_cache(ttl=60)  # 60 second cache
 - **Duplicated**: Three overlapping systems
 
 ### After Migration
+
 - **Database-Backed**: Dynamic template management
 - **Flexible**: Runtime updates via API
 - **Full Versioning**: Complete audit trail
@@ -275,13 +297,13 @@ tm.enable_cache(ttl=60)  # 60 second cache
 
 ## Performance Comparison
 
-| Operation | Legacy System | New System | Improvement |
-|-----------|--------------|------------|-------------|
-| Get Template | 0.15ms | 0.05ms | 67% faster |
-| Apply Augmentation | 0.12ms | 0.03ms | 75% faster |
-| Variable Substitution | 0.10ms | 0.03ms | 70% faster |
-| Create Template | N/A | 8ms | Now possible |
-| Update Template | Redeploy | 5ms | Instant |
+| Operation             | Legacy System | New System | Improvement  |
+| --------------------- | ------------- | ---------- | ------------ |
+| Get Template          | 0.15ms        | 0.05ms     | 67% faster   |
+| Apply Augmentation    | 0.12ms        | 0.03ms     | 75% faster   |
+| Variable Substitution | 0.10ms        | 0.03ms     | 70% faster   |
+| Create Template       | N/A           | 8ms        | Now possible |
+| Update Template       | Redeploy      | 5ms        | Instant      |
 
 ## Best Practices After Migration
 
@@ -295,6 +317,7 @@ tm.enable_cache(ttl=60)  # 60 second cache
 ## Support and Troubleshooting
 
 ### Logs to Check
+
 ```bash
 # Template operations
 tail -f logs/template_manager.log
@@ -307,6 +330,7 @@ tail -f logs/performance.log
 ```
 
 ### Debug Mode
+
 ```python
 # Enable detailed logging
 import logging
@@ -314,6 +338,7 @@ logging.getLogger('giljo_mcp.template_manager').setLevel(logging.DEBUG)
 ```
 
 ### Getting Help
+
 1. Check existing templates: `mcp.call_tool("list_agent_templates")`
 2. Verify migration: `python -m giljo_mcp verify-templates`
 3. Review test suite: `pytest tests/test_template_system.py -v`
@@ -321,21 +346,25 @@ logging.getLogger('giljo_mcp.template_manager').setLevel(logging.DEBUG)
 ## Timeline Recommendation
 
 ### Week 1
+
 - Run automatic migration
 - Test with adapter layer
 - Monitor performance
 
 ### Week 2
+
 - Update imports to use new system directly
 - Remove adapter where possible
 - Collect metrics
 
 ### Week 3
+
 - Deprecate old files
 - Full production deployment
 - Archive legacy code
 
 ### Week 4
+
 - Performance optimization
 - Create custom templates
 - Document lessons learned

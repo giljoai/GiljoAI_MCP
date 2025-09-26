@@ -24,7 +24,7 @@ class FinalRetestSuite:
             "project": "5.1.c Dashboard Sub-Agent Visualization - FINAL RETEST",
             "tests": [],
             "performance_metrics": {},
-            "all_passed": True
+            "all_passed": True,
         }
 
     async def test_health_check(self):
@@ -70,7 +70,9 @@ class FinalRetestSuite:
                         response.json()
                         endpoint_results.append({"endpoint": endpoint, "status": "PASSED"})
                     else:
-                        endpoint_results.append({"endpoint": endpoint, "status": "WARNING", "code": response.status_code})
+                        endpoint_results.append(
+                            {"endpoint": endpoint, "status": "WARNING", "code": response.status_code}
+                        )
                         if response.status_code >= 500:
                             all_good = False
                 except Exception as e:
@@ -80,11 +82,9 @@ class FinalRetestSuite:
         if not all_good:
             self.test_results["all_passed"] = False
 
-        self.test_results["tests"].append({
-            "test": "API Endpoints",
-            "status": "PASSED" if all_good else "FAILED",
-            "endpoints": endpoint_results
-        })
+        self.test_results["tests"].append(
+            {"test": "API Endpoints", "status": "PASSED" if all_good else "FAILED", "endpoints": endpoint_results}
+        )
 
     async def test_websocket_realtime(self):
         """Test WebSocket real-time updates"""
@@ -121,13 +121,10 @@ class FinalRetestSuite:
                     "category": "testing",
                     "description": "Integration test template",
                     "template": "Test mission: {{project_name}}",
-                    "variables": {"project_name": "Test Project"}
+                    "variables": {"project_name": "Test Project"},
                 }
 
-                create_response = await client.post(
-                    f"{self.api_base}/api/v1/templates/",
-                    json=new_template
-                )
+                create_response = await client.post(f"{self.api_base}/api/v1/templates/", json=new_template)
 
                 if create_response.status_code in [200, 201]:
                     template_id = create_response.json().get("id")
@@ -140,8 +137,7 @@ class FinalRetestSuite:
                     # Test UPDATE
                     update_data = {"description": "Updated test template"}
                     update_response = await client.put(
-                        f"{self.api_base}/api/v1/templates/{template_id}",
-                        json=update_data
+                        f"{self.api_base}/api/v1/templates/{template_id}", json=update_data
                     )
                     if update_response.status_code == 200:
                         pass
@@ -151,25 +147,25 @@ class FinalRetestSuite:
                     if delete_response.status_code in [200, 204]:
                         pass
 
-                    self.test_results["tests"].append({
-                        "test": "Template CRUD",
-                        "status": "PASSED",
-                        "operations": ["CREATE", "READ", "UPDATE", "DELETE"]
-                    })
+                    self.test_results["tests"].append(
+                        {
+                            "test": "Template CRUD",
+                            "status": "PASSED",
+                            "operations": ["CREATE", "READ", "UPDATE", "DELETE"],
+                        }
+                    )
                 else:
-                    self.test_results["tests"].append({
-                        "test": "Template CRUD",
-                        "status": "FAILED",
-                        "error": f"CREATE returned {create_response.status_code}"
-                    })
+                    self.test_results["tests"].append(
+                        {
+                            "test": "Template CRUD",
+                            "status": "FAILED",
+                            "error": f"CREATE returned {create_response.status_code}",
+                        }
+                    )
                     self.test_results["all_passed"] = False
 
             except Exception as e:
-                self.test_results["tests"].append({
-                    "test": "Template CRUD",
-                    "status": "FAILED",
-                    "error": str(e)
-                })
+                self.test_results["tests"].append({"test": "Template CRUD", "status": "FAILED", "error": str(e)})
                 self.test_results["all_passed"] = False
 
     async def test_performance_metrics(self):
@@ -219,15 +215,12 @@ class FinalRetestSuite:
 
         # This would require browser automation for full testing
 
-        self.test_results["tests"].append({
-            "test": "Responsive Design",
-            "status": "MANUAL_REQUIRED",
-            "breakpoints": [320, 768, 1024, 1920]
-        })
+        self.test_results["tests"].append(
+            {"test": "Responsive Design", "status": "MANUAL_REQUIRED", "breakpoints": [320, 768, 1024, 1920]}
+        )
 
     async def test_accessibility(self):
         """Validate accessibility"""
-
 
         async with httpx.AsyncClient() as client:
             try:
@@ -247,11 +240,9 @@ class FinalRetestSuite:
                     else:
                         pass
 
-                self.test_results["tests"].append({
-                    "test": "Accessibility",
-                    "status": "PARTIAL",
-                    "automated_checks": checks
-                })
+                self.test_results["tests"].append(
+                    {"test": "Accessibility", "status": "PARTIAL", "automated_checks": checks}
+                )
             except Exception:
                 pass
 
@@ -262,7 +253,6 @@ class FinalRetestSuite:
         sum(1 for t in self.test_results["tests"] if t.get("status") == "PASSED")
         sum(1 for t in self.test_results["tests"] if t.get("status") == "FAILED")
         sum(1 for t in self.test_results["tests"] if t.get("status") in ["WARNING", "PARTIAL", "MANUAL_REQUIRED"])
-
 
         if self.test_results["all_passed"]:
             pass
@@ -293,6 +283,7 @@ class FinalRetestSuite:
 
         return await self.generate_final_report()
 
+
 async def main():
     tester = FinalRetestSuite()
     all_passed = await tester.run_all_tests()
@@ -300,6 +291,7 @@ async def main():
     if all_passed:
         return 0
     return 1
+
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())

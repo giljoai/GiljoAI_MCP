@@ -68,7 +68,7 @@ async def create_task(task: TaskCreate):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/", response_model=list[TaskResponse])
@@ -123,12 +123,12 @@ async def list_tasks(
         return tasks  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/summary")
 async def get_task_summary(
-    product_id: Optional[str] = Query(None, description="Filter by product ID")
+    product_id: Optional[str] = Query(None, description="Filter by product ID"),
 ) -> dict[str, Any]:
     """Get task summary grouped by product"""
     try:
@@ -137,9 +137,9 @@ async def get_task_summary(
         result = await get_product_task_summary_for_api(product_id=product_id)
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get task summary"))  # noqa: TRY301
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get task summary"))
 
         return result  # noqa: TRY300
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))

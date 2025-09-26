@@ -20,6 +20,7 @@
 ```
 
 ### Status Values:
+
 - `IN_PROGRESS` - Currently working
 - `COMPLETE` - Mission accomplished
 - `BLOCKED` - Need help
@@ -58,32 +59,40 @@ echo '{"timestamp":"2025-09-26T10:30:00","agent_id":"SVC-01","status":"IN_PROGRE
 ## 🎯 PHASE 2 AGENT MISSIONS
 
 ### DOC-01: Docker Installer Agent
+
 **Files to create:**
+
 - `installer/dependencies/docker.py`
 - `installer/docker/Dockerfile.app`
 - `installer/docker/docker-compose.yml`
 
 **Requirements:**
+
 - Follow PostgreSQL/Redis installer pattern
 - Docker Desktop download automation
 - Container health checks
 - docker-compose verification
 
-### SVC-01: Service Manager Agent  
+### SVC-01: Service Manager Agent
+
 **Files to create:**
+
 - `installer/services/service_manager.py`
 - `installer/services/windows/giljo_service.py`
 - `installer/services/macos/com.giljo.mcp.plist`
 - `installer/services/linux/giljo-mcp.service`
 
 **Requirements:**
+
 - Cross-platform service control
 - Auto-start on boot
 - Status monitoring
 - Clean stop/start/restart
 
 ### CFG-01: Configuration Manager Agent
+
 **Files to create:**
+
 - `installer/config/config_manager.py`
 - `installer/config/templates/.env.local`
 - `installer/config/templates/.env.network`
@@ -91,13 +100,16 @@ echo '{"timestamp":"2025-09-26T10:30:00","agent_id":"SVC-01","status":"IN_PROGRE
 - `installer/config/templates/.env.containerized`
 
 **Requirements:**
+
 - Profile-based config generation
 - Secure credential handling
 - Migration from existing configs
 - Validation and backup
 
 ### TST-01: Testing Agent
+
 **Files to create:**
+
 ```
 tests/installer/
 ├── unit/
@@ -112,23 +124,28 @@ tests/installer/
 ```
 
 **Requirements:**
+
 - 90%+ code coverage
 - Mock external dependencies
 - Cross-platform tests
 - Fast execution (<30s)
 
 ### INT-01: Integration Agent
+
 **Files to update:**
+
 - `bootstrap.py` - Add all features
 - `setup.py` - CLI integration
 - `setup_gui.py` - Final GUI polish
 
 **Documentation to create:**
+
 - `docs/installer_user_guide.md`
 - `docs/installer_developer_guide.md`
 - `docs/installer_troubleshooting.md`
 
 **Requirements:**
+
 - Merge all components
 - Resolve conflicts
 - End-to-end testing

@@ -30,6 +30,7 @@ try:
     from rich.prompt import Confirm, IntPrompt, Prompt
     from rich.syntax import Syntax
     from rich.table import Table
+
     RICH_AVAILABLE = True
     console = Console()
 except ImportError:
@@ -42,6 +43,7 @@ except ImportError:
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from rich.prompt import Confirm, IntPrompt, Prompt
     from rich.table import Table
+
     console = Console()
 
 # Import check_ports functionality
@@ -61,6 +63,7 @@ try:
     from installer.dependencies.redis import RedisInstaller
     from installer.dependencies.docker import DockerInstaller
     from installer.core.health import HealthChecker
+
     PHASE2_AVAILABLE = True
 except ImportError as e:
     print(f"[yellow]Warning: Some Phase 2 components not available: {e}[/yellow]")
@@ -82,6 +85,7 @@ class GiljoSetup:
         try:
             # Try to use enhanced platform detection
             from setup_platform import PlatformDetector
+
             detector = PlatformDetector()
             return detector.get_full_info()
         except ImportError:
@@ -93,7 +97,7 @@ class GiljoSetup:
                 "arch": platform.machine(),
                 "is_windows": platform.system() == "Windows",
                 "is_mac": platform.system() == "Darwin",
-                "is_linux": platform.system() == "Linux"
+                "is_linux": platform.system() == "Linux",
             }
 
     def run(self):
@@ -157,7 +161,9 @@ class GiljoSetup:
         platform_table.add_column("Property", style="cyan")
         platform_table.add_column("Value", style="green")
 
-        platform_table.add_row("Operating System", f"{self.platform_info.get('system', 'Unknown')} {self.platform_info.get('release', '')}")
+        platform_table.add_row(
+            "Operating System", f"{self.platform_info.get('system', 'Unknown')} {self.platform_info.get('release', '')}"
+        )
         # Handle both dict and string format for python version
         python_version = self.platform_info["python"]
         if isinstance(python_version, dict):
@@ -177,7 +183,7 @@ class GiljoSetup:
             ".env": self.root_path / ".env",
             "config.yaml": self.root_path / "config.yaml",
             "data directory": self.root_path / "data",
-            "logs directory": self.root_path / "logs"
+            "logs directory": self.root_path / "logs",
         }
 
         existing = []
@@ -195,7 +201,7 @@ class GiljoSetup:
     def _check_ake_mcp(self, interactive=True):
         """Check for legacy MCP configurations and offer migration"""
         console.print("\n[bold]Checking for legacy MCP configurations...[/bold]")
-        
+
         # Check if legacy MCP server is referenced in .mcp.json
         mcp_config = self.root_path / ".mcp.json"
         if mcp_config.exists():
@@ -218,8 +224,6 @@ class GiljoSetup:
         """Check for any legacy installation"""
         console.print("\n[bold]Checking for existing configuration...[/bold]")
 
-
-
     def _check_ports(self):
         """Check port availability"""
         console.print("\n[bold]Checking port availability...[/bold]")
@@ -227,12 +231,7 @@ class GiljoSetup:
         conflicts = []
         available = []
 
-        giljo_ports = {
-            "Dashboard": 6000,
-            "MCP Server": 6001,
-            "REST API": 6002,
-            "WebSocket": 6003
-        }
+        giljo_ports = {"Dashboard": 6000, "MCP Server": 6001, "REST API": 6002, "WebSocket": 6003}
 
         for service, port in giljo_ports.items():
             if check_port(port):
@@ -245,10 +244,7 @@ class GiljoSetup:
         if conflicts:
             console.print("\n[yellow]Some ports are in use. Let's configure alternatives.[/yellow]")
             for service, default_port in conflicts:
-                new_port = IntPrompt.ask(
-                    f"Enter alternative port for {service}",
-                    default=default_port + 100
-                )
+                new_port = IntPrompt.ask(f"Enter alternative port for {service}", default=default_port + 100)
                 self.env_vars[f'GILJO_MCP_{service.upper().replace(" ", "_")}_PORT'] = str(new_port)
         else:
             # Use default ports
@@ -264,11 +260,7 @@ class GiljoSetup:
         console.print("  1. [cyan]SQLite[/cyan] - Simple, no setup required (recommended for development)")
         console.print("  2. [cyan]PostgreSQL[/cyan] - Scalable, production-ready (requires PostgreSQL server)")
 
-        db_choice = Prompt.ask(
-            "\nSelect database type",
-            choices=["sqlite", "postgresql"],
-            default="sqlite"
-        )
+        db_choice = Prompt.ask("\nSelect database type", choices=["sqlite", "postgresql"], default="sqlite")
 
         if db_choice == "sqlite":
             self._configure_sqlite()
@@ -334,11 +326,12 @@ class GiljoSetup:
         """Test PostgreSQL connection"""
         try:
             import psycopg2
+
             conn_params = {
                 "host": self.env_vars["DB_HOST"],
                 "port": int(self.env_vars["DB_PORT"]),
                 "user": self.env_vars["DB_USER"],
-                "password": self.env_vars["DB_PASSWORD"]
+                "password": self.env_vars["DB_PASSWORD"],
             }
 
             # Try to connect to postgres database first
@@ -347,10 +340,7 @@ class GiljoSetup:
             cur = conn.cursor()
 
             # Check if our database exists
-            cur.execute(
-                "SELECT 1 FROM pg_database WHERE datname = %s",
-                (self.env_vars["DB_NAME"],)
-            )
+            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (self.env_vars["DB_NAME"],))
 
             if not cur.fetchone():
                 if Confirm.ask(f"\nDatabase '{self.env_vars['DB_NAME']}' doesn't exist. Create it?"):
@@ -376,26 +366,18 @@ class GiljoSetup:
         mode_choices = {
             "local": "Local development (localhost only)",
             "lan": "LAN accessible (network access with API keys)",
-            "wan": "WAN accessible (internet access with TLS/OAuth)"
+            "wan": "WAN accessible (internet access with TLS/OAuth)",
         }
 
         console.print("\nDeployment modes:")
         for key, desc in mode_choices.items():
             console.print(f"  • [cyan]{key}[/cyan]: {desc}")
 
-        mode = Prompt.ask(
-            "\nSelect deployment mode",
-            choices=list(mode_choices.keys()),
-            default="local"
-        )
+        mode = Prompt.ask("\nSelect deployment mode", choices=list(mode_choices.keys()), default="local")
         self.env_vars["GILJO_MCP_MODE"] = mode
 
         # Logging configuration
-        log_level = Prompt.ask(
-            "Log level",
-            choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-            default="INFO"
-        )
+        log_level = Prompt.ask("Log level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="INFO")
         self.env_vars["LOG_LEVEL"] = log_level
 
         # Development settings
@@ -470,7 +452,7 @@ class GiljoSetup:
             "tests",
             "scripts",
             "docker",
-            "migrations"
+            "migrations",
         ]
 
         for dir_name in directories:
@@ -485,6 +467,7 @@ class GiljoSetup:
         if not self.platform_info["is_windows"]:
             # Unix-like systems: restrict access to data and logs
             import stat
+
             (self.root_path / "data").chmod(stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP)
             (self.root_path / "logs").chmod(stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP)
 
@@ -505,6 +488,7 @@ class GiljoSetup:
         # Apply settings from setup
         if self.env_vars.get("GILJO_MCP_MODE"):
             from src.giljo_mcp.config_manager import DeploymentMode
+
             config.server.mode = DeploymentMode(self.env_vars["GILJO_MCP_MODE"])
 
         # Database configuration
@@ -564,8 +548,11 @@ class GiljoSetup:
                 env_content.append(line)
 
         # Add any additional env vars not in template
-        template_keys = {line.split("=")[0].strip() for line in template_content.split("\n")
-                          if "=" in line and not line.strip().startswith("#")}
+        template_keys = {
+            line.split("=")[0].strip()
+            for line in template_content.split("\n")
+            if "=" in line and not line.strip().startswith("#")
+        }
         for key, value in self.env_vars.items():
             if key not in template_keys:
                 env_content.append(f"{key}={value}")
@@ -606,8 +593,9 @@ class GiljoSetup:
                 # Install main requirements
                 result = subprocess.run(
                     [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-                    check=False, capture_output=True,
-                    text=True
+                    check=False,
+                    capture_output=True,
+                    text=True,
                 )
 
                 if result.returncode == 0:
@@ -620,15 +608,14 @@ class GiljoSetup:
                 if self.env_vars.get("DB_TYPE") == "postgresql":
                     progress.update(task, description="Installing PostgreSQL adapter...")
                     subprocess.run(
-                        [sys.executable, "-m", "pip", "install", "psycopg2-binary"],
-                        check=False, capture_output=True
+                        [sys.executable, "-m", "pip", "install", "psycopg2-binary"], check=False, capture_output=True
                     )
                     console.print("[green]✓ PostgreSQL adapter installed[/green]")
 
     def _create_desktop_launcher(self):
         """Create desktop launcher/shortcut for the current OS"""
         console.print("\n[bold]Creating Desktop Launcher...[/bold]")
-        
+
         try:
             if self.platform_info.get("is_windows"):
                 self._create_windows_shortcut()
@@ -643,7 +630,7 @@ class GiljoSetup:
         except Exception as e:
             console.print(f"[yellow]Could not create desktop launcher: {e}[/yellow]")
             return False
-    
+
     def _create_windows_shortcut(self):
         """Create Windows desktop shortcut and Start Menu entry"""
         try:
@@ -653,24 +640,26 @@ class GiljoSetup:
             # Fall back to creating just a batch file
             self._create_windows_batch_launcher()
             return
-        
+
         # Get desktop path
         desktop = Path.home() / "Desktop"
         start_menu = Path.home() / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs"
-        
+
         # Create launcher batch file in installation directory
         launcher_bat = self.root_path / "GiljoAI_MCP.bat"
         with open(launcher_bat, "w") as f:
-            f.write(f'''@echo off
+            f.write(
+                f"""@echo off
 cd /d "{self.root_path}"
 start "GiljoAI Dashboard" cmd /c "python -m giljo_mcp.server --dashboard"
 start http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}
-''')
-        
+"""
+            )
+
         # Create shortcuts
         pythoncom.CoInitialize()
         shell = win32com.client.Dispatch("WScript.Shell")
-        
+
         for location, path in [("Desktop", desktop), ("Start Menu", start_menu)]:
             shortcut_path = path / "GiljoAI MCP.lnk"
             shortcut = shell.CreateShortCut(str(shortcut_path))
@@ -680,15 +669,16 @@ start http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}
             shortcut.Description = "GiljoAI MCP Coding Orchestrator"
             shortcut.save()
             console.print(f"  [green]✓[/green] Created {location} shortcut")
-    
+
     def _create_windows_batch_launcher(self):
         """Create simple batch file launcher when pywin32 is not available"""
         # Create launcher batch file on Desktop
         desktop = Path.home() / "Desktop"
         launcher_bat = desktop / "GiljoAI_MCP.bat"
-        
+
         with open(launcher_bat, "w") as f:
-            f.write(f'''@echo off
+            f.write(
+                f"""@echo off
 echo ============================================================
 echo GiljoAI MCP Coding Orchestrator
 echo ============================================================
@@ -701,37 +691,40 @@ start http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}
 echo.
 echo Server is running. Close this window to stop.
 pause
-''')
-        
+"""
+            )
+
         console.print(f"  [green]✓[/green] Created desktop launcher: {launcher_bat}")
         console.print("  [yellow]Note: Install pywin32 for full shortcut support[/yellow]")
         console.print("  [dim]pip install pywin32[/dim]")
-    
+
     def _create_mac_app(self):
         """Create macOS .app bundle in Applications"""
         import plistlib
-        
+
         app_name = "GiljoAI MCP"
         app_path = Path("/Applications") / f"{app_name}.app"
         contents_path = app_path / "Contents"
         macos_path = contents_path / "MacOS"
         resources_path = contents_path / "Resources"
-        
+
         # Create directory structure
         macos_path.mkdir(parents=True, exist_ok=True)
         resources_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Create launcher script
         launcher_script = macos_path / "launcher"
         with open(launcher_script, "w") as f:
-            f.write(f'''#!/bin/bash
+            f.write(
+                f"""#!/bin/bash
 cd "{self.root_path}"
 python3 -m giljo_mcp.server --dashboard &
 sleep 2
 open "http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}"
-''')
+"""
+            )
         launcher_script.chmod(0o755)
-        
+
         # Create Info.plist
         info_plist = {
             "CFBundleName": app_name,
@@ -740,41 +733,45 @@ open "http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}"
             "CFBundleVersion": "1.0.0",
             "CFBundleExecutable": "launcher",
             "CFBundleIconFile": "icon",
-            "LSUIElement": False
+            "LSUIElement": False,
         }
-        
+
         with open(contents_path / "Info.plist", "wb") as f:
             plistlib.dump(info_plist, f)
-        
+
         # Copy icon if available
         icon_source = self.root_path / "frontend" / "public" / "icon.icns"
         if icon_source.exists():
             import shutil
+
             shutil.copy2(icon_source, resources_path / "icon.icns")
-        
+
         console.print(f"  [green]✓[/green] Created macOS app bundle in Applications")
-    
+
     def _create_linux_desktop_entry(self):
         """Create Linux .desktop file for application menu"""
         desktop_dir = Path.home() / ".local" / "share" / "applications"
         desktop_dir.mkdir(parents=True, exist_ok=True)
-        
+
         desktop_file = desktop_dir / "giljoai-mcp.desktop"
-        
+
         # Create launcher script
         launcher_script = self.root_path / "launch_giljo.sh"
         with open(launcher_script, "w") as f:
-            f.write(f'''#!/bin/bash
+            f.write(
+                f"""#!/bin/bash
 cd "{self.root_path}"
 python3 -m giljo_mcp.server --dashboard &
 sleep 2
 xdg-open "http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}"
-''')
+"""
+            )
         launcher_script.chmod(0o755)
-        
+
         # Create .desktop entry
         with open(desktop_file, "w") as f:
-            f.write(f'''[Desktop Entry]
+            f.write(
+                f"""[Desktop Entry]
 Name=GiljoAI MCP
 Comment=GiljoAI MCP Coding Orchestrator
 Exec={launcher_script}
@@ -782,26 +779,28 @@ Icon={self.root_path}/frontend/public/icon.png
 Terminal=false
 Type=Application
 Categories=Development;IDE;
-''')
-        
+"""
+            )
+
         # Make it executable
         desktop_file.chmod(0o755)
-        
+
         # Also create desktop shortcut if desktop exists
         desktop = Path.home() / "Desktop"
         if desktop.exists():
             import shutil
+
             shutil.copy2(desktop_file, desktop / "GiljoAI MCP.desktop")
             (desktop / "GiljoAI MCP.desktop").chmod(0o755)
             console.print("  [green]✓[/green] Created desktop shortcut")
-        
+
         console.print("  [green]✓[/green] Created application menu entry")
 
     def _show_summary(self):
         """Show setup summary"""
-        console.print("\n" + "="*60)
+        console.print("\n" + "=" * 60)
         console.print("[bold green]Setup Complete![/bold green]")
-        console.print("="*60)
+        console.print("=" * 60)
 
         # Configuration summary
         summary_table = Table(title="Configuration Summary", show_header=False)
@@ -810,7 +809,9 @@ Categories=Development;IDE;
 
         summary_table.add_row("Database Type", self.env_vars.get("DB_TYPE", "sqlite"))
         summary_table.add_row("Deployment Mode", self.env_vars.get("GILJO_MCP_MODE", "local"))
-        summary_table.add_row("Dashboard URL", f"http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}")
+        summary_table.add_row(
+            "Dashboard URL", f"http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}"
+        )
         summary_table.add_row("API URL", f"http://localhost:{self.env_vars.get('GILJO_MCP_API_PORT', '6002')}")
         summary_table.add_row("MCP Server", f"localhost:{self.env_vars.get('GILJO_MCP_SERVER_PORT', '6001')}")
         summary_table.add_row("WebSocket", f"ws://localhost:{self.env_vars.get('GILJO_MCP_WEBSOCKET_PORT', '6003')}")
@@ -838,6 +839,7 @@ Categories=Development;IDE;
 # These functions delegate to the GiljoSetup class methods
 # ==============================================================================
 
+
 def detect_platform() -> dict[str, Any]:
     """Detect platform information"""
     # Direct platform detection without class instantiation for test compatibility
@@ -848,12 +850,14 @@ def detect_platform() -> dict[str, Any]:
         "is_windows": current_platform == "win32",
         "is_unix": current_platform != "win32",
         "python_version": platform.python_version(),
-        "architecture": platform.machine()
+        "architecture": platform.machine(),
     }
+
 
 def normalize_path(path: str) -> str:
     """Normalize path for the current platform"""
     return str(Path(path).resolve())
+
 
 def create_directory_structure(base_path: Optional[str] = None) -> dict[str, Path]:
     """Create directory structure and return paths"""
@@ -864,17 +868,30 @@ def create_directory_structure(base_path: Optional[str] = None) -> dict[str, Pat
 
     # Return created directories
     dirs = {}
-    for dir_name in ["data", "logs", "temp", "backups", "src/giljo_mcp", "api",
-                     "frontend/src", "frontend/public", "tests", "scripts",
-                     "docker", "migrations"]:
+    for dir_name in [
+        "data",
+        "logs",
+        "temp",
+        "backups",
+        "src/giljo_mcp",
+        "api",
+        "frontend/src",
+        "frontend/public",
+        "tests",
+        "scripts",
+        "docker",
+        "migrations",
+    ]:
         dir_path = setup.root_path / dir_name
         dirs[dir_name.replace("/", "_")] = dir_path
     return dirs
+
 
 def validate_database_type(db_type: str) -> bool:
     """Validate database type selection"""
     # Accept database names or menu option numbers
     return db_type.lower() in ["sqlite", "postgresql", "postgres", "1", "2"]
+
 
 def build_database_url(db_type: str, **kwargs) -> str:
     """Build database connection URL"""
@@ -895,6 +912,7 @@ def build_database_url(db_type: str, **kwargs) -> str:
         return url
     raise ValueError(f"Unsupported database type: {db_type}")
 
+
 def parse_env_template(template_path: Optional[str] = None) -> dict[str, str]:
     """Parse .env.example template"""
     if not template_path:
@@ -911,6 +929,7 @@ def parse_env_template(template_path: Optional[str] = None) -> dict[str, str]:
                     key, value = line.split("=", 1)
                     env_vars[key.strip()] = value.strip()
     return env_vars
+
 
 def generate_env_file(env_path: Optional[str] = None, env_vars: Optional[dict[str, str]] = None) -> Path:
     """Generate .env file from variables
@@ -938,42 +957,34 @@ def generate_env_file(env_path: Optional[str] = None, env_vars: Optional[dict[st
     setup._generate_env_file()
     return output_path
 
+
 def check_port_availability(port: int, host: str = "127.0.0.1") -> bool:
     """Check if a port is available"""
     return not check_port(port, host)
 
+
 def detect_port_conflicts() -> dict[str, bool]:
     """Detect port conflicts for GiljoAI services"""
     conflicts = {}
-    giljo_ports = {
-        "dashboard": 6000,
-        "mcp_server": 6001,
-        "api": 6002,
-        "websocket": 6003
-    }
+    giljo_ports = {"dashboard": 6000, "mcp_server": 6001, "api": 6002, "websocket": 6003}
 
     for service, port in giljo_ports.items():
         conflicts[service] = check_port(port)
 
     return conflicts
 
+
 def validate_port_range(port: int) -> bool:
     """Validate port is in valid range"""
     return 1024 <= port <= 65535
 
+
 def detect_legacy_installation() -> dict[str, Any]:
     """Detect any legacy installation"""
-    legacy_info = {
-        "found": False,
-        "services": {},
-        "config_path": None
-    }
+    legacy_info = {"found": False, "services": {}, "config_path": None}
 
     # Check for existing config file
-    legacy_paths = [
-        Path.home() / ".giljo-mcp" / "config.yaml",
-        Path("./config.yaml")
-    ]
+    legacy_paths = [Path.home() / ".giljo-mcp" / "config.yaml", Path("./config.yaml")]
 
     for path in legacy_paths:
         if path.exists():
@@ -982,6 +993,7 @@ def detect_legacy_installation() -> dict[str, Any]:
             break
 
     return legacy_info
+
 
 def validate_path(path: str) -> bool:
     """Validate file path"""
@@ -996,9 +1008,11 @@ def validate_path(path: str) -> bool:
     except:
         return False
 
+
 def validate_yes_no(response: str) -> bool:
     """Validate yes/no response"""
     return response.lower() in ["y", "yes", "n", "no"]
+
 
 def display_error(message: str, details: Optional[str] = None):
     """Display formatted error message"""
@@ -1011,18 +1025,22 @@ def display_error(message: str, details: Optional[str] = None):
         if details:
             print(f"  {details}")
 
+
 # Additional functions for test compatibility
 def generate_database_url(db_type: str, **kwargs) -> str:
     """Generate database URL (alias for build_database_url)"""
     return build_database_url(db_type, **kwargs)
 
+
 def is_port_available(port: int, host: str = "127.0.0.1") -> bool:
     """Check if port is available (alias)"""
     return check_port_availability(port, host)
 
+
 def validate_port(port: int) -> bool:
     """Validate port number (alias)"""
     return validate_port_range(port)
+
 
 def backup_existing_env(env_path: Optional[str] = None) -> Optional[Path]:
     """Backup existing .env file"""
@@ -1037,20 +1055,19 @@ def backup_existing_env(env_path: Optional[str] = None) -> Optional[Path]:
         return backup_path
     return None
 
+
 # Alias for compatibility
 SetupManager = GiljoSetup
+
 
 def main():
     """Main entry point"""
     import argparse
 
     parser = argparse.ArgumentParser(description="GiljoAI MCP Setup")
-    parser.add_argument("--non-interactive", action="store_true",
-                       help="Run in non-interactive mode with defaults")
-    parser.add_argument("--check-only", action="store_true",
-                       help="Only check environment without making changes")
-    parser.add_argument("--gui", action="store_true",
-                       help="Run setup in GUI mode (experimental)")
+    parser.add_argument("--non-interactive", action="store_true", help="Run in non-interactive mode with defaults")
+    parser.add_argument("--check-only", action="store_true", help="Only check environment without making changes")
+    parser.add_argument("--gui", action="store_true", help="Run setup in GUI mode (experimental)")
     args = parser.parse_args()
 
     try:
@@ -1058,6 +1075,7 @@ def main():
         if args.gui:
             try:
                 from setup_gui import GiljoSetupGUI
+
                 gui_setup = GiljoSetupGUI()
                 gui_setup.run()
                 sys.exit(0)
@@ -1089,7 +1107,7 @@ def main():
                 "GILJO_MCP_WEBSOCKET_PORT": "6003",
                 "LOG_LEVEL": "INFO",
                 "DEBUG": "true",
-                "HOT_RELOAD": "true"
+                "HOT_RELOAD": "true",
             }
             setup._create_directories()
             setup._generate_env_file()

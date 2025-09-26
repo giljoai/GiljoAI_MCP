@@ -4,25 +4,11 @@
       <v-icon :icon="'mdi-timeline-text'" class="mr-2" color="primary" />
       <span>Agent Timeline</span>
       <v-spacer />
-      <v-chip
-        size="small"
-        :color="isLive ? 'success' : 'grey'"
-        variant="flat"
-      >
-        <v-icon
-          size="x-small"
-          :icon="isLive ? 'mdi-circle' : 'mdi-circle-outline'"
-          class="mr-1"
-        />
+      <v-chip size="small" :color="isLive ? 'success' : 'grey'" variant="flat">
+        <v-icon size="x-small" :icon="isLive ? 'mdi-circle' : 'mdi-circle-outline'" class="mr-1" />
         {{ isLive ? 'Live' : 'Paused' }}
       </v-chip>
-      <v-btn
-        icon
-        size="small"
-        variant="text"
-        @click="toggleAutoScroll"
-        class="ml-2"
-      >
+      <v-btn icon size="small" variant="text" @click="toggleAutoScroll" class="ml-2">
         <v-icon :icon="autoScroll ? 'mdi-arrow-collapse-down' : 'mdi-arrow-expand-down'" />
       </v-btn>
     </v-card-title>
@@ -56,26 +42,16 @@
             @click="expandEvent(event)"
           >
             <v-card-title class="text-subtitle-2 d-flex align-center">
-              <v-icon
-                :icon="getAgentIcon(event.agent_name)"
-                size="small"
-                class="mr-2"
-              />
+              <v-icon :icon="getAgentIcon(event.agent_name)" size="small" class="mr-2" />
               {{ event.agent_name }}
               <v-spacer />
-              <v-chip
-                size="x-small"
-                :color="getStatusColor(event.status)"
-                variant="flat"
-              >
+              <v-chip size="x-small" :color="getStatusColor(event.status)" variant="flat">
                 {{ event.status }}
               </v-chip>
             </v-card-title>
 
             <v-card-text v-if="event.type === 'spawn'" class="pt-1">
-              <div class="text-caption">
-                <strong>Parent:</strong> {{ event.parent_agent }}
-              </div>
+              <div class="text-caption"><strong>Parent:</strong> {{ event.parent_agent }}</div>
               <div class="text-caption mission-preview" v-if="event.mission">
                 <strong>Mission:</strong> {{ truncateMission(event.mission) }}
               </div>
@@ -112,9 +88,7 @@
                       height="20"
                       rounded
                     >
-                      <template v-slot:default>
-                        {{ event.context_usage }}%
-                      </template>
+                      <template v-slot:default> {{ event.context_usage }}% </template>
                     </v-progress-linear>
                   </div>
                 </v-card-text>
@@ -123,11 +97,7 @@
           </v-card>
         </v-timeline-item>
 
-        <v-timeline-item
-          v-if="timelineEvents.length === 0"
-          dot-color="grey"
-          size="small"
-        >
+        <v-timeline-item v-if="timelineEvents.length === 0" dot-color="grey" size="small">
           <v-card variant="text">
             <v-card-text class="text-center text-grey">
               <v-icon icon="mdi-timeline-text-outline" size="large" />
@@ -152,16 +122,16 @@ import { formatDistanceToNow, format } from 'date-fns'
 const props = defineProps({
   projectId: {
     type: String,
-    required: true
+    required: true,
   },
   maxEvents: {
     type: Number,
-    default: 50
+    default: 50,
   },
   autoRefresh: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 })
 
 const emit = defineEmits(['event-selected'])
@@ -175,7 +145,7 @@ const loading = ref(false)
 
 const timelineEvents = computed(() => {
   return agentStore.agentTimeline
-    .filter(event => !props.projectId || event.project_id === props.projectId)
+    .filter((event) => !props.projectId || event.project_id === props.projectId)
     .slice(0, props.maxEvents)
 })
 
@@ -185,7 +155,7 @@ const getEventColor = (event) => {
     complete: '#8f97b7',
     error: '#c6298c',
     warning: '#ffc300',
-    info: '#8b5cf6'
+    info: '#8b5cf6',
   }
   return colorMap[event.type] || '#315074'
 }
@@ -203,7 +173,7 @@ const getEventIcon = (event) => {
     complete: 'mdi-check-circle',
     error: 'mdi-alert-circle',
     warning: 'mdi-alert',
-    info: 'mdi-information'
+    info: 'mdi-information',
   }
   return iconMap[event.type] || 'mdi-circle'
 }
@@ -222,7 +192,7 @@ const getStatusColor = (status) => {
     active: 'success',
     pending: 'warning',
     completed: 'grey',
-    error: 'error'
+    error: 'error',
   }
   return statusMap[status] || 'info'
 }

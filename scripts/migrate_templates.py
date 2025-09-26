@@ -9,10 +9,10 @@ import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from src.giljo_mcp.config_manager import load_config
 from src.giljo_mcp.template_adapter import MissionTemplateGenerator
-from uuid import uuid4
 
 
 # Add parent directory to path for imports
@@ -40,7 +40,7 @@ async def migrate_templates():
             port=config.database.pg_port,
             database=config.database.pg_database,
             username=config.database.pg_user,
-            password=config.database.pg_password or "4010"
+            password=config.database.pg_password or "4010",
         )
     else:
         db_url = DatabaseManager.build_sqlite_url(str(config.database.sqlite_path))
@@ -74,15 +74,15 @@ async def migrate_templates():
                         "Tell all agents to acknowledge messages",
                         "Only use handoff upon context limit",
                         "Agents communicate through orchestrator",
-                        "Agents report completion status"
+                        "Agents report completion status",
                     ],
                     "success_criteria": [
                         "Vision document fully read",
                         "All agents spawned with clear missions",
                         "Project goals achieved",
-                        "Handoffs completed successfully"
+                        "Handoffs completed successfully",
                     ],
-                    "is_default": True
+                    "is_default": True,
                 },
                 {
                     "name": "analyzer",
@@ -94,15 +94,15 @@ async def migrate_templates():
                         "Deep analysis of existing system",
                         "Identify patterns and anti-patterns",
                         "Design optimal solutions",
-                        "Document findings clearly"
+                        "Document findings clearly",
                     ],
                     "success_criteria": [
                         "Complete system analysis",
                         "Design documents created",
                         "Integration points identified",
-                        "Risks assessed"
+                        "Risks assessed",
                     ],
-                    "is_default": True
+                    "is_default": True,
                 },
                 {
                     "name": "implementer",
@@ -114,15 +114,15 @@ async def migrate_templates():
                         "Follow design specifications exactly",
                         "Write clean, maintainable code",
                         "Add appropriate error handling",
-                        "Document complex logic"
+                        "Document complex logic",
                     ],
                     "success_criteria": [
                         "All features implemented",
                         "Code follows project standards",
                         "Tests pass",
-                        "No breaking changes"
+                        "No breaking changes",
                     ],
-                    "is_default": True
+                    "is_default": True,
                 },
                 {
                     "name": "tester",
@@ -134,15 +134,15 @@ async def migrate_templates():
                         "Test all functionality thoroughly",
                         "Write comprehensive test cases",
                         "Document test results",
-                        "Verify edge cases"
+                        "Verify edge cases",
                     ],
                     "success_criteria": [
                         "All tests written and passing",
                         "Edge cases covered",
                         "Performance validated",
-                        "Regression tests included"
+                        "Regression tests included",
                     ],
-                    "is_default": True
+                    "is_default": True,
                 },
                 {
                     "name": "reviewer",
@@ -154,15 +154,15 @@ async def migrate_templates():
                         "Review code for quality and standards",
                         "Verify requirements are met",
                         "Check for security issues",
-                        "Ensure documentation is complete"
+                        "Ensure documentation is complete",
                     ],
                     "success_criteria": [
                         "Code review complete",
                         "All issues addressed",
                         "Standards compliance verified",
-                        "Documentation approved"
+                        "Documentation approved",
                     ],
-                    "is_default": True
+                    "is_default": True,
                 },
                 {
                     "name": "documenter",
@@ -202,16 +202,16 @@ SUCCESS CRITERIA:
                         "Use clear, concise language",
                         "Include code examples",
                         "Follow documentation standards",
-                        "Organize content logically"
+                        "Organize content logically",
                     ],
                     "success_criteria": [
                         "All features documented",
                         "Examples provided",
                         "Setup instructions complete",
-                        "Architecture documented"
+                        "Architecture documented",
                     ],
-                    "is_default": True
-                }
+                    "is_default": True,
+                },
             ]
 
             # Migrate each template
@@ -219,10 +219,10 @@ SUCCESS CRITERIA:
             for template_data in templates_to_migrate:
                 # Check if template already exists
                 from sqlalchemy import select
+
                 existing = await session.execute(
                     select(AgentTemplate).where(
-                        AgentTemplate.name == template_data["name"],
-                        AgentTemplate.role == template_data.get("role")
+                        AgentTemplate.name == template_data["name"], AgentTemplate.role == template_data.get("role")
                     )
                 )
 
@@ -232,6 +232,7 @@ SUCCESS CRITERIA:
 
                 # Extract variables from template
                 import re
+
                 variables = list(set(re.findall(r"\{(\w+)\}", template_data["template_content"])))
 
                 # Create new template
@@ -249,7 +250,7 @@ SUCCESS CRITERIA:
                     is_active=True,
                     is_default=template_data.get("is_default", False),
                     created_by="migration_script",
-                    created_at=datetime.now(timezone.utc)
+                    created_at=datetime.now(timezone.utc),
                 )
 
                 session.add(template)

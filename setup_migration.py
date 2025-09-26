@@ -18,6 +18,7 @@ from typing import Any, Optional
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
+
     PSYCOPG2_AVAILABLE = True
 except ImportError:
     PSYCOPG2_AVAILABLE = False
@@ -26,6 +27,7 @@ try:
     import sqlalchemy
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import sessionmaker
+
     SQLALCHEMY_AVAILABLE = True
 except ImportError:
     SQLALCHEMY_AVAILABLE = False
@@ -39,12 +41,7 @@ class AKEMCPMigrator:
         self.ake_config = None
         self.giljo_config = None
         self.migration_log = []
-        self.id_mapping = {
-            "projects": {},
-            "agents": {},
-            "messages": {},
-            "tasks": {}
-        }
+        self.id_mapping = {"projects": {}, "agents": {}, "messages": {}, "tasks": {}}
         self.tenant_key = None
 
     def detect_ake_mcp(self) -> Optional[Path]:
@@ -86,7 +83,7 @@ class AKEMCPMigrator:
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
                         key, value = line.split("=", 1)
-                        config[key.strip()] = value.strip().strip('"\'')
+                        config[key.strip()] = value.strip().strip("\"'")
 
         # Load config.json if exists
         config_json = ake_path / "config.json"
@@ -111,7 +108,7 @@ class AKEMCPMigrator:
             "port": self.ake_config.get("DB_PORT", "5432"),
             "database": self.ake_config.get("DB_NAME", "ake_mcp"),
             "user": self.ake_config.get("DB_USER", "postgres"),
-            "password": self.ake_config.get("DB_PASSWORD", "")
+            "password": self.ake_config.get("DB_PASSWORD", ""),
         }
 
         try:
@@ -128,7 +125,7 @@ class AKEMCPMigrator:
             "metadata": {
                 "source": "AKE-MCP",
                 "export_date": datetime.now().isoformat(),
-                "version": self.ake_config.get("VERSION", "1.0.0")
+                "version": self.ake_config.get("VERSION", "1.0.0"),
             },
             "projects": [],
             "agents": [],
@@ -136,7 +133,7 @@ class AKEMCPMigrator:
             "tasks": [],
             "sessions": [],
             "vision": [],
-            "configurations": []
+            "configurations": [],
         }
 
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -212,7 +209,7 @@ class AKEMCPMigrator:
             "tasks": [],
             "sessions": [],
             "vision": [],
-            "configurations": []
+            "configurations": [],
         }
 
         # Transform projects
@@ -232,10 +229,10 @@ class AKEMCPMigrator:
                 "metadata": {
                     "original_id": old_id,
                     "migrated_from": "AKE-MCP",
-                    "migration_date": datetime.now().isoformat()
+                    "migration_date": datetime.now().isoformat(),
                 },
                 "created_at": project.get("created_at"),
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
             }
             transformed["projects"].append(transformed_project)
 
@@ -258,12 +255,9 @@ class AKEMCPMigrator:
                 "mission": agent.get("mission"),
                 "status": agent.get("status", "migrated"),
                 "context_used": agent.get("context_used", 0),
-                "metadata": {
-                    "original_id": old_id,
-                    "migrated_from": "AKE-MCP"
-                },
+                "metadata": {"original_id": old_id, "migrated_from": "AKE-MCP"},
                 "created_at": agent.get("created_at"),
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
             }
             transformed["agents"].append(transformed_agent)
 
@@ -293,13 +287,10 @@ class AKEMCPMigrator:
                 "content": message.get("content"),
                 "priority": message.get("priority", "normal"),
                 "status": message.get("status", "delivered"),
-                "metadata": {
-                    "original_id": old_id,
-                    "migrated_from": "AKE-MCP"
-                },
+                "metadata": {"original_id": old_id, "migrated_from": "AKE-MCP"},
                 "created_at": message.get("created_at"),
                 "acknowledged_at": message.get("acknowledged_at"),
-                "completed_at": message.get("completed_at")
+                "completed_at": message.get("completed_at"),
             }
             transformed["messages"].append(transformed_message)
 
@@ -326,12 +317,9 @@ class AKEMCPMigrator:
                 "description": task.get("description"),
                 "status": task.get("status", "migrated"),
                 "priority": task.get("priority", "medium"),
-                "metadata": {
-                    "original_id": old_id,
-                    "migrated_from": "AKE-MCP"
-                },
+                "metadata": {"original_id": old_id, "migrated_from": "AKE-MCP"},
                 "created_at": task.get("created_at"),
-                "completed_at": task.get("completed_at")
+                "completed_at": task.get("completed_at"),
             }
             transformed["tasks"].append(transformed_task)
 
@@ -374,7 +362,11 @@ class AKEMCPMigrator:
             from_agent = message.get("from_agent")
             to_agent = message.get("to_agent")
 
-            if from_agent and from_agent not in [a["id"] for a in transformed["agents"]] and from_agent != "orchestrator":
+            if (
+                from_agent
+                and from_agent not in [a["id"] for a in transformed["agents"]]
+                and from_agent != "orchestrator"
+            ):
                 issues.append(f"Message references non-existent from_agent: {from_agent}")
 
             if to_agent and to_agent not in [a["id"] for a in transformed["agents"]] and to_agent != "orchestrator":
@@ -405,33 +397,45 @@ class AKEMCPMigrator:
             with engine.begin() as conn:
                 # Import projects
                 for project in data["projects"]:
-                    conn.execute(text("""
+                    conn.execute(
+                        text(
+                            """
                         INSERT INTO projects (id, tenant_key, name, mission, status,
                                             context_budget, context_used, metadata,
                                             created_at, updated_at)
                         VALUES (:id, :tenant_key, :name, :mission, :status,
                                :context_budget, :context_used, :metadata,
                                :created_at, :updated_at)
-                    """), project)
+                    """
+                        ),
+                        project,
+                    )
 
                 self.log(f"Imported {len(data['projects'])} projects")
 
                 # Import agents
                 for agent in data["agents"]:
-                    conn.execute(text("""
+                    conn.execute(
+                        text(
+                            """
                         INSERT INTO agents (id, tenant_key, project_id, name, role,
                                           mission, status, context_used, metadata,
                                           created_at, updated_at)
                         VALUES (:id, :tenant_key, :project_id, :name, :role,
                                :mission, :status, :context_used, :metadata,
                                :created_at, :updated_at)
-                    """), agent)
+                    """
+                        ),
+                        agent,
+                    )
 
                 self.log(f"Imported {len(data['agents'])} agents")
 
                 # Import messages
                 for message in data["messages"]:
-                    conn.execute(text("""
+                    conn.execute(
+                        text(
+                            """
                         INSERT INTO messages (id, tenant_key, project_id, from_agent,
                                             to_agent, message_type, content, priority,
                                             status, metadata, created_at,
@@ -440,20 +444,28 @@ class AKEMCPMigrator:
                                :to_agent, :message_type, :content, :priority,
                                :status, :metadata, :created_at,
                                :acknowledged_at, :completed_at)
-                    """), message)
+                    """
+                        ),
+                        message,
+                    )
 
                 self.log(f"Imported {len(data['messages'])} messages")
 
                 # Import tasks
                 for task in data["tasks"]:
-                    conn.execute(text("""
+                    conn.execute(
+                        text(
+                            """
                         INSERT INTO tasks (id, tenant_key, project_id, agent_id,
                                          title, description, status, priority,
                                          metadata, created_at, completed_at)
                         VALUES (:id, :tenant_key, :project_id, :agent_id,
                                :title, :description, :status, :priority,
                                :metadata, :created_at, :completed_at)
-                    """), task)
+                    """
+                        ),
+                        task,
+                    )
 
                 self.log(f"Imported {len(data['tasks'])} tasks")
 
@@ -496,9 +508,9 @@ class AKEMCPMigrator:
 
         print(f"Migration log saved to: {log_file}")
 
-    def run_migration(self, ake_path: Optional[Path] = None,
-                     giljo_db_url: Optional[str] = None,
-                     output_path: Optional[Path] = None) -> bool:
+    def run_migration(
+        self, ake_path: Optional[Path] = None, giljo_db_url: Optional[str] = None, output_path: Optional[Path] = None
+    ) -> bool:
         """Run the complete migration process"""
         # Set defaults
         if not output_path:
@@ -591,11 +603,7 @@ def main():
     # Handle dry run
     giljo_db = None if args.dry_run else args.giljo_db
 
-    success = migrator.run_migration(
-        ake_path=args.ake_path,
-        giljo_db_url=giljo_db,
-        output_path=args.output
-    )
+    success = migrator.run_migration(ake_path=args.ake_path, giljo_db_url=giljo_db, output_path=args.output)
 
     sys.exit(0 if success else 1)
 

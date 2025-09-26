@@ -64,7 +64,6 @@ class CIPerformanceAnalyzer:
                 except Exception:
                     pass
 
-
     def analyze_agent_performance(self):
         """Analyze agent scalability performance"""
         agent_tests = ["test_concurrent_agents_report.json", "baseline_report.json"]
@@ -435,7 +434,6 @@ class CIPerformanceAnalyzer:
         # Save JSON analysis
         with open("ci_performance_analysis.json", "w") as f:
             json.dump(self.analysis, f, indent=2, default=str)
-
 
         # Return exit code based on performance
         if self.analysis["overall_score"] < 50 or len(self.analysis["critical_failures"]) > 0:

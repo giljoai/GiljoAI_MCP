@@ -2,15 +2,13 @@
 Mock utilities for installer testing
 """
 
-import os
-import socket
-from unittest.mock import Mock, MagicMock, patch
-from typing import Dict, Any, Optional, List
-from pathlib import Path
+from typing import Any, Dict, List, Optional
+from unittest.mock import Mock, patch
 
 
 class MockProcess:
     """Mock subprocess.Popen result"""
+
     def __init__(self, returncode: int = 0, stdout: str = "", stderr: str = ""):
         self.returncode = returncode
         self.stdout = stdout
@@ -18,8 +16,9 @@ class MockProcess:
         self.args = []
 
     def communicate(self, input=None):
-        return self.stdout.encode() if isinstance(self.stdout, str) else self.stdout, \
-               self.stderr.encode() if isinstance(self.stderr, str) else self.stderr
+        return self.stdout.encode() if isinstance(self.stdout, str) else self.stdout, (
+            self.stderr.encode() if isinstance(self.stderr, str) else self.stderr
+        )
 
     def wait(self):
         return self.returncode
@@ -27,6 +26,7 @@ class MockProcess:
 
 class MockDatabaseConnection:
     """Mock database connection for testing"""
+
     def __init__(self, should_fail: bool = False, version: str = "15.4"):
         self.should_fail = should_fail
         self.version = version
@@ -55,6 +55,7 @@ class MockDatabaseConnection:
 
 class MockRedisConnection:
     """Mock Redis connection for testing"""
+
     def __init__(self, should_fail: bool = False):
         self.should_fail = should_fail
         self.closed = False
@@ -67,12 +68,7 @@ class MockRedisConnection:
     def info(self):
         if self.should_fail:
             raise Exception("Redis info failed")
-        return {
-            'redis_version': '7.0.0',
-            'used_memory': 1048576,
-            'connected_clients': 1,
-            'uptime_in_seconds': 3600
-        }
+        return {"redis_version": "7.0.0", "used_memory": 1048576, "connected_clients": 1, "uptime_in_seconds": 3600}
 
     def close(self):
         self.closed = True
@@ -80,6 +76,7 @@ class MockRedisConnection:
 
 class MockDockerClient:
     """Mock Docker client for testing"""
+
     def __init__(self, should_fail: bool = False):
         self.should_fail = should_fail
         self.containers = Mock()
@@ -88,12 +85,7 @@ class MockDockerClient:
     def version(self):
         if self.should_fail:
             raise Exception("Docker daemon not available")
-        return {
-            'Version': '24.0.0',
-            'ApiVersion': '1.43',
-            'Os': 'linux',
-            'Arch': 'amd64'
-        }
+        return {"Version": "24.0.0", "ApiVersion": "1.43", "Os": "linux", "Arch": "amd64"}
 
     def close(self):
         pass
@@ -101,6 +93,7 @@ class MockDockerClient:
 
 class MockSocket:
     """Mock socket for port testing"""
+
     def __init__(self, should_fail: bool = False):
         self.should_fail = should_fail
         self.closed = False
@@ -120,41 +113,37 @@ class MockSocket:
 
 def mock_subprocess_run(command: List[str], **kwargs) -> MockProcess:
     """Mock subprocess.run based on command"""
-    cmd = ' '.join(command) if isinstance(command, list) else command
+    cmd = " ".join(command) if isinstance(command, list) else command
 
     # PostgreSQL commands
-    if 'psql' in cmd or 'pg_ctl' in cmd:
-        if 'version' in cmd:
+    if "psql" in cmd or "pg_ctl" in cmd:
+        if "version" in cmd:
             return MockProcess(0, "psql (PostgreSQL) 15.4")
-        elif 'status' in cmd:
+        if "status" in cmd:
             return MockProcess(0, "pg_ctl: server is running")
-        else:
-            return MockProcess(0, "OK")
+        return MockProcess(0, "OK")
 
     # Redis commands
-    elif 'redis-server' in cmd or 'redis-cli' in cmd:
-        if 'version' in cmd:
+    if "redis-server" in cmd or "redis-cli" in cmd:
+        if "version" in cmd:
             return MockProcess(0, "Redis server v=7.0.0")
-        elif 'ping' in cmd:
+        if "ping" in cmd:
             return MockProcess(0, "PONG")
-        else:
-            return MockProcess(0, "OK")
+        return MockProcess(0, "OK")
 
     # Docker commands
-    elif 'docker' in cmd:
-        if 'version' in cmd:
+    if "docker" in cmd:
+        if "version" in cmd:
             return MockProcess(0, "24.0.0")
-        elif 'ps' in cmd:
+        if "ps" in cmd:
             return MockProcess(0, "CONTAINER ID   IMAGE   COMMAND   CREATED   STATUS   PORTS   NAMES")
-        else:
-            return MockProcess(0, "OK")
+        return MockProcess(0, "OK")
 
     # Service commands
-    elif 'systemctl' in cmd or 'sc' in cmd or 'launchctl' in cmd:
-        if 'is-active' in cmd or 'query' in cmd:
+    if "systemctl" in cmd or "sc" in cmd or "launchctl" in cmd:
+        if "is-active" in cmd or "query" in cmd:
             return MockProcess(0, "active")
-        else:
-            return MockProcess(0, "OK")
+        return MockProcess(0, "OK")
 
     # Default success
     return MockProcess(0, "OK")
@@ -163,20 +152,21 @@ def mock_subprocess_run(command: List[str], **kwargs) -> MockProcess:
 def mock_shutil_which(command: str) -> Optional[str]:
     """Mock shutil.which to simulate command availability"""
     available_commands = {
-        'psql': '/usr/bin/psql',
-        'pg_ctl': '/usr/bin/pg_ctl',
-        'redis-server': '/usr/bin/redis-server',
-        'redis-cli': '/usr/bin/redis-cli',
-        'docker': '/usr/bin/docker',
-        'systemctl': '/usr/bin/systemctl',
-        'sc': 'C:\\Windows\\System32\\sc.exe',
-        'launchctl': '/bin/launchctl'
+        "psql": "/usr/bin/psql",
+        "pg_ctl": "/usr/bin/pg_ctl",
+        "redis-server": "/usr/bin/redis-server",
+        "redis-cli": "/usr/bin/redis-cli",
+        "docker": "/usr/bin/docker",
+        "systemctl": "/usr/bin/systemctl",
+        "sc": "C:\\Windows\\System32\\sc.exe",
+        "launchctl": "/bin/launchctl",
     }
     return available_commands.get(command)
 
 
 class MockFileSystem:
     """Mock file system operations"""
+
     def __init__(self):
         self.files: Dict[str, str] = {}
         self.dirs: Set[str] = set()
@@ -197,29 +187,30 @@ class MockFileSystem:
 def create_mock_patches() -> Dict[str, Any]:
     """Create common mock patches for testing"""
     return {
-        'subprocess.run': mock_subprocess_run,
-        'subprocess.Popen': lambda *args, **kwargs: MockProcess(),
-        'shutil.which': mock_shutil_which,
-        'psycopg2.connect': lambda *args, **kwargs: MockDatabaseConnection(),
-        'redis.Redis': lambda *args, **kwargs: MockRedisConnection(),
-        'docker.from_env': lambda: MockDockerClient(),
-        'socket.socket': lambda *args, **kwargs: MockSocket(),
-        'pathlib.Path.exists': lambda self: True,
-        'pathlib.Path.mkdir': lambda self, **kwargs: None,
-        'pathlib.Path.write_text': lambda self, content: None,
-        'pathlib.Path.read_text': lambda self: "mock content",
+        "subprocess.run": mock_subprocess_run,
+        "subprocess.Popen": lambda *args, **kwargs: MockProcess(),
+        "shutil.which": mock_shutil_which,
+        "psycopg2.connect": lambda *args, **kwargs: MockDatabaseConnection(),
+        "redis.Redis": lambda *args, **kwargs: MockRedisConnection(),
+        "docker.from_env": lambda: MockDockerClient(),
+        "socket.socket": lambda *args, **kwargs: MockSocket(),
+        "pathlib.Path.exists": lambda self: True,
+        "pathlib.Path.mkdir": lambda self, **kwargs: None,
+        "pathlib.Path.write_text": lambda self, content: None,
+        "pathlib.Path.read_text": lambda self: "mock content",
     }
 
 
 def patch_network_calls():
     """Patch network-related calls for offline testing"""
+
     def mock_connect_ex(address):
         host, port = address
         # Simulate some ports as in use, others as available
         in_use_ports = {5432, 6379}  # PostgreSQL, Redis
         return 0 if port in in_use_ports else 1
 
-    return patch('socket.socket')
+    return patch("socket.socket")
 
 
 def patch_installer_dependencies():
@@ -227,21 +218,21 @@ def patch_installer_dependencies():
     patches = []
 
     # Mock external processes
-    patches.append(patch('subprocess.run', side_effect=mock_subprocess_run))
-    patches.append(patch('subprocess.Popen', return_value=MockProcess()))
+    patches.append(patch("subprocess.run", side_effect=mock_subprocess_run))
+    patches.append(patch("subprocess.Popen", return_value=MockProcess()))
 
     # Mock command availability
-    patches.append(patch('shutil.which', side_effect=mock_shutil_which))
+    patches.append(patch("shutil.which", side_effect=mock_shutil_which))
 
     # Mock database connections
-    patches.append(patch('psycopg2.connect', return_value=MockDatabaseConnection()))
-    patches.append(patch('redis.Redis', return_value=MockRedisConnection()))
-    patches.append(patch('docker.from_env', return_value=MockDockerClient()))
+    patches.append(patch("psycopg2.connect", return_value=MockDatabaseConnection()))
+    patches.append(patch("redis.Redis", return_value=MockRedisConnection()))
+    patches.append(patch("docker.from_env", return_value=MockDockerClient()))
 
     # Mock file system operations
-    patches.append(patch('pathlib.Path.exists', return_value=True))
-    patches.append(patch('pathlib.Path.mkdir'))
-    patches.append(patch('pathlib.Path.write_text'))
+    patches.append(patch("pathlib.Path.exists", return_value=True))
+    patches.append(patch("pathlib.Path.mkdir"))
+    patches.append(patch("pathlib.Path.write_text"))
 
     return patches
 
@@ -253,6 +244,7 @@ class TestDataGenerator:
     def create_env_content(profile: str = "developer") -> str:
         """Generate .env file content for testing"""
         from tests.installer.fixtures.test_configs import SAMPLE_CONFIGS
+
         config = SAMPLE_CONFIGS.get(profile, SAMPLE_CONFIGS["developer"])
 
         lines = ["# Test configuration"]
@@ -272,5 +264,5 @@ class TestDataGenerator:
             "AUTH_METHOD": "api_key",
             # Missing required API_KEY
             "DATABASE_URL": "invalid://url",
-            "LOG_LEVEL": "INVALID_LEVEL"
+            "LOG_LEVEL": "INVALID_LEVEL",
         }

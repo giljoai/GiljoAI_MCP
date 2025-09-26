@@ -5,12 +5,14 @@
 **CRITICAL**: GiljoAI MCP runs independently. Use these ports:
 
 ### Reserved Ports (Legacy Compatibility):
+
 - **5000** - Reserved
 - **5001** - Reserved
 - **5002** - Reserved
 - **5432** - PostgreSQL (SHARED - OK to use)
 
 ### GiljoAI MCP Port Assignments (USE THESE):
+
 - **6000** - GiljoAI Dashboard
 - **6001** - GiljoAI MCP Server (FastMCP)
 - **6002** - GiljoAI REST API
@@ -18,6 +20,7 @@
 - **5173** - Vite Dev Server (Vue dashboard)
 
 ### Configuration Files:
+
 - Port settings: `/config.yaml`
 - Environment overrides: `.env` (copy from `.env.example`)
 - Check conflicts: `python scripts/check_ports.py`
@@ -45,11 +48,13 @@ F:\GiljoAI_MCP\
 ## 🔧 DEVELOPMENT ENVIRONMENT
 
 ### Python Environment:
+
 - Virtual environment: `F:\GiljoAI_MCP\venv\`
 - Python version: 3.11
 - Serena MCP: Installed locally (isolated to this project)
 
 ### Key Dependencies Installed:
+
 - serena-agent (for codebase discovery)
 - fastmcp (for MCP server)
 - sqlalchemy (for ORM)
@@ -59,6 +64,7 @@ F:\GiljoAI_MCP\
 ## 🎯 CRITICAL REQUIREMENTS
 
 ### 1. OS-Neutral Code (MANDATORY)
+
 ```python
 # GOOD - OS neutral
 from pathlib import Path
@@ -69,18 +75,21 @@ config_dir = "~/.giljo-mcp"  # Unix only
 ```
 
 ### 2. Multi-Tenant Architecture
+
 - EVERY table must have `tenant_key` field
 - ALL queries must filter by tenant_key
 - NO single-product limitations
 - Support unlimited concurrent products
 
 ### 3. Database Design
+
 - Dual support: SQLite (local) AND PostgreSQL (production)
 - Use SQLAlchemy ORM for abstraction
 - Connection pooling required
 - Migration support with Alembic
 
 ### 4. UI/UX Requirements
+
 - **MUST use `/docs/color_themes.md` colors**
 - Vue 3 + Vuetify 3 (not React)
 - Dark/light mode with smooth transitions
@@ -88,6 +97,7 @@ config_dir = "~/.giljo-mcp"  # Unix only
 - WCAG 2.1 AA accessibility
 
 ### 5. Core Features Implemented
+
 - Vision document chunking (50K+ tokens)
 - Message acknowledgment arrays (PostgreSQL)
 - Dynamic discovery (no static indexing)

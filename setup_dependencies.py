@@ -36,12 +36,7 @@ class DependencyManager:
         if not requirements_path.exists():
             return {"core": [], "optional": [], "dev": []}
 
-        dependencies = {
-            "core": [],
-            "optional": [],
-            "dev": [],
-            "production": []
-        }
+        dependencies = {"core": [], "optional": [], "dev": [], "production": []}
 
         current_section = "core"
 
@@ -82,11 +77,7 @@ class DependencyManager:
 
         if line.startswith("-e "):
             # Editable install
-            return {
-                "name": line,
-                "editable": True,
-                "raw": line
-            }
+            return {"name": line, "editable": True, "raw": line}
 
         # Extract package name and version spec
         match = re.match(r"^([a-zA-Z0-9_-]+)(\[.*?\])?(.*)$", line)
@@ -95,12 +86,7 @@ class DependencyManager:
             extras = match.group(2) or ""
             version_spec = match.group(3) or ""
 
-            return {
-                "name": name,
-                "extras": extras,
-                "version_spec": version_spec,
-                "raw": line
-            }
+            return {"name": name, "extras": extras, "version_spec": version_spec, "raw": line}
 
         return None
 
@@ -108,16 +94,37 @@ class DependencyManager:
         """Categorize dependencies as core or optional based on package names"""
         # Known core packages for GiljoAI MCP
         core_packages = {
-            "fastmcp", "fastapi", "sqlalchemy", "pydantic", "pydantic-settings",
-            "uvicorn", "httpx", "websockets", "pyyaml", "python-dotenv",
-            "alembic", "asyncpg", "aiosqlite"
+            "fastmcp",
+            "fastapi",
+            "sqlalchemy",
+            "pydantic",
+            "pydantic-settings",
+            "uvicorn",
+            "httpx",
+            "websockets",
+            "pyyaml",
+            "python-dotenv",
+            "alembic",
+            "asyncpg",
+            "aiosqlite",
         }
 
         # Optional/dev packages
         optional_packages = {
-            "pytest", "pytest-asyncio", "pytest-cov", "black", "ruff",
-            "mypy", "rich", "psycopg2", "psycopg2-binary", "redis",
-            "celery", "flower", "gunicorn", "supervisor"
+            "pytest",
+            "pytest-asyncio",
+            "pytest-cov",
+            "black",
+            "ruff",
+            "mypy",
+            "rich",
+            "psycopg2",
+            "psycopg2-binary",
+            "redis",
+            "celery",
+            "flower",
+            "gunicorn",
+            "supervisor",
         }
 
         # Move packages to correct categories
@@ -136,15 +143,15 @@ class DependencyManager:
         try:
             result = subprocess.run(
                 [self.python_exe, "-m", "pip", "list", "--format=json"],
-                check=False, capture_output=True, text=True, timeout=30
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
 
             if result.returncode == 0:
                 packages = json.loads(result.stdout)
-                self.installed_packages = {
-                    pkg["name"].lower(): pkg["version"]
-                    for pkg in packages
-                }
+                self.installed_packages = {pkg["name"].lower(): pkg["version"] for pkg in packages}
                 return self.installed_packages
         except Exception as e:
             print(f"Error checking installed packages: {e}")
@@ -178,13 +185,11 @@ class DependencyManager:
             "type": None,
             "path": None,
             "base_python": sys.base_prefix,
-            "current_python": sys.prefix
+            "current_python": sys.prefix,
         }
 
         # Check for venv/virtualenv
-        if hasattr(sys, "real_prefix") or (
-            hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
-        ):
+        if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix):
             info["active"] = True
             info["type"] = "venv"
             info["path"] = sys.prefix
@@ -210,9 +215,9 @@ class DependencyManager:
 
         return info
 
-    def create_virtual_environment(self, venv_path: Optional[Path] = None,
-                                 with_pip: bool = True,
-                                 system_site_packages: bool = False) -> bool:
+    def create_virtual_environment(
+        self, venv_path: Optional[Path] = None, with_pip: bool = True, system_site_packages: bool = False
+    ) -> bool:
         """Create a new virtual environment"""
         if not venv_path:
             venv_path = Path.cwd() / "venv"
@@ -225,7 +230,7 @@ class DependencyManager:
                 with_pip=with_pip,
                 system_site_packages=system_site_packages,
                 clear=True,
-                symlinks=(sys.platform != "win32")
+                symlinks=(sys.platform != "win32"),
             )
 
             # Get activation command for user
@@ -243,9 +248,9 @@ class DependencyManager:
             print(f"✗ Failed to create virtual environment: {e}")
             return False
 
-    def install_dependencies(self, dependencies: list[str],
-                           upgrade: bool = False,
-                           quiet: bool = False) -> tuple[bool, list[str]]:
+    def install_dependencies(
+        self, dependencies: list[str], upgrade: bool = False, quiet: bool = False
+    ) -> tuple[bool, list[str]]:
         """Install Python dependencies"""
         if not dependencies:
             return True, []
@@ -264,15 +269,16 @@ class DependencyManager:
         # Install in batches to handle failures
         batch_size = 10
         for i in range(0, len(dependencies), batch_size):
-            batch = dependencies[i:i+batch_size]
+            batch = dependencies[i : i + batch_size]
 
             try:
                 print(f"Installing {len(batch)} packages...")
                 result = subprocess.run(
                     cmd + batch,
-                    check=False, capture_output=True,
+                    check=False,
+                    capture_output=True,
                     text=True,
-                    timeout=300  # 5 minutes timeout
+                    timeout=300,  # 5 minutes timeout
                 )
 
                 if result.returncode != 0:
@@ -280,10 +286,7 @@ class DependencyManager:
                     for dep in batch:
                         try:
                             single_result = subprocess.run(
-                                [*cmd, dep],
-                                check=False, capture_output=True,
-                                text=True,
-                                timeout=60
+                                [*cmd, dep], check=False, capture_output=True, text=True, timeout=60
                             )
                             if single_result.returncode != 0:
                                 failed.append(dep)
@@ -316,10 +319,7 @@ class DependencyManager:
         }
 
         # Database tools
-        dependencies["postgresql"] = (
-            shutil.which("psql") is not None or
-            shutil.which("postgres") is not None
-        )
+        dependencies["postgresql"] = shutil.which("psql") is not None or shutil.which("postgres") is not None
         dependencies["sqlite3"] = shutil.which("sqlite3") is not None
 
         # Optional but recommended
@@ -338,6 +338,7 @@ class DependencyManager:
         # Import platform detector
         try:
             from setup_platform import PlatformDetector
+
             detector = PlatformDetector()
             managers = detector._detect_package_managers()
 
@@ -350,7 +351,7 @@ class DependencyManager:
                     "pacman": "postgresql",
                     "brew": "postgresql",
                     "choco": "postgresql",
-                    "winget": "PostgreSQL.PostgreSQL"
+                    "winget": "PostgreSQL.PostgreSQL",
                 },
                 "git": {
                     "apt": "git",
@@ -359,7 +360,7 @@ class DependencyManager:
                     "pacman": "git",
                     "brew": "git",
                     "choco": "git",
-                    "winget": "Git.Git"
+                    "winget": "Git.Git",
                 },
                 "python3": {
                     "apt": "python3 python3-pip python3-venv",
@@ -368,7 +369,7 @@ class DependencyManager:
                     "pacman": "python python-pip",
                     "brew": "python3",
                     "choco": "python",
-                    "winget": "Python.Python.3"
+                    "winget": "Python.Python.3",
                 },
                 "node": {
                     "apt": "nodejs npm",
@@ -377,8 +378,8 @@ class DependencyManager:
                     "pacman": "nodejs npm",
                     "brew": "node",
                     "choco": "nodejs",
-                    "winget": "OpenJS.NodeJS"
-                }
+                    "winget": "OpenJS.NodeJS",
+                },
             }
 
             pkg_names = package_map.get(package, {package: package})
@@ -575,8 +576,11 @@ echo "Installation complete!"
         print(f"\nFound {len(missing)} missing packages")
 
         # Install missing dependencies
-        core_missing = [m for m in missing if m in self.core_dependencies or
-                       any(m.startswith(c.split("==")[0]) for c in self.core_dependencies)]
+        core_missing = [
+            m
+            for m in missing
+            if m in self.core_dependencies or any(m.startswith(c.split("==")[0]) for c in self.core_dependencies)
+        ]
         optional_missing = [m for m in missing if m not in core_missing]
 
         # Install core first

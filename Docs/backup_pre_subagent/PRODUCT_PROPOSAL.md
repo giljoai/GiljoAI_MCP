@@ -1,4 +1,5 @@
 # GiljoAI MCP Coding Orchestrator
+
 ## Product Proposal Document
 
 ### Executive Summary
@@ -8,6 +9,7 @@ GiljoAI MCP Coding Orchestrator is a sophisticated multi-agent orchestration sys
 ### The Problem
 
 Current AI coding assistants face critical limitations:
+
 - **Context Window Constraints**: Even with 200k tokens, complex projects overflow context limits
 - **Session Amnesia**: Work is lost between sessions, requiring constant re-explanation
 - **Single Agent Bottleneck**: One AI trying to do everything leads to shallow, incomplete solutions
@@ -45,24 +47,28 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 ### Core Features
 
 #### 1. Intelligent Agent Orchestration
+
 - **Automatic Agent Spawning**: Creates the right team for each project
 - **Context-Aware Handoffs**: Seamlessly transfers work when agents approach limits
 - **Specialized Roles**: Each agent has a focused mission and clear boundaries
 - **Message Center**: Agents communicate through a sophisticated message queue
 
 #### 2. Task Management Integration
+
 - **In-Session Capture**: Add tasks and technical debt while coding
 - **Task → Project Conversion**: Transform captured tasks into orchestrated projects
 - **Priority Management**: Automatic categorization and prioritization
 - **Progress Tracking**: Real-time visibility into task completion
 
 #### 3. Dynamic Discovery System
+
 - **No Pre-Indexing**: Agents explore codebases on-demand
 - **Vision Documents**: Product principles guide all agent decisions
 - **Fresh Context**: Always reads current state, no stale information
 - **Selective Loading**: Only loads what's relevant to the current project
 
 #### 4. Flexible Deployment Architecture
+
 - **Local-First**: Runs on developer machines with zero configuration
 - **LAN-Ready**: Share across office networks with API keys
 - **Cloud-Scalable**: Deploy to AWS/Azure for distributed teams
@@ -71,6 +77,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 ### Technical Specifications
 
 #### Core Stack
+
 - **Language**: Python 3.8+
 - **Framework**: FastAPI (async, modern, fast)
 - **Database**: SQLAlchemy ORM (SQLite local, PostgreSQL server)
@@ -79,6 +86,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 - **Deployment**: Docker, pip installable, single binary
 
 #### Integration Points
+
 - **Claude Code CLI**: Native MCP server integration
 - **API Agents**: Support for Anthropic, OpenAI, local models
 - **Version Control**: Git-aware, respects .gitignore
@@ -89,16 +97,19 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 #### Target Users
 
 **Primary Market**: Individual Developers
+
 - Working on complex projects that exceed AI context limits
 - Need persistent task management integrated with AI coding
 - Want to leverage multiple AI perspectives on problems
 
 **Secondary Market**: Small Development Teams
+
 - Need coordinated AI assistance across team members
 - Want shared task management and project orchestration
 - Require on-premise deployment for security
 
 **Future Market**: Enterprise Teams
+
 - Require audit trails and compliance features
 - Need role-based access control
 - Want cloud deployment with SLA guarantees
@@ -114,17 +125,20 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 ### Revenue Model
 
 #### Phase 1: Open Source Core (Current)
+
 - Free for individuals and small teams
 - Build community and gather feedback
 - Establish as category-defining tool
 
 #### Phase 2: Pro Features (6 months)
+
 - Team collaboration features
 - Advanced orchestration patterns
 - Priority support
 - $29/developer/month
 
 #### Phase 3: Enterprise Edition (12 months)
+
 - SSO/SAML authentication
 - Audit logging and compliance
 - SLA guarantees
@@ -132,6 +146,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 - $99/developer/month
 
 #### Phase 4: Managed Cloud Service (18 months)
+
 - Fully managed infrastructure
 - Automatic updates and backups
 - Global availability
@@ -140,6 +155,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 ### Development Roadmap
 
 #### Q1 2025: Foundation (Current)
+
 - ✅ Core orchestration engine
 - ✅ PostgreSQL integration
 - ✅ Basic web dashboard
@@ -147,6 +163,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 - 🔄 Rewrite for multi-tenant architecture
 
 #### Q2 2025: Polish & Launch
+
 - Modern customizable UI
 - SQLite support for easy adoption
 - Docker packaging
@@ -154,12 +171,14 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 - Public GitHub release
 
 #### Q3 2025: Team Features
+
 - API key management UI
 - Real-time collaboration
 - Shared task boards
 - Team analytics dashboard
 
 #### Q4 2025: Enterprise Features
+
 - OAuth/SAML authentication
 - Audit logging
 - Role-based access control
@@ -168,12 +187,14 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 ### Success Metrics
 
 #### Technical Metrics
+
 - Setup time: < 5 minutes
 - First project: < 10 minutes
 - Agent handoff success rate: > 95%
 - Context usage efficiency: < 70% per agent
 
 #### Business Metrics
+
 - Month 1: 100 GitHub stars
 - Month 3: 1,000 active users
 - Month 6: 50 paying teams
@@ -182,11 +203,13 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 ### Risk Mitigation
 
 #### Technical Risks
+
 - **API Changes**: Abstract interfaces, version detection
 - **Scaling Issues**: Database-first architecture, proven patterns
 - **Context Limits**: Intelligent chunking, efficient handoffs
 
 #### Business Risks
+
 - **Competition**: First-mover advantage, deep MCP integration
 - **Adoption**: Progressive deployment, easy starting experience
 - **Monetization**: Value-add features, not core functionality
@@ -206,69 +229,71 @@ The local-first, server-ready architecture ensures immediate value for individua
 5. **Gather Feedback**: Iterate based on early adopter input
 
 ---
+
 ● Orchestration Plan Complete!
 
-  I've created three comprehensive documents in your GiljoAI_MCP folder:
+I've created three comprehensive documents in your GiljoAI_MCP folder:
 
-  1. ..\GiljoAI_MCP\PROJECT_ORCHESTRATION_PLAN.md
+1. ..\GiljoAI_MCP\PROJECT_ORCHESTRATION_PLAN.md
 
-  - Complete development strategy using orchestration to build itself
-  - Setup Script Strategy: Progressive enhancement from Day 1 (not waiting until MVP)
-  - 5 phases with 20 total projects over 4 weeks
-  - Detailed project descriptions with tasks and deliverables
-  - Risk mitigation and timeline
+- Complete development strategy using orchestration to build itself
+- Setup Script Strategy: Progressive enhancement from Day 1 (not waiting until MVP)
+- 5 phases with 20 total projects over 4 weeks
+- Detailed project descriptions with tasks and deliverables
+- Risk mitigation and timeline
 
-  2. ..\GiljoAI_MCP\PROJECT_CARDS.md
+2. ..\GiljoAI_MCP\PROJECT_CARDS.md
 
-  - Ready-to-use project cards for each of the 20 projects
-  - Each card has the exact mission text ready for orchestration
-  - Success criteria checklists
-  - Suggested agents for each project
-  - Can be created directly in the orchestrator
+- Ready-to-use project cards for each of the 20 projects
+- Each card has the exact mission text ready for orchestration
+- Success criteria checklists
+- Suggested agents for each project
+- Can be created directly in the orchestrator
 
-  3. ..\GiljoAI_MCP\PROJECT_FLOW_VISUAL.md
+3. ..\GiljoAI_MCP\PROJECT_FLOW_VISUAL.md
 
-  - Visual timeline showing all 4 weeks
-  - ASCII art flow diagram of project dependencies
-  - Parallel execution opportunities identified
-  - Critical path highlighted
-  - Risk points with mitigation strategies
+- Visual timeline showing all 4 weeks
+- ASCII art flow diagram of project dependencies
+- Parallel execution opportunities identified
+- Critical path highlighted
+- Risk points with mitigation strategies
 
-  Key Strategic Decisions:
+Key Strategic Decisions:
 
-  Setup Script Approach: Progressive Enhancement
+Setup Script Approach: Progressive Enhancement
 
-  Rather than waiting until MVP, we'll build setup iteratively:
-  - Project 1.3: Basic text-based setup
-  - Project 2.1: Add MCP configuration
-  - Project 3.1: Add product initialization
-  - Project 4.2: Dashboard setup status
-  - Project 5.2: Full GUI wizard
+Rather than waiting until MVP, we'll build setup iteratively:
 
-  This ensures we're always testing the "first run" experience and catching issues early.
+- Project 1.3: Basic text-based setup
+- Project 2.1: Add MCP configuration
+- Project 3.1: Add product initialization
+- Project 4.2: Dashboard setup status
+- Project 5.2: Full GUI wizard
 
-  Execution Strategy:
+This ensures we're always testing the "first run" experience and catching issues early.
 
-  1. Use orchestration to manage each project
-  2. 20 focused projects instead of one massive effort
-  3. Clear dependencies but with parallel opportunities
-  4. 4-week timeline to working product
+Execution Strategy:
 
-  Critical Path:
+1. Use orchestration to manage each project
+2. 20 focused projects instead of one massive effort
+3. Clear dependencies but with parallel opportunities
+4. 4-week timeline to working product
 
-  Core → Multi-Tenant → MCP Server → Tools → Orchestration → API → Dashboard
+Critical Path:
 
-  Everything else can be optimized around this spine.
+Core → Multi-Tenant → MCP Server → Tools → Orchestration → API → Dashboard
 
-  How to Start:
+Everything else can be optimized around this spine.
 
-  1. Open orchestrator dashboard
-  2. Create first project: "GiljoAI Core Architecture"
-  3. Copy mission from PROJECT_CARDS.md
-  4. Let orchestrator build the foundation
-  5. Continue through the phases
+How to Start:
 
-  This approach lets you leverage your existing orchestrator to systematically build the new system, with clear milestones and measurable
-  progress at each step!
+1. Open orchestrator dashboard
+2. Create first project: "GiljoAI Core Architecture"
+3. Copy mission from PROJECT_CARDS.md
+4. Let orchestrator build the foundation
+5. Continue through the phases
 
-*GiljoAI MCP Coding Orchestrator: Transforming AI coding from single assistant to orchestrated team.*
+This approach lets you leverage your existing orchestrator to systematically build the new system, with clear milestones and measurable
+progress at each step!
+
+_GiljoAI MCP Coding Orchestrator: Transforming AI coding from single assistant to orchestrated team._

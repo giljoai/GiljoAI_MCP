@@ -296,12 +296,10 @@ class ProductIsolationTestSuite:
         passed = sum(1 for r in self.test_results if r["passed"])
         failed = total - passed
 
-
         if failed > 0:
             for result in self.test_results:
                 if not result["passed"]:
                     pass
-
 
         # Save detailed report
         report_dir = Path("test_reports")
@@ -319,7 +317,6 @@ class ProductIsolationTestSuite:
 
         with open(report_file, "w") as f:
             json.dump(report_data, f, indent=2)
-
 
         return passed == total
 

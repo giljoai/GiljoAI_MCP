@@ -111,7 +111,7 @@ class Bootstrap:
 
     def check_gui_capability(self) -> bool:
         """Check if system can run GUI applications"""
-        self.print_status("Checking GUI capability...", "check")
+        # Removed verbose "Checking GUI capability..." message
 
         # Try importing tkinter (comes with Python)
         try:
@@ -694,7 +694,6 @@ For detailed instructions, see INSTALL.md
 
         # Determine installer to use
         if self.has_gui:
-            self.print_status("GUI capability detected", "success")
             choice = self.prompt_installer_choice()
 
             if choice == "1":

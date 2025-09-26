@@ -13,6 +13,7 @@ from datetime import datetime
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
 class UIAnalyzerMessageMonitor:
     def __init__(self):
         self.agent_name = "ui-analyzer"
@@ -58,6 +59,7 @@ class UIAnalyzerMessageMonitor:
 
             # For demonstration, occasionally simulate finding messages
             import random
+
             if random.random() < 0.3:  # 30% chance of finding messages
                 self.simulate_message_processing()
             else:
@@ -74,7 +76,7 @@ class UIAnalyzerMessageMonitor:
         message_types = [
             {"priority": "normal", "content": "UI component update request"},
             {"priority": "high", "content": "Critical dashboard issue reported"},
-            {"priority": "urgent", "content": "System UI failure - immediate attention needed"}
+            {"priority": "urgent", "content": "System UI failure - immediate attention needed"},
         ]
 
         message = random.choice(message_types)
@@ -106,6 +108,7 @@ class UIAnalyzerMessageMonitor:
         """Stop monitoring."""
         self.monitoring = False
 
+
 async def main():
     """Main entry point."""
     monitor = UIAnalyzerMessageMonitor()
@@ -114,6 +117,7 @@ async def main():
         await monitor.start_monitoring()
     except KeyboardInterrupt:
         monitor.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

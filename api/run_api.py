@@ -87,7 +87,7 @@ def main():
         )
     except KeyboardInterrupt:
         logger.info("\nShutting down server...")
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to start server")
         sys.exit(1)
 

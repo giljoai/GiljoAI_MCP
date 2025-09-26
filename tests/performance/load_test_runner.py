@@ -292,12 +292,10 @@ class PerformanceTestSuite:
         else:
             pass
 
-
         # Save detailed report to file
         report_file = Path("performance_test_report.json")
         with open(report_file, "w") as f:
             json.dump(self.results, f, indent=2, default=str)
-
 
         # Generate CSV summary for spreadsheet analysis
         self.generate_csv_summary()
@@ -339,7 +337,6 @@ class PerformanceTestSuite:
                 )
 
 
-
 async def main():
     """Main entry point for performance test suite"""
     import os
@@ -347,7 +344,6 @@ async def main():
     # Change to project root directory
     project_root = Path(__file__).parent.parent.parent
     os.chdir(project_root)
-
 
     # Create and run test suite
     test_suite = PerformanceTestSuite()

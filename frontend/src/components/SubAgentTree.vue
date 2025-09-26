@@ -37,14 +37,14 @@
           :height="treeHeight"
           class="tree-svg"
           :style="{
-            transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`
+            transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`,
           }"
         >
           <!-- Definitions -->
           <defs>
             <!-- Drop shadow filter -->
             <filter id="nodeShadow" x="-50%" y="-50%" width="200%" height="200%">
-              <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+              <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3" />
             </filter>
 
             <!-- Gradient definitions for status colors -->
@@ -169,11 +169,7 @@
                 class="expand-indicator"
                 @click="toggleNode(node)"
               >
-                <circle
-                  r="8"
-                  :fill="colors.primary"
-                  opacity="0.8"
-                />
+                <circle r="8" :fill="colors.primary" opacity="0.8" />
                 <text
                   x="0"
                   y="3"
@@ -207,17 +203,10 @@
     </v-card-text>
 
     <!-- Node Tooltip -->
-    <v-tooltip
-      v-model="showTooltip"
-      :location="tooltipLocation"
-      :open-on-hover="false"
-      contained
-    >
+    <v-tooltip v-model="showTooltip" :location="tooltipLocation" :open-on-hover="false" contained>
       <div class="node-tooltip" v-if="hoveredNode">
         <div class="tooltip-header">
-          <v-icon :color="getNodeBorderColor(hoveredNode)" size="small">
-            mdi-robot
-          </v-icon>
+          <v-icon :color="getNodeBorderColor(hoveredNode)" size="small"> mdi-robot </v-icon>
           <strong>{{ hoveredNode.name }}</strong>
         </div>
         <v-divider class="my-1" />
@@ -233,11 +222,7 @@
     </v-tooltip>
 
     <!-- Context Menu -->
-    <v-menu
-      v-model="contextMenu.show"
-      :location="contextMenu.location"
-      absolute
-    >
+    <v-menu v-model="contextMenu.show" :location="contextMenu.location" absolute>
       <v-list density="compact">
         <v-list-item @click="viewAgentLogs">
           <v-list-item-title>
@@ -252,19 +237,13 @@
           </v-list-item-title>
         </v-list-item>
         <v-divider v-if="contextMenu.node?.status === 'active'" />
-        <v-list-item
-          v-if="contextMenu.node?.status === 'active'"
-          @click="restartAgent"
-        >
+        <v-list-item v-if="contextMenu.node?.status === 'active'" @click="restartAgent">
           <v-list-item-title>
             <v-icon size="small" class="mr-2" color="warning">mdi-restart</v-icon>
             Restart Agent
           </v-list-item-title>
         </v-list-item>
-        <v-list-item
-          v-if="contextMenu.node?.status === 'active'"
-          @click="terminateAgent"
-        >
+        <v-list-item v-if="contextMenu.node?.status === 'active'" @click="terminateAgent">
           <v-list-item-title>
             <v-icon size="small" class="mr-2" color="error">mdi-stop</v-icon>
             Terminate Agent
@@ -300,24 +279,24 @@ import websocketService from '@/services/websocket'
 const props = defineProps({
   projectId: {
     type: String,
-    default: null
+    default: null,
   },
   rootAgent: {
     type: Object,
-    default: null
+    default: null,
   },
   expandLevel: {
     type: Number,
-    default: 2
+    default: 2,
   },
   interactive: {
     type: Boolean,
-    default: true
+    default: true,
   },
   showLegend: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 })
 
 const emit = defineEmits(['node-selected', 'node-expanded', 'node-collapsed', 'context-menu'])
@@ -355,7 +334,7 @@ const tooltipLocation = ref('top')
 const contextMenu = ref({
   show: false,
   location: { x: 0, y: 0 },
-  node: null
+  node: null,
 })
 
 // Color scheme from docs/color_themes.md
@@ -371,7 +350,7 @@ const colors = {
   connectionLine: '#315074',
   text: '#e1e1e1',
   textSecondary: '#8f97b7',
-  primary: '#ffc300'
+  primary: '#ffc300',
 }
 
 // Status types for legend
@@ -379,13 +358,15 @@ const statusTypes = [
   { value: 'active', label: 'Active', color: 'success', icon: 'mdi-rocket-launch' },
   { value: 'pending', label: 'Pending', color: 'warning', icon: 'mdi-clock-outline' },
   { value: 'completed', label: 'Complete', color: 'grey', icon: 'mdi-check-circle' },
-  { value: 'failed', label: 'Failed', color: 'error', icon: 'mdi-alert-circle' }
+  { value: 'failed', label: 'Failed', color: 'error', icon: 'mdi-alert-circle' },
 ]
 
 // Methods
 const fetchTreeData = async () => {
   try {
-    const response = await api.get(`/api/agents/tree${props.projectId ? `?project_id=${props.projectId}` : ''}`)
+    const response = await api.get(
+      `/api/agents/tree${props.projectId ? `?project_id=${props.projectId}` : ''}`,
+    )
     treeData.value = response.data
     processTreeData()
   } catch (error) {
@@ -402,7 +383,7 @@ const processTreeData = () => {
     if (level < props.expandLevel) {
       expandedNodes.value.add(node.id)
       if (node.children) {
-        node.children.forEach(child => initExpanded(child, level + 1))
+        node.children.forEach((child) => initExpanded(child, level + 1))
       }
     }
   }
@@ -410,9 +391,10 @@ const processTreeData = () => {
 
   // Create D3 hierarchy
   const root = d3.hierarchy(treeData.value)
-  const treeLayout = d3.tree()
+  const treeLayout = d3
+    .tree()
     .nodeSize([nodeSpacingX, nodeSpacingY])
-    .separation((a, b) => a.parent === b.parent ? 1 : 1.5)
+    .separation((a, b) => (a.parent === b.parent ? 1 : 1.5))
 
   // Calculate layout
   treeLayout(root)
@@ -422,26 +404,26 @@ const processTreeData = () => {
   const centerY = 100
 
   // Extract nodes and links
-  treeNodes.value = root.descendants().map(d => ({
+  treeNodes.value = root.descendants().map((d) => ({
     ...d.data,
     x: d.x + centerX,
     y: d.y + centerY,
     expanded: expandedNodes.value.has(d.data.id),
-    children: d.children ? d.children.map(c => c.data) : []
+    children: d.children ? d.children.map((c) => c.data) : [],
   }))
 
-  treeLinks.value = root.links().map(d => ({
+  treeLinks.value = root.links().map((d) => ({
     source: {
       ...d.source.data,
       x: d.source.x + centerX,
-      y: d.source.y + centerY
+      y: d.source.y + centerY,
     },
     target: {
       ...d.target.data,
       x: d.target.x + centerX,
-      y: d.target.y + centerY
+      y: d.target.y + centerY,
     },
-    active: d.source.data.status === 'active' && d.target.data.status === 'active'
+    active: d.source.data.status === 'active' && d.target.data.status === 'active',
   }))
 }
 
@@ -469,7 +451,7 @@ const getNodeBorderColor = (node) => {
     active: colors.active,
     pending: colors.pending,
     completed: colors.completed,
-    failed: colors.failed
+    failed: colors.failed,
   }
   return statusColors[node.status] || colors.connectionLine
 }
@@ -560,7 +542,7 @@ const pan = (event) => {
   if (!isPanning.value) return
   panOffset.value = {
     x: event.clientX - panStart.value.x,
-    y: event.clientY - panStart.value.y
+    y: event.clientY - panStart.value.y,
   }
 }
 
@@ -581,7 +563,7 @@ const showContextMenu = (node, event) => {
   contextMenu.value = {
     show: true,
     location: { x: event.clientX, y: event.clientY },
-    node
+    node,
   }
   emit('context-menu', { node, event })
 }

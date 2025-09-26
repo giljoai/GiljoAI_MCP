@@ -43,9 +43,9 @@ class TestActualChunking:
             estimated = self.chunker.estimate_tokens(text)
             # Allow for ±30% variance (or at least 1 token difference)
             tolerance = max(expected_tokens * 0.3, 1)
-            assert abs(estimated - expected_tokens) <= tolerance, (
-                f"Token estimation off for '{text[:20]}...': got {estimated}, expected ~{expected_tokens}"
-            )
+            assert (
+                abs(estimated - expected_tokens) <= tolerance
+            ), f"Token estimation off for '{text[:20]}...': got {estimated}, expected ~{expected_tokens}"
 
     def test_chunk_50k_document(self):
         """Test chunking of 50K token document"""
@@ -93,9 +93,9 @@ class TestActualChunking:
             content = chunk["content"]
             # Should not end mid-word (unless forced)
             if chunk["boundary_type"] != "forced":
-                assert not content or content[-1] in " \n\t.!?;:,)]}>\"'" or content.endswith("```"), (
-                    f"Chunk ends mid-word: ...{content[-20:]}"
-                )
+                assert (
+                    not content or content[-1] in " \n\t.!?;:,)]}>\"'" or content.endswith("```")
+                ), f"Chunk ends mid-word: ...{content[-20:]}"
 
         self.tracker.get_stats("chunk_75k")
 
@@ -155,9 +155,9 @@ More content here in the subsection.
                 # Check if it's a header or complete paragraph
                 lines = content.split("\n")
                 last_line = lines[-1].strip()
-                assert last_line.endswith((".", "!", "?", ":")) or last_line.startswith("#"), (
-                    f"Chunk doesn't end at sentence boundary: ...{content[-50:]}"
-                )
+                assert last_line.endswith((".", "!", "?", ":")) or last_line.startswith(
+                    "#"
+                ), f"Chunk doesn't end at sentence boundary: ...{content[-50:]}"
 
         for _i, chunk in enumerate(chunks):
             pass

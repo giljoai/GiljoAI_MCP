@@ -134,12 +134,8 @@ class TestOrchestratorComprehensiveCoverage:
         tenant_key = "test-tenant-comprehensive"
 
         # Create multiple projects for the tenant
-        await orchestrator.create_project(
-            name="Tenant Project 1", mission="Mission 1", tenant_key=tenant_key
-        )
-        await orchestrator.create_project(
-            name="Tenant Project 2", mission="Mission 2", tenant_key=tenant_key
-        )
+        await orchestrator.create_project(name="Tenant Project 1", mission="Mission 1", tenant_key=tenant_key)
+        await orchestrator.create_project(name="Tenant Project 2", mission="Mission 2", tenant_key=tenant_key)
 
         # Get all projects for tenant
         tenant_projects = await orchestrator.get_tenant_projects(tenant_key)

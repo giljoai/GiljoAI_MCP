@@ -25,28 +25,33 @@
 ### Installation
 
 1. **Clone the repository:**
+
 ```bash
 git clone https://github.com/yourusername/giljo-mcp.git
 cd giljo-mcp
 ```
 
 2. **Create virtual environment:**
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. **Install dependencies:**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 4. **Initialize the database:**
+
 ```bash
 python scripts/setup.py init
 ```
 
 5. **Configure MCP server:**
+
 ```bash
 # Copy the example configuration
 cp .mcp.example.json .mcp.json
@@ -57,11 +62,13 @@ cp .mcp.example.json .mcp.json
 ### Your First Orchestration (5 Minutes)
 
 1. **Start the MCP server:**
+
 ```bash
 python -m giljo_mcp.server
 ```
 
 2. **Create your first project:**
+
 ```python
 # In a new terminal or Python REPL
 from giljo_mcp.client import GiljoClient
@@ -77,6 +84,7 @@ print(f"Created project: {project.id}")
 ```
 
 3. **Activate the orchestrator:**
+
 ```python
 # The orchestrator will analyze your mission and create a plan
 orchestrator = client.activate_agent(
@@ -87,6 +95,7 @@ orchestrator = client.activate_agent(
 ```
 
 4. **Watch the magic happen:**
+
 ```python
 # The orchestrator will spawn needed agents automatically
 status = client.project_status(project.id)
@@ -97,7 +106,9 @@ print(f"Messages sent: {status['message_count']}")
 ## Core Concepts
 
 ### Projects
+
 A project is the top-level container for an orchestration session. Each project has:
+
 - **Unique ID**: UUID for identification
 - **Name**: Human-readable identifier
 - **Mission**: The goal to accomplish
@@ -105,7 +116,9 @@ A project is the top-level container for an orchestration session. Each project 
 - **Status**: active, completed, or archived
 
 ### Agents
+
 Agents are the workers in the orchestration system. Types include:
+
 - **Orchestrator**: Plans and coordinates work
 - **Implementer**: Writes code
 - **Tester**: Validates implementations
@@ -114,7 +127,9 @@ Agents are the workers in the orchestration system. Types include:
 - **Custom Agents**: Specialized for your needs
 
 ### Messages
+
 The message system enables agent communication:
+
 - **Direct Messages**: One agent to another
 - **Broadcast**: To all agents in project
 - **Priority Levels**: high, normal, low
@@ -122,7 +137,9 @@ The message system enables agent communication:
 - **Completion**: Track task completion
 
 ### Vision Documents
+
 Vision documents provide context and guidance:
+
 - Support for 50K+ token documents
 - Automatic chunking for large files
 - Indexed for quick navigation
@@ -168,13 +185,13 @@ GILJO_CONTEXT_BUDGET=150000
 database:
   # Local development (default)
   url: sqlite:///giljo.db
-  
+
   # LAN deployment
   url: postgresql://user:pass@192.168.1.100/giljo
-  
+
   # WAN deployment with SSL
   url: postgresql://user:pass@db.example.com/giljo?sslmode=require
-  
+
   pool_size: 20
   max_overflow: 40
 ```
@@ -345,16 +362,16 @@ messages = client.get_messages(
 for msg in messages:
     print(f"From: {msg['from']}")
     print(f"Content: {msg['content']}")
-    
+
     # Acknowledge receipt
     client.acknowledge_message(
         message_id=msg['id'],
         agent_name="implementer"
     )
-    
+
     # Process the message...
     result = process_message(msg)
-    
+
     # Mark as complete
     client.complete_message(
         message_id=msg['id'],
@@ -407,6 +424,7 @@ section = client.get_context_section(
 ## Orchestration Patterns
 
 ### Pattern 1: Sequential Pipeline
+
 ```python
 # Each agent completes before the next starts
 agents = ["analyzer", "designer", "implementer", "tester", "deployer"]
@@ -415,18 +433,19 @@ for i, agent_name in enumerate(agents):
     if i > 0:
         # Handoff from previous agent
         client.handoff(
-            project_id, 
+            project_id,
             from_agent=agents[i-1],
             to_agent=agent_name,
             context={"stage": i}
         )
-    
+
     # Activate and wait for completion
     client.activate_agent(project_id, agent_name)
     wait_for_agent_completion(agent_name)
 ```
 
 ### Pattern 2: Parallel Execution
+
 ```python
 # Multiple agents work simultaneously
 parallel_agents = ["frontend_dev", "backend_dev", "database_dev"]
@@ -450,6 +469,7 @@ client.send_message(
 ```
 
 ### Pattern 3: Dynamic Spawning
+
 ```python
 # Orchestrator creates agents as needed
 orchestrator = client.activate_agent(
@@ -464,19 +484,20 @@ import time
 while True:
     status = client.project_status(project_id)
     print(f"Active agents: {len(status['agents'])}")
-    
+
     if status['status'] == 'completed':
         break
-    
+
     time.sleep(5)
 ```
 
 ### Pattern 4: Feedback Loop
+
 ```python
 # Continuous improvement cycle
 stages = {
     "developer": "Implement feature",
-    "tester": "Test implementation", 
+    "tester": "Test implementation",
     "reviewer": "Review code quality",
     "developer": "Address feedback"  # Loop back
 }
@@ -492,12 +513,12 @@ while iteration < max_iterations:
             job_type="iteration",
             tasks=[f"{task} (iteration {iteration + 1})"]
         )
-        
+
         # Check if standards met
         if agent == "reviewer":
             if check_quality_passed(result):
                 break
-    
+
     iteration += 1
 ```
 
@@ -510,7 +531,9 @@ See [MCP Tools Manual](../manuals/MCP_TOOLS_MANUAL.md) for complete API document
 ### Common Issues
 
 #### 1. Agent Context Overflow
+
 **Problem**: Agent runs out of context budget
+
 ```python
 # Solution: Monitor and manage context
 health = client.agent_health(agent_name)
@@ -525,7 +548,9 @@ if health['context_used'] > health['context_budget'] * 0.8:
 ```
 
 #### 2. Message Queue Backlog
+
 **Problem**: Messages piling up unprocessed
+
 ```python
 # Solution: Check message processing
 for agent in active_agents:
@@ -540,14 +565,18 @@ for agent in active_agents:
 ```
 
 #### 3. Database Lock (SQLite)
+
 **Problem**: Database locked error in local mode
+
 ```bash
 # Solution: Increase timeout and use WAL mode
 sqlite3 giljo.db "PRAGMA journal_mode=WAL;"
 ```
 
 #### 4. Vision Document Too Large
+
 **Problem**: Vision document exceeds memory
+
 ```python
 # Solution: Use chunked reading
 for part in range(1, 10):
@@ -559,7 +588,9 @@ for part in range(1, 10):
 ```
 
 #### 5. Agent Stuck in Loop
+
 **Problem**: Agent repeating same actions
+
 ```python
 # Solution: Recalibrate mission
 client.recalibrate_mission(
@@ -581,7 +612,7 @@ print(f"Uptime: {metrics['uptime_seconds']}s")
 if metrics['message_count'] > 1000:
     # Consider batching or filtering
     pass
-    
+
 if metrics['agent_count'] > 20:
     # Consolidate agents
     pass
@@ -607,5 +638,5 @@ tail -f logs/giljo-mcp.log
 
 ---
 
-*Last Updated: 2025-09-16*
-*Version: 1.0.0*
+_Last Updated: 2025-09-16_
+_Version: 1.0.0_

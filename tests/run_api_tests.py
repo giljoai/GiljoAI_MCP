@@ -67,7 +67,6 @@ class APITestRunner:
                 "--durations=10",
             ]
 
-
             start_time = time.time()
             result = subprocess.run(
                 cmd,
@@ -79,7 +78,6 @@ class APITestRunner:
             end_time = time.time()
 
             duration = end_time - start_time
-
 
             if result.stdout:
                 pass
@@ -142,7 +140,6 @@ class APITestRunner:
             result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=120)
 
             if result.returncode == 0:
-
                 # Try to load coverage.json if it exists
                 coverage_file = Path("coverage.json")
                 if coverage_file.exists():
@@ -153,7 +150,6 @@ class APITestRunner:
                         total_coverage = coverage_data.get("totals", {}).get("percent_covered", 0)
                         self.results["coverage"]["total_percent"] = total_coverage
                         self.results["coverage"]["details"] = coverage_data
-
 
                     except Exception:
                         pass
@@ -204,7 +200,6 @@ class APITestRunner:
 
                     implemented_endpoints += implemented_count
 
-
                 except Exception:
                     pass
 
@@ -214,12 +209,12 @@ class APITestRunner:
         self.results["coverage"]["implemented_endpoints"] = implemented_endpoints
         self.results["coverage"]["manual_percent"] = coverage_percent
 
-
     def _analyze_performance(self):
         """Analyze API performance"""
 
         try:
             from fastapi.testclient import TestClient
+
             from src.giljo_mcp.api.app import create_app
 
             app = create_app()
@@ -252,7 +247,6 @@ class APITestRunner:
                         "success": 200 <= response.status_code < 500,
                     }
 
-
                 except Exception as e:
                     performance_results[endpoint] = {"error": str(e), "success": False}
 
@@ -273,13 +267,10 @@ class APITestRunner:
         end_time = datetime.now()
         (end_time - self.start_time).total_seconds()
 
-
-
         # Summary
         total_passed = sum(r.get("passed", 0) for r in self.results["summary"].values())
         total_failed = sum(r.get("failed", 0) for r in self.results["summary"].values())
         total_tests = total_passed + total_failed
-
 
         if total_tests > 0:
             (total_passed / total_tests) * 100
@@ -323,7 +314,6 @@ class APITestRunner:
         else:
             pass
 
-
         # Save detailed report
         self._save_detailed_report()
 
@@ -334,7 +324,6 @@ class APITestRunner:
 
             with open(report_file, "w") as f:
                 json.dump(self.results, f, indent=2, default=str)
-
 
         except Exception:
             pass

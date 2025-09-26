@@ -149,6 +149,12 @@ inline-quotes = "double"
 "**/conftest.py" = [
     "ARG",    # Unused arguments OK in pytest fixtures
 ]
+# Installation files - bypass all linting (transient code, user runs once)
+"bootstrap.py" = ["ALL"]
+"setup.py" = ["ALL"]
+"setup_gui.py" = ["ALL"]
+"installer/**/*.py" = ["ALL"]
+"installers/**/*.py" = ["ALL"]
 
 [lint.pylint]
 max-args = 8

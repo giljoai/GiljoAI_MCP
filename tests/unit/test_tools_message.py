@@ -177,12 +177,8 @@ class TestMessageTools:
 
         # Create test messages
         async with self.db_manager.get_session_async() as session:
-            await ToolsTestHelper.create_test_message(
-                session, self.project.id, "orchestrator", "agent1", "Message 1"
-            )
-            await ToolsTestHelper.create_test_message(
-                session, self.project.id, "orchestrator", "agent1", "Message 2"
-            )
+            await ToolsTestHelper.create_test_message(session, self.project.id, "orchestrator", "agent1", "Message 1")
+            await ToolsTestHelper.create_test_message(session, self.project.id, "orchestrator", "agent1", "Message 2")
 
         register_message_tools(mock_server, self.db_manager, self.tenant_manager)
         get_messages = registrar.get_registered_tool("get_messages")

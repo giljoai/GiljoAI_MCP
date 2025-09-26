@@ -379,7 +379,8 @@ def vision_test_files(tmp_path):
     vision_dir.mkdir(parents=True)
 
     # Create test vision files
-    (vision_dir / "overview.md").write_text("""
+    (vision_dir / "overview.md").write_text(
+        """
 # Project Overview
 This is a test vision document with multiple sections.
 
@@ -389,9 +390,11 @@ The system follows a modular design.
 ## Goals
 - Achieve 95% test coverage
 - Maintain code quality
-""")
+"""
+    )
 
-    (vision_dir / "technical_spec.md").write_text("""
+    (vision_dir / "technical_spec.md").write_text(
+        """
 # Technical Specification
 Detailed technical requirements.
 
@@ -400,7 +403,8 @@ Using SQLAlchemy with async support.
 
 ## API Design
 REST API with FastAPI framework.
-""")
+"""
+    )
 
     return vision_dir
 

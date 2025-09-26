@@ -130,7 +130,6 @@ class TestWebSocketStress:
         # Benchmark connection establishment
         result = await benchmark.benchmark_async("websocket_connection", create_connection, iterations=20, warmup=3)
 
-
         assert result.success_rate > 90.0, f"Connection success rate too low: {result.success_rate:.1f}%"
 
     async def test_concurrent_websocket_connections_10(self, websocket_uri, test_project_id):
@@ -274,7 +273,6 @@ class TestWebSocketStress:
                     f"This indicates the WebSocket server cannot handle production load."
                 )
 
-
             # Test message broadcast to all connected clients
             await self._test_broadcast_to_connected_clients(clients, successful_connections)
 
@@ -361,7 +359,6 @@ class TestWebSocketStress:
 
             time.time() - start_time
 
-
             assert stability_rate > 85.0, (
                 f"Connection stability too low: {stability_rate:.1f}% < 85%\n"
                 f"This indicates WebSocket connections are not stable under load."
@@ -405,7 +402,6 @@ class TestWebSocketStress:
                 max(latencies)
                 min(latencies)
 
-
                 assert avg_latency < 100.0, (
                     f"WebSocket latency too high: {avg_latency:.2f}ms > 100ms\n"
                     f"This indicates real-time performance issues."
@@ -445,7 +441,6 @@ class TestWebSocketStress:
 
             if reconnection_times:
                 mean(reconnection_times)
-
 
                 assert successful_reconnections >= 4, (
                     f"Reconnection success rate too low: {successful_reconnections}/5\n"

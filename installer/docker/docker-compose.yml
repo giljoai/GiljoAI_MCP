@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # GiljoAI MCP Multi-Service Orchestration
 # Base configuration for all environments
@@ -64,19 +64,19 @@ services:
       # Database configuration
       DATABASE_URL: postgresql://${POSTGRES_USER:-giljo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-giljo_mcp}
       REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379/0
-      
+
       # Application configuration
       GILJO_ENV: ${GILJO_ENV:-production}
       GILJO_SECRET_KEY: ${GILJO_SECRET_KEY}
       GILJO_API_KEY: ${GILJO_API_KEY}
       GILJO_LOG_LEVEL: ${LOG_LEVEL:-info}
-      
+
       # Network configuration
       GILJO_HOST: ${GILJO_HOST:-0.0.0.0}
       GILJO_PORT: ${GILJO_PORT:-8000}
       API_PORT: ${API_PORT:-8001}
       FRONTEND_PORT: ${FRONTEND_PORT:-3000}
-      
+
       # Feature flags
       ENABLE_MCP: ${ENABLE_MCP:-true}
       ENABLE_WEBSOCKET: ${ENABLE_WEBSOCKET:-true}

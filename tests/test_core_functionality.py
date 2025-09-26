@@ -10,6 +10,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi.testclient import TestClient
+
 from src.giljo_mcp.api.app import app
 
 
@@ -57,7 +58,6 @@ def test_agents_flow(project_id):
     """Test agents workflow"""
     client = TestClient(app)
 
-
     # Create agent
     agent_data = {"agent_name": "test_agent", "mission": "Test agent mission", "project_id": project_id}
 
@@ -73,7 +73,6 @@ def test_agents_flow(project_id):
 def test_messages_flow(project_id):
     """Test messages workflow"""
     client = TestClient(app)
-
 
     # Send message
     message_data = {

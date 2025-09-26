@@ -4,10 +4,11 @@ Sync specific fixes from master to release branch
 Use this when you need to apply hotfixes to the release
 """
 
-import subprocess
 import os
+import subprocess
 import sys
 from pathlib import Path
+
 
 def run_cmd(cmd, check=True):
     """Run a shell command and return output"""
@@ -17,6 +18,7 @@ def run_cmd(cmd, check=True):
         print(f"Error: {result.stderr}")
         return None
     return result.stdout.strip()
+
 
 def main():
     # Ensure we're in the repo root
@@ -56,7 +58,7 @@ def main():
 
     print(f"\nFiles to sync: {files_to_sync}")
     response = input("Continue? [y/N]: ")
-    if response.lower() != 'y':
+    if response.lower() != "y":
         sys.exit(0)
 
     # Switch to release branch
@@ -90,7 +92,7 @@ def main():
 
     # Push to remote
     response = input("\nPush to remote? [y/N]: ")
-    if response.lower() == 'y':
+    if response.lower() == "y":
         run_cmd("git push origin release-giljoai-mcp")
         print("\n✓ Changes pushed to release branch")
 
@@ -99,6 +101,7 @@ def main():
     run_cmd(f"git checkout {current_branch}")
 
     print("\n=== Sync Complete ===")
+
 
 if __name__ == "__main__":
     main()

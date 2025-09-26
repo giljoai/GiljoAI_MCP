@@ -2,29 +2,32 @@
 Unit tests for Configuration Manager
 """
 
-import pytest
-import tempfile
-import json
-import yaml
-from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
-from datetime import datetime
-
 # Import the configuration system
 import sys
+import tempfile
+from datetime import datetime
+from pathlib import Path
+from unittest.mock import mock_open, patch
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
     from installer.config.config_manager import (
-        ConfigFormat, ConfigurationValue, Configuration, ConfigurationManager,
-        generate_config_for_profile, validate_env_file
+        ConfigFormat,
+        Configuration,
+        ConfigurationManager,
+        ConfigurationValue,
+        generate_config_for_profile,
+        validate_env_file,
     )
+
     HAS_CONFIG = True
 except ImportError:
     HAS_CONFIG = False
     pytest.skip("Configuration Manager not available", allow_module_level=True)
-
-from tests.installer.fixtures.test_configs import SAMPLE_CONFIGS, TEST_CONNECTION_STRINGS
 
 
 class TestConfigFormat:
@@ -49,7 +52,7 @@ class TestConfigurationValue:
             value="postgresql://user:pass@localhost/db",
             description="Database connection string",
             required=True,
-            secret=True
+            secret=True,
         )
 
         assert value.key == "DATABASE_URL"
@@ -61,32 +64,21 @@ class TestConfigurationValue:
     def test_configuration_value_to_env_line(self):
         """Test converting value to .env line"""
         # Simple value
-        value = ConfigurationValue(
-            key="APP_NAME",
-            value="GiljoAI_MCP",
-            description="Application name"
-        )
+        value = ConfigurationValue(key="APP_NAME", value="GiljoAI_MCP", description="Application name")
 
         env_line = value.to_env_line()
         assert "# Application name" in env_line
         assert "APP_NAME=GiljoAI_MCP" in env_line
 
         # Boolean value
-        bool_value = ConfigurationValue(
-            key="DEBUG",
-            value=True,
-            description="Debug mode"
-        )
+        bool_value = ConfigurationValue(key="DEBUG", value=True, description="Debug mode")
 
         bool_env_line = bool_value.to_env_line()
         assert "DEBUG=true" in bool_env_line
 
         # Secret value
         secret_value = ConfigurationValue(
-            key="SECRET_KEY",
-            value="supersecret123",
-            description="Secret key",
-            secret=True
+            key="SECRET_KEY", value="supersecret123", description="Secret key", secret=True
         )
 
         secret_env_line = secret_value.to_env_line()
@@ -95,11 +87,7 @@ class TestConfigurationValue:
 
     def test_configuration_value_with_spaces(self):
         """Test value with spaces gets quoted"""
-        value = ConfigurationValue(
-            key="DESCRIPTION",
-            value="This has spaces",
-            description="Description with spaces"
-        )
+        value = ConfigurationValue(key="DESCRIPTION", value="This has spaces", description="Description with spaces")
 
         env_line = value.to_env_line()
         assert 'DESCRIPTION="This has spaces"' in env_line
@@ -107,9 +95,7 @@ class TestConfigurationValue:
     def test_configuration_value_json_list(self):
         """Test JSON list value"""
         value = ConfigurationValue(
-            key="CORS_ORIGINS",
-            value=["http://localhost:3000", "http://localhost:8000"],
-            description="CORS origins"
+            key="CORS_ORIGINS", value=["http://localhost:3000", "http://localhost:8000"], description="CORS origins"
         )
 
         env_line = value.to_env_line()
@@ -204,6 +190,7 @@ class TestConfigurationManager:
     def tearDown(self):
         """Clean up test environment"""
         import shutil
+
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
 
@@ -236,20 +223,11 @@ class TestConfigurationManager:
         """Test generating team configuration"""
         manager = ConfigurationManager()
 
-        user_inputs = {
-            "team_name": "Alpha Team",
-            "team_size": 10
-        }
+        user_inputs = {"team_name": "Alpha Team", "team_size": 10}
 
-        connection_strings = {
-            "postgresql": "postgresql://team_user:pass@localhost:5432/team_db"
-        }
+        connection_strings = {"postgresql": "postgresql://team_user:pass@localhost:5432/team_db"}
 
-        config = manager.generate_configuration(
-            "team",
-            user_inputs=user_inputs,
-            connection_strings=connection_strings
-        )
+        config = manager.generate_configuration("team", user_inputs=user_inputs, connection_strings=connection_strings)
 
         assert config.profile_type == "team"
         assert config.get_value("APP_ENV") == "staging"
@@ -264,15 +242,9 @@ class TestConfigurationManager:
         """Test generating enterprise configuration"""
         manager = ConfigurationManager()
 
-        user_inputs = {
-            "enterprise_name": "MegaCorp",
-            "compliance_mode": "HIPAA"
-        }
+        user_inputs = {"enterprise_name": "MegaCorp", "compliance_mode": "HIPAA"}
 
-        config = manager.generate_configuration(
-            "enterprise",
-            user_inputs=user_inputs
-        )
+        config = manager.generate_configuration("enterprise", user_inputs=user_inputs)
 
         assert config.profile_type == "enterprise"
         assert config.get_value("APP_ENV") == "production"
@@ -300,13 +272,10 @@ class TestConfigurationManager:
 
         connection_strings = {
             "postgresql": "postgresql://user:pass@db.example.com:5432/proddb",
-            "redis": "redis://:password@redis.example.com:6379/0"
+            "redis": "redis://:password@redis.example.com:6379/0",
         }
 
-        config = manager.generate_configuration(
-            "team",
-            connection_strings=connection_strings
-        )
+        config = manager.generate_configuration("team", connection_strings=connection_strings)
 
         assert config.get_value("DATABASE_URL") == connection_strings["postgresql"]
         assert config.get_value("REDIS_URL") == connection_strings["redis"]
@@ -335,7 +304,7 @@ class TestConfigurationManager:
         assert api_key.startswith("gjai_")
         assert len(api_key) > 20
 
-    @patch('pathlib.Path.write_text')
+    @patch("pathlib.Path.write_text")
     def test_save_configuration_env(self, mock_write):
         """Test saving configuration as .env"""
         manager = ConfigurationManager()
@@ -352,8 +321,8 @@ class TestConfigurationManager:
         assert "APP_NAME=GiljoAI_MCP" in written_content
         assert "DEBUG=true" in written_content
 
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('yaml.safe_dump')
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("yaml.safe_dump")
     def test_save_configuration_yaml(self, mock_yaml_dump, mock_file):
         """Test saving configuration as YAML"""
         manager = ConfigurationManager()
@@ -366,8 +335,8 @@ class TestConfigurationManager:
         # Should have called yaml.safe_dump
         mock_yaml_dump.assert_called_once()
 
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('json.dump')
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("json.dump")
     def test_save_configuration_json(self, mock_json_dump, mock_file):
         """Test saving configuration as JSON"""
         manager = ConfigurationManager()
@@ -380,7 +349,7 @@ class TestConfigurationManager:
         # Should have called json.dump
         mock_json_dump.assert_called_once()
 
-    @patch('pathlib.Path.read_text')
+    @patch("pathlib.Path.read_text")
     def test_load_env_configuration(self, mock_read):
         """Test loading .env configuration"""
         mock_read.return_value = """
@@ -398,17 +367,11 @@ CORS_ORIGINS=["http://localhost:3000"]
         assert config.get_value("DEBUG") == True
         assert config.get_value("API_PORT") == 8000
 
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('yaml.safe_load')
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("yaml.safe_load")
     def test_load_yaml_configuration(self, mock_yaml_load, mock_file):
         """Test loading YAML configuration"""
-        mock_yaml_load.return_value = {
-            'profile_type': 'team',
-            'values': {
-                'APP_NAME': 'GiljoAI_MCP',
-                'DEBUG': False
-            }
-        }
+        mock_yaml_load.return_value = {"profile_type": "team", "values": {"APP_NAME": "GiljoAI_MCP", "DEBUG": False}}
 
         manager = ConfigurationManager()
         config = manager.load_configuration(Path("test.yaml"))
@@ -472,8 +435,8 @@ CORS_ORIGINS=["http://localhost:3000"]
         assert any("OAUTH_CLIENT_ID" in error for error in errors)
         assert any("OAUTH_CLIENT_SECRET" in error for error in errors)
 
-    @patch('shutil.copy2')
-    @patch('pathlib.Path.exists', return_value=True)
+    @patch("shutil.copy2")
+    @patch("pathlib.Path.exists", return_value=True)
     def test_backup_configuration(self, mock_exists, mock_copy):
         """Test configuration backup"""
         manager = ConfigurationManager()
@@ -519,11 +482,8 @@ CORS_ORIGINS=["http://localhost:3000"]
         old_config.add_value("OLD_SETTING", "value")
         old_config.add_value("API_PORT", 9000)
 
-        with patch.object(manager, 'load_configuration', return_value=old_config):
-            migrated = manager.migrate_configuration(
-                Path("old_config.env"),
-                new_profile="team"
-            )
+        with patch.object(manager, "load_configuration", return_value=old_config):
+            migrated = manager.migrate_configuration(Path("old_config.env"), new_profile="team")
 
         # Should be team profile but preserve custom port
         assert migrated.profile_type == "team"
@@ -559,15 +519,12 @@ class TestConvenienceFunctions:
         assert config.get_value("DEBUG") == True
 
         # With user inputs
-        config_with_inputs = generate_config_for_profile(
-            "team",
-            user_inputs={"team_name": "Test Team"}
-        )
+        config_with_inputs = generate_config_for_profile("team", user_inputs={"team_name": "Test Team"})
 
         assert config_with_inputs.get_value("TEAM_NAME") == "Test Team"
 
-    @patch('installer.config.config_manager.ConfigurationManager.load_configuration')
-    @patch('installer.config.config_manager.ConfigurationManager.validate_configuration')
+    @patch("installer.config.config_manager.ConfigurationManager.load_configuration")
+    @patch("installer.config.config_manager.ConfigurationManager.validate_configuration")
     def test_validate_env_file(self, mock_validate, mock_load):
         """Test validate_env_file function"""
         # Mock loading and validation
@@ -606,29 +563,25 @@ def temp_config_dir():
     temp_dir = Path(tempfile.mkdtemp())
     yield temp_dir
     import shutil
+
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
 
 
 # Parameterized tests
-@pytest.mark.parametrize("profile,expected_debug", [
-    ("developer", True),
-    ("team", False),
-    ("enterprise", False),
-    ("research", True)
-])
+@pytest.mark.parametrize(
+    "profile,expected_debug", [("developer", True), ("team", False), ("enterprise", False), ("research", True)]
+)
 def test_profile_debug_settings(config_manager, profile, expected_debug):
     """Test debug settings for different profiles"""
     config = config_manager.generate_configuration(profile)
     assert config.get_value("DEBUG") == expected_debug
 
 
-@pytest.mark.parametrize("profile,expected_db", [
-    ("developer", "sqlite"),
-    ("team", "postgresql"),
-    ("enterprise", "postgresql"),
-    ("research", "postgresql")
-])
+@pytest.mark.parametrize(
+    "profile,expected_db",
+    [("developer", "sqlite"), ("team", "postgresql"), ("enterprise", "postgresql"), ("research", "postgresql")],
+)
 def test_profile_database_settings(config_manager, profile, expected_db):
     """Test database settings for different profiles"""
     config = config_manager.generate_configuration(profile)

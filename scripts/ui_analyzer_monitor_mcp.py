@@ -26,6 +26,7 @@ class UIAnalyzerMCPMonitor:
         if sys.platform.startswith("win"):
             try:
                 import codecs
+
                 sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer)
                 sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer)
             except:
@@ -93,15 +94,18 @@ class UIAnalyzerMCPMonitor:
 
             # For now, simulate with occasional test messages
             import random
+
             if random.random() < 0.3:  # 30% chance for demonstration
-                return [{
-                    "id": f"msg_{int(time.time())}_{random.randint(1000, 9999)}",
-                    "from_agent": random.choice(["orchestrator", "implementer", "tester"]),
-                    "content": f'UI task: {random.choice(["Update dashboard", "Fix navbar", "Add dark mode", "Optimize layout"])}',
-                    "priority": random.choice(["normal", "high", "urgent"]),
-                    "timestamp": datetime.now().isoformat(),
-                    "message_type": "direct"
-                }]
+                return [
+                    {
+                        "id": f"msg_{int(time.time())}_{random.randint(1000, 9999)}",
+                        "from_agent": random.choice(["orchestrator", "implementer", "tester"]),
+                        "content": f'UI task: {random.choice(["Update dashboard", "Fix navbar", "Add dark mode", "Optimize layout"])}',
+                        "priority": random.choice(["normal", "high", "urgent"]),
+                        "timestamp": datetime.now().isoformat(),
+                        "message_type": "direct",
+                    }
+                ]
 
             return []
 
@@ -177,7 +181,9 @@ class UIAnalyzerMCPMonitor:
     def log_system_status(self):
         """Log periodic system status."""
         uptime = datetime.now() - self.start_time
-        self.log(f"SYSTEM STATUS - Uptime: {uptime}, Checks: {self.check_count}, Processed: {self.total_messages_processed}")
+        self.log(
+            f"SYSTEM STATUS - Uptime: {uptime}, Checks: {self.check_count}, Processed: {self.total_messages_processed}"
+        )
 
     def stop_monitoring(self):
         """Stop the monitoring loop."""
@@ -202,6 +208,7 @@ class UIAnalyzerMCPMonitor:
             self.log(f"Average checks per minute: {checks_per_minute:.1f}")
         self.log("=" * 80)
 
+
 class MCPIntegration:
     """Integration layer for actual MCP tool calls."""
 
@@ -219,6 +226,7 @@ class MCPIntegration:
         # For now, return success
         return True
 
+
 async def main():
     """Main entry point."""
     monitor = UIAnalyzerMCPMonitor()
@@ -229,6 +237,7 @@ async def main():
         monitor.stop_monitoring()
     except Exception:
         sys.exit(1)
+
 
 if __name__ == "__main__":
     try:

@@ -3,9 +3,11 @@
 ## Testing Strategy
 
 ### 1. Performance Benchmarks
+
 **Target: <0.1ms template generation**
 
 - **Template Retrieval Speed**
+
   - Test single template retrieval from database
   - Test cached vs uncached performance
   - Measure with both SQLite and PostgreSQL
@@ -19,6 +21,7 @@
 ### 2. Product Isolation Tests
 
 - **Multi-Tenant Verification**
+
   - Create templates for multiple products
   - Verify no cross-product template access
   - Test concurrent template operations
@@ -32,12 +35,14 @@
 ### 3. Template Augmentation Edge Cases
 
 - **Variable Substitution**
+
   - Test missing variables
   - Test recursive variable references
   - Test special characters in variables
   - Test empty augmentation maps
 
 - **Base Template Integrity**
+
   - Verify base templates remain unchanged
   - Test augmentation doesn't modify database
   - Validate rollback on failed augmentations
@@ -51,6 +56,7 @@
 ### 4. Database Migration Tests
 
 - **Migration from mission_templates.py**
+
   - Verify all 5 base templates migrated
   - Test template content integrity
   - Validate template metadata preservation
@@ -64,18 +70,21 @@
 ### 5. MCP Tool Integration Tests
 
 - **list_agent_templates()**
+
   - Test with various product_ids
   - Test empty template list
   - Test pagination if implemented
   - Verify response format
 
 - **get_agent_template()**
+
   - Test with valid/invalid template names
   - Test augmentation parameter
   - Test missing templates
   - Test special characters in names
 
 - **create_agent_template()**
+
   - Test duplicate name handling
   - Test invalid category
   - Test large mission content
@@ -98,11 +107,13 @@
 ### 7. Edge Cases and Error Handling
 
 - **Database Connection Issues**
+
   - Test template operations with disconnected DB
   - Test transaction rollback scenarios
   - Test concurrent access conflicts
 
 - **Data Validation**
+
   - Test extremely long template names
   - Test invalid JSON in augmentations
   - Test SQL injection attempts

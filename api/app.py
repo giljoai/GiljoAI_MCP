@@ -211,7 +211,7 @@ def create_app() -> FastAPI:
                 async with state.db_manager.get_session_async() as session:
                     await session.execute(text("SELECT 1"))
                     checks["database"] = "healthy"
-            except (ConnectionError, TimeoutError, Exception) as e:  # noqa: BLE001
+            except (ConnectionError, TimeoutError, Exception) as e:
                 # Catching Exception is needed here for any database errors
                 checks["database"] = f"unhealthy: {e!s}"
 

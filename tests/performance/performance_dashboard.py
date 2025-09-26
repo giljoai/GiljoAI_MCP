@@ -422,7 +422,6 @@ class PerformanceDashboard:
         self.calculate_production_readiness_score()
         current_metrics = self.dashboard_data["current_metrics"]
 
-
         if current_metrics.get("performance"):
             perf = current_metrics["performance"]
 
@@ -497,7 +496,6 @@ async def demo_dashboard():
     dashboard.save_dashboard_html()
     dashboard.export_metrics_json()
     dashboard.print_realtime_summary()
-
 
 
 if __name__ == "__main__":

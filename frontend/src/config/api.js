@@ -10,8 +10,8 @@ export const API_CONFIG = {
   },
   WEBSOCKET: {
     url:
-      import.meta.env.VITE_WS_URL
-      || (process.env.NODE_ENV === 'production' ? 'ws://localhost:6002' : 'ws://localhost:6002'),
+      import.meta.env.VITE_WS_URL ||
+      (process.env.NODE_ENV === 'production' ? 'ws://localhost:6002' : 'ws://localhost:6002'),
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 30000,

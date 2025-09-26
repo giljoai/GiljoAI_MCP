@@ -50,7 +50,7 @@ class ConfigurationManager:
                     if line and not line.startswith("#") and "=" in line:
                         key, value = line.split("=", 1)
                         # Remove quotes
-                        value = value.strip().strip('"\'')
+                        value = value.strip().strip("\"'")
                         config[key.strip()] = value
 
         return config
@@ -66,12 +66,14 @@ class ConfigurationManager:
 
         return {}
 
-    def export_config(self,
-                     output_path: Optional[Path] = None,
-                     format: str = "json",
-                     include_secrets: bool = False,
-                     encrypt: bool = False,
-                     password: Optional[str] = None) -> Path:
+    def export_config(
+        self,
+        output_path: Optional[Path] = None,
+        format: str = "json",
+        include_secrets: bool = False,
+        encrypt: bool = False,
+        password: Optional[str] = None,
+    ) -> Path:
         """Export current configuration"""
         if not output_path:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -84,10 +86,10 @@ class ConfigurationManager:
                 "exported_at": datetime.now().isoformat(),
                 "version": "1.0.0",
                 "encrypted": encrypt,
-                "format": format
+                "format": format,
             },
             "environment": self.load_env_config(),
-            "yaml_config": self.load_yaml_config()
+            "yaml_config": self.load_yaml_config(),
         }
 
         # Remove secrets if requested
@@ -113,10 +115,7 @@ class ConfigurationManager:
         print(f"Configuration exported to: {output_path}")
         return output_path
 
-    def import_config(self,
-                     import_path: Path,
-                     merge: bool = False,
-                     password: Optional[str] = None) -> bool:
+    def import_config(self, import_path: Path, merge: bool = False, password: Optional[str] = None) -> bool:
         """Import configuration from file"""
         if not import_path.exists():
             print(f"Error: Configuration file not found: {import_path}")
@@ -156,9 +155,7 @@ class ConfigurationManager:
             print(f"Error importing configuration: {e}")
             return False
 
-    def create_profile(self,
-                      name: str,
-                      description: Optional[str] = None) -> bool:
+    def create_profile(self, name: str, description: Optional[str] = None) -> bool:
         """Create a new configuration profile"""
         profile_dir = self.profiles_dir / name
 
@@ -183,7 +180,7 @@ class ConfigurationManager:
             "name": name,
             "description": description or f"Profile created at {datetime.now().isoformat()}",
             "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
         }
 
         with open(profile_dir / "profile.json", "w") as f:
@@ -204,10 +201,7 @@ class ConfigurationManager:
                         metadata = json.load(f)
                         profiles.append(metadata)
                 else:
-                    profiles.append({
-                        "name": profile_dir.name,
-                        "description": "No metadata"
-                    })
+                    profiles.append({"name": profile_dir.name, "description": "No metadata"})
 
         return profiles
 
@@ -262,13 +256,7 @@ class ConfigurationManager:
         backup_dir.mkdir()
 
         # Copy configuration files
-        files_to_backup = [
-            ".env",
-            "config.yaml",
-            "requirements.txt",
-            "docker-compose.yml",
-            "Dockerfile"
-        ]
+        files_to_backup = [".env", "config.yaml", "requirements.txt", "docker-compose.yml", "Dockerfile"]
 
         for file in files_to_backup:
             source = self.root_path / file
@@ -280,7 +268,7 @@ class ConfigurationManager:
             "name": name,
             "created_at": datetime.now().isoformat(),
             "profile": self.current_profile,
-            "files": [f for f in files_to_backup if (self.root_path / f).exists()]
+            "files": [f for f in files_to_backup if (self.root_path / f).exists()],
         }
 
         with open(backup_dir / "backup.json", "w") as f:
@@ -341,10 +329,7 @@ class ConfigurationManager:
         env_config = config.get("environment", {})
 
         # Check required keys
-        required_keys = [
-            "DATABASE_URL",
-            "GILJO_MCP_MODE"
-        ]
+        required_keys = ["DATABASE_URL", "GILJO_MCP_MODE"]
 
         for key in required_keys:
             if key not in env_config:
@@ -360,7 +345,7 @@ class ConfigurationManager:
             "GILJO_MCP_DASHBOARD_PORT",
             "GILJO_MCP_SERVER_PORT",
             "GILJO_MCP_API_PORT",
-            "GILJO_MCP_WEBSOCKET_PORT"
+            "GILJO_MCP_WEBSOCKET_PORT",
         ]
 
         for key in port_keys:
@@ -385,10 +370,7 @@ class ConfigurationManager:
         """Remove or mask sensitive values"""
         sanitized = config.copy()
 
-        secret_keys = [
-            "PASSWORD", "SECRET", "KEY", "TOKEN", "API_KEY",
-            "JWT", "CREDENTIAL", "AUTH"
-        ]
+        secret_keys = ["PASSWORD", "SECRET", "KEY", "TOKEN", "API_KEY", "JWT", "CREDENTIAL", "AUTH"]
 
         for key in list(sanitized.keys()):
             # Check if key contains secret keywords
@@ -406,13 +388,7 @@ class ConfigurationManager:
         """Encrypt configuration data"""
         # Generate key from password
         salt = os.urandom(16)
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-            backend=default_backend()
-        )
+        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000, backend=default_backend())
         key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
         # Encrypt data
@@ -423,7 +399,7 @@ class ConfigurationManager:
         return {
             "encrypted": True,
             "salt": base64.b64encode(salt).decode(),
-            "data": base64.b64encode(encrypted).decode()
+            "data": base64.b64encode(encrypted).decode(),
         }
 
     def _decrypt_config(self, encrypted_config: dict, password: str) -> dict:
@@ -431,13 +407,7 @@ class ConfigurationManager:
         salt = base64.b64decode(encrypted_config["salt"])
 
         # Regenerate key from password
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-            backend=default_backend()
-        )
+        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000, backend=default_backend())
         key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
         # Decrypt data
@@ -479,19 +449,15 @@ class ConfigurationManager:
         current_yaml.update(new_yaml)
 
         # Apply merged config
-        self._apply_config({
-            "environment": current_env,
-            "yaml_config": current_yaml
-        })
+        self._apply_config({"environment": current_env, "yaml_config": current_yaml})
 
     def _prompt_password(self, prompt: str) -> str:
         """Prompt for password securely"""
         import getpass
+
         return getpass.getpass(prompt)
 
-    def generate_config_template(self,
-                                output_path: Optional[Path] = None,
-                                environment: str = "development") -> Path:
+    def generate_config_template(self, output_path: Optional[Path] = None, environment: str = "development") -> Path:
         """Generate a configuration template"""
         if not output_path:
             output_path = self.config_dir / f"template_{environment}.yaml"
@@ -500,49 +466,42 @@ class ConfigurationManager:
             "metadata": {
                 "environment": environment,
                 "generated_at": datetime.now().isoformat(),
-                "description": f"Configuration template for {environment} environment"
+                "description": f"Configuration template for {environment} environment",
             },
             "database": {
                 "type": "sqlite" if environment == "development" else "postgresql",
-                "sqlite": {
-                    "path": "data/giljo_mcp.db"
-                },
+                "sqlite": {"path": "data/giljo_mcp.db"},
                 "postgresql": {
                     "host": "localhost",
                     "port": 5432,
                     "database": "giljo_mcp",
                     "user": "postgres",
-                    "password": ""
-                }
+                    "password": "",
+                },
             },
             "server": {
                 "mode": environment,
-                "ports": {
-                    "dashboard": 6000,
-                    "server": 6001,
-                    "api": 6002,
-                    "websocket": 6003
-                },
-                "host": "0.0.0.0" if environment == "production" else "127.0.0.1"
+                "ports": {"dashboard": 6000, "server": 6001, "api": 6002, "websocket": 6003},
+                "host": "0.0.0.0" if environment == "production" else "127.0.0.1",
             },
             "security": {
                 "api_key_enabled": environment == "production",
                 "api_key": "",
                 "jwt_secret": "",
                 "cors_enabled": True,
-                "cors_origins": ["http://localhost:*"]
+                "cors_origins": ["http://localhost:*"],
             },
             "logging": {
                 "level": "DEBUG" if environment == "development" else "INFO",
                 "file": "logs/giljo_mcp.log",
                 "max_size": "100MB",
-                "backup_count": 5
+                "backup_count": 5,
             },
             "features": {
                 "hot_reload": environment == "development",
                 "debug": environment == "development",
-                "telemetry": False
-            }
+                "telemetry": False,
+            },
         }
 
         with open(output_path, "w") as f:
@@ -600,8 +559,7 @@ def main():
 
     # Template command
     template_parser = subparsers.add_parser("template", help="Generate config template")
-    template_parser.add_argument("--env", choices=["development", "production", "test"],
-                                default="development")
+    template_parser.add_argument("--env", choices=["development", "production", "test"], default="development")
 
     # Validate command
     validate_parser = subparsers.add_parser("validate", help="Validate configuration")
@@ -613,10 +571,7 @@ def main():
 
     if args.command == "export":
         manager.export_config(
-            output_path=args.output,
-            format=args.format,
-            include_secrets=args.include_secrets,
-            encrypt=args.encrypt
+            output_path=args.output, format=args.format, include_secrets=args.include_secrets, encrypt=args.encrypt
         )
 
     elif args.command == "import":
@@ -658,10 +613,7 @@ def main():
                     config = yaml.safe_load(f)
         else:
             # Validate current config
-            config = {
-                "environment": manager.load_env_config(),
-                "yaml_config": manager.load_yaml_config()
-            }
+            config = {"environment": manager.load_env_config(), "yaml_config": manager.load_yaml_config()}
 
         valid, issues = manager.validate_config(config)
         if valid:

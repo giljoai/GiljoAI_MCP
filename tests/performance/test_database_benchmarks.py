@@ -127,7 +127,6 @@ class TestDatabaseBenchmarks:
 
         result = await benchmark.benchmark_async("single_project_creation", create_project, iterations=50, warmup=5)
 
-
         assert result.avg_time < 100.0, f"Project creation too slow: {result.avg_time:.2f}ms > 100ms"
         assert result.success_rate > 95.0, f"Project creation success rate too low: {result.success_rate:.1f}%"
 
@@ -148,7 +147,6 @@ class TestDatabaseBenchmarks:
                 return agent
 
         result = await benchmark.benchmark_async("single_agent_creation", create_agent, iterations=50, warmup=5)
-
 
         assert result.avg_time < 100.0, f"Agent creation too slow: {result.avg_time:.2f}ms > 100ms"
 
@@ -179,7 +177,6 @@ class TestDatabaseBenchmarks:
                 await session.commit()
 
             bulk_time = (time.perf_counter() - start_time) * 1000
-
 
             # Validate bulk performance
             if bulk_size <= 100:
@@ -225,7 +222,6 @@ class TestDatabaseBenchmarks:
 
         result = await benchmark.benchmark_async("query_project_by_id", query_project_by_id, iterations=100, warmup=10)
 
-
         assert result.avg_time < 50.0, f"Project query too slow: {result.avg_time:.2f}ms > 50ms"
 
         # Test agents by project query
@@ -241,7 +237,6 @@ class TestDatabaseBenchmarks:
             "query_agents_by_project", query_agents_by_project, iterations=100, warmup=10
         )
 
-
         assert result.avg_time < 200.0, f"Agents query too slow: {result.avg_time:.2f}ms > 200ms"
 
         # Test messages by project query (larger dataset)
@@ -256,7 +251,6 @@ class TestDatabaseBenchmarks:
         result = await benchmark.benchmark_async(
             "query_messages_by_project", query_messages_by_project, iterations=100, warmup=10
         )
-
 
         assert result.avg_time < 500.0, f"Messages query too slow: {result.avg_time:.2f}ms > 500ms"
 
@@ -308,7 +302,6 @@ class TestDatabaseBenchmarks:
         benchmark = PerformanceBenchmark(target_time_ms=1000.0)
 
         result = await benchmark.benchmark_async("complex_transaction", complex_transaction, iterations=50, warmup=5)
-
 
         assert result.avg_time < 1000.0, f"Complex transaction too slow: {result.avg_time:.2f}ms > 1s"
         assert result.success_rate > 95.0, f"Transaction success rate too low: {result.success_rate:.1f}%"
@@ -364,7 +357,6 @@ class TestDatabaseBenchmarks:
         [r for r in results if isinstance(r, Exception)]
         success_rate = len(successful_ops) / len(results) * 100
 
-
         assert success_rate > 90.0, f"Concurrent operation success rate too low: {success_rate:.1f}%"
         assert total_time < 30000, f"Concurrent operations too slow: {total_time:.2f}ms > 30s"
 
@@ -397,7 +389,6 @@ class TestDatabaseBenchmarks:
         successful_connections = [r for r in results if not isinstance(r, Exception)]
         [r for r in results if isinstance(r, Exception)]
         success_rate = len(successful_connections) / len(results) * 100
-
 
         assert success_rate > 95.0, f"Connection pool success rate too low: {success_rate:.1f}%"
         assert total_time < 20000, f"Connection pool operations too slow: {total_time:.2f}ms > 20s"
@@ -457,7 +448,6 @@ class TestDatabaseBenchmarks:
 
         final_memory = process.memory_info().rss / (1024 * 1024)
         total_memory_growth = final_memory - baseline_memory
-
 
         # Validate memory usage is reasonable
         assert total_memory_growth < 1000, (
@@ -521,7 +511,6 @@ class TestDatabaseBenchmarks:
             await session.commit()
 
         cleanup_time = (time.perf_counter() - start_time) * 1000
-
 
         assert cleanup_time < 5000, f"Database cleanup too slow: {cleanup_time:.2f}ms > 5s"
 

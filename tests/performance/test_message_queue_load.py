@@ -81,7 +81,6 @@ class TestMessageQueueLoad:
         assert result.avg_time < 100.0, f"Message send too slow: {result.avg_time:.2f}ms > 100ms"
         assert result.success_rate > 99.0, f"Message success rate too low: {result.success_rate:.1f}%"
 
-
     async def test_message_retrieval_latency(self, message_tools, test_project_with_agents):
         """Test message retrieval performance"""
         project, agents = test_project_with_agents
@@ -107,7 +106,6 @@ class TestMessageQueueLoad:
 
         assert result.avg_time < 50.0, f"Message retrieval too slow: {result.avg_time:.2f}ms > 50ms"
 
-
     async def test_broadcast_to_100_agents(self, message_tools, test_project_with_agents):
         """Test broadcast message to 100 agents"""
         project, agents = test_project_with_agents
@@ -124,7 +122,6 @@ class TestMessageQueueLoad:
 
         broadcast_time = (time.perf_counter() - start_time) * 1000
 
-
         # Validate broadcast performance
         assert broadcast_time < 5000, f"Broadcast too slow: {broadcast_time:.2f}ms > 5s"
 
@@ -134,7 +131,6 @@ class TestMessageQueueLoad:
             messages = await message_tools.get_messages(agent_name=agent.name, project_id=project.id)
             if messages:
                 received_count += 1
-
 
     @pytest.mark.slow
     async def test_message_saturation_1000_messages(self, message_tools, test_project_with_agents):
@@ -169,7 +165,6 @@ class TestMessageQueueLoad:
         messages_per_second = 1000 / (total_time / 1000)
         messages_per_minute = messages_per_second * 60
 
-
         # PRODUCTION REQUIREMENTS VALIDATION
         assert success_rate >= 95.0, (
             f"PRODUCTION FAILURE: Message saturation success rate {success_rate:.1f}% < 95%\n"
@@ -186,7 +181,6 @@ class TestMessageQueueLoad:
             f"PRODUCTION FAILURE: 1000 messages took {total_time:.2f}ms > 60s\n"
             f"This indicates severe performance bottlenecks in message processing."
         )
-
 
     @pytest.mark.stress
     async def test_message_saturation_10000_stress_test(self, message_tools, test_project_with_agents):
@@ -233,7 +227,6 @@ class TestMessageQueueLoad:
         messages_per_second = 10000 / (total_time / 1000)
         messages_per_second * 60
 
-
         if success_rate < 90:
             pass
         else:
@@ -270,7 +263,6 @@ class TestMessageQueueLoad:
 
         successful_acks = [r for r in ack_results if not isinstance(r, Exception)]
         success_rate = len(successful_acks) / len(ack_results) * 100
-
 
         # Validate acknowledgment performance
         avg_ack_time = ack_time / len(message_ids)
@@ -315,7 +307,6 @@ class TestMessageQueueLoad:
         successful_sends = [r for r in results if not isinstance(r, Exception)]
         success_rate = len(successful_sends) / len(results) * 100
 
-
         assert success_rate > 95, f"Priority message success rate too low: {success_rate:.1f}%"
         assert total_time < 10000, f"Priority message handling too slow: {total_time:.2f}ms > 10s"
 
@@ -350,7 +341,6 @@ class TestMessageQueueLoad:
 
         final_memory = process.memory_info().rss / (1024 * 1024)
         total_memory_growth = final_memory - baseline_memory
-
 
         # Validate memory usage is reasonable
         assert total_memory_growth < 500, (

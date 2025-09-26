@@ -45,7 +45,7 @@
                 hint="The name of your orchestrator project"
                 persistent-hint
               />
-              
+
               <v-text-field
                 v-model="settings.general.contextBudget"
                 label="Context Budget (tokens)"
@@ -55,7 +55,7 @@
                 persistent-hint
                 class="mt-4"
               />
-              
+
               <v-select
                 v-model="settings.general.defaultPriority"
                 :items="['low', 'normal', 'high', 'urgent', 'critical']"
@@ -63,14 +63,14 @@
                 variant="outlined"
                 class="mt-4"
               />
-              
+
               <v-switch
                 v-model="settings.general.autoRefresh"
                 label="Auto-refresh data"
                 color="primary"
                 class="mt-4"
               />
-              
+
               <v-slider
                 v-if="settings.general.autoRefresh"
                 v-model="settings.general.refreshInterval"
@@ -105,7 +105,7 @@
                   <v-radio label="System Default" value="system" />
                 </v-radio-group>
               </v-col>
-              
+
               <v-col cols="12" md="6">
                 <h3 class="text-h6 mb-4">Mascot Preferences</h3>
                 <v-switch
@@ -120,9 +120,9 @@
                 />
               </v-col>
             </v-row>
-            
+
             <v-divider class="my-6" />
-            
+
             <h3 class="text-h6 mb-4">Display Options</h3>
             <v-row>
               <v-col cols="12" md="6">
@@ -154,7 +154,9 @@
           <v-card-actions>
             <v-spacer />
             <v-btn variant="text" @click="resetAppearanceSettings">Reset</v-btn>
-            <v-btn color="primary" variant="flat" @click="saveAppearanceSettings">Save Changes</v-btn>
+            <v-btn color="primary" variant="flat" @click="saveAppearanceSettings"
+              >Save Changes</v-btn
+            >
           </v-card-actions>
         </v-card>
       </v-window-item>
@@ -176,9 +178,9 @@
               color="primary"
               :disabled="!settings.notifications.newMessages"
             />
-            
+
             <v-divider class="my-6" />
-            
+
             <h3 class="text-h6 mb-4">Agent Notifications</h3>
             <v-switch
               v-model="settings.notifications.agentStatus"
@@ -190,9 +192,9 @@
               label="Agent errors"
               color="primary"
             />
-            
+
             <v-divider class="my-6" />
-            
+
             <h3 class="text-h6 mb-4">Task Notifications</h3>
             <v-switch
               v-model="settings.notifications.taskComplete"
@@ -204,13 +206,20 @@
               label="Overdue task alerts"
               color="primary"
             />
-            
+
             <v-divider class="my-6" />
-            
+
             <h3 class="text-h6 mb-4">Notification Display</h3>
             <v-select
               v-model="settings.notifications.position"
-              :items="['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']"
+              :items="[
+                'top-left',
+                'top-center',
+                'top-right',
+                'bottom-left',
+                'bottom-center',
+                'bottom-right',
+              ]"
               label="Notification position"
               variant="outlined"
             />
@@ -227,7 +236,9 @@
           <v-card-actions>
             <v-spacer />
             <v-btn variant="text" @click="resetNotificationSettings">Reset</v-btn>
-            <v-btn color="primary" variant="flat" @click="saveNotificationSettings">Save Changes</v-btn>
+            <v-btn color="primary" variant="flat" @click="saveNotificationSettings"
+              >Save Changes</v-btn
+            >
           </v-card-actions>
         </v-card>
       </v-window-item>
@@ -245,7 +256,7 @@
             <v-alert type="info" variant="tonal" class="mb-4">
               Configure your API endpoints and authentication settings
             </v-alert>
-            
+
             <v-text-field
               v-model="settings.api.baseUrl"
               label="API Base URL"
@@ -253,7 +264,7 @@
               hint="e.g., http://localhost:8000"
               persistent-hint
             />
-            
+
             <v-text-field
               v-model="settings.api.wsUrl"
               label="WebSocket URL"
@@ -262,9 +273,9 @@
               persistent-hint
               class="mt-4"
             />
-            
+
             <v-divider class="my-6" />
-            
+
             <h3 class="text-h6 mb-4">Authentication</h3>
             <v-text-field
               v-model="settings.api.apiKey"
@@ -274,9 +285,9 @@
               hint="Your API authentication key"
               persistent-hint
             />
-            
+
             <v-divider class="my-6" />
-            
+
             <h3 class="text-h6 mb-4">Request Settings</h3>
             <v-text-field
               v-model="settings.api.timeout"
@@ -286,7 +297,7 @@
               hint="Maximum time to wait for API responses"
               persistent-hint
             />
-            
+
             <v-text-field
               v-model="settings.api.retryAttempts"
               label="Retry Attempts"
@@ -317,14 +328,14 @@
             <v-alert type="warning" variant="tonal" class="mb-4">
               Changing database settings requires a server restart
             </v-alert>
-            
+
             <v-select
               v-model="settings.database.type"
               :items="['sqlite', 'postgresql']"
               label="Database Type"
               variant="outlined"
             />
-            
+
             <template v-if="settings.database.type === 'postgresql'">
               <v-text-field
                 v-model="settings.database.host"
@@ -332,7 +343,7 @@
                 variant="outlined"
                 class="mt-4"
               />
-              
+
               <v-text-field
                 v-model="settings.database.port"
                 label="Port"
@@ -340,21 +351,21 @@
                 variant="outlined"
                 class="mt-4"
               />
-              
+
               <v-text-field
                 v-model="settings.database.name"
                 label="Database Name"
                 variant="outlined"
                 class="mt-4"
               />
-              
+
               <v-text-field
                 v-model="settings.database.user"
                 label="Username"
                 variant="outlined"
                 class="mt-4"
               />
-              
+
               <v-text-field
                 v-model="settings.database.password"
                 label="Password"
@@ -363,7 +374,7 @@
                 class="mt-4"
               />
             </template>
-            
+
             <template v-else>
               <v-text-field
                 v-model="settings.database.path"
@@ -374,9 +385,9 @@
                 class="mt-4"
               />
             </template>
-            
+
             <v-divider class="my-6" />
-            
+
             <h3 class="text-h6 mb-4">Connection Pool</h3>
             <v-text-field
               v-model="settings.database.maxConnections"
@@ -423,7 +434,7 @@ const settings = ref({
     contextBudget: 150000,
     defaultPriority: 'normal',
     autoRefresh: true,
-    refreshInterval: 10
+    refreshInterval: 10,
   },
   appearance: {
     theme: 'dark',
@@ -432,7 +443,7 @@ const settings = ref({
     compactMode: false,
     showAnimations: true,
     showTooltips: true,
-    highContrast: false
+    highContrast: false,
   },
   notifications: {
     newMessages: true,
@@ -442,14 +453,14 @@ const settings = ref({
     taskComplete: true,
     taskOverdue: true,
     position: 'bottom-right',
-    duration: 5
+    duration: 5,
   },
   api: {
     baseUrl: 'http://localhost:8000',
     wsUrl: 'ws://localhost:8000/ws',
     apiKey: '',
     timeout: 30000,
-    retryAttempts: 3
+    retryAttempts: 3,
   },
   database: {
     type: 'sqlite',
@@ -459,8 +470,8 @@ const settings = ref({
     name: 'giljo_mcp',
     user: '',
     password: '',
-    maxConnections: 10
-  }
+    maxConnections: 10,
+  },
 })
 
 // Methods
@@ -481,7 +492,7 @@ async function saveAppearanceSettings() {
       document.documentElement.setAttribute('data-theme', settings.value.appearance.theme)
       localStorage.setItem('theme-preference', settings.value.appearance.theme)
     }
-    
+
     await settingsStore.updateSettings({ appearance: settings.value.appearance })
     console.log('Appearance settings saved')
   } catch (error) {
@@ -522,7 +533,7 @@ function resetGeneralSettings() {
     contextBudget: 150000,
     defaultPriority: 'normal',
     autoRefresh: true,
-    refreshInterval: 10
+    refreshInterval: 10,
   }
 }
 
@@ -534,7 +545,7 @@ function resetAppearanceSettings() {
     compactMode: false,
     showAnimations: true,
     showTooltips: true,
-    highContrast: false
+    highContrast: false,
   }
 }
 
@@ -547,7 +558,7 @@ function resetNotificationSettings() {
     taskComplete: true,
     taskOverdue: true,
     position: 'bottom-right',
-    duration: 5
+    duration: 5,
   }
 }
 
@@ -557,7 +568,7 @@ function resetApiSettings() {
     wsUrl: 'ws://localhost:8000/ws',
     apiKey: '',
     timeout: 30000,
-    retryAttempts: 3
+    retryAttempts: 3,
   }
 }
 
@@ -570,7 +581,7 @@ function resetDatabaseSettings() {
     name: 'giljo_mcp',
     user: '',
     password: '',
-    maxConnections: 10
+    maxConnections: 10,
   }
 }
 

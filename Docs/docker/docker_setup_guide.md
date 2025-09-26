@@ -1,4 +1,5 @@
 # Docker Deployment
+
 ## GiljoAI MCP Coding Orchestrator
 
 ### Quick Start
@@ -203,13 +204,14 @@ docker-compose logs -f --tail=100
 
 All containers include health checks that automatically restart unhealthy services:
 
-| Service | Endpoint | Interval | Timeout | Retries |
-|---------|----------|----------|---------|---------|
-| PostgreSQL | `pg_isready` | 10s | 5s | 5 |
-| Backend | `/health` | 30s | 10s | 3 |
-| Frontend | `/` | 30s | 3s | 3 |
+| Service    | Endpoint     | Interval | Timeout | Retries |
+| ---------- | ------------ | -------- | ------- | ------- |
+| PostgreSQL | `pg_isready` | 10s      | 5s      | 5       |
+| Backend    | `/health`    | 30s      | 10s     | 3       |
+| Frontend   | `/`          | 30s      | 3s      | 3       |
 
 Monitor health status:
+
 ```bash
 watch -n 2 'docker-compose ps'
 ```
@@ -243,13 +245,13 @@ docker run --rm -v postgres_data:/data -v $(pwd)/backups:/backup \
 
 ### Port Mappings
 
-| Service | Internal Port | External Port | Description |
-|---------|--------------|---------------|-------------|
-| Frontend | 80 | 6000 | Web Dashboard |
-| Backend API | 8000 | 6002 | REST API |
-| WebSocket | 8001 | 6003 | Real-time updates |
-| MCP Server | 5000 | 6001 | MCP Protocol |
-| PostgreSQL | 5432 | - | Internal only |
+| Service     | Internal Port | External Port | Description       |
+| ----------- | ------------- | ------------- | ----------------- |
+| Frontend    | 80            | 6000          | Web Dashboard     |
+| Backend API | 8000          | 6002          | REST API          |
+| WebSocket   | 8001          | 6003          | Real-time updates |
+| MCP Server  | 5000          | 6001          | MCP Protocol      |
+| PostgreSQL  | 5432          | -             | Internal only     |
 
 ### Custom Network
 
@@ -294,6 +296,7 @@ frontend:
 ### Common Issues
 
 #### Container won't start
+
 ```bash
 # Check logs
 docker-compose logs [service]
@@ -306,6 +309,7 @@ netstat -tulpn | grep -E '6000|6001|6002|6003'
 ```
 
 #### Database connection errors
+
 ```bash
 # Verify PostgreSQL is running
 docker-compose exec postgres pg_isready
@@ -318,6 +322,7 @@ docker-compose exec backend python -c "from sqlalchemy import create_engine; eng
 ```
 
 #### Frontend can't reach backend
+
 ```bash
 # Check CORS settings
 curl -I http://localhost:6002/api/health
@@ -330,6 +335,7 @@ docker-compose exec frontend curl backend:8000/health
 ```
 
 #### Out of disk space
+
 ```bash
 # Clean up unused images
 docker system prune -a
@@ -390,10 +396,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 2G
         reservations:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
 ```
 

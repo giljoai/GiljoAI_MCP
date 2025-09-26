@@ -17,6 +17,7 @@ During the development of GiljoAI MCP, we discovered Claude Code's native sub-ag
 3. **Project 3.9.b** (Retrofit): Complete rewrite attempting parallel system
 
 The overlap created:
+
 - 3 duplicate `apply_augmentation()` functions
 - 2 duplicate `extract_variables()` functions
 - Multiple caching mechanisms
@@ -34,14 +35,17 @@ The overlap created:
 ## Considered Options
 
 ### Option 1: Keep All Three Systems
+
 - **Pros**: No migration needed, everything works
 - **Cons**: Massive technical debt, confusion, maintenance nightmare
 
 ### Option 2: Full Rewrite from Scratch
+
 - **Pros**: Clean architecture, no legacy baggage
 - **Cons**: High risk, breaks existing code, time consuming
 
 ### Option 3: Consolidate into Unified System (CHOSEN)
+
 - **Pros**: Single source of truth, preserves working code, eliminates duplication
 - **Cons**: Complex migration, requires careful testing
 
@@ -61,16 +65,19 @@ template_manager.py (Core)
 ## Implementation Strategy
 
 ### Phase 1: Unification
+
 1. Identify all duplicate functions
 2. Create single polymorphic implementations
 3. Update all references to use new system
 
 ### Phase 2: Migration
+
 1. Extract templates from Python to database
 2. Implement adapter for backward compatibility
 3. Test thoroughly with existing orchestrator
 
 ### Phase 3: Cleanup
+
 1. Mark old systems as deprecated
 2. Update all documentation
 3. Remove duplicates after verification
@@ -78,6 +85,7 @@ template_manager.py (Core)
 ## Consequences
 
 ### Positive
+
 - **✅ Single Source of Truth**: `template_manager.py` is definitive
 - **✅ Performance**: 20-70% faster than original system
 - **✅ Flexibility**: Runtime template updates without deployment
@@ -86,11 +94,13 @@ template_manager.py (Core)
 - **✅ Better Testing**: 21 comprehensive tests
 
 ### Negative
+
 - **⚠️ Migration Complexity**: Required careful consolidation
 - **⚠️ Learning Curve**: Developers must understand new system
 - **⚠️ Temporary Adapter**: Backward compatibility layer adds complexity
 
 ### Neutral
+
 - **➡️ Database Dependency**: Templates now require database
 - **➡️ Async Operations**: Some methods now async
 - **➡️ Version Management**: Must handle template versioning
@@ -106,6 +116,7 @@ template_manager.py (Core)
 ## Technical Details
 
 ### Polymorphic Design
+
 The key innovation was polymorphic `apply_augmentation()`:
 
 ```python
@@ -121,14 +132,18 @@ def apply_augmentation(self, base, augmentation):
 ```
 
 ### Performance Optimization
+
 Achieved <0.1ms requirement through:
+
 - In-memory caching (90% hit rate)
 - Indexed database queries
 - Compiled regex patterns
 - Lazy loading strategies
 
 ### Migration Safety
+
 Ensured zero downtime via:
+
 - Adapter pattern for old interface
 - Gradual migration support
 - Comprehensive test coverage
@@ -160,6 +175,7 @@ Ensured zero downtime via:
 ## Appendix: Duplication Eliminated
 
 ### Before Consolidation
+
 ```
 src/giljo_mcp/
 ├── mission_templates.py (576 lines)
@@ -171,6 +187,7 @@ Total: 1,097 lines across 4 files
 ```
 
 ### After Consolidation
+
 ```
 src/giljo_mcp/
 ├── template_manager.py (342 lines)

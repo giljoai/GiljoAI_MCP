@@ -9,12 +9,11 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from src.giljo_mcp.config_manager import Config
-
 # GiljoAI MCP imports
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.orchestrator import ProjectOrchestrator
 from giljo_mcp.template_manager import TemplateManager
+from src.giljo_mcp.config_manager import Config
 
 
 class RefactoringBot:
@@ -41,15 +40,11 @@ class RefactoringBot:
         await self.db.initialize()
 
         # Create orchestrator
-        self.orchestrator = ProjectOrchestrator(
-            db=self.db,
-            tenant_key=self.tenant_key
-        )
+        self.orchestrator = ProjectOrchestrator(db=self.db, tenant_key=self.tenant_key)
 
         # Create project
         self.project = await self.orchestrator.create_project(
-            name=f"Refactor {self.project_path.name}",
-            mission=self._get_mission()
+            name=f"Refactor {self.project_path.name}", mission=self._get_mission()
         )
 
         print(f"✅ Project created: {self.project.id}")
@@ -79,11 +74,7 @@ class RefactoringBot:
         """Create specialized refactoring agents"""
 
         # Get template manager
-        tm = TemplateManager(
-            session=self.db.session,
-            tenant_key=self.tenant_key,
-            product_id=self.project.id
-        )
+        tm = TemplateManager(session=self.db.session, tenant_key=self.tenant_key, product_id=self.project.id)
 
         # Define agent configurations
         agent_configs = [
@@ -93,8 +84,8 @@ class RefactoringBot:
                 "mission": await tm.get_template(
                     name="analyzer",
                     augmentations="Focus on Python code quality metrics",
-                    variables={"target_path": str(self.project_path)}
-                )
+                    variables={"target_path": str(self.project_path)},
+                ),
             },
             {
                 "name": "linter",
@@ -102,17 +93,15 @@ class RefactoringBot:
                 "mission": await tm.get_template(
                     name="linter",
                     augmentations="Use strict PEP 8 checking with Black and Ruff",
-                    variables={"auto_fix": True}
-                )
+                    variables={"auto_fix": True},
+                ),
             },
             {
                 "name": "refactor",
                 "template": "code_transformer",
                 "mission": await tm.get_template(
-                    name="refactor",
-                    augmentations="Apply safe transformations only",
-                    variables={"preserve_api": True}
-                )
+                    name="refactor", augmentations="Apply safe transformations only", variables={"preserve_api": True}
+                ),
             },
             {
                 "name": "validator",
@@ -120,17 +109,15 @@ class RefactoringBot:
                 "mission": await tm.get_template(
                     name="validator",
                     augmentations="Run full test suite and performance benchmarks",
-                    variables={"fail_fast": False}
-                )
-            }
+                    variables={"fail_fast": False},
+                ),
+            },
         ]
 
         # Spawn agents
         for config in agent_configs:
             agent = await self.orchestrator.spawn_agent(
-                name=config["name"],
-                mission=config["mission"],
-                project_id=self.project.id
+                name=config["name"], mission=config["mission"], project_id=self.project.id
             )
             self.agents[config["name"]] = agent
             print(f"🤖 Spawned {config['name']} agent")
@@ -169,30 +156,28 @@ class RefactoringBot:
             content={
                 "task": "analyze_codebase",
                 "path": str(self.project_path),
-                "metrics": ["complexity", "coverage", "duplication", "maintainability"]
-            }
+                "metrics": ["complexity", "coverage", "duplication", "maintainability"],
+            },
         )
 
         # Wait for analysis results
         results = await self._wait_for_response("analyzer", timeout=60)
 
         # Store analysis for other agents
-        await self._broadcast_to_agents({
-            "analysis_results": results,
-            "issues_found": results.get("issues", []),
-            "priority_files": results.get("priority_files", [])
-        })
+        await self._broadcast_to_agents(
+            {
+                "analysis_results": results,
+                "issues_found": results.get("issues", []),
+                "priority_files": results.get("priority_files", []),
+            }
+        )
 
     async def _lint_phase(self):
         """Run style checking"""
         await self.orchestrator.send_message(
             from_agent="orchestrator",
             to_agent="linter",
-            content={
-                "task": "check_style",
-                "auto_fix": True,
-                "tools": ["black", "ruff", "mypy"]
-            }
+            content={"task": "check_style", "auto_fix": True, "tools": ["black", "ruff", "mypy"]},
         )
 
         lint_results = await self._wait_for_response("linter", timeout=30)
@@ -217,9 +202,9 @@ class RefactoringBot:
                         "split_complex_functions",
                         "add_type_hints",
                         "modernize_syntax",
-                        "extract_constants"
-                    ]
-                }
+                        "extract_constants",
+                    ],
+                },
             )
 
             await self._wait_for_response("refactor", timeout=20)
@@ -233,8 +218,8 @@ class RefactoringBot:
             content={
                 "task": "run_validation",
                 "tests": ["unit", "integration", "performance"],
-                "compare_baseline": True
-            }
+                "compare_baseline": True,
+            },
         )
 
         validation = await self._wait_for_response("validator", timeout=120)
@@ -277,20 +262,20 @@ class RefactoringBot:
                 "issues_found": results.get("analyzer", {}).get("issues_count", 0),
                 "violations_fixed": results.get("linter", {}).get("fixed", 0),
                 "refactorings_applied": results.get("refactor", {}).get("count", 0),
-                "tests_passed": results.get("validator", {}).get("tests_passed", False)
+                "tests_passed": results.get("validator", {}).get("tests_passed", False),
             },
             "metrics": {
                 "before": results.get("analyzer", {}).get("metrics_before", {}),
-                "after": results.get("validator", {}).get("metrics_after", {})
+                "after": results.get("validator", {}).get("metrics_after", {}),
             },
-            "details": results
+            "details": results,
         }
 
     def _print_summary(self, report: dict):
         """Print readable summary"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("REFACTORING COMPLETE")
-        print("="*60)
+        print("=" * 60)
 
         summary = report["summary"]
         print(f"Files Analyzed:        {summary['files_analyzed']}")
@@ -330,21 +315,13 @@ class RefactoringBot:
         """Send message to all agents"""
         for agent_name in self.agents:
             if agent_name != "orchestrator":
-                await self.orchestrator.send_message(
-                    from_agent="orchestrator",
-                    to_agent=agent_name,
-                    content=content
-                )
+                await self.orchestrator.send_message(from_agent="orchestrator", to_agent=agent_name, content=content)
 
     async def _get_agent_context(self, agent: str) -> dict:
         """Get agent's current context"""
         # This would query the agent's state/results
         # For demo, returning mock data
-        return {
-            "agent": agent,
-            "status": "completed",
-            "results": {}
-        }
+        return {"agent": agent, "status": "completed", "results": {}}
 
     async def cleanup(self):
         """Clean up resources"""
@@ -367,7 +344,8 @@ async def main():
 
         # Create sample Python file with issues
         sample_file = target / "legacy_code.py"
-        sample_file.write_text('''
+        sample_file.write_text(
+            '''
 # Legacy code with various issues
 
 def calculate_total(items):
@@ -419,7 +397,8 @@ class order_processor:  # Should be CamelCase
         print "Order processed"
 
         return payment_result
-''')
+'''
+        )
 
     # Run refactoring bot
     bot = RefactoringBot(target)

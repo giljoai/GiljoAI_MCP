@@ -34,7 +34,10 @@
       "Bash(pip install:*)",
       "Bash(ping:*)",
       "Bash(xcopy:*)",
-      "Bash(robocopy:*)"
+      "Bash(robocopy:*)",
+      "Bash(for:*)",
+      "Bash(bandit:*)",
+      "Read(//c/projects/**)"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",

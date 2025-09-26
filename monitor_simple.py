@@ -13,6 +13,7 @@ from datetime import datetime
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
+
 class SimpleUIMonitor:
     def __init__(self):
         self.agent_name = "ui-analyzer"
@@ -48,15 +49,18 @@ class SimpleUIMonitor:
 
         # Simulate message checking
         import random
+
         if random.random() < 0.4:  # 40% chance
             message_id = f"msg_{int(time.time())}_{random.randint(1000, 9999)}"
             priority = random.choice(["normal", "high", "urgent"])
-            content = random.choice([
-                "Dashboard component needs updating",
-                "Navigation bar styling issue",
-                "Dark mode toggle implementation",
-                "Mobile responsive layout fix"
-            ])
+            content = random.choice(
+                [
+                    "Dashboard component needs updating",
+                    "Navigation bar styling issue",
+                    "Dark mode toggle implementation",
+                    "Mobile responsive layout fix",
+                ]
+            )
 
             self.log(f"FOUND MESSAGE [{message_id}] Priority: {priority}")
             self.log(f"Content: {content}")
@@ -64,9 +68,11 @@ class SimpleUIMonitor:
         else:
             self.log("No new messages found")
 
+
 async def main():
     monitor = SimpleUIMonitor()
     await monitor.start_monitoring()
+
 
 if __name__ == "__main__":
     print("Starting Simple UI Monitor...", flush=True)

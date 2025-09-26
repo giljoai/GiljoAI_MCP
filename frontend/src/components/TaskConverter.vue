@@ -1,35 +1,23 @@
 <template>
-  <v-dialog 
-    v-model="show" 
-    max-width="900"
-    persistent
-    @click:outside="false"
-  >
+  <v-dialog v-model="show" max-width="900" persistent @click:outside="false">
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2" color="primary">mdi-arrow-right-bold-circle</v-icon>
         Convert Tasks to Project{{ selectedTasks.length > 1 ? 's' : '' }}
         <v-spacer />
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          @click="$emit('close')"
-        />
+        <v-btn icon="mdi-close" variant="text" size="small" @click="$emit('close')" />
       </v-card-title>
       <v-divider />
       <!-- Wizard Steps -->
-      <v-stepper
-        v-model="currentStep"
-        :items="stepperItems"
-        class="elevation-0"
-      >
+      <v-stepper v-model="currentStep" :items="stepperItems" class="elevation-0">
         <!-- Step 1: Review Tasks -->
         <template v-slot:item.1>
           <div class="pa-6">
             <h3 class="text-h6 mb-3">Review Selected Tasks</h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
-              Review the {{ tasksToConvert.length }} task{{ tasksToConvert.length > 1 ? 's' : '' }} selected for conversion. You can modify the selection or proceed to configure project details.
+              Review the {{ tasksToConvert.length }} task{{ tasksToConvert.length > 1 ? 's' : '' }}
+              selected for conversion. You can modify the selection or proceed to configure project
+              details.
             </p>
             <!-- Task Selection Summary -->
             <v-row class="mb-4">
@@ -70,18 +58,16 @@
                   :class="{ 'border-b': index < tasksToConvert.length - 1 }"
                 >
                   <template v-slot:prepend>
-                    <v-chip
-                      :color="getPriorityColor(task.priority)"
-                      size="x-small"
-                      class="mr-3"
-                    >
+                    <v-chip :color="getPriorityColor(task.priority)" size="x-small" class="mr-3">
                       {{ task.priority }}
                     </v-chip>
                   </template>
-                  
+
                   <v-list-item-title class="font-weight-medium">{{ task.title }}</v-list-item-title>
-                  <v-list-item-subtitle v-if="task.description">{{ task.description }}</v-list-item-subtitle>
-                  
+                  <v-list-item-subtitle v-if="task.description">{{
+                    task.description
+                  }}</v-list-item-subtitle>
+
                   <template v-slot:append>
                     <v-chip size="x-small" variant="outlined" class="mr-2">
                       {{ task.category }}
@@ -130,7 +116,8 @@
           <div class="pa-6">
             <h3 class="text-h6 mb-3">Project Configuration</h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
-              Configure the project details based on your conversion strategy. The form will auto-populate with intelligent suggestions based on your selected tasks.
+              Configure the project details based on your conversion strategy. The form will
+              auto-populate with intelligent suggestions based on your selected tasks.
             </p>
             <!-- Single Project Configuration -->
             <div v-if="conversionStrategy === 'single'">
@@ -138,19 +125,19 @@
                 v-model="projectConfig.name"
                 label="Project Name"
                 variant="outlined"
-                :rules="[v => !!v || 'Project name is required']"
+                :rules="[(v) => !!v || 'Project name is required']"
                 prepend-inner-icon="mdi-folder"
                 hint="Auto-generated from task analysis"
                 persistent-hint
                 class="mb-4"
               />
-              
+
               <v-textarea
                 v-model="projectConfig.mission"
                 label="Project Mission"
                 variant="outlined"
                 rows="4"
-                :rules="[v => !!v || 'Project mission is required']"
+                :rules="[(v) => !!v || 'Project mission is required']"
                 prepend-inner-icon="mdi-target"
                 hint="Describe the overall goal and scope of this project"
                 persistent-hint
@@ -183,29 +170,20 @@
             </div>
             <!-- Multiple Projects Preview -->
             <div v-else>
-              <v-alert
-                type="info"
-                variant="outlined"
-                class="mb-4"
-              >
-                <template v-slot:title>
-                  Multiple Projects Configuration
-                </template>
+              <v-alert type="info" variant="outlined" class="mb-4">
+                <template v-slot:title> Multiple Projects Configuration </template>
                 <div v-if="conversionStrategy === 'individual'">
-                  {{ tasksToConvert.length }} individual projects will be created, one for each task.
+                  {{ tasksToConvert.length }} individual projects will be created, one for each
+                  task.
                 </div>
                 <div v-else-if="conversionStrategy === 'grouped'">
-                  {{ Object.keys(taskGroups).length }} projects will be created, grouped by category.
+                  {{ Object.keys(taskGroups).length }} projects will be created, grouped by
+                  category.
                 </div>
               </v-alert>
               <!-- Project Preview Cards -->
               <v-row>
-                <v-col
-                  v-for="(preview, index) in projectPreviews"
-                  :key="index"
-                  cols="12"
-                  md="6"
-                >
+                <v-col v-for="(preview, index) in projectPreviews" :key="index" cols="12" md="6">
                   <v-card variant="outlined" class="mb-3">
                     <v-card-title class="text-subtitle-1 py-3">
                       <v-icon class="mr-2">mdi-folder</v-icon>
@@ -259,7 +237,9 @@
                   <div v-if="taskDependencies.length === 0" class="text-center py-4">
                     <v-icon color="success" size="large" class="mb-2">mdi-check-circle</v-icon>
                     <div class="text-subtitle-2">No Dependencies Detected</div>
-                    <div class="text-body-2 text-medium-emphasis">All selected tasks appear to be independent</div>
+                    <div class="text-body-2 text-medium-emphasis">
+                      All selected tasks appear to be independent
+                    </div>
                   </div>
                   <div v-else>
                     <v-expansion-panels variant="accordion" class="mb-4">
@@ -285,7 +265,7 @@
                           </v-list>
                         </v-expansion-panel-text>
                       </v-expansion-panel>
-                      
+
                       <v-expansion-panel v-if="mediumDependencies.length > 0">
                         <v-expansion-panel-title>
                           <v-icon class="mr-2" color="warning">mdi-link</v-icon>
@@ -308,7 +288,7 @@
                           </v-list>
                         </v-expansion-panel-text>
                       </v-expansion-panel>
-                      
+
                       <v-expansion-panel v-if="weakDependencies.length > 0">
                         <v-expansion-panel-title>
                           <v-icon class="mr-2" color="info">mdi-link-variant-off</v-icon>
@@ -339,7 +319,9 @@
                   <div v-if="taskDependencies.length === 0" class="text-center py-8">
                     <v-icon color="success" size="x-large" class="mb-4">mdi-check-circle</v-icon>
                     <div class="text-h6">Independent Tasks</div>
-                    <div class="text-body-2 text-medium-emphasis">No dependencies detected between selected tasks</div>
+                    <div class="text-body-2 text-medium-emphasis">
+                      No dependencies detected between selected tasks
+                    </div>
                   </div>
                   <div v-else class="dependency-graph" ref="dependencyGraph">
                     <!-- Interactive Dependency Graph -->
@@ -368,7 +350,11 @@
                           font-size="12"
                           fill="white"
                         >
-                          {{ task.title.length > 10 ? task.title.substring(0, 10) + '...' : task.title }}
+                          {{
+                            task.title.length > 10
+                              ? task.title.substring(0, 10) + '...'
+                              : task.title
+                          }}
                         </text>
                       </g>
                       <!-- Dependency Lines -->
@@ -417,7 +403,8 @@
                         </v-col>
                         <v-col cols="8">
                           <div class="text-caption text-medium-emphasis">
-                            Click on tasks to highlight their dependencies. Node size indicates task complexity.
+                            Click on tasks to highlight their dependencies. Node size indicates task
+                            complexity.
                           </div>
                         </v-col>
                       </v-row>
@@ -438,14 +425,8 @@
                     value="preserve"
                     label="Preserve task relationships in project structure"
                   />
-                  <v-radio
-                    value="merge"
-                    label="Merge dependent tasks into single project"
-                  />
-                  <v-radio
-                    value="ignore"
-                    label="Ignore dependencies and proceed independently"
-                  />
+                  <v-radio value="merge" label="Merge dependent tasks into single project" />
+                  <v-radio value="ignore" label="Ignore dependencies and proceed independently" />
                 </v-radio-group>
               </v-card-text>
             </v-card>
@@ -456,7 +437,8 @@
           <div class="pa-6">
             <h3 class="text-h6 mb-3">Conversion Summary</h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
-              Review the final conversion plan before proceeding. All projects will be created with the specified configuration.
+              Review the final conversion plan before proceeding. All projects will be created with
+              the specified configuration.
             </p>
             <!-- Summary Stats -->
             <v-row class="mb-4">
@@ -501,7 +483,9 @@
                     <v-icon class="mr-3" color="primary">mdi-folder</v-icon>
                     <div class="flex-grow-1">
                       <div class="text-subtitle-1">{{ project.name }}</div>
-                      <div class="text-caption text-medium-emphasis">{{ project.tasks.length }} task{{ project.tasks.length > 1 ? 's' : '' }}</div>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ project.tasks.length }} task{{ project.tasks.length > 1 ? 's' : '' }}
+                      </div>
                     </div>
                     <v-chip size="small" :color="getPriorityColor(project.priority)" class="mr-2">
                       {{ project.priority }}
@@ -513,9 +497,7 @@
                     <strong>Mission:</strong>
                     <div class="mt-1 text-body-2">{{ project.mission }}</div>
                   </div>
-                  <div class="mb-3">
-                    <strong>Category:</strong> {{ project.category }}
-                  </div>
+                  <div class="mb-3"><strong>Category:</strong> {{ project.category }}</div>
                   <div>
                     <strong>Tasks to convert:</strong>
                     <div class="mt-2">
@@ -558,13 +540,19 @@
                   </v-col>
                   <v-col cols="6">
                     <div class="d-flex align-center mb-2">
-                      <v-icon :color="options.assignToCurrentAgent ? 'success' : 'grey'" class="mr-2">
+                      <v-icon
+                        :color="options.assignToCurrentAgent ? 'success' : 'grey'"
+                        class="mr-2"
+                      >
                         {{ options.assignToCurrentAgent ? 'mdi-check' : 'mdi-close' }}
                       </v-icon>
                       <span>Assign to current agent</span>
                     </div>
                     <div class="d-flex align-center mb-2">
-                      <v-icon :color="options.inheritTaskPriority ? 'success' : 'grey'" class="mr-2">
+                      <v-icon
+                        :color="options.inheritTaskPriority ? 'success' : 'grey'"
+                        class="mr-2"
+                      >
                         {{ options.inheritTaskPriority ? 'mdi-check' : 'mdi-close' }}
                       </v-icon>
                       <span>Inherit task priority</span>
@@ -579,21 +567,12 @@
       <!-- Wizard Navigation -->
       <v-divider />
       <v-card-actions class="pa-4">
-        <v-btn
-          v-if="currentStep > 1"
-          variant="outlined"
-          @click="previousStep"
-        >
+        <v-btn v-if="currentStep > 1" variant="outlined" @click="previousStep">
           <v-icon class="mr-2">mdi-chevron-left</v-icon>
           Previous
         </v-btn>
         <v-spacer />
-        <v-btn
-          variant="text"
-          @click="$emit('close')"
-        >
-          Cancel
-        </v-btn>
+        <v-btn variant="text" @click="$emit('close')"> Cancel </v-btn>
         <v-btn
           v-if="currentStep < 4"
           color="primary"
@@ -613,7 +592,9 @@
           @click="performConversion"
         >
           <v-icon class="mr-2">mdi-arrow-right-bold-circle</v-icon>
-          Convert {{ finalConversionPreview.length }} Project{{ finalConversionPreview.length > 1 ? 's' : '' }}
+          Convert {{ finalConversionPreview.length }} Project{{
+            finalConversionPreview.length > 1 ? 's' : ''
+          }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -677,12 +658,12 @@ import { useProductStore } from '@/stores/products'
 const props = defineProps({
   show: {
     type: Boolean,
-    default: false
+    default: false,
   },
   selectedTaskIds: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
 })
 // Emits
 const emit = defineEmits(['close', 'converted'])
@@ -700,98 +681,100 @@ const selectedDependencyTask = ref(null)
 // Graph dimensions for dependency visualization
 const graphDimensions = ref({
   width: 600,
-  height: 400
+  height: 400,
 })
 const projectConfig = ref({
   name: '',
   mission: '',
   priority: 'medium',
-  category: 'general'
+  category: 'general',
 })
 // Wizard step configuration
 const stepperItems = ref([
   { title: 'Review Tasks', value: 1 },
   { title: 'Project Details', value: 2 },
   { title: 'Dependencies', value: 3 },
-  { title: 'Confirm', value: 4 }
+  { title: 'Confirm', value: 4 },
 ])
 const options = ref({
   preserveTaskLinks: true,
   markTasksConverted: true,
   assignToCurrentAgent: false,
-  inheritTaskPriority: true
+  inheritTaskPriority: true,
 })
 // Computed
 const tasksToConvert = computed(() => {
-  return taskStore.tasks.filter(task => props.selectedTaskIds.includes(task.id))
+  return taskStore.tasks.filter((task) => props.selectedTaskIds.includes(task.id))
 })
 // Wizard-specific computed properties
 const uniqueCategories = computed(() => {
-  return [...new Set(tasksToConvert.value.map(t => t.category))]
+  return [...new Set(tasksToConvert.value.map((t) => t.category))]
 })
 const highPriorityCount = computed(() => {
-  return tasksToConvert.value.filter(t => ['high', 'critical'].includes(t.priority)).length
+  return tasksToConvert.value.filter((t) => ['high', 'critical'].includes(t.priority)).length
 })
 const taskDependencies = computed(() => {
   // Enhanced dependency detection based on task relationships
   const dependencies = []
-  
-  tasksToConvert.value.forEach(task => {
+
+  tasksToConvert.value.forEach((task) => {
     // Check for parent_task_id relationships
     if (task.parent_task_id) {
-      const parentTask = tasksToConvert.value.find(t => t.id === task.parent_task_id)
+      const parentTask = tasksToConvert.value.find((t) => t.id === task.parent_task_id)
       if (parentTask) {
         dependencies.push({
           from: task.parent_task_id,
           to: task.id,
           type: 'parent-child',
-          strength: 'strong'
+          strength: 'strong',
         })
       }
     }
-    
+
     // Check for keyword-based dependencies in descriptions
     if (task.description) {
       const keywords = task.description.toLowerCase()
-      tasksToConvert.value.forEach(otherTask => {
+      tasksToConvert.value.forEach((otherTask) => {
         if (otherTask.id !== task.id && otherTask.title) {
           const titleWords = otherTask.title.toLowerCase().split(' ')
-          if (titleWords.some(word => word.length > 3 && keywords.includes(word))) {
+          if (titleWords.some((word) => word.length > 3 && keywords.includes(word))) {
             dependencies.push({
               from: otherTask.id,
               to: task.id,
               type: 'content-reference',
-              strength: 'weak'
+              strength: 'weak',
             })
           }
         }
       })
     }
-    
+
     // Check for category-based relationships
-    tasksToConvert.value.forEach(otherTask => {
-      if (otherTask.id !== task.id && 
-          otherTask.category === task.category && 
-          otherTask.priority === 'high' && 
-          task.priority !== 'high') {
+    tasksToConvert.value.forEach((otherTask) => {
+      if (
+        otherTask.id !== task.id &&
+        otherTask.category === task.category &&
+        otherTask.priority === 'high' &&
+        task.priority !== 'high'
+      ) {
         dependencies.push({
           from: otherTask.id,
           to: task.id,
           type: 'category-priority',
-          strength: 'medium'
+          strength: 'medium',
         })
       }
     })
   })
-  
+
   // Remove duplicates
-  return dependencies.filter((dep, index, self) => 
-    index === self.findIndex(d => d.from === dep.from && d.to === dep.to)
+  return dependencies.filter(
+    (dep, index, self) => index === self.findIndex((d) => d.from === dep.from && d.to === dep.to),
   )
 })
 const taskGroups = computed(() => {
   const groups = {}
-  tasksToConvert.value.forEach(task => {
+  tasksToConvert.value.forEach((task) => {
     const category = task.category || 'general'
     if (!groups[category]) {
       groups[category] = []
@@ -803,14 +786,14 @@ const taskGroups = computed(() => {
 const projectPreviews = computed(() => {
   switch (conversionStrategy.value) {
     case 'individual':
-      return tasksToConvert.value.map(task => ({
+      return tasksToConvert.value.map((task) => ({
         name: `Project: ${task.title}`,
         mission: `Individual project for: ${task.description || task.title}`,
         tasks: [task],
         priority: task.priority,
-        category: task.category
+        category: task.category,
       }))
-    
+
     case 'grouped':
       return Object.entries(taskGroups.value).map(([category, tasks]) => ({
         name: `${category.charAt(0).toUpperCase() + category.slice(1)} Tasks Project`,
@@ -818,24 +801,28 @@ const projectPreviews = computed(() => {
         tasks,
         priority: tasks.reduce((highest, task) => {
           const priorities = ['low', 'medium', 'high', 'critical']
-          return priorities.indexOf(task.priority) > priorities.indexOf(highest) ? task.priority : highest
+          return priorities.indexOf(task.priority) > priorities.indexOf(highest)
+            ? task.priority
+            : highest
         }, 'low'),
-        category
+        category,
       }))
-    
+
     default:
       return []
   }
 })
 const finalConversionPreview = computed(() => {
   if (conversionStrategy.value === 'single') {
-    return [{
-      name: projectConfig.value.name || 'Converted Tasks Project',
-      mission: projectConfig.value.mission || 'Project created from converted tasks',
-      tasks: tasksToConvert.value,
-      priority: projectConfig.value.priority,
-      category: projectConfig.value.category
-    }]
+    return [
+      {
+        name: projectConfig.value.name || 'Converted Tasks Project',
+        mission: projectConfig.value.mission || 'Project created from converted tasks',
+        tasks: tasksToConvert.value,
+        priority: projectConfig.value.priority,
+        category: projectConfig.value.category,
+      },
+    ]
   }
   return projectPreviews.value
 })
@@ -855,14 +842,14 @@ const canProceedToNextStep = computed(() => {
   }
 })
 // Dependency categorization
-const strongDependencies = computed(() => 
-  taskDependencies.value.filter(dep => dep.strength === 'strong')
+const strongDependencies = computed(() =>
+  taskDependencies.value.filter((dep) => dep.strength === 'strong'),
 )
-const mediumDependencies = computed(() => 
-  taskDependencies.value.filter(dep => dep.strength === 'medium')
+const mediumDependencies = computed(() =>
+  taskDependencies.value.filter((dep) => dep.strength === 'medium'),
 )
-const weakDependencies = computed(() => 
-  taskDependencies.value.filter(dep => dep.strength === 'weak')
+const weakDependencies = computed(() =>
+  taskDependencies.value.filter((dep) => dep.strength === 'weak'),
 )
 const canConvert = computed(() => {
   return finalConversionPreview.value.length > 0 && canProceedToNextStep.value
@@ -874,38 +861,40 @@ const conversionPreview = computed(() => {
   if (!tasksToConvert.value.length) return []
   switch (conversionStrategy.value) {
     case 'single':
-      return [{
-        name: projectConfig.value.name || 'Converted Tasks Project',
-        mission: projectConfig.value.mission || 'Project created from converted tasks',
-        tasks: tasksToConvert.value,
-        taskCount: tasksToConvert.value.length
-      }]
-    
+      return [
+        {
+          name: projectConfig.value.name || 'Converted Tasks Project',
+          mission: projectConfig.value.mission || 'Project created from converted tasks',
+          tasks: tasksToConvert.value,
+          taskCount: tasksToConvert.value.length,
+        },
+      ]
+
     case 'individual':
-      return tasksToConvert.value.map(task => ({
+      return tasksToConvert.value.map((task) => ({
         name: `Project: ${task.title}`,
         mission: `Individual project for: ${task.description || task.title}`,
         tasks: [task],
-        taskCount: 1
+        taskCount: 1,
       }))
-    
+
     case 'grouped':
       const groups = {}
-      tasksToConvert.value.forEach(task => {
+      tasksToConvert.value.forEach((task) => {
         const category = task.category || 'general'
         if (!groups[category]) {
           groups[category] = []
         }
         groups[category].push(task)
       })
-      
+
       return Object.entries(groups).map(([category, tasks]) => ({
         name: `${category.charAt(0).toUpperCase() + category.slice(1)} Tasks Project`,
         mission: `Project for ${category} related tasks`,
         tasks,
-        taskCount: tasks.length
+        taskCount: tasks.length,
       }))
-    
+
     default:
       return []
   }
@@ -916,7 +905,7 @@ function getPriorityColor(priority) {
     low: 'grey',
     medium: 'info',
     high: 'warning',
-    critical: 'error'
+    critical: 'error',
   }
   return colors[priority] || 'grey'
 }
@@ -932,26 +921,26 @@ function previousStep() {
   }
 }
 function removeTaskFromSelection(taskId) {
-  const updatedSelection = props.selectedTaskIds.filter(id => id !== taskId)
+  const updatedSelection = props.selectedTaskIds.filter((id) => id !== taskId)
   // We would need to emit this change back to parent
   // For now, this is a placeholder
   console.log('Remove task:', taskId)
 }
 function getTaskTitle(taskId) {
-  const task = tasksToConvert.value.find(t => t.id === taskId)
+  const task = tasksToConvert.value.find((t) => t.id === taskId)
   return task ? task.title : 'Unknown Task'
 }
 // Graph visualization methods
 function getTaskPosition(taskId) {
-  const taskIndex = tasksToConvert.value.findIndex(t => t.id === taskId)
+  const taskIndex = tasksToConvert.value.findIndex((t) => t.id === taskId)
   const totalTasks = tasksToConvert.value.length
-  
+
   if (totalTasks <= 3) {
     // Linear layout for small numbers
     const spacing = graphDimensions.value.width / (totalTasks + 1)
     return {
       x: spacing * (taskIndex + 1),
-      y: graphDimensions.value.height / 2
+      y: graphDimensions.value.height / 2,
     }
   } else {
     // Circular layout for larger numbers
@@ -959,10 +948,10 @@ function getTaskPosition(taskId) {
     const centerY = graphDimensions.value.height / 2
     const radius = Math.min(centerX, centerY) - 60
     const angle = (2 * Math.PI * taskIndex) / totalTasks
-    
+
     return {
       x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle)
+      y: centerY + radius * Math.sin(angle),
     }
   }
 }
@@ -971,14 +960,14 @@ function getTaskRadius(task) {
   const baseRadius = 25
   const complexityFactor = task.description ? Math.min(task.description.length / 50, 2) : 1
   const priorityFactor = { low: 1, medium: 1.2, high: 1.4, critical: 1.6 }[task.priority] || 1
-  
-  return baseRadius + (complexityFactor * priorityFactor * 5)
+
+  return baseRadius + complexityFactor * priorityFactor * 5
 }
 function getDependencyColor(strength) {
   const colors = {
-    strong: '#f44336',    // red
-    medium: '#ff9800',    // orange  
-    weak: '#2196f3'       // blue
+    strong: '#f44336', // red
+    medium: '#ff9800', // orange
+    weak: '#2196f3', // blue
   }
   return colors[strength] || '#666'
 }
@@ -986,7 +975,7 @@ function getDependencyWidth(strength) {
   const widths = {
     strong: 3,
     medium: 2,
-    weak: 1
+    weak: 1,
   }
   return widths[strength] || 1
 }
@@ -995,12 +984,12 @@ function selectDependencyTask(taskId) {
 }
 async function performConversion() {
   if (!canConvert.value) return
-  
+
   converting.value = true
   try {
     const convertedProjects = []
     const conversionId = `conv_${Date.now()}`
-    
+
     // Track conversion start
     const conversionRecord = {
       id: conversionId,
@@ -1009,16 +998,16 @@ async function performConversion() {
       strategy: conversionStrategy.value,
       task_count: tasksToConvert.value.length,
       project_count: finalConversionPreview.value.length,
-      tasks: tasksToConvert.value.map(t => ({
+      tasks: tasksToConvert.value.map((t) => ({
         id: t.id,
         title: t.title,
-        priority: t.priority
+        priority: t.priority,
       })),
       projects: [],
       options: { ...options.value },
-      has_dependencies: taskDependencies.value.length > 0
+      has_dependencies: taskDependencies.value.length > 0,
     }
-    
+
     for (const projectPreview of finalConversionPreview.value) {
       // Create project via MCP
       const projectData = {
@@ -1027,18 +1016,18 @@ async function performConversion() {
         product_id: productStore.currentProductId,
         priority: projectPreview.priority,
         category: projectPreview.category,
-        conversion_id: conversionId
+        conversion_id: conversionId,
       }
-      
+
       const project = await projectStore.createProject(projectData)
       convertedProjects.push(project)
-      
+
       // Add to conversion record
       conversionRecord.projects.push({
         id: project.id,
-        name: project.name
+        name: project.name,
       })
-      
+
       // Update tasks with conversion metadata
       if (options.value.markTasksConverted) {
         for (const task of projectPreview.tasks) {
@@ -1046,23 +1035,23 @@ async function performConversion() {
             converted_project_id: project.id,
             conversion_date: new Date().toISOString(),
             conversion_id: conversionId,
-            ...(options.value.preserveTaskLinks && { original_task_id: task.id })
+            ...(options.value.preserveTaskLinks && { original_task_id: task.id }),
           })
         }
       }
     }
-    
+
     // Mark conversion as completed
     conversionRecord.status = 'completed'
-    
+
     // Store conversion record (would normally be via API)
     localStorage.setItem(`conversion_${conversionId}`, JSON.stringify(conversionRecord))
-    
+
     emit('converted', convertedProjects)
     emit('close')
   } catch (error) {
     console.error('Conversion failed:', error)
-    
+
     // Mark conversion as failed
     const failedRecord = {
       id: conversionId,
@@ -1072,56 +1061,64 @@ async function performConversion() {
       strategy: conversionStrategy.value,
       task_count: tasksToConvert.value.length,
       project_count: finalConversionPreview.value.length,
-      tasks: tasksToConvert.value.map(t => ({
+      tasks: tasksToConvert.value.map((t) => ({
         id: t.id,
         title: t.title,
-        priority: t.priority
+        priority: t.priority,
       })),
       projects: [],
-      options: { ...options.value }
+      options: { ...options.value },
     }
-    
+
     localStorage.setItem(`conversion_${conversionId}`, JSON.stringify(failedRecord))
   } finally {
     converting.value = false
   }
 }
 // Auto-generate project name for single conversion
-watch([tasksToConvert, conversionStrategy], () => {
-  if (conversionStrategy.value === 'single' && tasksToConvert.value.length > 0) {
-    if (!projectConfig.value.name) {
-      const categories = [...new Set(tasksToConvert.value.map(t => t.category))]
-      const categoryText = categories.length === 1 
-        ? categories[0].charAt(0).toUpperCase() + categories[0].slice(1)
-        : 'Mixed'
-      
-      projectConfig.value.name = `${categoryText} Tasks Project`
+watch(
+  [tasksToConvert, conversionStrategy],
+  () => {
+    if (conversionStrategy.value === 'single' && tasksToConvert.value.length > 0) {
+      if (!projectConfig.value.name) {
+        const categories = [...new Set(tasksToConvert.value.map((t) => t.category))]
+        const categoryText =
+          categories.length === 1
+            ? categories[0].charAt(0).toUpperCase() + categories[0].slice(1)
+            : 'Mixed'
+
+        projectConfig.value.name = `${categoryText} Tasks Project`
+      }
+
+      if (!projectConfig.value.mission) {
+        const taskTitles = tasksToConvert.value.map((t) => t.title).join(', ')
+        projectConfig.value.mission = `Project created from tasks: ${taskTitles}`
+      }
     }
-    
-    if (!projectConfig.value.mission) {
-      const taskTitles = tasksToConvert.value.map(t => t.title).join(', ')
-      projectConfig.value.mission = `Project created from tasks: ${taskTitles}`
-    }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 // Reset form when dialog closes
-watch(() => props.show, (newVal) => {
-  if (!newVal) {
-    currentStep.value = 1
-    conversionStrategy.value = 'single'
-    dependencyHandling.value = 'preserve'
-    projectConfig.value = { 
-      name: '', 
-      mission: '',
-      priority: 'medium',
-      category: 'general'
+watch(
+  () => props.show,
+  (newVal) => {
+    if (!newVal) {
+      currentStep.value = 1
+      conversionStrategy.value = 'single'
+      dependencyHandling.value = 'preserve'
+      projectConfig.value = {
+        name: '',
+        mission: '',
+        priority: 'medium',
+        category: 'general',
+      }
+      options.value = {
+        preserveTaskLinks: true,
+        markTasksConverted: true,
+        assignToCurrentAgent: false,
+        inheritTaskPriority: true,
+      }
     }
-    options.value = {
-      preserveTaskLinks: true,
-      markTasksConverted: true,
-      assignToCurrentAgent: false,
-      inheritTaskPriority: true
-    }
-  }
-})
+  },
+)
 </script>

@@ -13,6 +13,7 @@ This example demonstrates using GiljoAI MCP Orchestrator to automatically genera
 ## The Scenario
 
 You have a complex codebase that needs comprehensive documentation including:
+
 - API reference documentation
 - Code architecture diagrams
 - Usage examples and tutorials
@@ -82,30 +83,35 @@ See `doc_generator.py` for the complete implementation.
 ## Agent Workflows
 
 ### Scanner Agent
+
 - Discovers all code files and structure
 - Identifies documentation comments
 - Extracts function signatures and types
 - Maps module dependencies
 
 ### Parser Agent
+
 - Parses code AST for detailed analysis
 - Extracts docstrings and comments
 - Identifies design patterns
 - Builds symbol table
 
 ### Writer Agent
+
 - Generates markdown documentation
 - Creates usage examples
 - Writes API references
 - Produces configuration guides
 
 ### Diagram Agent
+
 - Creates architecture diagrams
 - Generates sequence diagrams
 - Builds class diagrams
 - Produces dependency graphs
 
 ### Publisher Agent
+
 - Formats documentation for different outputs
 - Generates static site (MkDocs/Sphinx)
 - Creates PDF documentation
@@ -114,7 +120,8 @@ See `doc_generator.py` for the complete implementation.
 ## Documentation Types Generated
 
 ### 1. API Reference
-```markdown
+
+````markdown
 ## API Reference
 
 ### `create_project(name: str, mission: str) -> Project`
@@ -122,20 +129,25 @@ See `doc_generator.py` for the complete implementation.
 Creates a new project with orchestration agents.
 
 **Parameters:**
+
 - `name`: Project identifier
 - `mission`: Project objectives and requirements
 
 **Returns:**
+
 - `Project`: The created project instance
 
 **Example:**
+
 ```python
 project = orchestrator.create_project(
     name="My Project",
     mission="Build awesome features"
 )
 ```
-```
+````
+
+````
 
 ### 2. Architecture Documentation
 - System overview diagrams
@@ -167,9 +179,10 @@ config = {
     },
     "languages": ["python", "javascript", "yaml"]
 }
-```
+````
 
 ### Configure Analysis Depth
+
 ```python
 analysis_config = {
     "include_private": False,
@@ -180,6 +193,7 @@ analysis_config = {
 ```
 
 ### Custom Templates
+
 ```python
 templates = {
     "api_reference": "templates/api.md",
@@ -214,6 +228,7 @@ docs/
 ## Advanced Features
 
 ### Auto-Update Documentation
+
 ```python
 # Watch for code changes
 orchestrator.watch_mode(
@@ -223,6 +238,7 @@ orchestrator.watch_mode(
 ```
 
 ### Version Documentation
+
 ```python
 # Generate docs for multiple versions
 versions = ["v1.0", "v2.0", "latest"]
@@ -231,6 +247,7 @@ for version in versions:
 ```
 
 ### Multi-Language Support
+
 ```python
 # Generate docs in multiple languages
 languages = ["en", "es", "fr", "de"]
@@ -299,6 +316,7 @@ print(f"Coverage: {stats['coverage']}%")
 ## Troubleshooting
 
 ### Missing Documentation
+
 ```python
 # Find undocumented code
 undocumented = scanner.find_undocumented()
@@ -307,6 +325,7 @@ for item in undocumented:
 ```
 
 ### Parsing Errors
+
 ```python
 # Handle parsing failures gracefully
 parser.on_error(lambda e:

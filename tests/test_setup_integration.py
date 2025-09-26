@@ -345,9 +345,9 @@ class TestUserExperience(unittest.TestCase):
         help_topics = ["database configuration", "port settings", "migration", "environment variables"]
 
         for topic in help_topics:
-            assert any(topic.lower() in call.lower() for call in print_calls), (
-                f"Help topic '{topic}' not found in output"
-            )
+            assert any(
+                topic.lower() in call.lower() for call in print_calls
+            ), f"Help topic '{topic}' not found in output"
 
     @patch("builtins.input")
     def test_configuration_review(self, mock_input):

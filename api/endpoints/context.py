@@ -45,7 +45,7 @@ async def get_context_index(product_id: Optional[str] = Query(None, description=
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/vision", response_model=VisionResponse)
@@ -70,7 +70,7 @@ async def get_vision(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/vision/index", response_model=dict[str, Any])
@@ -84,10 +84,10 @@ async def get_vision_index():
         if not result.get("success"):
             raise HTTPException(status_code=404, detail="Vision index not found")  # noqa: TRY301
 
-        return result.get("index", {})  # noqa: TRY300
+        return result.get("index", {})
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/settings", response_model=dict[str, Any])
@@ -101,7 +101,7 @@ async def get_product_settings(product_id: Optional[str] = Query(None, descripti
         if not result.get("success"):
             raise HTTPException(status_code=404, detail="Product settings not found")  # noqa: TRY301
 
-        return result.get("settings", {})  # noqa: TRY300
+        return result.get("settings", {})
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # noqa: TRY301
+        raise HTTPException(status_code=500, detail=str(e))

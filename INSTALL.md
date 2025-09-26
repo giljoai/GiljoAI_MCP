@@ -1,6 +1,7 @@
 # GiljoAI MCP Coding Orchestrator - Installation Guide
 
 ## Table of Contents
+
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Detailed Installation](#detailed-installation)
@@ -11,6 +12,7 @@
 ## Prerequisites
 
 ### Required Software
+
 - **Python 3.11 or higher** - [Download](https://www.python.org/downloads/)
 - **Node.js 18+ and npm** - [Download](https://nodejs.org/) (for frontend)
 - **Terminal Access**:
@@ -18,6 +20,7 @@
   - Mac/Linux: Terminal
 
 ### Optional Software
+
 - **PostgreSQL 14+** - For production deployments
 - **Redis** - For advanced caching (production)
 - **Docker** - For containerized deployment
@@ -41,12 +44,14 @@ System Ready!
 ### Current Installation Process
 
 #### Windows Users
+
 ```batch
 # Run the quick start script
 quickstart.bat
 ```
 
 #### Mac/Linux Users
+
 ```bash
 # Make the script executable and run
 chmod +x quickstart.sh
@@ -127,11 +132,13 @@ cd ..
 The MCP server can be run in different modes:
 
 #### Option A: Run as MCP Server (for use with Claude Desktop)
+
 ```bash
 python -m giljo_mcp.mcp_server
 ```
 
 #### Option B: Run Full Stack (API + Frontend)
+
 ```bash
 # Terminal 1: Start the API server
 python -m api.main

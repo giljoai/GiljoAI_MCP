@@ -44,7 +44,7 @@ class LauncherCreator:
         self.app_id = "com.giljoai.mcp"
         self.app_description = "AI-Powered Development Orchestration System"
         self.app_version = "1.0.0"
-        
+
         # Initialize installation manifest if available
         self.manifest = None
         if InstallationManifest:
@@ -55,27 +55,27 @@ class LauncherCreator:
 
     def _get_desktop_path(self) -> Path:
         """Get the desktop path for the current platform"""
-        if self.system == 'windows':
+        if self.system == "windows":
             # Try multiple methods to get desktop path
-            desktop = os.environ.get('USERPROFILE', '')
+            desktop = os.environ.get("USERPROFILE", "")
             if desktop:
-                return Path(desktop) / 'Desktop'
-            return self.home_dir / 'Desktop'
-        elif self.system == 'darwin':  # macOS
-            return self.home_dir / 'Desktop'
+                return Path(desktop) / "Desktop"
+            return self.home_dir / "Desktop"
+        elif self.system == "darwin":  # macOS
+            return self.home_dir / "Desktop"
         else:  # Linux
             # Check XDG desktop directory first
-            xdg_desktop = os.environ.get('XDG_DESKTOP_DIR')
+            xdg_desktop = os.environ.get("XDG_DESKTOP_DIR")
             if xdg_desktop:
                 return Path(xdg_desktop)
-            return self.home_dir / 'Desktop'
+            return self.home_dir / "Desktop"
 
     def _get_start_menu_path(self) -> Optional[Path]:
         """Get the start menu path for Windows"""
-        if self.system == 'windows':
-            appdata = os.environ.get('APPDATA')
+        if self.system == "windows":
+            appdata = os.environ.get("APPDATA")
             if appdata:
-                return Path(appdata) / 'Microsoft' / 'Windows' / 'Start Menu' / 'Programs' / 'GiljoAI MCP'
+                return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "GiljoAI MCP"
         return None
 
     def create_desktop_shortcut(self) -> Tuple[bool, str]:
@@ -87,9 +87,9 @@ class LauncherCreator:
         if not self.desktop_path or not self.desktop_path.exists():
             return False, f"Desktop path not found: {self.desktop_path}"
 
-        if self.system == 'windows':
+        if self.system == "windows":
             return self._create_windows_shortcut()
-        elif self.system == 'darwin':
+        elif self.system == "darwin":
             return self._create_macos_app()
         else:
             return self._create_linux_desktop()
@@ -106,18 +106,18 @@ class LauncherCreator:
             icon_path = self.install_dir / "frontend" / "public" / "favicon.ico"
 
             # Create VBScript content
-            vbs_content = f'''Set WshShell = CreateObject("WScript.Shell")
+            vbs_content = f"""Set WshShell = CreateObject("WScript.Shell")
 Set oShortcut = WshShell.CreateShortcut("{shortcut_path}")
 oShortcut.TargetPath = "{start_script}"
 oShortcut.WorkingDirectory = "{self.install_dir}"
 oShortcut.Description = "{self.app_description}"
 oShortcut.IconLocation = "{icon_path}"
 oShortcut.Save
-'''
+"""
 
             # Write and execute VBScript
             vbs_script.write_text(vbs_content)
-            subprocess.run(['cscript', '//nologo', str(vbs_script)], check=True)
+            subprocess.run(["cscript", "//nologo", str(vbs_script)], check=True)
             vbs_script.unlink()  # Clean up
 
             # Track in manifest
@@ -147,16 +147,16 @@ oShortcut.Save
 
             # Create launcher script
             launcher_script = macos_dir / "launcher"
-            launcher_content = f'''#!/bin/bash
+            launcher_content = f"""#!/bin/bash
 cd "{self.install_dir}"
 ./start_giljo.sh
-'''
+"""
             launcher_script.write_text(launcher_content)
             launcher_script.chmod(0o755)
 
             # Create Info.plist
             info_plist = contents_dir / "Info.plist"
-            plist_content = f'''<?xml version="1.0" encoding="UTF-8"?>
+            plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -174,7 +174,7 @@ cd "{self.install_dir}"
     <string>{self.app_version}</string>
 </dict>
 </plist>
-'''
+"""
             info_plist.write_text(plist_content)
 
             # Copy icon if available
@@ -195,7 +195,7 @@ cd "{self.install_dir}"
             icon_path = self.install_dir / "frontend" / "public" / "giljo-logo.png"
 
             # Create .desktop file content
-            desktop_content = f'''[Desktop Entry]
+            desktop_content = f"""[Desktop Entry]
 Version={self.app_version}
 Type=Application
 Name={self.app_name}
@@ -204,7 +204,7 @@ Exec={start_script}
 Icon={icon_path}
 Terminal=false
 Categories=Development;Utility;
-'''
+"""
 
             # Write desktop file
             desktop_file.write_text(desktop_content)
@@ -221,7 +221,7 @@ Categories=Development;Utility;
         Returns:
             Tuple of (success, message)
         """
-        if self.system != 'windows':
+        if self.system != "windows":
             return True, "Start menu not applicable for this platform"
 
         if not self.start_menu_path:
@@ -252,19 +252,19 @@ Categories=Development;Utility;
                 vbs_script = self.install_dir / f"create_{target.replace('.', '_')}_shortcut.vbs"
                 icon_path = self.install_dir / "frontend" / "public" / "favicon.ico"
 
-                vbs_content = f'''Set WshShell = CreateObject("WScript.Shell")
+                vbs_content = f"""Set WshShell = CreateObject("WScript.Shell")
 Set oShortcut = WshShell.CreateShortcut("{shortcut_path}")
 oShortcut.TargetPath = "{target_path}"
 oShortcut.WorkingDirectory = "{self.install_dir}"
 oShortcut.Description = "{description}"
 oShortcut.IconLocation = "{icon_path}"
 oShortcut.Save
-'''
+"""
 
                 vbs_script.write_text(vbs_content)
-                subprocess.run(['cscript', '//nologo', str(vbs_script)], check=True, capture_output=True)
+                subprocess.run(["cscript", "//nologo", str(vbs_script)], check=True, capture_output=True)
                 vbs_script.unlink()
-                
+
                 # Track in manifest
                 if self.manifest:
                     self.manifest.add_shortcut(shortcut_path, target_path, "start_menu")
@@ -284,7 +284,7 @@ oShortcut.Save
         Returns:
             Tuple of (success, message)
         """
-        if self.system == 'windows':
+        if self.system == "windows":
             return self._create_windows_start_script()
         else:
             return self._create_unix_start_script()
@@ -294,7 +294,7 @@ oShortcut.Save
         try:
             script_path = self.install_dir / "start_giljo.bat"
 
-            script_content = '''@echo off
+            script_content = """@echo off
 setlocal
 
 echo Starting GiljoAI MCP Orchestrator...
@@ -360,15 +360,15 @@ echo.
 :loop
 timeout /t 60 /nobreak >nul
 goto loop
-'''
+"""
 
             script_path.write_text(script_content)
-            
+
             # Track in manifest
             if self.manifest:
                 self.manifest.add_file(script_path, category="script")
                 self.manifest.save_manifest()
-            
+
             return True, f"Created Windows start script: {script_path}"
 
         except Exception as e:
@@ -379,7 +379,7 @@ goto loop
         try:
             script_path = self.install_dir / "start_giljo.sh"
 
-            script_content = '''#!/bin/bash
+            script_content = """#!/bin/bash
 
 echo "Starting GiljoAI MCP Orchestrator..."
 echo "====================================="
@@ -456,16 +456,16 @@ echo ""
 
 # Keep the script running
 wait
-'''
+"""
 
             script_path.write_text(script_content)
             script_path.chmod(0o755)
-            
+
             # Track in manifest
             if self.manifest:
                 self.manifest.add_file(script_path, category="script")
                 self.manifest.save_manifest()
-            
+
             return True, f"Created Unix start script: {script_path}"
 
         except Exception as e:
@@ -477,7 +477,7 @@ wait
         Returns:
             Tuple of (success, message)
         """
-        if self.system == 'windows':
+        if self.system == "windows":
             return self._create_windows_stop_script()
         else:
             return self._create_unix_stop_script()
@@ -487,7 +487,7 @@ wait
         try:
             script_path = self.install_dir / "stop_giljo.bat"
 
-            script_content = '''@echo off
+            script_content = """@echo off
 echo Stopping GiljoAI MCP Orchestrator...
 
 :: Kill Python processes running our services
@@ -501,15 +501,15 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :6002') do taskkill /F /PID %
 
 echo All services stopped.
 pause
-'''
+"""
 
             script_path.write_text(script_content)
-            
+
             # Track in manifest
             if self.manifest:
                 self.manifest.add_file(script_path, category="script")
                 self.manifest.save_manifest()
-            
+
             return True, f"Created Windows stop script: {script_path}"
 
         except Exception as e:
@@ -520,7 +520,7 @@ pause
         try:
             script_path = self.install_dir / "stop_giljo.sh"
 
-            script_content = '''#!/bin/bash
+            script_content = """#!/bin/bash
 
 echo "Stopping GiljoAI MCP Orchestrator..."
 
@@ -537,16 +537,16 @@ done
 pkill -f "python.*giljo_mcp" 2>/dev/null
 
 echo "All services stopped."
-'''
+"""
 
             script_path.write_text(script_content)
             script_path.chmod(0o755)
-            
+
             # Track in manifest
             if self.manifest:
                 self.manifest.add_file(script_path, category="script")
                 self.manifest.save_manifest()
-            
+
             return True, f"Created Unix stop script: {script_path}"
 
         except Exception as e:
@@ -558,14 +558,14 @@ echo "All services stopped."
         Returns:
             Tuple of (success, message)
         """
-        if self.system == 'windows':
+        if self.system == "windows":
             script_path = self.install_dir / "open_dashboard.bat"
-            script_content = '''@echo off
+            script_content = """@echo off
 start http://localhost:6000
-'''
+"""
         else:
             script_path = self.install_dir / "open_dashboard.sh"
-            script_content = '''#!/bin/bash
+            script_content = """#!/bin/bash
 if [[ "$OSTYPE" == "darwin"* ]]; then
     open http://localhost:6000
 elif command -v xdg-open &> /dev/null; then
@@ -573,18 +573,18 @@ elif command -v xdg-open &> /dev/null; then
 else
     echo "Please open http://localhost:6000 in your browser"
 fi
-'''
+"""
 
         try:
             script_path.write_text(script_content)
-            if self.system != 'windows':
+            if self.system != "windows":
                 script_path.chmod(0o755)
-            
+
             # Track in manifest
             if self.manifest:
                 self.manifest.add_file(script_path, category="script")
                 self.manifest.save_manifest()
-            
+
             return True, f"Created dashboard opener: {script_path}"
         except Exception as e:
             return False, f"Failed to create dashboard opener: {e}"
@@ -598,24 +598,24 @@ fi
         results = {}
 
         # Create start/stop scripts
-        results['start_script'] = self.create_start_script()
-        results['stop_script'] = self.create_stop_script()
-        results['dashboard_opener'] = self.create_open_dashboard_script()
+        results["start_script"] = self.create_start_script()
+        results["stop_script"] = self.create_stop_script()
+        results["dashboard_opener"] = self.create_open_dashboard_script()
 
         # Create desktop shortcut
-        results['desktop_shortcut'] = self.create_desktop_shortcut()
+        results["desktop_shortcut"] = self.create_desktop_shortcut()
 
         # Create start menu entries (Windows only)
-        if self.system == 'windows':
-            results['start_menu'] = self.create_start_menu_entry()
+        if self.system == "windows":
+            results["start_menu"] = self.create_start_menu_entry()
 
         return results
 
     def print_summary(self, results: Dict[str, Tuple[bool, str]]):
         """Print a summary of launcher creation results"""
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("LAUNCHER CREATION SUMMARY")
-        print("="*50)
+        print("=" * 50)
 
         success_count = 0
         for name, (success, message) in results.items():
@@ -634,9 +634,9 @@ fi
             if success:
                 success_count += 1
 
-        print("="*50)
+        print("=" * 50)
         print(f"Successfully created {success_count}/{len(results)} launchers")
-        print("="*50)
+        print("=" * 50)
 
 
 def main():
@@ -665,7 +665,7 @@ def main():
     creator.print_summary(results)
 
     # Return success if at least critical components were created
-    critical_success = results.get('start_script', (False,))[0]
+    critical_success = results.get("start_script", (False,))[0]
     return 0 if critical_success else 1
 
 

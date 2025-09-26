@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi.testclient import TestClient
+
 from src.giljo_mcp.api.app import app
 
 
@@ -124,10 +125,6 @@ def analyze_api_coverage():
     total_working = sum(r["working"] for r in results.values())
     total_endpoints = sum(r["total"] for r in results.values())
     coverage_percent = (total_working / total_endpoints) * 100
-
-
-
-
 
     return coverage_percent
 

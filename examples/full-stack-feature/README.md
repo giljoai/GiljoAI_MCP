@@ -13,6 +13,7 @@ This example shows how GiljoAI MCP Orchestrator coordinates frontend, backend, a
 ## The Scenario
 
 You need to implement a "User Dashboard" feature that includes:
+
 - Frontend: React components with real-time updates
 - Backend: FastAPI endpoints with authentication
 - Database: PostgreSQL schema with proper migrations
@@ -77,7 +78,9 @@ orchestrator.execute()
 ## Agent Coordination Flow
 
 ### 1. Planning Phase
+
 The **Planner Agent** creates:
+
 - Feature specification document
 - API contract definitions
 - Database schema design
@@ -85,28 +88,36 @@ The **Planner Agent** creates:
 - Test scenarios
 
 ### 2. Database Phase
+
 The **Database Agent** implements:
+
 - Schema creation with migrations
 - Indexes for performance
 - Stored procedures if needed
 - Sample data for testing
 
 ### 3. Backend Phase
+
 The **Backend Agent** develops:
+
 - FastAPI endpoints matching contracts
 - Business logic implementation
 - Authentication/authorization
 - WebSocket handlers for real-time
 
 ### 4. Frontend Phase
+
 The **Frontend Agent** builds:
+
 - React components
 - State management (Redux/Context)
 - WebSocket client for updates
 - Responsive design
 
 ### 5. Testing Phase
+
 The **Tester Agent** validates:
+
 - Unit tests for each component
 - Integration tests for APIs
 - End-to-end user flows
@@ -119,6 +130,7 @@ See `fullstack_feature.py` for the complete orchestration code.
 ### Key Features Demonstrated
 
 #### 1. Contract-First Development
+
 ```python
 # Planner generates API contracts
 contracts = planner.generate_contracts(requirements)
@@ -131,6 +143,7 @@ frontend.generate_client(contracts)
 ```
 
 #### 2. Synchronized Schema Evolution
+
 ```python
 # Database agent creates migration
 migration = database.create_migration(schema_changes)
@@ -143,6 +156,7 @@ orchestrator.broadcast({
 ```
 
 #### 3. Cross-Layer Testing
+
 ```python
 # Tester coordinates with all agents
 test_suite = tester.create_e2e_tests(
@@ -155,21 +169,23 @@ test_suite = tester.create_e2e_tests(
 ## Customization Options
 
 ### Adjust Technology Stack
+
 ```yaml
 # config.yaml
 frontend:
-  framework: "vue"  # or "react", "angular"
-  state: "pinia"    # or "redux", "mobx"
+  framework: "vue" # or "react", "angular"
+  state: "pinia" # or "redux", "mobx"
 
 backend:
-  framework: "django"  # or "fastapi", "flask"
-  orm: "sqlalchemy"    # or "django-orm", "tortoise"
+  framework: "django" # or "fastapi", "flask"
+  orm: "sqlalchemy" # or "django-orm", "tortoise"
 
 database:
-  engine: "mysql"  # or "postgresql", "mongodb"
+  engine: "mysql" # or "postgresql", "mongodb"
 ```
 
 ### Define Custom Workflows
+
 ```python
 # Custom coordination pattern
 async def custom_workflow(orchestrator):
@@ -193,23 +209,27 @@ async def custom_workflow(orchestrator):
 After running this example, you'll have:
 
 1. **Database**
+
    - Complete schema with tables, indexes, constraints
    - Migration scripts
    - Seed data
 
 2. **Backend API**
+
    - RESTful endpoints
    - WebSocket handlers
    - Authentication middleware
    - API documentation (OpenAPI)
 
 3. **Frontend Application**
+
    - Component library
    - Routing setup
    - State management
    - Real-time updates
 
 4. **Test Suite**
+
    - Unit tests: 90%+ coverage
    - Integration tests: All API endpoints
    - E2E tests: Critical user paths
@@ -255,6 +275,7 @@ for agent, info in status.items():
 ## Troubleshooting
 
 ### Agents Not Coordinating
+
 ```python
 # Check message flow
 messages = orchestrator.debug_messages()
@@ -263,6 +284,7 @@ print(f"Pending: {len([m for m in messages if not m.acknowledged])}")
 ```
 
 ### Schema Conflicts
+
 ```python
 # Rollback and retry
 database.rollback_migration()
@@ -270,6 +292,7 @@ orchestrator.retry_phase("database")
 ```
 
 ### Performance Issues
+
 ```python
 # Get performance metrics
 metrics = orchestrator.get_metrics()

@@ -18,7 +18,6 @@ PORT_ASSIGNMENTS = {
     "GiljoAI MCP Server": 6001,
     "GiljoAI REST API": 6002,
     "GiljoAI WebSocket": 6003,
-
     # Common services
     "PostgreSQL": 5432,
     "Vite Dev Server": 5173,
@@ -79,10 +78,8 @@ def main():
     conflicts = []
     available = []
 
-
     for service, port in PORT_ASSIGNMENTS.items():
         in_use = check_port(port)
-
 
         # Check for conflicts with GiljoAI services
         if service.startswith("GiljoAI") and in_use:
@@ -90,16 +87,12 @@ def main():
         elif service.startswith("GiljoAI"):
             available.append((service, port))
 
-
     if conflicts:
         for service, port in conflicts:
             pass
         return 1
     for service, port in available:
         pass
-
-
-
 
     return 0
 

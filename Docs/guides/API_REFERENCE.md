@@ -18,6 +18,7 @@ Complete API documentation with request/response examples for all 20 MCP tools.
 Creates a new project with mission and optional agent sequence.
 
 **Request:**
+
 ```json
 {
   "tool": "create_project",
@@ -30,6 +31,7 @@ Creates a new project with mission and optional agent sequence.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -50,16 +52,18 @@ Creates a new project with mission and optional agent sequence.
 Lists all projects with optional status filter.
 
 **Request:**
+
 ```json
 {
   "tool": "list_projects",
   "parameters": {
-    "status": "active"  // optional: "active", "completed", "archived"
+    "status": "active" // optional: "active", "completed", "archived"
   }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -90,6 +94,7 @@ Lists all projects with optional status filter.
 Switches to a different project context.
 
 **Request:**
+
 ```json
 {
   "tool": "switch_project",
@@ -100,6 +105,7 @@ Switches to a different project context.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -117,6 +123,7 @@ Switches to a different project context.
 Closes a completed project with summary.
 
 **Request:**
+
 ```json
 {
   "tool": "close_project",
@@ -128,6 +135,7 @@ Closes a completed project with summary.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -152,6 +160,7 @@ Closes a completed project with summary.
 Updates the mission field after orchestrator analysis.
 
 **Request:**
+
 ```json
 {
   "tool": "update_project_mission",
@@ -163,6 +172,7 @@ Updates the mission field after orchestrator analysis.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -177,6 +187,7 @@ Updates the mission field after orchestrator analysis.
 Gets comprehensive project status.
 
 **Request:**
+
 ```json
 {
   "tool": "project_status",
@@ -187,6 +198,7 @@ Gets comprehensive project status.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -242,6 +254,7 @@ Gets comprehensive project status.
 Ensures an agent exists (idempotent - safe for workers).
 
 **Request:**
+
 ```json
 {
   "tool": "ensure_agent",
@@ -254,6 +267,7 @@ Ensures an agent exists (idempotent - safe for workers).
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -275,6 +289,7 @@ Ensures an agent exists (idempotent - safe for workers).
 Activates orchestrator agent (triggers immediate discovery workflow).
 
 **Request:**
+
 ```json
 {
   "tool": "activate_agent",
@@ -287,6 +302,7 @@ Activates orchestrator agent (triggers immediate discovery workflow).
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -308,6 +324,7 @@ Activates orchestrator agent (triggers immediate discovery workflow).
 Assigns a job to an agent with tasks and scope.
 
 **Request:**
+
 ```json
 {
   "tool": "assign_job",
@@ -328,6 +345,7 @@ Assigns a job to an agent with tasks and scope.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -369,6 +387,7 @@ Assigns a job to an agent with tasks and scope.
 Transfers work from one agent to another.
 
 **Request:**
+
 ```json
 {
   "tool": "handoff",
@@ -404,6 +423,7 @@ Transfers work from one agent to another.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -423,6 +443,7 @@ Transfers work from one agent to another.
 Checks agent health and context usage.
 
 **Request:**
+
 ```json
 {
   "tool": "agent_health",
@@ -433,6 +454,7 @@ Checks agent health and context usage.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -455,6 +477,7 @@ Checks agent health and context usage.
 ```
 
 **Response (with warnings):**
+
 ```json
 {
   "success": true,
@@ -471,10 +494,7 @@ Checks agent health and context usage.
     "uptime_seconds": 7200,
     "last_activity": "2025-09-16T15:20:00Z"
   },
-  "warnings": [
-    "Context usage above 90%",
-    "High message backlog (15 pending)"
-  ],
+  "warnings": ["Context usage above 90%", "High message backlog (15 pending)"],
   "recommendations": [
     "Consider handoff to fresh agent soon",
     "Process pending messages or spawn helper"
@@ -487,6 +507,7 @@ Checks agent health and context usage.
 Gracefully ends an agent's work.
 
 **Request:**
+
 ```json
 {
   "tool": "decommission_agent",
@@ -499,6 +520,7 @@ Gracefully ends an agent's work.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -526,6 +548,7 @@ Gracefully ends an agent's work.
 Sends message to one or more agents.
 
 **Request:**
+
 ```json
 {
   "tool": "send_message",
@@ -541,6 +564,7 @@ Sends message to one or more agents.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -566,6 +590,7 @@ Sends message to one or more agents.
 Retrieves pending messages for an agent.
 
 **Request:**
+
 ```json
 {
   "tool": "get_messages",
@@ -577,6 +602,7 @@ Retrieves pending messages for an agent.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -619,6 +645,7 @@ Retrieves pending messages for an agent.
 Marks message as received by agent.
 
 **Request:**
+
 ```json
 {
   "tool": "acknowledge_message",
@@ -630,6 +657,7 @@ Marks message as received by agent.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -645,6 +673,7 @@ Marks message as received by agent.
 Marks message as completed with result.
 
 **Request:**
+
 ```json
 {
   "tool": "complete_message",
@@ -657,6 +686,7 @@ Marks message as completed with result.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -673,6 +703,7 @@ Marks message as completed with result.
 Broadcasts message to all agents in project.
 
 **Request:**
+
 ```json
 {
   "tool": "broadcast",
@@ -685,6 +716,7 @@ Broadcasts message to all agents in project.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -693,12 +725,7 @@ Broadcasts message to all agents in project.
     "content": "ATTENTION: Code freeze at 5 PM...",
     "priority": "high",
     "timestamp": "2025-09-16T14:00:00Z",
-    "recipients": [
-      "orchestrator",
-      "backend_dev",
-      "frontend_dev",
-      "tester"
-    ],
+    "recipients": ["orchestrator", "backend_dev", "frontend_dev", "tester"],
     "recipient_count": 4
   }
 }
@@ -709,6 +736,7 @@ Broadcasts message to all agents in project.
 Quick task capture for tracking.
 
 **Request:**
+
 ```json
 {
   "tool": "log_task",
@@ -721,6 +749,7 @@ Quick task capture for tracking.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -744,6 +773,7 @@ Quick task capture for tracking.
 Gets vision document (auto-chunks for 50K+ tokens).
 
 **Request:**
+
 ```json
 {
   "tool": "get_vision",
@@ -755,6 +785,7 @@ Gets vision document (auto-chunks for 50K+ tokens).
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -773,6 +804,7 @@ Gets vision document (auto-chunks for 50K+ tokens).
 Gets vision document index for navigation (ORCHESTRATOR ONLY).
 
 **Request:**
+
 ```json
 {
   "tool": "get_vision_index",
@@ -781,6 +813,7 @@ Gets vision document index for navigation (ORCHESTRATOR ONLY).
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -823,9 +856,9 @@ Gets vision document index for navigation (ORCHESTRATOR ONLY).
       }
     ],
     "chunk_boundaries": [
-      {"chunk": 1, "start_token": 0, "end_token": 20000},
-      {"chunk": 2, "start_token": 20001, "end_token": 40000},
-      {"chunk": 3, "start_token": 40001, "end_token": 52341}
+      { "chunk": 1, "start_token": 0, "end_token": 20000 },
+      { "chunk": 2, "start_token": 20001, "end_token": 40000 },
+      { "chunk": 3, "start_token": 40001, "end_token": 52341 }
     ]
   }
 }
@@ -836,16 +869,18 @@ Gets vision document index for navigation (ORCHESTRATOR ONLY).
 Gets context index for intelligent querying.
 
 **Request:**
+
 ```json
 {
   "tool": "get_context_index",
   "parameters": {
-    "product_id": "prod_123"  // optional
+    "product_id": "prod_123" // optional
   }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -855,17 +890,32 @@ Gets context index for intelligent querying.
     "documents": [
       {
         "name": "architecture",
-        "sections": ["overview", "database_design", "api_layer", "orchestration_engine"],
+        "sections": [
+          "overview",
+          "database_design",
+          "api_layer",
+          "orchestration_engine"
+        ],
         "last_updated": "2025-09-15T10:00:00Z"
       },
       {
         "name": "api_reference",
-        "sections": ["project_tools", "agent_tools", "message_tools", "context_tools"],
+        "sections": [
+          "project_tools",
+          "agent_tools",
+          "message_tools",
+          "context_tools"
+        ],
         "last_updated": "2025-09-16T14:00:00Z"
       },
       {
         "name": "deployment_guide",
-        "sections": ["local_setup", "lan_deployment", "wan_deployment", "scaling"],
+        "sections": [
+          "local_setup",
+          "lan_deployment",
+          "wan_deployment",
+          "scaling"
+        ],
         "last_updated": "2025-09-14T16:30:00Z"
       }
     ],
@@ -880,18 +930,20 @@ Gets context index for intelligent querying.
 Retrieves specific content section.
 
 **Request:**
+
 ```json
 {
   "tool": "get_context_section",
   "parameters": {
     "document_name": "architecture",
     "section_name": "database_design",
-    "product_id": "prod_123"  // optional
+    "product_id": "prod_123" // optional
   }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -909,16 +961,18 @@ Retrieves specific content section.
 Gets all product settings for analysis.
 
 **Request:**
+
 ```json
 {
   "tool": "get_product_settings",
   "parameters": {
-    "product_id": "prod_123"  // optional
+    "product_id": "prod_123" // optional
   }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -964,6 +1018,7 @@ Gets all product settings for analysis.
 Gets current session statistics.
 
 **Request:**
+
 ```json
 {
   "tool": "session_info",
@@ -972,6 +1027,7 @@ Gets current session statistics.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -1013,6 +1069,7 @@ Gets current session statistics.
 Notifies agents about mission changes.
 
 **Request:**
+
 ```json
 {
   "tool": "recalibrate_mission",
@@ -1024,6 +1081,7 @@ Notifies agents about mission changes.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -1048,6 +1106,7 @@ Notifies agents about mission changes.
 Gets documentation for all available tools.
 
 **Request:**
+
 ```json
 {
   "tool": "help",
@@ -1056,6 +1115,7 @@ Gets documentation for all available tools.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -1098,7 +1158,14 @@ Gets documentation for all available tools.
           {
             "name": "send_message",
             "description": "Send message to one or more agents",
-            "parameters": ["to_agents", "content", "project_id", "message_type", "priority", "from_agent"],
+            "parameters": [
+              "to_agents",
+              "content",
+              "project_id",
+              "message_type",
+              "priority",
+              "from_agent"
+            ],
             "example": "send_message(to_agents=['dev'], content='Please review', project_id='uuid')"
           }
           // ... other message tools
@@ -1180,25 +1247,25 @@ Default rate limits per tenant:
 For real-time updates, connect to the WebSocket endpoint:
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8080/ws');
+const ws = new WebSocket("ws://localhost:8080/ws");
 
-ws.on('message', (data) => {
+ws.on("message", (data) => {
   const event = JSON.parse(data);
-  
-  switch(event.type) {
-    case 'agent.created':
+
+  switch (event.type) {
+    case "agent.created":
       console.log(`New agent: ${event.agent_name}`);
       break;
-      
-    case 'message.sent':
+
+    case "message.sent":
       console.log(`Message from ${event.from} to ${event.to}`);
       break;
-      
-    case 'task.completed':
+
+    case "task.completed":
       console.log(`Task completed: ${event.task_id}`);
       break;
-      
-    case 'project.status_changed':
+
+    case "project.status_changed":
       console.log(`Project ${event.project_id} is now ${event.status}`);
       break;
   }
@@ -1207,5 +1274,5 @@ ws.on('message', (data) => {
 
 ---
 
-*Last Updated: 2025-09-16*
-*API Version: 1.0.0*
+_Last Updated: 2025-09-16_
+_API Version: 1.0.0_

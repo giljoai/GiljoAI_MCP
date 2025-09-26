@@ -2,23 +2,18 @@
   <v-container fluid>
     <v-row>
       <v-col cols="12">
-        <v-btn
-          icon
-          variant="text"
-          @click="$router.back()"
-          class="mb-4"
-        >
+        <v-btn icon variant="text" @click="$router.back()" class="mb-4">
           <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
-        
+
         <h1 class="text-h4 mb-4">{{ product?.name || 'Product Details' }}</h1>
-        
+
         <v-card v-if="loading">
           <v-card-text class="text-center py-8">
             <v-progress-circular indeterminate color="primary"></v-progress-circular>
           </v-card-text>
         </v-card>
-        
+
         <v-card v-else-if="product">
           <v-card-text>
             <v-row>

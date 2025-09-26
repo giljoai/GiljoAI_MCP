@@ -13,6 +13,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import socket
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class InstallationStatus(Enum):
     """PostgreSQL installation status codes."""
+
     NOT_STARTED = "not_started"
     DOWNLOADING = "downloading"
     VERIFYING = "verifying"
@@ -38,6 +40,7 @@ class InstallationStatus(Enum):
 @dataclass
 class PostgreSQLConfig:
     """PostgreSQL installation configuration."""
+
     version: str = "15.4"
     architecture: str = "x86_64"  # or "x86"
     port: int = 5432
@@ -59,7 +62,7 @@ class PostgreSQLConfig:
 class PostgreSQLInstaller:
     """
     PostgreSQL installer for Windows systems.
-    
+
     Handles download, installation, configuration, and initial setup
     of PostgreSQL database for the GiljoAI MCP system.
     """
@@ -68,16 +71,16 @@ class PostgreSQLInstaller:
     DOWNLOAD_URLS = {
         "15.4": {
             "x86_64": "https://get.enterprisedb.com/postgresql/postgresql-15.4-1-windows-x64.exe",
-            "x86": "https://get.enterprisedb.com/postgresql/postgresql-15.4-1-windows.exe"
+            "x86": "https://get.enterprisedb.com/postgresql/postgresql-15.4-1-windows.exe",
         },
         "15.5": {
             "x86_64": "https://get.enterprisedb.com/postgresql/postgresql-15.5-1-windows-x64.exe",
-            "x86": "https://get.enterprisedb.com/postgresql/postgresql-15.5-1-windows.exe"
+            "x86": "https://get.enterprisedb.com/postgresql/postgresql-15.5-1-windows.exe",
         },
         "16.0": {
             "x86_64": "https://get.enterprisedb.com/postgresql/postgresql-16.0-1-windows-x64.exe",
-            "x86": "https://get.enterprisedb.com/postgresql/postgresql-16.0-1-windows.exe"
-        }
+            "x86": "https://get.enterprisedb.com/postgresql/postgresql-16.0-1-windows.exe",
+        },
     }
 
     # Expected SHA256 hashes for installers (example values - should be updated)
@@ -90,7 +93,7 @@ class PostgreSQLInstaller:
     def __init__(self, config: Optional[PostgreSQLConfig] = None):
         """
         Initialize PostgreSQL installer.
-        
+
         Args:
             config: Optional configuration object. Uses defaults if not provided.
         """
@@ -112,9 +115,7 @@ class PostgreSQLInstaller:
         """Configure logging for the installer."""
         log_file = self.temp_dir / "postgresql_install.log"
         handler = logging.FileHandler(log_file)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)
@@ -122,7 +123,7 @@ class PostgreSQLInstaller:
     def is_postgresql_installed(self) -> bool:
         """
         Check if PostgreSQL is already installed.
-        
+
         Returns:
             True if PostgreSQL is installed, False otherwise.
         """
@@ -137,6 +138,7 @@ class PostgreSQLInstaller:
         # Check Windows registry for PostgreSQL installations
         try:
             import winreg
+
             key_path = r"SOFTWARE\PostgreSQL\Installations"
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path) as key:
                 i = 0
@@ -156,11 +158,12 @@ class PostgreSQLInstaller:
     def get_system_architecture(self) -> str:
         """
         Determine system architecture.
-        
+
         Returns:
             "x86_64" for 64-bit systems, "x86" for 32-bit systems.
         """
         import platform
+
         machine = platform.machine().lower()
         if machine in ["amd64", "x86_64", "x64"]:
             return "x86_64"
@@ -169,13 +172,13 @@ class PostgreSQLInstaller:
     def download_installer(self, progress_callback=None) -> Path:
         """
         Download PostgreSQL installer.
-        
+
         Args:
             progress_callback: Optional callback for progress updates.
-        
+
         Returns:
             Path to downloaded installer.
-        
+
         Raises:
             Exception: If download fails.
         """
@@ -214,7 +217,13 @@ class PostgreSQLInstaller:
                         progress_callback(progress, f"Downloading... {progress}%")
 
             logger.info(f"Downloading from {url}")
-            urllib.request.urlretrieve(url, installer_path, download_hook)
+            # Set timeout for download
+            old_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(30.0)
+            try:
+                urllib.request.urlretrieve(url, installer_path, download_hook)
+            finally:
+                socket.setdefaulttimeout(old_timeout)
 
             self.installer_path = installer_path
             logger.info(f"Downloaded installer to {installer_path}")
@@ -229,7 +238,7 @@ class PostgreSQLInstaller:
     def verify_installer(self) -> bool:
         """
         Verify downloaded installer integrity.
-        
+
         Returns:
             True if installer is valid, False otherwise.
         """
@@ -285,10 +294,10 @@ class PostgreSQLInstaller:
     def install_postgresql(self, progress_callback=None) -> bool:
         """
         Perform silent PostgreSQL installation.
-        
+
         Args:
             progress_callback: Optional callback for progress updates.
-        
+
         Returns:
             True if installation succeeds, False otherwise.
         """
@@ -306,22 +315,30 @@ class PostgreSQLInstaller:
         # Build installation command with parameters
         install_cmd = [
             str(self.installer_path),
-            "--mode", "unattended",
-            "--unattendedmodeui", "none",
-            "--prefix", str(self.config.install_dir),
-            "--datadir", str(self.config.data_dir),
-            "--serverport", str(self.config.port),
-            "--superaccount", self.config.superuser,
-            "--superpassword", self.config.superuser_password,
-            "--locale", self.config.locale,
-            "--enable_acledit", "1"
+            "--mode",
+            "unattended",
+            "--unattendedmodeui",
+            "none",
+            "--prefix",
+            str(self.config.install_dir),
+            "--datadir",
+            str(self.config.data_dir),
+            "--serverport",
+            str(self.config.port),
+            "--superaccount",
+            self.config.superuser,
+            "--superpassword",
+            self.config.superuser_password,
+            "--locale",
+            self.config.locale,
+            "--enable_acledit",
+            "1",
         ]
 
         if self.config.enable_service:
-            install_cmd.extend([
-                "--serviceaccount", self.config.service_account,
-                "--servicename", self.config.service_name
-            ])
+            install_cmd.extend(
+                ["--serviceaccount", self.config.service_account, "--servicename", self.config.service_name]
+            )
         else:
             install_cmd.extend(["--disable-components", "server"])
 
@@ -329,12 +346,7 @@ class PostgreSQLInstaller:
             logger.info(f"Running installer with command: {' '.join(install_cmd[:-2])}")  # Hide password
 
             # Run installer
-            process = subprocess.Popen(
-                install_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
+            process = subprocess.Popen(install_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             # Monitor installation progress
             while True:
@@ -370,7 +382,7 @@ class PostgreSQLInstaller:
     def configure_postgresql(self) -> bool:
         """
         Configure PostgreSQL for GiljoAI MCP.
-        
+
         Returns:
             True if configuration succeeds, False otherwise.
         """
@@ -393,21 +405,19 @@ class PostgreSQLInstaller:
             logger.info(f"Creating user {self.config.database_user}")
             create_user_cmd = [
                 str(createuser),
-                "-h", "localhost",
-                "-p", str(self.config.port),
-                "-U", self.config.superuser,
+                "-h",
+                "localhost",
+                "-p",
+                str(self.config.port),
+                "-U",
+                self.config.superuser,
                 "-d",  # Can create databases
                 "-r",  # Can create roles
                 "-s",  # Superuser (simplified for development)
-                self.config.database_user
+                self.config.database_user,
             ]
 
-            result = subprocess.run(
-                create_user_cmd,
-                check=False, env=env,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(create_user_cmd, check=False, env=env, capture_output=True, text=True)
 
             # User might already exist, which is okay
             if result.returncode != 0 and "already exists" not in result.stderr:
@@ -419,19 +429,19 @@ class PostgreSQLInstaller:
 
             psql_cmd = [
                 str(psql),
-                "-h", "localhost",
-                "-p", str(self.config.port),
-                "-U", self.config.superuser,
-                "-d", "postgres",
-                "-c", alter_user_sql
+                "-h",
+                "localhost",
+                "-p",
+                str(self.config.port),
+                "-U",
+                self.config.superuser,
+                "-d",
+                "postgres",
+                "-c",
+                alter_user_sql,
             ]
 
-            result = subprocess.run(
-                psql_cmd,
-                check=False, env=env,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(psql_cmd, check=False, env=env, capture_output=True, text=True)
 
             if result.returncode != 0:
                 logger.error(f"Failed to set user password: {result.stderr}")
@@ -441,20 +451,20 @@ class PostgreSQLInstaller:
             logger.info(f"Creating database {self.config.database_name}")
             create_db_cmd = [
                 str(createdb),
-                "-h", "localhost",
-                "-p", str(self.config.port),
-                "-U", self.config.superuser,
-                "-O", self.config.database_user,  # Owner
-                "-E", "UTF8",  # Encoding
-                self.config.database_name
+                "-h",
+                "localhost",
+                "-p",
+                str(self.config.port),
+                "-U",
+                self.config.superuser,
+                "-O",
+                self.config.database_user,  # Owner
+                "-E",
+                "UTF8",  # Encoding
+                self.config.database_name,
             ]
 
-            result = subprocess.run(
-                create_db_cmd,
-                check=False, env=env,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(create_db_cmd, check=False, env=env, capture_output=True, text=True)
 
             # Database might already exist, which is okay
             if result.returncode != 0 and "already exists" not in result.stderr:
@@ -493,6 +503,7 @@ class PostgreSQLInstaller:
             backup_path = pg_hba_path.with_suffix(".conf.backup")
             if not backup_path.exists():
                 import shutil
+
                 shutil.copy2(pg_hba_path, backup_path)
                 logger.info(f"Backed up pg_hba.conf to {backup_path}")
 
@@ -516,9 +527,7 @@ class PostgreSQLInstaller:
                     break
 
             # Insert new entries if not already present
-            already_configured = any(
-                self.config.database_name in line for line in lines
-            )
+            already_configured = any(self.config.database_name in line for line in lines)
 
             if not already_configured:
                 for entry in reversed(new_entries):
@@ -546,6 +555,7 @@ class PostgreSQLInstaller:
             backup_path = postgresql_conf_path.with_suffix(".conf.backup")
             if not backup_path.exists():
                 import shutil
+
                 shutil.copy2(postgresql_conf_path, backup_path)
                 logger.info(f"Backed up postgresql.conf to {backup_path}")
 
@@ -594,20 +604,14 @@ log_timezone = 'UTC'
 
             # Stop service
             subprocess.run(
-                ["net", "stop", self.config.service_name],
-                check=False, capture_output=True,
-                text=True,
-                timeout=30
+                ["net", "stop", self.config.service_name], check=False, capture_output=True, text=True, timeout=30
             )
 
             time.sleep(2)
 
             # Start service
             result = subprocess.run(
-                ["net", "start", self.config.service_name],
-                check=False, capture_output=True,
-                text=True,
-                timeout=30
+                ["net", "start", self.config.service_name], check=False, capture_output=True, text=True, timeout=30
             )
 
             if result.returncode != 0:
@@ -624,7 +628,7 @@ log_timezone = 'UTC'
     def test_connection(self) -> Tuple[bool, Optional[str]]:
         """
         Test PostgreSQL connection.
-        
+
         Returns:
             Tuple of (success, connection_string).
         """
@@ -650,20 +654,19 @@ log_timezone = 'UTC'
 
             test_cmd = [
                 str(psql),
-                "-h", "localhost",
-                "-p", str(self.config.port),
-                "-U", self.config.database_user,
-                "-d", self.config.database_name,
-                "-c", "SELECT version();"
+                "-h",
+                "localhost",
+                "-p",
+                str(self.config.port),
+                "-U",
+                self.config.database_user,
+                "-d",
+                self.config.database_name,
+                "-c",
+                "SELECT version();",
             ]
 
-            result = subprocess.run(
-                test_cmd,
-                check=False, env=env,
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            result = subprocess.run(test_cmd, check=False, env=env, capture_output=True, text=True, timeout=10)
 
             if result.returncode == 0:
                 logger.info("Connection test successful")
@@ -686,12 +689,12 @@ log_timezone = 'UTC'
     def install(self, progress_callback=None) -> Tuple[bool, Optional[str]]:
         """
         Main installation entry point.
-        
+
         Performs complete PostgreSQL installation and configuration.
-        
+
         Args:
             progress_callback: Optional callback for progress updates.
-        
+
         Returns:
             Tuple of (success, connection_string).
         """
@@ -737,7 +740,7 @@ log_timezone = 'UTC'
     def uninstall(self) -> bool:
         """
         Uninstall PostgreSQL.
-        
+
         Returns:
             True if uninstallation succeeds, False otherwise.
         """
@@ -746,19 +749,13 @@ log_timezone = 'UTC'
         try:
             # Stop service
             if self.config.enable_service:
-                subprocess.run(
-                    ["net", "stop", self.config.service_name],
-                    check=False, capture_output=True,
-                    timeout=30
-                )
+                subprocess.run(["net", "stop", self.config.service_name], check=False, capture_output=True, timeout=30)
 
             # Run uninstaller
             uninstaller = self.config.install_dir / "uninstall-postgresql.exe"
             if uninstaller.exists():
                 subprocess.run(
-                    [str(uninstaller), "--mode", "unattended"],
-                    check=False, capture_output=True,
-                    timeout=300
+                    [str(uninstaller), "--mode", "unattended"], check=False, capture_output=True, timeout=300
                 )
                 logger.info("PostgreSQL uninstalled successfully")
                 return True
@@ -772,7 +769,7 @@ log_timezone = 'UTC'
     def get_status(self) -> Dict[str, Any]:
         """
         Get current installation status.
-        
+
         Returns:
             Dictionary with status information.
         """
@@ -786,25 +783,17 @@ log_timezone = 'UTC'
                 "port": self.config.port,
                 "database": self.config.database_name,
                 "install_dir": str(self.config.install_dir),
-                "data_dir": str(self.config.data_dir)
-            }
+                "data_dir": str(self.config.data_dir),
+            },
         }
 
 
 def main():
     """Main function for testing the installer."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Create installer with custom configuration
-    config = PostgreSQLConfig(
-        version="15.4",
-        database_name="giljo_mcp",
-        database_user="giljo",
-        port=5432
-    )
+    config = PostgreSQLConfig(version="15.4", database_name="giljo_mcp", database_user="giljo", port=5432)
 
     installer = PostgreSQLInstaller(config)
 

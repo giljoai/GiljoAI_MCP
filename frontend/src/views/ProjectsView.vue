@@ -108,11 +108,7 @@
       >
         <!-- Status Column -->
         <template v-slot:item.status="{ item }">
-          <v-chip
-            :color="getStatusColor(item.status)"
-            variant="tonal"
-            size="small"
-          >
+          <v-chip :color="getStatusColor(item.status)" variant="tonal" size="small">
             {{ formatStatus(item.status) }}
           </v-chip>
         </template>
@@ -135,7 +131,8 @@
           >
             <template v-slot:default>
               <span class="text-caption">
-                {{ formatNumber(item.context_used || 0) }} / {{ formatNumber(item.context_budget || 0) }}
+                {{ formatNumber(item.context_used || 0) }} /
+                {{ formatNumber(item.context_budget || 0) }}
               </span>
             </template>
           </v-progress-linear>
@@ -208,15 +205,15 @@
             <v-text-field
               v-model="projectData.name"
               label="Project Name"
-              :rules="[v => !!v || 'Name is required']"
+              :rules="[(v) => !!v || 'Name is required']"
               required
               class="mb-3"
             ></v-text-field>
-            
+
             <v-textarea
               v-model="projectData.mission"
               label="Mission Statement"
-              :rules="[v => !!v || 'Mission is required']"
+              :rules="[(v) => !!v || 'Mission is required']"
               rows="4"
               required
               class="mb-3"
@@ -226,7 +223,7 @@
               v-model.number="projectData.context_budget"
               label="Context Budget (tokens)"
               type="number"
-              :rules="[v => v > 0 || 'Must be positive']"
+              :rules="[(v) => v > 0 || 'Must be positive']"
               class="mb-3"
             ></v-text-field>
 
@@ -251,12 +248,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
-          <v-btn 
-            color="primary" 
-            variant="flat"
-            :disabled="!formValid"
-            @click="saveProject"
-          >
+          <v-btn color="primary" variant="flat" :disabled="!formValid" @click="saveProject">
             {{ editingProject ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>
@@ -268,8 +260,8 @@
       <v-card>
         <v-card-title>Confirm Delete</v-card-title>
         <v-card-text>
-          Are you sure you want to delete project "{{ projectToDelete?.name }}"?
-          This action cannot be undone.
+          Are you sure you want to delete project "{{ projectToDelete?.name }}"? This action cannot
+          be undone.
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -334,7 +326,7 @@ const projectData = ref({
   mission: '',
   context_budget: 150000,
   status: 'active',
-  agents: []
+  agents: [],
 })
 
 // Table headers
@@ -344,7 +336,7 @@ const headers = [
   { title: 'Agents', key: 'agents', sortable: false },
   { title: 'Context Usage', key: 'context', sortable: false },
   { title: 'Created', key: 'created', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, align: 'end' }
+  { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
 ]
 
 // Computed properties
@@ -353,26 +345,21 @@ const loading = computed(() => projectStore.loading)
 
 const filteredProjects = computed(() => {
   if (!search.value) return projects.value
-  
+
   const searchLower = search.value.toLowerCase()
-  return projects.value.filter(project => 
-    project.name.toLowerCase().includes(searchLower) ||
-    project.mission?.toLowerCase().includes(searchLower) ||
-    project.status.toLowerCase().includes(searchLower)
+  return projects.value.filter(
+    (project) =>
+      project.name.toLowerCase().includes(searchLower) ||
+      project.mission?.toLowerCase().includes(searchLower) ||
+      project.status.toLowerCase().includes(searchLower),
   )
 })
 
-const activeCount = computed(() => 
-  projects.value.filter(p => p.status === 'active').length
-)
+const activeCount = computed(() => projects.value.filter((p) => p.status === 'active').length)
 
-const totalAgents = computed(() => 
-  agentStore.agents.length
-)
+const totalAgents = computed(() => agentStore.agents.length)
 
-const activeTasks = computed(() => 
-  taskStore.inProgressTasks.length + taskStore.pendingTasks.length
-)
+const activeTasks = computed(() => taskStore.inProgressTasks.length + taskStore.pendingTasks.length)
 
 // Methods
 function getStatusColor(status) {
@@ -380,7 +367,7 @@ function getStatusColor(status) {
     active: 'success',
     inactive: 'grey',
     completed: 'info',
-    archived: 'warning'
+    archived: 'warning',
   }
   return colors[status] || 'default'
 }
@@ -408,7 +395,7 @@ function editProject(project) {
     mission: project.mission,
     context_budget: project.context_budget || 150000,
     status: project.status,
-    agents: project.agents || []
+    agents: project.agents || [],
   }
   showCreateDialog.value = true
 }
@@ -428,7 +415,7 @@ async function confirmClose() {
     try {
       await projectStore.updateProject(projectToClose.value.id, {
         status: 'completed',
-        summary: closeSummary.value
+        summary: closeSummary.value,
       })
       showCloseDialog.value = false
       projectToClose.value = null
@@ -468,13 +455,13 @@ function resetForm() {
     mission: '',
     context_budget: 150000,
     status: 'active',
-    agents: []
+    agents: [],
   }
 }
 
 async function saveProject() {
   if (!formValid.value) return
-  
+
   try {
     if (editingProject.value) {
       // Update existing project
@@ -483,7 +470,7 @@ async function saveProject() {
       // Create new project
       await projectStore.createProject(projectData.value)
     }
-    
+
     showCreateDialog.value = false
     editingProject.value = null
     resetForm()
@@ -498,7 +485,7 @@ onMounted(async () => {
   await Promise.all([
     projectStore.fetchProjects(),
     agentStore.fetchAgents(),
-    taskStore.fetchTasks()
+    taskStore.fetchTasks(),
   ])
 })
 </script>

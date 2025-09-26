@@ -21,11 +21,7 @@ from alembic.config import Config
 from giljo_mcp.database import DatabaseManager, get_db_manager
 
 
-def init_database(
-    database_url: Optional[str] = None,
-    drop_existing: bool = False,
-    run_migrations: bool = True
-):
+def init_database(database_url: Optional[str] = None, drop_existing: bool = False, run_migrations: bool = True):
     """
     Initialize the database with tables and optionally run migrations.
 
@@ -64,7 +60,6 @@ def init_database(
             # Stamp database with current revision
             command.stamp(alembic_cfg, "head")
 
-
         # Print summary
 
         if db_manager.is_sqlite:
@@ -85,26 +80,14 @@ def main():
     parser.add_argument(
         "--database-url",
         help="Database URL (e.g., sqlite:///path/to/db.db or postgresql://user:pass@host/db)",
-        default=None
+        default=None,
     )
 
-    parser.add_argument(
-        "--drop-existing",
-        action="store_true",
-        help="Drop existing tables before creating new ones"
-    )
+    parser.add_argument("--drop-existing", action="store_true", help="Drop existing tables before creating new ones")
 
-    parser.add_argument(
-        "--no-migrations",
-        action="store_true",
-        help="Skip running Alembic migrations"
-    )
+    parser.add_argument("--no-migrations", action="store_true", help="Skip running Alembic migrations")
 
-    parser.add_argument(
-        "--postgresql",
-        action="store_true",
-        help="Use PostgreSQL with default local settings"
-    )
+    parser.add_argument("--postgresql", action="store_true", help="Use PostgreSQL with default local settings")
 
     args = parser.parse_args()
 
@@ -116,14 +99,12 @@ def main():
             port=5432,
             database="giljo_mcp",
             username="postgres",
-            password=os.getenv("DB_PASSWORD", "")
+            password=os.getenv("DB_PASSWORD", ""),
         )
 
     # Initialize database
     success = init_database(
-        database_url=database_url,
-        drop_existing=args.drop_existing,
-        run_migrations=not args.no_migrations
+        database_url=database_url, drop_existing=args.drop_existing, run_migrations=not args.no_migrations
     )
 
     sys.exit(0 if success else 1)

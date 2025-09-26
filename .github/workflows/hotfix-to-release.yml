@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       files:
-        description: 'Files to sync (comma-separated, e.g., bootstrap.py,setup_gui.py)'
+        description: "Files to sync (comma-separated, e.g., bootstrap.py,setup_gui.py)"
         required: true
         type: string
       commit_message:
-        description: 'Commit message for the hotfix'
+        description: "Commit message for the hotfix"
         required: true
         type: string
 

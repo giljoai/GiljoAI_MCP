@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 # Production override configuration
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
@@ -9,15 +9,15 @@ services:
     # No exposed ports in production (internal only)
     ports: []
     environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD}  # Use secure password from environment
-      POSTGRES_INITDB_ARGS: "--auth-local=md5"  # Require password for all connections
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # Use secure password from environment
+      POSTGRES_INITDB_ARGS: "--auth-local=md5" # Require password for all connections
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 512M
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
     logging:
       driver: "json-file"
@@ -34,7 +34,7 @@ services:
   # Backend - Production overrides
   backend:
     build:
-      target: production  # Use optimized production stage
+      target: production # Use optimized production stage
       args:
         INSTALL_DEV_DEPS: "false"
     environment:
@@ -70,10 +70,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 1G
         reservations:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 512M
       restart_policy:
         condition: on-failure
@@ -119,14 +119,14 @@ services:
     environment:
       # Production environment
       NODE_ENV: production
-    volumes: []  # No mounted volumes in production
+    volumes: [] # No mounted volumes in production
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
       restart_policy:
         condition: on-failure
@@ -158,15 +158,15 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 128M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 64M
     networks:
       - giljo-net
     profiles:
-      - proxy  # Only start when explicitly requested
+      - proxy # Only start when explicitly requested
     logging:
       driver: "json-file"
       options:
@@ -185,19 +185,19 @@ services:
       - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
     networks:
       - giljo-net
     profiles:
-      - monitoring  # Only start when explicitly requested
+      - monitoring # Only start when explicitly requested
     logging:
       driver: "json-file"
       options:
@@ -221,14 +221,14 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
     depends_on:
       - prometheus
     networks:
       - giljo-net
     profiles:
-      - monitoring  # Only start when explicitly requested
+      - monitoring # Only start when explicitly requested
     logging:
       driver: "json-file"
       options:

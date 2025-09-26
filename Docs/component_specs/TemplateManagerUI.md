@@ -1,6 +1,7 @@
 # Template Manager UI Component Specifications
 
 ## Project: 5.1.c Dashboard Sub-Agent Visualization - Template Management Phase
+
 **Designer**: designer agent
 **Date**: 2025-01-15
 **Version**: 1.0
@@ -10,11 +11,13 @@
 ## 1. TemplateManager.vue
 
 ### Overview
+
 Main template management interface with CRUD operations, variable editor, and preview capabilities.
 
 ### Visual Design
 
 #### Layout Structure
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Template Manager Header                                      │
@@ -57,7 +60,7 @@ Main template management interface with CRUD operations, variable editor, and pr
             </v-icon>
             <span class="text-h5">Template Manager</span>
             <v-spacer />
-            
+
             <!-- Action Buttons -->
             <v-btn
               color="primary"
@@ -134,11 +137,7 @@ Main template management interface with CRUD operations, variable editor, and pr
                 />
               </v-col>
               <v-col cols="12" md="2">
-                <v-btn
-                  variant="text"
-                  color="primary"
-                  @click="resetFilters"
-                >
+                <v-btn variant="text" color="primary" @click="resetFilters">
                   Reset Filters
                 </v-btn>
               </v-col>
@@ -222,7 +221,9 @@ Main template management interface with CRUD operations, variable editor, and pr
                   @click="previewTemplate(item)"
                 >
                   <v-icon size="small">mdi-eye</v-icon>
-                  <v-tooltip activator="parent" location="top">Preview</v-tooltip>
+                  <v-tooltip activator="parent" location="top"
+                    >Preview</v-tooltip
+                  >
                 </v-btn>
                 <v-btn
                   icon
@@ -241,7 +242,9 @@ Main template management interface with CRUD operations, variable editor, and pr
                   @click="deleteTemplate(item)"
                 >
                   <v-icon size="small">mdi-delete</v-icon>
-                  <v-tooltip activator="parent" location="top">Delete</v-tooltip>
+                  <v-tooltip activator="parent" location="top"
+                    >Delete</v-tooltip
+                  >
                 </v-btn>
                 <v-btn
                   icon
@@ -250,7 +253,9 @@ Main template management interface with CRUD operations, variable editor, and pr
                   @click="viewArchive(item)"
                 >
                   <v-icon size="small">mdi-history</v-icon>
-                  <v-tooltip activator="parent" location="top">Version History</v-tooltip>
+                  <v-tooltip activator="parent" location="top"
+                    >Version History</v-tooltip
+                  >
                 </v-btn>
                 <v-btn
                   icon
@@ -259,7 +264,9 @@ Main template management interface with CRUD operations, variable editor, and pr
                   @click="duplicateTemplate(item)"
                 >
                   <v-icon size="small">mdi-content-copy</v-icon>
-                  <v-tooltip activator="parent" location="top">Duplicate</v-tooltip>
+                  <v-tooltip activator="parent" location="top"
+                    >Duplicate</v-tooltip
+                  >
                 </v-btn>
               </div>
             </template>
@@ -324,6 +331,7 @@ Main template management interface with CRUD operations, variable editor, and pr
 - **Borders**: `#315074` (Medium Blue)
 
 ### Icons Used (from frontend/public/icons/)
+
 - `document.svg` - Template manager header
 - `edit.svg` - Edit action
 - `view.svg` - Preview action
@@ -338,6 +346,7 @@ Main template management interface with CRUD operations, variable editor, and pr
 ## 2. TemplateEditor.vue
 
 ### Overview
+
 Modal dialog for creating and editing templates with syntax highlighting and variable management.
 
 ### Visual Design
@@ -389,6 +398,7 @@ Modal dialog for creating and editing templates with syntax highlighting and var
 ### Component Features
 
 #### Code Editor
+
 - **Syntax Highlighting**: Variables highlighted in yellow (#ffc300)
 - **Line Numbers**: Show line numbers for reference
 - **Auto-complete**: Suggest existing variables
@@ -396,12 +406,14 @@ Modal dialog for creating and editing templates with syntax highlighting and var
 - **Validation**: Check for unclosed brackets
 
 #### Variable Management
+
 - **Auto-detection**: Parse template for {variables}
 - **Add/Remove**: Manual variable management
 - **Default Values**: Set defaults for testing
 - **Type Hints**: Optional type specifications
 
 #### Preview Panel
+
 - **Live Preview**: Real-time generation preview
 - **Augmentation Test**: Test runtime augmentations
 - **Performance**: Show generation time in ms
@@ -412,6 +424,7 @@ Modal dialog for creating and editing templates with syntax highlighting and var
 ## 3. TemplateArchive.vue
 
 ### Overview
+
 Version history viewer with diff comparison and restore functionality.
 
 ### Visual Design
@@ -458,18 +471,21 @@ Version history viewer with diff comparison and restore functionality.
 ### Features
 
 #### Timeline View
+
 - **Visual Timeline**: Vertical timeline with version nodes
 - **Version Details**: Author, timestamp, change summary
 - **Current Indicator**: Highlight active version
 - **Collapsed View**: Expand/collapse for space
 
 #### Diff Viewer
+
 - **Side-by-side**: Compare two versions
 - **Inline Diff**: Alternative inline view
 - **Syntax Highlight**: Maintain template highlighting
 - **Change Statistics**: Lines added/removed/modified
 
 #### Actions
+
 - **Restore**: Revert to previous version
 - **Download**: Export specific version
 - **View Full**: See complete template content
@@ -480,6 +496,7 @@ Version history viewer with diff comparison and restore functionality.
 ## 4. TemplatePreview.vue
 
 ### Overview
+
 Read-only preview dialog with mission generation testing.
 
 ### Visual Design
@@ -554,59 +571,59 @@ GET    /api/templates/stats        // Usage statistics
 
 ```javascript
 // Real-time updates
-websocketService.onMessage('template:created', (data) => {
+websocketService.onMessage("template:created", (data) => {
   // Add to list
-})
+});
 
-websocketService.onMessage('template:updated', (data) => {
+websocketService.onMessage("template:updated", (data) => {
   // Update in list
-})
+});
 
-websocketService.onMessage('template:deleted', (data) => {
+websocketService.onMessage("template:deleted", (data) => {
   // Remove from list
-})
+});
 ```
 
 ### Pinia Store
 
 ```javascript
 // stores/templates.js
-export const useTemplateStore = defineStore('templates', {
+export const useTemplateStore = defineStore("templates", {
   state: () => ({
     templates: [],
     selectedTemplate: null,
     filters: {
-      search: '',
+      search: "",
       category: null,
       role: null,
-      activeOnly: true
+      activeOnly: true,
     },
     loading: false,
-    error: null
+    error: null,
   }),
-  
+
   actions: {
     async fetchTemplates() {
       // GET /api/templates
     },
-    
+
     async createTemplate(template) {
       // POST /api/templates
     },
-    
+
     async updateTemplate(id, updates) {
       // PUT /api/templates/:id
     },
-    
+
     async deleteTemplate(id) {
       // DELETE /api/templates/:id
     },
-    
+
     async generatePreview(templateId, variables, augmentation) {
       // POST /api/templates/generate
-    }
-  }
-})
+    },
+  },
+});
 ```
 
 ---
@@ -614,18 +631,21 @@ export const useTemplateStore = defineStore('templates', {
 ## 6. Responsive Design
 
 ### Mobile (320px - 600px)
+
 - Stack filters vertically
 - Simplified table (name, category, actions)
 - Full-screen dialogs
 - Touch-optimized controls
 
 ### Tablet (600px - 960px)
+
 - 2-column filter layout
 - Abbreviated table columns
 - Modal dialogs
 - Touch + mouse support
 
 ### Desktop (960px+)
+
 - Full table with all columns
 - Side-by-side editor panels
 - Floating dialogs
@@ -671,21 +691,25 @@ export const useTemplateStore = defineStore('templates', {
 ### For frontend_developer:
 
 1. **Implement in this order**:
+
    - TemplateManager.vue (main interface)
    - TemplateEditor.vue (create/edit dialog)
    - TemplatePreview.vue (preview dialog)
    - TemplateArchive.vue (version history)
 
 2. **Use existing components**:
+
    - MascotLoader.vue for loading states
    - ToastManager.vue for notifications
    - ConnectionStatus.vue for API status
 
 3. **Follow color theme strictly**:
+
    - Reference docs/color_themes.md
    - Use CSS variables for theme switching
 
 4. **Test all breakpoints**:
+
    - 320px, 600px, 960px, 1280px
    - Ensure touch gestures work on mobile
 

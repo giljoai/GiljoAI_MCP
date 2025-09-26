@@ -12,6 +12,7 @@ This example demonstrates how to use the GiljoAI MCP Orchestrator to create an a
 ## The Scenario
 
 Your team has inherited a legacy Python codebase with various code quality issues:
+
 - Inconsistent naming conventions
 - Missing docstrings
 - Complex functions that should be split
@@ -75,21 +76,25 @@ See `refactor_bot.py` for the complete implementation with error handling, progr
 ## Agent Roles
 
 ### Analyzer Agent
+
 - Scans codebase for improvement opportunities
 - Creates priority list of refactoring tasks
 - Identifies patterns and anti-patterns
 
 ### Linter Agent
+
 - Checks code against style guidelines
 - Reports violations with fix suggestions
 - Tracks improvement metrics
 
 ### Refactor Agent
+
 - Executes actual code transformations
 - Applies consistent patterns
 - Ensures backward compatibility
 
 ### Validator Agent
+
 - Runs tests after each refactoring
 - Verifies no functionality broken
 - Reports success/failure to orchestrator
@@ -129,6 +134,7 @@ After running the refactoring bot:
 ## Troubleshooting
 
 If agents aren't communicating:
+
 ```python
 # Check message queue
 messages = orchestrator.get_pending_messages("analyzer")

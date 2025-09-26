@@ -5,6 +5,7 @@ from datetime import datetime
 AGENT_NAME = "ui-analyzer"
 PROJECT_ID = "86b708fd-6b53-4067-acec-08ab005d0f3d"
 
+
 def check_messages_via_mcp():
     """Check messages using MCP tool directly"""
     try:
@@ -17,6 +18,7 @@ def check_messages_via_mcp():
 
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Error: {e}")
+
 
 print(f"=== Message Monitor for {AGENT_NAME} ===")
 print(f"Project: {PROJECT_ID}")

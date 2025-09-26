@@ -110,8 +110,8 @@ export function useFocusTrap(containerRef, options = {}) {
     // Set initial focus
     nextTick(() => {
       if (initialFocus) {
-        const element
-          = typeof initialFocus === 'string'
+        const element =
+          typeof initialFocus === 'string'
             ? containerRef.value?.querySelector(initialFocus)
             : initialFocus
 

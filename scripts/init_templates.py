@@ -54,7 +54,7 @@ YOUR RESPONSIBILITIES:
 - Design the agent pipeline that best achieves the goal""",
             "role": "orchestrator",
             "description": "Main orchestrator agent that manages project workflow and spawns other agents",
-            "is_default": True
+            "is_default": True,
         },
         "analyzer": {
             "content": """You are the Analyzer Agent for: {project_name}
@@ -72,7 +72,7 @@ YOUR APPROACH:
 4. Document findings and recommendations""",
             "role": "analyzer",
             "description": "Analyzes requirements and designs solutions",
-            "is_default": False
+            "is_default": False,
         },
         "implementer": {
             "content": """You are the Implementation Agent for: {project_name}
@@ -90,7 +90,7 @@ YOUR APPROACH:
 5. Document complex logic""",
             "role": "implementer",
             "description": "Implements functionality according to specifications",
-            "is_default": False
+            "is_default": False,
         },
         "tester": {
             "content": """You are the Testing Agent for: {project_name}
@@ -108,7 +108,7 @@ YOUR APPROACH:
 5. Report any issues found""",
             "role": "tester",
             "description": "Tests functionality and ensures quality",
-            "is_default": False
+            "is_default": False,
         },
         "reviewer": {
             "content": """You are the Review Agent for: {project_name}
@@ -126,7 +126,7 @@ YOUR APPROACH:
 5. Provide constructive feedback""",
             "role": "reviewer",
             "description": "Reviews code and documentation for quality",
-            "is_default": False
+            "is_default": False,
         },
         "documenter": {
             "content": """You are the Documentation Agent for: {project_name}
@@ -144,8 +144,8 @@ YOUR APPROACH:
 5. Document architectural decisions""",
             "role": "documenter",
             "description": "Creates comprehensive documentation",
-            "is_default": False
-        }
+            "is_default": False,
+        },
     }
     return templates
 
@@ -154,7 +154,7 @@ def init_templates(
     database_url: Optional[str] = None,
     tenant_key: Optional[str] = None,
     product_id: Optional[str] = None,
-    force_reload: bool = False
+    force_reload: bool = False,
 ):
     """
     Initialize the database with default templates.
@@ -193,11 +193,15 @@ def init_templates(
 
             for name, template_def in templates.items():
                 # Check if template already exists
-                existing = session.query(AgentTemplate).filter(
-                    AgentTemplate.tenant_key == tenant_key,
-                    AgentTemplate.product_id == product_id,
-                    AgentTemplate.name == name
-                ).first()
+                existing = (
+                    session.query(AgentTemplate)
+                    .filter(
+                        AgentTemplate.tenant_key == tenant_key,
+                        AgentTemplate.product_id == product_id,
+                        AgentTemplate.name == name,
+                    )
+                    .first()
+                )
 
                 if existing and not force_reload:
                     skipped_count += 1
@@ -229,13 +233,10 @@ def init_templates(
                         is_active=True,
                         is_default=template_def["is_default"],
                         tags=json.dumps([template_def["role"], "default"]),
-                        meta_data=json.dumps({
-                            "source": "init_templates",
-                            "created_by": "system"
-                        }),
+                        meta_data=json.dumps({"source": "init_templates", "created_by": "system"}),
                         usage_count=0,
                         avg_generation_ms=0.0,
-                        created_by="system"
+                        created_by="system",
                     )
 
                     session.add(template)
@@ -244,19 +245,17 @@ def init_templates(
             # Commit all changes
             session.commit()
 
-
             # Verify templates were created
             session.query(AgentTemplate).filter(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.product_id == product_id
+                AgentTemplate.tenant_key == tenant_key, AgentTemplate.product_id == product_id
             ).count()
 
-
             # List all templates
-            for template in session.query(AgentTemplate).filter(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.product_id == product_id
-            ).all():
+            for template in (
+                session.query(AgentTemplate)
+                .filter(AgentTemplate.tenant_key == tenant_key, AgentTemplate.product_id == product_id)
+                .all()
+            ):
                 pass
 
             return True
@@ -274,32 +273,16 @@ def main():
     parser.add_argument(
         "--database-url",
         help="Database URL (e.g., sqlite:///path/to/db.db or postgresql://user:pass@host/db)",
-        default=None
+        default=None,
     )
 
-    parser.add_argument(
-        "--tenant-key",
-        help="Tenant key for multi-tenant isolation",
-        default="default"
-    )
+    parser.add_argument("--tenant-key", help="Tenant key for multi-tenant isolation", default="default")
 
-    parser.add_argument(
-        "--product-id",
-        help="Product ID for template association",
-        default=None
-    )
+    parser.add_argument("--product-id", help="Product ID for template association", default=None)
 
-    parser.add_argument(
-        "--force-reload",
-        action="store_true",
-        help="Force reload templates even if they already exist"
-    )
+    parser.add_argument("--force-reload", action="store_true", help="Force reload templates even if they already exist")
 
-    parser.add_argument(
-        "--postgresql",
-        action="store_true",
-        help="Use PostgreSQL with default local settings"
-    )
+    parser.add_argument("--postgresql", action="store_true", help="Use PostgreSQL with default local settings")
 
     args = parser.parse_args()
 
@@ -311,7 +294,7 @@ def main():
             port=5432,
             database="giljo_mcp",
             username="postgres",
-            password=os.getenv("DB_PASSWORD", "")
+            password=os.getenv("DB_PASSWORD", ""),
         )
 
     # Initialize templates
@@ -319,7 +302,7 @@ def main():
         database_url=database_url,
         tenant_key=args.tenant_key,
         product_id=args.product_id,
-        force_reload=args.force_reload
+        force_reload=args.force_reload,
     )
 
     sys.exit(0 if success else 1)

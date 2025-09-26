@@ -14,6 +14,7 @@ from datetime import datetime
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
+
 class GiljoMCPMonitor:
     def __init__(self):
         self.agent_name = "ui-analyzer"
@@ -43,7 +44,9 @@ class GiljoMCPMonitor:
                 # Log status every 10 checks
                 if self.check_count % 10 == 0:
                     uptime = datetime.now() - self.start_time
-                    self.log(f"STATUS: {self.check_count} checks, {len(self.processed_messages)} processed, uptime: {uptime}")
+                    self.log(
+                        f"STATUS: {self.check_count} checks, {len(self.processed_messages)} processed, uptime: {uptime}"
+                    )
 
                 await asyncio.sleep(self.check_interval)
 
@@ -104,16 +107,18 @@ class GiljoMCPMonitor:
                     "id": message_id,
                     "from_agent": random.choice(["orchestrator", "implementer", "analyzer"]),
                     "to_agent": self.agent_name,
-                    "content": random.choice([
-                        "UI component analysis needed for dashboard",
-                        "Review navigation bar accessibility",
-                        "Analyze mobile responsiveness issues",
-                        "Check color contrast compliance",
-                        "Evaluate user interaction patterns"
-                    ]),
+                    "content": random.choice(
+                        [
+                            "UI component analysis needed for dashboard",
+                            "Review navigation bar accessibility",
+                            "Analyze mobile responsiveness issues",
+                            "Check color contrast compliance",
+                            "Evaluate user interaction patterns",
+                        ]
+                    ),
                     "priority": random.choice(["normal", "high", "urgent"]),
                     "message_type": "direct",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
 
                 await self.process_single_message(message)
@@ -199,9 +204,11 @@ class GiljoMCPMonitor:
             self.log(f"Average checks/minute: {checks_per_minute:.1f}")
         print("=" * 70, flush=True)
 
+
 async def main():
     monitor = AKEMCPMonitor()
     await monitor.start_monitoring()
+
 
 if __name__ == "__main__":
     print("Starting AKE-MCP UI-Analyzer Monitor...", flush=True)

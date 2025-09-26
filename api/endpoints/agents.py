@@ -86,7 +86,7 @@ async def get_agent_health(agent_name: str):
         if not result.get("success"):
             raise HTTPException(status_code=404, detail="Agent not found")  # noqa: TRY301
 
-        return result.get("health", {})  # noqa: TRY300
+        return result.get("health", {})
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -107,7 +107,7 @@ async def decommission_agent(
         )
 
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to decommission agent"))  # noqa: TRY301
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to decommission agent"))
 
         # Broadcast agent decommission
         if state.websocket_manager and state.tenant_manager:

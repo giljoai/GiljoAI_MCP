@@ -1,6 +1,7 @@
 # GiljoAI MCP System Architecture
 
 ## Overview
+
 This document provides visual representations of the GiljoAI MCP Coding Orchestrator architecture using Mermaid diagrams. The diagrams use the color themes defined in `docs/color_themes.md`.
 
 ## System Architecture Diagram
@@ -203,12 +204,14 @@ erDiagram
 ## Key Features
 
 ### 🚀 Progressive Architecture
+
 - **Local First**: Start with SQLite, zero configuration
 - **Scale When Ready**: Seamlessly upgrade to PostgreSQL
 - **Cloud Native**: Container-ready with Docker support
 - **Multi-tenant**: Isolated projects via tenant keys
 
 ### 🔧 Core Capabilities
+
 - **Vision Chunking**: Handle 50K+ token documents
 - **Message Acknowledgment**: Reliable multi-agent coordination
 - **Dynamic Discovery**: No static indexing required
@@ -216,6 +219,7 @@ erDiagram
 - **Real-time Updates**: WebSocket for live dashboard
 
 ### 🛡️ Security & Performance
+
 - **API Key Authentication**: Secure LAN/WAN access
 - **OAuth Integration**: Enterprise-ready authentication
 - **Context Management**: Efficient token usage

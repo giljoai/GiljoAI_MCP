@@ -2,21 +2,29 @@
 Unit tests for Profile system
 """
 
-import pytest
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from dataclasses import asdict
-
 # Import the profile system
 import sys
+import tempfile
+from dataclasses import asdict
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
     from installer.core.profile import (
-        ProfileType, Profile, ProfileConfiguration, ProfileDependencies,
-        ProfileManager, ProfileValidationError, ProfileNotFoundError
+        Profile,
+        ProfileConfiguration,
+        ProfileDependencies,
+        ProfileManager,
+        ProfileNotFoundError,
+        ProfileType,
+        ProfileValidationError,
     )
+
     HAS_PROFILE = True
 except ImportError:
     HAS_PROFILE = False
@@ -49,10 +57,7 @@ class TestProfileConfiguration:
     def test_profile_configuration_creation(self):
         """Test creating profile configuration"""
         config = ProfileConfiguration(
-            database_type="postgresql",
-            redis_enabled=True,
-            auth_enabled=True,
-            debug_mode=False
+            database_type="postgresql", redis_enabled=True, auth_enabled=True, debug_mode=False
         )
 
         assert config.database_type == "postgresql"
@@ -72,10 +77,7 @@ class TestProfileConfiguration:
 
     def test_profile_configuration_to_dict(self):
         """Test converting configuration to dictionary"""
-        config = ProfileConfiguration(
-            database_type="postgresql",
-            redis_enabled=True
-        )
+        config = ProfileConfiguration(database_type="postgresql", redis_enabled=True)
 
         config_dict = asdict(config)
         assert isinstance(config_dict, dict)
@@ -88,11 +90,7 @@ class TestProfileDependencies:
 
     def test_profile_dependencies_creation(self):
         """Test creating profile dependencies"""
-        deps = ProfileDependencies(
-            requires_postgresql=True,
-            requires_redis=True,
-            requires_docker=False
-        )
+        deps = ProfileDependencies(requires_postgresql=True, requires_redis=True, requires_docker=False)
 
         assert deps.requires_postgresql == True
         assert deps.requires_redis == True
@@ -122,7 +120,7 @@ class TestProfile:
             name="Team Profile",
             description="Profile for team collaboration",
             configuration=config,
-            dependencies=deps
+            dependencies=deps,
         )
 
         assert profile.type == ProfileType.TEAM
@@ -133,11 +131,7 @@ class TestProfile:
     def test_profile_validation(self):
         """Test profile validation"""
         # Valid profile
-        profile = Profile(
-            type=ProfileType.DEVELOPER,
-            name="Developer",
-            description="Development profile"
-        )
+        profile = Profile(type=ProfileType.DEVELOPER, name="Developer", description="Development profile")
 
         assert profile.is_valid() == True
 
@@ -145,23 +139,17 @@ class TestProfile:
         invalid_profile = Profile(
             type=ProfileType.DEVELOPER,
             name="",  # Empty name should be invalid
-            description="Test"
+            description="Test",
         )
 
         assert invalid_profile.is_valid() == False
 
     def test_profile_get_dependencies(self):
         """Test getting profile dependencies"""
-        deps = ProfileDependencies(
-            requires_postgresql=True,
-            requires_redis=True
-        )
+        deps = ProfileDependencies(requires_postgresql=True, requires_redis=True)
 
         profile = Profile(
-            type=ProfileType.ENTERPRISE,
-            name="Enterprise",
-            description="Enterprise profile",
-            dependencies=deps
+            type=ProfileType.ENTERPRISE, name="Enterprise", description="Enterprise profile", dependencies=deps
         )
 
         dependencies = profile.get_required_dependencies()
@@ -181,6 +169,7 @@ class TestProfileManager:
     def tearDown(self):
         """Clean up test environment"""
         import shutil
+
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
 
@@ -237,11 +226,7 @@ class TestProfileManager:
         manager = ProfileManager()
 
         # Valid profile should pass
-        valid_profile = Profile(
-            type=ProfileType.DEVELOPER,
-            name="Valid Profile",
-            description="A valid test profile"
-        )
+        valid_profile = Profile(type=ProfileType.DEVELOPER, name="Valid Profile", description="A valid test profile")
 
         # Should not raise exception
         manager._validate_profile(valid_profile)
@@ -250,7 +235,7 @@ class TestProfileManager:
         invalid_profile = Profile(
             type=ProfileType.DEVELOPER,
             name="",  # Empty name
-            description="Invalid profile"
+            description="Invalid profile",
         )
 
         with pytest.raises(ProfileValidationError):
@@ -289,9 +274,9 @@ class TestProfileManager:
         assert "postgresql" in ent_deps
         assert "redis" in ent_deps
 
-    @patch('pathlib.Path.write_text')
-    @patch('pathlib.Path.read_text')
-    @patch('pathlib.Path.exists')
+    @patch("pathlib.Path.write_text")
+    @patch("pathlib.Path.read_text")
+    @patch("pathlib.Path.exists")
     def test_profile_persistence(self, mock_exists, mock_read, mock_write):
         """Test profile saving and loading"""
         mock_exists.return_value = False  # No existing profiles
@@ -303,10 +288,7 @@ class TestProfileManager:
             type=ProfileType.DEVELOPER,
             name="Custom Developer",
             description="Custom developer profile",
-            configuration=ProfileConfiguration(
-                database_type="postgresql",
-                debug_mode=True
-            )
+            configuration=ProfileConfiguration(database_type="postgresql", debug_mode=True),
         )
 
         # Save profile (mocked)
@@ -390,29 +372,36 @@ def temp_profiles_dir():
     temp_dir = Path(tempfile.mkdtemp())
     yield temp_dir
     import shutil
+
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
 
 
 # Parameterized tests
-@pytest.mark.parametrize("profile_type,expected_db", [
-    (ProfileType.DEVELOPER, "sqlite"),
-    (ProfileType.TEAM, "postgresql"),
-    (ProfileType.ENTERPRISE, "postgresql"),
-    (ProfileType.RESEARCH, "postgresql")
-])
+@pytest.mark.parametrize(
+    "profile_type,expected_db",
+    [
+        (ProfileType.DEVELOPER, "sqlite"),
+        (ProfileType.TEAM, "postgresql"),
+        (ProfileType.ENTERPRISE, "postgresql"),
+        (ProfileType.RESEARCH, "postgresql"),
+    ],
+)
 def test_profile_database_types(profile_manager, profile_type, expected_db):
     """Test that profiles have correct database types"""
     profile = profile_manager.get_profile(profile_type)
     assert profile.configuration.database_type == expected_db
 
 
-@pytest.mark.parametrize("profile_type,requires_auth", [
-    (ProfileType.DEVELOPER, False),
-    (ProfileType.TEAM, True),
-    (ProfileType.ENTERPRISE, True),
-    (ProfileType.RESEARCH, False)
-])
+@pytest.mark.parametrize(
+    "profile_type,requires_auth",
+    [
+        (ProfileType.DEVELOPER, False),
+        (ProfileType.TEAM, True),
+        (ProfileType.ENTERPRISE, True),
+        (ProfileType.RESEARCH, False),
+    ],
+)
 def test_profile_auth_requirements(profile_manager, profile_type, requires_auth):
     """Test that profiles have correct auth requirements"""
     profile = profile_manager.get_profile(profile_type)

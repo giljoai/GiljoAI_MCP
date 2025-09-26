@@ -6,7 +6,7 @@
         <h1 class="text-h4 mb-4">Dashboard</h1>
       </v-col>
     </v-row>
-    
+
     <!-- Stats Cards -->
     <v-row>
       <v-col cols="12" sm="6" md="3">
@@ -88,10 +88,7 @@
 
           <!-- Metrics Tab -->
           <v-window-item value="metrics">
-            <AgentMetrics
-              :project-id="selectedProject"
-              :metrics="agentMetrics"
-            />
+            <AgentMetrics :project-id="selectedProject" :metrics="agentMetrics" />
           </v-window-item>
         </v-window>
       </v-col>
@@ -107,10 +104,7 @@
           </v-card-title>
           <v-card-text>
             <v-list density="compact">
-              <v-list-item
-                v-for="activity in recentActivities"
-                :key="activity.id"
-              >
+              <v-list-item v-for="activity in recentActivities" :key="activity.id">
                 <template v-slot:prepend>
                   <v-icon :color="getActivityColor(activity.type)" size="small">
                     {{ getActivityIcon(activity.type) }}
@@ -185,20 +179,20 @@ const stats = computed(() => ({
   projects: projectStore.projects?.length || 0,
   activeAgents: agentStore.activeAgents?.length || 0,
   messages: messageStore.messages?.length || 0,
-  tasks: taskStore.tasks?.length || 0
+  tasks: taskStore.tasks?.length || 0,
 }))
 
 // Recent activities
 const recentActivities = computed(() => {
   const activities = []
-  
+
   // Add agent activities
-  agentStore.agentTimeline.slice(0, 5).forEach(event => {
+  agentStore.agentTimeline.slice(0, 5).forEach((event) => {
     activities.push({
       id: event.id,
       type: event.type,
       title: `${event.agent_name} ${event.type}`,
-      timestamp: event.timestamp
+      timestamp: event.timestamp,
     })
   })
 
@@ -210,7 +204,7 @@ const performance = ref({
   avgResponseTime: 45,
   successRate: 98.5,
   tokenUsage: 125000,
-  activeSessions: 3
+  activeSessions: 3,
 })
 
 // Methods
@@ -235,7 +229,7 @@ const getActivityColor = (type) => {
     spawn: 'success',
     complete: 'grey',
     error: 'error',
-    warning: 'warning'
+    warning: 'warning',
   }
   return colors[type] || 'info'
 }
@@ -245,7 +239,7 @@ const getActivityIcon = (type) => {
     spawn: 'mdi-rocket-launch',
     complete: 'mdi-check-circle',
     error: 'mdi-alert-circle',
-    warning: 'mdi-alert'
+    warning: 'mdi-alert',
   }
   return icons[type] || 'mdi-information'
 }
@@ -275,9 +269,9 @@ const refreshData = async () => {
     projectStore.fetchProjects(),
     agentStore.fetchAgents(),
     messageStore.fetchMessages(),
-    taskStore.fetchTasks()
+    taskStore.fetchTasks(),
   ])
-  
+
   if (selectedProject.value) {
     await agentStore.fetchAgentTree(selectedProject.value)
     await loadMetrics()

@@ -4,10 +4,11 @@ Create a clean release branch from master
 This script maintains a clean release branch without development artifacts
 """
 
-import subprocess
 import os
+import subprocess
 import sys
 from pathlib import Path
+
 
 def run_cmd(cmd, check=True):
     """Run a shell command and return output"""
@@ -17,6 +18,7 @@ def run_cmd(cmd, check=True):
         print(f"Error: {result.stderr}")
         sys.exit(1)
     return result.stdout.strip()
+
 
 def main():
     # Ensure we're in the repo root
@@ -31,7 +33,7 @@ def main():
 
     if current_branch != "master":
         response = input("You're not on master branch. Switch to master? [y/N]: ")
-        if response.lower() == 'y':
+        if response.lower() == "y":
             run_cmd("git checkout master")
         else:
             print("Please switch to master branch first")
@@ -43,7 +45,7 @@ def main():
         print("You have uncommitted changes:")
         print(status)
         response = input("Stash changes and continue? [y/N]: ")
-        if response.lower() == 'y':
+        if response.lower() == "y":
             run_cmd("git stash push -m 'Auto-stash before release creation'")
         else:
             print("Please commit or stash changes first")
@@ -109,7 +111,7 @@ def main():
     # Push to remote
     print("\n5. Pushing to remote...")
     response = input("Push release branch and tag to remote? [y/N]: ")
-    if response.lower() == 'y':
+    if response.lower() == "y":
         run_cmd("git push -f origin release-giljoai-mcp")
         run_cmd(f"git push origin {version}")
         print(f"\n✓ Release {version} created and pushed!")
@@ -135,6 +137,7 @@ def main():
     print("\nNext steps:")
     print("1. Continue development on master branch")
     print("2. When ready for next release, run this script again")
+
 
 if __name__ == "__main__":
     main()

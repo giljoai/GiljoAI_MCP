@@ -13,13 +13,7 @@ import asyncpg
 
 
 # Database connection settings for AKE-MCP
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "database": "ai_assistant",
-    "user": "postgres",
-    "password": "4010"
-}
+DB_CONFIG = {"host": "localhost", "port": 5432, "database": "ai_assistant", "user": "postgres", "password": "4010"}
 
 # Updated product settings reflecting current implementation
 UPDATED_SETTINGS = {
@@ -45,7 +39,6 @@ Core Components IMPLEMENTED:
 Integration Pattern:
 MCP Tools → ToolAccessor → API Endpoints → Frontend
 All async with proper context management""",
-
     "tech_stack": """Backend (IMPLEMENTED):
 - Python 3.11, FastMCP server framework
 - SQLAlchemy 2.0 (async), Alembic migrations
@@ -69,7 +62,6 @@ Database:
 - SQLite (default, zero-config)
 - PostgreSQL (production ready)
 - Multi-tenant via tenant_keys""",
-
     "known_issues": """RESOLVED:
 ✅ Unicode encoding in tests - Fixed, replaced emojis with ASCII
 ✅ Tool-API bridge - Implemented via ToolAccessor pattern
@@ -86,7 +78,6 @@ WORKAROUNDS:
 - Use test_mcp_tools.py (fixed) for validation
 - Run MCP server directly for tool testing
 - Use AKE-MCP for orchestration until UI ready""",
-
     "test_commands": """# Individual test suites
 python test_mcp_tools.py              # Test all 20 MCP tools
 python test_tool_api_integration.py   # Test Tool-API bridge
@@ -107,7 +98,6 @@ ruff src/                            # Lint code
 # Start servers
 python -m giljo_mcp                  # Start MCP server
 python api/app.py                    # Start REST API (port 6002)""",
-
     "critical_features": """IMPLEMENTED & WORKING:
 ✅ Tool-API Bridge:
   - ToolAccessor class with all 20+ methods
@@ -149,7 +139,6 @@ python api/app.py                    # Start REST API (port 6002)""",
 - OAuth/JWT authentication
 - Docker deployment
 - Setup wizard GUI""",
-
     "codebase_structure": """giljo_mcp/                        # Root directory
 ├── src/giljo_mcp/                # ✅ Core implementation
 │   ├── server.py                 # ✅ FastMCP server
@@ -176,7 +165,7 @@ python api/app.py                    # Start REST API (port 6002)""",
 │   ├── favicon.ico              # ✅ Provided
 │   ├── icons/                   # ✅ All icons provided
 │   └── mascot/                  # ✅ Animated logo
-└── test_*.py                     # ✅ Root level test files"""
+└── test_*.py                     # ✅ Root level test files""",
 }
 
 
@@ -188,13 +177,11 @@ async def update_product_settings():
     try:
         # First, get the current config_data
         current = await conn.fetchrow(
-            "SELECT id, name, config_data FROM products WHERE name = $1",
-            "GiljoAI-MCP Coding Orchestrator"
+            "SELECT id, name, config_data FROM products WHERE name = $1", "GiljoAI-MCP Coding Orchestrator"
         )
 
         if not current:
             return False
-
 
         # Parse current config
         config_data = json.loads(current["config_data"]) if current["config_data"] else {}
@@ -212,15 +199,11 @@ async def update_product_settings():
             """,
             json.dumps(config_data),
             datetime.now(timezone.utc),
-            current["id"]
+            current["id"],
         )
-
 
         # Verify the update
-        updated = await conn.fetchrow(
-            "SELECT config_data FROM products WHERE id = $1",
-            current["id"]
-        )
+        updated = await conn.fetchrow("SELECT config_data FROM products WHERE id = $1", current["id"])
 
         updated_config = json.loads(updated["config_data"])
 
@@ -255,7 +238,7 @@ async def verify_settings():
             FROM products
             WHERE name = $1
             """,
-            "GiljoAI-MCP Coding Orchestrator"
+            "GiljoAI-MCP Coding Orchestrator",
         )
 
         if result:

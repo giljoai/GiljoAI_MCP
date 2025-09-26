@@ -62,9 +62,9 @@ class TestProjectTools:
         ]
 
         for tool_name in expected_tools:
-            assert any(tool_name in tool_info.get("name", "") for tool_info in registered_tools), (
-                f"Tool {tool_name} not registered"
-            )
+            assert any(
+                tool_name in tool_info.get("name", "") for tool_info in registered_tools
+            ), f"Tool {tool_name} not registered"
 
     @pytest.mark.asyncio
     async def test_create_project_tool(self):

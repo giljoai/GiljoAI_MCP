@@ -1,10 +1,5 @@
 <template>
-  <v-menu
-    v-model="menu"
-    :close-on-content-click="false"
-    location="bottom"
-    min-width="300"
-  >
+  <v-menu v-model="menu" :close-on-content-click="false" location="bottom" min-width="300">
     <template v-slot:activator="{ props }">
       <v-btn
         v-bind="props"
@@ -13,7 +8,7 @@
         :loading="productStore.loading"
         class="product-switcher-btn"
       >
-        <div class="text-truncate" style="max-width: 200px;">
+        <div class="text-truncate" style="max-width: 200px">
           {{ productStore.currentProductName }}
         </div>
         <v-icon end>mdi-chevron-down</v-icon>
@@ -25,12 +20,7 @@
         <v-icon start>mdi-package-variant</v-icon>
         Product Context
         <v-spacer></v-spacer>
-        <v-btn
-          icon
-          variant="text"
-          size="small"
-          @click="menu = false"
-        >
+        <v-btn icon variant="text" size="small" @click="menu = false">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -57,7 +47,7 @@
           <v-col cols="6">
             <div class="text-caption text-medium-emphasis">Tasks</div>
             <div class="font-weight-medium">
-              {{ productStore.currentProductMetrics.completedTasks }} / 
+              {{ productStore.currentProductMetrics.completedTasks }} /
               {{ productStore.currentProductMetrics.totalTasks }}
             </div>
           </v-col>
@@ -77,7 +67,7 @@
         <div class="text-caption text-medium-emphasis mb-2 px-2">
           Available Products ({{ productStore.productCount }})
         </div>
-        
+
         <v-list density="compact" class="py-0">
           <v-list-item
             v-for="product in productStore.products"
@@ -88,11 +78,14 @@
             rounded
           >
             <template v-slot:prepend>
-              <v-avatar size="28" :color="product.id === productStore.currentProductId ? 'primary' : 'grey-lighten-2'">
+              <v-avatar
+                size="28"
+                :color="product.id === productStore.currentProductId ? 'primary' : 'grey-lighten-2'"
+              >
                 <span class="text-caption">{{ getProductInitial(product) }}</span>
               </v-avatar>
             </template>
-            
+
             <v-list-item-title>{{ product.name }}</v-list-item-title>
             <v-list-item-subtitle>
               {{ product.description || 'No description' }}
@@ -116,12 +109,7 @@
 
       <!-- Actions -->
       <v-card-actions>
-        <v-btn
-          variant="text"
-          size="small"
-          prepend-icon="mdi-plus"
-          @click="showCreateDialog = true"
-        >
+        <v-btn variant="text" size="small" prepend-icon="mdi-plus" @click="showCreateDialog = true">
           New Product
         </v-btn>
         <v-spacer></v-spacer>
@@ -151,7 +139,7 @@
           <v-text-field
             v-model="newProduct.name"
             label="Product Name"
-            :rules="[v => !!v || 'Name is required']"
+            :rules="[(v) => !!v || 'Name is required']"
             required
             variant="outlined"
             density="comfortable"
@@ -178,12 +166,7 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn
-          variant="text"
-          @click="showCreateDialog = false"
-        >
-          Cancel
-        </v-btn>
+        <v-btn variant="text" @click="showCreateDialog = false"> Cancel </v-btn>
         <v-btn
           color="primary"
           variant="flat"
@@ -215,7 +198,7 @@ const formValid = ref(false)
 const newProduct = ref({
   name: '',
   description: '',
-  visionPath: ''
+  visionPath: '',
 })
 
 const productInitial = computed(() => {
@@ -231,7 +214,7 @@ async function selectProduct(productId) {
   try {
     await productStore.setCurrentProduct(productId)
     menu.value = false
-    
+
     // Reload current route to refresh data with new product context
     router.go(0)
   } catch (error) {
@@ -254,16 +237,16 @@ async function createProduct() {
     const product = await productStore.createProduct({
       name: newProduct.value.name,
       description: newProduct.value.description,
-      vision_path: newProduct.value.visionPath || null
+      vision_path: newProduct.value.visionPath || null,
     })
-    
+
     if (product) {
       showCreateDialog.value = false
       // Reset form
       newProduct.value = {
         name: '',
         description: '',
-        visionPath: ''
+        visionPath: '',
       }
       // Product store automatically switches to new product
     }

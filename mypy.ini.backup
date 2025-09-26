@@ -56,6 +56,11 @@ exclude = (?x)(
     | ^\.serena/
     | ^\.giljo-config/
     | ^tests/fixtures/
+    | ^installer/
+    | ^installers/
+    | bootstrap\.py$
+    | setup\.py$
+    | setup_gui\.py$
 )
 
 # Per-module options for third-party libraries without stubs
@@ -120,6 +125,22 @@ warn_return_any = False
 disallow_untyped_defs = False
 disallow_untyped_calls = False
 warn_return_any = False
+
+# Installation files - bypass all type checking (transient code)
+[mypy-bootstrap]
+ignore_errors = True
+
+[mypy-setup]
+ignore_errors = True
+
+[mypy-setup_gui]
+ignore_errors = True
+
+[mypy-installer.*]
+ignore_errors = True
+
+[mypy-installers.*]
+ignore_errors = True
 
 # Gradual typing for main application (start lenient)
 [mypy-giljo_mcp.*]

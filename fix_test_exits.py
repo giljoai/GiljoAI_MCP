@@ -2,6 +2,7 @@
 """
 Quick script to comment out sys.exit() calls in test files for pytest compatibility
 """
+
 import os
 import re
 
@@ -27,8 +28,9 @@ test_files_with_exits = [
     "tests/test_vision_chunking_comprehensive.py",
     "tests/test_websocket_events.py",
     "tests/test_windows_paths.py",
-    "tests/test_ws_auth_simple.py"
+    "tests/test_ws_auth_simple.py",
 ]
+
 
 def fix_file(filepath):
     """Comment out sys.exit() calls in a test file"""
@@ -39,7 +41,7 @@ def fix_file(filepath):
         # Replace sys.exit() patterns
         patterns = [
             (r"^(\s*)sys\.exit\((.*?)\)(.*)$", r"\1# sys.exit(\2)\3  # Commented for pytest"),
-            (r"^(\s*)exit\((.*?)\)(.*)$", r"\1# exit(\2)\3  # Commented for pytest")
+            (r"^(\s*)exit\((.*?)\)(.*)$", r"\1# exit(\2)\3  # Commented for pytest"),
         ]
 
         modified = False
@@ -57,6 +59,7 @@ def fix_file(filepath):
 
     except Exception:
         pass
+
 
 if __name__ == "__main__":
     for filepath in test_files_with_exits:

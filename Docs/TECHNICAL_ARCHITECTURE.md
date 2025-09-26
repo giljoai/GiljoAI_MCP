@@ -1,4 +1,5 @@
 # GiljoAI MCP Coding Orchestrator
+
 ## Technical Architecture Document
 
 ### System Overview
@@ -25,27 +26,32 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system designed w
 **CRITICAL**: All code must be OS-neutral for Windows, Mac, and Linux compatibility:
 
 1. **Path Handling**:
+
    - Always use `pathlib.Path()` for file paths
    - Never hardcode path separators (`/` or `\`)
    - Use `Path.home()` for user directories
    - Example: `Path.home() / ".giljo-mcp" / "config.yaml"`
 
 2. **File Operations**:
+
    - Use `Path.exists()`, `Path.mkdir(parents=True, exist_ok=True)`
    - Use `Path.read_text()` and `Path.write_text()` for file I/O
    - Handle line endings with `newline=None` (universal mode)
 
 3. **Process Management**:
+
    - Use `subprocess` with `shell=False` when possible
    - Platform detection: `platform.system()` returns 'Windows', 'Darwin', 'Linux'
    - Conditional logic only when absolutely necessary
 
 4. **Environment Variables**:
+
    - Use `os.environ.get()` with defaults
    - Path separators in env vars: use `os.pathsep`
    - Home directory: `Path.home()` not `~`
 
 5. **Example OS-Neutral Code**:
+
 ```python
 from pathlib import Path
 import platform
@@ -90,24 +96,28 @@ config_file = "C:\\Users\\name\\.giljo-mcp"  # Windows only
 #### 1. API Layer
 
 **MCP Protocol Handler**
+
 - Implements 20 essential MCP tools
 - Handles Claude Code CLI connections
 - Manages project context switching
 - **Serena MCP Integration hooks for codebase discovery**
 
 **REST API**
+
 - Dashboard backend
 - Project management endpoints
 - Agent monitoring endpoints
 - Configuration management
 
 **WebSocket API**
+
 - Real-time agent updates
 - Live message streaming
 - Dashboard notifications
 - Collaborative features
 
 **Authentication Layer**
+
 - Mode-based authentication (none/apikey/oauth)
 - Project key validation
 - Rate limiting (WAN mode)
@@ -116,18 +126,21 @@ config_file = "C:\\Users\\name\\.giljo-mcp"  # Windows only
 #### 2. Orchestration Core
 
 **Project Manager**
+
 - Creates and manages projects
 - Assigns agents to projects
 - Tracks project lifecycle
 - Handles project completion
 
 **Agent Spawner**
+
 - Dynamic agent creation
 - Role-based agent configuration
 - Mission generation from vision documents
 - Context injection
 
 **Message Router**
+
 - Project-scoped message queues
 - Agent-to-agent communication
 - Message acknowledgment system
@@ -136,6 +149,7 @@ config_file = "C:\\Users\\name\\.giljo-mcp"  # Windows only
 #### 3. Data Layer
 
 **Database Models**
+
 ```python
 # Core entities
 Project         # Products/projects with unique keys
@@ -163,6 +177,7 @@ AgentTemplate ←→ TemplateArchive (1:many)
 The installer has been transformed from a simple configuration wizard into a comprehensive dependency management system with cross-platform service lifecycle management.
 
 #### Installation Profiles
+
 **Four distinct deployment profiles with automatic dependency resolution:**
 
 ```python
@@ -193,6 +208,7 @@ Research Profile:
 ```
 
 #### Dependency Installation System
+
 **Actual software installation, not just configuration:**
 
 ```python
@@ -217,6 +233,7 @@ docker.py:
 ```
 
 #### Service Management Architecture
+
 **Cross-platform service lifecycle management:**
 
 ```python
@@ -235,6 +252,7 @@ Service Features:
 ```
 
 #### Configuration Management System
+
 **Profile-based dynamic configuration:**
 
 ```python
@@ -254,6 +272,7 @@ Template System:
 ```
 
 #### GUI Enhancement Architecture
+
 **Profile-aware installer wizard:**
 
 ```python
@@ -276,6 +295,7 @@ Profile Adaptation:
 ```
 
 #### Installation Flow Architecture
+
 **Parallel, health-validated installation:**
 
 ```
@@ -303,15 +323,17 @@ Enhanced Flow:
 The system leverages Claude Code's native sub-agent capabilities for elegant orchestration:
 
 #### Before Sub-Agents (Complex)
+
 ```
 Multiple Terminals → Message Queue → Coordination → Fragile
 ```
 
 #### After Sub-Agents (Simple)
+
 ```
 Claude Code (Orchestrator)
     ├── Spawns Sub-Agent: Analyzer
-    ├── Spawns Sub-Agent: Developer  
+    ├── Spawns Sub-Agent: Developer
     ├── Spawns Sub-Agent: Tester
     └── Spawns Sub-Agent: Reviewer
          ↓
@@ -321,18 +343,20 @@ Claude Code (Orchestrator)
 ```
 
 #### Hybrid Control Pattern
+
 - **Direct Control**: Orchestrator spawns and controls sub-agents synchronously
 - **MCP Logging**: All interactions logged to message queue for visibility
 - **Persistence**: GiljoAI-MCP maintains state across sessions
 - **Token Efficiency**: 70% reduction through direct control vs broadcasts
 
 #### New MCP Tools for Sub-Agents
+
 ```python
 @mcp_tool
 def spawn_and_log_sub_agent(agent_type, mission, parent="orchestrator"):
     """Log sub-agent spawn for dashboard visibility"""
-    
-@mcp_tool  
+
+@mcp_tool
 def log_sub_agent_completion(agent_type, results, duration_seconds):
     """Log sub-agent results and metrics"""
 ```
@@ -340,13 +364,14 @@ def log_sub_agent_completion(agent_type, results, duration_seconds):
 ### Deployment Modes
 
 #### Local Mode (Default)
+
 ```yaml
 Configuration:
   host: 127.0.0.1
   port: 5001
   database: sqlite:///~/.giljo-mcp/local.db
   auth: none
-  
+
 Characteristics:
   - Single user
   - No authentication
@@ -356,13 +381,14 @@ Characteristics:
 ```
 
 #### LAN Mode (Team)
+
 ```yaml
 Configuration:
   host: 0.0.0.0
   port: 5001
   database: postgresql://server/giljo_mcp
   auth: api_key
-  
+
 Characteristics:
   - Multiple users
   - API key authentication
@@ -372,6 +398,7 @@ Characteristics:
 ```
 
 #### WAN Mode (Internet)
+
 ```yaml
 Configuration:
   host: 0.0.0.0
@@ -379,7 +406,7 @@ Configuration:
   database: postgresql://rds/giljo_mcp
   auth: oauth
   tls: required
-  
+
 Characteristics:
   - Global access
   - OAuth/JWT authentication
@@ -391,6 +418,7 @@ Characteristics:
 ### Data Flow Architecture
 
 #### Project Creation Flow
+
 ```
 1. User creates project via CLI/Dashboard
 2. Project Manager validates and stores in DB
@@ -401,6 +429,7 @@ Characteristics:
 ```
 
 #### Message Flow
+
 ```
 1. Agent generates message
 2. Message Router validates project scope
@@ -411,6 +440,7 @@ Characteristics:
 ```
 
 #### Task Pipeline
+
 ```
 1. Task captured during coding session
 2. Stored in task database with metadata
@@ -423,11 +453,12 @@ Characteristics:
 ### Technology Stack
 
 #### Backend
+
 - **Language**: Python 3.8+
 - **Framework**: FastAPI (async, WebSockets, OpenAPI)
 - **ORM**: SQLAlchemy 2.0 (async support)
 - **Database**: SQLite (local), PostgreSQL (server)
-- **Database Drivers**: 
+- **Database Drivers**:
   - psycopg2-binary (PostgreSQL sync operations)
   - asyncpg (PostgreSQL async operations - high performance)
   - aiosqlite (SQLite async operations)
@@ -435,11 +466,12 @@ Characteristics:
 - **Process**: uvicorn (ASGI server)
 
 #### Frontend
+
 - **Framework**: Vue 3 + Vite (required for UI flexibility)
 - **Components**: Vuetify 3 (Material Design)
 - **Styling**: Tailwind CSS + Custom theme system
 - **Color Themes**: See `/docs/color_themes.md` for mandatory palette
-- **Provided Assets**: 
+- **Provided Assets**:
   - Icons: `/frontend/public/icons/` (ready to use)
   - Mascot: `/frontend/public/mascot/` (animated logo)
   - Favicon: `/frontend/public/favicon.ico` (app icon)
@@ -449,6 +481,7 @@ Characteristics:
 - **Accessibility**: WCAG 2.1 AA compliant
 
 #### Infrastructure
+
 - **Container**: Docker (multi-stage build)
 - **Orchestration**: Docker Compose (dev), Kubernetes (prod)
 - **Reverse Proxy**: Nginx (production)
@@ -458,17 +491,20 @@ Characteristics:
 ### Security Architecture
 
 #### Local Mode
+
 - No network exposure
 - File system permissions only
 - No authentication required
 
 #### LAN Mode
+
 - API key authentication
 - Network firewall recommended
 - Optional TLS with self-signed certs
 - Rate limiting per API key
 
 #### WAN Mode
+
 - Mandatory TLS encryption
 - OAuth 2.0 / JWT tokens
 - Rate limiting per user/project
@@ -479,6 +515,7 @@ Characteristics:
 ### Performance Specifications
 
 #### Target Metrics
+
 - **Setup Time**: < 5 minutes (local mode)
 - **First Project**: < 30 seconds to create
 - **Message Latency**: < 100ms (local), < 500ms (WAN)
@@ -487,6 +524,7 @@ Characteristics:
 - **Database Size**: 10GB+ supported
 
 #### Scaling Boundaries
+
 - **SQLite**: 1-10 concurrent users
 - **PostgreSQL**: 10-1000 concurrent users
 - **PostgreSQL Cluster**: 1000+ concurrent users
@@ -494,6 +532,7 @@ Characteristics:
 ### Integration Architecture
 
 #### Claude Code CLI
+
 ```json
 {
   "mcpServers": {
@@ -510,6 +549,7 @@ Characteristics:
 ```
 
 #### API Agents (Future)
+
 ```python
 # Anthropic API
 client = AnthropicAgent(
@@ -527,6 +567,7 @@ client = OpenAIAgent(
 ```
 
 #### Desktop Application (Future)
+
 - Electron or Tauri framework
 - Local file system access
 - Built-in text editor
@@ -536,6 +577,7 @@ client = OpenAIAgent(
 ### Database Schema
 
 #### Core Tables
+
 ```sql
 -- Projects (formerly products)
 CREATE TABLE projects (
@@ -636,6 +678,7 @@ giljo-mcp/
 ### Migration Strategy
 
 #### From Current AKE-MCP
+
 1. Export PostgreSQL data to SQL dump
 2. Run migration script to new schema
 3. Update project keys for multi-tenancy
@@ -643,6 +686,7 @@ giljo-mcp/
 5. Import into new system
 
 #### Database Migration
+
 ```python
 # Alembic migrations for both SQLite and PostgreSQL
 alembic upgrade head
@@ -657,6 +701,7 @@ else:
 ### Development Workflow
 
 #### Local Development
+
 ```bash
 # Setup
 git clone https://github.com/giljoai/mcp-orchestrator
@@ -669,6 +714,7 @@ giljo-mcp start --mode=local --debug
 ```
 
 #### Testing
+
 ```bash
 # Unit tests
 pytest tests/
@@ -681,6 +727,7 @@ locust -f tests/load/
 ```
 
 #### Deployment
+
 ```bash
 # Docker build
 docker build -t giljo-mcp:latest .
@@ -699,6 +746,7 @@ docker run -d \
 ### Monitoring & Observability
 
 #### Metrics
+
 - Project creation rate
 - Agent spawn rate
 - Message throughput
@@ -707,16 +755,18 @@ docker run -d \
 - API response times
 
 #### Logging
+
 - Structured JSON logging
 - Log levels per module
 - Centralized log aggregation (server mode)
 - Audit trail for enterprise
 
 #### Health Checks
+
 - `/health` - System health
 - `/ready` - Ready for traffic
 - `/metrics` - Prometheus metrics
 
 ---
 
-*This architecture ensures GiljoAI MCP Orchestrator scales from laptop to cloud without rewrites, maintaining simplicity for individuals while providing enterprise capabilities for teams.*
+_This architecture ensures GiljoAI MCP Orchestrator scales from laptop to cloud without rewrites, maintaining simplicity for individuals while providing enterprise capabilities for teams._

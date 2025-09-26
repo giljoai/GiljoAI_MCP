@@ -8,4 +8,4 @@ GiljoAI MCP Orchestrator installation system.
 
 from .dependency_checker import DependencyChecker
 
-__all__ = ['DependencyChecker']
+__all__ = ["DependencyChecker"]

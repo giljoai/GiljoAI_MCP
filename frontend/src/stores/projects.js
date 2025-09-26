@@ -11,22 +11,18 @@ export const useProjectStore = defineStore('projects', () => {
   const error = ref(null)
 
   // Getters
-  const activeProjects = computed(() =>
-    projects.value.filter(p => p.status === 'active'),
-  )
+  const activeProjects = computed(() => projects.value.filter((p) => p.status === 'active'))
 
-  const projectById = computed(() => (id) =>
-    projects.value.find(p => p.id === id),
-  )
+  const projectById = computed(() => (id) => projects.value.find((p) => p.id === id))
 
   // Actions
   async function fetchProjects() {
     loading.value = true
     error.value = null
     try {
-      const response = await axios.get(
-        API_CONFIG.ENDPOINTS.projects,
-        { baseURL: API_CONFIG.REST_API.baseURL })
+      const response = await axios.get(API_CONFIG.ENDPOINTS.projects, {
+        baseURL: API_CONFIG.REST_API.baseURL,
+      })
       projects.value = response.data
     } catch (err) {
       error.value = err.message
@@ -61,10 +57,9 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await axios.post(
-        API_CONFIG.ENDPOINTS.projects,
-        projectData,
-        { baseURL: API_CONFIG.REST_API.baseURL })
+      const response = await axios.post(API_CONFIG.ENDPOINTS.projects, projectData, {
+        baseURL: API_CONFIG.REST_API.baseURL,
+      })
       projects.value.push(response.data)
       return response.data
     } catch (err) {
@@ -157,10 +152,18 @@ export const useProjectStore = defineStore('projects', () => {
       }
 
       // Update other fields if provided
-      if (name) {project.name = name}
-      if (mission) {project.mission = mission}
-      if (context_used !== undefined) {project.context_used = context_used}
-      if (context_budget !== undefined) {project.context_budget = context_budget}
+      if (name) {
+        project.name = name
+      }
+      if (mission) {
+        project.mission = mission
+      }
+      if (context_used !== undefined) {
+        project.context_used = context_used
+      }
+      if (context_budget !== undefined) {
+        project.context_budget = context_budget
+      }
 
       project.updated_at = new Date().toISOString()
 

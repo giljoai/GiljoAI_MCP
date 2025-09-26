@@ -7,23 +7,27 @@ The MessageQueue system provides a robust, ACID-compliant message queue infrastr
 ## Key Features
 
 ### 1. Priority-Based Message Processing
+
 - **Priority Levels**: Critical (1000), High (100), Normal (10), Low (1)
 - **FIFO Within Priority**: Messages with same priority processed in order
 - **Deadline Escalation**: Automatic priority boost for time-sensitive messages
 
 ### 2. Intelligent Routing
+
 - **Capability Matching**: Routes messages to agents based on capabilities
 - **Load Balancing**: Distributes work based on agent load and performance
 - **Circuit Breaker**: Protects against cascading failures
 - **Routing Rules**: Configurable rules for message type, priority, and content
 
 ### 3. ACID Compliance
+
 - **Atomicity**: All operations wrapped in transactions
 - **Consistency**: Validated state transitions
 - **Isolation**: Row-level locking prevents conflicts
 - **Durability**: Write-ahead logging ensures no message loss
 
 ### 4. Monitoring & Metrics
+
 - **Queue Depth**: Messages per priority level
 - **Processing Time**: Average time per agent
 - **Throughput**: Messages per minute
@@ -31,6 +35,7 @@ The MessageQueue system provides a robust, ACID-compliant message queue infrastr
 - **Stuck Detection**: Identifies messages processing too long
 
 ### 5. Fault Tolerance
+
 - **Retry Mechanism**: Exponential backoff for failed messages
 - **Dead Letter Queue**: Handles unprocessable messages
 - **Crash Recovery**: Automatic recovery on restart
@@ -93,8 +98,8 @@ stats = await queue.get_statistics()
 
 ```python
 from giljo_mcp.queue import (
-    PriorityRoutingRule, 
-    TypeRoutingRule, 
+    PriorityRoutingRule,
+    TypeRoutingRule,
     ContentRoutingRule
 )
 
@@ -242,18 +247,21 @@ pytest tests/test_message_queue.py::test_queue_performance -v
 ### Common Issues
 
 1. **High Queue Depth**
+
    - Check agent availability
    - Review routing rules
    - Increase batch size
    - Scale agents horizontally
 
 2. **Stuck Messages**
+
    - Check processing timeout settings
    - Review agent health
    - Check for deadlocks
    - Enable debug logging
 
 3. **Circuit Breaker Open**
+
    - Check agent logs for errors
    - Review failure threshold
    - Manual reset if needed
@@ -281,18 +289,21 @@ queue_logger.addHandler(logging.FileHandler('queue.log'))
 ## Best Practices
 
 1. **Message Design**
+
    - Keep messages small and focused
    - Use appropriate priority levels
    - Include deadline for time-sensitive messages
    - Avoid circular dependencies
 
 2. **Agent Design**
+
    - Process messages quickly
    - Acknowledge immediately
    - Complete or retry explicitly
    - Handle failures gracefully
 
 3. **Monitoring**
+
    - Set up alerts for queue depth
    - Monitor stuck messages
    - Track error rates
@@ -328,6 +339,7 @@ The MessageQueue integrates seamlessly with existing message tools:
 ## Support
 
 For issues or questions:
+
 1. Check the troubleshooting section
 2. Review test cases for examples
 3. Enable debug logging
@@ -335,5 +347,5 @@ For issues or questions:
 
 ---
 
-*Last Updated: Project 3.2 Implementation*
-*Version: 1.0.0*
+_Last Updated: Project 3.2 Implementation_
+_Version: 1.0.0_

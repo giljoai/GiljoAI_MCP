@@ -1,7 +1,9 @@
 # Docker Health Check Patterns
+
 ## Best Practices for GiljoAI MCP Orchestrator
 
 ### Overview
+
 Health checks are critical for container orchestration, enabling Docker to automatically restart unhealthy containers and ensure service availability.
 
 ---
@@ -9,18 +11,21 @@ Health checks are critical for container orchestration, enabling Docker to autom
 ## Health Check Patterns by Service Type
 
 ### 1. PostgreSQL Database
+
 ```dockerfile
 HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
   CMD pg_isready -U postgres || exit 1
 ```
 
 **Alternative with data check:**
+
 ```dockerfile
 HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
   CMD psql -U postgres -c "SELECT 1" || exit 1
 ```
 
 **Docker Compose:**
+
 ```yaml
 healthcheck:
   test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -31,12 +36,14 @@ healthcheck:
 ```
 
 ### 2. FastAPI Backend
+
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 ```
 
 **With database connectivity check:**
+
 ```python
 # health_check.py
 import sys
@@ -64,6 +71,7 @@ def check_health():
 ```
 
 **Docker Compose:**
+
 ```yaml
 healthcheck:
   test: ["CMD", "python", "/app/health_check.py"]
@@ -74,18 +82,21 @@ healthcheck:
 ```
 
 ### 3. Nginx Frontend
+
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
   CMD curl -f http://localhost:80/ || exit 1
 ```
 
 **With specific endpoint:**
+
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
   CMD curl -f http://localhost:80/health.html || exit 1
 ```
 
 **Docker Compose:**
+
 ```yaml
 healthcheck:
   test: ["CMD", "curl", "-f", "http://localhost:80/"]
@@ -96,6 +107,7 @@ healthcheck:
 ```
 
 ### 4. WebSocket Service
+
 ```dockerfile
 # Using custom script for WebSocket health
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
@@ -103,6 +115,7 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 ```
 
 **WebSocket health check script:**
+
 ```python
 # ws_health_check.py
 import asyncio
@@ -128,21 +141,25 @@ asyncio.run(check_websocket())
 ## Health Check Parameters
 
 ### Interval
+
 - **Default:** 30s
 - **Recommended:** 10-30s for critical services, 30-60s for stable services
 - **Consideration:** Balance between detection speed and resource usage
 
 ### Timeout
+
 - **Default:** 30s
 - **Recommended:** 3-10s depending on service complexity
 - **Consideration:** Should be less than interval
 
 ### Retries
+
 - **Default:** 3
 - **Recommended:** 3-5 for production
 - **Consideration:** Prevents false positives from temporary issues
 
 ### Start Period
+
 - **Default:** 0s
 - **Recommended:** 30-60s for services with slow startup
 - **Consideration:** Grace period during container startup
@@ -152,6 +169,7 @@ asyncio.run(check_websocket())
 ## Implementation Strategies
 
 ### 1. Lightweight Checks
+
 ```dockerfile
 # Good - minimal resource usage
 HEALTHCHECK CMD curl -f http://localhost/health || exit 1
@@ -161,6 +179,7 @@ HEALTHCHECK CMD python full_integration_test.py
 ```
 
 ### 2. Dependency-Aware Checks
+
 ```yaml
 # Backend waits for database
 backend:
@@ -176,6 +195,7 @@ backend:
 ```
 
 ### 3. Multi-Level Health Checks
+
 ```python
 # /health - basic liveness
 @app.get("/health")
@@ -199,6 +219,7 @@ async def health_ready():
 ```
 
 ### 4. Exit Code Patterns
+
 ```bash
 #!/bin/bash
 # health_check.sh
@@ -221,8 +242,9 @@ exit 0
 ## Docker Compose Health Check Dependencies
 
 ### Sequential Startup
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -262,6 +284,7 @@ services:
 ## Monitoring Health Status
 
 ### Docker Commands
+
 ```bash
 # Check health status
 docker inspect --format='{{.State.Health.Status}}' container_name
@@ -277,6 +300,7 @@ watch -n 2 'docker ps --format "table {{.Names}}\t{{.Status}}"'
 ```
 
 ### Automated Monitoring Script
+
 ```bash
 #!/bin/bash
 # monitor_health.sh
@@ -300,18 +324,22 @@ done
 ## Common Issues and Solutions
 
 ### 1. False Positives
+
 **Problem:** Container marked unhealthy during normal operation
 **Solution:** Increase timeout or retries, add start_period
 
 ### 2. Resource Exhaustion
+
 **Problem:** Health checks consuming too many resources
 **Solution:** Increase interval, simplify check logic
 
 ### 3. Cascading Failures
+
 **Problem:** One unhealthy service causes others to fail
 **Solution:** Implement circuit breakers, graceful degradation
 
 ### 4. Slow Startup
+
 **Problem:** Container marked unhealthy before fully initialized
 **Solution:** Add appropriate start_period
 
@@ -332,6 +360,7 @@ done
 ## GiljoAI-Specific Recommendations
 
 ### Backend Health Check
+
 ```python
 # /app/health_check.py
 import sys
@@ -381,6 +410,7 @@ if __name__ == "__main__":
 ```
 
 ### Frontend Health Check
+
 ```nginx
 # /usr/share/nginx/html/health.html
 <!DOCTYPE html>
@@ -391,13 +421,18 @@ if __name__ == "__main__":
 ```
 
 ### Docker Compose Configuration
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -d giljoai -c 'SELECT 1'"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres && psql -U postgres -d giljoai -c 'SELECT 1'",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -423,6 +458,7 @@ services:
 ---
 
 ## References
+
 - [Docker HEALTHCHECK Documentation](https://docs.docker.com/engine/reference/builder/#healthcheck)
 - [Docker Compose Health Check](https://docs.docker.com/compose/compose-file/compose-file-v3/#healthcheck)
 - [Best Practices for Container Health Checks](https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-setting-up-health-checks-with-readiness-and-liveness-probes)

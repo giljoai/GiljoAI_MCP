@@ -17,14 +17,14 @@ We use Ruff as our primary Python linter and formatter, configured via `.ruff.to
 
 #### Key Rule Categories
 
-| Category | Rules | Purpose |
-|----------|-------|---------|
-| **Core Quality** | E, W, F | pycodestyle errors/warnings, pyflakes |
-| **Import Management** | I, TID | isort, tidy-imports |
-| **Security** | S, BLE | bandit security checks, blind except |
-| **Performance** | PERF, C4 | Performance optimizations, comprehensions |
-| **Type Safety** | TCH, UP | Type checking, pyupgrade |
-| **Code Style** | N, Q, COM | PEP 8 naming, quotes, commas |
+| Category              | Rules     | Purpose                                   |
+| --------------------- | --------- | ----------------------------------------- |
+| **Core Quality**      | E, W, F   | pycodestyle errors/warnings, pyflakes     |
+| **Import Management** | I, TID    | isort, tidy-imports                       |
+| **Security**          | S, BLE    | bandit security checks, blind except      |
+| **Performance**       | PERF, C4  | Performance optimizations, comprehensions |
+| **Type Safety**       | TCH, UP   | Type checking, pyupgrade                  |
+| **Code Style**        | N, Q, COM | PEP 8 naming, quotes, commas              |
 
 #### Ignored Rules (Production Justified)
 
@@ -64,12 +64,12 @@ Comprehensive Vue 3 + JavaScript linting via `.eslintrc.json`:
 
 #### Key Frontend Rules
 
-| Category | Rules | Enforcement |
-|----------|-------|-------------|
-| **Vue Components** | vue/component-tags-order | template, script, style order |
-| **Code Quality** | no-console, no-debugger | Warnings/errors for production |
-| **ES6+ Standards** | prefer-const, arrow-functions | Modern JavaScript patterns |
-| **Accessibility** | Vuetify compliance | WCAG 2.1 AA standards |
+| Category           | Rules                         | Enforcement                    |
+| ------------------ | ----------------------------- | ------------------------------ |
+| **Vue Components** | vue/component-tags-order      | template, script, style order  |
+| **Code Quality**   | no-console, no-debugger       | Warnings/errors for production |
+| **ES6+ Standards** | prefer-const, arrow-functions | Modern JavaScript patterns     |
+| **Accessibility**  | Vuetify compliance            | WCAG 2.1 AA standards          |
 
 ### Prettier Configuration
 
@@ -117,16 +117,19 @@ Comprehensive GitHub Actions workflow (`.github/workflows/ci.yml`):
 #### Pipeline Stages
 
 1. **Linting & Security** (Parallel)
+
    - Python: Ruff + Bandit + MyPy
    - Frontend: ESLint + Prettier + Build
    - Security: Trivy vulnerability scanning
 
 2. **Testing** (Matrix)
+
    - Unit tests across Python 3.9-3.11
    - Integration tests with PostgreSQL
    - Performance benchmarking
 
 3. **Quality Gates**
+
    - 80%+ code coverage requirement
    - Zero critical security vulnerabilities
    - All linting rules must pass

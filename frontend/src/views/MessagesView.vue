@@ -6,11 +6,7 @@
         <h1 class="text-h4">Messages</h1>
       </v-col>
       <v-col cols="auto">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-message-plus"
-          @click="showComposeDialog = true"
-        >
+        <v-btn color="primary" prepend-icon="mdi-message-plus" @click="showComposeDialog = true">
           New Message
         </v-btn>
       </v-col>
@@ -64,13 +60,7 @@
         />
       </v-col>
       <v-col cols="12" md="2">
-        <v-btn
-          variant="outlined"
-          @click="clearFilters"
-          block
-        >
-          Clear Filters
-        </v-btn>
+        <v-btn variant="outlined" @click="clearFilters" block> Clear Filters </v-btn>
       </v-col>
     </v-row>
 
@@ -87,31 +77,19 @@
       >
         <!-- Loading State -->
         <template v-slot:loading>
-          <MascotLoader 
-            variant="loader"
-            :size="60"
-            text="Loading messages..."
-          />
+          <MascotLoader variant="loader" :size="60" text="Loading messages..." />
         </template>
 
         <!-- Priority Column -->
         <template v-slot:item.priority="{ item }">
-          <v-chip
-            :color="getPriorityColor(item.priority)"
-            size="small"
-            label
-          >
+          <v-chip :color="getPriorityColor(item.priority)" size="small" label>
             {{ item.priority }}
           </v-chip>
         </template>
 
         <!-- Status Column -->
         <template v-slot:item.status="{ item }">
-          <v-chip
-            :color="getStatusColor(item.status)"
-            size="small"
-            variant="outlined"
-          >
+          <v-chip :color="getStatusColor(item.status)" size="small" variant="outlined">
             <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
             {{ item.status }}
           </v-chip>
@@ -144,7 +122,7 @@
 
         <!-- Content Column -->
         <template v-slot:item.content="{ item }">
-          <div class="text-truncate" style="max-width: 300px;">
+          <div class="text-truncate" style="max-width: 300px">
             {{ item.content }}
           </div>
         </template>
@@ -179,15 +157,14 @@
         <!-- No Data -->
         <template v-slot:no-data>
           <div class="text-center py-8">
-            <MascotLoader
-              type="image"
-              variant="thinker"
-              :size="80"
-              :show-text="false"
-            />
+            <MascotLoader type="image" variant="thinker" :size="80" :show-text="false" />
             <p class="text-h6 mt-4">No messages found</p>
             <p class="text-body-2 text-medium-emphasis">
-              {{ search || statusFilter || priorityFilter || agentFilter ? 'Try adjusting your filters' : 'Messages will appear here when sent' }}
+              {{
+                search || statusFilter || priorityFilter || agentFilter
+                  ? 'Try adjusting your filters'
+                  : 'Messages will appear here when sent'
+              }}
             </p>
           </div>
         </template>
@@ -208,7 +185,7 @@
             aria-label="Close dialog"
           />
         </v-card-title>
-        
+
         <v-card-text>
           <v-row class="mb-4">
             <v-col cols="6">
@@ -220,15 +197,11 @@
               <div class="text-body-1">{{ selectedMessage.to_agents?.join(', ') || 'All' }}</div>
             </v-col>
           </v-row>
-          
+
           <v-row class="mb-4">
             <v-col cols="4">
               <div class="text-caption text-medium-emphasis">Priority</div>
-              <v-chip
-                :color="getPriorityColor(selectedMessage.priority)"
-                size="small"
-                label
-              >
+              <v-chip :color="getPriorityColor(selectedMessage.priority)" size="small" label>
                 {{ selectedMessage.priority }}
               </v-chip>
             </v-col>
@@ -247,12 +220,12 @@
               <div class="text-body-2">{{ formatDate(selectedMessage.created_at) }}</div>
             </v-col>
           </v-row>
-          
+
           <v-divider class="my-4" />
-          
+
           <div class="text-caption text-medium-emphasis mb-2">Content</div>
-          <div class="text-body-1" style="white-space: pre-wrap;">{{ selectedMessage.content }}</div>
-          
+          <div class="text-body-1" style="white-space: pre-wrap">{{ selectedMessage.content }}</div>
+
           <div v-if="selectedMessage.acknowledged_by?.length" class="mt-4">
             <div class="text-caption text-medium-emphasis mb-2">Acknowledged By</div>
             <v-chip
@@ -265,15 +238,10 @@
             </v-chip>
           </div>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            variant="text"
-            @click="showDetailDialog = false"
-          >
-            Close
-          </v-btn>
+          <v-btn variant="text" @click="showDetailDialog = false"> Close </v-btn>
           <v-btn
             v-if="selectedMessage.status === 'pending'"
             color="success"
@@ -282,11 +250,7 @@
           >
             Acknowledge
           </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="replyToMessage(selectedMessage)"
-          >
+          <v-btn color="primary" variant="flat" @click="replyToMessage(selectedMessage)">
             Reply
           </v-btn>
         </v-card-actions>
@@ -300,7 +264,7 @@
           <v-icon class="mr-2">mdi-message-plus</v-icon>
           Compose Message
         </v-card-title>
-        
+
         <v-card-text>
           <v-form ref="composeForm">
             <v-select
@@ -310,40 +274,30 @@
               multiple
               chips
               variant="outlined"
-              :rules="[v => v?.length > 0 || 'Select at least one recipient']"
+              :rules="[(v) => v?.length > 0 || 'Select at least one recipient']"
             />
-            
+
             <v-select
               v-model="newMessage.priority"
               :items="priorityOptions"
               label="Priority"
               variant="outlined"
             />
-            
+
             <v-textarea
               v-model="newMessage.content"
               label="Message Content"
               variant="outlined"
               rows="5"
-              :rules="[v => !!v || 'Message content is required']"
+              :rules="[(v) => !!v || 'Message content is required']"
             />
           </v-form>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            variant="text"
-            @click="cancelCompose"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="sendMessage"
-            :loading="sending"
-          >
+          <v-btn variant="text" @click="cancelCompose"> Cancel </v-btn>
+          <v-btn color="primary" variant="flat" @click="sendMessage" :loading="sending">
             Send Message
           </v-btn>
         </v-card-actions>
@@ -378,7 +332,7 @@ const sending = ref(false)
 const newMessage = ref({
   to_agents: [],
   priority: 'normal',
-  content: ''
+  content: '',
 })
 
 // Table headers
@@ -389,7 +343,7 @@ const headers = [
   { title: 'To', key: 'to_agents', width: '150' },
   { title: 'Content', key: 'content' },
   { title: 'Created', key: 'created_at', width: '150' },
-  { title: 'Actions', key: 'actions', sortable: false, width: '120' }
+  { title: 'Actions', key: 'actions', sortable: false, width: '120' },
 ]
 
 // Filter options
@@ -401,27 +355,26 @@ const loading = computed(() => messageStore.loading)
 const messages = computed(() => messageStore.messages)
 
 const agentOptions = computed(() => {
-  return agentStore.agents.map(agent => agent.name)
+  return agentStore.agents.map((agent) => agent.name)
 })
 
 const filteredMessages = computed(() => {
   let filtered = [...messages.value]
-  
+
   if (statusFilter.value) {
-    filtered = filtered.filter(m => m.status === statusFilter.value)
+    filtered = filtered.filter((m) => m.status === statusFilter.value)
   }
-  
+
   if (priorityFilter.value) {
-    filtered = filtered.filter(m => m.priority === priorityFilter.value)
+    filtered = filtered.filter((m) => m.priority === priorityFilter.value)
   }
-  
+
   if (agentFilter.value) {
-    filtered = filtered.filter(m => 
-      m.from === agentFilter.value || 
-      m.to_agents?.includes(agentFilter.value)
+    filtered = filtered.filter(
+      (m) => m.from === agentFilter.value || m.to_agents?.includes(agentFilter.value),
     )
   }
-  
+
   return filtered
 })
 
@@ -432,7 +385,7 @@ function getPriorityColor(priority) {
     normal: 'info',
     high: 'warning',
     urgent: 'orange',
-    critical: 'error'
+    critical: 'error',
   }
   return colors[priority] || 'grey'
 }
@@ -441,7 +394,7 @@ function getStatusColor(status) {
   const colors = {
     pending: 'warning',
     acknowledged: 'info',
-    completed: 'success'
+    completed: 'success',
   }
   return colors[status] || 'grey'
 }
@@ -450,7 +403,7 @@ function getStatusIcon(status) {
   const icons = {
     pending: 'mdi-clock-outline',
     acknowledged: 'mdi-check',
-    completed: 'mdi-check-all'
+    completed: 'mdi-check-all',
   }
   return icons[status] || 'mdi-help'
 }
@@ -488,7 +441,7 @@ function replyToMessage(message) {
     priority: 'normal',
     content: `Re: ${message.content.substring(0, 50)}...
 
-`
+`,
   }
   showComposeDialog.value = true
 }
@@ -498,21 +451,21 @@ function cancelCompose() {
   newMessage.value = {
     to_agents: [],
     priority: 'normal',
-    content: ''
+    content: '',
   }
 }
 
 async function sendMessage() {
   const { valid } = await composeForm.value.validate()
   if (!valid) return
-  
+
   sending.value = true
   try {
     await messageStore.sendMessage({
       to_agents: newMessage.value.to_agents,
       priority: newMessage.value.priority,
       content: newMessage.value.content,
-      from_agent: 'user'
+      from_agent: 'user',
     })
     cancelCompose()
   } catch (error) {
@@ -524,9 +477,6 @@ async function sendMessage() {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    messageStore.fetchMessages(),
-    agentStore.fetchAgents()
-  ])
+  await Promise.all([messageStore.fetchMessages(), agentStore.fetchAgents()])
 })
 </script>

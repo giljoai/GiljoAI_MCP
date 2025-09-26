@@ -75,11 +75,7 @@
         <template v-slot:item.variables="{ item }">
           <v-tooltip v-if="item.variables && item.variables.length > 0">
             <template v-slot:activator="{ props }">
-              <v-chip
-                v-bind="props"
-                size="small"
-                variant="outlined"
-              >
+              <v-chip v-bind="props" size="small" variant="outlined">
                 {{ item.variables.length }} vars
               </v-chip>
             </template>
@@ -143,12 +139,7 @@
     </v-card-text>
 
     <!-- Create/Edit Dialog -->
-    <v-dialog
-      v-model="editDialog"
-      max-width="900px"
-      persistent
-      retain-focus
-    >
+    <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus>
       <v-card>
         <v-card-title>
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
@@ -161,7 +152,7 @@
                 <v-text-field
                   v-model="editingTemplate.name"
                   label="Template Name*"
-                  :rules="[v => !!v || 'Name is required']"
+                  :rules="[(v) => !!v || 'Name is required']"
                   density="compact"
                 />
               </v-col>
@@ -170,7 +161,7 @@
                   v-model="editingTemplate.category"
                   :items="categories"
                   label="Category*"
-                  :rules="[v => !!v || 'Category is required']"
+                  :rules="[(v) => !!v || 'Category is required']"
                   density="compact"
                 />
               </v-col>
@@ -186,7 +177,7 @@
                 <v-textarea
                   v-model="editingTemplate.template"
                   label="Template (supports {variable} placeholders)"
-                  :rules="[v => !!v || 'Template content is required']"
+                  :rules="[(v) => !!v || 'Template content is required']"
                   rows="10"
                   variant="outlined"
                   density="compact"
@@ -226,18 +217,8 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            variant="text"
-            @click="closeEditDialog"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="saveTemplate"
-            :loading="saving"
-          >
+          <v-btn variant="text" @click="closeEditDialog"> Cancel </v-btn>
+          <v-btn color="primary" variant="flat" @click="saveTemplate" :loading="saving">
             {{ editingTemplate.id ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>
@@ -245,12 +226,7 @@
     </v-dialog>
 
     <!-- Preview Dialog -->
-    <v-dialog
-      v-model="previewDialog"
-      max-width="800px"
-      persistent
-      retain-focus
-    >
+    <v-dialog v-model="previewDialog" max-width="800px" persistent retain-focus>
       <v-card>
         <v-card-title>
           <span class="text-h5">Template Preview: {{ previewingTemplate.name }}</span>
@@ -281,11 +257,7 @@
                 />
               </v-col>
               <v-col cols="12">
-                <v-btn
-                  color="primary"
-                  @click="generatePreview"
-                  :loading="generating"
-                >
+                <v-btn color="primary" @click="generatePreview" :loading="generating">
                   Generate Preview
                 </v-btn>
               </v-col>
@@ -301,38 +273,23 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            variant="text"
-            @click="previewDialog = false"
-          >
-            Close
-          </v-btn>
+          <v-btn variant="text" @click="previewDialog = false"> Close </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog
-      v-model="deleteDialog"
-      max-width="500px"
-      persistent
-      retain-focus
-    >
+    <v-dialog v-model="deleteDialog" max-width="500px" persistent retain-focus>
       <v-card>
         <v-card-title class="text-h5">Confirm Delete</v-card-title>
         <v-card-text>
-          Are you sure you want to delete the template "{{ deletingTemplate?.name }}"?
-          This will archive the template and it can be restored from the version history.
+          Are you sure you want to delete the template "{{ deletingTemplate?.name }}"? This will
+          archive the template and it can be restored from the version history.
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            @click="deleteTemplate"
-            :loading="deleting"
-          >
+          <v-btn color="error" variant="flat" @click="deleteTemplate" :loading="deleting">
             Delete
           </v-btn>
         </v-card-actions>
@@ -340,13 +297,7 @@
     </v-dialog>
 
     <!-- Version History Dialog -->
-    <v-dialog
-      v-model="historyDialog"
-      max-width="900px"
-      scrollable
-      persistent
-      retain-focus
-    >
+    <v-dialog v-model="historyDialog" max-width="900px" scrollable persistent retain-focus>
       <TemplateArchive
         v-if="historyDialog"
         :template="historyTemplate"
@@ -389,7 +340,7 @@ const editingTemplate = ref({
   description: '',
   template: '',
   variables: [],
-  augmentation_slots: ''
+  augmentation_slots: '',
 })
 
 // Template being previewed
@@ -411,7 +362,7 @@ const headers = [
   { title: 'Description', key: 'description', align: 'start' },
   { title: 'Variables', key: 'variables', align: 'center' },
   { title: 'Updated', key: 'updated_at', align: 'start' },
-  { title: 'Actions', key: 'actions', align: 'center', sortable: false }
+  { title: 'Actions', key: 'actions', align: 'center', sortable: false },
 ]
 
 // Categories
@@ -425,13 +376,13 @@ const categories = [
   'tester',
   'reviewer',
   'documenter',
-  'custom'
+  'custom',
 ]
 
 const statusOptions = [
   { title: 'Active', value: 'active' },
   { title: 'Archived', value: 'archived' },
-  { title: 'Draft', value: 'draft' }
+  { title: 'Draft', value: 'draft' },
 ]
 
 // Computed
@@ -439,11 +390,11 @@ const filteredTemplates = computed(() => {
   let filtered = templates.value
 
   if (filterCategory.value) {
-    filtered = filtered.filter(t => t.category === filterCategory.value)
+    filtered = filtered.filter((t) => t.category === filterCategory.value)
   }
 
   if (filterStatus.value) {
-    filtered = filtered.filter(t => t.status === filterStatus.value)
+    filtered = filtered.filter((t) => t.status === filterStatus.value)
   }
 
   return filtered
@@ -484,7 +435,7 @@ const openCreateDialog = () => {
     description: '',
     template: '',
     variables: [],
-    augmentation_slots: ''
+    augmentation_slots: '',
   }
   editDialog.value = true
 }
@@ -498,7 +449,7 @@ const duplicateTemplate = (template) => {
   editingTemplate.value = {
     ...template,
     id: null,
-    name: `${template.name} (Copy)`
+    name: `${template.name} (Copy)`,
   }
   editDialog.value = true
 }
@@ -512,7 +463,7 @@ const closeEditDialog = () => {
     description: '',
     template: '',
     variables: [],
-    augmentation_slots: ''
+    augmentation_slots: '',
   }
 }
 
@@ -521,7 +472,7 @@ const saveTemplate = async () => {
   try {
     const data = {
       ...editingTemplate.value,
-      variables: detectedVariables.value
+      variables: detectedVariables.value,
     }
 
     if (editingTemplate.value.id) {
@@ -541,9 +492,9 @@ const saveTemplate = async () => {
 
 const previewTemplate = (template) => {
   previewingTemplate.value = template
-  previewVariables.value = (template.variables || []).map(v => ({
+  previewVariables.value = (template.variables || []).map((v) => ({
     name: v,
-    value: ''
+    value: '',
   }))
   previewAugmentations.value = ''
   generatedMission.value = ''
@@ -554,13 +505,13 @@ const generatePreview = async () => {
   generating.value = true
   try {
     const variables = {}
-    previewVariables.value.forEach(v => {
+    previewVariables.value.forEach((v) => {
       variables[v.name] = v.value
     })
 
     const response = await api.post(`/api/templates/${previewingTemplate.value.id}/preview`, {
       variables,
-      augmentations: previewAugmentations.value
+      augmentations: previewAugmentations.value,
     })
 
     generatedMission.value = response.data.mission
@@ -598,7 +549,7 @@ const viewHistory = (template) => {
 const handleRestore = async (version) => {
   try {
     await api.post(`/api/templates/${version.template_id}/restore`, {
-      version_id: version.id
+      version_id: version.id,
     })
     await loadTemplates()
     historyDialog.value = false
@@ -618,7 +569,7 @@ const getCategoryColor = (category) => {
     tester: 'pink',
     reviewer: 'indigo',
     documenter: 'brown',
-    custom: 'grey'
+    custom: 'grey',
   }
   return colors[category] || 'grey'
 }
@@ -634,9 +585,12 @@ onMounted(() => {
 })
 
 // Watch for variable changes
-watch(() => editingTemplate.value.template, () => {
-  editingTemplate.value.variables = detectedVariables.value
-})
+watch(
+  () => editingTemplate.value.template,
+  () => {
+    editingTemplate.value.variables = detectedVariables.value
+  },
+)
 </script>
 
 <style scoped lang="scss">

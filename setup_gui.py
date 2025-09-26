@@ -76,14 +76,23 @@ Click 'Next' to begin."""
         mode_frame.pack(padx=20, pady=10, fill="x")
 
         ttk.Radiobutton(
-            mode_frame, text="Local Development (Single machine, SQLite, full features)", variable=self.mode_var, value="local"
+            mode_frame,
+            text="Local Development (Single machine, SQLite, full features)",
+            variable=self.mode_var,
+            value="local",
         ).pack(anchor="w")
-        ttk.Radiobutton(mode_frame, text="Network Shared (Multi-user, PostgreSQL, LAN accessible)", variable=self.mode_var, value="lan").pack(
-            anchor="w"
-        )
-        ttk.Radiobutton(mode_frame, text="High Performance (Production-ready, optimized for scale)", variable=self.mode_var, value="wan").pack(
-            anchor="w"
-        )
+        ttk.Radiobutton(
+            mode_frame,
+            text="Network Shared (Multi-user, PostgreSQL, LAN accessible)",
+            variable=self.mode_var,
+            value="lan",
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            mode_frame,
+            text="High Performance (Production-ready, optimized for scale)",
+            variable=self.mode_var,
+            value="wan",
+        ).pack(anchor="w")
 
     def get_data(self) -> dict:
         return {"mode": self.mode_var.get()}
@@ -122,7 +131,7 @@ process and default configurations for your specific use case."""
             text="Individual Developer",
             variable=self.profile_var,
             value="developer",
-            command=self._on_profile_change
+            command=self._on_profile_change,
         ).pack(anchor="w")
 
         dev_desc = """• Personal coding assistant with local SQLite database
@@ -142,7 +151,7 @@ process and default configurations for your specific use case."""
             text="Development Team",
             variable=self.profile_var,
             value="team",
-            command=self._on_profile_change
+            command=self._on_profile_change,
         ).pack(anchor="w")
 
         team_desc = """• Shared PostgreSQL database for team collaboration
@@ -162,7 +171,7 @@ process and default configurations for your specific use case."""
             text="Enterprise Deployment",
             variable=self.profile_var,
             value="enterprise",
-            command=self._on_profile_change
+            command=self._on_profile_change,
         ).pack(anchor="w")
 
         enterprise_desc = """• Production-grade PostgreSQL with replication support
@@ -171,7 +180,9 @@ process and default configurations for your specific use case."""
 • Audit logging and compliance features
 • Ideal for: Large organizations, regulated industries"""
 
-        ttk.Label(enterprise_frame, text=enterprise_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
+        ttk.Label(enterprise_frame, text=enterprise_desc, justify=tk.LEFT, foreground="gray").pack(
+            padx=20, pady=5, anchor="w"
+        )
 
         # Research Profile
         research_frame = ttk.LabelFrame(profiles_frame, text="Research Profile", padding=10)
@@ -182,7 +193,7 @@ process and default configurations for your specific use case."""
             text="AI Research & Education",
             variable=self.profile_var,
             value="research",
-            command=self._on_profile_change
+            command=self._on_profile_change,
         ).pack(anchor="w")
 
         research_desc = """• Flexible configuration for experimentation
@@ -191,7 +202,9 @@ process and default configurations for your specific use case."""
 • Educational resources and examples included
 • Ideal for: Researchers, educators, AI labs"""
 
-        ttk.Label(research_frame, text=research_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
+        ttk.Label(research_frame, text=research_desc, justify=tk.LEFT, foreground="gray").pack(
+            padx=20, pady=5, anchor="w"
+        )
 
         # Status label for profile details
         self.status_frame = ttk.Frame(self)
@@ -211,7 +224,7 @@ process and default configurations for your specific use case."""
             "developer": "✓ Ready for quick setup with minimal configuration",
             "team": "✓ Will configure network settings and multi-user support",
             "enterprise": "✓ Will enable enterprise features and security options",
-            "research": "✓ Will include research templates and educational content"
+            "research": "✓ Will include research templates and educational content",
         }
 
         self.status_label.config(text=status_messages.get(profile, ""))
@@ -376,38 +389,38 @@ class DatabasePage(WizardPage):
         """Adapt database settings based on selected profile"""
         # Access the parent GiljoSetupGUI instance to get config data
         parent = self.parent
-        while parent and not hasattr(parent, 'config_data'):
+        while parent and not hasattr(parent, "config_data"):
             parent = parent.master
 
-        if parent and hasattr(parent, 'config_data'):
-            profile = parent.config_data.get('profile', 'developer')
+        if parent and hasattr(parent, "config_data"):
+            profile = parent.config_data.get("profile", "developer")
 
             # Set defaults based on profile
-            if profile == 'developer':
+            if profile == "developer":
                 # Default to SQLite for individual developers
-                self.db_type_var.set('sqlite')
-                self.db_path_var.set('data/giljo_mcp.db')
+                self.db_type_var.set("sqlite")
+                self.db_path_var.set("data/giljo_mcp.db")
                 self._on_db_type_change()
 
-            elif profile == 'team':
+            elif profile == "team":
                 # Default to PostgreSQL for teams
-                self.db_type_var.set('postgresql')
-                self.pg_database_var.set('giljo_mcp_team')
-                self.pg_user_var.set('giljo_team')
+                self.db_type_var.set("postgresql")
+                self.pg_database_var.set("giljo_mcp_team")
+                self.pg_user_var.set("giljo_team")
                 self._on_db_type_change()
 
-            elif profile == 'enterprise':
+            elif profile == "enterprise":
                 # PostgreSQL with enterprise defaults
-                self.db_type_var.set('postgresql')
-                self.pg_database_var.set('giljo_mcp_prod')
-                self.pg_user_var.set('giljo_enterprise')
-                self.pg_port_var.set('5432')
+                self.db_type_var.set("postgresql")
+                self.pg_database_var.set("giljo_mcp_prod")
+                self.pg_user_var.set("giljo_enterprise")
+                self.pg_port_var.set("5432")
                 self._on_db_type_change()
 
-            elif profile == 'research':
+            elif profile == "research":
                 # Flexible setup, default to SQLite but show both options
-                self.db_type_var.set('sqlite')
-                self.db_path_var.set('data/research_giljo.db')
+                self.db_type_var.set("sqlite")
+                self.db_path_var.set("data/research_giljo.db")
                 self._on_db_type_change()
 
             # Update the instructions based on profile
@@ -416,14 +429,14 @@ class DatabasePage(WizardPage):
     def _update_instructions(self, profile: str):
         """Update the page title and instructions based on profile"""
         profile_titles = {
-            'developer': 'Database Configuration - Developer Profile',
-            'team': 'Database Configuration - Team Profile',
-            'enterprise': 'Database Configuration - Enterprise Profile',
-            'research': 'Database Configuration - Research Profile'
+            "developer": "Database Configuration - Developer Profile",
+            "team": "Database Configuration - Team Profile",
+            "enterprise": "Database Configuration - Enterprise Profile",
+            "research": "Database Configuration - Research Profile",
         }
 
-        if hasattr(self, 'title'):
-            self.title = profile_titles.get(profile, 'Database Configuration')
+        if hasattr(self, "title"):
+            self.title = profile_titles.get(profile, "Database Configuration")
 
 
 class PortsPage(WizardPage):
@@ -500,25 +513,25 @@ class PortsPage(WizardPage):
         """Adapt port settings based on selected profile"""
         # Access the parent GiljoSetupGUI instance to get config data
         parent = self.parent
-        while parent and not hasattr(parent, 'config_data'):
+        while parent and not hasattr(parent, "config_data"):
             parent = parent.master
 
-        if parent and hasattr(parent, 'config_data'):
-            profile = parent.config_data.get('profile', 'developer')
+        if parent and hasattr(parent, "config_data"):
+            profile = parent.config_data.get("profile", "developer")
 
             # Set port recommendations based on profile
-            if profile == 'enterprise':
+            if profile == "enterprise":
                 # Enterprise uses standard ports for production
-                self.port_vars['api'].set('80')
-                self.port_vars['websocket'].set('443')
-                self.port_vars['dashboard'].set('443')
-                self.port_vars['mcp'].set('3000')
-            elif profile == 'team':
+                self.port_vars["api"].set("80")
+                self.port_vars["websocket"].set("443")
+                self.port_vars["dashboard"].set("443")
+                self.port_vars["mcp"].set("3000")
+            elif profile == "team":
                 # Team uses higher ports to avoid conflicts
-                self.port_vars['api'].set('9000')
-                self.port_vars['websocket'].set('9001')
-                self.port_vars['dashboard'].set('9002')
-                self.port_vars['mcp'].set('9003')
+                self.port_vars["api"].set("9000")
+                self.port_vars["websocket"].set("9001")
+                self.port_vars["dashboard"].set("9002")
+                self.port_vars["mcp"].set("9003")
             else:
                 # Developer and Research use default development ports
                 # These are already set in __init__, but we ensure they're correct
@@ -665,35 +678,35 @@ class SecurityPage(WizardPage):
         """Adapt security settings based on selected profile"""
         # Access the parent GiljoSetupGUI instance to get config data
         parent = self.parent
-        while parent and not hasattr(parent, 'config_data'):
+        while parent and not hasattr(parent, "config_data"):
             parent = parent.master
 
-        if parent and hasattr(parent, 'config_data'):
-            profile = parent.config_data.get('profile', 'developer')
+        if parent and hasattr(parent, "config_data"):
+            profile = parent.config_data.get("profile", "developer")
 
             # Set security defaults based on profile
-            if profile == 'developer':
+            if profile == "developer":
                 # Developer: Simple API key, local CORS
                 self.enable_api_key_var.set(True)
-                self.cors_origins_var.set('http://localhost:*')
+                self.cors_origins_var.set("http://localhost:*")
 
-            elif profile == 'team':
+            elif profile == "team":
                 # Team: Required API key, network CORS
                 self.enable_api_key_var.set(True)
-                self.cors_origins_var.set('http://localhost:*, http://192.168.*.*')
+                self.cors_origins_var.set("http://localhost:*, http://192.168.*.*")
                 self._generate_api_key()  # Auto-generate for teams
 
-            elif profile == 'enterprise':
+            elif profile == "enterprise":
                 # Enterprise: Strong security, specific CORS
                 self.enable_api_key_var.set(True)
-                self.cors_origins_var.set('https://your-domain.com')
+                self.cors_origins_var.set("https://your-domain.com")
                 self._generate_api_key()  # Auto-generate strong key
                 self._generate_jwt_secret()  # Auto-generate JWT
 
-            elif profile == 'research':
+            elif profile == "research":
                 # Research: Flexible security for experimentation
                 self.enable_api_key_var.set(False)  # Optional for local research
-                self.cors_origins_var.set('*')  # Allow all for research
+                self.cors_origins_var.set("*")  # Allow all for research
 
             # Update UI state
             self._toggle_api_key()
@@ -737,24 +750,20 @@ class ReviewPage(WizardPage):
         # Installation Profile
         self.text.insert(tk.END, "INSTALLATION PROFILE\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
-        profile = config.get('profile', 'developer')
+        profile = config.get("profile", "developer")
         profile_display = {
-            'developer': 'Individual Developer',
-            'team': 'Development Team',
-            'enterprise': 'Enterprise Deployment',
-            'research': 'AI Research & Education'
+            "developer": "Individual Developer",
+            "team": "Development Team",
+            "enterprise": "Enterprise Deployment",
+            "research": "AI Research & Education",
         }
         self.text.insert(tk.END, f"Profile: {profile_display.get(profile, profile.capitalize())}\n\n")
 
         # Deployment Mode
         self.text.insert(tk.END, "DEPLOYMENT MODE\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
-        mode_display = {
-            'local': 'Local Development',
-            'lan': 'Network Shared',
-            'wan': 'High Performance'
-        }
-        mode = config.get('mode', 'local')
+        mode_display = {"local": "Local Development", "lan": "Network Shared", "wan": "High Performance"}
+        mode = config.get("mode", "local")
         self.text.insert(tk.END, f"Mode: {mode_display.get(mode, mode.capitalize())}\n\n")
 
         # Database
@@ -807,7 +816,6 @@ class ReviewPage(WizardPage):
         )
 
         self.text.config(state="disabled")
-
 
 
 class ServiceControlPage(WizardPage):
@@ -880,31 +888,27 @@ and configured based on your profile selection."""
         buttons_frame.pack(fill="x", pady=5)
 
         # Control buttons
-        start_btn = ttk.Button(buttons_frame, text="Start",
-                              command=lambda: self._start_service(service_name))
+        start_btn = ttk.Button(buttons_frame, text="Start", command=lambda: self._start_service(service_name))
         start_btn.pack(side="left", padx=2)
 
-        stop_btn = ttk.Button(buttons_frame, text="Stop",
-                             command=lambda: self._stop_service(service_name))
+        stop_btn = ttk.Button(buttons_frame, text="Stop", command=lambda: self._stop_service(service_name))
         stop_btn.pack(side="left", padx=2)
 
-        restart_btn = ttk.Button(buttons_frame, text="Restart",
-                                command=lambda: self._restart_service(service_name))
+        restart_btn = ttk.Button(buttons_frame, text="Restart", command=lambda: self._restart_service(service_name))
         restart_btn.pack(side="left", padx=2)
 
         # Auto-start checkbox
         autostart_var = tk.BooleanVar()
-        autostart_check = ttk.Checkbutton(buttons_frame, text="Auto-start on boot",
-                                         variable=autostart_var,
-                                         command=lambda: self._toggle_autostart(service_name, autostart_var.get()))
+        autostart_check = ttk.Checkbutton(
+            buttons_frame,
+            text="Auto-start on boot",
+            variable=autostart_var,
+            command=lambda: self._toggle_autostart(service_name, autostart_var.get()),
+        )
         autostart_check.pack(side="right")
 
         # Store references
-        self.service_buttons[service_name] = {
-            'start': start_btn,
-            'stop': stop_btn,
-            'restart': restart_btn
-        }
+        self.service_buttons[service_name] = {"start": start_btn, "stop": stop_btn, "restart": restart_btn}
         self.autostart_vars[service_name] = autostart_var
         self.service_widgets[service_name] = service_frame
 
@@ -914,11 +918,11 @@ and configured based on your profile selection."""
         """Setup services based on profile when entering the page"""
         # Access the parent GiljoSetupGUI instance to get config data
         parent = self.parent
-        while parent and not hasattr(parent, 'config_data'):
+        while parent and not hasattr(parent, "config_data"):
             parent = parent.master
 
-        if parent and hasattr(parent, 'config_data'):
-            profile = parent.config_data.get('profile', 'developer')
+        if parent and hasattr(parent, "config_data"):
+            profile = parent.config_data.get("profile", "developer")
 
             # Clear existing widgets
             for widget in self.service_widgets.values():
@@ -927,32 +931,34 @@ and configured based on your profile selection."""
             self.services.clear()
 
             # Determine services based on profile
-            services_frame = self.children['!frame']  # Get the services frame
+            services_frame = self.children["!frame"]  # Get the services frame
 
-            if profile == 'developer':
+            if profile == "developer":
                 # Developer may have PostgreSQL if selected, always has app service
-                if parent.config_data.get('db_type') == 'postgresql':
-                    self.services.append(('postgresql', 'PostgreSQL Database'))
-                self.services.append(('giljo_app', 'GiljoAI Application'))
+                if parent.config_data.get("db_type") == "postgresql":
+                    self.services.append(("postgresql", "PostgreSQL Database"))
+                self.services.append(("giljo_app", "GiljoAI Application"))
 
-            elif profile in ['team', 'enterprise']:
+            elif profile in ["team", "enterprise"]:
                 # Network profiles have all services
-                self.services.extend([
-                    ('postgresql', 'PostgreSQL Database'),
-                    ('redis', 'Redis Cache'),
-                    ('giljo_app', 'GiljoAI Application'),
-                    ('giljo_worker', 'GiljoAI Worker')
-                ])
+                self.services.extend(
+                    [
+                        ("postgresql", "PostgreSQL Database"),
+                        ("redis", "Redis Cache"),
+                        ("giljo_app", "GiljoAI Application"),
+                        ("giljo_worker", "GiljoAI Worker"),
+                    ]
+                )
 
-            elif profile == 'research':
+            elif profile == "research":
                 # Research profile has flexible services
-                if parent.config_data.get('db_type') == 'postgresql':
-                    self.services.append(('postgresql', 'PostgreSQL Database'))
-                self.services.append(('giljo_app', 'GiljoAI Application'))
+                if parent.config_data.get("db_type") == "postgresql":
+                    self.services.append(("postgresql", "PostgreSQL Database"))
+                self.services.append(("giljo_app", "GiljoAI Application"))
 
             # Add Docker if containerized
-            if parent.config_data.get('deployment_mode') == 'containerized':
-                self.services.append(('docker', 'Docker Daemon'))
+            if parent.config_data.get("deployment_mode") == "containerized":
+                self.services.append(("docker", "Docker Daemon"))
 
             # Create widgets for each service
             for service_name, display_name in self.services:
@@ -965,6 +971,7 @@ and configured based on your profile selection."""
         """Get ServiceManager instance"""
         try:
             from installer.services.service_manager import ServiceManager
+
             return ServiceManager()
         except ImportError:
             self.status_var.set("Service Manager not available")
@@ -986,32 +993,32 @@ and configured based on your profile selection."""
 
                 # Update status display with color
                 status_var = self.service_statuses[service_name]
-                if status.name == 'RUNNING':
+                if status.name == "RUNNING":
                     status_var.set(f"🟢 {status_text}")
-                elif status.name == 'STOPPED':
+                elif status.name == "STOPPED":
                     status_var.set(f"🔴 {status_text}")
-                elif status.name == 'STARTING':
+                elif status.name == "STARTING":
                     status_var.set(f"🟡 {status_text}")
-                elif status.name == 'FAILED':
+                elif status.name == "FAILED":
                     status_var.set(f"❌ {status_text}")
                 else:
                     status_var.set(f"⚪ {status_text}")
 
                 # Update button states
                 buttons = self.service_buttons[service_name]
-                if status.name == 'RUNNING':
-                    buttons['start'].config(state='disabled')
-                    buttons['stop'].config(state='normal')
-                    buttons['restart'].config(state='normal')
-                elif status.name == 'STOPPED':
-                    buttons['start'].config(state='normal')
-                    buttons['stop'].config(state='disabled')
-                    buttons['restart'].config(state='disabled')
+                if status.name == "RUNNING":
+                    buttons["start"].config(state="disabled")
+                    buttons["stop"].config(state="normal")
+                    buttons["restart"].config(state="normal")
+                elif status.name == "STOPPED":
+                    buttons["start"].config(state="normal")
+                    buttons["stop"].config(state="disabled")
+                    buttons["restart"].config(state="disabled")
                 else:
                     # Starting/stopping/unknown
-                    buttons['start'].config(state='disabled')
-                    buttons['stop'].config(state='disabled')
-                    buttons['restart'].config(state='disabled')
+                    buttons["start"].config(state="disabled")
+                    buttons["stop"].config(state="disabled")
+                    buttons["restart"].config(state="disabled")
 
                 # Check auto-start status
                 is_autostart = service_manager.is_autostart_enabled(service_name)
@@ -1122,7 +1129,7 @@ and configured based on your profile selection."""
                         service_manager.install_service(service_name)
 
                     # Enable auto-start for critical services
-                    if service_name in ['postgresql', 'redis', 'giljo_app']:
+                    if service_name in ["postgresql", "redis", "giljo_app"]:
                         service_manager.enable_autostart(service_name)
 
                 except Exception as e:
@@ -1147,10 +1154,10 @@ and configured based on your profile selection."""
             "services_configured": len(self.services),
             "service_list": [name for name, _ in self.services],
             "autostart_services": [
-                name for name, _ in self.services
-                if self.autostart_vars.get(name, tk.BooleanVar()).get()
-            ]
+                name for name, _ in self.services if self.autostart_vars.get(name, tk.BooleanVar()).get()
+            ],
         }
+
 
 class ProgressPage(WizardPage):
     """Installation progress page with parallel installer support"""
@@ -1272,7 +1279,7 @@ class ProgressPage(WizardPage):
         import threading
         import time
 
-        profile = config.get('profile', 'developer')
+        profile = config.get("profile", "developer")
         self.log(f"Starting installation for {profile} profile", "system")
 
         # Determine which installers to run based on profile
@@ -1280,26 +1287,26 @@ class ProgressPage(WizardPage):
         run_redis = False
         run_docker = False
 
-        if profile in ['team', 'enterprise']:
+        if profile in ["team", "enterprise"]:
             # Network profiles need both databases
             run_postgresql = True
             run_redis = True
             self.log("Network profile detected - will install PostgreSQL and Redis", "system")
-        elif profile == 'developer':
+        elif profile == "developer":
             # Developer uses SQLite by default, but check if PostgreSQL was selected
-            if config.get('db_type') == 'postgresql':
+            if config.get("db_type") == "postgresql":
                 run_postgresql = True
                 self.log("PostgreSQL selected for developer profile", "system")
             else:
                 self.log("Using SQLite for developer profile", "system")
-        elif profile == 'research':
+        elif profile == "research":
             # Research profile - flexible, check configuration
-            if config.get('db_type') == 'postgresql':
+            if config.get("db_type") == "postgresql":
                 run_postgresql = True
             # Could optionally install Redis for caching
 
         # Check for containerized deployment
-        if config.get('deployment_mode') == 'containerized' or profile == 'containerized':
+        if config.get("deployment_mode") == "containerized" or profile == "containerized":
             run_docker = True
             self.log("Containerized deployment - will check Docker installation", "system")
 
@@ -1337,6 +1344,7 @@ class ProgressPage(WizardPage):
         threads = []
 
         if run_postgresql:
+
             def install_postgresql():
                 try:
                     from installer.dependencies.postgresql import PostgreSQLInstaller, PostgreSQLConfig
@@ -1345,9 +1353,9 @@ class ProgressPage(WizardPage):
 
                     pg_config = PostgreSQLConfig(
                         version="16.0",
-                        port=int(config.get('pg_port', 5432)),
+                        port=int(config.get("pg_port", 5432)),
                         data_dir="C:/PostgreSQL/16/data",
-                        install_dir="C:/PostgreSQL/16"
+                        install_dir="C:/PostgreSQL/16",
                     )
 
                     installer = PostgreSQLInstaller(pg_config, progress_callback=postgresql_progress)
@@ -1375,6 +1383,7 @@ class ProgressPage(WizardPage):
             pg_thread.start()
 
         if run_redis:
+
             def install_redis():
                 try:
                     # Placeholder for Redis installer integration
@@ -1396,16 +1405,14 @@ class ProgressPage(WizardPage):
             redis_thread.start()
 
         if run_docker:
+
             def install_docker():
                 try:
                     from installer.dependencies.docker import DockerInstaller, DockerConfig
 
                     self.set_status("Checking Docker installation...", "docker")
 
-                    docker_config = DockerConfig(
-                        profile=profile,
-                        compose_version="2.23.0"
-                    )
+                    docker_config = DockerConfig(profile=profile, compose_version="2.23.0")
 
                     def docker_progress(message: str, progress: int):
                         self.log(message, "docker")
@@ -1459,28 +1466,30 @@ class ProgressPage(WizardPage):
 
             # Prepare configuration values from GUI inputs
             config_values = {
-                'profile': profile,
-                'db_type': config.get('db_type', 'sqlite'),
-                'api_port': config.get('api_port', 8000),
-                'websocket_port': config.get('websocket_port', 8001),
-                'dashboard_port': config.get('dashboard_port', 3000),
-                'mcp_port': config.get('mcp_port', 3001),
-                'api_key': config.get('api_key', ''),
-                'jwt_secret': config.get('jwt_secret', ''),
-                'cors_origins': config.get('cors_origins', 'http://localhost:*')
+                "profile": profile,
+                "db_type": config.get("db_type", "sqlite"),
+                "api_port": config.get("api_port", 8000),
+                "websocket_port": config.get("websocket_port", 8001),
+                "dashboard_port": config.get("dashboard_port", 3000),
+                "mcp_port": config.get("mcp_port", 3001),
+                "api_key": config.get("api_key", ""),
+                "jwt_secret": config.get("jwt_secret", ""),
+                "cors_origins": config.get("cors_origins", "http://localhost:*"),
             }
 
             # Add PostgreSQL settings if applicable
-            if config.get('db_type') == 'postgresql':
-                config_values.update({
-                    'pg_host': config.get('pg_host', 'localhost'),
-                    'pg_port': config.get('pg_port', 5432),
-                    'pg_database': config.get('pg_database', 'giljo_mcp'),
-                    'pg_user': config.get('pg_user', 'postgres'),
-                    'pg_password': config.get('pg_password', '')
-                })
+            if config.get("db_type") == "postgresql":
+                config_values.update(
+                    {
+                        "pg_host": config.get("pg_host", "localhost"),
+                        "pg_port": config.get("pg_port", 5432),
+                        "pg_database": config.get("pg_database", "giljo_mcp"),
+                        "pg_user": config.get("pg_user", "postgres"),
+                        "pg_password": config.get("pg_password", ""),
+                    }
+                )
             else:
-                config_values['db_path'] = config.get('db_path', 'data/giljo_mcp.db')
+                config_values["db_path"] = config.get("db_path", "data/giljo_mcp.db")
 
             # Generate .env file
             env_result = config_mgr.generate_from_profile(profile, config_values)
@@ -1532,13 +1541,13 @@ class ProgressPage(WizardPage):
 
             health_results = run_health_checks_for_gui(config, health_progress)
 
-            if health_results['healthy']:
-                self.log("✅ " + health_results['summary'], "system")
+            if health_results["healthy"]:
+                self.log("✅ " + health_results["summary"], "system")
             else:
-                self.log("⚠️ " + health_results['summary'], "system")
+                self.log("⚠️ " + health_results["summary"], "system")
 
-            for detail in health_results['details']:
-                status = "✅" if detail['healthy'] else "❌"
+            for detail in health_results["details"]:
+                status = "✅" if detail["healthy"] else "❌"
                 self.log(f"  {status} {detail['name']}: {detail['message']}", "system")
 
         except ImportError:

@@ -16,6 +16,7 @@ class InstallationHealthCheck:
     """
     Unified health check for installation process
     """
+
     health_checker: HealthChecker
     gui_callback: Optional[Callable[[dict], None]] = None
 
@@ -28,12 +29,7 @@ class InstallationHealthCheck:
         """
         report = await self.health_checker.check_installation_readiness()
 
-        result = {
-            "ready": report.overall_status == HealthStatus.HEALTHY,
-            "warnings": [],
-            "errors": [],
-            "details": {}
-        }
+        result = {"ready": report.overall_status == HealthStatus.HEALTHY, "warnings": [], "errors": [], "details": {}}
 
         for component in report.components:
             if component.status == HealthStatus.ERROR:
@@ -44,16 +40,14 @@ class InstallationHealthCheck:
             result["details"][component.name] = {
                 "status": component.status.value,
                 "message": component.message,
-                "details": component.details
+                "details": component.details,
             }
 
         # Update GUI if callback provided
         if self.gui_callback:
-            self.gui_callback({
-                "phase": "pre_installation",
-                "status": "ready" if result["ready"] else "not_ready",
-                "report": result
-            })
+            self.gui_callback(
+                {"phase": "pre_installation", "status": "ready" if result["ready"] else "not_ready", "report": result}
+            )
 
         return result
 
@@ -80,28 +74,32 @@ class InstallationHealthCheck:
                 "healthy": postgresql_status and postgresql_status.status == HealthStatus.HEALTHY,
                 "status": postgresql_status.status.value if postgresql_status else "unknown",
                 "message": postgresql_status.message if postgresql_status else "Not checked",
-                "details": postgresql_status.details if postgresql_status else {}
+                "details": postgresql_status.details if postgresql_status else {},
             },
             "redis": {
                 "healthy": redis_status and redis_status.status == HealthStatus.HEALTHY,
                 "status": redis_status.status.value if redis_status else "unknown",
                 "message": redis_status.message if redis_status else "Not checked",
-                "details": redis_status.details if redis_status else {}
+                "details": redis_status.details if redis_status else {},
             },
             "both_healthy": (
-                postgresql_status and postgresql_status.status == HealthStatus.HEALTHY and
-                redis_status and redis_status.status == HealthStatus.HEALTHY
-            )
+                postgresql_status
+                and postgresql_status.status == HealthStatus.HEALTHY
+                and redis_status
+                and redis_status.status == HealthStatus.HEALTHY
+            ),
         }
 
         # Update GUI if callback provided
         if self.gui_callback:
-            self.gui_callback({
-                "phase": "database_check",
-                "postgresql": result["postgresql"]["healthy"],
-                "redis": result["redis"]["healthy"],
-                "report": result
-            })
+            self.gui_callback(
+                {
+                    "phase": "database_check",
+                    "postgresql": result["postgresql"]["healthy"],
+                    "redis": result["redis"]["healthy"],
+                    "report": result,
+                }
+            )
 
         return result
 
@@ -131,17 +129,19 @@ class InstallationHealthCheck:
             "installed": installed_services,
             "failed": failed_services,
             "overall_status": report.overall_status.value,
-            "report_summary": report.get_summary()
+            "report_summary": report.get_summary(),
         }
 
         # Update GUI if callback provided
         if self.gui_callback:
-            self.gui_callback({
-                "phase": "post_installation",
-                "success": result["success"],
-                "installed": result["installed"],
-                "failed": result["failed"]
-            })
+            self.gui_callback(
+                {
+                    "phase": "post_installation",
+                    "success": result["success"],
+                    "installed": result["installed"],
+                    "failed": result["failed"],
+                }
+            )
 
         return result
 
@@ -164,30 +164,24 @@ class InstallationHealthCheck:
 
             # Update GUI with monitoring data
             if self.gui_callback:
-                self.gui_callback({
-                    "phase": "monitoring",
-                    "check_number": check_count,
-                    "elapsed_time": asyncio.get_event_loop().time() - start_time,
-                    "postgresql": db_health["postgresql"]["healthy"],
-                    "redis": db_health["redis"]["healthy"]
-                })
+                self.gui_callback(
+                    {
+                        "phase": "monitoring",
+                        "check_number": check_count,
+                        "elapsed_time": asyncio.get_event_loop().time() - start_time,
+                        "postgresql": db_health["postgresql"]["healthy"],
+                        "redis": db_health["redis"]["healthy"],
+                    }
+                )
 
             # Wait for next check
             await asyncio.sleep(interval)
 
             # Break early if both services are healthy
             if db_health["both_healthy"]:
-                return {
-                    "status": "success",
-                    "message": "All services healthy",
-                    "checks_performed": check_count
-                }
+                return {"status": "success", "message": "All services healthy", "checks_performed": check_count}
 
-        return {
-            "status": "timeout",
-            "message": "Monitoring period ended",
-            "checks_performed": check_count
-        }
+        return {"status": "timeout", "message": "Monitoring period ended", "checks_performed": check_count}
 
 
 class HealthCheckOrchestrator:
@@ -216,7 +210,7 @@ class HealthCheckOrchestrator:
                 "status": "aborted",
                 "reason": "System not ready",
                 "errors": pre_check["errors"],
-                "warnings": pre_check["warnings"]
+                "warnings": pre_check["warnings"],
             }
 
         # Step 2: Check if services already installed
@@ -226,17 +220,14 @@ class HealthCheckOrchestrator:
         needs_redis = not db_check["redis"]["healthy"]
 
         if not needs_postgresql and not needs_redis:
-            return {
-                "status": "skipped",
-                "reason": "Services already installed and healthy"
-            }
+            return {"status": "skipped", "reason": "Services already installed and healthy"}
 
         # Step 3: Return installation requirements
         return {
             "status": "ready",
             "needs_postgresql": needs_postgresql,
             "needs_redis": needs_redis,
-            "current_state": db_check
+            "current_state": db_check,
         }
 
     async def parallel_service_check(self) -> dict[str, Any]:
@@ -250,7 +241,7 @@ class HealthCheckOrchestrator:
         tasks = [
             self.health_checker._check_postgresql(),
             self.health_checker._check_redis(),
-            self.health_checker._check_ports()
+            self.health_checker._check_ports(),
         ]
 
         # Execute in parallel
@@ -261,24 +252,21 @@ class HealthCheckOrchestrator:
             overall_status=self.health_checker._calculate_overall_status(),
             components=self.health_checker.components,
             total_check_time=sum(c.check_time for c in self.health_checker.components),
-            system_info=self.health_checker._get_system_info()
+            system_info=self.health_checker._get_system_info(),
         )
 
         return {
             "report": report.to_dict(),
             "summary": report.get_summary(),
             "postgresql_ready": any(
-                c.name == "PostgreSQL" and c.status == HealthStatus.HEALTHY
-                for c in self.health_checker.components
+                c.name == "PostgreSQL" and c.status == HealthStatus.HEALTHY for c in self.health_checker.components
             ),
             "redis_ready": any(
-                c.name == "Redis" and c.status == HealthStatus.HEALTHY
-                for c in self.health_checker.components
+                c.name == "Redis" and c.status == HealthStatus.HEALTHY for c in self.health_checker.components
             ),
             "ports_available": any(
-                c.name == "Ports" and c.status == HealthStatus.HEALTHY
-                for c in self.health_checker.components
-            )
+                c.name == "Ports" and c.status == HealthStatus.HEALTHY for c in self.health_checker.components
+            ),
         }
 
 
@@ -297,10 +285,7 @@ async def example_integration():
             print(f"  Redis: {'Ready' if data['redis'] else 'Not Ready'}")
 
     # Create orchestrator
-    orchestrator = HealthCheckOrchestrator({
-        "postgresql": {"port": 5432},
-        "redis": {"port": 6379}
-    })
+    orchestrator = HealthCheckOrchestrator({"postgresql": {"port": 5432}, "redis": {"port": 6379}})
 
     # Run full workflow
     result = await orchestrator.full_installation_workflow(gui_update)

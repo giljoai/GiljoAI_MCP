@@ -2,26 +2,29 @@
 Unit tests for PostgreSQL installer
 """
 
-import pytest
-import asyncio
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, call
 import subprocess
 
 # Add project root to path
 import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
     from installer.dependencies.postgresql import PostgreSQLInstaller
+
     HAS_POSTGRESQL = True
 except ImportError:
     HAS_POSTGRESQL = False
     pytest.skip("PostgreSQL installer not available", allow_module_level=True)
 
-from tests.installer.fixtures.test_configs import create_test_env
 from tests.installer.fixtures.mock_utils import MockSubprocessResult
+from tests.installer.fixtures.test_configs import create_test_env
 
 
 class TestPostgreSQLInstaller:
@@ -50,14 +53,14 @@ class TestPostgreSQLInstaller:
         installer = PostgreSQLInstaller()
 
         # Mock successful postgres command
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "postgres (PostgreSQL) 14.9", "")
 
             is_installed = await installer.check_installation()
             assert is_installed == True
 
         # Mock failed postgres command
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             is_installed = await installer.check_installation()
@@ -68,11 +71,11 @@ class TestPostgreSQLInstaller:
         """Test Windows PostgreSQL installation"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                with patch.object(installer, '_download_postgresql_windows') as mock_download:
+                with patch.object(installer, "_download_postgresql_windows") as mock_download:
                     mock_download.return_value = Path("mock_installer.exe")
 
                     result = await installer.install()
@@ -84,8 +87,8 @@ class TestPostgreSQLInstaller:
         """Test Linux PostgreSQL installation"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.install()
@@ -96,8 +99,8 @@ class TestPostgreSQLInstaller:
         """Test macOS PostgreSQL installation"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Darwin'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Darwin"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.install()
@@ -107,13 +110,13 @@ class TestPostgreSQLInstaller:
         """Test version detection"""
         installer = PostgreSQLInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "postgres (PostgreSQL) 14.9", "")
 
             version = installer.get_version()
             assert version == "14.9"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             version = installer.get_version()
@@ -124,7 +127,7 @@ class TestPostgreSQLInstaller:
         """Test database creation"""
         installer = PostgreSQLInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.create_database("testdb", "testuser", "testpass")
@@ -136,14 +139,14 @@ class TestPostgreSQLInstaller:
         installer = PostgreSQLInstaller()
 
         # Mock successful connection
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "1", "")
 
             result = await installer.test_connection("localhost", 5432, "testdb", "testuser", "testpass")
             assert result.success == True
 
         # Mock failed connection
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(1, "", "connection failed")
 
             result = await installer.test_connection("localhost", 5432, "testdb", "testuser", "testpass")
@@ -154,8 +157,8 @@ class TestPostgreSQLInstaller:
         """Test PostgreSQL service start"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.start_service()
@@ -166,8 +169,8 @@ class TestPostgreSQLInstaller:
         """Test PostgreSQL service stop"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.stop_service()
@@ -178,8 +181,8 @@ class TestPostgreSQLInstaller:
         """Test PostgreSQL service status check"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "RUNNING", "")
 
                 status = await installer.get_service_status()
@@ -203,8 +206,8 @@ class TestPostgreSQLInstaller:
         """Test error handling during installation"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
                 result = await installer.install()
@@ -216,7 +219,7 @@ class TestPostgreSQLInstaller:
         """Test Windows PostgreSQL download"""
         installer = PostgreSQLInstaller()
 
-        with patch('urllib.request.urlretrieve') as mock_download:
+        with patch("urllib.request.urlretrieve") as mock_download:
             mock_download.return_value = ("installer.exe", None)
 
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -227,11 +230,11 @@ class TestPostgreSQLInstaller:
         """Test PostgreSQL config directory detection"""
         installer = PostgreSQLInstaller()
 
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             config_dir = installer._get_postgresql_config_dir()
             assert "PostgreSQL" in str(config_dir)
 
-        with patch('platform.system', return_value='Linux'):
+        with patch("platform.system", return_value="Linux"):
             config_dir = installer._get_postgresql_config_dir()
             assert "postgresql" in str(config_dir)
 
@@ -240,9 +243,9 @@ class TestPostgreSQLInstaller:
         """Test PostgreSQL configuration"""
         installer = PostgreSQLInstaller()
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('pathlib.Path.read_text', return_value="# config"):
-                with patch('pathlib.Path.write_text') as mock_write:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="# config"):
+                with patch("pathlib.Path.write_text") as mock_write:
                     await installer.configure_postgresql(port=5433, max_connections=200)
                     mock_write.assert_called()
 
@@ -251,7 +254,7 @@ class TestPostgreSQLInstaller:
         """Test database backup"""
         installer = PostgreSQLInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -264,7 +267,7 @@ class TestPostgreSQLInstaller:
         """Test database restore"""
         installer = PostgreSQLInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             with tempfile.NamedTemporaryFile(suffix=".sql") as temp_file:
@@ -305,11 +308,7 @@ class TestPostgreSQLUtilities:
         installer = PostgreSQLInstaller()
 
         conn_str = installer.get_connection_string(
-            host="localhost",
-            port=5432,
-            database="testdb",
-            username="testuser",
-            password="testpass"
+            host="localhost", port=5432, database="testdb", username="testuser", password="testpass"
         )
 
         assert "postgresql://" in conn_str
@@ -323,21 +322,13 @@ class TestPostgreSQLUtilities:
         installer = PostgreSQLInstaller()
 
         # Valid config
-        valid_config = {
-            "host": "localhost",
-            "port": 5432,
-            "database": "mydb",
-            "username": "user",
-            "password": "pass"
-        }
+        valid_config = {"host": "localhost", "port": 5432, "database": "mydb", "username": "user", "password": "pass"}
 
         is_valid = installer.validate_config(valid_config)
         assert is_valid == True
 
         # Invalid config (missing required fields)
-        invalid_config = {
-            "host": "localhost"
-        }
+        invalid_config = {"host": "localhost"}
 
         is_valid = installer.validate_config(invalid_config)
         assert is_valid == False
@@ -371,31 +362,32 @@ def test_environment():
 
 
 # Parametrized tests
-@pytest.mark.parametrize("platform,expected_service", [
-    ("Windows", "postgresql-x64-14"),
-    ("Linux", "postgresql"),
-    ("Darwin", "postgresql")
-])
+@pytest.mark.parametrize(
+    "platform,expected_service", [("Windows", "postgresql-x64-14"), ("Linux", "postgresql"), ("Darwin", "postgresql")]
+)
 def test_service_name_by_platform(platform, expected_service):
     """Test service name detection by platform"""
     installer = PostgreSQLInstaller()
 
-    with patch('platform.system', return_value=platform):
+    with patch("platform.system", return_value=platform):
         service_name = installer._get_service_name()
         assert expected_service in service_name.lower()
 
 
-@pytest.mark.parametrize("version,expected", [
-    ("postgres (PostgreSQL) 14.9", "14.9"),
-    ("postgres (PostgreSQL) 13.4", "13.4"),
-    ("psql (PostgreSQL) 15.1", "15.1"),
-    ("invalid output", None)
-])
+@pytest.mark.parametrize(
+    "version,expected",
+    [
+        ("postgres (PostgreSQL) 14.9", "14.9"),
+        ("postgres (PostgreSQL) 13.4", "13.4"),
+        ("psql (PostgreSQL) 15.1", "15.1"),
+        ("invalid output", None),
+    ],
+)
 def test_version_parsing(version, expected):
     """Test version string parsing"""
     installer = PostgreSQLInstaller()
 
-    with patch('subprocess.run') as mock_run:
+    with patch("subprocess.run") as mock_run:
         if expected is None:
             mock_run.side_effect = FileNotFoundError()
         else:

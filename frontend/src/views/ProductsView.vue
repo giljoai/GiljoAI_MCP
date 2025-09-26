@@ -12,11 +12,7 @@
             </p>
           </div>
           <v-spacer></v-spacer>
-          <v-btn
-            color="primary"
-            prepend-icon="mdi-plus"
-            @click="showCreateDialog = true"
-          >
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true">
             New Product
           </v-btn>
         </div>
@@ -115,7 +111,11 @@
                 <v-icon size="64" color="grey-lighten-2">mdi-package-variant-remove</v-icon>
                 <div class="text-h6 text-medium-emphasis mt-4">No products found</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  {{ search ? 'Try adjusting your search' : 'Create your first product to get started' }}
+                  {{
+                    search
+                      ? 'Try adjusting your search'
+                      : 'Create your first product to get started'
+                  }}
                 </div>
               </v-col>
             </v-row>
@@ -139,7 +139,11 @@
                     <div class="d-flex align-center mb-3">
                       <v-avatar
                         size="48"
-                        :color="product.id === productStore.currentProductId ? 'primary' : 'grey-lighten-2'"
+                        :color="
+                          product.id === productStore.currentProductId
+                            ? 'primary'
+                            : 'grey-lighten-2'
+                        "
                       >
                         <span class="text-h6">{{ getProductInitial(product) }}</span>
                       </v-avatar>
@@ -159,7 +163,7 @@
                       </v-chip>
                     </div>
 
-                    <div class="text-body-2 text-medium-emphasis mb-3" style="min-height: 40px;">
+                    <div class="text-body-2 text-medium-emphasis mb-3" style="min-height: 40px">
                       {{ product.description || 'No description available' }}
                     </div>
 
@@ -168,13 +172,17 @@
                     <v-row dense>
                       <v-col cols="6">
                         <div class="text-center">
-                          <div class="text-h6 font-weight-bold">{{ getProductMetric(product.id, 'totalTasks') }}</div>
+                          <div class="text-h6 font-weight-bold">
+                            {{ getProductMetric(product.id, 'totalTasks') }}
+                          </div>
                           <div class="text-caption text-medium-emphasis">Tasks</div>
                         </div>
                       </v-col>
                       <v-col cols="6">
                         <div class="text-center">
-                          <div class="text-h6 font-weight-bold">{{ getProductMetric(product.id, 'activeAgents') }}</div>
+                          <div class="text-h6 font-weight-bold">
+                            {{ getProductMetric(product.id, 'activeAgents') }}
+                          </div>
                           <div class="text-caption text-medium-emphasis">Agents</div>
                         </div>
                       </v-col>
@@ -189,7 +197,8 @@
                       class="mt-3"
                     ></v-progress-linear>
                     <div class="text-caption text-center text-medium-emphasis mt-1">
-                      {{ getProductMetric(product.id, 'completedTasks') }} / {{ getProductMetric(product.id, 'totalTasks') }} tasks complete
+                      {{ getProductMetric(product.id, 'completedTasks') }} /
+                      {{ getProductMetric(product.id, 'totalTasks') }} tasks complete
                     </div>
                   </v-card-text>
 
@@ -203,20 +212,10 @@
                       {{ product.id === productStore.currentProductId ? 'Active' : 'Switch To' }}
                     </v-btn>
                     <v-spacer></v-spacer>
-                    <v-btn
-                      icon
-                      size="small"
-                      variant="text"
-                      @click="showProductDetails(product)"
-                    >
+                    <v-btn icon size="small" variant="text" @click="showProductDetails(product)">
                       <v-icon>mdi-information-outline</v-icon>
                     </v-btn>
-                    <v-btn
-                      icon
-                      size="small"
-                      variant="text"
-                      @click="editProduct(product)"
-                    >
+                    <v-btn icon size="small" variant="text" @click="editProduct(product)">
                       <v-icon>mdi-pencil</v-icon>
                     </v-btn>
                     <v-btn
@@ -250,7 +249,7 @@
             <v-text-field
               v-model="productForm.name"
               label="Product Name"
-              :rules="[v => !!v || 'Name is required']"
+              :rules="[(v) => !!v || 'Name is required']"
               required
               variant="outlined"
               density="comfortable"
@@ -301,18 +300,13 @@
           Confirm Delete
         </v-card-title>
         <v-card-text>
-          Are you sure you want to delete the product "{{ deletingProduct?.name }}"?
-          This action cannot be undone and will remove all associated data.
+          Are you sure you want to delete the product "{{ deletingProduct?.name }}"? This action
+          cannot be undone and will remove all associated data.
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="showDeleteDialog = false">Cancel</v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            @click="deleteProduct"
-            :loading="deleting"
-          >
+          <v-btn color="error" variant="flat" @click="deleteProduct" :loading="deleting">
             Delete
           </v-btn>
         </v-card-actions>
@@ -344,32 +338,37 @@ const formValid = ref(false)
 const productForm = ref({
   name: '',
   description: '',
-  visionPath: ''
+  visionPath: '',
 })
 
 // Computed
 const filteredProducts = computed(() => {
   if (!search.value) return productStore.products
-  
+
   const searchLower = search.value.toLowerCase()
-  return productStore.products.filter(product => 
-    product.name.toLowerCase().includes(searchLower) ||
-    product.description?.toLowerCase().includes(searchLower)
+  return productStore.products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchLower) ||
+      product.description?.toLowerCase().includes(searchLower),
   )
 })
 
 const totalProducts = computed(() => productStore.productCount)
-const activeProducts = computed(() => productStore.products.filter(p => p.status === 'active').length)
+const activeProducts = computed(
+  () => productStore.products.filter((p) => p.status === 'active').length,
+)
 
 const totalTasks = computed(() => {
-  return Object.values(productStore.productMetrics).reduce((sum, metrics) => 
-    sum + (metrics.totalTasks || 0), 0
+  return Object.values(productStore.productMetrics).reduce(
+    (sum, metrics) => sum + (metrics.totalTasks || 0),
+    0,
   )
 })
 
 const totalAgents = computed(() => {
-  return Object.values(productStore.productMetrics).reduce((sum, metrics) => 
-    sum + (metrics.activeAgents || 0), 0
+  return Object.values(productStore.productMetrics).reduce(
+    (sum, metrics) => sum + (metrics.activeAgents || 0),
+    0,
   )
 })
 
@@ -407,7 +406,7 @@ function editProduct(product) {
   productForm.value = {
     name: product.name,
     description: product.description || '',
-    visionPath: product.vision_path || ''
+    visionPath: product.vision_path || '',
   }
   showDialog.value = true
 }
@@ -419,20 +418,20 @@ function confirmDelete(product) {
 
 async function saveProduct() {
   if (!formValid.value) return
-  
+
   saving.value = true
   try {
     if (editingProduct.value) {
       await productStore.updateProduct(editingProduct.value.id, {
         name: productForm.value.name,
         description: productForm.value.description,
-        vision_path: productForm.value.visionPath
+        vision_path: productForm.value.visionPath,
       })
     } else {
       await productStore.createProduct({
         name: productForm.value.name,
         description: productForm.value.description,
-        vision_path: productForm.value.visionPath
+        vision_path: productForm.value.visionPath,
       })
     }
     closeDialog()
@@ -446,7 +445,7 @@ async function saveProduct() {
 
 async function deleteProduct() {
   if (!deletingProduct.value) return
-  
+
   deleting.value = true
   try {
     await productStore.deleteProduct(deletingProduct.value.id)
@@ -466,7 +465,7 @@ function closeDialog() {
   productForm.value = {
     name: '',
     description: '',
-    visionPath: ''
+    visionPath: '',
   }
 }
 
@@ -488,7 +487,7 @@ let refreshInterval = null
 
 onMounted(async () => {
   await loadProducts()
-  
+
   // Refresh metrics every 30 seconds
   refreshInterval = setInterval(async () => {
     for (const product of productStore.products) {

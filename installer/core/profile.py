@@ -6,6 +6,7 @@ how the GiljoAI MCP system is configured and deployed.
 """
 
 import json
+import tempfile
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
@@ -40,7 +41,7 @@ class ProfileConfiguration:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ProfileConfiguration':
+    def from_dict(cls, data: Dict[str, Any]) -> "ProfileConfiguration":
         """Create configuration from dictionary."""
         return cls(**data)
 
@@ -60,7 +61,7 @@ class ProfileDependencies:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ProfileDependencies':
+    def from_dict(cls, data: Dict[str, Any]) -> "ProfileDependencies":
         """Create dependencies from dictionary."""
         return cls(**data)
 
@@ -81,43 +82,43 @@ class Profile:
     def to_json(self) -> str:
         """Serialize profile to JSON string."""
         data = {
-            'name': self.name,
-            'type': self.type.value,
-            'description': self.description,
-            'configuration': self.configuration.to_dict(),
-            'dependencies': self.dependencies.to_dict(),
-            'recommended_for': self.recommended_for,
-            'limitations': self.limitations,
-            'post_install_steps': self.post_install_steps
+            "name": self.name,
+            "type": self.type.value,
+            "description": self.description,
+            "configuration": self.configuration.to_dict(),
+            "dependencies": self.dependencies.to_dict(),
+            "recommended_for": self.recommended_for,
+            "limitations": self.limitations,
+            "post_install_steps": self.post_install_steps,
         }
         return json.dumps(data, indent=2)
 
     @classmethod
-    def from_json(cls, json_str: str) -> 'Profile':
+    def from_json(cls, json_str: str) -> "Profile":
         """Deserialize profile from JSON string."""
         data = json.loads(json_str)
         return cls(
-            name=data['name'],
-            type=ProfileType(data['type']),
-            description=data['description'],
-            configuration=ProfileConfiguration.from_dict(data['configuration']),
-            dependencies=ProfileDependencies.from_dict(data['dependencies']),
-            recommended_for=data.get('recommended_for', []),
-            limitations=data.get('limitations', []),
-            post_install_steps=data.get('post_install_steps', [])
+            name=data["name"],
+            type=ProfileType(data["type"]),
+            description=data["description"],
+            configuration=ProfileConfiguration.from_dict(data["configuration"]),
+            dependencies=ProfileDependencies.from_dict(data["dependencies"]),
+            recommended_for=data.get("recommended_for", []),
+            limitations=data.get("limitations", []),
+            post_install_steps=data.get("post_install_steps", []),
         )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert profile to dictionary."""
         return {
-            'name': self.name,
-            'type': self.type.value,
-            'description': self.description,
-            'configuration': self.configuration.to_dict(),
-            'dependencies': self.dependencies.to_dict(),
-            'recommended_for': self.recommended_for,
-            'limitations': self.limitations,
-            'post_install_steps': self.post_install_steps
+            "name": self.name,
+            "type": self.type.value,
+            "description": self.description,
+            "configuration": self.configuration.to_dict(),
+            "dependencies": self.dependencies.to_dict(),
+            "recommended_for": self.recommended_for,
+            "limitations": self.limitations,
+            "post_install_steps": self.post_install_steps,
         }
 
 
@@ -143,66 +144,39 @@ class ProfileManager:
                 websocket_enabled=True,
                 auth_method="none",
                 deployment_mode="local",
-                resource_limits={
-                    "max_agents": 10,
-                    "max_concurrent_tasks": 5,
-                    "memory_limit_mb": 2048
-                },
+                resource_limits={"max_agents": 10, "max_concurrent_tasks": 5, "memory_limit_mb": 2048},
                 network_settings={
                     "host": "localhost",
                     "api_port": 8000,
                     "websocket_port": 8001,
-                    "allow_external": False
+                    "allow_external": False,
                 },
                 storage_settings={
                     "database_path": "~/.giljo-mcp/data.db",
                     "log_path": "~/.giljo-mcp/logs",
-                    "temp_path": "~/.giljo-mcp/temp"
+                    "temp_path": "~/.giljo-mcp/temp",
                 },
-                performance_settings={
-                    "enable_caching": True,
-                    "cache_size_mb": 256,
-                    "connection_pool_size": 5
-                }
+                performance_settings={"enable_caching": True, "cache_size_mb": 256, "connection_pool_size": 5},
             ),
             dependencies=ProfileDependencies(
                 python_version=">=3.9",
-                required_packages=[
-                    "fastmcp",
-                    "fastapi",
-                    "sqlalchemy",
-                    "httpx",
-                    "websockets",
-                    "pyyaml"
-                ],
-                optional_packages=[
-                    "pytest",
-                    "black",
-                    "ruff"
-                ],
-                system_requirements={
-                    "min_ram_mb": 1024,
-                    "min_disk_space_mb": 500,
-                    "os": ["windows", "macos", "linux"]
-                },
-                external_services=[]
+                required_packages=["fastmcp", "fastapi", "sqlalchemy", "httpx", "websockets", "pyyaml"],
+                optional_packages=["pytest", "black", "ruff"],
+                system_requirements={"min_ram_mb": 1024, "min_disk_space_mb": 500, "os": ["windows", "macos", "linux"]},
+                external_services=[],
             ),
             recommended_for=[
                 "Individual developers",
                 "Learning and experimentation",
                 "Prototype development",
-                "Small projects"
+                "Small projects",
             ],
-            limitations=[
-                "Not suitable for team collaboration",
-                "Limited scalability",
-                "No built-in backup/recovery"
-            ],
+            limitations=["Not suitable for team collaboration", "Limited scalability", "No built-in backup/recovery"],
             post_install_steps=[
                 "Run 'python quickstart.py' to start the system",
                 "Access dashboard at http://localhost:8000",
-                "Check logs in ~/.giljo-mcp/logs for troubleshooting"
-            ]
+                "Check logs in ~/.giljo-mcp/logs for troubleshooting",
+            ],
         )
 
         # Network Shared Profile
@@ -216,30 +190,26 @@ class ProfileManager:
                 websocket_enabled=True,
                 auth_method="api_key",
                 deployment_mode="lan",
-                resource_limits={
-                    "max_agents": 50,
-                    "max_concurrent_tasks": 20,
-                    "memory_limit_mb": 8192
-                },
+                resource_limits={"max_agents": 50, "max_concurrent_tasks": 20, "memory_limit_mb": 8192},
                 network_settings={
                     "host": "0.0.0.0",
                     "api_port": 8000,
                     "websocket_port": 8001,
                     "allow_external": True,
-                    "cors_origins": ["*"]
+                    "cors_origins": ["*"],
                 },
                 storage_settings={
                     "database_url": "postgresql://giljo:password@localhost/giljo_mcp",
                     "log_path": "/var/log/giljo-mcp",
-                    "temp_path": "/var/tmp/giljo-mcp",
-                    "shared_storage_path": "/shared/giljo-mcp"
+                    "temp_path": str(Path(tempfile.gettempdir()) / "giljo-mcp"),
+                    "shared_storage_path": "/shared/giljo-mcp",
                 },
                 performance_settings={
                     "enable_caching": True,
                     "cache_size_mb": 1024,
                     "connection_pool_size": 20,
-                    "enable_connection_pooling": True
-                }
+                    "enable_connection_pooling": True,
+                },
             ),
             dependencies=ProfileDependencies(
                 python_version=">=3.9",
@@ -252,41 +222,31 @@ class ProfileManager:
                     "websockets",
                     "pyyaml",
                     "python-multipart",
-                    "python-jose[cryptography]"
+                    "python-jose[cryptography]",
                 ],
-                optional_packages=[
-                    "redis",
-                    "celery",
-                    "prometheus-client"
-                ],
+                optional_packages=["redis", "celery", "prometheus-client"],
                 system_requirements={
                     "min_ram_mb": 4096,
                     "min_disk_space_mb": 5000,
                     "os": ["windows", "macos", "linux"],
-                    "network": "lan"
+                    "network": "lan",
                 },
-                external_services=[
-                    "postgresql"
-                ]
+                external_services=["postgresql"],
             ),
             recommended_for=[
                 "Small development teams",
                 "Department-level deployments",
                 "Shared development environments",
-                "Internal tools and services"
+                "Internal tools and services",
             ],
-            limitations=[
-                "Requires PostgreSQL setup",
-                "Network configuration needed",
-                "Basic authentication only"
-            ],
+            limitations=["Requires PostgreSQL setup", "Network configuration needed", "Basic authentication only"],
             post_install_steps=[
                 "Configure PostgreSQL database",
                 "Generate and distribute API keys",
                 "Configure firewall rules for ports 8000-8001",
                 "Set up shared storage permissions",
-                "Test connectivity from client machines"
-            ]
+                "Test connectivity from client machines",
+            ],
         )
 
         # High Performance Profile
@@ -300,11 +260,7 @@ class ProfileManager:
                 websocket_enabled=True,
                 auth_method="oauth2",
                 deployment_mode="wan",
-                resource_limits={
-                    "max_agents": 500,
-                    "max_concurrent_tasks": 100,
-                    "memory_limit_mb": 32768
-                },
+                resource_limits={"max_agents": 500, "max_concurrent_tasks": 100, "memory_limit_mb": 32768},
                 network_settings={
                     "host": "0.0.0.0",
                     "api_port": 443,
@@ -314,16 +270,16 @@ class ProfileManager:
                     "enable_tls": True,
                     "enable_rate_limiting": True,
                     "rate_limit_requests": 1000,
-                    "rate_limit_period": 60
+                    "rate_limit_period": 60,
                 },
                 storage_settings={
                     "database_url": "postgresql://giljo:password@db-cluster/giljo_mcp",
                     "redis_url": "redis://redis-cluster:6379/0",
                     "log_path": "/var/log/giljo-mcp",
-                    "temp_path": "/var/tmp/giljo-mcp",
+                    "temp_path": str(Path(tempfile.gettempdir()) / "giljo-mcp"),
                     "s3_bucket": "giljo-mcp-storage",
                     "enable_backup": True,
-                    "backup_schedule": "0 2 * * *"
+                    "backup_schedule": "0 2 * * *",
                 },
                 performance_settings={
                     "enable_caching": True,
@@ -334,8 +290,8 @@ class ProfileManager:
                     "enable_query_optimization": True,
                     "enable_async_processing": True,
                     "worker_processes": 4,
-                    "threads_per_worker": 4
-                }
+                    "threads_per_worker": 4,
+                },
             ),
             dependencies=ProfileDependencies(
                 python_version=">=3.9",
@@ -353,39 +309,29 @@ class ProfileManager:
                     "python-jose[cryptography]",
                     "prometheus-client",
                     "sentry-sdk",
-                    "boto3"
+                    "boto3",
                 ],
-                optional_packages=[
-                    "gunicorn",
-                    "uvicorn[standard]",
-                    "nginx",
-                    "datadog"
-                ],
+                optional_packages=["gunicorn", "uvicorn[standard]", "nginx", "datadog"],
                 system_requirements={
                     "min_ram_mb": 16384,
                     "min_disk_space_mb": 50000,
                     "os": ["linux"],
                     "network": "wan",
-                    "cpu_cores": 4
+                    "cpu_cores": 4,
                 },
-                external_services=[
-                    "postgresql",
-                    "redis",
-                    "s3-compatible-storage",
-                    "oauth2-provider"
-                ]
+                external_services=["postgresql", "redis", "s3-compatible-storage", "oauth2-provider"],
             ),
             recommended_for=[
                 "Production deployments",
                 "Enterprise environments",
                 "High-traffic applications",
                 "Mission-critical systems",
-                "Multi-region deployments"
+                "Multi-region deployments",
             ],
             limitations=[
                 "Complex infrastructure requirements",
                 "Higher operational overhead",
-                "Requires experienced administrators"
+                "Requires experienced administrators",
             ],
             post_install_steps=[
                 "Configure PostgreSQL cluster with replication",
@@ -396,8 +342,8 @@ class ProfileManager:
                 "Set up backup and disaster recovery",
                 "Configure CDN for static assets",
                 "Implement log aggregation",
-                "Set up CI/CD pipeline"
-            ]
+                "Set up CI/CD pipeline",
+            ],
         )
 
         # Containerized Profile
@@ -415,7 +361,7 @@ class ProfileManager:
                     "max_agents": 200,
                     "max_concurrent_tasks": 50,
                     "memory_limit_mb": 16384,
-                    "cpu_limit": "4000m"
+                    "cpu_limit": "4000m",
                 },
                 network_settings={
                     "host": "0.0.0.0",
@@ -423,14 +369,14 @@ class ProfileManager:
                     "websocket_port": 8001,
                     "allow_external": True,
                     "cors_origins": ["*"],
-                    "service_mesh": "istio"
+                    "service_mesh": "istio",
                 },
                 storage_settings={
                     "database_url": "postgresql://giljo:password@postgres:5432/giljo_mcp",
                     "redis_url": "redis://redis:6379/0",
                     "persistent_volume_path": "/data",
                     "persistent_volume_size": "100Gi",
-                    "storage_class": "standard"
+                    "storage_class": "standard",
                 },
                 performance_settings={
                     "enable_caching": True,
@@ -440,8 +386,8 @@ class ProfileManager:
                     "enable_horizontal_scaling": True,
                     "min_replicas": 2,
                     "max_replicas": 10,
-                    "target_cpu_utilization": 70
-                }
+                    "target_cpu_utilization": 70,
+                },
             ),
             dependencies=ProfileDependencies(
                 python_version=">=3.9",
@@ -456,37 +402,26 @@ class ProfileManager:
                     "redis",
                     "python-multipart",
                     "python-jose[cryptography]",
-                    "prometheus-client"
+                    "prometheus-client",
                 ],
-                optional_packages=[
-                    "kubernetes",
-                    "docker-compose",
-                    "helm"
-                ],
+                optional_packages=["kubernetes", "docker-compose", "helm"],
                 system_requirements={
                     "min_ram_mb": 8192,
                     "min_disk_space_mb": 20000,
                     "os": ["linux", "macos", "windows"],
                     "container_runtime": ["docker", "containerd"],
-                    "orchestrator": ["kubernetes", "docker-swarm", "docker-compose"]
+                    "orchestrator": ["kubernetes", "docker-swarm", "docker-compose"],
                 },
-                external_services=[
-                    "container-registry",
-                    "kubernetes-cluster"
-                ]
+                external_services=["container-registry", "kubernetes-cluster"],
             ),
             recommended_for=[
                 "Cloud deployments",
                 "Microservices architecture",
                 "DevOps teams",
                 "Scalable applications",
-                "Multi-environment deployments"
+                "Multi-environment deployments",
             ],
-            limitations=[
-                "Requires container expertise",
-                "Additional orchestration overhead",
-                "Networking complexity"
-            ],
+            limitations=["Requires container expertise", "Additional orchestration overhead", "Networking complexity"],
             post_install_steps=[
                 "Build Docker images",
                 "Push images to container registry",
@@ -495,8 +430,8 @@ class ProfileManager:
                 "Set up ingress/load balancer",
                 "Configure service mesh if using",
                 "Set up monitoring with Prometheus",
-                "Configure auto-scaling policies"
-            ]
+                "Configure auto-scaling policies",
+            ],
         )
 
     def get_profile(self, profile_type: ProfileType) -> Optional[Profile]:
@@ -531,11 +466,8 @@ class ProfileManager:
     def export_profiles(self, file_path: Path) -> bool:
         """Export all profiles to a JSON file."""
         try:
-            profiles_data = {
-                pt.value: profile.to_dict()
-                for pt, profile in self._profiles.items()
-            }
-            with open(file_path, 'w') as f:
+            profiles_data = {pt.value: profile.to_dict() for pt, profile in self._profiles.items()}
+            with open(file_path, "w") as f:
                 json.dump(profiles_data, f, indent=2)
             return True
         except Exception:
@@ -544,20 +476,20 @@ class ProfileManager:
     def import_profiles(self, file_path: Path) -> bool:
         """Import profiles from a JSON file."""
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 profiles_data = json.load(f)
 
             for profile_type_str, profile_data in profiles_data.items():
                 profile_type = ProfileType(profile_type_str)
                 profile = Profile(
-                    name=profile_data['name'],
+                    name=profile_data["name"],
                     type=profile_type,
-                    description=profile_data['description'],
-                    configuration=ProfileConfiguration.from_dict(profile_data['configuration']),
-                    dependencies=ProfileDependencies.from_dict(profile_data['dependencies']),
-                    recommended_for=profile_data.get('recommended_for', []),
-                    limitations=profile_data.get('limitations', []),
-                    post_install_steps=profile_data.get('post_install_steps', [])
+                    description=profile_data["description"],
+                    configuration=ProfileConfiguration.from_dict(profile_data["configuration"]),
+                    dependencies=ProfileDependencies.from_dict(profile_data["dependencies"]),
+                    recommended_for=profile_data.get("recommended_for", []),
+                    limitations=profile_data.get("limitations", []),
+                    post_install_steps=profile_data.get("post_install_steps", []),
                 )
                 self._profiles[profile_type] = profile
             return True
@@ -575,27 +507,23 @@ class ProfileManager:
         # Check Python version
         current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
         required_version = profile.dependencies.python_version.replace(">=", "")
-        validation_results['python_version'] = current_version >= required_version
+        validation_results["python_version"] = current_version >= required_version
 
         # Check OS compatibility
         current_os = platform.system().lower()
-        os_mapping = {
-            'windows': 'windows',
-            'darwin': 'macos',
-            'linux': 'linux'
-        }
-        required_os = profile.dependencies.system_requirements.get('os', [])
-        validation_results['os_compatible'] = os_mapping.get(current_os, current_os) in required_os
+        os_mapping = {"windows": "windows", "darwin": "macos", "linux": "linux"}
+        required_os = profile.dependencies.system_requirements.get("os", [])
+        validation_results["os_compatible"] = os_mapping.get(current_os, current_os) in required_os
 
         # Check disk space (simplified check)
-        if 'min_disk_space_mb' in profile.dependencies.system_requirements:
+        if "min_disk_space_mb" in profile.dependencies.system_requirements:
             total, used, free = shutil.disk_usage("/")
             free_mb = free // (1024 * 1024)
-            required_mb = profile.dependencies.system_requirements['min_disk_space_mb']
-            validation_results['disk_space'] = free_mb >= required_mb
+            required_mb = profile.dependencies.system_requirements["min_disk_space_mb"]
+            validation_results["disk_space"] = free_mb >= required_mb
 
         # Check RAM (simplified - would need psutil for accurate check)
-        validation_results['memory'] = True  # Placeholder
+        validation_results["memory"] = True  # Placeholder
 
         return validation_results
 

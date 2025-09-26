@@ -2,16 +2,15 @@
 Test configuration fixtures for installer tests
 """
 
-import os
 import tempfile
-from pathlib import Path
-from typing import Dict, Any
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass
 class TestEnvironment:
     """Test environment configuration"""
+
     temp_dir: Path
     config_dir: Path
     data_dir: Path
@@ -20,6 +19,7 @@ class TestEnvironment:
     def cleanup(self):
         """Clean up test environment"""
         import shutil
+
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
 
@@ -29,10 +29,7 @@ def create_test_env() -> TestEnvironment:
     temp_dir = Path(tempfile.mkdtemp(prefix="giljo_test_"))
 
     return TestEnvironment(
-        temp_dir=temp_dir,
-        config_dir=temp_dir / "config",
-        data_dir=temp_dir / "data",
-        logs_dir=temp_dir / "logs"
+        temp_dir=temp_dir, config_dir=temp_dir / "config", data_dir=temp_dir / "data", logs_dir=temp_dir / "logs"
     )
 
 
@@ -45,7 +42,7 @@ SAMPLE_CONFIGS = {
         "DATABASE_URL": "sqlite:///test.db",
         "API_PORT": 8000,
         "REDIS_ENABLED": False,
-        "AUTH_ENABLED": False
+        "AUTH_ENABLED": False,
     },
     "team": {
         "APP_NAME": "GiljoAI_MCP",
@@ -56,7 +53,7 @@ SAMPLE_CONFIGS = {
         "REDIS_ENABLED": True,
         "AUTH_ENABLED": True,
         "TEAM_NAME": "Test Team",
-        "TEAM_SIZE": 5
+        "TEAM_SIZE": 5,
     },
     "enterprise": {
         "APP_NAME": "GiljoAI_MCP",
@@ -68,39 +65,26 @@ SAMPLE_CONFIGS = {
         "AUTH_ENABLED": True,
         "AUTH_METHOD": "oauth",
         "ENTERPRISE_NAME": "Test Corp",
-        "SECURE_COOKIES": True
-    }
+        "SECURE_COOKIES": True,
+    },
 }
 
 # Connection strings for testing
 TEST_CONNECTION_STRINGS = {
     "postgresql": "postgresql://test_user:test_pass@localhost:5432/test_db",
-    "redis": "redis://localhost:6379/1"
+    "redis": "redis://localhost:6379/1",
 }
 
 # Mock external service responses
 MOCK_RESPONSES = {
     "postgresql_version": "PostgreSQL 15.4",
-    "redis_info": {
-        "redis_version": "7.0.0",
-        "used_memory": 1048576,
-        "connected_clients": 1,
-        "uptime_in_seconds": 3600
-    },
-    "docker_version": {
-        "Version": "24.0.0",
-        "ApiVersion": "1.43",
-        "Os": "linux",
-        "Arch": "amd64"
-    }
+    "redis_info": {"redis_version": "7.0.0", "used_memory": 1048576, "connected_clients": 1, "uptime_in_seconds": 3600},
+    "docker_version": {"Version": "24.0.0", "ApiVersion": "1.43", "Os": "linux", "Arch": "amd64"},
 }
 
 # Test database configurations
 TEST_DB_CONFIGS = {
-    "sqlite": {
-        "url": "sqlite:///test_giljo.db",
-        "type": "sqlite"
-    },
+    "sqlite": {"url": "sqlite:///test_giljo.db", "type": "sqlite"},
     "postgresql": {
         "url": "postgresql://giljo_test:test_password@localhost:5432/giljo_test",
         "type": "postgresql",
@@ -108,8 +92,8 @@ TEST_DB_CONFIGS = {
         "port": 5432,
         "database": "giljo_test",
         "user": "giljo_test",
-        "password": "test_password"
-    }
+        "password": "test_password",
+    },
 }
 
 # Service configuration for testing
@@ -120,7 +104,7 @@ TEST_SERVICE_CONFIGS = {
         "description": "PostgreSQL database server for testing",
         "executable": "pg_ctl",
         "user": "postgres",
-        "dependencies": []
+        "dependencies": [],
     },
     "redis": {
         "name": "redis-test",
@@ -128,7 +112,7 @@ TEST_SERVICE_CONFIGS = {
         "description": "Redis cache server for testing",
         "executable": "redis-server",
         "user": "redis",
-        "dependencies": []
+        "dependencies": [],
     },
     "giljo": {
         "name": "giljo-mcp-test",
@@ -137,6 +121,6 @@ TEST_SERVICE_CONFIGS = {
         "executable": "python",
         "args": ["-m", "giljo_mcp.main"],
         "user": "giljo",
-        "dependencies": ["postgresql-test", "redis-test"]
-    }
+        "dependencies": ["postgresql-test", "redis-test"],
+    },
 }

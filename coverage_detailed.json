@@ -20,7 +20,7 @@
         "missing": 11
       },
       {
-        "module": "src/giljo_mcp/api/websocket.py", 
+        "module": "src/giljo_mcp/api/websocket.py",
         "current_coverage": "0.00%",
         "priority": "CRITICAL",
         "reason": "Real-time communication core - product differentiator",
@@ -30,7 +30,7 @@
       {
         "module": "src/giljo_mcp/api/endpoints/tasks.py",
         "current_coverage": "0.00%",
-        "priority": "CRITICAL", 
+        "priority": "CRITICAL",
         "reason": "Task management API - core business logic",
         "statements": 14,
         "missing": 14
@@ -56,7 +56,7 @@
       },
       {
         "module": "src/giljo_mcp/message_queue.py",
-        "current_coverage": "49.80%", 
+        "current_coverage": "49.80%",
         "priority": "HIGH",
         "reason": "Message routing system - reliability critical",
         "statements": 416,
@@ -66,7 +66,7 @@
       {
         "module": "src/giljo_mcp/database.py",
         "current_coverage": "57.89%",
-        "priority": "HIGH", 
+        "priority": "HIGH",
         "reason": "Data persistence layer - data integrity",
         "statements": 150,
         "covered": 96,
@@ -92,7 +92,7 @@
       "impact": "BLOCKING - No API functionality tested"
     },
     "orchestration_core": {
-      "coverage": "39.82%", 
+      "coverage": "39.82%",
       "modules": ["orchestrator.py", "message_queue.py"],
       "total_statements": 676,
       "covered": 330,
@@ -122,7 +122,7 @@
       "effort_estimate": "5-8 days"
     },
     {
-      "issue": "WebSocket Infrastructure Untested", 
+      "issue": "WebSocket Infrastructure Untested",
       "description": "Real-time communication (0% coverage) - key differentiator",
       "business_impact": "Product's real-time features are unreliable",
       "resolution": "Create WebSocket integration test suite",
@@ -144,13 +144,13 @@
     ],
     "testing_strategy": {
       "integration_tests": "Focus on end-to-end workflows",
-      "api_tests": "Test all endpoints with realistic scenarios", 
+      "api_tests": "Test all endpoints with realistic scenarios",
       "performance_tests": "Validate under production load",
       "error_handling": "Test failure modes and recovery"
     },
     "path_to_80_percent": {
       "phase_1": "API & WebSocket coverage (estimated +30%)",
-      "phase_2": "Orchestrator workflow coverage (estimated +20%)", 
+      "phase_2": "Orchestrator workflow coverage (estimated +20%)",
       "phase_3": "Tools framework coverage (estimated +25%)",
       "timeline": "3-4 weeks for GTM readiness"
     }

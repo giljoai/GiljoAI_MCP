@@ -34,10 +34,7 @@ class PerformanceBenchmark:
             "system_info": self.get_system_info(),
             "benchmarks": {},
             "memory_profile": {},
-            "latency_targets": {
-                "target": "sub-100ms",
-                "operations": {}
-            }
+            "latency_targets": {"target": "sub-100ms", "operations": {}},
         }
         self.db = None
 
@@ -48,7 +45,7 @@ class PerformanceBenchmark:
             "memory_gb": round(psutil.virtual_memory().total / (1024**3), 2),
             "python_version": sys.version,
             "platform": sys.platform,
-            "process_id": os.getpid()
+            "process_id": os.getpid(),
         }
 
     def setup(self):
@@ -64,7 +61,6 @@ class PerformanceBenchmark:
 
         # Create tables
         Base.metadata.create_all(self.db.engine)
-
 
     def cleanup(self):
         """Clean up test environment"""
@@ -91,7 +87,7 @@ class PerformanceBenchmark:
                 mission="Performance test project",
                 status="active",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
             session.add(project)
             session.commit()
@@ -108,7 +104,7 @@ class PerformanceBenchmark:
                     name=f"agent_{i}",
                     role="worker",
                     status="active",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 agents.append(agent)
                 session.add(agent)
@@ -141,7 +137,7 @@ class PerformanceBenchmark:
                     message_type="direct",
                     priority="normal",
                     status="pending",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 session.add(message)
             session.commit()
@@ -163,7 +159,7 @@ class PerformanceBenchmark:
                 mission="Message performance test",
                 status="active",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
             session.add(project)
             session.commit()
@@ -180,7 +176,7 @@ class PerformanceBenchmark:
                 message_type="direct",
                 priority="normal",
                 status="pending",
-                created_at=datetime.now()
+                created_at=datetime.now(),
             )
             session.add(message)
             session.commit()
@@ -199,7 +195,7 @@ class PerformanceBenchmark:
                 message_type="broadcast",
                 priority="high",
                 status="pending",
-                created_at=datetime.now()
+                created_at=datetime.now(),
             )
             session.add(broadcast_msg)
             session.commit()
@@ -207,9 +203,7 @@ class PerformanceBenchmark:
 
             # Test 3: Message retrieval
             start = time.perf_counter()
-            messages = session.query(Message).filter_by(
-                project_id=project.id
-            ).all()
+            messages = session.query(Message).filter_by(project_id=project.id).all()
             results["retrieve_messages_ms"] = (time.perf_counter() - start) * 1000
 
             # Test 4: Message acknowledgment simulation
@@ -238,7 +232,7 @@ class PerformanceBenchmark:
                     message_type="direct",
                     priority="normal",
                     status="pending",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 session.add(msg)
             session.commit()
@@ -261,14 +255,13 @@ class PerformanceBenchmark:
                 mission="Concurrent operations stress test",
                 status="active",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
             session.add(project)
             session.commit()
 
             # Test different concurrency levels
             for agent_count in [10, 50, 100]:
-
                 # Create agents
                 start = time.perf_counter()
                 agents = []
@@ -280,7 +273,7 @@ class PerformanceBenchmark:
                         name=f"worker_{i}",
                         role="worker",
                         status="active",
-                        created_at=datetime.now()
+                        created_at=datetime.now(),
                     )
                     agents.append(agent)
                     session.add(agent)
@@ -298,12 +291,12 @@ class PerformanceBenchmark:
                             tenant_key=tenant_key,
                             project_id=project.id,
                             from_agent_id=agent.name,
-                            to_agents=json.dumps([agents[(i+1) % len(agents)].name]),
+                            to_agents=json.dumps([agents[(i + 1) % len(agents)].name]),
                             content=f"Work item {j}",
                             message_type="direct",
                             priority="normal",
                             status="pending",
-                            created_at=datetime.now()
+                            created_at=datetime.now(),
                         )
                         session.add(msg)
                         message_count += 1
@@ -314,7 +307,7 @@ class PerformanceBenchmark:
                     "create_time_ms": create_time,
                     "work_time_ms": work_time,
                     "total_messages": message_count,
-                    "msg_per_second": message_count / (work_time / 1000) if work_time > 0 else 0
+                    "msg_per_second": message_count / (work_time / 1000) if work_time > 0 else 0,
                 }
 
         return results
@@ -322,9 +315,7 @@ class PerformanceBenchmark:
     def profile_memory_usage(self) -> dict[str, Any]:
         """Profile memory usage under load"""
         process = psutil.Process()
-        results = {
-            "baseline_mb": process.memory_info().rss / (1024 * 1024)
-        }
+        results = {"baseline_mb": process.memory_info().rss / (1024 * 1024)}
 
         with self.db.get_session() as session:
             # Create large dataset
@@ -336,7 +327,7 @@ class PerformanceBenchmark:
                 mission="Memory profiling",
                 status="active",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
             session.add(project)
             session.commit()
@@ -350,7 +341,7 @@ class PerformanceBenchmark:
                     name=f"mem_agent_{i}",
                     role="worker",
                     status="active",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 session.add(agent)
                 if i % 100 == 0:
@@ -371,7 +362,7 @@ class PerformanceBenchmark:
                     message_type="direct",
                     priority="normal",
                     status="pending",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 session.add(msg)
                 if i % 500 == 0:
@@ -381,12 +372,8 @@ class PerformanceBenchmark:
             results["after_10000_messages_mb"] = process.memory_info().rss / (1024 * 1024)
 
         # Calculate growth
-        results["agent_memory_growth_mb"] = (
-            results["after_1000_agents_mb"] - results["baseline_mb"]
-        )
-        results["message_memory_growth_mb"] = (
-            results["after_10000_messages_mb"] - results["after_1000_agents_mb"]
-        )
+        results["agent_memory_growth_mb"] = results["after_1000_agents_mb"] - results["baseline_mb"]
+        results["message_memory_growth_mb"] = results["after_10000_messages_mb"] - results["after_1000_agents_mb"]
 
         return results
 
@@ -404,7 +391,7 @@ class PerformanceBenchmark:
                 mission="Latency validation",
                 status="active",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
             self.tenant_key = tenant_key  # Store for helper methods
             session.add(project)
@@ -416,7 +403,7 @@ class PerformanceBenchmark:
                 "create_message": lambda: self._create_message(session, project.id),
                 "query_project": lambda: self._query_project(session, project.id),
                 "query_messages": lambda: self._query_messages(session, project.id),
-                "update_agent": lambda: self._update_agent(session, project.id)
+                "update_agent": lambda: self._update_agent(session, project.id),
             }
 
             # Run each operation 100 times and measure
@@ -440,7 +427,7 @@ class PerformanceBenchmark:
                     "median_ms": statistics.median(latencies),
                     "p95_ms": sorted(latencies)[95] if len(latencies) > 95 else max(latencies),
                     "p99_ms": sorted(latencies)[99] if len(latencies) > 99 else max(latencies),
-                    "meets_target": statistics.median(latencies) < 100
+                    "meets_target": statistics.median(latencies) < 100,
                 }
 
         return results
@@ -454,7 +441,7 @@ class PerformanceBenchmark:
             name=f"test_agent_{uuid.uuid4().hex[:8]}",
             role="worker",
             status="active",
-            created_at=datetime.now()
+            created_at=datetime.now(),
         )
         session.add(agent)
         session.commit()
@@ -471,7 +458,7 @@ class PerformanceBenchmark:
             message_type="direct",
             priority="normal",
             status="pending",
-            created_at=datetime.now()
+            created_at=datetime.now(),
         )
         session.add(msg)
         session.commit()
@@ -554,10 +541,12 @@ class PerformanceBenchmark:
         with open("performance_report.json", "w") as f:
             json.dump(self.results, f, indent=2, default=str)
 
+
 def main():
     """Main entry point"""
     benchmark = PerformanceBenchmark()
     benchmark.run_all_benchmarks()
+
 
 if __name__ == "__main__":
     main()

@@ -32,26 +32,20 @@ class PlatformDetector:
             "processor": platform.processor(),
             "architecture": platform.architecture(),
             "node": platform.node(),
-
             # OS flags
             "is_windows": self.is_windows,
             "is_mac": self.is_mac,
             "is_linux": self.is_linux,
-
             # Python environment
             "python": self._get_python_info(),
-
             # Package managers
             "package_managers": self._detect_package_managers(),
-
             # Virtual environment
             "virtual_env": self._detect_virtual_env(),
-
             # Additional capabilities
             "capabilities": self._detect_capabilities(),
-
             # System resources
-            "resources": self._get_system_resources()
+            "resources": self._get_system_resources(),
         }
 
         # Linux-specific
@@ -82,18 +76,17 @@ class PlatformDetector:
                 "major": sys.version_info.major,
                 "minor": sys.version_info.minor,
                 "micro": sys.version_info.micro,
-                "releaselevel": sys.version_info.releaselevel
+                "releaselevel": sys.version_info.releaselevel,
             },
             "pip_version": self._get_pip_version(),
-            "installed_packages": self._get_key_packages()
+            "installed_packages": self._get_key_packages(),
         }
 
     def _get_pip_version(self) -> Optional[str]:
         """Get pip version"""
         try:
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "--version"],
-                check=False, capture_output=True, text=True, timeout=5
+                [sys.executable, "-m", "pip", "--version"], check=False, capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 # Format: "pip X.Y.Z from /path/to/pip (python X.Y)"
@@ -105,14 +98,24 @@ class PlatformDetector:
     def _get_key_packages(self) -> list[str]:
         """Get list of key installed packages"""
         key_packages = [
-            "fastmcp", "fastapi", "sqlalchemy", "pydantic",
-            "rich", "httpx", "websockets", "psycopg2",
-            "alembic", "pytest", "black", "ruff"
+            "fastmcp",
+            "fastapi",
+            "sqlalchemy",
+            "pydantic",
+            "rich",
+            "httpx",
+            "websockets",
+            "psycopg2",
+            "alembic",
+            "pytest",
+            "black",
+            "ruff",
         ]
 
         installed = []
         try:
             import importlib.metadata
+
             for pkg in key_packages:
                 try:
                     version = importlib.metadata.version(pkg)
@@ -123,6 +126,7 @@ class PlatformDetector:
             # Fallback for older Python
             try:
                 import pkg_resources
+
                 for pkg in key_packages:
                     try:
                         version = pkg_resources.get_distribution(pkg).version
@@ -144,7 +148,7 @@ class PlatformDetector:
                 managers["chocolatey"] = {
                     "available": True,
                     "command": "choco",
-                    "version": self._get_command_version("choco", "--version")
+                    "version": self._get_command_version("choco", "--version"),
                 }
 
             # Check for Scoop
@@ -152,7 +156,7 @@ class PlatformDetector:
                 managers["scoop"] = {
                     "available": True,
                     "command": "scoop",
-                    "version": self._get_command_version("scoop", "--version")
+                    "version": self._get_command_version("scoop", "--version"),
                 }
 
             # Check for winget
@@ -160,7 +164,7 @@ class PlatformDetector:
                 managers["winget"] = {
                     "available": True,
                     "command": "winget",
-                    "version": self._get_command_version("winget", "--version")
+                    "version": self._get_command_version("winget", "--version"),
                 }
 
         elif self.is_mac:
@@ -169,7 +173,7 @@ class PlatformDetector:
                 managers["homebrew"] = {
                     "available": True,
                     "command": "brew",
-                    "version": self._get_command_version("brew", "--version")
+                    "version": self._get_command_version("brew", "--version"),
                 }
 
             # Check for MacPorts
@@ -177,56 +181,36 @@ class PlatformDetector:
                 managers["macports"] = {
                     "available": True,
                     "command": "port",
-                    "version": self._get_command_version("port", "version")
+                    "version": self._get_command_version("port", "version"),
                 }
 
         elif self.is_linux:
             # Check for APT (Debian/Ubuntu)
             if shutil.which("apt"):
-                managers["apt"] = {
-                    "available": True,
-                    "command": "apt",
-                    "distro": "debian-based"
-                }
+                managers["apt"] = {"available": True, "command": "apt", "distro": "debian-based"}
 
             # Check for YUM (RHEL/CentOS/Fedora old)
             if shutil.which("yum"):
-                managers["yum"] = {
-                    "available": True,
-                    "command": "yum",
-                    "distro": "rhel-based"
-                }
+                managers["yum"] = {"available": True, "command": "yum", "distro": "rhel-based"}
 
             # Check for DNF (Fedora new)
             if shutil.which("dnf"):
-                managers["dnf"] = {
-                    "available": True,
-                    "command": "dnf",
-                    "distro": "fedora"
-                }
+                managers["dnf"] = {"available": True, "command": "dnf", "distro": "fedora"}
 
             # Check for Pacman (Arch)
             if shutil.which("pacman"):
-                managers["pacman"] = {
-                    "available": True,
-                    "command": "pacman",
-                    "distro": "arch-based"
-                }
+                managers["pacman"] = {"available": True, "command": "pacman", "distro": "arch-based"}
 
             # Check for Zypper (openSUSE)
             if shutil.which("zypper"):
-                managers["zypper"] = {
-                    "available": True,
-                    "command": "zypper",
-                    "distro": "opensuse"
-                }
+                managers["zypper"] = {"available": True, "command": "zypper", "distro": "opensuse"}
 
             # Check for Snap
             if shutil.which("snap"):
                 managers["snap"] = {
                     "available": True,
                     "command": "snap",
-                    "version": self._get_command_version("snap", "--version")
+                    "version": self._get_command_version("snap", "--version"),
                 }
 
             # Check for Flatpak
@@ -234,47 +218,39 @@ class PlatformDetector:
                 managers["flatpak"] = {
                     "available": True,
                     "command": "flatpak",
-                    "version": self._get_command_version("flatpak", "--version")
+                    "version": self._get_command_version("flatpak", "--version"),
                 }
 
         # Python package managers
         if shutil.which("pip"):
-            managers["pip"] = {
-                "available": True,
-                "command": "pip",
-                "version": self._get_pip_version()
-            }
+            managers["pip"] = {"available": True, "command": "pip", "version": self._get_pip_version()}
 
         if shutil.which("conda"):
             managers["conda"] = {
                 "available": True,
                 "command": "conda",
-                "version": self._get_command_version("conda", "--version")
+                "version": self._get_command_version("conda", "--version"),
             }
 
         if shutil.which("poetry"):
             managers["poetry"] = {
                 "available": True,
                 "command": "poetry",
-                "version": self._get_command_version("poetry", "--version")
+                "version": self._get_command_version("poetry", "--version"),
             }
 
         if shutil.which("pipenv"):
             managers["pipenv"] = {
                 "available": True,
                 "command": "pipenv",
-                "version": self._get_command_version("pipenv", "--version")
+                "version": self._get_command_version("pipenv", "--version"),
             }
 
         return managers
 
     def _detect_virtual_env(self) -> dict:
         """Detect if running in a virtual environment"""
-        info = {
-            "active": False,
-            "type": None,
-            "path": None
-        }
+        info = {"active": False, "type": None, "path": None}
 
         # Check for virtualenv/venv
         if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix):
@@ -314,7 +290,7 @@ class PlatformDetector:
             "yarn": shutil.which("yarn") is not None,
             "postgresql": False,
             "mysql": False,
-            "redis": False
+            "redis": False,
         }
 
         # Check for PostgreSQL
@@ -345,10 +321,7 @@ class PlatformDetector:
             return False
 
         try:
-            result = subprocess.run(
-                ["wsl", "--list"],
-                check=False, capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["wsl", "--list"], check=False, capture_output=True, text=True, timeout=5)
             return result.returncode == 0
         except:
             return False
@@ -359,25 +332,19 @@ class PlatformDetector:
 
         try:
             import psutil
+
             resources["cpu_count"] = psutil.cpu_count()
             resources["cpu_percent"] = psutil.cpu_percent(interval=1)
 
             mem = psutil.virtual_memory()
-            resources["memory"] = {
-                "total": mem.total,
-                "available": mem.available,
-                "percent": mem.percent
-            }
+            resources["memory"] = {"total": mem.total, "available": mem.available, "percent": mem.percent}
 
             disk = psutil.disk_usage("/")
-            resources["disk"] = {
-                "total": disk.total,
-                "free": disk.free,
-                "percent": disk.percent
-            }
+            resources["disk"] = {"total": disk.total, "free": disk.free, "percent": disk.percent}
         except ImportError:
             # Fallback if psutil not available
             import os
+
             resources["cpu_count"] = os.cpu_count()
 
         return resources
@@ -399,10 +366,7 @@ class PlatformDetector:
         # Try lsb_release command
         if not distro_info and shutil.which("lsb_release"):
             try:
-                result = subprocess.run(
-                    ["lsb_release", "-a"],
-                    check=False, capture_output=True, text=True, timeout=5
-                )
+                result = subprocess.run(["lsb_release", "-a"], check=False, capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
                     for line in result.stdout.split("\n"):
                         if ":" in line:
@@ -423,6 +387,7 @@ class PlatformDetector:
 
             # Check if running as admin
             import ctypes
+
             win_info["is_admin"] = ctypes.windll.shell32.IsUserAnAdmin() != 0
         except:
             pass
@@ -435,10 +400,7 @@ class PlatformDetector:
 
         try:
             # macOS version
-            result = subprocess.run(
-                ["sw_vers"],
-                check=False, capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["sw_vers"], check=False, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 for line in result.stdout.split("\n"):
                     if ":" in line:
@@ -451,8 +413,7 @@ class PlatformDetector:
         if shutil.which("xcode-select"):
             try:
                 result = subprocess.run(
-                    ["xcode-select", "--version"],
-                    check=False, capture_output=True, text=True, timeout=5
+                    ["xcode-select", "--version"], check=False, capture_output=True, text=True, timeout=5
                 )
                 if result.returncode == 0:
                     mac_info["xcode_tools"] = True
@@ -464,10 +425,7 @@ class PlatformDetector:
     def _get_command_version(self, command: str, version_flag: str) -> Optional[str]:
         """Get version of a command"""
         try:
-            result = subprocess.run(
-                [command, version_flag],
-                check=False, capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run([command, version_flag], check=False, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 # Return first line, cleaned up
                 return result.stdout.split("\n")[0].strip()
@@ -571,6 +529,7 @@ def print_platform_info():
     except ImportError:
         # Fallback to regular print
         import json
+
         print(json.dumps(info, indent=2))
 
 

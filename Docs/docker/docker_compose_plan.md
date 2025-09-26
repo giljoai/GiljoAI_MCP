@@ -1,4 +1,5 @@
 # Docker Compose Architecture Plan
+
 ## GiljoAI MCP Orchestrator
 
 ### Service Architecture Overview
@@ -32,6 +33,7 @@
 ### Service Definitions
 
 #### 1. PostgreSQL Database (postgres)
+
 - **Image**: postgres:15-alpine
 - **Container Name**: giljo-postgres
 - **Ports**: 5432:5432 (internal only in production)
@@ -50,6 +52,7 @@
 - **Restart Policy**: unless-stopped
 
 #### 2. Backend API (backend)
+
 - **Build Context**: ./
 - **Dockerfile**: ./docker/backend.Dockerfile
 - **Container Name**: giljo-backend
@@ -79,6 +82,7 @@
 - **Restart Policy**: unless-stopped
 
 #### 3. Frontend Dashboard (frontend)
+
 - **Build Context**: ./frontend
 - **Dockerfile**: ./docker/frontend.Dockerfile
 - **Container Name**: giljo-frontend
@@ -99,6 +103,7 @@
 ### Network Configuration
 
 #### Internal Network (giljo-net)
+
 - **Driver**: bridge
 - **IPAM Config**:
   - Subnet: 172.20.0.0/16
@@ -110,10 +115,12 @@
 ### Volume Definitions
 
 1. **postgres_data**:
+
    - Driver: local
    - Purpose: PostgreSQL data persistence
 
 2. **logs** (bind mount):
+
    - Host: ./logs
    - Container: /app/logs
    - Purpose: Application logs persistence
@@ -127,6 +134,7 @@
 ### Environment Files
 
 #### Development (.env.dev)
+
 ```env
 # Database
 DB_PASSWORD=dev_password_123
@@ -145,6 +153,7 @@ HOT_RELOAD=true
 ```
 
 #### Production (.env.prod)
+
 ```env
 # Database
 DB_PASSWORD=${SECURE_DB_PASSWORD}
@@ -169,17 +178,20 @@ HOT_RELOAD=false
 ### Docker Compose Variants
 
 #### 1. docker-compose.yml (Base Configuration)
+
 - Core service definitions
 - Shared network configuration
 - Base environment variables
 
 #### 2. docker-compose.dev.yml (Development Override)
+
 - Volume mounts for hot reload
 - Exposed database port for debugging
 - Development environment variables
 - Build from local Dockerfiles
 
 #### 3. docker-compose.prod.yml (Production Override)
+
 - No exposed database port
 - Production environment variables
 - Pull from registry (future)
@@ -188,16 +200,19 @@ HOT_RELOAD=false
 ### Deployment Commands
 
 #### Development Mode
+
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 #### Production Mode
+
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 #### Useful Commands
+
 ```bash
 # View logs
 docker-compose logs -f [service_name]
@@ -221,6 +236,7 @@ docker-compose down -v
 ### Backup Strategy
 
 1. **Database Backups**:
+
    ```bash
    docker-compose exec postgres pg_dump -U postgres giljo_mcp_db > backup.sql
    ```
@@ -241,6 +257,7 @@ docker-compose down -v
 ### Migration Strategy
 
 1. **Database Migrations**:
+
    - Use Alembic for schema migrations
    - Run migrations on container startup
    - Rollback capability
@@ -253,6 +270,7 @@ docker-compose down -v
 ### Monitoring & Observability
 
 1. **Logging**:
+
    - Centralized logging to ./logs volume
    - Log rotation configured
    - Structured JSON logging
@@ -265,6 +283,7 @@ docker-compose down -v
 ### Cross-Platform Compatibility
 
 1. **Windows Docker Desktop**:
+
    - Use named volumes instead of bind mounts where possible
    - Handle line ending differences (CRLF vs LF)
    - WSL2 backend recommended
@@ -277,11 +296,13 @@ docker-compose down -v
 ### Performance Optimization
 
 1. **Multi-stage Builds**:
+
    - Minimize final image size
    - Cache dependencies separately
    - Remove build tools from runtime
 
 2. **Layer Caching**:
+
    - Order Dockerfile commands for optimal caching
    - Separate dependency installation from code
 
@@ -293,10 +314,12 @@ docker-compose down -v
 ### Troubleshooting Guide
 
 1. **Port Conflicts**:
+
    - Check: `docker ps` and `netstat -an`
    - Solution: Modify port mappings in .env
 
 2. **Database Connection Issues**:
+
    - Check: Database logs and health status
    - Solution: Verify credentials and network
 
@@ -307,11 +330,13 @@ docker-compose down -v
 ### Future Enhancements
 
 1. **Redis Cache Service**:
+
    - Session storage
    - Message queue
    - Performance optimization
 
 2. **Nginx Reverse Proxy**:
+
    - SSL termination
    - Load balancing
    - Rate limiting

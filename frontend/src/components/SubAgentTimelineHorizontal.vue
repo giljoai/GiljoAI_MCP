@@ -17,18 +17,8 @@
         @click="showFilters = !showFilters"
         class="ml-2"
       />
-      <v-btn
-        icon="mdi-download"
-        size="small"
-        @click="exportTimeline"
-        class="ml-1"
-      />
-      <v-btn
-        icon="mdi-refresh"
-        size="small"
-        @click="refreshTimeline"
-        class="ml-1"
-      />
+      <v-btn icon="mdi-download" size="small" @click="exportTimeline" class="ml-1" />
+      <v-btn icon="mdi-refresh" size="small" @click="refreshTimeline" class="ml-1" />
     </v-card-title>
 
     <!-- Filters (collapsible) -->
@@ -86,11 +76,7 @@
       <div class="timeline-wrapper" ref="timelineWrapper">
         <svg :width="timelineWidth" :height="timelineHeight" class="timeline-svg">
           <!-- Background -->
-          <rect
-            :width="timelineWidth"
-            :height="timelineHeight"
-            :fill="colors.trackBackground"
-          />
+          <rect :width="timelineWidth" :height="timelineHeight" :fill="colors.trackBackground" />
 
           <!-- Time Axis -->
           <g class="time-axis">
@@ -186,7 +172,10 @@
               v-if="track.contextUsage !== undefined && track.startTime"
               :x="timeToX(track.startTime)"
               :y="getTrackY(index) + trackHeight - 8"
-              :width="(timeToX(track.endTime || currentTime) - timeToX(track.startTime)) * (track.contextUsage / 100)"
+              :width="
+                (timeToX(track.endTime || currentTime) - timeToX(track.startTime)) *
+                (track.contextUsage / 100)
+              "
               height="3"
               :fill="getContextColor(track.contextUsage)"
               rx="1.5"
@@ -215,10 +204,7 @@
               refY="3.5"
               orient="auto"
             >
-              <polygon
-                points="0 0, 10 3.5, 0 7"
-                :fill="colors.primary"
-              />
+              <polygon points="0 0, 10 3.5, 0 7" :fill="colors.primary" />
             </marker>
           </defs>
         </svg>
@@ -230,9 +216,7 @@
       <v-card-text v-if="selectedAgent" class="agent-details">
         <v-row>
           <v-col cols="12" md="6">
-            <div class="detail-item">
-              <strong>Agent:</strong> {{ selectedAgent.name }}
-            </div>
+            <div class="detail-item"><strong>Agent:</strong> {{ selectedAgent.name }}</div>
             <div class="detail-item">
               <strong>Status:</strong>
               <v-chip :color="getStatusColor(selectedAgent.status)" size="small" variant="flat">
@@ -252,9 +236,7 @@
                 height="20"
                 rounded
               >
-                <template v-slot:default>
-                  {{ selectedAgent.contextUsage }}%
-                </template>
+                <template v-slot:default> {{ selectedAgent.contextUsage }}% </template>
               </v-progress-linear>
             </div>
             <div class="detail-item">
@@ -278,7 +260,7 @@
       class="timeline-tooltip"
       :style="{
         left: tooltip.x + 'px',
-        top: tooltip.y + 'px'
+        top: tooltip.y + 'px',
       }"
     >
       <div class="tooltip-header">
@@ -302,24 +284,24 @@ import websocketService from '@/services/websocket'
 const props = defineProps({
   projectId: {
     type: String,
-    default: null
+    default: null,
   },
   agents: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   timeRange: {
     type: Object,
-    default: () => ({ start: null, end: null })
+    default: () => ({ start: null, end: null }),
   },
   autoRefresh: {
     type: Boolean,
-    default: true
+    default: true,
   },
   refreshInterval: {
     type: Number,
-    default: 1000
-  }
+    default: 1000,
+  },
 })
 
 const emit = defineEmits(['agent-selected', 'time-range-changed', 'export-requested'])
@@ -360,15 +342,15 @@ const colors = {
   gridLines: '#315074',
   text: '#e1e1e1',
   primary: '#ffc300',
-  connectionLine: '#315074'
+  connectionLine: '#315074',
 }
 
 // Computed
 const projects = computed(() =>
-  projectStore.projects.map(p => ({
+  projectStore.projects.map((p) => ({
     title: p.name,
-    value: p.id
-  }))
+    value: p.id,
+  })),
 )
 
 const agentTypes = [
@@ -376,7 +358,7 @@ const agentTypes = [
   { title: 'Designer', value: 'designer' },
   { title: 'Frontend', value: 'frontend' },
   { title: 'Implementer', value: 'implementer' },
-  { title: 'Tester', value: 'tester' }
+  { title: 'Tester', value: 'tester' },
 ]
 
 const agentTracks = computed(() => {
@@ -384,40 +366,40 @@ const agentTracks = computed(() => {
 
   // Apply filters
   if (selectedProject.value) {
-    agents = agents.filter(a => a.project_id === selectedProject.value)
+    agents = agents.filter((a) => a.project_id === selectedProject.value)
   }
 
   if (selectedAgentTypes.value.length > 0) {
-    agents = agents.filter(a => selectedAgentTypes.value.includes(a.type))
+    agents = agents.filter((a) => selectedAgentTypes.value.includes(a.type))
   }
 
   // Build hierarchy
   const tracks = []
-  const orchestrator = agents.find(a => a.type === 'orchestrator')
+  const orchestrator = agents.find((a) => a.type === 'orchestrator')
 
   if (orchestrator) {
     tracks.push({
       ...orchestrator,
       level: 0,
-      indent: 0
+      indent: 0,
     })
 
     // Add children
-    const children = agents.filter(a => a.parent === orchestrator.id)
+    const children = agents.filter((a) => a.parent === orchestrator.id)
     children.forEach((child, index) => {
       tracks.push({
         ...child,
         level: 1,
-        indent: 1
+        indent: 1,
       })
 
       // Add grandchildren
-      const grandchildren = agents.filter(a => a.parent === child.id)
-      grandchildren.forEach(gc => {
+      const grandchildren = agents.filter((a) => a.parent === child.id)
+      grandchildren.forEach((gc) => {
         tracks.push({
           ...gc,
           level: 2,
-          indent: 2
+          indent: 2,
         })
       })
     })
@@ -430,12 +412,12 @@ const connections = computed(() => {
   const conns = []
   agentTracks.value.forEach((track, index) => {
     if (track.parent) {
-      const parentIndex = agentTracks.value.findIndex(t => t.id === track.parent)
+      const parentIndex = agentTracks.value.findIndex((t) => t.id === track.parent)
       if (parentIndex >= 0) {
         const parent = agentTracks.value[parentIndex]
         conns.push({
           id: `${parent.id}-${track.id}`,
-          path: calculateConnectionPath(parentIndex, index, parent, track)
+          path: calculateConnectionPath(parentIndex, index, parent, track),
         })
       }
     }
@@ -450,11 +432,11 @@ const timeTicks = computed(() => {
   const tickInterval = (range.end - range.start) / tickCount
 
   for (let i = 0; i <= tickCount; i++) {
-    const time = range.start + (tickInterval * i)
+    const time = range.start + tickInterval * i
     ticks.push({
       value: time,
       x: timeToX(time),
-      label: formatTimeLabel(time)
+      label: formatTimeLabel(time),
     })
   }
 
@@ -463,21 +445,21 @@ const timeTicks = computed(() => {
 
 // Methods
 const getTrackY = (index) => {
-  return padding.top + (index * (trackHeight + 10))
+  return padding.top + index * (trackHeight + 10)
 }
 
 const getTimeRange = () => {
   if (timeRange.value.start && timeRange.value.end) {
     return {
       start: new Date(timeRange.value.start).getTime(),
-      end: new Date(timeRange.value.end).getTime()
+      end: new Date(timeRange.value.end).getTime(),
     }
   }
 
   // Auto-calculate from agents
   const times = agentTracks.value
-    .filter(a => a.startTime)
-    .map(a => [a.startTime, a.endTime || currentTime.value])
+    .filter((a) => a.startTime)
+    .map((a) => [a.startTime, a.endTime || currentTime.value])
     .flat()
 
   if (times.length === 0) {
@@ -487,7 +469,7 @@ const getTimeRange = () => {
 
   return {
     start: Math.min(...times) - 10000,
-    end: Math.max(...times) + 10000
+    end: Math.max(...times) + 10000,
   }
 }
 
@@ -502,7 +484,7 @@ const getStatusColor = (status) => {
     active: colors.active,
     pending: colors.pending,
     completed: colors.completed,
-    failed: colors.failed
+    failed: colors.failed,
   }
   return statusColors[status] || colors.gridLines
 }
@@ -512,7 +494,7 @@ const getStatusIcon = (status) => {
     active: '/icons/rocket.svg',
     pending: '/icons/adjust.svg',
     completed: '/icons/checkmark.svg',
-    failed: '/icons/close.svg'
+    failed: '/icons/close.svg',
   }
   return icons[status] || '/icons/bubble.svg'
 }
@@ -545,7 +527,12 @@ const formatTimeLabel = (time) => {
   if (date.toDateString() === now.toDateString()) {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   }
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 const truncate = (text, length) => {
@@ -576,7 +563,7 @@ const showTooltip = (agent, event) => {
     show: true,
     x: event.clientX - rect.left,
     y: event.clientY - rect.top - 60,
-    agent
+    agent,
   }
 }
 
@@ -599,7 +586,7 @@ const exportTimeline = () => {
   const data = {
     timeline: agentTracks.value,
     timeRange: getTimeRange(),
-    exported: new Date().toISOString()
+    exported: new Date().toISOString(),
   }
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })

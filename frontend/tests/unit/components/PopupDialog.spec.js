@@ -62,7 +62,7 @@ const PopupDialog = {
 
 describe('PopupDialog Component', () => {
   let vuetify
-  
+
   beforeEach(() => {
     vuetify = createVuetify({
       components,
@@ -73,7 +73,7 @@ describe('PopupDialog Component', () => {
   describe('Event Handling', () => {
     it('should stop click event propagation on dialog card', async () => {
       const parentClickHandler = vi.fn()
-      
+
       // Create wrapper with parent container
       const wrapper = mount({
         template: `
@@ -96,9 +96,9 @@ describe('PopupDialog Component', () => {
       // Click on dialog card
       const dialogCard = wrapper.find('[data-test="dialog-card"]')
       expect(dialogCard.exists()).toBe(true)
-      
+
       await dialogCard.trigger('click')
-      
+
       // Parent handler should NOT be called due to @click.stop
       expect(parentClickHandler).not.toHaveBeenCalled()
     })
@@ -137,7 +137,7 @@ describe('PopupDialog Component', () => {
 
       // Click close button
       await wrapper.find('[data-test="close-button"]').trigger('click')
-      
+
       // Check event emission
       expect(wrapper.emitted('close')).toBeTruthy()
       expect(wrapper.emitted('close').length).toBe(1)
@@ -157,7 +157,7 @@ describe('PopupDialog Component', () => {
 
       // Click save button
       await wrapper.find('[data-test="save-button"]').trigger('click')
-      
+
       // Check event emission
       expect(wrapper.emitted('save')).toBeTruthy()
       expect(wrapper.emitted('save').length).toBe(1)
@@ -253,9 +253,9 @@ describe('PopupDialog Component', () => {
       // Escape key should close dialog
       await wrapper.trigger('keydown.esc')
       await wrapper.vm.$nextTick()
-      
+
       expect(wrapper.vm.dialog).toBe(false)
-      
+
       wrapper.unmount()
     })
   })
@@ -300,7 +300,7 @@ describe('PopupDialog Component', () => {
  */
 describe('PopupDialog Click Stop Fix Verification', () => {
   let vuetify
-  
+
   beforeEach(() => {
     vuetify = createVuetify({
       components,
@@ -324,7 +324,7 @@ describe('PopupDialog Click Stop Fix Verification', () => {
   it('should not trigger parent click handlers when clicking inside dialog', async () => {
     const grandparentHandler = vi.fn()
     const parentHandler = vi.fn()
-    
+
     const TestComponent = {
       template: `
         <div @click="grandparentHandler" data-test="grandparent">
@@ -373,7 +373,7 @@ describe('PopupDialog Click Stop Fix Verification', () => {
 
     // Click save button should work normally
     await wrapper.find('[data-test="save-button"]').trigger('click')
-    
+
     expect(wrapper.emitted('save')).toBeTruthy()
   })
 })

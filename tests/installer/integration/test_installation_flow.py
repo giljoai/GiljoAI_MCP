@@ -2,20 +2,23 @@
 Integration tests for complete installation flow
 """
 
-import pytest
 import asyncio
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 
 # Import systems
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
-    from installer.core.profile import ProfileManager, ProfileType
-    from installer.core.health import HealthChecker
     from installer.config.config_manager import ConfigurationManager
+    from installer.core.health import HealthChecker
+    from installer.core.profile import ProfileManager, ProfileType
+
     HAS_ALL_COMPONENTS = True
 except ImportError:
     HAS_ALL_COMPONENTS = False
@@ -56,14 +59,11 @@ class TestInstallationFlow:
         config_manager = ConfigurationManager()
         configuration = config_manager.generate_configuration(
             ProfileType.TEAM,
-            user_inputs={
-                "team_name": "Test Team",
-                "team_size": 5
-            },
+            user_inputs={"team_name": "Test Team", "team_size": 5},
             connection_strings={
                 "postgresql": "postgresql://team:pass@localhost:5432/team_db",
-                "redis": "redis://localhost:6379/0"
-            }
+                "redis": "redis://localhost:6379/0",
+            },
         )
 
         assert configuration.get_value("TEAM_NAME") == "Test Team"
@@ -83,24 +83,23 @@ class TestInstallationFlow:
     async def test_health_check_integration(self):
         """Test health check integration in workflow"""
         # Initialize health checker
-        health_checker = HealthChecker({
-            "postgresql": {"host": "localhost", "port": 5432},
-            "redis": {"host": "localhost", "port": 6379}
-        })
+        health_checker = HealthChecker(
+            {"postgresql": {"host": "localhost", "port": 5432}, "redis": {"host": "localhost", "port": 6379}}
+        )
 
         with patch.multiple(
             health_checker,
             _check_system=Mock(return_value=None),
             _check_postgresql=Mock(return_value=None),
-            _check_redis=Mock(return_value=None)
+            _check_redis=Mock(return_value=None),
         ):
             # Mock healthy components
             health_checker.components = [
-                type('Component', (), {
-                    'name': 'System',
-                    'status': type('Status', (), {'value': 'healthy'})(),
-                    'message': 'OK'
-                })(),
+                type(
+                    "Component",
+                    (),
+                    {"name": "System", "status": type("Status", (), {"value": "healthy"})(), "message": "OK"},
+                )(),
             ]
 
             report = await health_checker.check_installation_readiness()
@@ -115,11 +114,7 @@ class TestInstallationFlow:
         # Generate configuration based on profile
         config_manager = ConfigurationManager()
         config = config_manager.generate_configuration(
-            enterprise_profile.type,
-            user_inputs={
-                "enterprise_name": "TestCorp",
-                "compliance_mode": "SOC2"
-            }
+            enterprise_profile.type, user_inputs={"enterprise_name": "TestCorp", "compliance_mode": "SOC2"}
         )
 
         # Verify enterprise-specific settings
@@ -135,25 +130,25 @@ class TestInstallationFlow:
 
         # Create "old" configuration
         old_config_path = self.test_env.config_dir / "old.env"
-        old_config_path.write_text("""
+        old_config_path.write_text(
+            """
 APP_NAME=OldApp
 DEBUG=true
 CUSTOM_SETTING=preserved
-""")
+"""
+        )
 
         # Migrate to new profile
-        with patch.object(config_manager, 'load_configuration') as mock_load:
+        with patch.object(config_manager, "load_configuration") as mock_load:
             from installer.config.config_manager import Configuration
+
             old_config = Configuration(profile_type="developer")
             old_config.add_value("APP_NAME", "OldApp")
             old_config.add_value("DEBUG", True)
             old_config.add_value("CUSTOM_SETTING", "preserved")
             mock_load.return_value = old_config
 
-            migrated = config_manager.migrate_configuration(
-                old_config_path,
-                new_profile="team"
-            )
+            migrated = config_manager.migrate_configuration(old_config_path, new_profile="team")
 
             # Should be team profile but preserve custom settings
             assert migrated.profile_type == "team"
@@ -171,14 +166,10 @@ CUSTOM_SETTING=preserved
             _check_postgresql=Mock(return_value=None),
             _check_redis=Mock(return_value=None),
             _check_docker=Mock(return_value=None),
-            _check_ports=Mock(return_value=None)
+            _check_ports=Mock(return_value=None),
         ):
             # Run checks in parallel (simulated)
-            tasks = [
-                health_checker._check_system(),
-                health_checker._check_postgresql(),
-                health_checker._check_redis()
-            ]
+            tasks = [health_checker._check_system(), health_checker._check_postgresql(), health_checker._check_redis()]
 
             await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -207,8 +198,8 @@ class TestErrorHandling:
             "developer",
             user_inputs={
                 "api_port": 99999,  # Invalid port
-                "log_level": "INVALID"  # Invalid log level
-            }
+                "log_level": "INVALID",  # Invalid log level
+            },
         )
 
         # Override with invalid values to test validation
@@ -224,7 +215,7 @@ class TestErrorHandling:
         """Test handling of health check failures"""
         health_checker = HealthChecker()
 
-        with patch.object(health_checker, '_check_system') as mock_check:
+        with patch.object(health_checker, "_check_system") as mock_check:
             # Simulate check failure
             mock_check.side_effect = Exception("System check failed")
 
@@ -257,14 +248,12 @@ class TestPerformance:
 
         # Mock fast checks
         with patch.multiple(
-            health_checker,
-            _check_system=Mock(return_value=None),
-            _check_python=Mock(return_value=None)
+            health_checker, _check_system=Mock(return_value=None), _check_python=Mock(return_value=None)
         ):
             start_time = time.time()
 
             # Run subset of quick checks
-            report = await health_checker.check_all(['system', 'python'])
+            report = await health_checker.check_all(["system", "python"])
 
             end_time = time.time()
             duration = end_time - start_time
@@ -305,7 +294,7 @@ class TestConcurrency:
 
         # Mock their methods
         for checker in checkers:
-            with patch.object(checker, '_check_system', return_value=None):
+            with patch.object(checker, "_check_system", return_value=None):
                 pass
 
         # Run checks concurrently
@@ -318,7 +307,6 @@ class TestConcurrency:
     def test_concurrent_config_generation(self):
         """Test concurrent configuration generation"""
         import threading
-        import time
 
         config_manager = ConfigurationManager()
         results = []
@@ -396,17 +384,13 @@ async def test_full_installation_simulation(test_environment):
         health_checker,
         _check_system=Mock(return_value=None),
         _check_python=Mock(return_value=None),
-        _check_network=Mock(return_value=None)
+        _check_network=Mock(return_value=None),
     ):
         pre_check_report = await health_checker.check_installation_readiness()
 
     # Step 4: Generate configuration
     configuration = config_manager.generate_configuration(
-        selected_profile.type,
-        user_inputs={
-            "team_name": "Test Installation Team",
-            "api_port": 8000
-        }
+        selected_profile.type, user_inputs={"team_name": "Test Installation Team", "api_port": 8000}
     )
 
     # Step 5: Validate configuration
@@ -422,7 +406,7 @@ async def test_full_installation_simulation(test_environment):
         health_checker,
         _check_system=Mock(return_value=None),
         _check_postgresql=Mock(return_value=None),
-        _check_redis=Mock(return_value=None)
+        _check_redis=Mock(return_value=None),
     ):
         post_check_report = await health_checker.check_database_services()
 

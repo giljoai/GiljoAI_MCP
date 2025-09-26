@@ -1,6 +1,7 @@
 # Sub-Agent Visualization Component Specifications
 
 ## Project: 5.1.c Dashboard Sub-Agent Visualization
+
 **Designer**: designer agent
 **Date**: 2025-01-15
 **Version**: 1.0
@@ -10,11 +11,13 @@
 ## 1. SubAgentTimeline.vue
 
 ### Overview
+
 A horizontal timeline visualization showing the lifecycle of orchestrator and sub-agents with real-time WebSocket updates.
 
 ### Visual Design
 
 #### Layout Structure
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Timeline Header                                               │
@@ -53,7 +56,11 @@ A horizontal timeline visualization showing the lifecycle of orchestrator and su
         <v-btn value="live" size="small">Live</v-btn>
         <v-btn value="history" size="small">History</v-btn>
       </v-btn-toggle>
-      <v-btn icon="mdi-filter" size="small" @click="showFilters = !showFilters" />
+      <v-btn
+        icon="mdi-filter"
+        size="small"
+        @click="showFilters = !showFilters"
+      />
       <v-btn icon="mdi-download" size="small" @click="exportTimeline" />
       <v-btn icon="mdi-refresh" size="small" @click="refreshTimeline" />
     </v-card-title>
@@ -121,12 +128,16 @@ A horizontal timeline visualization showing the lifecycle of orchestrator and su
             </div>
             <div class="detail-item">
               <strong>Status:</strong>
-              <v-chip :color="getStatusColor(selectedAgent.status)" size="small">
+              <v-chip
+                :color="getStatusColor(selectedAgent.status)"
+                size="small"
+              >
                 {{ selectedAgent.status }}
               </v-chip>
             </div>
             <div class="detail-item">
-              <strong>Duration:</strong> {{ formatDuration(selectedAgent.duration) }}
+              <strong>Duration:</strong>
+              {{ formatDuration(selectedAgent.duration) }}
             </div>
           </v-col>
           <v-col cols="12" md="6">
@@ -171,6 +182,7 @@ A horizontal timeline visualization showing the lifecycle of orchestrator and su
 - **Text**: `#e1e1e1` (Light Gray)
 
 ### Icons Used (from frontend/public/icons/)
+
 - `users.svg` - Timeline header icon
 - `rocket.svg` - Agent spawn indicator
 - `checkmark.svg` - Agent completion indicator
@@ -179,7 +191,8 @@ A horizontal timeline visualization showing the lifecycle of orchestrator and su
 - `download.svg` - Export button
 
 ### Responsive Breakpoints
-- **Mobile (320px - 600px)**: 
+
+- **Mobile (320px - 600px)**:
   - Vertical stacking of timeline tracks
   - Simplified time axis (fewer labels)
   - Touch-enabled pan/zoom
@@ -192,22 +205,24 @@ A horizontal timeline visualization showing the lifecycle of orchestrator and su
   - Side-by-side agent details
 
 ### WebSocket Events
+
 ```javascript
 // Listen for real-time updates
-websocketService.onMessage('agent:spawn', (data) => {
+websocketService.onMessage("agent:spawn", (data) => {
   // Add new agent to timeline
-})
+});
 
-websocketService.onMessage('agent:complete', (data) => {
+websocketService.onMessage("agent:complete", (data) => {
   // Update agent status and duration
-})
+});
 
-websocketService.onMessage('agent:update', (data) => {
+websocketService.onMessage("agent:update", (data) => {
   // Update context usage and status
-})
+});
 ```
 
 ### Animation Specifications
+
 - **Agent Bar Entry**: Slide in from left, 300ms ease-out
 - **Status Changes**: Color transition 200ms ease
 - **Hover Effects**: Scale 1.02, elevation increase
@@ -219,11 +234,13 @@ websocketService.onMessage('agent:update', (data) => {
 ## 2. SubAgentTree.vue
 
 ### Overview
+
 Interactive tree visualization showing parent-child relationships between orchestrator and sub-agents with collapsible nodes.
 
 ### Visual Design
 
 #### Layout Structure
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Tree Header                                                  │
@@ -286,7 +303,7 @@ Interactive tree visualization showing parent-child relationships between orches
           <!-- Tree nodes and links -->
         </svg>
       </div>
-      
+
       <!-- Zoom Controls -->
       <div class="zoom-controls">
         <v-btn icon="mdi-minus" size="x-small" @click="zoomOut" />
@@ -304,7 +321,7 @@ Interactive tree visualization showing parent-child relationships between orches
     </v-card-text>
 
     <!-- Node Details Tooltip -->
-    <v-tooltip 
+    <v-tooltip
       v-model="showTooltip"
       :location="tooltipLocation"
       :open-on-hover="false"
@@ -324,9 +341,14 @@ Interactive tree visualization showing parent-child relationships between orches
         <div class="tooltip-content">
           <div><strong>Type:</strong> {{ hoveredNode?.type }}</div>
           <div><strong>Status:</strong> {{ hoveredNode?.status }}</div>
-          <div><strong>Children:</strong> {{ hoveredNode?.children?.length || 0 }}</div>
+          <div>
+            <strong>Children:</strong> {{ hoveredNode?.children?.length || 0 }}
+          </div>
           <div><strong>Context:</strong> {{ hoveredNode?.contextUsage }}%</div>
-          <div><strong>Duration:</strong> {{ formatDuration(hoveredNode?.duration) }}</div>
+          <div>
+            <strong>Duration:</strong>
+            {{ formatDuration(hoveredNode?.duration) }}
+          </div>
         </div>
       </div>
     </v-tooltip>
@@ -353,25 +375,25 @@ Interactive tree visualization showing parent-child relationships between orches
 ```javascript
 // Node structure
 const nodeTemplate = {
-  id: 'agent-uuid',
-  name: 'Agent Name',
-  type: 'orchestrator|designer|frontend|implementer|tester',
-  status: 'active|pending|complete|failed',
-  parent: 'parent-uuid',
+  id: "agent-uuid",
+  name: "Agent Name",
+  type: "orchestrator|designer|frontend|implementer|tester",
+  status: "active|pending|complete|failed",
+  parent: "parent-uuid",
   children: [],
   contextUsage: 75,
   duration: 45000, // ms
-  mission: 'Agent mission description',
+  mission: "Agent mission description",
   expanded: true,
-  
+
   // Visual properties
   x: 0,
   y: 0,
   width: 140,
   height: 60,
-  color: '#67bd6d',
-  icon: 'robot.svg'
-}
+  color: "#67bd6d",
+  icon: "robot.svg",
+};
 ```
 
 ### Node Visual Specifications
@@ -392,6 +414,7 @@ const nodeTemplate = {
 ### Color Coding (from docs/color_themes.md)
 
 #### Node Backgrounds
+
 - **Orchestrator**: `#1e3147` (Medium Dark Blue)
 - **Active Agents**: `#182739` (Dark Blue)
 - **All Nodes Border by Status**:
@@ -401,11 +424,13 @@ const nodeTemplate = {
   - Failed: `#c6298c` (Pink/Red) - 2px solid
 
 #### Connection Lines
+
 - **Active Path**: `#67bd6d` (Green) - 2px solid
 - **Inactive Path**: `#315074` (Medium Blue) - 1px dashed
 - **Handoff Arrow**: `#ffc300` (Yellow)
 
 ### Icons Used (from frontend/public/icons/)
+
 - `chart.svg` - Tree header icon
 - `users.svg` - Orchestrator node
 - `bubble.svg` - Sub-agent nodes
@@ -416,23 +441,27 @@ const nodeTemplate = {
 ### Interaction Specifications
 
 #### Click Actions
+
 - **Single Click**: Select node, show details
 - **Double Click**: Expand/collapse children
 - **Right Click**: Context menu (view logs, restart, terminate)
 
 #### Drag Actions
+
 - **Node Drag**: Disabled (auto-layout)
 - **Canvas Drag**: Pan the tree view
 - **Scroll Wheel**: Zoom in/out
 
 #### Hover Effects
-- **Node Hover**: 
+
+- **Node Hover**:
   - Scale to 1.05
   - Elevation increase
   - Show tooltip after 500ms
   - Highlight connected paths
 
 ### Animation Specifications
+
 - **Node Appearance**: Fade in + scale from 0.8 to 1.0, 400ms ease-out
 - **Node Status Change**: Color transition 300ms ease
 - **Tree Expansion**: Spring animation, 500ms
@@ -442,16 +471,19 @@ const nodeTemplate = {
 ### Responsive Behavior
 
 #### Mobile (320px - 600px)
+
 - Simplified node design (name only)
 - Touch gestures for pan/zoom
 - Tap to show details in modal
 
 #### Tablet (600px - 960px)
+
 - Full node design
 - Touch + mouse support
 - Side panel for details
 
 #### Desktop (960px+)
+
 - Full interactive tree
 - Hover tooltips
 - Keyboard shortcuts
@@ -460,18 +492,18 @@ const nodeTemplate = {
 
 ```javascript
 // Real-time tree updates
-websocketService.onMessage('agent:spawn', (data) => {
-  addNodeToTree(data)
-  animateNodeEntry(data.id)
-})
+websocketService.onMessage("agent:spawn", (data) => {
+  addNodeToTree(data);
+  animateNodeEntry(data.id);
+});
 
-websocketService.onMessage('agent:handoff', (data) => {
-  animateHandoff(data.from, data.to)
-})
+websocketService.onMessage("agent:handoff", (data) => {
+  animateHandoff(data.from, data.to);
+});
 
-websocketService.onMessage('agent:complete', (data) => {
-  updateNodeStatus(data.id, 'complete')
-})
+websocketService.onMessage("agent:complete", (data) => {
+  updateNodeStatus(data.id, "complete");
+});
 ```
 
 ---
@@ -482,54 +514,56 @@ websocketService.onMessage('agent:complete', (data) => {
 
 ```javascript
 // stores/agentVisualization.js
-export const useAgentVisualizationStore = defineStore('agentVisualization', {
+export const useAgentVisualizationStore = defineStore("agentVisualization", {
   state: () => ({
     agents: [],
     timeline: {
       start: null,
       end: null,
-      events: []
+      events: [],
     },
     tree: {
       root: null,
       nodes: {},
-      links: []
+      links: [],
     },
     filters: {
       project: null,
       agentTypes: [],
       status: [],
-      timeRange: {}
-    }
+      timeRange: {},
+    },
   }),
-  
+
   actions: {
     async fetchAgentTree(projectId) {
       // GET /api/agents/tree
     },
-    
+
     async fetchAgentMetrics(filters) {
       // GET /api/agents/metrics
     },
-    
+
     handleAgentSpawn(data) {
       // Update both timeline and tree
     },
-    
+
     handleAgentComplete(data) {
       // Update status and duration
-    }
-  }
-})
+    },
+  },
+});
 ```
 
 ### API Endpoints Required
 
 1. **GET /api/agents/tree**
+
    - Returns hierarchical agent structure
    - Response time: <100ms
 
 2. **GET /api/agents/metrics**
+
    - Returns performance statistics
    - Supports filtering by project, time range
    - Response time: <100ms
@@ -563,17 +597,19 @@ export const useAgentVisualizationStore = defineStore('agentVisualization', {
 ### SubAgentTimeline.vue
 
 #### Props
+
 ```typescript
 interface TimelineProps {
-  projectId?: string
-  agents?: Agent[]
-  timeRange?: { start: Date, end: Date }
-  autoRefresh?: boolean
-  refreshInterval?: number
+  projectId?: string;
+  agents?: Agent[];
+  timeRange?: { start: Date; end: Date };
+  autoRefresh?: boolean;
+  refreshInterval?: number;
 }
 ```
 
 #### Events
+
 ```typescript
 emit('agent-selected', agent: Agent)
 emit('time-range-changed', range: TimeRange)
@@ -583,17 +619,19 @@ emit('export-requested', format: 'csv' | 'json')
 ### SubAgentTree.vue
 
 #### Props
+
 ```typescript
 interface TreeProps {
-  projectId?: string
-  rootAgent?: Agent
-  expandLevel?: number
-  interactive?: boolean
-  showLegend?: boolean
+  projectId?: string;
+  rootAgent?: Agent;
+  expandLevel?: number;
+  interactive?: boolean;
+  showLegend?: boolean;
 }
 ```
 
 #### Events
+
 ```typescript
 emit('node-selected', node: TreeNode)
 emit('node-expanded', node: TreeNode)
@@ -606,16 +644,19 @@ emit('context-menu', { node: TreeNode, event: MouseEvent })
 ## 5. Implementation Priority
 
 ### Phase 1 (Immediate)
+
 1. Basic SubAgentTimeline with static data
 2. Basic SubAgentTree with static data
 3. WebSocket listeners setup
 
 ### Phase 2 (Next Iteration)
+
 1. Real-time updates
 2. Interactive features (zoom, pan, filters)
 3. API integration
 
 ### Phase 3 (Polish)
+
 1. Animations and transitions
 2. Export functionality
 3. Performance optimizations
@@ -626,6 +667,7 @@ emit('context-menu', { node: TreeNode, event: MouseEvent })
 ## 6. Handoff to frontend_developer
 
 ### Required Actions
+
 1. Implement components following these specifications exactly
 2. Use only the specified colors from docs/color_themes.md
 3. Use only icons from frontend/public/icons/
@@ -636,6 +678,7 @@ emit('context-menu', { node: TreeNode, event: MouseEvent })
 8. Add error handling with ToastManager.vue
 
 ### Deliverables Expected
+
 1. SubAgentTimeline.vue component
 2. SubAgentTree.vue component
 3. Pinia store for state management

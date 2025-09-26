@@ -76,7 +76,6 @@ class TestPlatformDetection(unittest.TestCase):
             found = [m for m in managers if any(exp in m for exp in expected)]
             assert len(found) > 0 or len(managers) > 0, f"Package managers found: {managers}"
 
-
     def test_python_environment(self):
         """Test Python environment detection"""
         info = self.detector.get_full_info()
@@ -92,7 +91,6 @@ class TestPlatformDetection(unittest.TestCase):
         "git_version" in info or caps.get("git", False)
         caps.get("docker", False)
         caps.get("admin_rights", False) or info.get("admin_rights", False)
-
 
 
 class TestGUIWizard(unittest.TestCase):
@@ -555,11 +553,9 @@ def main():
     # Generate and print report
     generate_test_report(results)
 
-
     if results["failed"] > 0:
         for _failure in results["failures"] + results["errors"]:
             pass
-
 
     # Return exit code
     return 0 if results["failed"] == 0 else 1

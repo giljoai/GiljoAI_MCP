@@ -3,12 +3,12 @@ Comprehensive test runner for GiljoAI MCP Installer
 Runs all unit and integration tests with coverage reporting
 """
 
-import sys
-import os
-import time
 import subprocess
+import sys
+import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict
+
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -49,10 +49,10 @@ class TestRunner:
             "performance_tests": performance_results,
             "total_time": total_time,
             "overall_success": (
-                unit_results.get("success", False) and
-                integration_results.get("success", False) and
-                performance_results.get("success", False)
-            )
+                unit_results.get("success", False)
+                and integration_results.get("success", False)
+                and performance_results.get("success", False)
+            ),
         }
 
         self.print_summary()
@@ -66,17 +66,10 @@ class TestRunner:
         unit_test_files = [
             "tests/installer/unit/test_profile.py",
             "tests/installer/unit/test_health_checker.py",
-            "tests/installer/unit/test_config_manager.py"
+            "tests/installer/unit/test_config_manager.py",
         ]
 
-        results = {
-            "success": True,
-            "tests_run": 0,
-            "tests_passed": 0,
-            "tests_failed": 0,
-            "time": 0,
-            "details": {}
-        }
+        results = {"success": True, "tests_run": 0, "tests_passed": 0, "tests_failed": 0, "time": 0, "details": {}}
 
         start_time = time.time()
 
@@ -114,18 +107,9 @@ class TestRunner:
         print("\n[INTEG] Running Integration Tests...")
         print("-" * 40)
 
-        integration_files = [
-            "tests/installer/integration/test_installation_flow.py"
-        ]
+        integration_files = ["tests/installer/integration/test_installation_flow.py"]
 
-        results = {
-            "success": True,
-            "tests_run": 0,
-            "tests_passed": 0,
-            "tests_failed": 0,
-            "time": 0,
-            "details": {}
-        }
+        results = {"success": True, "tests_run": 0, "tests_passed": 0, "tests_failed": 0, "time": 0, "details": {}}
 
         start_time = time.time()
 
@@ -163,12 +147,7 @@ class TestRunner:
         print("-" * 40)
 
         # Simple performance tests
-        results = {
-            "success": True,
-            "tests_run": 0,
-            "time": 0,
-            "benchmarks": {}
-        }
+        results = {"success": True, "tests_run": 0, "time": 0, "benchmarks": {}}
 
         start_time = time.time()
 
@@ -196,41 +175,17 @@ class TestRunner:
         """Run a specific pytest file and parse results"""
         try:
             # Use Python's subprocess to run pytest
-            cmd = [
-                sys.executable, "-m", "pytest",
-                test_file,
-                "-v",
-                "--tb=short",
-                "-q"
-            ]
+            cmd = [sys.executable, "-m", "pytest", test_file, "-v", "--tb=short", "-q"]
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,
-                cwd=PROJECT_ROOT
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd=PROJECT_ROOT, check=False)
 
             # Parse pytest output
             return self.parse_pytest_output(result.stdout, result.stderr, result.returncode)
 
         except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "tests_run": 0,
-                "tests_passed": 0,
-                "tests_failed": 1,
-                "error": "Test timed out"
-            }
+            return {"success": False, "tests_run": 0, "tests_passed": 0, "tests_failed": 1, "error": "Test timed out"}
         except Exception as e:
-            return {
-                "success": False,
-                "tests_run": 0,
-                "tests_passed": 0,
-                "tests_failed": 1,
-                "error": str(e)
-            }
+            return {"success": False, "tests_run": 0, "tests_passed": 0, "tests_failed": 1, "error": str(e)}
 
     def parse_pytest_output(self, stdout: str, stderr: str, returncode: int) -> Dict[str, Any]:
         """Parse pytest output to extract results"""
@@ -240,26 +195,26 @@ class TestRunner:
             "tests_passed": 0,
             "tests_failed": 0,
             "output": stdout,
-            "errors": stderr
+            "errors": stderr,
         }
 
         # Parse the output for test counts
-        lines = stdout.split('\n')
+        lines = stdout.split("\n")
         for line in lines:
             if "failed" in line and "passed" in line:
                 # Format: "1 failed, 2 passed in 0.05s"
                 parts = line.split()
                 for i, part in enumerate(parts):
                     if part == "failed," and i > 0:
-                        result["tests_failed"] = int(parts[i-1])
+                        result["tests_failed"] = int(parts[i - 1])
                     elif part == "passed" and i > 0:
-                        result["tests_passed"] = int(parts[i-1])
+                        result["tests_passed"] = int(parts[i - 1])
             elif "passed in" in line:
                 # Format: "3 passed in 0.05s"
                 parts = line.split()
                 for i, part in enumerate(parts):
                     if part == "passed" and i > 0:
-                        result["tests_passed"] = int(parts[i-1])
+                        result["tests_passed"] = int(parts[i - 1])
 
         result["tests_run"] = result["tests_passed"] + result["tests_failed"]
 
@@ -284,7 +239,7 @@ class TestRunner:
                 "avg_time": sum(times) / len(times),
                 "max_time": max(times),
                 "min_time": min(times),
-                "profiles_tested": len(profiles)
+                "profiles_tested": len(profiles),
             }
 
         except ImportError:
@@ -295,17 +250,14 @@ class TestRunner:
     def benchmark_health_checks(self) -> Dict[str, float]:
         """Benchmark health check performance"""
         try:
+            from unittest.mock import Mock, patch
+
             from installer.core.health import HealthChecker
-            from unittest.mock import patch, Mock
 
             checker = HealthChecker()
 
             # Mock all external calls for pure performance test
-            with patch.multiple(
-                checker,
-                _check_system=Mock(return_value=None),
-                _check_python=Mock(return_value=None)
-            ):
+            with patch.multiple(checker, _check_system=Mock(return_value=None), _check_python=Mock(return_value=None)):
                 start = time.time()
 
                 # Run quick checks multiple times
@@ -318,7 +270,7 @@ class TestRunner:
                 return {
                     "avg_check_time": (end - start) / 20,  # 2 checks * 10 iterations
                     "total_time": end - start,
-                    "checks_run": 20
+                    "checks_run": 20,
                 }
 
         except ImportError:
@@ -338,7 +290,9 @@ class TestRunner:
 
         # Integration tests
         integration = self.results["integration_tests"]
-        print(f"Integration Tests: {integration['tests_passed']}/{integration['tests_run']} passed ({integration['time']:.2f}s)")
+        print(
+            f"Integration Tests: {integration['tests_passed']}/{integration['tests_run']} passed ({integration['time']:.2f}s)"
+        )
 
         # Performance tests
         perf = self.results["performance_tests"]
@@ -353,7 +307,7 @@ class TestRunner:
             print("[FAILED] SOME TESTS FAILED")
 
         # Performance details
-        if "benchmarks" in perf and perf["benchmarks"]:
+        if perf.get("benchmarks"):
             print("\n[BENCH] Performance Benchmarks:")
             for name, benchmark in perf["benchmarks"].items():
                 if "error" not in benchmark:
@@ -366,21 +320,10 @@ class TestRunner:
         """Run tests matching a specific pattern"""
         print(f"[TARGET] Running tests matching: {test_pattern}")
 
-        cmd = [
-            sys.executable, "-m", "pytest",
-            "-k", test_pattern,
-            "-v",
-            "--tb=short"
-        ]
+        cmd = [sys.executable, "-m", "pytest", "-k", test_pattern, "-v", "--tb=short"]
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120,
-                cwd=PROJECT_ROOT
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=PROJECT_ROOT, check=False)
 
             return self.parse_pytest_output(result.stdout, result.stderr, result.returncode)
 
@@ -390,33 +333,14 @@ class TestRunner:
     def check_test_coverage(self) -> Dict[str, Any]:
         """Check test coverage (if coverage package available)"""
         try:
-            cmd = [
-                sys.executable, "-m", "pytest",
-                "--cov=installer",
-                "--cov-report=term-missing",
-                "tests/"
-            ]
+            cmd = [sys.executable, "-m", "pytest", "--cov=installer", "--cov-report=term-missing", "tests/"]
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120,
-                cwd=PROJECT_ROOT
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=PROJECT_ROOT, check=False)
 
-            return {
-                "success": result.returncode == 0,
-                "output": result.stdout,
-                "coverage_available": True
-            }
+            return {"success": result.returncode == 0, "output": result.stdout, "coverage_available": True}
 
         except FileNotFoundError:
-            return {
-                "success": False,
-                "coverage_available": False,
-                "message": "pytest-cov not installed"
-            }
+            return {"success": False, "coverage_available": False, "message": "pytest-cov not installed"}
 
 
 def main():

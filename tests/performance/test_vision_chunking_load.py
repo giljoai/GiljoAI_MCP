@@ -132,7 +132,6 @@ class TestVisionChunkingLoad:
             "single_document_chunking_10k", chunk_document, iterations=10, warmup=2
         )
 
-
         assert result.success_rate > 95.0, f"Chunking success rate too low: {result.success_rate:.1f}%"
         assert result.avg_time < 5000, f"Chunking too slow: {result.avg_time:.2f}ms > 5s"
 
@@ -153,7 +152,6 @@ class TestVisionChunkingLoad:
         )
 
         chunking_time = (time.perf_counter() - start_time) * 1000
-
 
         # PRODUCTION REQUIREMENTS VALIDATION
         assert len(chunks) > 0, "No chunks created from large document"
@@ -177,7 +175,6 @@ class TestVisionChunkingLoad:
             f"PRODUCTION FAILURE: Content preservation {content_preservation:.1f}% < 95%\n"
             f"Significant content loss during chunking process."
         )
-
 
     async def test_concurrent_document_chunking_load(self, chunking_tools):
         """Test concurrent processing of multiple documents"""
@@ -205,7 +202,6 @@ class TestVisionChunkingLoad:
 
         sum(doc["estimated_tokens"] for doc in documents)
         sum(len(chunks) for chunks in successful_results)
-
 
         success_rate = len(successful_results) / len(documents) * 100
         assert success_rate > 90.0, f"Concurrent chunking success rate too low: {success_rate:.1f}%"
@@ -235,7 +231,6 @@ class TestVisionChunkingLoad:
 
         avg_retrieval_time = mean(retrieval_times)
         max(retrieval_times)
-
 
         assert avg_retrieval_time < 10.0, f"Chunk retrieval too slow: {avg_retrieval_time:.3f}ms > 10ms"
 
@@ -275,10 +270,8 @@ class TestVisionChunkingLoad:
                 }
             )
 
-
         final_memory = process.memory_info().rss / (1024 * 1024)
         total_memory_growth = final_memory - baseline_memory
-
 
         # Validate memory usage is reasonable
         max_growth = max(m["memory_growth"] for m in memory_measurements)
@@ -326,7 +319,6 @@ class TestVisionChunkingLoad:
         sum(doc["estimated_tokens"] for doc in documents)
         total_chunks = sum(len(chunks) for chunks in document_chunks.values())
 
-
         assert indexing_time < 60000, f"Document indexing too slow: {indexing_time:.2f}ms > 60s"
         assert total_chunks > 0, "No chunks created during indexing"
 
@@ -347,7 +339,6 @@ class TestVisionChunkingLoad:
 
         search_time = (time.perf_counter() - search_start) * 1000
 
-
         assert search_time < 1000, f"Search too slow: {search_time:.2f}ms > 1s"
 
     async def test_vision_chunking_stress_test(self, chunking_tools):
@@ -360,7 +351,6 @@ class TestVisionChunkingLoad:
                 complexity="complex",
             )
             large_documents.append(doc)
-
 
         start_time = time.perf_counter()
 
@@ -379,7 +369,6 @@ class TestVisionChunkingLoad:
 
         sum(doc["estimated_tokens"] for doc in large_documents)
         sum(len(chunks) for chunks in successful_results)
-
 
         success_rate = len(successful_results) / len(large_documents) * 100
 

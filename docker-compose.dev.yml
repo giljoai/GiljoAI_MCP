@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 # Development override configuration
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
@@ -7,13 +7,13 @@ services:
   # PostgreSQL - Development overrides
   postgres:
     ports:
-      - "5432:5432"  # Expose PostgreSQL for debugging/management tools
+      - "5432:5432" # Expose PostgreSQL for debugging/management tools
     environment:
-      POSTGRES_PASSWORD: dev_password_123  # Simple password for development
-      POSTGRES_INITDB_ARGS: "--auth-local=trust"  # Trust local connections
+      POSTGRES_PASSWORD: dev_password_123 # Simple password for development
+      POSTGRES_INITDB_ARGS: "--auth-local=trust" # Trust local connections
     volumes:
       # Additional development volumes
-      - ./backups:/backups  # For database dumps
+      - ./backups:/backups # For database dumps
     logging:
       driver: "json-file"
       options:
@@ -23,7 +23,7 @@ services:
   # Backend - Development overrides
   backend:
     build:
-      target: development  # Use development stage with hot reload
+      target: development # Use development stage with hot reload
       args:
         INSTALL_DEV_DEPS: "true"
     environment:
@@ -68,7 +68,7 @@ services:
         echo 'Starting development server with hot reload...' &&
         uvicorn api.app:app --host 0.0.0.0 --port 6002 --reload --reload-dir /app
       "
-    stdin_open: true  # Support for pdb debugging
+    stdin_open: true # Support for pdb debugging
     tty: true
 
   # Frontend - Development overrides
@@ -78,8 +78,8 @@ services:
       args:
         NODE_ENV: development
     ports:
-      - "5173:5173"  # Vite dev server port
-      - "6000:80"    # Also expose nginx port for testing production build
+      - "5173:5173" # Vite dev server port
+      - "6000:80" # Also expose nginx port for testing production build
     environment:
       NODE_ENV: development
       VITE_API_URL: http://localhost:6002
@@ -117,7 +117,7 @@ services:
     networks:
       - giljo-net
     profiles:
-      - tools  # Only start when explicitly requested
+      - tools # Only start when explicitly requested
 
   # Optional: Development mail catcher for testing emails
   mailhog:
@@ -125,12 +125,12 @@ services:
     container_name: giljo-mailhog
     restart: unless-stopped
     ports:
-      - "1025:1025"  # SMTP port
-      - "8025:8025"  # Web UI port
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
     networks:
       - giljo-net
     profiles:
-      - tools  # Only start when explicitly requested
+      - tools # Only start when explicitly requested
 
 # Additional volumes for development
 volumes:

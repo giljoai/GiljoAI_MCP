@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # Development overrides for docker-compose.yml
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
@@ -7,11 +7,11 @@ services:
   # PostgreSQL with exposed management port
   postgres:
     ports:
-      - "5432:5432"  # Expose for local development tools
+      - "5432:5432" # Expose for local development tools
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
     volumes:
-      - ./dev-data/postgres:/var/lib/postgresql/data  # Local volume for easy access
+      - ./dev-data/postgres:/var/lib/postgresql/data # Local volume for easy access
 
   # Redis with exposed port and no password for dev
   redis:
@@ -21,16 +21,16 @@ services:
       --maxmemory-policy allkeys-lru
       --appendonly no
     ports:
-      - "6379:6379"  # Expose for local development
+      - "6379:6379" # Expose for local development
     volumes:
-      - ./dev-data/redis:/data  # Local volume
+      - ./dev-data/redis:/data # Local volume
 
   # Application with hot reload and debug mode
   giljo_app:
     build:
       context: ../..
       dockerfile: installer/docker/Dockerfile.app
-      target: builder  # Use builder stage for development
+      target: builder # Use builder stage for development
     image: giljo-mcp:dev
     environment:
       GILJO_ENV: development
@@ -40,12 +40,12 @@ services:
       GILJO_API_KEY: dev_api_key_not_for_production
       DATABASE_URL: postgresql://giljo:dev_password@postgres:5432/giljo_mcp
       REDIS_URL: redis://redis:6379/0
-      
+
       # Development features
       GILJO_HOT_RELOAD: "true"
       GILJO_DEBUG_TOOLBAR: "true"
       GILJO_PROFILING: "false"
-      
+
       # CORS for local development
       CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000"
     volumes:
@@ -54,20 +54,20 @@ services:
       - ../../api:/app/api:ro
       - ../../frontend:/app/frontend:ro
       - ../../tests:/app/tests:ro
-      
+
       # Local data directories
       - ./dev-data/app:/app/data
       - ./dev-logs:/app/logs
       - ./dev-config:/app/config
-      
+
       # Mount local .env file
       - ../../.env.dev:/app/.env:ro
     ports:
-      - "8000:8000"  # Main application
-      - "8001:8001"  # API
-      - "3000:3000"  # Frontend dev server
-      - "5678:5678"  # Python debugger port
-      - "9229:9229"  # Node.js debugger port
+      - "8000:8000" # Main application
+      - "8001:8001" # API
+      - "3000:3000" # Frontend dev server
+      - "5678:5678" # Python debugger port
+      - "9229:9229" # Node.js debugger port
     command: >
       sh -c "
         echo 'Starting GiljoAI MCP in development mode...' &&
@@ -112,8 +112,8 @@ services:
     container_name: giljo_mailhog
     restart: unless-stopped
     ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
     networks:
       - giljo_network
     profiles:
@@ -132,21 +132,21 @@ volumes:
       type: none
       o: bind
       device: ./dev-data/postgres
-  
+
   redis_data:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ./dev-data/redis
-  
+
   app_data:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ./dev-data/app
-  
+
   app_logs:
     driver: local
     driver_opts:

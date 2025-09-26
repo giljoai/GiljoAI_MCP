@@ -27,8 +27,8 @@ class ContinuousUIMonitor:
             format="%(asctime)s [%(levelname)s] %(message)s",
             handlers=[
                 logging.FileHandler(f'ui_monitor_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'),
-                logging.StreamHandler()
-            ]
+                logging.StreamHandler(),
+            ],
         )
         self.logger = logging.getLogger(__name__)
 
@@ -99,14 +99,17 @@ class ContinuousUIMonitor:
 
         # Simulate occasional messages for demonstration
         import random
+
         if random.random() < 0.2:  # 20% chance
-            return [{
-                "id": f"msg_{int(time.time())}_{random.randint(1000, 9999)}",
-                "from_agent": "orchestrator",
-                "content": f"UI analysis task #{random.randint(1, 100)}",
-                "priority": random.choice(["normal", "high", "urgent"]),
-                "timestamp": datetime.now().isoformat()
-            }]
+            return [
+                {
+                    "id": f"msg_{int(time.time())}_{random.randint(1000, 9999)}",
+                    "from_agent": "orchestrator",
+                    "content": f"UI analysis task #{random.randint(1, 100)}",
+                    "priority": random.choice(["normal", "high", "urgent"]),
+                    "timestamp": datetime.now().isoformat(),
+                }
+            ]
         return []
 
     async def get_mcp_messages(self):
@@ -175,7 +178,9 @@ class ContinuousUIMonitor:
     async def log_system_status(self):
         """Log periodic system status."""
         uptime = datetime.now() - self.start_time
-        self.logger.info(f"📊 STATUS - Uptime: {uptime}, Checks: {self.check_count}, Processed: {len(self.processed_messages)}")
+        self.logger.info(
+            f"📊 STATUS - Uptime: {uptime}, Checks: {self.check_count}, Processed: {len(self.processed_messages)}"
+        )
 
     def stop_monitoring(self):
         """Stop the monitoring loop."""
@@ -197,6 +202,7 @@ class ContinuousUIMonitor:
         self.logger.info(f"📨 Messages processed: {len(self.processed_messages)}")
         self.logger.info("=" * 60)
 
+
 async def main():
     """Main entry point."""
     monitor = ContinuousUIMonitor()
@@ -206,6 +212,7 @@ async def main():
         monitor.stop_monitoring()
     except Exception:
         sys.exit(1)
+
 
 if __name__ == "__main__":
     try:

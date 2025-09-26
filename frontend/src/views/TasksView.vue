@@ -14,11 +14,7 @@
         >
           History
         </v-btn>
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-plus"
-          @click="showCreateDialog = true"
-        >
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true">
           New Task
         </v-btn>
       </v-col>
@@ -128,13 +124,7 @@
         />
       </v-col>
       <v-col cols="12" md="2">
-        <v-btn
-          variant="outlined"
-          @click="clearFilters"
-          block
-        >
-          Clear Filters
-        </v-btn>
+        <v-btn variant="outlined" @click="clearFilters" block> Clear Filters </v-btn>
       </v-col>
     </v-row>
 
@@ -144,18 +134,23 @@
         <v-card color="primary" variant="outlined">
           <v-card-text class="d-flex align-center">
             <v-icon>mdi-checkbox-marked-multiple</v-icon>
-            <span class="ml-2">{{ selectedTasks.length }} task{{ selectedTasks.length > 1 ? 's' : '' }} selected</span>
+            <span class="ml-2"
+              >{{ selectedTasks.length }} task{{
+                selectedTasks.length > 1 ? 's' : ''
+              }}
+              selected</span
+            >
             <v-spacer />
-            <v-btn 
-              color="primary" 
+            <v-btn
+              color="primary"
               variant="flat"
               prepend-icon="mdi-arrow-right-bold-circle"
               @click="openConversionDialog"
             >
               Convert to Project{{ selectedTasks.length > 1 ? 's' : '' }}
             </v-btn>
-            <v-btn 
-              variant="text" 
+            <v-btn
+              variant="text"
               icon="mdi-close"
               size="small"
               class="ml-2"
@@ -173,24 +168,12 @@
       <v-card-title class="d-flex align-center py-3">
         <span class="text-h6">Tasks</span>
         <v-spacer />
-        <v-btn-toggle
-          v-model="showHierarchy"
-          size="small"
-          density="compact"
-        >
-          <v-btn
-            :value="false"
-            icon="mdi-format-list-bulleted"
-            aria-label="List view"
-          />
-          <v-btn
-            :value="true"
-            icon="mdi-file-tree"
-            aria-label="Hierarchy view"
-          />
+        <v-btn-toggle v-model="showHierarchy" size="small" density="compact">
+          <v-btn :value="false" icon="mdi-format-list-bulleted" aria-label="List view" />
+          <v-btn :value="true" icon="mdi-file-tree" aria-label="Hierarchy view" />
         </v-btn-toggle>
       </v-card-title>
-      
+
       <v-data-table
         :headers="headers"
         :items="hierarchicalTasks"
@@ -203,11 +186,7 @@
       >
         <!-- Loading State -->
         <template v-slot:loading>
-          <MascotLoader 
-            variant="working"
-            :size="60"
-            text="Loading tasks..."
-          />
+          <MascotLoader variant="working" :size="60" text="Loading tasks..." />
         </template>
 
         <!-- Selection Column -->
@@ -222,11 +201,7 @@
 
         <!-- Status Column -->
         <template v-slot:item.status="{ item }">
-          <v-chip
-            :color="getStatusColor(item.status)"
-            size="small"
-            variant="flat"
-          >
+          <v-chip :color="getStatusColor(item.status)" size="small" variant="flat">
             <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
             {{ item.status }}
           </v-chip>
@@ -234,24 +209,20 @@
 
         <!-- Priority Column -->
         <template v-slot:item.priority="{ item }">
-          <v-chip
-            :color="getPriorityColor(item.priority)"
-            size="small"
-            label
-          >
+          <v-chip :color="getPriorityColor(item.priority)" size="small" label>
             {{ item.priority }}
           </v-chip>
         </template>
 
         <!-- Title Column with Hierarchy and Drag Support -->
         <template v-slot:item.title="{ item }">
-          <div 
+          <div
             class="task-row-content"
-            :class="{ 
+            :class="{
               'drag-over': dropTarget === item.id,
-              'dragging': draggedTask?.id === item.id,
+              dragging: draggedTask?.id === item.id,
               'hierarchy-item': showHierarchy && item.parent_task_id,
-              'parent-item': showHierarchy && hasChildren(item.id)
+              'parent-item': showHierarchy && hasChildren(item.id),
             }"
             draggable="true"
             @dragstart="handleDragStart(item, $event)"
@@ -263,16 +234,16 @@
           >
             <!-- Hierarchy Indicators -->
             <div v-if="showHierarchy" class="hierarchy-indicators">
-              <div 
-                v-if="item.parent_task_id" 
+              <div
+                v-if="item.parent_task_id"
                 class="hierarchy-line"
-                :style="{ marginLeft: (getTaskDepth(item.id) * 20) + 'px' }"
+                :style="{ marginLeft: getTaskDepth(item.id) * 20 + 'px' }"
               >
                 <v-icon size="small" color="grey">mdi-subdirectory-arrow-right</v-icon>
               </div>
-              <v-icon 
+              <v-icon
                 v-if="hasChildren(item.id)"
-                size="small" 
+                size="small"
                 color="primary"
                 class="parent-indicator"
               >
@@ -281,11 +252,7 @@
             </div>
 
             <!-- Drag Handle -->
-            <v-icon 
-              class="drag-handle mr-2" 
-              size="small"
-              color="grey"
-            >
+            <v-icon class="drag-handle mr-2" size="small" color="grey">
               mdi-drag-horizontal
             </v-icon>
 
@@ -293,10 +260,10 @@
             <div class="task-content flex-grow-1">
               <div class="font-weight-medium">{{ item.title }}</div>
               <div class="text-caption text-medium-emphasis">{{ item.description }}</div>
-              
+
               <!-- Parent/Child Indicators -->
               <div v-if="showHierarchy" class="hierarchy-info mt-1">
-                <v-chip 
+                <v-chip
                   v-if="item.parent_task_id"
                   size="x-small"
                   color="info"
@@ -306,7 +273,7 @@
                   <v-icon start size="x-small">mdi-arrow-up</v-icon>
                   Child of {{ getTaskTitle(item.parent_task_id) }}
                 </v-chip>
-                <v-chip 
+                <v-chip
                   v-if="hasChildren(item.id)"
                   size="x-small"
                   color="primary"
@@ -328,11 +295,7 @@
 
         <!-- Assigned To Column -->
         <template v-slot:item.assigned_to="{ item }">
-          <v-chip
-            v-if="item.assigned_to"
-            size="small"
-            prepend-icon="mdi-robot"
-          >
+          <v-chip v-if="item.assigned_to" size="small" prepend-icon="mdi-robot">
             {{ item.assigned_to }}
           </v-chip>
           <span v-else class="text-medium-emphasis">Unassigned</span>
@@ -341,12 +304,7 @@
         <!-- Due Date Column -->
         <template v-slot:item.due_date="{ item }">
           <div v-if="item.due_date">
-            <v-icon
-              v-if="isOverdue(item.due_date)"
-              color="error"
-              size="x-small"
-              class="mr-1"
-            >
+            <v-icon v-if="isOverdue(item.due_date)" color="error" size="x-small" class="mr-1">
               mdi-alert
             </v-icon>
             {{ formatDate(item.due_date) }}
@@ -372,12 +330,7 @@
             </v-tooltip>
           </div>
           <div v-else-if="item.conversion_pending">
-            <v-chip
-              color="warning"
-              size="small"
-              prepend-icon="mdi-clock-outline"
-              variant="flat"
-            >
+            <v-chip color="warning" size="small" prepend-icon="mdi-clock-outline" variant="flat">
               Pending
             </v-chip>
           </div>
@@ -415,15 +368,14 @@
         <!-- No Data -->
         <template v-slot:no-data>
           <div class="text-center py-8">
-            <MascotLoader
-              type="image"
-              variant="thinker"
-              :size="80"
-              :show-text="false"
-            />
+            <MascotLoader type="image" variant="thinker" :size="80" :show-text="false" />
             <p class="text-h6 mt-4">No tasks found</p>
             <p class="text-body-2 text-medium-emphasis">
-              {{ search || statusFilter || priorityFilter || categoryFilter ? 'Try adjusting your filters' : 'Create your first task to get started' }}
+              {{
+                search || statusFilter || priorityFilter || categoryFilter
+                  ? 'Try adjusting your filters'
+                  : 'Create your first task to get started'
+              }}
             </p>
           </div>
         </template>
@@ -437,23 +389,23 @@
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           {{ editingTask ? 'Edit Task' : 'Create Task' }}
         </v-card-title>
-        
+
         <v-card-text>
           <v-form ref="taskForm">
             <v-text-field
               v-model="currentTask.title"
               label="Task Title"
               variant="outlined"
-              :rules="[v => !!v || 'Title is required']"
+              :rules="[(v) => !!v || 'Title is required']"
             />
-            
+
             <v-textarea
               v-model="currentTask.description"
               label="Description"
               variant="outlined"
               rows="3"
             />
-            
+
             <v-row>
               <v-col cols="6">
                 <v-select
@@ -472,7 +424,7 @@
                 />
               </v-col>
             </v-row>
-            
+
             <v-row>
               <v-col cols="6">
                 <v-select
@@ -492,7 +444,7 @@
                 />
               </v-col>
             </v-row>
-            
+
             <v-text-field
               v-model="currentTask.due_date"
               label="Due Date"
@@ -501,21 +453,11 @@
             />
           </v-form>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            variant="text"
-            @click="cancelTask"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="saveTask"
-            :loading="saving"
-          >
+          <v-btn variant="text" @click="cancelTask"> Cancel </v-btn>
+          <v-btn color="primary" variant="flat" @click="saveTask" :loading="saving">
             {{ editingTask ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>
@@ -587,7 +529,7 @@ const currentTask = ref({
   priority: 'medium',
   category: 'general',
   assigned_to: null,
-  due_date: null
+  due_date: null,
 })
 
 // Table headers
@@ -600,7 +542,7 @@ const headers = [
   { title: 'Assigned To', key: 'assigned_to', width: '150' },
   { title: 'Due Date', key: 'due_date', width: '120' },
   { title: 'Convert Status', key: 'convert_status', width: '130' },
-  { title: 'Actions', key: 'actions', sortable: false, width: '120' }
+  { title: 'Actions', key: 'actions', sortable: false, width: '120' },
 ]
 
 // Filter options
@@ -613,29 +555,29 @@ const loading = computed(() => taskStore.loading)
 const tasks = computed(() => taskStore.tasks)
 
 const agentOptions = computed(() => {
-  return agentStore.agents.map(agent => agent.name)
+  return agentStore.agents.map((agent) => agent.name)
 })
 
 const filteredTasks = computed(() => {
   // First filter by product if one is selected
-  let tasks = productStore.currentProductId 
-    ? taskStore.tasks.filter(t => t.product_id === productStore.currentProductId)
+  let tasks = productStore.currentProductId
+    ? taskStore.tasks.filter((t) => t.product_id === productStore.currentProductId)
     : taskStore.tasks
-  
+
   let filtered = [...tasks.value]
-  
+
   if (statusFilter.value) {
-    filtered = filtered.filter(t => t.status === statusFilter.value)
+    filtered = filtered.filter((t) => t.status === statusFilter.value)
   }
-  
+
   if (priorityFilter.value) {
-    filtered = filtered.filter(t => t.priority === priorityFilter.value)
+    filtered = filtered.filter((t) => t.priority === priorityFilter.value)
   }
-  
+
   if (categoryFilter.value) {
-    filtered = filtered.filter(t => t.category === categoryFilter.value)
+    filtered = filtered.filter((t) => t.category === categoryFilter.value)
   }
-  
+
   return filtered
 })
 
@@ -649,14 +591,14 @@ const hierarchicalTasks = computed(() => {
     // Root tasks (no parent) come first
     if (!a.parent_task_id && b.parent_task_id) return -1
     if (a.parent_task_id && !b.parent_task_id) return 1
-    
+
     // If both have parents, sort by parent first, then by creation date
     if (a.parent_task_id && b.parent_task_id) {
       if (a.parent_task_id !== b.parent_task_id) {
         return a.parent_task_id.localeCompare(b.parent_task_id)
       }
     }
-    
+
     // Sort by creation date as fallback
     return new Date(a.created_at || 0) - new Date(b.created_at || 0)
   })
@@ -665,9 +607,9 @@ const hierarchicalTasks = computed(() => {
 })
 
 const totalTasks = computed(() => tasks.value.length)
-const pendingTasks = computed(() => tasks.value.filter(t => t.status === 'pending').length)
-const inProgressTasks = computed(() => tasks.value.filter(t => t.status === 'in_progress').length)
-const completedTasks = computed(() => tasks.value.filter(t => t.status === 'completed').length)
+const pendingTasks = computed(() => tasks.value.filter((t) => t.status === 'pending').length)
+const inProgressTasks = computed(() => tasks.value.filter((t) => t.status === 'in_progress').length)
+const completedTasks = computed(() => tasks.value.filter((t) => t.status === 'completed').length)
 
 // Methods
 function getStatusColor(status) {
@@ -675,7 +617,7 @@ function getStatusColor(status) {
     pending: 'warning',
     in_progress: 'info',
     completed: 'success',
-    cancelled: 'grey'
+    cancelled: 'grey',
   }
   return colors[status] || 'grey'
 }
@@ -685,7 +627,7 @@ function getStatusIcon(status) {
     pending: 'mdi-clock-outline',
     in_progress: 'mdi-progress-clock',
     completed: 'mdi-check-circle',
-    cancelled: 'mdi-cancel'
+    cancelled: 'mdi-cancel',
   }
   return icons[status] || 'mdi-help'
 }
@@ -695,7 +637,7 @@ function getPriorityColor(priority) {
     low: 'grey',
     medium: 'info',
     high: 'warning',
-    critical: 'error'
+    critical: 'error',
   }
   return colors[priority] || 'grey'
 }
@@ -752,7 +694,7 @@ function cancelTask() {
     priority: 'medium',
     category: 'general',
     assigned_to: null,
-    due_date: null
+    due_date: null,
   }
 }
 
@@ -783,31 +725,33 @@ function closeConversionDialog() {
 function onTasksConverted(convertedProjects) {
   // Clear selection after successful conversion
   clearSelection()
-  
+
   // Refresh tasks to show updated conversion status
   taskStore.fetchTasks()
-  
+
   // Optional: Show success message
-  console.log(`Successfully converted ${selectedTasks.value.length} tasks to ${convertedProjects.length} project(s)`)
+  console.log(
+    `Successfully converted ${selectedTasks.value.length} tasks to ${convertedProjects.length} project(s)`,
+  )
 }
 
 // Hierarchy management methods
 function hasChildren(taskId) {
-  return filteredTasks.value.some(task => task.parent_task_id === taskId)
+  return filteredTasks.value.some((task) => task.parent_task_id === taskId)
 }
 
 function getChildCount(taskId) {
-  return filteredTasks.value.filter(task => task.parent_task_id === taskId).length
+  return filteredTasks.value.filter((task) => task.parent_task_id === taskId).length
 }
 
 function getTaskDepth(taskId, depth = 0) {
-  const task = filteredTasks.value.find(t => t.id === taskId)
+  const task = filteredTasks.value.find((t) => t.id === taskId)
   if (!task || !task.parent_task_id || depth > 10) return depth
   return getTaskDepth(task.parent_task_id, depth + 1)
 }
 
 function getTaskTitle(taskId) {
-  const task = filteredTasks.value.find(t => t.id === taskId)
+  const task = filteredTasks.value.find((t) => t.id === taskId)
   return task ? task.title : 'Unknown Task'
 }
 
@@ -817,7 +761,7 @@ function handleDragStart(task, event) {
   isDragging.value = true
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData('text/plain', task.id)
-  
+
   // Add visual feedback
   event.target.style.opacity = '0.5'
 }
@@ -826,7 +770,7 @@ function handleDragEnd(event) {
   draggedTask.value = null
   isDragging.value = false
   dropTarget.value = null
-  
+
   // Reset visual feedback
   event.target.style.opacity = '1'
 }
@@ -856,23 +800,23 @@ function handleDragLeave() {
 
 async function handleDrop(targetTask, event) {
   event.preventDefault()
-  
+
   if (!draggedTask.value || draggedTask.value.id === targetTask.id) {
     return
   }
-  
+
   // Prevent creating circular dependencies
   if (isDescendant(draggedTask.value.id, targetTask.id)) {
     console.warn('Cannot create circular dependency')
     return
   }
-  
+
   try {
     // Update the dragged task to have the target as parent
     await taskStore.updateTask(draggedTask.value.id, {
-      parent_task_id: targetTask.id
+      parent_task_id: targetTask.id,
     })
-    
+
     // Refresh tasks to show updated hierarchy
     await taskStore.fetchTasks()
   } catch (error) {
@@ -885,9 +829,9 @@ async function handleDrop(targetTask, event) {
 }
 
 function isDescendant(ancestorId, descendantId) {
-  const descendant = filteredTasks.value.find(t => t.id === descendantId)
+  const descendant = filteredTasks.value.find((t) => t.id === descendantId)
   if (!descendant || !descendant.parent_task_id) return false
-  
+
   if (descendant.parent_task_id === ancestorId) return true
   return isDescendant(ancestorId, descendant.parent_task_id)
 }
@@ -908,7 +852,7 @@ function handleConversionRollback(conversion) {
 async function saveTask() {
   const { valid } = await taskForm.value.validate()
   if (!valid) return
-  
+
   saving.value = true
   try {
     if (editingTask.value) {
@@ -937,10 +881,7 @@ onMounted(() => {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    taskStore.fetchTasks(),
-    agentStore.fetchAgents()
-  ])
+  await Promise.all([taskStore.fetchTasks(), agentStore.fetchAgents()])
 })
 </script>
 

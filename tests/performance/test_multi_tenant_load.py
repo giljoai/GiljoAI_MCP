@@ -151,13 +151,12 @@ class TestMultiTenantLoad:
 
         metrics = tenant_env.performance_metrics
 
-
         # Baseline validation
         assert metrics["setup_time_ms"] < 30000, f"Baseline setup too slow: {metrics['setup_time_ms']:.2f}ms"
         assert metrics["agents_created"] >= 45, f"Too few agents created: {metrics['agents_created']}/50"
-        assert metrics["messages_per_second"] >= 40, (
-            f"Baseline throughput too low: {metrics['messages_per_second']:.1f}/s"
-        )
+        assert (
+            metrics["messages_per_second"] >= 40
+        ), f"Baseline throughput too low: {metrics['messages_per_second']:.1f}/s"
 
     async def test_dual_tenant_isolation_performance(self, orchestrator, message_tools, db_session):
         """Test performance with 2 tenants running concurrently"""
@@ -218,7 +217,6 @@ class TestMultiTenantLoad:
 
         successful_setups = sum(1 for r in setup_results if r is True)
 
-
         assert successful_setups >= 4, f"Too many tenant setup failures: {successful_setups}/5"
 
         # Run concurrent workloads for all tenants
@@ -234,7 +232,6 @@ class TestMultiTenantLoad:
         total_agents = sum(t.performance_metrics.get("agents_created", 0) for t in tenants)
         total_throughput = sum(t.performance_metrics.get("messages_per_second", 0) for t in tenants)
 
-
         for i, tenant in enumerate(tenants):
             pass
 
@@ -248,7 +245,6 @@ class TestMultiTenantLoad:
             f"PRODUCTION FAILURE: Multi-tenant throughput {total_throughput:.1f}/s < 60/s\n"
             f"This indicates performance degradation under multi-tenant load."
         )
-
 
     async def test_tenant_data_isolation_verification(self, orchestrator, message_tools, db_session):
         """Verify complete data isolation between tenants"""
@@ -294,7 +290,6 @@ class TestMultiTenantLoad:
             agent_name=tenant2.agents[0].name, project_id=tenant2.project_id
         )
 
-
         # Verify isolation
         assert len(tenant1_messages) >= 5, "Tenant 1 missing its own messages"
         assert len(tenant2_messages) >= 5, "Tenant 2 missing its own messages"
@@ -314,7 +309,6 @@ class TestMultiTenantLoad:
 
         assert tenant2_has_own_data, "Tenant 2 doesn't have access to its own data"
         assert not tenant2_has_other_data, "Tenant 2 has access to Tenant 1's data - SECURITY BREACH"
-
 
     async def test_tenant_performance_isolation(self, orchestrator, message_tools, db_session):
         """Test that one tenant's heavy load doesn't impact another tenant's performance"""
@@ -354,7 +348,6 @@ class TestMultiTenantLoad:
         # Calculate performance impact
         performance_degradation = (baseline_performance - concurrent_performance) / baseline_performance * 100
 
-
         # PRODUCTION ISOLATION REQUIREMENTS
         assert performance_degradation < 25.0, (
             f"PRODUCTION FAILURE: Performance degradation {performance_degradation:.1f}% > 25%\n"
@@ -367,7 +360,6 @@ class TestMultiTenantLoad:
             f"< 80% of baseline {baseline_performance:.1f}\n"
             f"This indicates severe performance isolation issues."
         )
-
 
     async def test_tenant_resource_allocation_fairness(self, orchestrator, message_tools, db_session):
         """Test fair resource allocation across multiple tenants"""
@@ -396,14 +388,12 @@ class TestMultiTenantLoad:
         avg_performance = mean(performances)
         avg_agents = mean(agent_counts)
 
-
         for i, tenant in enumerate(tenants):
             metrics = tenant.performance_metrics
             perf = metrics.get("messages_per_second", 0)
             agents = metrics.get("agents_created", 0)
             abs(perf - avg_performance) / avg_performance * 100
             abs(agents - avg_agents) / avg_agents * 100
-
 
         # Check fairness - no tenant should have significantly different performance
         max_perf_variance = max(abs(p - avg_performance) / avg_performance * 100 for p in performances)
@@ -418,7 +408,6 @@ class TestMultiTenantLoad:
             f"PRODUCTION FAILURE: Agent allocation variance {max_agent_variance:.1f}% > 20%\n"
             f"Agent creation is not fair across tenants."
         )
-
 
 
 if __name__ == "__main__":

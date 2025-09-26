@@ -25,6 +25,7 @@ python api/run_api.py --ssl-keyfile key.pem --ssl-certfile cert.pem
 ### API Documentation
 
 Once running, access the interactive API documentation at:
+
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 - **OpenAPI JSON**: http://localhost:8000/openapi.json
@@ -92,19 +93,21 @@ Once running, access the interactive API documentation at:
 Connect to WebSocket for real-time updates:
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8000/ws/client123');
+const ws = new WebSocket("ws://localhost:8000/ws/client123");
 
 // Subscribe to project updates
-ws.send(JSON.stringify({
-    type: 'subscribe',
-    entity_type: 'project',
-    entity_id: 'project-uuid'
-}));
+ws.send(
+  JSON.stringify({
+    type: "subscribe",
+    entity_type: "project",
+    entity_id: "project-uuid",
+  }),
+);
 
 // Handle messages
 ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('Update received:', data);
+  const data = JSON.parse(event.data);
+  console.log("Update received:", data);
 };
 ```
 
@@ -115,10 +118,11 @@ Authentication can be enabled via configuration:
 ```yaml
 security:
   auth_enabled: true
-  auth_type: api_key  # or 'oauth'
+  auth_type: api_key # or 'oauth'
 ```
 
 When enabled, include API key in headers:
+
 ```bash
 curl -H "X-API-Key: your-api-key" http://localhost:8000/api/v1/projects
 ```
@@ -139,9 +143,9 @@ All errors follow a consistent format:
 
 ```json
 {
-    "error": "Error message",
-    "status_code": 404,
-    "detail": "Additional details (if debug mode)"
+  "error": "Error message",
+  "status_code": 404,
+  "detail": "Additional details (if debug mode)"
 }
 ```
 
@@ -235,6 +239,7 @@ CMD ["python", "api/run_api.py", "--host", "0.0.0.0"]
 ## Support
 
 For issues, questions, or contributions:
+
 - GitHub: https://github.com/giljoai/mcp-orchestrator
 - Documentation: http://localhost:8000/docs
 - Email: support@giljoai.com

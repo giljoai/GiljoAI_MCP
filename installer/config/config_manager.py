@@ -21,6 +21,7 @@ import base64
 # Try to import profile system
 try:
     from installer.core.profile import ProfileManager, ProfileType, Profile
+
     HAS_PROFILE = True
 except ImportError:
     HAS_PROFILE = False
@@ -29,6 +30,7 @@ except ImportError:
 
 class ConfigFormat(Enum):
     """Supported configuration file formats"""
+
     ENV = ".env"
     YAML = "yaml"
     JSON = "json"
@@ -39,6 +41,7 @@ class ConfigFormat(Enum):
 @dataclass
 class ConfigurationValue:
     """Represents a configuration value with metadata"""
+
     key: str
     value: Any
     description: str = ""
@@ -70,7 +73,7 @@ class ConfigurationValue:
             formatted_value = str(self.value)
 
         # Quote if contains spaces or special characters
-        if ' ' in formatted_value or '"' in formatted_value:
+        if " " in formatted_value or '"' in formatted_value:
             formatted_value = f'"{formatted_value}"'
 
         lines.append(f"{self.key}={formatted_value}")
@@ -80,6 +83,7 @@ class ConfigurationValue:
 @dataclass
 class Configuration:
     """Complete configuration for an installation"""
+
     profile_type: str
     values: Dict[str, ConfigurationValue] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -106,7 +110,7 @@ class Configuration:
             "metadata": self.metadata,
             "created_at": self.created_at.isoformat(),
             "modified_at": self.modified_at.isoformat() if self.modified_at else None,
-            "version": self.version
+            "version": self.version,
         }
 
     def to_env(self) -> str:
@@ -116,13 +120,13 @@ class Configuration:
             f"# Profile: {self.profile_type}",
             f"# Generated: {datetime.now().isoformat()}",
             f"# Version: {self.version}",
-            ""
+            "",
         ]
 
         # Group configurations by category
         categories = {}
         for key, config_value in self.values.items():
-            category = key.split('_')[0].upper()
+            category = key.split("_")[0].upper()
             if category not in categories:
                 categories[category] = []
             categories[category].append(config_value)
@@ -157,9 +161,9 @@ class ConfigurationManager:
 
     def generate_configuration(
         self,
-        profile_type: Union[str, 'ProfileType'],
+        profile_type: Union[str, "ProfileType"],
         user_inputs: Optional[Dict[str, Any]] = None,
-        connection_strings: Optional[Dict[str, str]] = None
+        connection_strings: Optional[Dict[str, str]] = None,
     ) -> Configuration:
         """
         Generate configuration based on profile and user inputs
@@ -176,7 +180,7 @@ class ConfigurationManager:
         connection_strings = connection_strings or {}
 
         # Convert profile type to string if enum
-        if hasattr(profile_type, 'value'):
+        if hasattr(profile_type, "value"):
             profile_name = profile_type.value
         else:
             profile_name = str(profile_type)
@@ -188,158 +192,156 @@ class ConfigurationManager:
         profile_defaults = self._get_profile_defaults(profile_name)
 
         # Core application settings
-        config.add_value("APP_NAME", "GiljoAI_MCP",
-                        description="Application name")
-        config.add_value("APP_VERSION", "1.0.0",
-                        description="Application version")
-        config.add_value("APP_ENV", profile_defaults.get("environment", "development"),
-                        description="Application environment")
-        config.add_value("DEBUG", profile_defaults.get("debug", False),
-                        description="Enable debug mode")
+        config.add_value("APP_NAME", "GiljoAI_MCP", description="Application name")
+        config.add_value("APP_VERSION", "1.0.0", description="Application version")
+        config.add_value(
+            "APP_ENV", profile_defaults.get("environment", "development"), description="Application environment"
+        )
+        config.add_value("DEBUG", profile_defaults.get("debug", False), description="Enable debug mode")
 
         # API Configuration
-        config.add_value("API_HOST", user_inputs.get("api_host", "0.0.0.0"),
-                        description="API server host")
-        config.add_value("API_PORT", user_inputs.get("api_port", 8000),
-                        description="API server port")
-        config.add_value("API_WORKERS", profile_defaults.get("workers", 1),
-                        description="Number of API workers")
+        config.add_value("API_HOST", user_inputs.get("api_host", "0.0.0.0"), description="API server host")
+        config.add_value("API_PORT", user_inputs.get("api_port", 8000), description="API server port")
+        config.add_value("API_WORKERS", profile_defaults.get("workers", 1), description="Number of API workers")
 
         # Frontend Configuration
-        config.add_value("FRONTEND_HOST", user_inputs.get("frontend_host", "localhost"),
-                        description="Frontend server host")
-        config.add_value("FRONTEND_PORT", user_inputs.get("frontend_port", 3000),
-                        description="Frontend server port")
-        config.add_value("FRONTEND_URL", f"http://{user_inputs.get('frontend_host', 'localhost')}:{user_inputs.get('frontend_port', 3000)}",
-                        description="Frontend URL")
+        config.add_value(
+            "FRONTEND_HOST", user_inputs.get("frontend_host", "localhost"), description="Frontend server host"
+        )
+        config.add_value("FRONTEND_PORT", user_inputs.get("frontend_port", 3000), description="Frontend server port")
+        config.add_value(
+            "FRONTEND_URL",
+            f"http://{user_inputs.get('frontend_host', 'localhost')}:{user_inputs.get('frontend_port', 3000)}",
+            description="Frontend URL",
+        )
 
         # WebSocket Configuration
-        config.add_value("WEBSOCKET_PORT", user_inputs.get("websocket_port", 8001),
-                        description="WebSocket server port")
-        config.add_value("WEBSOCKET_ENABLED", True,
-                        description="Enable WebSocket support")
+        config.add_value("WEBSOCKET_PORT", user_inputs.get("websocket_port", 8001), description="WebSocket server port")
+        config.add_value("WEBSOCKET_ENABLED", True, description="Enable WebSocket support")
 
         # Database Configuration
         db_type = profile_defaults.get("database", "sqlite")
         if db_type == "postgresql" and "postgresql" in connection_strings:
-            config.add_value("DATABASE_URL", connection_strings["postgresql"],
-                            description="PostgreSQL connection string",
-                            secret=True)
+            config.add_value(
+                "DATABASE_URL",
+                connection_strings["postgresql"],
+                description="PostgreSQL connection string",
+                secret=True,
+            )
         else:
             # SQLite fallback
             db_path = user_inputs.get("db_path", "data/giljo_mcp.db")
-            config.add_value("DATABASE_URL", f"sqlite:///{db_path}",
-                            description="Database connection string")
+            config.add_value("DATABASE_URL", f"sqlite:///{db_path}", description="Database connection string")
 
-        config.add_value("DATABASE_TYPE", db_type,
-                        description="Database type")
-        config.add_value("DATABASE_POOL_SIZE", profile_defaults.get("db_pool_size", 5),
-                        description="Database connection pool size")
+        config.add_value("DATABASE_TYPE", db_type, description="Database type")
+        config.add_value(
+            "DATABASE_POOL_SIZE", profile_defaults.get("db_pool_size", 5), description="Database connection pool size"
+        )
 
         # Redis Configuration
         if "redis" in connection_strings:
-            config.add_value("REDIS_URL", connection_strings["redis"],
-                            description="Redis connection string",
-                            secret=True)
+            config.add_value(
+                "REDIS_URL", connection_strings["redis"], description="Redis connection string", secret=True
+            )
         else:
             redis_host = user_inputs.get("redis_host", "localhost")
             redis_port = user_inputs.get("redis_port", 6379)
-            config.add_value("REDIS_URL", f"redis://{redis_host}:{redis_port}/0",
-                            description="Redis connection string")
+            config.add_value("REDIS_URL", f"redis://{redis_host}:{redis_port}/0", description="Redis connection string")
 
-        config.add_value("REDIS_ENABLED", profile_defaults.get("redis_enabled", False),
-                        description="Enable Redis caching")
+        config.add_value(
+            "REDIS_ENABLED", profile_defaults.get("redis_enabled", False), description="Enable Redis caching"
+        )
 
         # Security Configuration
-        config.add_value("SECRET_KEY", self._generate_secret_key(),
-                        description="Application secret key",
-                        secret=True)
-        config.add_value("JWT_SECRET", self._generate_secret_key(),
-                        description="JWT signing secret",
-                        secret=True)
-        config.add_value("CORS_ORIGINS", user_inputs.get("cors_origins", ["http://localhost:3000"]),
-                        description="Allowed CORS origins")
-        config.add_value("SECURE_COOKIES", profile_defaults.get("secure_cookies", False),
-                        description="Use secure cookies")
+        config.add_value("SECRET_KEY", self._generate_secret_key(), description="Application secret key", secret=True)
+        config.add_value("JWT_SECRET", self._generate_secret_key(), description="JWT signing secret", secret=True)
+        config.add_value(
+            "CORS_ORIGINS",
+            user_inputs.get("cors_origins", ["http://localhost:3000"]),
+            description="Allowed CORS origins",
+        )
+        config.add_value(
+            "SECURE_COOKIES", profile_defaults.get("secure_cookies", False), description="Use secure cookies"
+        )
 
         # Authentication Configuration
         auth_enabled = profile_defaults.get("auth_enabled", False)
-        config.add_value("AUTH_ENABLED", auth_enabled,
-                        description="Enable authentication")
+        config.add_value("AUTH_ENABLED", auth_enabled, description="Enable authentication")
 
         if auth_enabled:
-            config.add_value("AUTH_METHOD", profile_defaults.get("auth_method", "api_key"),
-                            description="Authentication method")
+            config.add_value(
+                "AUTH_METHOD", profile_defaults.get("auth_method", "api_key"), description="Authentication method"
+            )
             if profile_defaults.get("auth_method") == "api_key":
-                config.add_value("API_KEY", self._generate_api_key(),
-                                description="API authentication key",
-                                secret=True)
+                config.add_value("API_KEY", self._generate_api_key(), description="API authentication key", secret=True)
             elif profile_defaults.get("auth_method") == "oauth":
-                config.add_value("OAUTH_CLIENT_ID", user_inputs.get("oauth_client_id", ""),
-                                description="OAuth client ID",
-                                required=True)
-                config.add_value("OAUTH_CLIENT_SECRET", user_inputs.get("oauth_client_secret", ""),
-                                description="OAuth client secret",
-                                secret=True,
-                                required=True)
+                config.add_value(
+                    "OAUTH_CLIENT_ID",
+                    user_inputs.get("oauth_client_id", ""),
+                    description="OAuth client ID",
+                    required=True,
+                )
+                config.add_value(
+                    "OAUTH_CLIENT_SECRET",
+                    user_inputs.get("oauth_client_secret", ""),
+                    description="OAuth client secret",
+                    secret=True,
+                    required=True,
+                )
 
         # Logging Configuration
-        config.add_value("LOG_LEVEL", profile_defaults.get("log_level", "INFO"),
-                        description="Logging level")
-        config.add_value("LOG_FORMAT", "json" if profile_name in ["enterprise", "production"] else "text",
-                        description="Log output format")
-        config.add_value("LOG_FILE", user_inputs.get("log_file", "logs/giljo_mcp.log"),
-                        description="Log file path")
+        config.add_value("LOG_LEVEL", profile_defaults.get("log_level", "INFO"), description="Logging level")
+        config.add_value(
+            "LOG_FORMAT",
+            "json" if profile_name in ["enterprise", "production"] else "text",
+            description="Log output format",
+        )
+        config.add_value("LOG_FILE", user_inputs.get("log_file", "logs/giljo_mcp.log"), description="Log file path")
 
         # MCP Server Configuration
-        config.add_value("MCP_ENABLED", True,
-                        description="Enable MCP server")
-        config.add_value("MCP_PORT", user_inputs.get("mcp_port", 8002),
-                        description="MCP server port")
-        config.add_value("MCP_MAX_AGENTS", profile_defaults.get("max_agents", 10),
-                        description="Maximum concurrent agents")
+        config.add_value("MCP_ENABLED", True, description="Enable MCP server")
+        config.add_value("MCP_PORT", user_inputs.get("mcp_port", 8002), description="MCP server port")
+        config.add_value(
+            "MCP_MAX_AGENTS", profile_defaults.get("max_agents", 10), description="Maximum concurrent agents"
+        )
 
         # Profile-specific configurations
         if profile_name == "developer":
-            config.add_value("HOT_RELOAD", True,
-                            description="Enable hot reload for development")
-            config.add_value("MOCK_EXTERNAL_SERVICES", True,
-                            description="Use mock external services")
+            config.add_value("HOT_RELOAD", True, description="Enable hot reload for development")
+            config.add_value("MOCK_EXTERNAL_SERVICES", True, description="Use mock external services")
 
         elif profile_name == "team":
-            config.add_value("TEAM_NAME", user_inputs.get("team_name", ""),
-                            description="Team name",
-                            required=True)
-            config.add_value("TEAM_SIZE", user_inputs.get("team_size", 5),
-                            description="Team size")
+            config.add_value("TEAM_NAME", user_inputs.get("team_name", ""), description="Team name", required=True)
+            config.add_value("TEAM_SIZE", user_inputs.get("team_size", 5), description="Team size")
 
         elif profile_name == "enterprise":
-            config.add_value("ENTERPRISE_NAME", user_inputs.get("enterprise_name", ""),
-                            description="Enterprise name",
-                            required=True)
-            config.add_value("LDAP_ENABLED", user_inputs.get("ldap_enabled", False),
-                            description="Enable LDAP authentication")
-            config.add_value("AUDIT_LOGGING", True,
-                            description="Enable audit logging")
-            config.add_value("COMPLIANCE_MODE", user_inputs.get("compliance_mode", "SOC2"),
-                            description="Compliance mode")
+            config.add_value(
+                "ENTERPRISE_NAME", user_inputs.get("enterprise_name", ""), description="Enterprise name", required=True
+            )
+            config.add_value(
+                "LDAP_ENABLED", user_inputs.get("ldap_enabled", False), description="Enable LDAP authentication"
+            )
+            config.add_value("AUDIT_LOGGING", True, description="Enable audit logging")
+            config.add_value(
+                "COMPLIANCE_MODE", user_inputs.get("compliance_mode", "SOC2"), description="Compliance mode"
+            )
 
         elif profile_name == "research":
-            config.add_value("EXPERIMENT_MODE", True,
-                            description="Enable experimental features")
-            config.add_value("DATA_COLLECTION", user_inputs.get("data_collection", True),
-                            description="Enable data collection for research")
-            config.add_value("GPU_ENABLED", user_inputs.get("gpu_enabled", False),
-                            description="Enable GPU acceleration")
+            config.add_value("EXPERIMENT_MODE", True, description="Enable experimental features")
+            config.add_value(
+                "DATA_COLLECTION",
+                user_inputs.get("data_collection", True),
+                description="Enable data collection for research",
+            )
+            config.add_value(
+                "GPU_ENABLED", user_inputs.get("gpu_enabled", False), description="Enable GPU acceleration"
+            )
 
         # Docker-specific configurations (for containerized profile)
         if profile_defaults.get("containerized", False):
-            config.add_value("DOCKER_NETWORK", "giljo_mcp_network",
-                            description="Docker network name")
-            config.add_value("DOCKER_VOLUME_DATA", "giljo_mcp_data",
-                            description="Docker volume for data")
-            config.add_value("DOCKER_VOLUME_LOGS", "giljo_mcp_logs",
-                            description="Docker volume for logs")
+            config.add_value("DOCKER_NETWORK", "giljo_mcp_network", description="Docker network name")
+            config.add_value("DOCKER_VOLUME_DATA", "giljo_mcp_data", description="Docker volume for data")
+            config.add_value("DOCKER_VOLUME_LOGS", "giljo_mcp_logs", description="Docker volume for logs")
 
         # Add metadata
         config.metadata = {
@@ -347,7 +349,7 @@ class ConfigurationManager:
             "generation_method": "installer",
             "profile_used": profile_name,
             "host_system": os.name,
-            "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}"
+            "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}",
         }
 
         return config
@@ -366,7 +368,7 @@ class ConfigurationManager:
                 "secure_cookies": False,
                 "db_pool_size": 5,
                 "max_agents": 5,
-                "containerized": False
+                "containerized": False,
             },
             "team": {
                 "environment": "staging",
@@ -380,7 +382,7 @@ class ConfigurationManager:
                 "secure_cookies": False,
                 "db_pool_size": 10,
                 "max_agents": 20,
-                "containerized": False
+                "containerized": False,
             },
             "enterprise": {
                 "environment": "production",
@@ -394,7 +396,7 @@ class ConfigurationManager:
                 "secure_cookies": True,
                 "db_pool_size": 20,
                 "max_agents": 100,
-                "containerized": True
+                "containerized": True,
             },
             "research": {
                 "environment": "research",
@@ -407,7 +409,7 @@ class ConfigurationManager:
                 "secure_cookies": False,
                 "db_pool_size": 15,
                 "max_agents": 50,
-                "containerized": False
+                "containerized": False,
             },
             "containerized": {
                 "environment": "production",
@@ -421,8 +423,8 @@ class ConfigurationManager:
                 "secure_cookies": True,
                 "db_pool_size": 20,
                 "max_agents": 50,
-                "containerized": True
-            }
+                "containerized": True,
+            },
         }
         return defaults.get(profile_name.lower(), defaults["developer"])
 
@@ -437,10 +439,7 @@ class ConfigurationManager:
         return f"{prefix}_{key}"
 
     def save_configuration(
-        self,
-        config: Configuration,
-        output_path: Optional[Path] = None,
-        format: ConfigFormat = ConfigFormat.ENV
+        self, config: Configuration, output_path: Optional[Path] = None, format: ConfigFormat = ConfigFormat.ENV
     ) -> Path:
         """
         Save configuration to file
@@ -473,10 +472,10 @@ class ConfigurationManager:
         if format == ConfigFormat.ENV:
             output_path.write_text(config.to_env())
         elif format == ConfigFormat.YAML:
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 yaml.safe_dump(config.to_dict(), f, default_flow_style=False)
         elif format == ConfigFormat.JSON:
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump(config.to_dict(), f, indent=2)
         else:
             # For other formats, use simple key=value
@@ -505,11 +504,11 @@ class ConfigurationManager:
         # Detect format from extension
         ext = config_path.suffix.lower()
 
-        if ext in ['.env', '']:
+        if ext in [".env", ""]:
             return self._load_env_file(config_path)
-        elif ext in ['.yaml', '.yml']:
+        elif ext in [".yaml", ".yml"]:
             return self._load_yaml_file(config_path)
-        elif ext == '.json':
+        elif ext == ".json":
             return self._load_json_file(config_path)
         else:
             # Try to load as env file
@@ -519,23 +518,23 @@ class ConfigurationManager:
         """Load .env format configuration"""
         config = Configuration(profile_type="unknown")
 
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             for line in f:
                 line = line.strip()
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip().strip('"').strip("'")
 
                     # Try to parse value type
-                    if value.lower() in ['true', 'false']:
-                        value = value.lower() == 'true'
+                    if value.lower() in ["true", "false"]:
+                        value = value.lower() == "true"
                     elif value.isdigit():
                         value = int(value)
-                    elif value.startswith('[') and value.endswith(']'):
+                    elif value.startswith("[") and value.endswith("]"):
                         try:
                             value = json.loads(value)
                         except:
@@ -547,35 +546,29 @@ class ConfigurationManager:
 
     def _load_yaml_file(self, path: Path) -> Configuration:
         """Load YAML format configuration"""
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             data = yaml.safe_load(f)
 
-        config = Configuration(
-            profile_type=data.get('profile_type', 'unknown'),
-            version=data.get('version', '1.0.0')
-        )
+        config = Configuration(profile_type=data.get("profile_type", "unknown"), version=data.get("version", "1.0.0"))
 
-        for key, value in data.get('values', {}).items():
+        for key, value in data.get("values", {}).items():
             config.add_value(key, value)
 
-        config.metadata = data.get('metadata', {})
+        config.metadata = data.get("metadata", {})
 
         return config
 
     def _load_json_file(self, path: Path) -> Configuration:
         """Load JSON format configuration"""
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             data = json.load(f)
 
-        config = Configuration(
-            profile_type=data.get('profile_type', 'unknown'),
-            version=data.get('version', '1.0.0')
-        )
+        config = Configuration(profile_type=data.get("profile_type", "unknown"), version=data.get("version", "1.0.0"))
 
-        for key, value in data.get('values', {}).items():
+        for key, value in data.get("values", {}).items():
             config.add_value(key, value)
 
-        config.metadata = data.get('metadata', {})
+        config.metadata = data.get("metadata", {})
 
         return config
 
@@ -698,11 +691,7 @@ class ConfigurationManager:
 
         return True
 
-    def migrate_configuration(
-        self,
-        old_config_path: Path,
-        new_profile: Optional[str] = None
-    ) -> Configuration:
+    def migrate_configuration(self, old_config_path: Path, new_profile: Optional[str] = None) -> Configuration:
         """
         Migrate an existing configuration to new format
 
@@ -718,23 +707,15 @@ class ConfigurationManager:
 
         # If new profile specified, regenerate with old values as inputs
         if new_profile:
-            user_inputs = {
-                key: value.value
-                for key, value in old_config.values.items()
-            }
+            user_inputs = {key: value.value for key, value in old_config.values.items()}
 
             # Generate new configuration with migrated values
-            new_config = self.generate_configuration(
-                profile_type=new_profile,
-                user_inputs=user_inputs
-            )
+            new_config = self.generate_configuration(profile_type=new_profile, user_inputs=user_inputs)
 
             # Preserve any custom values not in new config
             for key, value in old_config.values.items():
                 if key not in new_config.values:
-                    new_config.add_value(key, value.value,
-                                       description=f"Migrated from old config",
-                                       source="migration")
+                    new_config.add_value(key, value.value, description=f"Migrated from old config", source="migration")
         else:
             new_config = old_config
 
@@ -745,11 +726,7 @@ class ConfigurationManager:
 
         return new_config
 
-    def diff_configurations(
-        self,
-        config1: Configuration,
-        config2: Configuration
-    ) -> Dict[str, Any]:
+    def diff_configurations(self, config1: Configuration, config2: Configuration) -> Dict[str, Any]:
         """
         Compare two configurations and return differences
 
@@ -760,12 +737,7 @@ class ConfigurationManager:
         Returns:
             Dictionary of differences
         """
-        diff = {
-            "added": {},
-            "removed": {},
-            "modified": {},
-            "unchanged": {}
-        }
+        diff = {"added": {}, "removed": {}, "modified": {}, "unchanged": {}}
 
         all_keys = set(config1.values.keys()) | set(config2.values.keys())
 
@@ -775,10 +747,7 @@ class ConfigurationManager:
             elif key not in config1.values and key in config2.values:
                 diff["added"][key] = config2.values[key].value
             elif config1.values[key].value != config2.values[key].value:
-                diff["modified"][key] = {
-                    "old": config1.values[key].value,
-                    "new": config2.values[key].value
-                }
+                diff["modified"][key] = {"old": config1.values[key].value, "new": config2.values[key].value}
             else:
                 diff["unchanged"][key] = config1.values[key].value
 
@@ -786,10 +755,7 @@ class ConfigurationManager:
 
 
 # Convenience functions
-def generate_config_for_profile(
-    profile: Union[str, 'ProfileType'],
-    **kwargs
-) -> Configuration:
+def generate_config_for_profile(profile: Union[str, "ProfileType"], **kwargs) -> Configuration:
     """
     Quick function to generate configuration for a profile
 

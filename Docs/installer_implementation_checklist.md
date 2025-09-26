@@ -1,9 +1,11 @@
 # GiljoAI MCP Installer Implementation Checklist
 
 ## Phase 1: Foundation Refactor
-*Target: Refactor existing installer to support profiles*
+
+_Target: Refactor existing installer to support profiles_
 
 ### Profile System
+
 - [ ] Create `installer/core/profile.py` with profile definitions
 - [ ] Add profile selection to GUI welcome page
 - [ ] Add profile selection to CLI installer
@@ -11,6 +13,7 @@
 - [ ] Add profile detection based on environment
 
 ### Dependency Detection
+
 - [ ] Create `installer/core/detector.py`
 - [ ] Implement PostgreSQL detection
 - [ ] Implement Redis detection
@@ -19,6 +22,7 @@
 - [ ] Add version checking for each dependency
 
 ### Health Check System
+
 - [ ] Create `installer/core/health.py`
 - [ ] PostgreSQL connection test
 - [ ] Redis connection test
@@ -27,11 +31,13 @@
 - [ ] Service status checks
 
 ## Phase 2: Dependency Installers
-*Target: Actually install missing dependencies*
+
+_Target: Actually install missing dependencies_
 
 ### PostgreSQL Installer (`installer/dependencies/postgresql.py`)
 
 #### Windows
+
 - [ ] PowerShell script for PostgreSQL download
 - [ ] Silent installation parameters
 - [ ] Service configuration
@@ -40,6 +46,7 @@
 - [ ] User permission setup
 
 #### macOS
+
 - [ ] Homebrew installation check
 - [ ] `brew install postgresql` integration
 - [ ] Alternative: PostgreSQL.app download
@@ -48,6 +55,7 @@
 - [ ] User creation
 
 #### Linux
+
 - [ ] Detect package manager (apt/yum/dnf/pacman)
 - [ ] Package installation commands
 - [ ] Service enablement with systemd
@@ -58,6 +66,7 @@
 ### Redis Installer (`installer/dependencies/redis.py`)
 
 #### Windows
+
 - [ ] Download Redis Windows build from GitHub
 - [ ] Extract to Program Files
 - [ ] Create Redis service
@@ -66,6 +75,7 @@
 - [ ] Firewall rules
 
 #### macOS
+
 - [ ] Homebrew: `brew install redis`
 - [ ] Alternative: Compile from source
 - [ ] Launch agent creation
@@ -73,6 +83,7 @@
 - [ ] Data directory creation
 
 #### Linux
+
 - [ ] Package manager installation
 - [ ] systemd service file
 - [ ] Configuration file generation
@@ -82,6 +93,7 @@
 ### Docker Installer (`installer/dependencies/docker.py`)
 
 #### All Platforms
+
 - [ ] Docker Desktop download guide
 - [ ] Installation verification
 - [ ] Docker daemon startup check
@@ -89,6 +101,7 @@
 - [ ] User group permissions (Linux)
 
 ### Docker Configuration
+
 - [ ] Generate Dockerfile for app
 - [ ] Create docker-compose.yml based on profile
 - [ ] Volume mapping configuration
@@ -97,9 +110,11 @@
 - [ ] Container health checks
 
 ## Phase 3: Installer UI/UX Updates
-*Target: Better user experience during installation*
+
+_Target: Better user experience during installation_
 
 ### GUI Installer Updates (`setup_gui.py`)
+
 - [ ] Add profile selection page after welcome
 - [ ] Add dependency installation progress page
 - [ ] Real-time log display during installation
@@ -108,6 +123,7 @@
 - [ ] Success summary with next steps
 
 ### CLI Installer Updates (`setup.py`)
+
 - [ ] Add profile selection menu
 - [ ] Progress bars for downloads
 - [ ] Spinner animations during installation
@@ -116,6 +132,7 @@
 - [ ] Summary table of what will be installed
 
 ### Common UI Elements
+
 - [ ] Profile comparison table
 - [ ] Dependency explanation tooltips/help text
 - [ ] Installation time estimates
@@ -124,9 +141,11 @@
 - [ ] Rollback confirmation dialogs
 
 ## Phase 4: Configuration Management
-*Target: Smart configuration based on profiles and environment*
+
+_Target: Smart configuration based on profiles and environment_
 
 ### Configuration Templates
+
 - [ ] Local Development .env template
 - [ ] Network Shared .env template
 - [ ] High Performance .env template
@@ -134,6 +153,7 @@
 - [ ] config.yaml templates per profile
 
 ### Dynamic Configuration
+
 - [ ] Auto-detect local network IP for LAN mode
 - [ ] Generate secure passwords/tokens
 - [ ] Port conflict resolution
@@ -142,6 +162,7 @@
 - [ ] CORS origin configuration
 
 ### Migration Support
+
 - [ ] SQLite to PostgreSQL data migration
 - [ ] Configuration upgrade tool
 - [ ] Backup before migration
@@ -149,9 +170,11 @@
 - [ ] Data validation after migration
 
 ## Phase 5: Service Management
-*Target: Proper service installation and management*
+
+_Target: Proper service installation and management_
 
 ### Windows Services
+
 - [ ] Create Windows service wrapper
 - [ ] Service installation script
 - [ ] Service start/stop commands
@@ -159,6 +182,7 @@
 - [ ] Service recovery options
 
 ### macOS Services
+
 - [ ] launchd plist generation
 - [ ] Service installation
 - [ ] Launch agent for user services
@@ -166,6 +190,7 @@
 - [ ] Service management commands
 
 ### Linux Services
+
 - [ ] systemd unit file generation
 - [ ] Service installation
 - [ ] Service enable/disable
@@ -173,9 +198,11 @@
 - [ ] Journal log integration
 
 ## Phase 6: Post-Installation Tools
-*Target: Management commands for after installation*
+
+_Target: Management commands for after installation_
 
 ### Management Commands
+
 - [ ] `giljo-mcp status` - Show service status
 - [ ] `giljo-mcp upgrade` - Upgrade installation
 - [ ] `giljo-mcp reconfigure` - Change configuration
@@ -184,6 +211,7 @@
 - [ ] `giljo-mcp uninstall` - Clean removal
 
 ### Upgrade System
+
 - [ ] Detect new dependencies available
 - [ ] Profile upgrade path (Local -> Network Shared -> High Performance)
 - [ ] Dependency addition wizard
@@ -191,9 +219,11 @@
 - [ ] Version management
 
 ## Phase 7: Testing & Validation
-*Target: Ensure reliability across all platforms*
+
+_Target: Ensure reliability across all platforms_
 
 ### Platform Testing
+
 - [ ] Windows 10 testing
 - [ ] Windows 11 testing
 - [ ] macOS Monterey+ testing
@@ -202,6 +232,7 @@
 - [ ] WSL2 testing
 
 ### Scenario Testing
+
 - [ ] Fresh installation - all profiles
 - [ ] Upgrade from existing installation
 - [ ] Partial dependency installation
@@ -210,6 +241,7 @@
 - [ ] Permission issues
 
 ### Integration Testing
+
 - [ ] PostgreSQL connection after install
 - [ ] Redis connection after install
 - [ ] Docker container startup
@@ -218,9 +250,11 @@
 - [ ] MCP protocol functionality
 
 ## Phase 8: Documentation
-*Target: Comprehensive user guidance*
+
+_Target: Comprehensive user guidance_
 
 ### Installation Guides
+
 - [ ] Quick start guide (updated)
 - [ ] Profile selection guide
 - [ ] Platform-specific guides
@@ -229,6 +263,7 @@
 - [ ] Video tutorials
 
 ### Technical Documentation
+
 - [ ] Architecture document
 - [ ] Configuration reference
 - [ ] API documentation
@@ -236,6 +271,7 @@
 - [ ] Backup/restore procedures
 
 ### Developer Documentation
+
 - [ ] Contributing guide
 - [ ] Development setup
 - [ ] Testing procedures
@@ -243,9 +279,11 @@
 - [ ] Dependency update process
 
 ## Phase 9: Polish & Release
-*Target: Production-ready installer*
+
+_Target: Production-ready installer_
 
 ### Final Polish
+
 - [ ] Icon and branding consistency
 - [ ] Loading animations
 - [ ] Sound effects (optional, with mute)
@@ -253,6 +291,7 @@
 - [ ] Internationalization support
 
 ### Release Preparation
+
 - [ ] Code signing certificates
 - [ ] Installer packaging
 - [ ] Update server setup
@@ -260,6 +299,7 @@
 - [ ] Crash reporting (optional)
 
 ### Distribution
+
 - [ ] GitHub releases
 - [ ] Package managers (pip, brew, apt)
 - [ ] Docker Hub images
@@ -269,6 +309,7 @@
 ## Completion Tracking
 
 ### Priority 1 (Must Have)
+
 - [ ] Profile system
 - [ ] PostgreSQL installer (basic)
 - [ ] Redis installer (basic)
@@ -276,12 +317,14 @@
 - [ ] Basic service management
 
 ### Priority 2 (Should Have)
+
 - [ ] Docker support
 - [ ] Migration tools
 - [ ] Management commands
 - [ ] Platform-specific optimizations
 
 ### Priority 3 (Nice to Have)
+
 - [ ] Auto-update system
 - [ ] Telemetry
 - [ ] Advanced monitoring
@@ -290,6 +333,7 @@
 ---
 
 ## Notes
+
 - Check off items as completed
 - Add dates when items are finished
 - Note any blockers or dependencies

@@ -252,26 +252,31 @@ graph LR
 ## Key Orchestration Features
 
 ### 🔄 Dynamic Agent Management
+
 - **On-Demand Spawning**: Agents created when needed
 - **Resource Recycling**: Reuse existing agents when possible
 - **Automatic Cleanup**: Decommission on completion
 
 ### 📬 Message-Driven Coordination
+
 - **Priority Queue**: High-priority messages processed first
 - **Acknowledgment Tracking**: Ensure message delivery
 - **Broadcast Support**: Notify all agents simultaneously
 
 ### 🤝 Seamless Handoffs
+
 - **Context Transfer**: Pass work between agents
 - **State Preservation**: Maintain progress across handoffs
 - **Resource Optimization**: Release resources when switching
 
 ### 📊 Health Monitoring
+
 - **Context Usage Tracking**: Monitor token consumption
 - **Performance Metrics**: Track agent efficiency
 - **Automatic Intervention**: Orchestrator handles issues
 
 ### 🎯 Template-Based Missions
+
 - **Predefined Roles**: Database-backed templates
 - **Dynamic Augmentation**: Runtime mission customization
 - **Version Control**: Template archive for rollback

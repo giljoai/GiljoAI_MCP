@@ -156,6 +156,7 @@ graph TD
 ## Communication Patterns
 
 ### 1. Direct Communication
+
 ```mermaid
 sequenceDiagram
     participant A as Agent A
@@ -175,6 +176,7 @@ sequenceDiagram
 ```
 
 ### 2. Broadcast Pattern
+
 ```mermaid
 sequenceDiagram
     participant O as Orchestrator
@@ -198,6 +200,7 @@ sequenceDiagram
 ```
 
 ### 3. Task Assignment Pattern
+
 ```mermaid
 sequenceDiagram
     participant O as Orchestrator
@@ -223,6 +226,7 @@ sequenceDiagram
 ```
 
 ### 4. Handoff Pattern
+
 ```mermaid
 sequenceDiagram
     participant A as Agent A
@@ -369,24 +373,28 @@ The acknowledgment array tracks which agents have received and processed broadca
 ## Key Features
 
 ### 🚀 High Performance
+
 - **Database-First Design**: ACID compliance with PostgreSQL
 - **Priority Queue**: Critical messages processed first
 - **Batch Processing**: Efficient bulk operations
 - **Connection Pooling**: Optimized database connections
 
 ### 🔒 Reliability
+
 - **Acknowledgment Arrays**: Track message delivery
 - **Retry Logic**: Exponential backoff for failures
 - **Dead Letter Queue**: Handle undeliverable messages
 - **Transaction Support**: Atomic operations
 
 ### 📊 Observability
+
 - **Message Tracing**: Full audit trail
 - **Performance Metrics**: Real-time monitoring
 - **Status Tracking**: Complete lifecycle visibility
 - **Error Reporting**: Detailed failure analysis
 
 ### 🔄 Scalability
+
 - **Horizontal Scaling**: Add more workers
 - **Redis Cache**: Optional performance boost
 - **Async Processing**: Non-blocking operations

@@ -22,11 +22,13 @@ async def list_agent_templates(
 ```
 
 **Parameters:**
+
 - `category` (optional): Filter by category ('role', 'project_type', 'custom')
 - `role` (optional): Filter by specific role (e.g., 'orchestrator', 'analyzer')
 - `is_active`: Only show active templates (default: True)
 
 **Returns:**
+
 ```json
 [
   {
@@ -42,6 +44,7 @@ async def list_agent_templates(
 ```
 
 **Example:**
+
 ```python
 templates = await mcp.call_tool("list_agent_templates", {
     "category": "role",
@@ -63,6 +66,7 @@ async def get_agent_template(
 ```
 
 **Parameters:**
+
 - `name`: Template name (e.g., 'orchestrator', 'implementer')
 - `augmentations` (optional): Additional instructions to append
 - `variables` (optional): Variable substitutions for {placeholders}
@@ -71,6 +75,7 @@ async def get_agent_template(
 Complete template content with augmentations and substitutions applied.
 
 **Example:**
+
 ```python
 template = await mcp.call_tool("get_agent_template", {
     "name": "implementer",
@@ -100,6 +105,7 @@ async def create_agent_template(
 ```
 
 **Parameters:**
+
 - `name`: Unique template name
 - `category`: Template category ('role', 'project_type', 'custom')
 - `template_content`: Template text with {variable} placeholders
@@ -109,6 +115,7 @@ async def create_agent_template(
 - `success_criteria` (optional): List of success metrics
 
 **Returns:**
+
 ```json
 {
   "id": "uuid",
@@ -119,6 +126,7 @@ async def create_agent_template(
 ```
 
 **Example:**
+
 ```python
 result = await mcp.call_tool("create_agent_template", {
     "name": "security_auditor",
@@ -147,6 +155,7 @@ async def update_agent_template(
 ```
 
 **Parameters:**
+
 - `name`: Template name to update
 - `template_content` (optional): New template content
 - `description` (optional): Updated description
@@ -155,6 +164,7 @@ async def update_agent_template(
 - `change_reason`: Reason for update (for audit trail)
 
 **Returns:**
+
 ```json
 {
   "updated": true,
@@ -176,10 +186,12 @@ async def archive_template(
 ```
 
 **Parameters:**
+
 - `template_id`: Template UUID to archive
 - `reason`: Archive reason for audit trail
 
 **Returns:**
+
 ```json
 {
   "archived": true,
@@ -202,6 +214,7 @@ async def apply_template_augmentation(
 ```
 
 **Parameters:**
+
 - `template_name`: Base template to augment
 - `augmentation_content`: Additional instructions
 - `task_context` (optional): Context for the augmentation
@@ -210,6 +223,7 @@ async def apply_template_augmentation(
 Augmented template content (base remains unchanged).
 
 **Example:**
+
 ```python
 augmented = await mcp.call_tool("apply_template_augmentation", {
     "template_name": "tester",
@@ -232,11 +246,13 @@ async def get_template_stats(
 ```
 
 **Parameters:**
+
 - `template_name` (optional): Specific template or all
 - `date_from` (optional): Start date (ISO format)
 - `date_to` (optional): End date (ISO format)
 
 **Returns:**
+
 ```json
 {
   "template_name": "orchestrator",
@@ -262,10 +278,12 @@ async def suggest_template(
 ```
 
 **Parameters:**
+
 - `task_description`: Description of the task
 - `project_type` (optional): Type of project
 
 **Returns:**
+
 ```json
 {
   "recommended": "analyzer",
@@ -288,14 +306,22 @@ async def migrate_templates(
 ```
 
 **Parameters:**
+
 - `source`: Source file to migrate from
 - `dry_run`: Preview migration without executing
 
 **Returns:**
+
 ```json
 {
   "migrated": 5,
-  "templates": ["orchestrator", "analyzer", "implementer", "tester", "documenter"],
+  "templates": [
+    "orchestrator",
+    "analyzer",
+    "implementer",
+    "tester",
+    "documenter"
+  ],
   "errors": [],
   "duration_ms": 145
 }
@@ -376,13 +402,13 @@ variables = tm.extract_variables("Template with {var1} and {var2}")
 
 ## Performance Characteristics
 
-| Operation | Target | Actual | Notes |
-|-----------|--------|--------|-------|
-| Get Template | <0.1ms | <0.05ms | With caching |
-| Apply Augmentation | <0.1ms | <0.03ms | In-memory operation |
-| Variable Substitution | <0.1ms | <0.03ms | Regex-based |
-| Create Template | <10ms | <8ms | Database write |
-| List Templates | <5ms | <3ms | Indexed query |
+| Operation             | Target | Actual  | Notes               |
+| --------------------- | ------ | ------- | ------------------- |
+| Get Template          | <0.1ms | <0.05ms | With caching        |
+| Apply Augmentation    | <0.1ms | <0.03ms | In-memory operation |
+| Variable Substitution | <0.1ms | <0.03ms | Regex-based         |
+| Create Template       | <10ms  | <8ms    | Database write      |
+| List Templates        | <5ms   | <3ms    | Indexed query       |
 
 ## Error Handling
 
@@ -397,6 +423,7 @@ All tools return structured errors:
 ```
 
 Common error codes:
+
 - `TemplateNotFound`: Template doesn't exist
 - `DuplicateTemplate`: Name already exists
 - `InvalidVariables`: Missing required variables
@@ -406,6 +433,7 @@ Common error codes:
 ## Multi-Tenant Isolation
 
 Templates are automatically scoped by:
+
 1. `tenant_key`: Organization-level isolation
 2. `product_id`: Product-level isolation
 
@@ -421,6 +449,7 @@ Cross-tenant access is prevented at the database level with foreign key constrai
 ## Migration from Legacy System
 
 ### Before (mission_templates.py):
+
 ```python
 from giljo_mcp.mission_templates import MissionTemplateGenerator
 gen = MissionTemplateGenerator()
@@ -428,6 +457,7 @@ mission = gen.get_agent_mission("analyzer", project_name="Test")
 ```
 
 ### After (template_manager.py):
+
 ```python
 from giljo_mcp.template_manager import TemplateManager
 tm = TemplateManager(session, tenant_key, product_id)

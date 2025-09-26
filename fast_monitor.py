@@ -7,9 +7,11 @@ from datetime import datetime
 def check_messages():
     """Check for new messages from agents"""
     try:
-        result = subprocess.run([
-            "python", "-c",
-            """
+        result = subprocess.run(
+            [
+                "python",
+                "-c",
+                """
 import requests
 import json
 
@@ -26,8 +28,12 @@ try:
         print(json.dumps({"status": "error", "code": response.status_code}))
 except Exception as e:
     print(json.dumps({"status": "error", "error": str(e)}))
-"""
-        ], check=False, capture_output=True, text=True)
+""",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
 
         if result.stdout:
             data = json.loads(result.stdout)

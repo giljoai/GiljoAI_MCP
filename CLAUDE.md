@@ -9,6 +9,7 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system with compl
 ## Installation System
 
 ### Phase 2 Complete: Advanced Installer with Dependency Management
+
 ```bash
 # Single entry point for all platforms
 python bootstrap.py
@@ -26,6 +27,7 @@ quickstart.bat        # Windows
 ```
 
 ### Installation Profiles Available
+
 - **Developer Profile**: SQLite, local Redis, single-machine setup
 - **Team Profile**: PostgreSQL, network-accessible, multi-user
 - **Enterprise Profile**: Production-grade PostgreSQL, clustering-ready
@@ -34,13 +36,16 @@ quickstart.bat        # Windows
 ## Development Commands
 
 ### GiljoAI MCP Server (Orchestrator)
+
 The project has its own MCP server implementation configured in `.mcp.json`:
+
 ```bash
 # GiljoAI MCP server runs via MCP protocol
 # Active product: GiljoAI-MCP Coding Orchestrator
 ```
 
 ### Python Development
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -58,17 +63,20 @@ ruff src/
 ## Architecture
 
 ### System Design
+
 - **Local-First Philosophy**: SQLite for local development, PostgreSQL for scale
 - **Multi-Tenant Architecture**: Project isolation via unique tenant keys
 - **Progressive Enhancement**: Same codebase scales from laptop to cloud
 - **OS-Neutral Code**: All paths use `pathlib.Path()`, never hardcoded separators
 
 ### Core Components
+
 1. **API Layer**: MCP Protocol, REST API, WebSocket, Authentication
 2. **Orchestration Core**: Project Manager, Agent Spawner, Message Router
 3. **Data Layer**: SQLAlchemy ORM with SQLite/PostgreSQL support
 
 ### Deployment Modes
+
 - **Local Mode**: SQLite, localhost only, zero configuration
 - **LAN Mode**: PostgreSQL, API key auth, network accessible
 - **WAN Mode**: PostgreSQL, OAuth/TLS, internet accessible
@@ -93,7 +101,9 @@ giljo_mcp/
 ## Development Approach
 
 ### Current Phase: Foundation (Week 1)
+
 Building using 20 orchestrated projects across 5 phases:
+
 - Phase 1: Foundation & Database
 - Phase 2: MCP Integration
 - Phase 3: Orchestration Engine
@@ -101,6 +111,7 @@ Building using 20 orchestrated projects across 5 phases:
 - Phase 5: Deployment & Polish
 
 ### Key Features Implemented
+
 - Vision document chunking (50K+ tokens)
 - Message acknowledgment arrays
 - Dynamic discovery via Serena MCP
@@ -108,6 +119,7 @@ Building using 20 orchestrated projects across 5 phases:
 - Orchestrator mission templates (now database-backed via template_manager.py)
 
 ### UI Requirements
+
 - Vue 3 + Vite with Vuetify 3
 - Use color themes in `docs/color_themes.md`
 - Use provided assets in `frontend/public/`
@@ -117,6 +129,7 @@ Building using 20 orchestrated projects across 5 phases:
 ## Cross-Platform Requirements
 
 Always use OS-neutral code:
+
 ```python
 from pathlib import Path
 
@@ -131,6 +144,7 @@ config_file = "~/.giljo-mcp/config.yaml"  # Unix only
 ## Database Schema
 
 Core entities: Project, Agent, Message, Task, Session, Vision, Configuration, AgentTemplate, TemplateArchive
+
 - Projects have unique tenant keys for isolation
 - Agents belong to projects with specific roles
 - Messages enable inter-agent communication
@@ -141,6 +155,7 @@ Core entities: Project, Agent, Message, Task, Session, Vision, Configuration, Ag
 ## Dependencies
 
 Key packages (see requirements.txt):
+
 - **fastmcp**: MCP server framework
 - **fastapi**: REST API and WebSockets
 - **sqlalchemy**: ORM with async support
@@ -151,13 +166,16 @@ Key packages (see requirements.txt):
 ## Template Management System
 
 ### Overview
+
 Project 3.9.b consolidated three overlapping template systems into one unified solution:
+
 - **Single Source**: `src/giljo_mcp/template_manager.py`
 - **Database Storage**: SQLAlchemy models (AgentTemplate, TemplateArchive, etc.)
 - **9 MCP Tools**: Complete template CRUD operations
 - **Performance**: <0.08ms generation (exceeds <0.1ms requirement)
 
 ### Using Templates
+
 ```python
 from giljo_mcp.template_manager import TemplateManager
 
@@ -171,7 +189,9 @@ mission = await tm.get_template(
 ```
 
 ### Migration from Legacy
+
 For backward compatibility during transition:
+
 ```python
 from giljo_mcp.template_adapter import TemplateAdapter
 adapter = TemplateAdapter(session, tenant_key, product_id)
@@ -183,6 +203,7 @@ See `docs/guides/template_migration.md` for complete migration guide.
 ## Testing Approach
 
 When tests are implemented:
+
 - Unit tests: `pytest tests/`
 - Integration tests: `pytest tests/integration/`
 - Template tests: `pytest tests/test_template_system.py`

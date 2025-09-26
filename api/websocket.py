@@ -65,7 +65,7 @@ class WebSocketManager:
         auth_context = self.auth_contexts.get(client_id, {})
         if not check_subscription_permission(auth_context, entity_type, entity_id, tenant_key):
             logger.warning(f"Unauthorized subscription attempt by {client_id} " f"for {entity_type}:{entity_id}")
-            raise HTTPException(status_code=403, detail="Not authorized to subscribe to this entity")  # noqa: TRY301
+            raise HTTPException(status_code=403, detail="Not authorized to subscribe to this entity")
 
         entity_key = f"{entity_type}:{entity_id}"
 
@@ -102,7 +102,7 @@ class WebSocketManager:
             websocket = self.active_connections[client_id]
             try:
                 await websocket.send_text(message)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error sending message to {client_id}")
                 self.disconnect(client_id)
 
@@ -112,7 +112,7 @@ class WebSocketManager:
             websocket = self.active_connections[client_id]
             try:
                 await websocket.send_json(data)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error sending JSON to {client_id}")
                 self.disconnect(client_id)
 
@@ -122,7 +122,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_text(message)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error broadcasting to {client_id}")
                 disconnected.append(client_id)
 
@@ -147,7 +147,7 @@ class WebSocketManager:
                 if client_id in self.active_connections:
                     try:
                         await self.send_json(message, client_id)
-                    except Exception as e:
+                    except Exception:
                         logger.exception("Error notifying {client_id}")
                         disconnected.append(client_id)
 
@@ -261,7 +261,10 @@ class WebSocketManager:
             await self.broadcast_json(notification)
 
     async def broadcast_project_update(
-        self, project_id: str, update_type: str, project_data: dict  # 'created', 'status_changed', 'closed'
+        self,
+        project_id: str,
+        update_type: str,
+        project_data: dict,  # 'created', 'status_changed', 'closed'
     ):
         """Broadcast project updates to subscribed clients"""
         message = {
@@ -428,7 +431,7 @@ class WebSocketManager:
             if auth_context.get("tenant_key") == tenant_key:
                 try:
                     await websocket.send_json(message)
-                except Exception as e:
+                except Exception:
                     logger.exception("Error broadcasting agent:spawn to websocket")
 
         # Also notify project and parent agent subscribers
@@ -477,7 +480,7 @@ class WebSocketManager:
             if auth_context.get("tenant_key") == tenant_key:
                 try:
                     await websocket.send_json(message)
-                except Exception as e:
+                except Exception:
                     logger.exception("Error broadcasting agent:complete to websocket")
 
         # Notify project subscribers
@@ -529,7 +532,7 @@ class WebSocketManager:
             if auth_context.get("tenant_key") == tenant_key:
                 try:
                     await websocket.send_json(message)
-                except Exception as e:
+                except Exception:
                     logger.exception("Error broadcasting agent:update to websocket")
 
         # Notify entity subscribers
@@ -577,7 +580,7 @@ class WebSocketManager:
             if auth_context.get("tenant_key") == tenant_key:
                 try:
                     await websocket.send_json(message)
-                except Exception as e:
+                except Exception:
                     logger.exception("Error broadcasting template:update to websocket")
 
         # Notify product subscribers

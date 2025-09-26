@@ -9,12 +9,7 @@
         </p>
       </v-col>
       <v-col cols="auto">
-        <v-btn-toggle
-          v-model="viewMode"
-          mandatory
-          density="compact"
-          class="mr-2"
-        >
+        <v-btn-toggle v-model="viewMode" mandatory density="compact" class="mr-2">
           <v-btn value="cards" icon="mdi-view-grid" aria-label="Card view" />
           <v-btn value="table" icon="mdi-table" aria-label="Table view" />
         </v-btn-toggle>
@@ -45,29 +40,14 @@
 
     <!-- Agent Cards Grid -->
     <v-row v-if="viewMode === 'cards'">
-      <v-col
-        v-for="agent in filteredAgents"
-        :key="agent.id"
-        cols="12"
-        sm="6"
-        md="4"
-        lg="3"
-      >
-        <v-card
-          :color="getAgentCardColor(agent)"
-          variant="tonal"
-          class="h-100"
-        >
+      <v-col v-for="agent in filteredAgents" :key="agent.id" cols="12" sm="6" md="4" lg="3">
+        <v-card :color="getAgentCardColor(agent)" variant="tonal" class="h-100">
           <!-- Agent Header -->
           <v-card-title>
             <v-row align="center" no-gutters>
               <v-col>
                 <div class="d-flex align-center">
-                  <v-avatar
-                    :color="getStatusColor(agent.status)"
-                    size="32"
-                    class="mr-2"
-                  >
+                  <v-avatar :color="getStatusColor(agent.status)" size="32" class="mr-2">
                     <v-icon size="20">mdi-robot</v-icon>
                   </v-avatar>
                   <div>
@@ -77,11 +57,7 @@
                 </div>
               </v-col>
               <v-col cols="auto">
-                <v-icon
-                  :color="getStatusColor(agent.status)"
-                  size="12"
-                  class="status-indicator"
-                >
+                <v-icon :color="getStatusColor(agent.status)" size="12" class="status-indicator">
                   mdi-circle
                 </v-icon>
               </v-col>
@@ -92,11 +68,7 @@
             <!-- Status -->
             <div class="mb-3">
               <div class="text-caption text-medium-emphasis">Status</div>
-              <v-chip
-                :color="getStatusColor(agent.status)"
-                size="small"
-                variant="flat"
-              >
+              <v-chip :color="getStatusColor(agent.status)" size="small" variant="flat">
                 {{ formatStatus(agent.status) }}
               </v-chip>
             </div>
@@ -178,13 +150,7 @@
 
           <!-- Actions -->
           <v-card-actions>
-            <v-btn
-              size="small"
-              variant="text"
-              @click="viewAgentDetails(agent)"
-            >
-              Details
-            </v-btn>
+            <v-btn size="small" variant="text" @click="viewAgentDetails(agent)"> Details </v-btn>
             <v-spacer></v-spacer>
             <v-btn
               v-if="agent.status !== 'decommissioned'"
@@ -211,11 +177,7 @@
       >
         <!-- Status Column -->
         <template v-slot:item.status="{ item }">
-          <v-chip
-            :color="getStatusColor(item.status)"
-            size="small"
-            variant="flat"
-          >
+          <v-chip :color="getStatusColor(item.status)" size="small" variant="flat">
             <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
             {{ item.status }}
           </v-chip>
@@ -243,7 +205,7 @@
               height="20"
               rounded
               class="mr-2"
-              style="min-width: 100px;"
+              style="min-width: 100px"
             >
               <template v-slot:default>
                 <span class="text-caption">{{ item.context_percentage }}%</span>
@@ -307,7 +269,11 @@
             <v-icon size="64" color="grey">mdi-robot-off</v-icon>
             <p class="text-h6 mt-4">No agents found</p>
             <p class="text-body-2 text-medium-emphasis">
-              {{ statusFilter.length ? 'Try adjusting your filters' : 'No agents are currently active' }}
+              {{
+                statusFilter.length
+                  ? 'Try adjusting your filters'
+                  : 'No agents are currently active'
+              }}
             </p>
           </v-card-text>
         </v-card>
@@ -319,20 +285,15 @@
       <v-card v-if="selectedAgent">
         <v-card-title>
           <v-row align="center">
-            <v-col>
-              Agent Details: {{ selectedAgent.name }}
-            </v-col>
+            <v-col> Agent Details: {{ selectedAgent.name }} </v-col>
             <v-col cols="auto">
-              <v-chip
-                :color="getStatusColor(selectedAgent.status)"
-                size="small"
-              >
+              <v-chip :color="getStatusColor(selectedAgent.status)" size="small">
                 {{ formatStatus(selectedAgent.status) }}
               </v-chip>
             </v-col>
           </v-row>
         </v-card-title>
-        
+
         <v-card-text>
           <v-row>
             <v-col cols="12" md="6">
@@ -350,18 +311,22 @@
                     <v-icon>mdi-account-badge</v-icon>
                   </template>
                   <v-list-item-title>Role</v-list-item-title>
-                  <v-list-item-subtitle>{{ formatAgentRole(selectedAgent.role) }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{
+                    formatAgentRole(selectedAgent.role)
+                  }}</v-list-item-subtitle>
                 </v-list-item>
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon>mdi-folder</v-icon>
                   </template>
                   <v-list-item-title>Project</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedAgent.project_name || 'N/A' }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{
+                    selectedAgent.project_name || 'N/A'
+                  }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-col>
-            
+
             <v-col cols="12" md="6">
               <div class="text-overline mb-2">Performance Metrics</div>
               <v-list density="compact">
@@ -379,14 +344,18 @@
                     <v-icon>mdi-clipboard-check</v-icon>
                   </template>
                   <v-list-item-title>Tasks Completed</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedAgent.tasks_completed || 0 }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{
+                    selectedAgent.tasks_completed || 0
+                  }}</v-list-item-subtitle>
                 </v-list-item>
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon>mdi-timer</v-icon>
                   </template>
                   <v-list-item-title>Uptime</v-list-item-title>
-                  <v-list-item-subtitle>{{ formatUptime(selectedAgent.created_at) }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{
+                    formatUptime(selectedAgent.created_at)
+                  }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-col>
@@ -440,12 +409,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAgentStore } from '@/stores/agents'
 import { useWebSocketStore } from '@/stores/websocket'
-import { 
-  formatDate, 
-  formatRelativeTime, 
-  formatNumber, 
+import {
+  formatDate,
+  formatRelativeTime,
+  formatNumber,
   formatStatus,
-  formatAgentRole 
+  formatAgentRole,
 } from '@/utils/formatters'
 import { AGENT_STATUS, REFRESH_INTERVALS } from '@/utils/constants'
 
@@ -464,7 +433,7 @@ const tableHeaders = [
   { title: 'Health', key: 'health', width: '80', align: 'center' },
   { title: 'Messages', key: 'messages', width: '100', align: 'center' },
   { title: 'Last Active', key: 'last_active', width: '150' },
-  { title: 'Actions', key: 'actions', width: '150', sortable: false }
+  { title: 'Actions', key: 'actions', width: '150', sortable: false },
 ]
 const wsStore = useWebSocketStore()
 
@@ -483,10 +452,8 @@ const filteredAgents = computed(() => {
   if (statusFilter.value.includes('all')) {
     return agents.value
   }
-  
-  return agents.value.filter(agent => 
-    statusFilter.value.includes(agent.status)
-  )
+
+  return agents.value.filter((agent) => statusFilter.value.includes(agent.status))
 })
 
 // Methods
@@ -497,7 +464,7 @@ function getStatusColor(status) {
     idle: 'info',
     error: 'error',
     inactive: 'grey',
-    decommissioned: 'grey'
+    decommissioned: 'grey',
   }
   return colors[status] || 'default'
 }
@@ -522,15 +489,15 @@ function getContextUsageColor(agent) {
 
 function formatUptime(createdAt) {
   if (!createdAt) return 'N/A'
-  
+
   const created = new Date(createdAt)
   const now = new Date()
   const diff = now - created
-  
+
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  
+
   if (days > 0) return `${days}d ${hours}h`
   if (hours > 0) return `${hours}h ${minutes}m`
   return `${minutes}m`
@@ -542,29 +509,27 @@ function getRecentActivity(agent) {
     {
       timestamp: new Date(),
       description: 'Status changed to ' + agent.status,
-      color: getStatusColor(agent.status)
+      color: getStatusColor(agent.status),
     },
     {
       timestamp: new Date(Date.now() - 3600000),
       description: 'Completed task: Data analysis',
-      color: 'success'
+      color: 'success',
     },
     {
       timestamp: new Date(Date.now() - 7200000),
       description: 'Started new job: Implementation',
-      color: 'info'
-    }
+      color: 'info',
+    },
   ]
 }
 
 async function refreshAgents() {
   await agentStore.fetchAgents()
-  
+
   // Fetch health data for each active agent
-  const activeAgents = agents.value.filter(a => a.status === 'active')
-  await Promise.all(
-    activeAgents.map(agent => agentStore.fetchAgentHealth(agent.id))
-  )
+  const activeAgents = agents.value.filter((a) => a.status === 'active')
+  await Promise.all(activeAgents.map((agent) => agentStore.fetchAgentHealth(agent.id)))
 }
 
 function viewAgentDetails(agent) {
@@ -595,10 +560,10 @@ function subscribeToUpdates() {
 // Lifecycle
 onMounted(async () => {
   await refreshAgents()
-  
+
   // Set up auto-refresh
   refreshInterval.value = setInterval(refreshAgents, REFRESH_INTERVALS.AGENT_HEALTH)
-  
+
   // Subscribe to WebSocket updates
   subscribeToUpdates()
 })

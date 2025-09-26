@@ -21,12 +21,13 @@
 ## 🚨 The Problem
 
 Every AI coding assistant hits the same wall:
+
 - **Context Window Limits**: Even 200k tokens isn't enough for real projects
-- **Session Amnesia**: Lose valuable context between sessions  
+- **Session Amnesia**: Lose valuable context between sessions
 - **No Coordination**: Multiple AI instances can't work together
 - **Task Fragmentation**: Technical debt identified but never tracked
 
-## 💡 The Solution  
+## 💡 The Solution
 
 **GiljoAI MCP** orchestrates multiple specialized AI agents that work together as a coordinated team:
 
@@ -48,6 +49,7 @@ Each agent maintains focused context within limits while the orchestrator manage
 ## ⚡ 5-Minute Quick Start
 
 ### Prerequisites
+
 ```bash
 # You need:
 - Python 3.8+
@@ -96,12 +98,12 @@ python bootstrap.py   # Universal
 
 Choose the profile that best fits your needs:
 
-| Profile | Best For | Database | Services | Network |
-|---------|----------|----------|----------|---------|
-| **Developer** | Individual development | SQLite or PostgreSQL | Local Redis | Localhost only |
-| **Team** | Small teams, LAN deployment | PostgreSQL | PostgreSQL + Redis | Network accessible |
-| **Enterprise** | Production, large organizations | PostgreSQL + clustering | Full stack | Internet-ready |
-| **Research** | AI research, experimentation | Flexible | Extended templates | Research-optimized |
+| Profile        | Best For                        | Database                | Services           | Network            |
+| -------------- | ------------------------------- | ----------------------- | ------------------ | ------------------ |
+| **Developer**  | Individual development          | SQLite or PostgreSQL    | Local Redis        | Localhost only     |
+| **Team**       | Small teams, LAN deployment     | PostgreSQL              | PostgreSQL + Redis | Network accessible |
+| **Enterprise** | Production, large organizations | PostgreSQL + clustering | Full stack         | Internet-ready     |
+| **Research**   | AI research, experimentation    | Flexible                | Extended templates | Research-optimized |
 
 ### Next Steps
 
@@ -140,18 +142,21 @@ python -m giljo_mcp dev
 ## 🎯 Key Features
 
 ### Multi-Agent Orchestration
+
 Coordinate specialized agents that work together on complex tasks:
 
-| Agent Type | Specialization | Example Tasks |
-|------------|---------------|---------------|
-| **Analyzer** | Code analysis & architecture | "Audit my codebase for security issues" |
-| **Developer** | Implementation & refactoring | "Add OAuth2 authentication" |
-| **Tester** | Testing & validation | "Create unit tests for auth module" |
-| **Reviewer** | Code review & optimization | "Optimize database queries" |
-| **Documenter** | Documentation & guides | "Generate API documentation" |
+| Agent Type     | Specialization               | Example Tasks                           |
+| -------------- | ---------------------------- | --------------------------------------- |
+| **Analyzer**   | Code analysis & architecture | "Audit my codebase for security issues" |
+| **Developer**  | Implementation & refactoring | "Add OAuth2 authentication"             |
+| **Tester**     | Testing & validation         | "Create unit tests for auth module"     |
+| **Reviewer**   | Code review & optimization   | "Optimize database queries"             |
+| **Documenter** | Documentation & guides       | "Generate API documentation"            |
 
 ### Vision Document System
+
 50K+ token documents guide every agent decision:
+
 ```python
 # Your product vision becomes the AI team's north star
 vision = "Build a secure, scalable authentication system"
@@ -159,7 +164,9 @@ agents.align_to_vision(vision)  # All agents now share this goal
 ```
 
 ### Database-Backed Message Queue
+
 Never lose messages between agents:
+
 ```sql
 -- PostgreSQL stores every message, decision, and handoff
 SELECT * FROM messages WHERE status = 'pending' AND agent = 'developer';
@@ -167,7 +174,9 @@ SELECT * FROM messages WHERE status = 'pending' AND agent = 'developer';
 ```
 
 ### Dynamic Discovery via Serena MCP
+
 Agents explore codebases intelligently:
+
 ```python
 # Instead of static indexing
 old_way = index_entire_codebase()  # Slow, outdated
@@ -177,6 +186,7 @@ new_way = agent.explore_as_needed()  # Fast, always fresh
 ```
 
 ### Progressive Architecture
+
 ```
 Local (You) → LAN (Your Team) → WAN (Your Company) → Cloud (The World)
    SQLite        PostgreSQL         PostgreSQL+TLS      Managed Service
@@ -188,6 +198,7 @@ Same codebase scales without rewrites!
 ## 📦 Installation Options
 
 ### Option 1: Quick Install (Recommended)
+
 ```bash
 # One-line install
 curl -sSL https://giljo.ai/install.sh | bash
@@ -196,7 +207,8 @@ curl -sSL https://giljo.ai/install.sh | bash
 pip install giljo-mcp
 ```
 
-### Option 2: From Source  
+### Option 2: From Source
+
 ```bash
 # Clone repository
 git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
@@ -210,6 +222,7 @@ pip install -r requirements.txt
 ```
 
 ### Option 3: Docker
+
 ```bash
 # Using Docker Compose
 docker-compose up -d
@@ -224,19 +237,20 @@ Access the real-time dashboard at: **http://localhost:6000**
 
 <div align="center">
 
-| Dashboard Feature | What You See |
-|-------------------|--------------|
-| **Live Agent Status** | Watch agents work in real-time |
-| **Message Flow** | See how agents communicate |
-| **Task Progress** | Track project completion |
-| **Token Usage** | Monitor context consumption |
-| **Performance Metrics** | Optimize orchestration |
+| Dashboard Feature       | What You See                   |
+| ----------------------- | ------------------------------ |
+| **Live Agent Status**   | Watch agents work in real-time |
+| **Message Flow**        | See how agents communicate     |
+| **Task Progress**       | Track project completion       |
+| **Token Usage**         | Monitor context consumption    |
+| **Performance Metrics** | Optimize orchestration         |
 
 </div>
 
 ## 🏗️ Architecture
 
 ### System Layers
+
 ```
 ┌─────────────────────────────────────┐
 │         Web Dashboard (Vue 3)       │ ← Real-time monitoring
@@ -253,12 +267,12 @@ Access the real-time dashboard at: **http://localhost:6000**
 
 ### Deployment Evolution
 
-| Mode | Use Case | Database | Auth | Setup Time |
-|------|----------|----------|------|------------|
-| **Local** | Personal dev | SQLite | None | 5 minutes |
-| **LAN** | Small team | PostgreSQL | API Keys | 15 minutes |
-| **WAN** | Remote team | PostgreSQL | OAuth/TLS | 30 minutes |
-| **Cloud** | Enterprise | Distributed | SSO | Managed |
+| Mode      | Use Case     | Database    | Auth      | Setup Time |
+| --------- | ------------ | ----------- | --------- | ---------- |
+| **Local** | Personal dev | SQLite      | None      | 5 minutes  |
+| **LAN**   | Small team   | PostgreSQL  | API Keys  | 15 minutes |
+| **WAN**   | Remote team  | PostgreSQL  | OAuth/TLS | 30 minutes |
+| **Cloud** | Enterprise   | Distributed | SSO       | Managed    |
 
 ## Project Structure
 
@@ -304,12 +318,13 @@ See [PROJECT_ORCHESTRATION_PLAN.md](Docs/PROJECT_ORCHESTRATION_PLAN.md) for deta
 ## 🚀 Example Orchestrations
 
 ### Example 1: Complete Feature Development
+
 ```python
 # Request: "Add user authentication with JWT tokens"
 
 orchestrator.spawn_agents([
     Analyzer("Review existing auth code"),
-    Developer("Implement JWT authentication"),  
+    Developer("Implement JWT authentication"),
     Tester("Write auth test suite"),
     Reviewer("Security audit the implementation")
 ])
@@ -318,6 +333,7 @@ orchestrator.spawn_agents([
 ```
 
 ### Example 2: Codebase Refactoring
+
 ```python
 # Request: "Refactor database layer to use SQLAlchemy"
 
@@ -332,6 +348,7 @@ orchestrator.coordinate([
 ```
 
 ### Example 3: Bug Hunt & Fix
+
 ```python
 # Request: "Find and fix all SQL injection vulnerabilities"
 
@@ -347,22 +364,23 @@ orchestrator.execute([
 
 ## 🆚 How We Compare
 
-| Feature | GiljoAI MCP | GitHub Copilot | Cursor | Codeium |
-|---------|-------------|----------------|--------|---------|
-| **Multi-Agent Teams** | ✅ Unlimited | ❌ Single | ❌ Single | ❌ Single |
-| **Context Limit** | ✅ Unlimited* | ⚠️ 8K | ⚠️ 24K | ⚠️ 16K |
-| **Session Memory** | ✅ Persistent | ❌ Lost | ❌ Lost | ❌ Lost |
-| **Team Coordination** | ✅ Built-in | ❌ None | ❌ None | ❌ None |
-| **Self-Hosted** | ✅ Yes | ❌ No | ❌ No | ⚠️ Enterprise |
-| **Custom Agents** | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **Real-time Dashboard** | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **Database Backed** | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| Feature                 | GiljoAI MCP    | GitHub Copilot | Cursor    | Codeium       |
+| ----------------------- | -------------- | -------------- | --------- | ------------- |
+| **Multi-Agent Teams**   | ✅ Unlimited   | ❌ Single      | ❌ Single | ❌ Single     |
+| **Context Limit**       | ✅ Unlimited\* | ⚠️ 8K          | ⚠️ 24K    | ⚠️ 16K        |
+| **Session Memory**      | ✅ Persistent  | ❌ Lost        | ❌ Lost   | ❌ Lost       |
+| **Team Coordination**   | ✅ Built-in    | ❌ None        | ❌ None   | ❌ None       |
+| **Self-Hosted**         | ✅ Yes         | ❌ No          | ❌ No     | ⚠️ Enterprise |
+| **Custom Agents**       | ✅ Yes         | ❌ No          | ❌ No     | ❌ No         |
+| **Real-time Dashboard** | ✅ Yes         | ❌ No          | ❌ No     | ❌ No         |
+| **Database Backed**     | ✅ Yes         | ❌ No          | ❌ No     | ❌ No         |
 
-*Via multi-agent orchestration
+\*Via multi-agent orchestration
 
 ## Documentation
 
 ### Core Documentation
+
 - [Vision Document](Docs/Vision/VISION_DOCUMENT.md) - Product vision and roadmap
 - [Technical Architecture](Docs/TECHNICAL_ARCHITECTURE.md) - System design
 - [Project Cards](Docs/PROJECT_CARDS.md) - Development project descriptions
@@ -371,6 +389,7 @@ orchestrator.execute([
 - [Navigation Guide](Docs/README_FIRST.md) - Complete project index
 
 ### Implementation Guides
+
 - [API Implementation](Docs/api/api_implementation_guide.md) - REST API details
 - [Template API Reference](Docs/api/templates.md) - Template management system API
 - [Template Migration Guide](Docs/guides/template_migration.md) - Migrate from legacy templates
@@ -379,15 +398,18 @@ orchestrator.execute([
 - [Scripts Setup](Docs/scripts/scripts_setup_guide.md) - Utility scripts
 
 ### Architecture Decision Records
+
 - [Template Consolidation](Docs/adr/003_template_consolidation.md) - Why we unified 3 systems into 1
 
 ### Testing Documentation
+
 - [Test Documentation](Docs/tests/CONSOLIDATED_TEST_DOCUMENTATION.md) - Complete testing guide
 - [Docker Tests](Docs/docker/tests/) - Container testing reports
 
 ## Security
 
 GiljoAI MCP implements comprehensive security scanning and best practices. See [SECURITY.md](SECURITY.md) for:
+
 - Security scanning policies and intentional exceptions
 - Deployment security guidelines
 - How to report security issues
@@ -431,12 +453,14 @@ MIT License - See [LICENSE](LICENSE) file for details
 ## 🤝 Community & Support
 
 ### Get Help
+
 - 📚 **Documentation**: [/Docs](Docs/) - Comprehensive guides
-- 💬 **Discord**: [Join our community](https://discord.gg/giljo-mcp) 
+- 💬 **Discord**: [Join our community](https://discord.gg/giljo-mcp)
 - 🐛 **Issues**: [GitHub Issues](https://github.com/patrik-giljoai/GiljoAI-MCP/issues)
 - 💡 **Discussions**: [GitHub Discussions](https://github.com/patrik-giljoai/GiljoAI-MCP/discussions)
 
 ### Quick Links
+
 - [Vision Document](Docs/Vision/VISION_DOCUMENT.md) - Our roadmap
 - [API Reference](Docs/api/api_implementation_guide.md) - REST API
 - [MCP Tools Manual](Docs/manuals/MCP_TOOLS_MANUAL.md) - All 20 tools
@@ -444,22 +468,22 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ## 🎯 Roadmap
 
-| Phase | Timeline | Status | Features |
-|-------|----------|--------|----------|
-| **Foundation** | Q1 2025 | ✅ Complete | Multi-tenant, SQLite, Setup |
-| **MCP Integration** | Q1 2025 | ✅ Complete | 20 tools, Serena MCP |
-| **Orchestration** | Q1 2025 | ✅ Complete | Templates, Message Queue |
-| **User Interface** | Q2 2025 | 🚧 In Progress | Vue Dashboard, WebSocket |
-| **Cloud Platform** | Q3 2025 | 📋 Planned | SaaS, Enterprise |
+| Phase               | Timeline | Status         | Features                    |
+| ------------------- | -------- | -------------- | --------------------------- |
+| **Foundation**      | Q1 2025  | ✅ Complete    | Multi-tenant, SQLite, Setup |
+| **MCP Integration** | Q1 2025  | ✅ Complete    | 20 tools, Serena MCP        |
+| **Orchestration**   | Q1 2025  | ✅ Complete    | Templates, Message Queue    |
+| **User Interface**  | Q2 2025  | 🚧 In Progress | Vue Dashboard, WebSocket    |
+| **Cloud Platform**  | Q3 2025  | 📋 Planned     | SaaS, Enterprise            |
 
 ## 🙏 Acknowledgments
 
 Built with:
+
 - [FastMCP](https://github.com/fastmcp/fastmcp) - MCP protocol implementation
 - [FastAPI](https://fastapi.tiangolo.com/) - Modern web framework
 - [SQLAlchemy](https://www.sqlalchemy.org/) - Database ORM
 - [Vue 3](https://vuejs.org/) - Progressive UI framework
-
 
 ---
 

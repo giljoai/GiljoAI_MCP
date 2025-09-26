@@ -6,21 +6,12 @@
       </v-icon>
       <span>Version History: {{ template.name }}</span>
       <v-spacer />
-      <v-btn
-        icon="mdi-close"
-        variant="text"
-        @click="$emit('close')"
-      />
+      <v-btn icon="mdi-close" variant="text" @click="$emit('close')" />
     </v-card-title>
 
     <v-card-text>
       <!-- Timeline View -->
-      <v-timeline
-        align="start"
-        density="compact"
-        side="end"
-        class="version-timeline"
-      >
+      <v-timeline align="start" density="compact" side="end" class="version-timeline">
         <v-timeline-item
           v-for="(version, index) in versions"
           :key="version.id"
@@ -42,20 +33,10 @@
           >
             <v-card-title class="text-subtitle-2 d-flex align-center">
               <span>Version {{ versions.length - index }}</span>
-              <v-chip
-                v-if="index === 0"
-                size="x-small"
-                color="success"
-                class="ml-2"
-              >
+              <v-chip v-if="index === 0" size="x-small" color="success" class="ml-2">
                 Current
               </v-chip>
-              <v-chip
-                v-if="version.archived"
-                size="x-small"
-                color="warning"
-                class="ml-2"
-              >
+              <v-chip v-if="version.archived" size="x-small" color="warning" class="ml-2">
                 Archived
               </v-chip>
               <v-spacer />
@@ -109,12 +90,7 @@
                 </div>
               </v-expand-transition>
 
-              <v-btn
-                size="x-small"
-                variant="text"
-                @click="toggleVersion(version.id)"
-                class="mt-2"
-              >
+              <v-btn size="x-small" variant="text" @click="toggleVersion(version.id)" class="mt-2">
                 {{ expandedVersions.has(version.id) ? 'Hide' : 'Show' }} Template
                 <v-icon right>
                   {{ expandedVersions.has(version.id) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
@@ -139,20 +115,12 @@
     </v-card-text>
 
     <!-- Diff Dialog -->
-    <v-dialog
-      v-model="diffDialog"
-      max-width="1200px"
-      scrollable
-    >
+    <v-dialog v-model="diffDialog" max-width="1200px" scrollable>
       <v-card>
         <v-card-title>
           <span class="text-h5">Compare Versions</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="diffDialog = false"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="diffDialog = false" />
         </v-card-title>
 
         <v-card-text>
@@ -202,11 +170,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="diffDialog = false">Close</v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="restoreVersion(comparingVersion)"
-          >
+          <v-btn color="primary" variant="flat" @click="restoreVersion(comparingVersion)">
             Restore This Version
           </v-btn>
         </v-card-actions>
@@ -214,16 +178,13 @@
     </v-dialog>
 
     <!-- Restore Confirmation Dialog -->
-    <v-dialog
-      v-model="restoreDialog"
-      max-width="500px"
-    >
+    <v-dialog v-model="restoreDialog" max-width="500px">
       <v-card>
         <v-card-title class="text-h5">Confirm Restore</v-card-title>
         <v-card-text>
           <div class="mb-4">
-            Are you sure you want to restore Version {{ getVersionNumber(restoringVersion) }}?
-            This will replace the current template with this version.
+            Are you sure you want to restore Version {{ getVersionNumber(restoringVersion) }}? This
+            will replace the current template with this version.
           </div>
           <v-text-field
             v-model="restoreReason"
@@ -236,12 +197,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="cancelRestore">Cancel</v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="confirmRestore"
-            :loading="restoring"
-          >
+          <v-btn color="primary" variant="flat" @click="confirmRestore" :loading="restoring">
             Restore
           </v-btn>
         </v-card-actions>
@@ -258,8 +214,8 @@ import { format, formatDistanceToNow } from 'date-fns'
 const props = defineProps({
   template: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 const emit = defineEmits(['close', 'restore'])
@@ -351,7 +307,7 @@ const confirmRestore = async () => {
   try {
     await api.post(`/api/templates/${props.template.id}/restore`, {
       version_id: restoringVersion.value.id,
-      reason: restoreReason.value
+      reason: restoreReason.value,
     })
 
     emit('restore', restoringVersion.value)
@@ -386,7 +342,7 @@ const getVersionIcon = (version, index) => {
 }
 
 const getVersionNumber = (version) => {
-  const index = versions.value.findIndex(v => v.id === version?.id)
+  const index = versions.value.findIndex((v) => v.id === version?.id)
   return index >= 0 ? versions.value.length - index : 0
 }
 
@@ -410,8 +366,8 @@ const getChangeSummary = (version, index) => {
     const currentVars = version.variables || []
     const prevVars = prevVersion.variables || []
 
-    const addedVars = currentVars.filter(v => !prevVars.includes(v))
-    const removedVars = prevVars.filter(v => !currentVars.includes(v))
+    const addedVars = currentVars.filter((v) => !prevVars.includes(v))
+    const removedVars = prevVars.filter((v) => !currentVars.includes(v))
 
     if (addedVars.length > 0) {
       changes.push(`+${addedVars.length} vars`)
@@ -430,7 +386,7 @@ const getDiffClass = (type) => {
   return {
     'diff-add': type === 'add',
     'diff-remove': type === 'remove',
-    'diff-modify': type === 'modify'
+    'diff-modify': type === 'modify',
   }
 }
 

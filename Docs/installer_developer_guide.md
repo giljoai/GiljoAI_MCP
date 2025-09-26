@@ -52,6 +52,7 @@ deps = profile_mgr.get_dependencies(profile)
 ```
 
 #### Profile Types
+
 - `DEVELOPER`: Local development setup
 - `TEAM`: Multi-user team environment
 - `ENTERPRISE`: Production enterprise deployment
@@ -101,6 +102,7 @@ success = config_mgr.generate_config(
 ```
 
 #### Generated Files
+
 - `config.yaml`: Main application configuration
 - `.env`: Environment variables
 - Service-specific configurations
@@ -129,6 +131,7 @@ health = pg_installer.health_check()
 ```
 
 #### Features
+
 - Cross-platform installation detection
 - Automated service creation
 - Connection testing
@@ -154,6 +157,7 @@ connected = redis_installer.test_connection()
 ```
 
 #### Features
+
 - Windows Redis automation
 - Service installation
 - Memory configuration
@@ -180,6 +184,7 @@ daemon_running = docker_installer.is_daemon_running()
 ```
 
 #### Features
+
 - Docker Desktop download guidance
 - Docker Engine installation (Linux)
 - Daemon health monitoring
@@ -214,11 +219,13 @@ status = service_mgr.get_service_status("giljo-mcp")
 ```
 
 #### Platform Support
+
 - **Windows**: Windows Service using `pywin32`
 - **macOS**: launchd plist files
 - **Linux**: systemd service files
 
 #### Features
+
 - Service installation/uninstallation
 - Start/stop/restart operations
 - Status monitoring
@@ -287,6 +294,7 @@ class GiljoSetup:
 ### Adding New Components
 
 1. **Create installer class**:
+
 ```python
 class MyComponentInstaller:
     def __init__(self):
@@ -306,6 +314,7 @@ class MyComponentInstaller:
 ```
 
 2. **Add to integration tests**:
+
 ```python
 def test_my_component_integration():
     installer = MyComponentInstaller()
@@ -314,6 +323,7 @@ def test_my_component_integration():
 ```
 
 3. **Update bootstrap**:
+
 ```python
 # Add to bootstrap._check_integrated_dependencies()
 try:
@@ -326,6 +336,7 @@ except ImportError:
 ### Testing Components
 
 #### Unit Tests
+
 ```python
 # tests/installer/unit/test_my_component.py
 import pytest
@@ -342,6 +353,7 @@ def test_installation_check():
 ```
 
 #### Integration Tests
+
 ```python
 # tests/installer/integration/test_installation_flow.py
 def test_complete_installation():
@@ -386,6 +398,7 @@ class ComponentInstaller:
 ## Testing Framework
 
 ### Test Structure
+
 ```
 tests/installer/
 ├── unit/                  # Unit tests for individual components
@@ -403,6 +416,7 @@ tests/installer/
 ```
 
 ### Running Tests
+
 ```bash
 # Run all tests
 pytest tests/installer/
@@ -416,6 +430,7 @@ pytest --cov=installer tests/installer/
 ```
 
 ### Mock Utilities
+
 ```python
 # tests/installer/fixtures/mock_utils.py
 from unittest.mock import Mock, patch
@@ -432,6 +447,7 @@ def mock_postgresql_installer():
 ## Debugging and Troubleshooting
 
 ### Debug Mode
+
 ```python
 # Enable debug logging
 import logging
@@ -450,6 +466,7 @@ installer.set_debug_mode(True)
 4. **Service Installation**: Check service manager platform support
 
 ### Profiling Performance
+
 ```python
 import cProfile
 import pstats
@@ -469,6 +486,7 @@ stats.sort_stats('cumulative').print_stats(10)
 ## Contributing
 
 ### Development Setup
+
 ```bash
 # Clone repository
 git clone https://github.com/yourusername/giljo-mcp.git

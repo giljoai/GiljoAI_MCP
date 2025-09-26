@@ -8,6 +8,7 @@ AGENT_NAME = "ui-analyzer"
 PROJECT_ID = "86b708fd-6b53-4067-acec-08ab005d0f3d"
 API_URL = "http://localhost:8000"
 
+
 def check_messages():
     """Check for new messages from AKE-MCP"""
     try:
@@ -29,6 +30,7 @@ def check_messages():
             print(f"[{datetime.now().strftime('%H:%M:%S')}] API check failed: {response.status_code}")
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Error checking messages: {e}")
+
 
 print(f"Starting message monitor for {AGENT_NAME}")
 print("Checking every 10 seconds...")

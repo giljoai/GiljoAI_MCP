@@ -52,7 +52,7 @@ async def get_system_configuration():
     from api.app import state
 
     if not state.config:
-        raise HTTPException(status_code=503, detail="Configuration manager not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Configuration manager not available")
 
     try:
         # Get safe configuration values (no secrets)
@@ -66,7 +66,8 @@ async def get_system_configuration():
             },
             "api": {
                 "host": state.config.get(
-                    "api.host", "0.0.0.0"  # noqa: S104
+                    "api.host",
+                    "0.0.0.0",  # noqa: S104
                 ),  # Binding to all interfaces needed for Docker
                 "port": state.config.get("api.port", 8000),
                 "workers": state.config.get("api.workers", 1),
@@ -97,7 +98,7 @@ async def get_system_configuration():
             },
         }
 
-        return SystemConfigResponse(**config)  # noqa: TRY300
+        return SystemConfigResponse(**config)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -109,7 +110,7 @@ async def get_configuration(key_path: str, default: Optional[Any] = None):
     from api.app import state
 
     if not state.config:
-        raise HTTPException(status_code=503, detail="Configuration manager not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Configuration manager not available")
 
     try:
         # Replace URL path separator with dot notation
@@ -124,7 +125,7 @@ async def get_configuration(key_path: str, default: Optional[Any] = None):
         if hasattr(state.config, "_sources") and key in state.config._sources:  # noqa: SLF001
             source = state.config._sources[key]  # noqa: SLF001
 
-        return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))  # noqa: TRY300
+        return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
 
     except HTTPException:
         raise
@@ -138,7 +139,7 @@ async def set_configuration(key_path: str, config: ConfigurationSet):
     from api.app import state
 
     if not state.config:
-        raise HTTPException(status_code=503, detail="Configuration manager not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Configuration manager not available")
 
     try:
         # Replace URL path separator with dot notation
@@ -170,7 +171,7 @@ async def update_configurations(update: ConfigurationUpdate):
     from api.app import state
 
     if not state.config:
-        raise HTTPException(status_code=503, detail="Configuration manager not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Configuration manager not available")
 
     try:
         updated = []
@@ -200,7 +201,7 @@ async def reload_configuration():
     from api.app import state
 
     if not state.config:
-        raise HTTPException(status_code=503, detail="Configuration manager not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Configuration manager not available")
 
     try:
         # Reload configuration
@@ -218,7 +219,7 @@ async def list_tenant_configurations():
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.session() as session:
@@ -231,7 +232,7 @@ async def list_tenant_configurations():
             )
             tenants = [row[0] for row in result]
 
-            return tenants  # noqa: TRY300
+            return tenants
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -243,7 +244,7 @@ async def get_tenant_configuration(tenant_key: str):
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.session() as session:
@@ -255,16 +256,14 @@ async def get_tenant_configuration(tenant_key: str):
             configs = result.scalars().all()
 
             if not configs:
-                raise HTTPException(
-                    status_code=404, detail=f"No configuration found for tenant '{tenant_key}'"
-                )
+                raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
 
             # Build configuration dictionary
             tenant_config = {}
             for config in configs:
                 tenant_config[config.key] = json.loads(config.value) if config.value else None
 
-            return tenant_config  # noqa: TRY300
+            return tenant_config
 
     except HTTPException:
         raise
@@ -281,7 +280,7 @@ async def set_tenant_configuration(
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.session() as session:
@@ -326,7 +325,7 @@ async def delete_tenant_configuration(tenant_key: str):
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")  # noqa: TRY301
+        raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.session() as session:
@@ -339,9 +338,7 @@ async def delete_tenant_configuration(tenant_key: str):
             await session.commit()
 
             if result.rowcount == 0:
-                raise HTTPException(
-                    status_code=404, detail=f"No configuration found for tenant '{tenant_key}'"
-                )
+                raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
 
             return {
                 "success": True,

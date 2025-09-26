@@ -1,4 +1,5 @@
 # GiljoAI MCP - Revised Project Orchestration Plan
+
 ## Leveraging Claude Code Sub-Agents for Simplified Architecture
 
 ## Executive Summary
@@ -8,6 +9,7 @@ The discovery of Claude Code's native sub-agent capability fundamentally changes
 ## What Changed with Sub-Agents
 
 ### Before (Complex)
+
 - Multiple terminal windows required
 - Complex wake-up mechanisms needed
 - Fragile message-based coordination
@@ -15,6 +17,7 @@ The discovery of Claude Code's native sub-agent capability fundamentally changes
 - High token waste from broadcasts
 
 ### After (Elegant)
+
 - Single Claude Code session spawns all agents
 - Direct synchronous control of sub-agents
 - MCP provides persistence and visibility
@@ -47,6 +50,7 @@ The discovery of Claude Code's native sub-agent capability fundamentally changes
 ## Core Value Proposition (Enhanced, Not Diminished)
 
 ### GiljoAI-MCP Provides (Irreplaceable):
+
 - **Multi-Session Memory** - Work persists across sessions
 - **Team Coordination** - Multiple humans, different times
 - **Task Pipeline** - Capture TODOs, convert to projects
@@ -54,6 +58,7 @@ The discovery of Claude Code's native sub-agent capability fundamentally changes
 - **Universal Integration** - GitHub, Jira, multiple AI providers
 
 ### Claude Code Provides (Via Sub-Agents):
+
 - **Execution** - Actually runs the agents
 - **Delegation** - Spawns specialized sub-agents
 - **Synchronous Results** - No polling needed
@@ -71,6 +76,7 @@ The discovery of Claude Code's native sub-agent capability fundamentally changes
 **Objective**: Create hybrid control + logging architecture
 
 **Technical Approach**:
+
 ```python
 # New MCP tools for orchestrator
 @mcp_tool
@@ -84,7 +90,7 @@ def spawn_and_log_sub_agent(agent_type, mission, parent="orchestrator"):
     })
     return f"Now spawn {agent_type} sub-agent with: {mission}"
 
-@mcp_tool  
+@mcp_tool
 def log_sub_agent_completion(agent_type, results, duration_seconds):
     """Log sub-agent results"""
     log_to_message_queue({
@@ -97,6 +103,7 @@ def log_sub_agent_completion(agent_type, results, duration_seconds):
 ```
 
 **Database Changes**:
+
 ```sql
 CREATE TABLE agent_interactions (
     id UUID PRIMARY KEY,
@@ -113,6 +120,7 @@ CREATE TABLE agent_interactions (
 ```
 
 **Deliverables**:
+
 - Hybrid control system design
 - Database schema updates
 - MCP tool implementations
@@ -125,6 +133,7 @@ CREATE TABLE agent_interactions (
 **Objective**: Fix all 5-minute blockers
 
 **Fixes Required**:
+
 ```python
 # 1. Serena initialization
 class SerenaHooks:
@@ -154,6 +163,7 @@ class VisionChunk(Base):
 **Objective**: Complete multi-tenant isolation
 
 **Implementation**:
+
 ```python
 # Add product context to tasks
 ALTER TABLE tasks ADD COLUMN product_id UUID REFERENCES products(id);
@@ -183,6 +193,7 @@ def get_tasks(tenant_key: str, product_id: str):
 **Objective**: Rewrite for sub-agent model with product-specific template management
 
 **New Orchestrator Template**:
+
 ```python
 ORCHESTRATOR_TEMPLATE_V2 = """
 You are the Project Manager for {project_name}.
@@ -219,6 +230,7 @@ Current Context: {project_context}
 ```
 
 **Sub-Agent Templates**:
+
 ```python
 SUB_AGENT_TEMPLATES = {
     "analyzer": """
@@ -227,14 +239,14 @@ SUB_AGENT_TEMPLATES = {
         Output: Structured analysis with actionable findings
         Be concise but thorough.
     """,
-    
+
     "developer": """
         You are a specialized developer.
         Focus: Clean implementation following project standards
         Output: Complete, working, tested code
         Include error handling and edge cases.
     """,
-    
+
     "tester": """
         You are a specialized QA engineer.
         Focus: Comprehensive testing and validation
@@ -251,31 +263,30 @@ SUB_AGENT_TEMPLATES = {
 **Objective**: Show sub-agent interactions beautifully
 
 **Components**:
+
 ```vue
 <!-- SubAgentTimeline.vue -->
 <template>
   <div class="sub-agent-timeline">
-    <div v-for="interaction in interactions" 
-         :key="interaction.id"
-         class="interaction-card">
-      
-      <div v-if="interaction.type === 'spawn'" 
-           class="spawn-event">
+    <div
+      v-for="interaction in interactions"
+      :key="interaction.id"
+      class="interaction-card"
+    >
+      <div v-if="interaction.type === 'spawn'" class="spawn-event">
         <Icon name="rocket" />
         <span class="parent">{{ interaction.parent }}</span>
         <Arrow />
         <span class="child">{{ interaction.sub_agent }}</span>
         <div class="mission">{{ interaction.mission }}</div>
       </div>
-      
-      <div v-else-if="interaction.type === 'complete'"
-           class="complete-event">
+
+      <div v-else-if="interaction.type === 'complete'" class="complete-event">
         <Icon name="check" />
         <span class="agent">{{ interaction.sub_agent }}</span>
         <div class="duration">{{ interaction.duration }}s</div>
         <div class="tokens">{{ interaction.tokens }} tokens</div>
       </div>
-      
     </div>
   </div>
 </template>
@@ -284,9 +295,7 @@ SUB_AGENT_TEMPLATES = {
 <template>
   <div class="sub-agent-tree">
     <TreeNode :node="orchestrator">
-      <SubAgentNode v-for="agent in subAgents" 
-                    :key="agent.id"
-                    :agent="agent" />
+      <SubAgentNode v-for="agent in subAgents" :key="agent.id" :agent="agent" />
     </TreeNode>
   </div>
 </template>
@@ -299,6 +308,7 @@ SUB_AGENT_TEMPLATES = {
 **Objective**: Monitor and optimize token usage
 
 **Implementation**:
+
 ```python
 class TokenMonitor:
     def __init__(self):
@@ -308,11 +318,11 @@ class TokenMonitor:
             "tester": 1500,
             "reviewer": 1000
         }
-    
+
     def track_usage(self, agent_type, tokens_used):
         if tokens_used > self.thresholds[agent_type]:
             self.alert_inefficiency(agent_type, tokens_used)
-    
+
     def get_efficiency_score(self, project_id):
         # Calculate token efficiency
         baseline = self.calculate_baseline(project_id)
@@ -337,6 +347,7 @@ ROUTING_RULES = {
 **Objective**: Leverage Claude Code's native git
 
 **Implementation**:
+
 ```python
 @mcp_tool
 def configure_git(repository_url, branch="main", auto_commit=True):
@@ -364,22 +375,20 @@ def generate_commit_message(project_name, completed_tasks):
 **Objective**: Smooth conversion workflow
 
 **UI Components**:
+
 ```vue
 <template>
   <div class="task-converter">
     <!-- Task Review -->
-    <TaskList :tasks="tasks" 
-              @select="selectTasks" />
-    
+    <TaskList :tasks="tasks" @select="selectTasks" />
+
     <!-- Conversion Options -->
     <ConversionPanel v-if="selectedTasks.length">
-      <ProjectTemplate :tasks="selectedTasks" 
-                      @create="convertToProject" />
+      <ProjectTemplate :tasks="selectedTasks" @create="convertToProject" />
     </ConversionPanel>
-    
+
     <!-- Bulk Actions -->
-    <BulkActions @group="groupRelatedTasks"
-                 @prioritize="setPriorities" />
+    <BulkActions @group="groupRelatedTasks" @prioritize="setPriorities" />
   </div>
 </template>
 ```
@@ -391,6 +400,7 @@ def generate_commit_message(project_name, completed_tasks):
 **Objective**: Create comprehensive template management with product-specific scope
 
 **Implementation**:
+
 ```python
 # Database Schema
 CREATE TABLE agent_templates (
@@ -416,21 +426,22 @@ CREATE TABLE template_archives (
 @mcp_tool
 def list_agent_templates(product_id: str, include_archived=False):
     """List available templates for the product"""
-    
+
 @mcp_tool
 def get_agent_template(name: str, augmentations: str = None):
     """Get template with optional task-specific augmentations"""
-    
+
 @mcp_tool
 def create_agent_template(name: str, category: str, mission: str):
     """Create new specialist template"""
-    
+
 @mcp_tool
 def archive_agent_template(template_id: str):
     """Archive current version before modification"""
 ```
 
 **Base Templates**:
+
 1. **Orchestrator** - Project management and coordination
 2. **Analyzer** - Code analysis and architecture review
 3. **Implementer** - Development and implementation
@@ -442,6 +453,7 @@ def archive_agent_template(template_id: str):
 ## Migration Strategy from Current State
 
 ### Step 1: Update Orchestrator Instructions
+
 ```python
 # Add to existing orchestrators
 MIGRATION_NOTICE = """
@@ -452,6 +464,7 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 ```
 
 ### Step 2: Gradual Rollout
+
 1. Test with single project using sub-agents
 2. Compare efficiency metrics
 3. Update all templates
@@ -459,6 +472,7 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 5. Full rollout
 
 ### Step 3: Deprecate Old Patterns
+
 - Remove terminal management code
 - Simplify message queue (logging only)
 - Clean up wake-up mechanisms
@@ -467,12 +481,14 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 ## Success Metrics
 
 ### Efficiency Gains
+
 - **Token Usage**: 70% reduction
 - **Execution Time**: 50% faster
 - **Error Rate**: 80% fewer coordination errors
 - **Code Complexity**: 30% less code
 
 ### User Experience Improvements
+
 - **Setup Time**: 5 minutes → 2 minutes
 - **Learning Curve**: 2 hours → 30 minutes
 - **Reliability**: 60% → 95% success rate
@@ -481,17 +497,22 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 ## Risk Mitigation
 
 ### Technical Risks
+
 - **Sub-Agent API Changes**
+
   - Mitigation: Abstract interface, version detection
 
 - **Logging Overhead**
+
   - Mitigation: Async logging, batching
 
 - **Backward Compatibility**
   - Mitigation: Support both modes temporarily
 
 ### Business Risks
+
 - **User Adoption**
+
   - Mitigation: Clear migration guide, videos
 
 - **Feature Parity**
@@ -500,18 +521,23 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 ## The New Value Proposition
 
 ### Before Sub-Agents
+
 "GiljoAI-MCP orchestrates multiple AI coding agents"
+
 - Complex to explain
 - Hard to demonstrate
 - Fragile in practice
 
 ### After Sub-Agents
+
 "GiljoAI-MCP is the persistent brain for AI development teams"
+
 - Simple to understand
 - Easy to demonstrate
 - Robust in practice
 
 ### Key Differentiators
+
 - **Session Persistence** - Work survives Claude Code restarts
 - **Team Coordination** - Multiple developers, one project
 - **Task Pipeline** - TODOs become completed features
@@ -521,12 +547,14 @@ sub-agents directly. Use spawn_and_log_sub_agent() to begin.
 ## Timeline to MVP
 
 ### Week 1: Sub-Agent Integration (6 days)
+
 - Days 1-2: Foundation (3.9.$1, d, e)
 - Days 3-4: Templates & Visibility (3.9.$1, c, f)
 - Days 5-6: Enhancements (3.9.$1, h)
 - **Result: MVP Feature Complete**
 
 ### Week 2: Polish & Launch (6 days)
+
 - Days 1-2: API & Dashboard refinement
 - Days 3-4: Docker packaging (5.1)
 - Days 5-6: Setup wizard & Documentation (5.2, 5.3)
@@ -545,7 +573,7 @@ graph TD
         SA3 --> SA7[3.9.$1 Git]
         SA5 --> SA8[3.9.$1 Task UI]
     end
-    
+
     subgraph "Existing Phases"
         P38[3.8 Final Validation] --> SA1
         SA8 --> P41[4.1 API]
@@ -564,4 +592,4 @@ We're no longer building "agent orchestration"—we're building "AI team memory,
 
 ---
 
-*This orchestration plan leverages sub-agents to deliver GiljoAI MCP faster, simpler, and better.*
+_This orchestration plan leverages sub-agents to deliver GiljoAI MCP faster, simpler, and better._

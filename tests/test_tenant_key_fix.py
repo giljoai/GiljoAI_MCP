@@ -28,7 +28,6 @@ def test_tenant_key_validation():
 
     response = client.post("/api/v1/projects/", json=project_data)
 
-
     if response.status_code == 200:
         result = response.json()
 
@@ -41,7 +40,6 @@ def test_tenant_key_validation():
 
 
 if __name__ == "__main__":
-
     success = test_tenant_key_validation()
 
     if success:

@@ -12,13 +12,12 @@ if lines[286].strip().startswith('print("'):
 
 # Fix lines 668-669 (index 667-668)
 for i in range(len(lines)):
-    if i < len(lines) - 1 and lines[i].strip().startswith('print("') and lines[i+1].strip().startswith("[STATUS]"):
+    if i < len(lines) - 1 and lines[i].strip().startswith('print("') and lines[i + 1].strip().startswith("[STATUS]"):
         lines[i] = '        print("\\n[STATUS] Tool Status:")\n'
-        lines[i+1] = ""
+        lines[i + 1] = ""
 
 # Remove empty lines that were created
 lines = [line for line in lines if line.strip() != ""]
 
 with open("test_mcp_tools.py", "w", encoding="utf-8") as f:
     f.writelines(lines)
-

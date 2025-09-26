@@ -14,12 +14,10 @@ from typing import Any
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("ui_analyzer_monitor.log"),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.FileHandler("ui_analyzer_monitor.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 class UIAnalyzerMonitor:
     def __init__(self):
@@ -134,10 +132,12 @@ class UIAnalyzerMonitor:
         self.running = False
         logger.info("Stopping monitoring...")
 
+
 async def main():
     """Main entry point for the monitor."""
     monitor = UIAnalyzerMonitor()
     await monitor.start_monitoring()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

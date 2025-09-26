@@ -12,8 +12,6 @@ Tests the EnhancedChunker class and its methods:
 - Multi-document processing
 """
 
-
-
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 

@@ -2,26 +2,29 @@
 Unit tests for Redis installer
 """
 
-import pytest
-import asyncio
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import subprocess
 
 # Add project root to path
 import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
     from installer.dependencies.redis import RedisInstaller
+
     HAS_REDIS = True
 except ImportError:
     HAS_REDIS = False
     pytest.skip("Redis installer not available", allow_module_level=True)
 
-from tests.installer.fixtures.test_configs import create_test_env
 from tests.installer.fixtures.mock_utils import MockSubprocessResult
+from tests.installer.fixtures.test_configs import create_test_env
 
 
 class TestRedisInstaller:
@@ -50,14 +53,14 @@ class TestRedisInstaller:
         installer = RedisInstaller()
 
         # Mock successful redis-server command
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Redis server v=6.2.7", "")
 
             is_installed = await installer.check_installation()
             assert is_installed == True
 
         # Mock failed redis-server command
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             is_installed = await installer.check_installation()
@@ -68,15 +71,15 @@ class TestRedisInstaller:
         """Test Windows Redis installation"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                with patch.object(installer, '_download_redis_windows') as mock_download:
+                with patch.object(installer, "_download_redis_windows") as mock_download:
                     mock_download.return_value = Path("mock_redis.zip")
 
-                with patch.object(installer, '_extract_redis_windows'):
-                    with patch.object(installer, '_create_redis_service'):
+                with patch.object(installer, "_extract_redis_windows"):
+                    with patch.object(installer, "_create_redis_service"):
                         result = await installer.install()
                         assert result.success == True
                         assert "Redis installation completed" in result.message
@@ -86,8 +89,8 @@ class TestRedisInstaller:
         """Test Linux Redis installation"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.install()
@@ -98,8 +101,8 @@ class TestRedisInstaller:
         """Test macOS Redis installation via Homebrew"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Darwin'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Darwin"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.install()
@@ -109,13 +112,13 @@ class TestRedisInstaller:
         """Test version detection"""
         installer = RedisInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Redis server v=6.2.7", "")
 
             version = installer.get_version()
             assert version == "6.2.7"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             version = installer.get_version()
@@ -127,14 +130,14 @@ class TestRedisInstaller:
         installer = RedisInstaller()
 
         # Mock successful connection
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "PONG", "")
 
             result = await installer.test_connection("localhost", 6379)
             assert result.success == True
 
         # Mock failed connection
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(1, "", "Could not connect")
 
             result = await installer.test_connection("localhost", 6379)
@@ -145,8 +148,8 @@ class TestRedisInstaller:
         """Test Redis service start"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.start_service()
@@ -157,8 +160,8 @@ class TestRedisInstaller:
         """Test Redis service stop"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.stop_service()
@@ -169,8 +172,8 @@ class TestRedisInstaller:
         """Test Redis service status check"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "RUNNING", "")
 
                 status = await installer.get_service_status()
@@ -194,8 +197,8 @@ class TestRedisInstaller:
         """Test error handling during installation"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Windows'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
                 result = await installer.install()
@@ -207,7 +210,7 @@ class TestRedisInstaller:
         """Test Windows Redis download"""
         installer = RedisInstaller()
 
-        with patch('urllib.request.urlretrieve') as mock_download:
+        with patch("urllib.request.urlretrieve") as mock_download:
             mock_download.return_value = ("redis.zip", None)
 
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -219,7 +222,7 @@ class TestRedisInstaller:
         """Test Windows Redis extraction"""
         installer = RedisInstaller()
 
-        with patch('zipfile.ZipFile') as mock_zip:
+        with patch("zipfile.ZipFile") as mock_zip:
             mock_zip_instance = MagicMock()
             mock_zip.return_value.__enter__.return_value = mock_zip_instance
 
@@ -233,7 +236,7 @@ class TestRedisInstaller:
         """Test Windows Redis service creation"""
         installer = RedisInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             redis_dir = Path("C:/Redis")
@@ -245,9 +248,9 @@ class TestRedisInstaller:
         """Test Redis configuration"""
         installer = RedisInstaller()
 
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('pathlib.Path.read_text', return_value="# Redis config"):
-                with patch('pathlib.Path.write_text') as mock_write:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="# Redis config"):
+                with patch("pathlib.Path.write_text") as mock_write:
                     await installer.configure_redis(port=6380, maxmemory="256mb")
                     mock_write.assert_called()
 
@@ -255,11 +258,11 @@ class TestRedisInstaller:
         """Test Redis config path detection"""
         installer = RedisInstaller()
 
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             config_path = installer._get_redis_config_path()
             assert "redis.conf" in config_path.name
 
-        with patch('platform.system', return_value='Linux'):
+        with patch("platform.system", return_value="Linux"):
             config_path = installer._get_redis_config_path()
             assert "redis.conf" in config_path.name
 
@@ -268,10 +271,10 @@ class TestRedisInstaller:
         """Test Redis data backup"""
         installer = RedisInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
-            with patch('shutil.copy2') as mock_copy:
+            with patch("shutil.copy2") as mock_copy:
                 with tempfile.TemporaryDirectory() as temp_dir:
                     backup_path = Path(temp_dir) / "backup"
                     result = await installer.backup_redis_data(backup_path)
@@ -282,10 +285,10 @@ class TestRedisInstaller:
         """Test Redis data restore"""
         installer = RedisInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
-            with patch('shutil.copy2') as mock_copy:
+            with patch("shutil.copy2") as mock_copy:
                 with tempfile.TemporaryDirectory() as temp_dir:
                     backup_path = Path(temp_dir) / "dump.rdb"
                     backup_path.touch()
@@ -297,7 +300,7 @@ class TestRedisInstaller:
         """Test Redis data flush"""
         installer = RedisInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
             result = await installer.flush_redis_data()
@@ -313,7 +316,7 @@ redis_version:6.2.7
 uptime_in_seconds:12345
 """
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, mock_info, "")
 
             info = await installer.get_redis_info()
@@ -349,11 +352,7 @@ class TestRedisUtilities:
         """Test connection string generation"""
         installer = RedisInstaller()
 
-        conn_str = installer.get_connection_string(
-            host="localhost",
-            port=6379,
-            password="secret"
-        )
+        conn_str = installer.get_connection_string(host="localhost", port=6379, password="secret")
 
         assert "redis://" in conn_str
         assert "localhost" in conn_str
@@ -364,19 +363,13 @@ class TestRedisUtilities:
         installer = RedisInstaller()
 
         # Valid config
-        valid_config = {
-            "host": "localhost",
-            "port": 6379
-        }
+        valid_config = {"host": "localhost", "port": 6379}
 
         is_valid = installer.validate_config(valid_config)
         assert is_valid == True
 
         # Invalid config (invalid port)
-        invalid_config = {
-            "host": "localhost",
-            "port": "invalid"
-        }
+        invalid_config = {"host": "localhost", "port": "invalid"}
 
         is_valid = installer.validate_config(invalid_config)
         assert is_valid == False
@@ -410,31 +403,32 @@ def test_environment():
 
 
 # Parametrized tests
-@pytest.mark.parametrize("platform,expected_service", [
-    ("Windows", "Redis"),
-    ("Linux", "redis-server"),
-    ("Darwin", "redis")
-])
+@pytest.mark.parametrize(
+    "platform,expected_service", [("Windows", "Redis"), ("Linux", "redis-server"), ("Darwin", "redis")]
+)
 def test_service_name_by_platform(platform, expected_service):
     """Test service name detection by platform"""
     installer = RedisInstaller()
 
-    with patch('platform.system', return_value=platform):
+    with patch("platform.system", return_value=platform):
         service_name = installer._get_service_name()
         assert expected_service.lower() in service_name.lower()
 
 
-@pytest.mark.parametrize("version_output,expected", [
-    ("Redis server v=6.2.7", "6.2.7"),
-    ("Redis server v=5.0.8", "5.0.8"),
-    ("Redis server v=7.0.2", "7.0.2"),
-    ("invalid output", None)
-])
+@pytest.mark.parametrize(
+    "version_output,expected",
+    [
+        ("Redis server v=6.2.7", "6.2.7"),
+        ("Redis server v=5.0.8", "5.0.8"),
+        ("Redis server v=7.0.2", "7.0.2"),
+        ("invalid output", None),
+    ],
+)
 def test_version_parsing(version_output, expected):
     """Test version string parsing"""
     installer = RedisInstaller()
 
-    with patch('subprocess.run') as mock_run:
+    with patch("subprocess.run") as mock_run:
         if expected is None:
             mock_run.side_effect = FileNotFoundError()
         else:
@@ -444,12 +438,9 @@ def test_version_parsing(version_output, expected):
         assert parsed_version == expected
 
 
-@pytest.mark.parametrize("config_option,value", [
-    ("port", 6380),
-    ("maxmemory", "512mb"),
-    ("timeout", 300),
-    ("save", "900 1")
-])
+@pytest.mark.parametrize(
+    "config_option,value", [("port", 6380), ("maxmemory", "512mb"), ("timeout", 300), ("save", "900 1")]
+)
 def test_config_options(config_option, value):
     """Test Redis configuration options"""
     installer = RedisInstaller()

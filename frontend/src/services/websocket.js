@@ -21,7 +21,7 @@ class WebSocketService {
     this.isConnected = false
     this.shouldReconnect = true
     this.authCredentials = null
-    
+
     // Debug mode
     this.debug = API_CONFIG.WEBSOCKET.debug || false
     this.eventHistory = []
@@ -32,7 +32,7 @@ class WebSocketService {
       connectionAttempts: 0,
       lastError: null,
       connectedAt: null,
-      disconnectedAt: null
+      disconnectedAt: null,
     }
   }
 
@@ -59,7 +59,7 @@ class WebSocketService {
     this.shouldReconnect = true
     this.authCredentials = options
     this.stats.connectionAttempts++
-    
+
     // Generate client ID if not exists
     if (!this.clientId) {
       this.clientId = this.generateClientId()
@@ -70,7 +70,7 @@ class WebSocketService {
         // Build WebSocket URL with authentication
         const baseUrl = API_CONFIG.WEBSOCKET.url || 'ws://localhost:8000'
         const wsUrl = new URL(`${baseUrl}/ws/${this.clientId}`)
-        
+
         // Add auth parameters if provided
         if (options.apiKey) {
           wsUrl.searchParams.append('api_key', options.apiKey)
@@ -79,9 +79,9 @@ class WebSocketService {
         }
 
         this.log(`Connecting to ${wsUrl.origin}${wsUrl.pathname}`)
-        
+
         this.ws = new WebSocket(wsUrl.toString())
-        
+
         // Connection opened
         this.ws.onopen = () => {
           this.log('Connection established')
@@ -91,19 +91,19 @@ class WebSocketService {
           this.stats.connectedAt = new Date().toISOString()
           this.stats.lastError = null
           this.addEvent('connection', 'Connected')
-          
+
           // Start heartbeat
           this.startHeartbeat()
-          
+
           // Process queued messages
           this.processMessageQueue()
-          
+
           // Notify listeners
           this.notifyConnectionListeners('connected')
-          
+
           resolve()
         }
-        
+
         // Message received
         this.ws.onmessage = (event) => {
           try {
@@ -116,31 +116,30 @@ class WebSocketService {
             this.stats.lastError = `Parse error: ${error.message}`
           }
         }
-        
+
         // Connection closed
         this.ws.onclose = (event) => {
           this.log(`Connection closed (code: ${event.code}, reason: ${event.reason})`)
           this.stats.disconnectedAt = new Date().toISOString()
           this.addEvent('connection', `Closed (${event.code}: ${event.reason})`)
           this.handleDisconnect(event)
-          
+
           if (this.isConnecting) {
             reject(new Error(`Connection failed: ${event.reason || 'Unknown error'}`))
           }
         }
-        
+
         // Connection error
         this.ws.onerror = (error) => {
           this.log('Connection error', error)
           this.stats.lastError = `Connection error: ${error.message || 'Unknown'}`
           this.addEvent('error', 'Connection error', error)
-          
+
           if (this.isConnecting) {
             this.isConnecting = false
             reject(error)
           }
         }
-        
       } catch (error) {
         this.log('Failed to create connection', error)
         this.stats.lastError = `Connection failed: ${error.message}`
@@ -156,17 +155,17 @@ class WebSocketService {
   disconnect() {
     this.log('Disconnecting')
     this.shouldReconnect = false
-    
+
     if (this.pingInterval) {
       clearInterval(this.pingInterval)
       this.pingInterval = null
     }
-    
+
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect')
       this.ws = null
     }
-    
+
     this.isConnected = false
     this.isConnecting = false
     this.notifyConnectionListeners('disconnected')
@@ -178,15 +177,15 @@ class WebSocketService {
   handleDisconnect(event) {
     this.isConnected = false
     this.isConnecting = false
-    
+
     if (this.pingInterval) {
       clearInterval(this.pingInterval)
       this.pingInterval = null
     }
-    
+
     // Notify listeners
     this.notifyConnectionListeners('disconnected')
-    
+
     // Attempt reconnect if not intentional disconnect
     if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
       this.attemptReconnect()
@@ -198,22 +197,24 @@ class WebSocketService {
    */
   async attemptReconnect() {
     this.reconnectAttempts++
-    
+
     // Calculate delay with exponential backoff
     const delay = Math.min(
       this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
-      this.maxReconnectDelay
+      this.maxReconnectDelay,
     )
-    
-    this.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-    
+
+    this.log(
+      `Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+    )
+
     // Notify listeners of reconnecting state
     this.notifyConnectionListeners('reconnecting', {
       attempt: this.reconnectAttempts,
       maxAttempts: this.maxReconnectAttempts,
-      delay
+      delay,
     })
-    
+
     setTimeout(async () => {
       try {
         await this.connect(this.authCredentials)
@@ -230,7 +231,7 @@ class WebSocketService {
     if (this.pingInterval) {
       clearInterval(this.pingInterval)
     }
-    
+
     // Send ping every 30 seconds
     this.pingInterval = setInterval(() => {
       if (this.isConnected) {
@@ -248,7 +249,7 @@ class WebSocketService {
       this.messageQueue.push(data)
       return false
     }
-    
+
     try {
       this.ws.send(JSON.stringify(data))
       this.stats.messagesSent++
@@ -277,30 +278,30 @@ class WebSocketService {
    */
   handleMessage(data) {
     const { type, ...payload } = data
-    
+
     // Handle system messages
     switch (type) {
       case 'pong':
         // Heartbeat response
         break
-        
+
       case 'ping':
         // Server heartbeat - respond with pong
         this.send({ type: 'pong' })
         break
-        
+
       case 'subscribed':
       case 'unsubscribed':
         this.log(`${type} to ${payload.entity_type}:${payload.entity_id}`)
         this.addEvent('subscription', `${type} ${payload.entity_type}:${payload.entity_id}`)
         break
-        
+
       case 'error':
         this.log('Server error', payload)
         this.stats.lastError = `Server error: ${payload.message || payload.error}`
         this.addEvent('error', 'Server error', payload)
         break
-        
+
       default:
         // Handle application messages
         this.notifyMessageHandlers(type, payload)
@@ -314,7 +315,7 @@ class WebSocketService {
     return this.send({
       type: 'subscribe',
       entity_type: entityType,
-      entity_id: entityId
+      entity_id: entityId,
     })
   }
 
@@ -325,7 +326,7 @@ class WebSocketService {
     return this.send({
       type: 'unsubscribe',
       entity_type: entityType,
-      entity_id: entityId
+      entity_id: entityId,
     })
   }
 
@@ -334,7 +335,7 @@ class WebSocketService {
    */
   onConnectionChange(callback) {
     this.connectionListeners.add(callback)
-    
+
     // Return unsubscribe function
     return () => {
       this.connectionListeners.delete(callback)
@@ -348,9 +349,9 @@ class WebSocketService {
     if (!this.messageHandlers.has(type)) {
       this.messageHandlers.set(type, new Set())
     }
-    
+
     this.messageHandlers.get(type).add(handler)
-    
+
     // Return unsubscribe function
     return () => {
       const handlers = this.messageHandlers.get(type)
@@ -367,7 +368,7 @@ class WebSocketService {
    * Notify connection listeners
    */
   notifyConnectionListeners(state, data = {}) {
-    this.connectionListeners.forEach(listener => {
+    this.connectionListeners.forEach((listener) => {
       try {
         listener({ state, ...data })
       } catch (error) {
@@ -382,7 +383,7 @@ class WebSocketService {
   notifyMessageHandlers(type, data) {
     const handlers = this.messageHandlers.get(type)
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         try {
           handler(data)
         } catch (error) {
@@ -390,11 +391,11 @@ class WebSocketService {
         }
       })
     }
-    
+
     // Also notify wildcard handlers
     const wildcardHandlers = this.messageHandlers.get('*')
     if (wildcardHandlers) {
-      wildcardHandlers.forEach(handler => {
+      wildcardHandlers.forEach((handler) => {
         try {
           handler({ type, ...data })
         } catch (error) {
@@ -426,7 +427,7 @@ class WebSocketService {
       messageQueueSize: this.messageQueue.length,
       stats: this.stats,
       eventHistory: this.eventHistory,
-      subscriptions: this.getSubscriptions()
+      subscriptions: this.getSubscriptions(),
     }
   }
 
@@ -437,7 +438,7 @@ class WebSocketService {
     if (this.debug) {
       console.log(`[WebSocket] ${message}`, data || '')
     }
-    
+
     // Add to event history
     this.addEvent('log', message, data)
   }
@@ -450,11 +451,11 @@ class WebSocketService {
       type,
       message,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
-    
+
     this.eventHistory.unshift(event)
-    
+
     // Limit history size
     if (this.eventHistory.length > this.maxEventHistory) {
       this.eventHistory.pop()
@@ -485,7 +486,7 @@ class WebSocketService {
       stats: this.stats,
       eventHistory: this.eventHistory.slice(0, 10),
       debug: this.debug,
-      wsUrl: this.ws?.url || 'Not connected'
+      wsUrl: this.ws?.url || 'Not connected',
     }
   }
 

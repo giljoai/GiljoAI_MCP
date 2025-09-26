@@ -2,26 +2,29 @@
 Unit tests for Docker installer
 """
 
-import pytest
-import asyncio
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import subprocess
 
 # Add project root to path
 import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
     from installer.dependencies.docker import DockerInstaller
+
     HAS_DOCKER = True
 except ImportError:
     HAS_DOCKER = False
     pytest.skip("Docker installer not available", allow_module_level=True)
 
-from tests.installer.fixtures.test_configs import create_test_env
 from tests.installer.fixtures.mock_utils import MockSubprocessResult
+from tests.installer.fixtures.test_configs import create_test_env
 
 
 class TestDockerInstaller:
@@ -50,14 +53,14 @@ class TestDockerInstaller:
         installer = DockerInstaller()
 
         # Mock successful docker command
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Docker version 20.10.17", "")
 
             is_installed = await installer.check_installation()
             assert is_installed == True
 
         # Mock failed docker command
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             is_installed = await installer.check_installation()
@@ -68,7 +71,7 @@ class TestDockerInstaller:
         """Test Windows Docker installation"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             # Mock Docker Desktop installation
             result = await installer.install()
             # Should provide instructions for manual installation
@@ -79,11 +82,11 @@ class TestDockerInstaller:
         """Test Ubuntu Docker installation"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
-            with patch('pathlib.Path.read_text', return_value="ID=ubuntu"):
+            with patch("pathlib.Path.read_text", return_value="ID=ubuntu"):
                 result = await installer.install()
                 assert result.success == True
 
@@ -92,11 +95,11 @@ class TestDockerInstaller:
         """Test CentOS Docker installation"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
-            with patch('pathlib.Path.read_text', return_value="ID=centos"):
+            with patch("pathlib.Path.read_text", return_value="ID=centos"):
                 result = await installer.install()
                 assert result.success == True
 
@@ -105,7 +108,7 @@ class TestDockerInstaller:
         """Test macOS Docker installation"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Darwin'):
+        with patch("platform.system", return_value="Darwin"):
             # Mock Docker Desktop installation
             result = await installer.install()
             # Should provide instructions for manual installation
@@ -115,13 +118,13 @@ class TestDockerInstaller:
         """Test version detection"""
         installer = DockerInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Docker version 20.10.17, build 100c701", "")
 
             version = installer.get_version()
             assert version == "20.10.17"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             version = installer.get_version()
@@ -133,14 +136,14 @@ class TestDockerInstaller:
         installer = DockerInstaller()
 
         # Mock healthy daemon
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
             status = await installer.check_daemon_status()
             assert status == True
 
         # Mock unhealthy daemon
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(1, "", "Cannot connect to daemon")
 
             status = await installer.check_daemon_status()
@@ -151,8 +154,8 @@ class TestDockerInstaller:
         """Test Docker daemon start"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.start_daemon()
@@ -163,8 +166,8 @@ class TestDockerInstaller:
         """Test Docker daemon stop"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.stop_daemon()
@@ -176,14 +179,14 @@ class TestDockerInstaller:
         installer = DockerInstaller()
 
         # Mock successful container run
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Hello from Docker!", "")
 
             result = await installer.test_container_runtime()
             assert result.success == True
 
         # Mock failed container run
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(1, "", "Unable to find image")
 
             result = await installer.test_container_runtime()
@@ -194,7 +197,7 @@ class TestDockerInstaller:
         """Test Docker image pulling"""
         installer = DockerInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Pull complete", "")
 
             result = await installer.pull_image("hello-world")
@@ -205,7 +208,7 @@ class TestDockerInstaller:
         """Test Docker container running"""
         installer = DockerInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "container_id_123", "")
 
             result = await installer.run_container("hello-world", "test-container")
@@ -218,19 +221,20 @@ class TestDockerInstaller:
         installer = DockerInstaller()
 
         # Mock docker-compose available
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "docker-compose version 1.29.2", "")
 
             has_compose = await installer.check_compose_installation()
             assert has_compose == True
 
         # Mock docker-compose not available, but docker compose available
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
+
             def side_effect(cmd, **kwargs):
-                if 'docker-compose' in cmd:
-                    raise FileNotFoundError()
-                else:  # docker compose
-                    return MockSubprocessResult(0, "Docker Compose version v2.6.0", "")
+                if "docker-compose" in cmd:
+                    raise FileNotFoundError
+                # docker compose
+                return MockSubprocessResult(0, "Docker Compose version v2.6.0", "")
 
             mock_run.side_effect = side_effect
 
@@ -242,8 +246,8 @@ class TestDockerInstaller:
         """Test Docker Compose installation"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MockSubprocessResult(0, "", "")
 
                 result = await installer.install_compose()
@@ -254,10 +258,10 @@ class TestDockerInstaller:
         """Test Docker Compose up"""
         installer = DockerInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Creating network", "")
 
-            with tempfile.NamedTemporaryFile(suffix='.yml') as compose_file:
+            with tempfile.NamedTemporaryFile(suffix=".yml") as compose_file:
                 result = await installer.compose_up(Path(compose_file.name))
                 assert result.success == True
 
@@ -266,10 +270,10 @@ class TestDockerInstaller:
         """Test Docker Compose down"""
         installer = DockerInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "Stopping containers", "")
 
-            with tempfile.NamedTemporaryFile(suffix='.yml') as compose_file:
+            with tempfile.NamedTemporaryFile(suffix=".yml") as compose_file:
                 result = await installer.compose_down(Path(compose_file.name))
                 assert result.success == True
 
@@ -287,7 +291,7 @@ Server:
  Images: 10
 """
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, mock_info, "")
 
             info = installer.get_docker_info()
@@ -312,8 +316,8 @@ Server:
         """Test error handling during installation"""
         installer = DockerInstaller()
 
-        with patch('platform.system', return_value='Linux'):
-            with patch('subprocess.run') as mock_run:
+        with patch("platform.system", return_value="Linux"):
+            with patch("subprocess.run") as mock_run:
                 mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
                 result = await installer.install()
@@ -325,14 +329,14 @@ Server:
         installer = DockerInstaller()
 
         # Mock Ubuntu
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('pathlib.Path.read_text', return_value="ID=ubuntu\nVERSION_ID=20.04"):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="ID=ubuntu\nVERSION_ID=20.04"):
                 distro = installer._detect_linux_distro()
                 assert distro == "ubuntu"
 
         # Mock CentOS
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('pathlib.Path.read_text', return_value="ID=centos\nVERSION_ID=7"):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.read_text", return_value="ID=centos\nVERSION_ID=7"):
                 distro = installer._detect_linux_distro()
                 assert distro == "centos"
 
@@ -341,7 +345,7 @@ Server:
         """Test Docker user setup on Linux"""
         installer = DockerInstaller()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             await installer._setup_docker_user_linux()
@@ -353,16 +357,10 @@ Server:
         """Test Docker daemon configuration"""
         installer = DockerInstaller()
 
-        daemon_config = {
-            "log-driver": "json-file",
-            "log-opts": {
-                "max-size": "10m",
-                "max-file": "3"
-            }
-        }
+        daemon_config = {"log-driver": "json-file", "log-opts": {"max-size": "10m", "max-file": "3"}}
 
-        with patch('pathlib.Path.write_text') as mock_write:
-            with patch('json.dumps', return_value='{"log-driver": "json-file"}'):
+        with patch("pathlib.Path.write_text") as mock_write:
+            with patch("json.dumps", return_value='{"log-driver": "json-file"}'):
                 await installer.configure_docker_daemon(daemon_config)
                 mock_write.assert_called()
 
@@ -371,18 +369,13 @@ Server:
         installer = DockerInstaller()
 
         # Valid config
-        valid_config = {
-            "log-driver": "json-file",
-            "storage-driver": "overlay2"
-        }
+        valid_config = {"log-driver": "json-file", "storage-driver": "overlay2"}
 
         is_valid = installer.validate_docker_config(valid_config)
         assert is_valid == True
 
         # Invalid config (unknown option)
-        invalid_config = {
-            "invalid-option": "value"
-        }
+        invalid_config = {"invalid-option": "value"}
 
         is_valid = installer.validate_docker_config(invalid_config)
         # Implementation dependent - may accept unknown options
@@ -430,7 +423,7 @@ class TestDockerUtilities:
         mock_output = """CONTAINER ID   IMAGE         COMMAND                  CREATED         STATUS         PORTS     NAMES
 abc123def456   hello-world   "/hello"                 2 minutes ago   Exited (0) 2   minutes ago             test-container"""
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, mock_output, "")
 
             containers = installer.get_container_list()
@@ -444,7 +437,7 @@ abc123def456   hello-world   "/hello"                 2 minutes ago   Exited (0)
         mock_output = """REPOSITORY    TAG       IMAGE ID       CREATED         SIZE
 hello-world   latest    feb5d9fea6a5   12 months ago   13.3kB"""
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, mock_output, "")
 
             images = installer.get_image_list()
@@ -469,32 +462,34 @@ def test_environment():
 
 
 # Parametrized tests
-@pytest.mark.parametrize("platform,expected_method", [
-    ("Windows", "Docker Desktop"),
-    ("Linux", "package manager"),
-    ("Darwin", "Docker Desktop")
-])
+@pytest.mark.parametrize(
+    "platform,expected_method",
+    [("Windows", "Docker Desktop"), ("Linux", "package manager"), ("Darwin", "Docker Desktop")],
+)
 def test_installation_method_by_platform(platform, expected_method):
     """Test installation method by platform"""
     installer = DockerInstaller()
 
-    with patch('platform.system', return_value=platform):
+    with patch("platform.system", return_value=platform):
         # This would depend on implementation
         # For now, just test that different platforms are handled
         assert True  # Placeholder
 
 
-@pytest.mark.parametrize("version_output,expected", [
-    ("Docker version 20.10.17, build 100c701", "20.10.17"),
-    ("Docker version 19.03.8, build afacb8b", "19.03.8"),
-    ("Docker version 24.0.2, build cb74dfc", "24.0.2"),
-    ("invalid output", None)
-])
+@pytest.mark.parametrize(
+    "version_output,expected",
+    [
+        ("Docker version 20.10.17, build 100c701", "20.10.17"),
+        ("Docker version 19.03.8, build afacb8b", "19.03.8"),
+        ("Docker version 24.0.2, build cb74dfc", "24.0.2"),
+        ("invalid output", None),
+    ],
+)
 def test_version_parsing(version_output, expected):
     """Test version string parsing"""
     installer = DockerInstaller()
 
-    with patch('subprocess.run') as mock_run:
+    with patch("subprocess.run") as mock_run:
         if expected is None:
             mock_run.side_effect = FileNotFoundError()
         else:
@@ -504,19 +499,16 @@ def test_version_parsing(version_output, expected):
         assert parsed_version == expected
 
 
-@pytest.mark.parametrize("distro_id,expected", [
-    ("ubuntu", "ubuntu"),
-    ("centos", "centos"),
-    ("fedora", "fedora"),
-    ("debian", "debian"),
-    ("unknown", "unknown")
-])
+@pytest.mark.parametrize(
+    "distro_id,expected",
+    [("ubuntu", "ubuntu"), ("centos", "centos"), ("fedora", "fedora"), ("debian", "debian"), ("unknown", "unknown")],
+)
 def test_linux_distro_detection(distro_id, expected):
     """Test Linux distribution detection"""
     installer = DockerInstaller()
 
-    with patch('pathlib.Path.exists', return_value=True):
-        with patch('pathlib.Path.read_text', return_value=f"ID={distro_id}"):
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("pathlib.Path.read_text", return_value=f"ID={distro_id}"):
             detected = installer._detect_linux_distro()
             assert detected == expected
 

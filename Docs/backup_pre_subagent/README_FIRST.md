@@ -7,6 +7,7 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
 ## 🗂️ Directory Structure & Contents
 
 ### 📁 Root Files
+
 - **README.md** - Main project documentation and quick start guide
 - **CLAUDE.md** - AI assistant instructions and project context
 - **requirements.txt** - Python dependencies list
@@ -19,40 +20,48 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
 ### 📁 `/Docs/` - Core Documentation Hub
 
 #### 📁 Vision Documents (HIGHEST PRIORITY)
+
 - **📁 `/Docs/Vision/`**
   - `VISION_DOCUMENT.md` - Complete vision, roadmap, and strategic goals
-  
+
 #### 📁 Reference Manuals
+
 - **📁 `/Docs/manuals/`**
   - `README.md` - Index of all manuals
   - `MCP_TOOLS_MANUAL.md` - Complete reference for 20+ MCP tools
   - `MISSION_TEMPLATES_TESTING_GUIDE.md` - Test suite documentation for mission templates
-  
+
 #### 📄 Project Planning Documents
+
 - `PROJECT_ORCHESTRATION_PLAN.md` - Master plan for 20-project development strategy
 - `PROJECT_CARDS.md` - Ready-to-use mission cards for orchestrator projects
 - `PROJECT_FLOW_VISUAL.md` - Visual timeline and project dependencies
-  
+
 #### 📄 Technical Documentation
+
 - `TECHNICAL_ARCHITECTURE.md` - System design with OS-neutral requirements
 - `PRODUCT_PROPOSAL.md` - Business case and market positioning
 - `PROVEN_FEATURES_TO_PRESERVE.md` - Critical features to maintain
 - `MESSAGE_QUEUE_GUIDE.md` - Message queue system documentation
 - `AGENT_INSTRUCTIONS.md` - Agent behavior and coordination guidelines
-  
+
 #### 🎨 UI/UX Resources
+
 - `color_themes.md` - **MANDATORY** color palette and theme specifications
 - `Website colors.txt` - Additional color reference
-  
+
 #### 📄 Navigation & Configuration
+
 - `README_FIRST.md` - This index file (you are here)
 - `CONFIGURATION_AND_REFERENCE_INDEX.md` - Complete index of all config files
 
 #### 📁 Development Tracking (Not Indexed)
+
 - **📁 `/Docs/Sessions/`** - Agent session memories and project handoffs
 - **📁 `/Docs/devlog/`** - Development logs and project completion reports
 
 ### 📁 `/src/` - Source Code
+
 - **📁 `/src/giljo_mcp/`** - Core application
   - `__init__.py`, `__main__.py` - Package initialization and entry point
   - `server.py` - FastMCP server implementation
@@ -71,24 +80,30 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
     - `message.py` - Messaging tools
     - `context.py` - Context discovery tools
     - `chunking.py` - Vision document chunking
+
 ### 📁 `/tests/` - Test Suite (Code)
+
 - Unit tests and integration tests for all modules
 - Test fixtures and data
 - **Documentation**: See `/Docs/tests/` for test reports and validation
 
 ### 📁 `/api/` - API Layer (Code)
+
 - FastAPI application
 - REST endpoints
 - WebSocket handlers
 - **Documentation**: See `/Docs/api/api_implementation_guide.md`
 
 ### 📁 `/frontend/` - User Interface (PARTIALLY CREATED)
+
 **Already Provided**:
+
 - `/frontend/public/favicon.ico` - ✅ Application favicon
 - `/frontend/public/icons/` - ✅ All system icons ready to use
 - `/frontend/public/mascot/` - ✅ Animated logo
 
 **To Be Created**:
+
 - Vue 3 application structure
 - Components, views, stores
 - Build configuration
@@ -96,6 +111,7 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
 ### 📁 Documentation Organization
 
 #### 📁 `/Docs/docker/` - Docker Documentation
+
 - `docker_setup_guide.md` - Complete Docker setup instructions
 - `docker_deployment_guide.md` - Production deployment guide
 - `docker_compose_plan.md` - Docker Compose configuration details
@@ -104,24 +120,31 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
   - Health check patterns
 
 #### 📁 `/Docs/scripts/` - Scripts Documentation
+
 - `scripts_setup_guide.md` - Setup and utility scripts documentation
 
 #### 📁 `/Docs/tests/` - Test Documentation
+
 - `test_validation_checklist.md` - Testing checklist
 - `TEST_VALIDATION_REPORT.md` - Complete validation report
 - `WEBSOCKET_SECURITY_VALIDATION.md` - WebSocket security testing
 
 #### 📁 `/Docs/api/` - API Documentation
+
 - `api_implementation_guide.md` - API implementation details
 
 ### 📁 `/scripts/` - Utility Scripts (Code - TO BE CREATED)
+
 Will contain:
+
 - Setup scripts
 - Migration tools
 - Development utilities
 
 ### 📁 `/docker/` - Container Definitions (Code)
+
 Contains:
+
 - Dockerfile
 - docker-compose.yml
 - Container configurations
@@ -136,17 +159,20 @@ We're about to begin building this system using orchestration to manage its own 
 
 ## 📝 How to Navigate This Project
 
-1. **First Time?** 
+1. **First Time?**
+
    - Read `README.md` for overview
    - Check `docs/Vision/VISION_DOCUMENT.md` for goals
    - Review `docs/PROJECT_ORCHESTRATION_PLAN.md` for development strategy
 
 2. **Starting Development?**
+
    - Open `docs/PROJECT_CARDS.md` for ready-to-use project missions
    - Check `docs/PROJECT_FLOW_VISUAL.md` for dependencies
    - Read `docs/Sessions/` for context and decisions
 
 3. **Contributing Code?**
+
    - Review `docs/TECHNICAL_ARCHITECTURE.md` for design patterns
    - **IMPORTANT**: Follow OS-neutral coding requirements (see Cross-Platform section)
    - Check `docs/PROVEN_FEATURES_TO_PRESERVE.md` for critical features
@@ -159,13 +185,16 @@ We're about to begin building this system using orchestration to manage its own 
 ## ⚠️ Critical Requirements
 
 ### OS-Neutral Code (MANDATORY)
+
 All code MUST work on Windows, Mac, and Linux:
+
 - Use `pathlib.Path()` for all file paths
 - Never hardcode path separators
 - Test on multiple platforms
 - See `docs/TECHNICAL_ARCHITECTURE.md` for examples
 
 ### UI/UX Design Requirements
+
 - **MUST use color themes from `/docs/color_themes.md`**
 - Vue 3 + Vuetify 3 for components
 - Dark/light mode support with theme colors
@@ -173,11 +202,13 @@ All code MUST work on Windows, Mac, and Linux:
 - WCAG 2.1 AA accessibility compliance
 
 ### Multi-Tenant Architecture
+
 - Every operation must use tenant keys
 - No single-product limitations
 - Concurrent project support from day one
 
 ### Core Features Implemented
+
 - Vision document chunking (50K+ tokens)
 - Message acknowledgment arrays
 - Dynamic discovery (no static indexing)
@@ -186,15 +217,18 @@ All code MUST work on Windows, Mac, and Linux:
 ## 🎯 Development Workflow
 
 1. **Create Project in Orchestrator**
+
    - Use missions from `docs/PROJECT_CARDS.md`
    - Follow phase order in `docs/PROJECT_FLOW_VISUAL.md`
 
 2. **Monitor Progress**
+
    - Dashboard at http://localhost:5000
    - Check agent messages
    - Review generated code
 
 3. **Document Progress**
+
    - Update `/docs/devlog/` daily
    - Add session memories
    - Track decisions and learnings
@@ -222,7 +256,7 @@ All code MUST work on Windows, Mac, and Linux:
 
 ---
 
-*This index will be updated as the project structure evolves during development.*
+_This index will be updated as the project structure evolves during development._
 
 **Last Updated**: January 2025
 **Version**: 0.1.0-pre
