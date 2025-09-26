@@ -1,0 +1,292 @@
+# =============================================================================
+# GiljoAI MCP Release Filter Configuration
+# =============================================================================
+# This file defines what gets excluded from release archives/branches
+# When creating releases, GitHub will automatically exclude these files
+# Version: 0.1.1
+# =============================================================================
+
+# =============================================================================
+# DEVELOPMENT DOCUMENTATION TO EXCLUDE
+# =============================================================================
+
+# Vision and planning documents (internal only)
+docs/Vision/ export-ignore
+docs/vision/ export-ignore
+**/VISION*.md export-ignore
+**/vision*.md export-ignore
+
+# Development session memories and logs
+docs/Sessions/ export-ignore
+docs/sessions/ export-ignore
+docs/devlog/ export-ignore
+docs/Development/ export-ignore
+docs/development/ export-ignore
+**/session_*.md export-ignore
+**/devlog*.md export-ignore
+
+# Project management documents
+**/project_*.md export-ignore
+**/PROJECT_*.md export-ignore
+**/workflow*.md export-ignore
+**/WORKFLOW*.md export-ignore
+**/management*.md export-ignore
+**/MANAGEMENT*.md export-ignore
+
+# Agent communication files
+**/agent_comms/ export-ignore
+**/*_agent_*.json export-ignore
+**/orchestrator_*.json export-ignore
+
+# ADR (Architecture Decision Records) - internal only
+docs/adr/ export-ignore
+Docs/adr/ export-ignore
+
+# =============================================================================
+# TEST AND DEVELOPMENT FILES TO EXCLUDE
+# =============================================================================
+
+# All test files
+test_*.py export-ignore
+*_test.py export-ignore
+*.test.py export-ignore
+**/test_*.py export-ignore
+**/*_test.py export-ignore
+**/tests/ export-ignore
+**/Tests/ export-ignore
+**/test/ export-ignore
+**/Test/ export-ignore
+
+# Coverage reports and analysis
+coverage*.* export-ignore
+*coverage*.py export-ignore
+*coverage*.md export-ignore
+*coverage*.json export-ignore
+*coverage*.xml export-ignore
+*coverage*.html export-ignore
+.coverage export-ignore
+htmlcov/ export-ignore
+
+# Benchmark and performance testing
+benchmark*.py export-ignore
+*benchmark*.py export-ignore
+performance*.py export-ignore
+*performance*.py export-ignore
+
+# Debug and monitoring tools
+debug*.py export-ignore
+*debug*.py export-ignore
+monitor*.py export-ignore
+*monitor*.py export-ignore
+*_monitor.py export-ignore
+visual_*.py export-ignore
+
+# Test results and reports
+*test_results*.json export-ignore
+*test_report*.json export-ignore
+*validation_results*.json export-ignore
+*validation_report*.json export-ignore
+test_*.db export-ignore
+test_*.db-shm export-ignore
+test_*.db-wal export-ignore
+
+# =============================================================================
+# TEMPORARY AND BACKUP FILES TO EXCLUDE
+# =============================================================================
+
+# Old versions
+*.old export-ignore
+*.OLD export-ignore
+**/*.old export-ignore
+
+# Backup files
+*.bak export-ignore
+*.BAK export-ignore
+*.backup export-ignore
+**/*.bak export-ignore
+
+# Temporary files
+*.tmp export-ignore
+*.temp export-ignore
+*.TMP export-ignore
+*.TEMP export-ignore
+**/*.tmp export-ignore
+**/*.temp export-ignore
+
+# Work in progress files
+*WIP* export-ignore
+*wip* export-ignore
+*draft* export-ignore
+*DRAFT* export-ignore
+scratch/ export-ignore
+drafts/ export-ignore
+
+# =============================================================================
+# BUILD AND CACHE FILES TO EXCLUDE
+# =============================================================================
+
+# Python cache
+__pycache__/ export-ignore
+**/__pycache__/ export-ignore
+*.pyc export-ignore
+*.pyo export-ignore
+*.pyd export-ignore
+.Python export-ignore
+*.so export-ignore
+
+# Virtual environments
+venv/ export-ignore
+env/ export-ignore
+ENV/ export-ignore
+
+# Build directories
+build/ export-ignore
+dist/ export-ignore
+*.egg-info/ export-ignore
+.eggs/ export-ignore
+
+# Type checking cache
+.mypy_cache/ export-ignore
+.pytest_cache/ export-ignore
+.ruff_cache/ export-ignore
+
+# =============================================================================
+# IDE AND EDITOR FILES TO EXCLUDE
+# =============================================================================
+
+# VS Code
+.vscode/ export-ignore
+*.code-workspace export-ignore
+
+# JetBrains IDEs
+.idea/ export-ignore
+*.iml export-ignore
+
+# Claude specific
+.claude/ export-ignore
+
+# =============================================================================
+# DEVELOPMENT CONFIGURATION TO EXCLUDE
+# =============================================================================
+
+# Local environment files
+.env.local export-ignore
+.env.development export-ignore
+.env.dev export-ignore
+.env.test export-ignore
+
+# Git hooks and CI
+.pre-commit-config.yaml export-ignore
+.github/workflows/*test*.yml export-ignore
+.github/workflows/*debug*.yml export-ignore
+
+# Development scripts that shouldn't be in release
+fix_*.py export-ignore
+final_*.py export-ignore
+run_*.py export-ignore
+create_distribution.* export-ignore
+
+# =============================================================================
+# LOGS AND DATABASES TO EXCLUDE
+# =============================================================================
+
+# Log files
+logs/ export-ignore
+*.log export-ignore
+**/*.log export-ignore
+
+# Development databases
+*.db export-ignore
+*.sqlite export-ignore
+*.sqlite3 export-ignore
+!data/.gitkeep export-ignore
+
+# =============================================================================
+# OS FILES TO EXCLUDE
+# =============================================================================
+
+# macOS
+.DS_Store export-ignore
+.AppleDouble export-ignore
+.LSOverride export-ignore
+
+# Windows
+Thumbs.db export-ignore
+ehthumbs.db export-ignore
+Desktop.ini export-ignore
+
+# Linux
+.directory export-ignore
+*~ export-ignore
+
+# =============================================================================
+# GIT FILES TO EXCLUDE FROM RELEASES
+# =============================================================================
+
+.gitignore export-ignore
+.gitignore.release export-ignore
+.gitattributes export-ignore
+
+# =============================================================================
+# DOCUMENTATION TO EXCLUDE (keep only user-facing docs)
+# =============================================================================
+
+# Development-specific documentation
+TODO.md export-ignore
+NOTES.md export-ignore
+ROADMAP.md export-ignore
+PLANNING.md export-ignore
+BACKLOG.md export-ignore
+
+# Test documentation (internal)
+docs/tests/ export-ignore
+Docs/tests/ export-ignore
+**/TEST_*.md export-ignore
+**/WEBSOCKET_*.md export-ignore
+
+# Internal API documentation
+docs/api/api_implementation_guide.md export-ignore
+
+# Keep only essential documentation for release:
+# - README.md (main)
+# - INSTALL.md
+# - CLAUDE.md (usage instructions)
+# - LICENSE
+# - CONTRIBUTING.md
+# - docs/README.md
+# - docs/TECHNICAL_ARCHITECTURE.md
+# - docs/guides/USER_GUIDE.md
+# - docs/guides/API_REFERENCE.md
+# - docs/manuals/*.md (user manuals)
+# - docs/color_themes.md (for UI customization)
+
+# =============================================================================
+# SPECIFIC FILES TO EXCLUDE
+# =============================================================================
+
+# Reports and analysis (internal)
+PRODUCTION_READINESS_REPORT.md export-ignore
+FINAL_CLEAN_COVERAGE_REPORT.md export-ignore
+WEBSOCKET_TEST_COVERAGE_REPORT.md export-ignore
+api_coverage_summary.md export-ignore
+coverage_gap_analysis_report.md export-ignore
+dependency_report.json export-ignore
+
+# Development manifests
+MANIFEST.txt export-ignore
+
+# =============================================================================
+# LINE ENDING NORMALIZATION (keep for all files)
+# =============================================================================
+
+# Ensure consistent line endings
+* text=auto
+*.py text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
