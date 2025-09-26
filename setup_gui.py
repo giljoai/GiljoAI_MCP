@@ -45,8 +45,7 @@ class WelcomePage(WizardPage):
         super().__init__(parent, "Welcome to GiljoAI MCP Setup")
 
         # Title
-        title_label = ttk.Label(self, text="GiljoAI MCP Setup Wizard",
-                               font=("Helvetica", 16, "bold"))
+        title_label = ttk.Label(self, text="GiljoAI MCP Setup Wizard", font=("Helvetica", 16, "bold"))
         title_label.pack(pady=20)
 
         # Description
@@ -75,10 +74,12 @@ Click 'Next' to begin."""
         mode_frame = ttk.LabelFrame(self, text="Setup Mode", padding=10)
         mode_frame.pack(padx=20, pady=10, fill="x")
 
-        ttk.Radiobutton(mode_frame, text="Development (Local SQLite)",
-                       variable=self.mode_var, value="development").pack(anchor="w")
-        ttk.Radiobutton(mode_frame, text="Production (PostgreSQL)",
-                       variable=self.mode_var, value="production").pack(anchor="w")
+        ttk.Radiobutton(
+            mode_frame, text="Development (Local SQLite)", variable=self.mode_var, value="development"
+        ).pack(anchor="w")
+        ttk.Radiobutton(mode_frame, text="Production (PostgreSQL)", variable=self.mode_var, value="production").pack(
+            anchor="w"
+        )
 
     def get_data(self) -> dict:
         return {"mode": self.mode_var.get()}
@@ -96,12 +97,20 @@ class DatabasePage(WizardPage):
         type_frame = ttk.LabelFrame(self, text="Database Type", padding=10)
         type_frame.pack(padx=20, pady=10, fill="x")
 
-        ttk.Radiobutton(type_frame, text="SQLite (Recommended for development)",
-                       variable=self.db_type_var, value="sqlite",
-                       command=self._on_db_type_change).pack(anchor="w")
-        ttk.Radiobutton(type_frame, text="PostgreSQL (For production/multi-user)",
-                       variable=self.db_type_var, value="postgresql",
-                       command=self._on_db_type_change).pack(anchor="w")
+        ttk.Radiobutton(
+            type_frame,
+            text="SQLite (Recommended for development)",
+            variable=self.db_type_var,
+            value="sqlite",
+            command=self._on_db_type_change,
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            type_frame,
+            text="PostgreSQL (For production/multi-user)",
+            variable=self.db_type_var,
+            value="postgresql",
+            command=self._on_db_type_change,
+        ).pack(anchor="w")
 
         # SQLite configuration
         self.sqlite_frame = ttk.LabelFrame(self, text="SQLite Configuration", padding=10)
@@ -175,8 +184,7 @@ class DatabasePage(WizardPage):
     def _browse_path(self):
         """Browse for database path"""
         filename = filedialog.asksaveasfilename(
-            defaultextension=".db",
-            filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")]
+            defaultextension=".db", filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")]
         )
         if filename:
             self.db_path_var.set(filename)
@@ -190,12 +198,13 @@ class DatabasePage(WizardPage):
         def test():
             try:
                 import psycopg2
+
                 conn = psycopg2.connect(
                     host=self.pg_host_var.get(),
                     port=self.pg_port_var.get(),
                     database=self.pg_database_var.get(),
                     user=self.pg_user_var.get(),
-                    password=self.pg_password_var.get()
+                    password=self.pg_password_var.get(),
                 )
                 conn.close()
                 self.status_label.config(text="✓ Connection successful", foreground="green")
@@ -209,26 +218,18 @@ class DatabasePage(WizardPage):
         """Validate database configuration"""
         if self.db_type_var.get() == "sqlite":
             return bool(self.db_path_var.get())
-        return all([
-            self.pg_host_var.get(),
-            self.pg_port_var.get(),
-            self.pg_database_var.get(),
-            self.pg_user_var.get()
-        ])
+        return all([self.pg_host_var.get(), self.pg_port_var.get(), self.pg_database_var.get(), self.pg_user_var.get()])
 
     def get_data(self) -> dict:
         if self.db_type_var.get() == "sqlite":
-            return {
-                "db_type": "sqlite",
-                "db_path": self.db_path_var.get()
-            }
+            return {"db_type": "sqlite", "db_path": self.db_path_var.get()}
         return {
             "db_type": "postgresql",
             "pg_host": self.pg_host_var.get(),
             "pg_port": self.pg_port_var.get(),
             "pg_database": self.pg_database_var.get(),
             "pg_user": self.pg_user_var.get(),
-            "pg_password": self.pg_password_var.get()
+            "pg_password": self.pg_password_var.get(),
         }
 
 
@@ -268,12 +269,10 @@ class PortsPage(WizardPage):
             self.status_labels[service] = status
 
             # Check button
-            ttk.Button(frame, text="Check",
-                      command=lambda s=service: self._check_port(s)).pack(side="left")
+            ttk.Button(frame, text="Check", command=lambda s=service: self._check_port(s)).pack(side="left")
 
         # Check all button
-        ttk.Button(ports_frame, text="Check All Ports",
-                  command=self._check_all_ports).pack(pady=10)
+        ttk.Button(ports_frame, text="Check All Ports", command=self._check_all_ports).pack(pady=10)
 
     def _check_port(self, service: str):
         """Check if a port is available"""
@@ -294,18 +293,15 @@ class PortsPage(WizardPage):
             try:
                 port = int(var.get())
                 if port < 1024 or port > 65535:
-                    messagebox.showerror("Invalid Port",
-                                       f"{service} port must be between 1024 and 65535")
+                    messagebox.showerror("Invalid Port", f"{service} port must be between 1024 and 65535")
                     return False
             except ValueError:
-                messagebox.showerror("Invalid Port",
-                                   f"{service} port must be a number")
+                messagebox.showerror("Invalid Port", f"{service} port must be a number")
                 return False
         return True
 
     def get_data(self) -> dict:
-        return {f"{service}_port": self.port_vars[service].get()
-                for service in self.port_vars}
+        return {f"{service}_port": self.port_vars[service].get() for service in self.port_vars}
 
 
 class SecurityPage(WizardPage):
@@ -319,15 +315,22 @@ class SecurityPage(WizardPage):
         api_frame.pack(padx=20, pady=10, fill="x")
 
         self.enable_api_key_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(api_frame, text="Enable API Key authentication",
-                       variable=self.enable_api_key_var,
-                       command=self._on_api_toggle).pack(anchor="w")
+        ttk.Checkbutton(
+            api_frame,
+            text="Enable API Key authentication",
+            variable=self.enable_api_key_var,
+            command=self._on_api_toggle,
+        ).pack(anchor="w")
 
         # API Key explanation
-        api_help = ttk.Label(api_frame, text="📔 For building your own applications and integrating with GiljoAI MCP.\n" +
-                                             "Examples: Custom tools, local LLM integrations, automation scripts.\n" +
-                                             "Note: MCP clients (Claude, etc.) use MCP protocol, not this.",
-                            foreground="gray", wraplength=500)
+        api_help = ttk.Label(
+            api_frame,
+            text="📔 For building your own applications and integrating with GiljoAI MCP.\n"
+            + "Examples: Custom tools, local LLM integrations, automation scripts.\n"
+            + "Note: MCP clients (Claude, etc.) use MCP protocol, not this.",
+            foreground="gray",
+            wraplength=500,
+        )
         api_help.pack(anchor="w", pady=(5, 10))
 
         self.api_key_var = tk.StringVar()
@@ -335,12 +338,12 @@ class SecurityPage(WizardPage):
 
         ttk.Label(self.api_frame_inner, text="API Key:").pack(side="left", padx=5)
         ttk.Entry(self.api_frame_inner, textvariable=self.api_key_var, width=40).pack(side="left", padx=5)
-        ttk.Button(self.api_frame_inner, text="Generate",
-                  command=self._generate_api_key).pack(side="left")
+        ttk.Button(self.api_frame_inner, text="Generate", command=self._generate_api_key).pack(side="left")
 
         # Warning about saving the key
-        self.api_warning = ttk.Label(self.api_frame_inner, text="⚠️ Copy this key now! It won't be shown again.",
-                                     foreground="orange")
+        self.api_warning = ttk.Label(
+            self.api_frame_inner, text="⚠️ Copy this key now! It won't be shown again.", foreground="orange"
+        )
         self.api_warning.pack(side="left", padx=10)
 
         # JWT Secret
@@ -348,9 +351,13 @@ class SecurityPage(WizardPage):
         jwt_frame.pack(padx=20, pady=10, fill="x")
 
         # JWT explanation
-        jwt_help = ttk.Label(jwt_frame, text="🔐 Signs session tokens for the web dashboard. Prevents token tampering.\n" +
-                                             "Auto-generated for security. No need to copy unless integrating SSO.",
-                            foreground="gray", wraplength=500)
+        jwt_help = ttk.Label(
+            jwt_frame,
+            text="🔐 Signs session tokens for the web dashboard. Prevents token tampering.\n"
+            + "Auto-generated for security. No need to copy unless integrating SSO.",
+            foreground="gray",
+            wraplength=500,
+        )
         jwt_help.pack(anchor="w", pady=(0, 10))
 
         self.jwt_secret_var = tk.StringVar()
@@ -359,20 +366,23 @@ class SecurityPage(WizardPage):
 
         ttk.Label(jwt_inner, text="JWT Secret:").pack(side="left", padx=5)
         ttk.Entry(jwt_inner, textvariable=self.jwt_secret_var, width=40).pack(side="left", padx=5)
-        ttk.Button(jwt_inner, text="Generate",
-                  command=self._generate_jwt_secret).pack(side="left")
+        ttk.Button(jwt_inner, text="Generate", command=self._generate_jwt_secret).pack(side="left")
 
         # CORS settings (always enabled)
         cors_frame = ttk.LabelFrame(self, text="CORS Origin Configuration (Required for Dashboard)", padding=10)
         cors_frame.pack(padx=20, pady=10, fill="x")
 
         # CORS explanation
-        cors_help = ttk.Label(cors_frame, text="🌐 Dashboard Access Configuration\n" +
-                                               "Default works for local access. Change for LAN/WAN:\n" +
-                                               "• Local: http://localhost:* (default)\n" +
-                                               "• LAN: http://YOUR-SERVER-IP:* (e.g., http://192.168.1.100:*)\n" +
-                                               "• WAN: https://your-domain.com",
-                             foreground="gray", wraplength=500)
+        cors_help = ttk.Label(
+            cors_frame,
+            text="🌐 Dashboard Access Configuration\n"
+            + "Default works for local access. Change for LAN/WAN:\n"
+            + "• Local: http://localhost:* (default)\n"
+            + "• LAN: http://YOUR-SERVER-IP:* (e.g., http://192.168.1.100:*)\n"
+            + "• WAN: https://your-domain.com",
+            foreground="gray",
+            wraplength=500,
+        )
         cors_help.pack(anchor="w", pady=(0, 10))
 
         self.cors_origins_var = tk.StringVar(value="http://localhost:*")
@@ -382,8 +392,12 @@ class SecurityPage(WizardPage):
         ttk.Entry(origins_frame, textvariable=self.cors_origins_var, width=45).pack(side="left", padx=5)
 
         # Note about editing
-        cors_note = ttk.Label(cors_frame, text="💡 Tip: You can change this later in the .env file if your network setup changes",
-                             foreground="blue", font=("", 9))
+        cors_note = ttk.Label(
+            cors_frame,
+            text="💡 Tip: You can change this later in the .env file if your network setup changes",
+            foreground="blue",
+            font=("", 9),
+        )
         cors_note.pack(anchor="w", pady=(5, 0))
 
         # Initialize
@@ -402,12 +416,14 @@ class SecurityPage(WizardPage):
     def _generate_api_key(self):
         """Generate random API key"""
         import secrets
+
         key = f"gj-{secrets.token_urlsafe(32)}"
         self.api_key_var.set(key)
 
     def _generate_jwt_secret(self):
         """Generate random JWT secret"""
         import secrets
+
         secret = secrets.token_urlsafe(48)
         self.jwt_secret_var.set(secret)
 
@@ -415,7 +431,7 @@ class SecurityPage(WizardPage):
         data = {
             "jwt_secret": self.jwt_secret_var.get(),
             "cors_enabled": True,  # Always enabled
-            "cors_origins": self.cors_origins_var.get()
+            "cors_origins": self.cors_origins_var.get(),
         }
         if self.enable_api_key_var.get():
             data["api_key"] = self.api_key_var.get()
@@ -433,15 +449,18 @@ class ReviewPage(WizardPage):
         desc = ttk.Label(self, text="Review your configuration before applying:")
         desc.pack(padx=20, pady=10)
 
+        # Create frame for text and scrollbar
+        text_frame = ttk.Frame(self)
+        text_frame.pack(padx=20, pady=10, fill="both", expand=True)
+
         # Config display
-        self.text = tk.Text(self, height=20, width=70)
-        self.text.pack(padx=20, pady=10)
+        self.text = tk.Text(text_frame, height=20, width=70, wrap="word")
+        self.text.pack(side="left", fill="both", expand=True)
 
         # Scrollbar
-        scrollbar = ttk.Scrollbar(self.text)
+        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.text.yview)
         scrollbar.pack(side="right", fill="y")
         self.text.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=self.text.yview)
 
     def on_enter(self):
         """Update configuration display"""
@@ -488,7 +507,7 @@ class ReviewPage(WizardPage):
         else:
             self.text.insert(tk.END, "API Key: Disabled (Local mode)\n")
 
-        jwt_secret = config.get('jwt_secret', '')
+        jwt_secret = config.get("jwt_secret", "")
         if jwt_secret:
             self.text.insert(tk.END, f"JWT Secret: {jwt_secret[:10]}... (Auto-saved)\n")
         else:
@@ -500,11 +519,13 @@ class ReviewPage(WizardPage):
         # URLs
         self.text.insert(tk.END, "\nACCESS URLS\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
-        dashboard_port = config.get('dashboard_port', PORT_ASSIGNMENTS['dashboard'])
-        api_port = config.get('api_port', PORT_ASSIGNMENTS['api'])
+        dashboard_port = config.get("dashboard_port", PORT_ASSIGNMENTS["dashboard"])
+        api_port = config.get("api_port", PORT_ASSIGNMENTS["api"])
         self.text.insert(tk.END, f"Dashboard: http://localhost:{dashboard_port}\n")
         self.text.insert(tk.END, f"API: http://localhost:{api_port}\n")
-        self.text.insert(tk.END, f"WebSocket: ws://localhost:{config.get('websocket_port', PORT_ASSIGNMENTS['websocket'])}\n")
+        self.text.insert(
+            tk.END, f"WebSocket: ws://localhost:{config.get('websocket_port', PORT_ASSIGNMENTS['websocket'])}\n"
+        )
 
         self.text.config(state="disabled")
 
@@ -517,8 +538,7 @@ class ProgressPage(WizardPage):
 
         # Progress bar
         self.progress_var = tk.IntVar(value=0)
-        self.progress = ttk.Progressbar(self, variable=self.progress_var,
-                                       maximum=100, length=400)
+        self.progress = ttk.Progressbar(self, variable=self.progress_var, maximum=100, length=400)
         self.progress.pack(padx=20, pady=20)
 
         # Status label
@@ -526,15 +546,18 @@ class ProgressPage(WizardPage):
         self.status_label = ttk.Label(self, textvariable=self.status_var)
         self.status_label.pack(padx=20, pady=5)
 
+        # Create frame for detail text and scrollbar
+        detail_frame = ttk.Frame(self)
+        detail_frame.pack(padx=20, pady=10, fill="both", expand=True)
+
         # Detail text
-        self.detail_text = tk.Text(self, height=15, width=70)
-        self.detail_text.pack(padx=20, pady=10)
+        self.detail_text = tk.Text(detail_frame, height=15, width=70, wrap="word")
+        self.detail_text.pack(side="left", fill="both", expand=True)
 
         # Scrollbar
-        scrollbar = ttk.Scrollbar(self.detail_text)
+        scrollbar = ttk.Scrollbar(detail_frame, orient="vertical", command=self.detail_text.yview)
         scrollbar.pack(side="right", fill="y")
         self.detail_text.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=self.detail_text.yview)
 
         self.completed = False
 
@@ -622,8 +645,7 @@ class GiljoSetupGUI(GiljoSetup):
         header_frame = ttk.Frame(self.root, relief="ridge", borderwidth=2)
         header_frame.pack(fill="x", padx=5, pady=5)
 
-        self.title_label = ttk.Label(header_frame, text="Welcome",
-                                    font=("Helvetica", 14, "bold"))
+        self.title_label = ttk.Label(header_frame, text="Welcome", font=("Helvetica", 14, "bold"))
         self.title_label.pack(pady=10)
 
         # Content frame
@@ -635,16 +657,13 @@ class GiljoSetupGUI(GiljoSetup):
         button_frame.pack(fill="x", padx=5, pady=5)
 
         # Navigation buttons
-        self.back_btn = ttk.Button(button_frame, text="< Back",
-                                  command=self._prev_page)
+        self.back_btn = ttk.Button(button_frame, text="< Back", command=self._prev_page)
         self.back_btn.pack(side="left", padx=5)
 
-        self.next_btn = ttk.Button(button_frame, text="Next >",
-                                  command=self._next_page)
+        self.next_btn = ttk.Button(button_frame, text="Next >", command=self._next_page)
         self.next_btn.pack(side="right", padx=5)
 
-        self.cancel_btn = ttk.Button(button_frame, text="Cancel",
-                                    command=self._cancel)
+        self.cancel_btn = ttk.Button(button_frame, text="Cancel", command=self._cancel)
         self.cancel_btn.pack(side="right", padx=5)
 
     def _create_pages(self):
@@ -655,7 +674,7 @@ class GiljoSetupGUI(GiljoSetup):
             PortsPage(self.content_frame),
             SecurityPage(self.content_frame),
             ReviewPage(self.content_frame, self._get_all_config),
-            ProgressPage(self.content_frame)
+            ProgressPage(self.content_frame),
         ]
 
     def _show_page(self, index: int):
@@ -716,8 +735,7 @@ class GiljoSetupGUI(GiljoSetup):
 
     def _cancel(self):
         """Cancel setup"""
-        if messagebox.askyesno("Cancel Setup",
-                              "Are you sure you want to cancel setup?"):
+        if messagebox.askyesno("Cancel Setup", "Are you sure you want to cancel setup?"):
             self.root.quit()
 
     def _get_all_config(self) -> dict:
