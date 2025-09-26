@@ -52,6 +52,15 @@ We have carefully reviewed and intentionally bypass certain security warnings th
    - Implement row-level security for multi-tenant mode
    - Regular backups with encryption
 
+4. **CORS Configuration**
+   - **Purpose**: Allows the built-in web dashboard to communicate with the API
+   - **NOT for MCP clients**: MCP protocol connections bypass CORS entirely
+   - **When to configure**:
+     - Local: `http://localhost:*` (dashboard and API on same machine)
+     - LAN: `http://192.168.x.x:*` (accessing dashboard from network)
+     - WAN/SaaS: `https://dashboard.yourdomain.com` (public deployment)
+   - **Security Note**: Only allow origins where you host the dashboard
+
 ## Reporting Security Issues
 
 Please report security vulnerabilities to:

@@ -370,9 +370,9 @@ class SecurityPage(WizardPage):
                        variable=self.cors_enabled_var).pack(anchor="w")
 
         # CORS explanation
-        cors_help = ttk.Label(cors_frame, text="🌐 Cross-Origin Resource Sharing - Browser security feature.\n" +
-                                               "Allows the dashboard to communicate with the API from different domains.\n" +
-                                               "Keep enabled unless you know you need it disabled.",
+        cors_help = ttk.Label(cors_frame, text="🌐 For Web Dashboard Only - NOT for MCP clients!\n" +
+                                               "Allows the built-in web dashboard (port 6000) to call the API (port 6002).\n" +
+                                               "Without this, your browser blocks the dashboard. MCP clients ignore this setting.",
                              foreground="gray", wraplength=500)
         cors_help.pack(anchor="w", pady=(5, 10))
 
@@ -383,7 +383,7 @@ class SecurityPage(WizardPage):
         ttk.Entry(origins_frame, textvariable=self.cors_origins_var, width=40).pack(side="left", padx=5)
 
         # CORS origin help
-        cors_origin_help = ttk.Label(cors_frame, text="Examples: http://localhost:* (dev), https://app.example.com (production)",
+        cors_origin_help = ttk.Label(cors_frame, text="Examples: http://localhost:* (local), http://192.168.1.100:* (LAN), https://dashboard.yourcompany.com (WAN)",
                                      foreground="gray", font=("", 9))
         cors_origin_help.pack(anchor="w", padx=(5, 0))
 

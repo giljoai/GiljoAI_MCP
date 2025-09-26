@@ -422,10 +422,10 @@ class GiljoSetup:
             console.print(f"  [green]✓ Generated JWT secret[/green] (stored securely)")
 
             # CORS explanation
-            console.print("\n[cyan]🌐 CORS Configuration:[/cyan]")
-            console.print("  • [dim]Used for: Web browser security[/dim]")
-            console.print("  • [dim]When needed: Dashboard accessed from different domains[/dim]")
-            console.print("  • [dim]Current: Allowing localhost connections only[/dim]")
+            console.print("\n[cyan]🌐 CORS Configuration (For Web Dashboard):[/cyan]")
+            console.print("  • [dim]What it is: Allows your web dashboard to talk to the API[/dim]")
+            console.print("  • [dim]Why needed: Browsers block dashboard→API calls without this[/dim]")
+            console.print("  • [dim]Note: MCP clients ignore this - it's only for the web UI[/dim]")
             self.env_vars["CORS_ENABLED"] = "true"
             self.env_vars["CORS_ORIGINS"] = "http://localhost:*"
             console.print("  [green]✓ CORS configured for local development[/green]")
