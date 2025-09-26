@@ -70,14 +70,17 @@ Click 'Next' to begin."""
         desc_label.pack(padx=20, pady=10)
 
         # Mode selection
-        self.mode_var = tk.StringVar(value="development")
+        self.mode_var = tk.StringVar(value="local")
         mode_frame = ttk.LabelFrame(self, text="Setup Mode", padding=10)
         mode_frame.pack(padx=20, pady=10, fill="x")
 
         ttk.Radiobutton(
-            mode_frame, text="Development (Local SQLite)", variable=self.mode_var, value="development"
+            mode_frame, text="Local (Single machine, SQLite)", variable=self.mode_var, value="local"
         ).pack(anchor="w")
-        ttk.Radiobutton(mode_frame, text="Production (PostgreSQL)", variable=self.mode_var, value="production").pack(
+        ttk.Radiobutton(mode_frame, text="LAN (Local network, PostgreSQL)", variable=self.mode_var, value="lan").pack(
+            anchor="w"
+        )
+        ttk.Radiobutton(mode_frame, text="WAN (Internet accessible, PostgreSQL)", variable=self.mode_var, value="wan").pack(
             anchor="w"
         )
 
@@ -825,8 +828,8 @@ class GiljoSetupGUI(GiljoSetup):
         self.env_vars["CORS_ORIGINS"] = self.config_data.get("cors_origins", "http://localhost:*")
 
         # Mode
-        self.env_vars["GILJO_MCP_MODE"] = self.config_data.get("mode", "development")
-        self.env_vars["DEBUG"] = "true" if self.config_data.get("mode") == "development" else "false"
+        self.env_vars["GILJO_MCP_MODE"] = self.config_data.get("mode", "local")
+        self.env_vars["DEBUG"] = "true" if self.config_data.get("mode") == "local" else "false"
 
     def _build_pg_url(self) -> str:
         """Build PostgreSQL URL from config"""
