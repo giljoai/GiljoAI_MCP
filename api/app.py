@@ -13,12 +13,14 @@ from typing import TYPE_CHECKING, Optional
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import select, text
 
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from src.giljo_mcp.auth import AuthManager
+from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Project
 from src.giljo_mcp.tenant import TenantManager
@@ -53,14 +55,13 @@ state = APIState()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # noqa: ARG001
     """Application lifespan manager"""
+    # app parameter is required by FastAPI even if unused
     # Startup
     logger.info("Starting GiljoAI MCP API...")
 
     # Initialize configuration
-    from src.giljo_mcp.config_manager import get_config
-
     state.config = get_config()  # Use the singleton getter
 
     # Initialize database
@@ -81,7 +82,8 @@ async def lifespan(app: FastAPI):
     state.websocket_manager = WebSocketManager()
 
     # Start heartbeat task
-    asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
+    heartbeat_task = asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
+    state.heartbeat_task = heartbeat_task  # Store reference to prevent garbage collection
 
     logger.info("API startup complete")
 
@@ -207,11 +209,10 @@ def create_app() -> FastAPI:
         if state.db_manager:
             try:
                 async with state.db_manager.get_session_async() as session:
-                    from sqlalchemy import text
-
                     await session.execute(text("SELECT 1"))
                     checks["database"] = "healthy"
-            except Exception as e:
+            except (ConnectionError, TimeoutError, Exception) as e:  # noqa: BLE001
+                # Catching Exception is needed here for any database errors
                 checks["database"] = f"unhealthy: {e!s}"
 
         # Check WebSocket manager
@@ -274,8 +275,6 @@ def create_app() -> FastAPI:
                         if entity_type == "project" and state.db_manager:
                             # Get project tenant for validation
                             async with state.db_manager.session() as session:
-                                from sqlalchemy import select
-
                                 stmt = select(Project).where(Project.id == entity_id)
                                 result = await session.execute(stmt)
                                 project = result.scalar_one_or_none()
@@ -311,19 +310,19 @@ def create_app() -> FastAPI:
             state.websocket_manager.disconnect(client_id)
             del state.connections[client_id]
             logger.info(f"WebSocket disconnected: {client_id}")
-        except Exception as e:
-            logger.exception(f"WebSocket error for {client_id}: {e}")
+        except Exception:
+            logger.exception(f"WebSocket error for {client_id}")
             state.websocket_manager.disconnect(client_id)
             if client_id in state.connections:
                 del state.connections[client_id]
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(request, exc):
+    async def http_exception_handler(request, exc):  # noqa: ARG001
         """Custom HTTP exception handler"""
         return JSONResponse(status_code=exc.status_code, content={"error": exc.detail, "status_code": exc.status_code})
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(request, exc):
+    async def general_exception_handler(request, exc):  # noqa: ARG001
         """General exception handler"""
         logger.error(f"Unhandled exception: {exc}", exc_info=True)
         return JSONResponse(
