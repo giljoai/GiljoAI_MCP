@@ -313,9 +313,13 @@ class Bootstrap:
                     "deployment_mode": "local",
                 }
 
-                config_success = config_manager.generate_config(
-                    profile_type="developer", user_inputs=profile_data, output_dir=self.install_dir
+                config = config_manager.generate_configuration(
+                    profile_type="developer", user_inputs=profile_data
                 )
+
+                # Save the configuration
+                config_path = config_manager.save_configuration(config, self.install_dir / ".env")
+                config_success = config_path.exists()
 
                 if config_success:
                     self.print_status("Generated configuration files", "success")
@@ -346,11 +350,11 @@ class Bootstrap:
 
         # Set up service management
         try:
-            from installer.services.service_manager import ServiceManager
+            from installer.services.service_manager import get_platform_service_manager
 
             self.print_status("Setting up service management...", "info")
 
-            service_manager = ServiceManager()
+            service_manager = get_platform_service_manager()
 
             # Install GiljoAI services (prepare service definitions but don't auto-start)
             service_setup_results = service_manager.setup_services(
@@ -372,9 +376,9 @@ class Bootstrap:
         try:
             # Try new integrated launcher system first
             try:
-                from installer.services.service_manager import ServiceManager
+                from installer.services.service_manager import get_platform_service_manager
 
-                service_mgr = ServiceManager()
+                service_mgr = get_platform_service_manager()
 
                 # Create launcher scripts using service manager
                 launcher_success = service_mgr.create_launchers(self.install_dir)
@@ -425,7 +429,7 @@ class Bootstrap:
                 return self.launch_cli_installer()
 
             self.print_status("Opening GUI installer window...", "info")
-            print("📋 A GUI window should appear shortly. If no window appears, close this and try CLI mode.")
+            print("A GUI window should appear shortly. If no window appears, close this and try CLI mode.")
 
             # Run setup_gui.py with proper GUI handling
             if self.os_type == "windows":
@@ -484,7 +488,7 @@ class Bootstrap:
 
         try:
             # Run setup.py in CLI mode
-            result = subprocess.run([sys.executable, "setup.py", "--cli"], capture_output=False, text=True, check=False)
+            result = subprocess.run([sys.executable, "setup.py", "--non-interactive"], capture_output=False, text=True, check=False)
 
             # If installation succeeded, run post-installation setup
             if result.returncode == 0:

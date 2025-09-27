@@ -4,6 +4,7 @@ GiljoAI MCP GUI Setup - Tkinter-based wizard interface
 Provides a graphical setup wizard as an alternative to CLI mode
 """
 
+import sys
 import threading
 import time
 import tkinter as tk
@@ -579,7 +580,7 @@ class SecurityPage(WizardPage):
 
         # Warning about saving the key
         self.api_warning = ttk.Label(
-            self.api_frame_inner, text="⚠️ Copy this key now! It won't be shown again.", foreground="orange"
+            self.api_frame_inner, text="WARNING: Copy this key now! It won't be shown again.", foreground="orange"
         )
         self.api_warning.pack(side="left", padx=10)
 
@@ -994,15 +995,15 @@ and configured based on your profile selection."""
                 # Update status display with color
                 status_var = self.service_statuses[service_name]
                 if status.name == "RUNNING":
-                    status_var.set(f"🟢 {status_text}")
+                    status_var.set(f"RUNNING: {status_text}")
                 elif status.name == "STOPPED":
-                    status_var.set(f"🔴 {status_text}")
+                    status_var.set(f"STOPPED: {status_text}")
                 elif status.name == "STARTING":
-                    status_var.set(f"🟡 {status_text}")
+                    status_var.set(f"STARTING: {status_text}")
                 elif status.name == "FAILED":
-                    status_var.set(f"❌ {status_text}")
+                    status_var.set(f"FAILED: {status_text}")
                 else:
-                    status_var.set(f"⚪ {status_text}")
+                    status_var.set(f"UNKNOWN: {status_text}")
 
                 # Update button states
                 buttons = self.service_buttons[service_name]
@@ -1025,7 +1026,7 @@ and configured based on your profile selection."""
                 self.autostart_vars[service_name].set(is_autostart)
 
             except Exception as e:
-                self.service_statuses[service_name].set(f"❓ ERROR: {e}")
+                self.service_statuses[service_name].set(f"ERROR: {e}")
 
         self.status_var.set(f"Status updated for {len(self.services)} services")
 
@@ -1039,9 +1040,9 @@ and configured based on your profile selection."""
             self.status_var.set(f"Starting {service_name}...")
             success = service_manager.start_service(service_name)
             if success:
-                self.status_var.set(f"✅ {service_name} started")
+                self.status_var.set(f"SUCCESS: {service_name} started")
             else:
-                self.status_var.set(f"❌ Failed to start {service_name}")
+                self.status_var.set(f"FAILED: Failed to start {service_name}")
 
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
@@ -1059,9 +1060,9 @@ and configured based on your profile selection."""
             self.status_var.set(f"Stopping {service_name}...")
             success = service_manager.stop_service(service_name)
             if success:
-                self.status_var.set(f"✅ {service_name} stopped")
+                self.status_var.set(f"SUCCESS: {service_name} stopped")
             else:
-                self.status_var.set(f"❌ Failed to stop {service_name}")
+                self.status_var.set(f"FAILED: Failed to stop {service_name}")
 
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
@@ -1079,9 +1080,9 @@ and configured based on your profile selection."""
             self.status_var.set(f"Restarting {service_name}...")
             success = service_manager.restart_service(service_name)
             if success:
-                self.status_var.set(f"✅ {service_name} restarted")
+                self.status_var.set(f"SUCCESS: {service_name} restarted")
             else:
-                self.status_var.set(f"❌ Failed to restart {service_name}")
+                self.status_var.set(f"FAILED: Failed to restart {service_name}")
 
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
@@ -1104,9 +1105,9 @@ and configured based on your profile selection."""
                 action = "disabled"
 
             if success:
-                self.status_var.set(f"✅ Auto-start {action} for {service_name}")
+                self.status_var.set(f"SUCCESS: Auto-start {action} for {service_name}")
             else:
-                self.status_var.set(f"❌ Failed to {action.replace('d', '')} auto-start for {service_name}")
+                self.status_var.set(f"FAILED: Failed to {action.replace('d', '')} auto-start for {service_name}")
 
         except Exception as e:
             self.status_var.set(f"Error configuring auto-start for {service_name}: {e}")
@@ -1136,7 +1137,7 @@ and configured based on your profile selection."""
                     self.status_var.set(f"Error configuring {service_name}: {e}")
                     continue
 
-            self.status_var.set("✅ Auto-configuration complete")
+            self.status_var.set("SUCCESS: Auto-configuration complete")
 
             # Refresh all statuses
             self.after(1000, self._refresh_all_services)
@@ -1494,19 +1495,19 @@ class ProgressPage(WizardPage):
             # Generate .env file
             env_result = config_mgr.generate_from_profile(profile, config_values)
             if env_result:
-                self.log("✅ Generated .env file", "system")
+                self.log("SUCCESS: Generated .env file", "system")
 
             # Generate config.yaml
             yaml_config = config_mgr.generate_yaml_config(config_values)
             if yaml_config:
-                self.log("✅ Generated config.yaml", "system")
+                self.log("SUCCESS: Generated config.yaml", "system")
 
             # Validate configuration
             is_valid, errors = config_mgr.validate_configuration(config_values)
             if is_valid:
-                self.log("✅ Configuration validated successfully", "system")
+                self.log("SUCCESS: Configuration validated successfully", "system")
             else:
-                self.log(f"⚠️ Configuration warnings: {errors}", "system")
+                self.log(f"WARNING: Configuration warnings: {errors}", "system")
 
         except ImportError:
             self.log("Configuration Manager not available, using basic config", "system")
@@ -1542,12 +1543,12 @@ class ProgressPage(WizardPage):
             health_results = run_health_checks_for_gui(config, health_progress)
 
             if health_results["healthy"]:
-                self.log("✅ " + health_results["summary"], "system")
+                self.log("SUCCESS: " + health_results["summary"], "system")
             else:
-                self.log("⚠️ " + health_results["summary"], "system")
+                self.log("WARNING: " + health_results["summary"], "system")
 
             for detail in health_results["details"]:
-                status = "✅" if detail["healthy"] else "❌"
+                status = "SUCCESS" if detail["healthy"] else "FAILED"
                 self.log(f"  {status} {detail['name']}: {detail['message']}", "system")
 
         except ImportError:
@@ -1558,7 +1559,227 @@ class ProgressPage(WizardPage):
         update_main_progress()
 
         self.set_status("Installation complete!")
-        self.log("✅ All components installed successfully", "system")
+        self.log("SUCCESS: All components installed successfully", "system")
         self.set_progress(100)
 
         self.completed = True
+
+
+class GiljoSetupGUI:
+    """Main GUI setup wizard"""
+
+    def __init__(self, root):
+        self.root = root
+        self.root.title("GiljoAI MCP Setup Wizard")
+        self.root.geometry("800x600")
+        self.root.resizable(True, True)
+
+        # Center window
+        self.root.update_idletasks()
+        x = (self.root.winfo_screenwidth() // 2) - (800 // 2)
+        y = (self.root.winfo_screenheight() // 2) - (600 // 2)
+        self.root.geometry(f"800x600+{x}+{y}")
+
+        # Configure style
+        style = ttk.Style()
+        style.theme_use('clam')
+
+        # Set window icon (if available)
+        try:
+            icon_path = Path("frontend/public/favicon.ico")
+            if icon_path.exists():
+                self.root.iconbitmap(str(icon_path))
+        except:
+            pass
+
+        self.config_data = {}
+        self.current_page_index = 0
+
+        # Create pages
+        self.pages = [
+            WelcomePage(self.root),
+            ProfileSelectionPage(self.root),
+            DatabasePage(self.root),
+            PortsPage(self.root),
+            SecurityPage(self.root),
+            ReviewPage(self.root, lambda: self.config_data),
+            ProgressPage(self.root),
+            ServiceControlPage(self.root)
+        ]
+
+        # Main container
+        self.main_frame = ttk.Frame(self.root)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Content area
+        self.content_frame = ttk.Frame(self.main_frame)
+        self.content_frame.pack(fill="both", expand=True)
+
+        # Navigation buttons
+        self.nav_frame = ttk.Frame(self.main_frame)
+        self.nav_frame.pack(fill="x", pady=(10, 0))
+
+        self.back_btn = ttk.Button(self.nav_frame, text="< Back", command=self.go_back)
+        self.back_btn.pack(side="left")
+
+        self.next_btn = ttk.Button(self.nav_frame, text="Next >", command=self.go_next)
+        self.next_btn.pack(side="right")
+
+        self.cancel_btn = ttk.Button(self.nav_frame, text="Cancel", command=self.cancel_setup)
+        self.cancel_btn.pack(side="right", padx=(0, 10))
+
+        # Show first page
+        self.show_page(0)
+
+    def show_page(self, index):
+        """Display a specific page"""
+        # Hide current page
+        for page in self.pages:
+            page.pack_forget()
+
+        # Show new page
+        if 0 <= index < len(self.pages):
+            self.current_page_index = index
+            page = self.pages[index]
+            page.pack(fill="both", expand=True, in_=self.content_frame)
+
+            # Call page enter event
+            if hasattr(page, 'on_enter'):
+                page.on_enter()
+
+            # Update navigation buttons
+            self.update_navigation()
+
+            # Update window title
+            self.root.title(f"GiljoAI MCP Setup - {page.title}")
+
+    def update_navigation(self):
+        """Update navigation button states"""
+        # Back button
+        if self.current_page_index == 0:
+            self.back_btn.config(state="disabled")
+        else:
+            self.back_btn.config(state="normal")
+
+        # Next button
+        current_page = self.pages[self.current_page_index]
+
+        if self.current_page_index == len(self.pages) - 1:
+            self.next_btn.config(text="Finish", state="normal")
+        elif isinstance(current_page, ProgressPage):
+            # Disable next during installation
+            if hasattr(current_page, 'completed') and current_page.completed:
+                self.next_btn.config(text="Next >", state="normal")
+            else:
+                self.next_btn.config(state="disabled")
+        else:
+            self.next_btn.config(text="Next >", state="normal")
+
+    def go_back(self):
+        """Go to previous page"""
+        if self.current_page_index > 0:
+            # Save current page data
+            current_page = self.pages[self.current_page_index]
+            if hasattr(current_page, 'on_exit'):
+                current_page.on_exit()
+
+            self.show_page(self.current_page_index - 1)
+
+    def go_next(self):
+        """Go to next page"""
+        current_page = self.pages[self.current_page_index]
+
+        # Validate current page
+        if hasattr(current_page, 'validate') and not current_page.validate():
+            messagebox.showerror("Validation Error", "Please correct the errors on this page before continuing.")
+            return
+
+        # Save page data
+        if hasattr(current_page, 'get_data'):
+            page_data = current_page.get_data()
+            self.config_data.update(page_data)
+
+        if hasattr(current_page, 'on_exit'):
+            current_page.on_exit()
+
+        # Handle special pages
+        if self.current_page_index == len(self.pages) - 1:
+            # Finish button clicked
+            self.finish_setup()
+            return
+        elif isinstance(current_page, ReviewPage):
+            # Start installation after review
+            progress_page = self.pages[self.current_page_index + 1]
+            if isinstance(progress_page, ProgressPage):
+                self.show_page(self.current_page_index + 1)
+                # Start installation in a thread
+                import threading
+                install_thread = threading.Thread(target=self.run_installation)
+                install_thread.daemon = True
+                install_thread.start()
+                return
+
+        # Normal page transition
+        if self.current_page_index < len(self.pages) - 1:
+            self.show_page(self.current_page_index + 1)
+
+    def run_installation(self):
+        """Run the installation process"""
+        try:
+            progress_page = None
+            for page in self.pages:
+                if isinstance(page, ProgressPage):
+                    progress_page = page
+                    break
+
+            if progress_page:
+                progress_page.run_setup(self.config_data)
+
+                # Update navigation when complete
+                self.root.after(1000, self.update_navigation)
+
+        except Exception as e:
+            messagebox.showerror("Installation Error", f"Installation failed: {str(e)}")
+
+    def cancel_setup(self):
+        """Cancel the setup wizard"""
+        if messagebox.askyesno("Cancel Setup", "Are you sure you want to cancel the setup?"):
+            self.root.quit()
+            self.root.destroy()
+            sys.exit(1)
+
+    def finish_setup(self):
+        """Complete the setup process"""
+        messagebox.showinfo("Setup Complete", "GiljoAI MCP has been installed successfully!")
+        self.root.quit()
+        self.root.destroy()
+        # Exit with success code
+        return 0
+
+
+def main():
+    """Main entry point for GUI installer"""
+    try:
+        # Create root window
+        root = tk.Tk()
+
+        # Create and run the setup GUI
+        app = GiljoSetupGUI(root)
+
+        # Start the GUI event loop
+        root.mainloop()
+
+        return 0
+
+    except ImportError as e:
+        print(f"GUI dependencies not available: {e}")
+        print("Please install tkinter or run in CLI mode.")
+        return 1
+
+    except Exception as e:
+        print(f"GUI installer failed: {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

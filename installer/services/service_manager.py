@@ -290,6 +290,99 @@ class ServiceManager(ABC):
 
         return ordered
 
+    def setup_services(self, install_dir: Path, auto_start: bool = False) -> bool:
+        """
+        Set up default GiljoAI services.
+
+        Args:
+            install_dir: Installation directory
+            auto_start: Whether to auto-start services
+
+        Returns:
+            True if setup successful
+        """
+        try:
+            # Create default service configurations
+            services = create_giljo_services()
+
+            # Update service paths to use install_dir
+            for service_config in services.values():
+                if service_config.service_type == ServiceType.GILJO_APP:
+                    service_config.working_directory = install_dir
+                    service_config.arguments = ["-m", "src.giljo_mcp.server"]
+                    service_config.environment.update({
+                        "GILJO_CONFIG_DIR": str(install_dir / "config"),
+                        "GILJO_DATA_DIR": str(install_dir / "data"),
+                        "GILJO_LOG_DIR": str(install_dir / "logs"),
+                    })
+
+            # Register all services
+            for service_config in services.values():
+                service_config.auto_start = auto_start
+                self.register_service(service_config)
+
+            logger.info("Services configured successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Service setup failed: {e}")
+            return False
+
+    def create_launchers(self, install_dir: Path) -> bool:
+        """
+        Create launcher scripts for the application.
+
+        Args:
+            install_dir: Installation directory
+
+        Returns:
+            True if launchers created successfully
+        """
+        try:
+            scripts_dir = install_dir / "scripts"
+            scripts_dir.mkdir(exist_ok=True)
+
+            if self.platform == "windows":
+                # Create Windows batch files
+                start_script = scripts_dir / "start_giljo.bat"
+                start_script.write_text(f"""@echo off
+cd /d "{install_dir}"
+python -m src.giljo_mcp.server
+pause
+""")
+
+                stop_script = scripts_dir / "stop_giljo.bat"
+                stop_script.write_text("""@echo off
+taskkill /f /im python.exe /fi "WINDOWTITLE eq GiljoAI*"
+echo GiljoAI MCP stopped
+pause
+""")
+
+            else:
+                # Create Unix shell scripts
+                start_script = scripts_dir / "start_giljo.sh"
+                start_script.write_text(f"""#!/bin/bash
+cd "{install_dir}"
+python -m src.giljo_mcp.server
+""")
+
+                stop_script = scripts_dir / "stop_giljo.sh"
+                stop_script.write_text("""#!/bin/bash
+pkill -f "src.giljo_mcp.server"
+echo "GiljoAI MCP stopped"
+""")
+
+                # Make executable
+                start_script.chmod(0o755)
+                stop_script.chmod(0o755)
+
+            logger.info("Launcher scripts created successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Launcher creation failed: {e}")
+            return False
+
     def wait_for_service(self, service_name: str, timeout: int = 30) -> bool:
         """
         Wait for a service to reach running state.
