@@ -104,6 +104,9 @@ class GiljoSetup:
         """Main setup flow"""
         self._show_welcome()
 
+        # Select installation profile
+        self._select_profile()
+
         # Check existing installation
         if self._check_existing_installation():
             if not Confirm.ask("\n[yellow]Existing installation detected. Continue with reconfiguration?[/yellow]"):
@@ -175,6 +178,90 @@ class GiljoSetup:
         platform_table.add_row("Installation Path", str(self.root_path))
 
         console.print(platform_table)
+        console.print()
+
+    def _select_profile(self):
+        """Select installation profile"""
+        console.print("
+[bold cyan]Select Installation Profile[/bold cyan]
+")
+        console.print("Choose the profile that best matches your needs:
+")
+
+        # Developer Profile
+        console.print("[bold]1. Developer Profile[/bold] - [green]Individual Developer[/green]")
+        console.print("   • Personal coding assistant with local SQLite database")
+        console.print("   • Minimal setup with default ports (8000 for API, 8001 for WebSocket)")
+        console.print("   • Up to 5 concurrent agents")
+        console.print("   • Debug logging for development")
+        console.print("   • [yellow]Hot-reload support (Coming Soon)[/yellow]")
+        console.print("   • [yellow]Mock external services (Coming Soon)[/yellow]")
+        console.print("   • [dim]Ideal for: Solo developers, hobbyists, students[/dim]
+")
+
+        # Team Profile
+        console.print("[bold]2. Team Profile[/bold] - [green]Development Team[/green]")
+        console.print("   • Shared PostgreSQL database for team collaboration")
+        console.print("   • Network-accessible with configurable ports")
+        console.print("   • Up to 20 concurrent agents")
+        console.print("   • API key authentication")
+        console.print("   • Redis caching enabled")
+        console.print("   • Project isolation and team management features")
+        console.print("   • [dim]Ideal for: Small to medium development teams, startups[/dim]
+")
+
+        # Enterprise Profile
+        console.print("[bold]3. Enterprise Profile[/bold] - [green]Enterprise Deployment[/green]")
+        console.print("   • Production-grade PostgreSQL")
+        console.print("   • Up to 100 concurrent agents")
+        console.print("   • OAuth2 authentication (configuration required)")
+        console.print("   • Docker containerization ready")
+        console.print("   • [yellow]LDAP integration (Coming Soon)[/yellow]")
+        console.print("   • [yellow]Audit logging (Coming Soon)[/yellow]")
+        console.print("   • [yellow]Compliance modes (Coming Soon)[/yellow]")
+        console.print("   • [dim]Ideal for: Large organizations, regulated industries[/dim]
+")
+
+        # Research Profile
+        console.print("[bold]4. Research Profile[/bold] - [green]AI Research & Education[/green]")
+        console.print("   • PostgreSQL with Redis caching")
+        console.print("   • Up to 50 concurrent agents")
+        console.print("   • Debug logging enabled")
+        console.print("   • No authentication (open access)")
+        console.print("   • Example projects included (3 demos)")
+        console.print("   • [yellow]Experiment mode (Coming Soon)[/yellow]")
+        console.print("   • [yellow]Data collection/telemetry (Coming Soon)[/yellow]")
+        console.print("   • [yellow]GPU acceleration support (Coming Soon)[/yellow]")
+        console.print("   • [yellow]Educational resources (Coming Soon)[/yellow]")
+        console.print("   • [dim]Ideal for: Researchers, educators, AI labs[/dim]
+")
+
+        # Profile selection
+        profile_choice = Prompt.ask(
+            "[bold cyan]Select profile[/bold cyan]",
+            choices=["1", "2", "3", "4"],
+            default="1"
+        )
+
+        profile_map = {
+            "1": "developer",
+            "2": "team",
+            "3": "enterprise",
+            "4": "research"
+        }
+
+        self.config["profile"] = profile_map[profile_choice]
+
+        # Show selection confirmation
+        profile_names = {
+            "developer": "Developer Profile",
+            "team": "Team Profile",
+            "enterprise": "Enterprise Profile",
+            "research": "Research Profile"
+        }
+
+        console.print(f"
+[green]✓[/green] Selected: [bold]{profile_names[self.config['profile']]}[/bold]")
         console.print()
 
     def _check_existing_installation(self) -> bool:
@@ -255,12 +342,41 @@ class GiljoSetup:
 
     def _configure_database(self):
         """Configure database settings"""
-        console.print("\n[bold]Database Configuration[/bold]")
-        console.print("GiljoAI MCP supports two database options:")
-        console.print("  1. [cyan]SQLite[/cyan] - Simple, no setup required (recommended for development)")
-        console.print("  2. [cyan]PostgreSQL[/cyan] - Scalable, production-ready (requires PostgreSQL server)")
+        console.print("
+[bold]Database Configuration[/bold]")
 
-        db_choice = Prompt.ask("\nSelect database type", choices=["sqlite", "postgresql"], default="sqlite")
+        # Adapt database selection based on profile
+        profile = self.config.get("profile", "developer")
+
+        if profile == "developer":
+            # Developer profile: Default to SQLite
+            console.print("[dim]Developer profile: Using SQLite for simplicity[/dim]")
+            console.print("SQLite - Simple, no setup required")
+            db_choice = "sqlite"
+        elif profile == "team":
+            # Team profile: Require PostgreSQL
+            console.print("[dim]Team profile: PostgreSQL required for multi-user support[/dim]")
+            console.print("PostgreSQL - Scalable, multi-user capable")
+            db_choice = "postgresql"
+        elif profile == "enterprise":
+            # Enterprise profile: Require PostgreSQL
+            console.print("[dim]Enterprise profile: PostgreSQL required for production[/dim]")
+            console.print("PostgreSQL - Production-grade database")
+            db_choice = "postgresql"
+        elif profile == "research":
+            # Research profile: Let user choose
+            console.print("[dim]Research profile: Choose your preferred database[/dim]")
+            console.print("  1. [cyan]SQLite[/cyan] - Simple, no setup required")
+            console.print("  2. [cyan]PostgreSQL[/cyan] - Scalable with Redis caching")
+            db_choice = Prompt.ask("
+Select database type", choices=["sqlite", "postgresql"], default="postgresql")
+        else:
+            # Fallback: Ask user
+            console.print("GiljoAI MCP supports two database options:")
+            console.print("  1. [cyan]SQLite[/cyan] - Simple, no setup required (recommended for development)")
+            console.print("  2. [cyan]PostgreSQL[/cyan] - Scalable, production-ready (requires PostgreSQL server)")
+            db_choice = Prompt.ask("
+Select database type", choices=["sqlite", "postgresql"], default="sqlite")
 
         if db_choice == "sqlite":
             self._configure_sqlite()
@@ -360,24 +476,62 @@ class GiljoSetup:
 
     def _configure_server(self):
         """Configure server settings"""
-        console.print("\n[bold]Server Configuration[/bold]")
+        console.print("
+[bold]Server Configuration[/bold]")
 
-        # Deployment mode
-        mode_choices = {
-            "local": "Local development (localhost only)",
-            "lan": "LAN accessible (network access with API keys)",
-            "wan": "WAN accessible (internet access with TLS/OAuth)",
-        }
+        # Get selected profile
+        profile = self.config.get("profile", "developer")
 
-        console.print("\nDeployment modes:")
-        for key, desc in mode_choices.items():
-            console.print(f"  • [cyan]{key}[/cyan]: {desc}")
+        # Set defaults based on profile
+        if profile == "developer":
+            console.print("[dim]Developer profile: Local development mode[/dim]")
+            mode = "local"
+            log_level = "DEBUG"
+            console.print(f"• Mode: Local development (localhost only)")
+            console.print(f"• Log level: DEBUG")
+        elif profile == "team":
+            console.print("[dim]Team profile: LAN accessible with authentication[/dim]")
+            mode = "lan"
+            log_level = "INFO"
+            console.print(f"• Mode: LAN accessible (network access with API keys)")
+            console.print(f"• Log level: INFO")
+        elif profile == "enterprise":
+            console.print("[dim]Enterprise profile: Production deployment[/dim]")
+            mode = "wan"
+            log_level = "WARNING"
+            console.print(f"• Mode: WAN accessible (internet access with TLS/OAuth)")
+            console.print(f"• Log level: WARNING")
+        elif profile == "research":
+            console.print("[dim]Research profile: Flexible configuration[/dim]")
+            # For research, let them choose
+            mode_choices = {
+                "local": "Local development (localhost only)",
+                "lan": "LAN accessible (network access)",
+                "wan": "WAN accessible (internet access)",
+            }
+            console.print("
+Deployment modes:")
+            for key, desc in mode_choices.items():
+                console.print(f"  • [cyan]{key}[/cyan]: {desc}")
+            mode = Prompt.ask("
+Select deployment mode", choices=list(mode_choices.keys()), default="lan")
+            log_level = Prompt.ask("Log level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="DEBUG")
+        else:
+            # Fallback: ask user
+            mode_choices = {
+                "local": "Local development (localhost only)",
+                "lan": "LAN accessible (network access with API keys)",
+                "wan": "WAN accessible (internet access with TLS/OAuth)",
+            }
+            console.print("
+Deployment modes:")
+            for key, desc in mode_choices.items():
+                console.print(f"  • [cyan]{key}[/cyan]: {desc}")
+            mode = Prompt.ask("
+Select deployment mode", choices=list(mode_choices.keys()), default="local")
+            log_level = Prompt.ask("Log level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="INFO")
 
-        mode = Prompt.ask("\nSelect deployment mode", choices=list(mode_choices.keys()), default="local")
         self.env_vars["GILJO_MCP_MODE"] = mode
-
-        # Logging configuration
-        log_level = Prompt.ask("Log level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="INFO")
         self.env_vars["LOG_LEVEL"] = log_level
 
         # Development settings

@@ -136,17 +136,17 @@ process and default configurations for your specific use case."""
         ).pack(anchor="w")
 
         dev_desc = """• Personal coding assistant with local SQLite database
+• Redis caching auto-installed for performance boost
 • Minimal setup with default ports (8000 for API, 8001 for WebSocket)
 • Up to 5 concurrent agents
 • Debug logging for development
-• Hot-reload support (Coming Soon)
-• Mock external services (Coming Soon)
+• Full features for single developer
 • Ideal for: Solo developers, hobbyists, students"""
 
         ttk.Label(dev_frame, text=dev_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
 
         # Team Profile
-        team_frame = ttk.LabelFrame(profiles_frame, text="Team Profile", padding=10)
+        team_frame = ttk.LabelFrame(profiles_frame, text="Team Profile (Coming Soon)", padding=10)
         team_frame.pack(fill="x", pady=5)
 
         ttk.Radiobutton(
@@ -155,6 +155,7 @@ process and default configurations for your specific use case."""
             variable=self.profile_var,
             value="team",
             command=self._on_profile_change,
+            state="disabled"
         ).pack(anchor="w")
 
         team_desc = """• Shared PostgreSQL database for team collaboration
@@ -165,10 +166,10 @@ process and default configurations for your specific use case."""
 • Project isolation and team management features
 • Ideal for: Small to medium development teams, startups"""
 
-        ttk.Label(team_frame, text=team_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
+        ttk.Label(team_frame, text=team_desc, justify=tk.LEFT, foreground="gray50").pack(padx=20, pady=5, anchor="w")
 
         # Enterprise Profile
-        enterprise_frame = ttk.LabelFrame(profiles_frame, text="Enterprise Profile", padding=10)
+        enterprise_frame = ttk.LabelFrame(profiles_frame, text="Enterprise Profile (Coming Soon)", padding=10)
         enterprise_frame.pack(fill="x", pady=5)
 
         ttk.Radiobutton(
@@ -177,6 +178,7 @@ process and default configurations for your specific use case."""
             variable=self.profile_var,
             value="enterprise",
             command=self._on_profile_change,
+            state="disabled"
         ).pack(anchor="w")
 
         enterprise_desc = """• Production-grade PostgreSQL
@@ -188,12 +190,12 @@ process and default configurations for your specific use case."""
 • Compliance modes (Coming Soon)
 • Ideal for: Large organizations, regulated industries"""
 
-        ttk.Label(enterprise_frame, text=enterprise_desc, justify=tk.LEFT, foreground="gray").pack(
+        ttk.Label(enterprise_frame, text=enterprise_desc, justify=tk.LEFT, foreground="gray50").pack(
             padx=20, pady=5, anchor="w"
         )
 
         # Research Profile
-        research_frame = ttk.LabelFrame(profiles_frame, text="Research Profile", padding=10)
+        research_frame = ttk.LabelFrame(profiles_frame, text="Research Profile (Coming Soon)", padding=10)
         research_frame.pack(fill="x", pady=5)
 
         ttk.Radiobutton(
@@ -202,6 +204,7 @@ process and default configurations for your specific use case."""
             variable=self.profile_var,
             value="research",
             command=self._on_profile_change,
+            state="disabled"
         ).pack(anchor="w")
 
         research_desc = """• PostgreSQL with Redis caching
@@ -215,7 +218,7 @@ process and default configurations for your specific use case."""
 • Educational resources (Coming Soon)
 • Ideal for: Researchers, educators, AI labs"""
 
-        ttk.Label(research_frame, text=research_desc, justify=tk.LEFT, foreground="gray").pack(
+        ttk.Label(research_frame, text=research_desc, justify=tk.LEFT, foreground="gray50").pack(
             padx=20, pady=5, anchor="w"
         )
 
@@ -241,6 +244,20 @@ process and default configurations for your specific use case."""
         }
 
         self.status_label.config(text=status_messages.get(profile, ""))
+
+    def validate(self) -> bool:
+        """Validate that only Developer profile is selected"""
+        if self.profile_var.get() != "developer":
+            from tkinter import messagebox
+            messagebox.showwarning(
+                "Profile Not Available",
+                "Only the Developer profile is available in this release.\n\n"
+                "Team, Enterprise, and Research profiles are coming soon."
+            )
+            self.profile_var.set("developer")
+            self._on_profile_change()
+            return False
+        return True
 
     def get_data(self) -> dict:
         return {"profile": self.profile_var.get()}
@@ -1312,6 +1329,9 @@ class ProgressPage(WizardPage):
                 self.log("PostgreSQL selected for developer profile", "system")
             else:
                 self.log("Using SQLite for developer profile", "system")
+            # Always install Redis for developer profile for performance
+            run_redis = True
+            self.log("Installing Redis for performance boost", "system")
         elif profile == "research":
             # Research profile - flexible, check configuration
             if config.get("db_type") == "postgresql":
@@ -1399,16 +1419,70 @@ class ProgressPage(WizardPage):
 
             def install_redis():
                 try:
-                    # Placeholder for Redis installer integration
+                    from installer.dependencies.redis import RedisInstaller, RedisConfig
+
                     self.set_status("Installing Redis...", "redis")
 
-                    # Simulate Redis installation for now
-                    for i in range(0, 101, 10):
-                        redis_progress(f"Installing Redis... {i}%", i)
-                        time.sleep(0.5)
+                    # Get profile to determine memory settings
+                    profile = config.get("profile", "developer")
+
+                    # Set max_memory based on profile
+                    if profile == "developer":
+                        max_memory = "256mb"
+                    elif profile == "team":
+                        max_memory = "512mb"
+                    elif profile == "enterprise":
+                        max_memory = "2gb"
+                    else:  # research
+                        max_memory = "1gb"
+
+                    redis_config = RedisConfig(
+                        version="5.0.14.1",
+                        port=int(config.get("redis_port", 6379)),
+                        max_memory=max_memory,
+                        install_dir=Path("C:/Redis"),
+                        data_dir=Path("C:/Redis/data"),
+                        log_dir=Path("C:/Redis/logs"),
+                        config_file=Path("C:/Redis/redis.windows.conf"),
+                        password="",  # Will be auto-generated
+                        bind_address="127.0.0.1" if profile == "developer" else "0.0.0.0"
+                    )
+
+                    # Create a wrapper for the progress callback to match expected signature
+                    def redis_installer_progress(progress, message):
+                        redis_progress(message, progress)
+
+                    installer = RedisInstaller(redis_config)
+
+                    if installer.is_redis_installed():
+                        self.log("Redis already installed, verifying...", "redis")
+                        success, conn_info = installer.test_connection()
+                        if success:
+                            self.log("Redis connection successful", "redis")
+                            self.set_progress(100, "redis")
+                            # Store connection info for later use
+                            if conn_info:
+                                self.log(f"Redis running on port {conn_info.get('port', 6379)}", "redis")
+                        else:
+                            self.log("Redis connection failed, reinstalling...", "redis")
+                            success, conn_info = installer.install(redis_installer_progress)
+                            if success and conn_info:
+                                self.log(f"Redis installed: {conn_info.get('connection_string', 'redis://localhost:6379')}", "redis")
+                    else:
+                        success, conn_info = installer.install(redis_installer_progress)
+                        if success and conn_info:
+                            self.log(f"Redis installed: {conn_info.get('connection_string', 'redis://localhost:6379')}", "redis")
+                            self.log(f"Redis password: {conn_info.get('password', 'auto-generated')}", "redis")
+                        else:
+                            raise Exception("Redis installation failed")
 
                     self.set_status("Redis installed ✓", "redis")
 
+                except ImportError as e:
+                    self.log("Redis installer module not available", "redis")
+                    self.log("Please install Redis manually from: https://github.com/tporadowski/redis/releases", "redis")
+                    self.set_status("Redis manual install required", "redis")
+                    self.set_progress(100, "redis")
                 except Exception as e:
                     self.log(f"Redis installation error: {e}", "redis")
                     self.set_status(f"Failed: {e}", "redis")
