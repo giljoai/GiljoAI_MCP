@@ -19,7 +19,7 @@ from websocket import WebSocketException, create_connection
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.api.app import create_app
+from api.app import create_app
 
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.config_manager import ConfigManager

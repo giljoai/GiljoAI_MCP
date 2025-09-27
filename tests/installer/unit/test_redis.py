@@ -57,14 +57,14 @@ class TestRedisInstaller:
             mock_run.return_value = MockSubprocessResult(0, "Redis server v=6.2.7", "")
 
             is_installed = await installer.check_installation()
-            assert is_installed == True
+            assert is_installed
 
         # Mock failed redis-server command
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             is_installed = await installer.check_installation()
-            assert is_installed == False
+            assert not is_installed
 
     @pytest.mark.asyncio
     async def test_install_windows(self):
@@ -80,7 +80,7 @@ class TestRedisInstaller:
             with patch.object(installer, "_extract_redis_windows"):
                 with patch.object(installer, "_create_redis_service"):
                     result = await installer.install()
-                    assert result.success == True
+                    assert result.success
                     assert "Redis installation completed" in result.message
 
     @pytest.mark.asyncio
@@ -92,7 +92,7 @@ class TestRedisInstaller:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.install()
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_install_macos(self):
@@ -103,7 +103,7 @@ class TestRedisInstaller:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.install()
-            assert result.success == True
+            assert result.success
 
     def test_get_version(self):
         """Test version detection"""
@@ -131,14 +131,14 @@ class TestRedisInstaller:
             mock_run.return_value = MockSubprocessResult(0, "PONG", "")
 
             result = await installer.test_connection("localhost", 6379)
-            assert result.success == True
+            assert result.success
 
         # Mock failed connection
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(1, "", "Could not connect")
 
             result = await installer.test_connection("localhost", 6379)
-            assert result.success == False
+            assert not result.success
 
     @pytest.mark.asyncio
     async def test_start_service(self):
@@ -149,7 +149,7 @@ class TestRedisInstaller:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.start_service()
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_stop_service(self):
@@ -160,7 +160,7 @@ class TestRedisInstaller:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.stop_service()
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_get_service_status(self):
@@ -195,7 +195,7 @@ class TestRedisInstaller:
             mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
             result = await installer.install()
-            assert result.success == False
+            assert not result.success
             assert "error" in result.message.lower()
 
     @pytest.mark.asyncio
@@ -206,7 +206,7 @@ class TestRedisInstaller:
         with patch("urllib.request.urlretrieve") as mock_download:
             mock_download.return_value = ("redis.zip", None)
 
-            with tempfile.TemporaryDirectory() as temp_dir:
+            with tempfile.TemporaryDirectory():
                 download_path = await installer._download_redis_windows()
                 assert download_path.suffix == ".zip"
 
@@ -221,7 +221,7 @@ class TestRedisInstaller:
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 zip_path = Path(temp_dir) / "redis.zip"
-                install_dir = await installer._extract_redis_windows(zip_path)
+                await installer._extract_redis_windows(zip_path)
                 mock_zip_instance.extractall.assert_called()
 
     @pytest.mark.asyncio
@@ -267,10 +267,10 @@ class TestRedisInstaller:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
-            with patch("shutil.copy2") as mock_copy, tempfile.TemporaryDirectory() as temp_dir:
+            with patch("shutil.copy2"), tempfile.TemporaryDirectory() as temp_dir:
                 backup_path = Path(temp_dir) / "backup"
                 result = await installer.backup_redis_data(backup_path)
-                assert result.success == True
+                assert result.success
 
     @pytest.mark.asyncio
     async def test_restore_redis_data(self):
@@ -280,11 +280,11 @@ class TestRedisInstaller:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
-            with patch("shutil.copy2") as mock_copy, tempfile.TemporaryDirectory() as temp_dir:
+            with patch("shutil.copy2"), tempfile.TemporaryDirectory() as temp_dir:
                 backup_path = Path(temp_dir) / "dump.rdb"
                 backup_path.touch()
                 result = await installer.restore_redis_data(backup_path)
-                assert result.success == True
+                assert result.success
 
     @pytest.mark.asyncio
     async def test_flush_redis_data(self):
@@ -295,7 +295,7 @@ class TestRedisInstaller:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
             result = await installer.flush_redis_data()
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_get_redis_info(self):
@@ -357,13 +357,13 @@ class TestRedisUtilities:
         valid_config = {"host": "localhost", "port": 6379}
 
         is_valid = installer.validate_config(valid_config)
-        assert is_valid == True
+        assert is_valid
 
         # Invalid config (invalid port)
         invalid_config = {"host": "localhost", "port": "invalid"}
 
         is_valid = installer.validate_config(invalid_config)
-        assert is_valid == False
+        assert not is_valid
 
     def test_get_installation_info(self):
         """Test installation information"""
@@ -395,7 +395,7 @@ def test_environment():
 
 # Parametrized tests
 @pytest.mark.parametrize(
-    "platform,expected_service", [("Windows", "Redis"), ("Linux", "redis-server"), ("Darwin", "redis")]
+    ("platform", "expected_service"), [("Windows", "Redis"), ("Linux", "redis-server"), ("Darwin", "redis")]
 )
 def test_service_name_by_platform(platform, expected_service):
     """Test service name detection by platform"""
@@ -407,7 +407,7 @@ def test_service_name_by_platform(platform, expected_service):
 
 
 @pytest.mark.parametrize(
-    "version_output,expected",
+    ("version_output", "expected"),
     [
         ("Redis server v=6.2.7", "6.2.7"),
         ("Redis server v=5.0.8", "5.0.8"),
@@ -430,7 +430,7 @@ def test_version_parsing(version_output, expected):
 
 
 @pytest.mark.parametrize(
-    "config_option,value", [("port", 6380), ("maxmemory", "512mb"), ("timeout", 300), ("save", "900 1")]
+    ("config_option", "value"), [("port", 6380), ("maxmemory", "512mb"), ("timeout", 300), ("save", "900 1")]
 )
 def test_config_options(config_option, value):
     """Test Redis configuration options"""
@@ -443,7 +443,7 @@ def test_config_options(config_option, value):
 
     # Validate config should handle these options
     is_valid = installer.validate_config(config_template)
-    assert is_valid == True
+    assert is_valid
 
 
 if __name__ == "__main__":

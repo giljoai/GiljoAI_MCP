@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi.testclient import TestClient
-from src.giljo_mcp.api.app import app
+from api.app import app
 
 
 def test_projects_flow():

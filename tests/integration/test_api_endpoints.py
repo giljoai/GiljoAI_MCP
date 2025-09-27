@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 from fastapi.testclient import TestClient
-from src.giljo_mcp.api.app import create_app
+from api.app import create_app
 
 from src.giljo_mcp.database import DatabaseManager
 

@@ -20,6 +20,200 @@ from src.giljo_mcp.websocket_client import broadcast_sub_agent_event
 logger = logging.getLogger(__name__)
 
 
+# Helper functions for testing and internal use
+async def _ensure_agent(project_id: str, agent_name: str, mission: Optional[str] = None, session=None) -> dict[str, Any]:
+    """Internal helper for ensure_agent - used by tests"""
+    from src.giljo_mcp.database import DatabaseManager
+
+    if session is None:
+        db_manager = DatabaseManager()
+        async with db_manager.get_session_async() as session:
+            return await _ensure_agent_with_session(session, project_id, agent_name, mission)
+    else:
+        return await _ensure_agent_with_session(session, project_id, agent_name, mission)
+
+
+async def _ensure_agent_with_session(session, project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
+    """Internal helper with session for ensure_agent"""
+    # Check if project exists
+    project_query = select(Project).where(Project.id == project_id)
+    project_result = await session.execute(project_query)
+    project = project_result.scalar_one_or_none()
+
+    if not project:
+        return {
+            "success": False,
+            "error": f"Project {project_id} not found",
+        }
+
+    # Check if agent already exists
+    agent_query = select(Agent).where(and_(Agent.project_id == project_id, Agent.name == agent_name))
+    agent_result = await session.execute(agent_query)
+    existing_agent = agent_result.scalar_one_or_none()
+
+    if existing_agent:
+        return {
+            "success": True,
+            "agent": agent_name,
+            "agent_id": str(existing_agent.id),
+            "status": existing_agent.status,
+            "is_new": False,
+            "message": "Returning existing agent",
+        }
+
+    # Create new agent
+    agent = Agent(
+        project_id=project.id,
+        name=agent_name,
+        role=agent_name,
+        status="idle",
+        mission=mission,
+        context_used=0,
+        created_at=datetime.now(timezone.utc),
+    )
+    session.add(agent)
+    await session.commit()
+
+    return {
+        "success": True,
+        "agent": agent_name,
+        "agent_id": str(agent.id),
+        "status": "idle",
+        "is_new": True,
+        "message": "Agent created successfully",
+    }
+
+
+async def _decommission_agent(agent_name: str, project_id: str, reason: str = "completed", session=None) -> dict[str, Any]:
+    """Internal helper for decommission_agent - used by tests"""
+    from src.giljo_mcp.database import DatabaseManager
+
+    if session is None:
+        db_manager = DatabaseManager()
+        async with db_manager.get_session_async() as session:
+            return await _decommission_agent_with_session(session, agent_name, project_id, reason)
+    else:
+        return await _decommission_agent_with_session(session, agent_name, project_id, reason)
+
+
+async def _decommission_agent_with_session(session, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
+    """Internal helper with session for decommission_agent"""
+    agent_query = select(Agent).where(and_(Agent.name == agent_name, Agent.project_id == project_id))
+    agent_result = await session.execute(agent_query)
+    agent = agent_result.scalar_one_or_none()
+
+    if not agent:
+        return {
+            "success": False,
+            "error": f"Agent '{agent_name}' not found in project {project_id}",
+        }
+
+    agent.status = "decommissioned"
+    agent.decommission_reason = reason
+    agent.updated_at = datetime.now(timezone.utc)
+    await session.commit()
+
+    return {
+        "success": True,
+        "agent": agent_name,
+        "status": "decommissioned",
+        "reason": reason,
+    }
+
+
+async def _get_agent_health(agent_name: Optional[str] = None, session=None) -> dict[str, Any]:
+    """Internal helper for agent_health - used by tests"""
+    from src.giljo_mcp.database import DatabaseManager
+
+    if session is None:
+        db_manager = DatabaseManager()
+        async with db_manager.get_session_async() as session:
+            return await _get_agent_health_with_session(session, agent_name)
+    else:
+        return await _get_agent_health_with_session(session, agent_name)
+
+
+async def _get_agent_health_with_session(session, agent_name: Optional[str] = None) -> dict[str, Any]:
+    """Internal helper with session for agent_health"""
+    if agent_name:
+        agent_query = select(Agent).where(Agent.name == agent_name)
+        agent_result = await session.execute(agent_query)
+        agent = agent_result.scalar_one_or_none()
+
+        if not agent:
+            return {"success": False, "error": f"Agent '{agent_name}' not found"}
+
+        return {
+            "success": True,
+            "agent": agent_name,
+            "status": agent.status,
+            "context_used": agent.context_used,
+            "last_activity": agent.updated_at.isoformat() if agent.updated_at else None,
+        }
+    # Return health for all agents
+    agents_query = select(Agent)
+    agents_result = await session.execute(agents_query)
+    agents = agents_result.scalars().all()
+
+    return {
+        "success": True,
+        "total_agents": len(agents),
+        "agents": [
+            {
+                "name": agent.name,
+                "status": agent.status,
+                "context_used": agent.context_used,
+                "project_id": str(agent.project_id),
+            }
+            for agent in agents
+        ],
+    }
+
+
+async def _handoff_agent_work(from_agent: str, to_agent: str, project_id: str, context: dict[str, Any], session=None) -> dict[str, Any]:
+    """Internal helper for handoff - used by tests"""
+    from src.giljo_mcp.database import DatabaseManager
+
+    if session is None:
+        db_manager = DatabaseManager()
+        async with db_manager.get_session_async() as session:
+            return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
+    else:
+        return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
+
+
+async def _handoff_agent_work_with_session(session, from_agent: str, to_agent: str, project_id: str, context: dict[str, Any]) -> dict[str, Any]:
+    """Internal helper with session for handoff"""
+    # Check both agents exist
+    from_query = select(Agent).where(and_(Agent.name == from_agent, Agent.project_id == project_id))
+    from_result = await session.execute(from_query)
+    from_agent_obj = from_result.scalar_one_or_none()
+
+    to_query = select(Agent).where(and_(Agent.name == to_agent, Agent.project_id == project_id))
+    to_result = await session.execute(to_query)
+    to_agent_obj = to_result.scalar_one_or_none()
+
+    if not from_agent_obj:
+        return {"success": False, "error": f"From agent '{from_agent}' not found"}
+
+    if not to_agent_obj:
+        return {"success": False, "error": f"To agent '{to_agent}' not found"}
+
+    # Update agent statuses
+    from_agent_obj.status = "handed_off"
+    to_agent_obj.status = "active"
+
+    await session.commit()
+
+    return {
+        "success": True,
+        "from_agent": from_agent,
+        "to_agent": to_agent,
+        "handoff_time": datetime.now(timezone.utc).isoformat(),
+        "context_transferred": True,
+    }
+
+
 def register_agent_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager: TenantManager):
     """Register agent management tools with the MCP server"""
 

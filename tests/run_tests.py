@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 # Add project root to path
@@ -21,12 +21,10 @@ class TestRunner:
     def __init__(self, verbose: bool = True):
         self.verbose = verbose
         self.test_dir = Path(__file__).parent
-        self.results: Dict[str, Any] = {}
+        self.results: dict[str, Any] = {}
 
-    def run_all_tests(self) -> Dict[str, Any]:
+    def run_all_tests(self) -> dict[str, Any]:
         """Run all tests and return results"""
-        print("[TEST] GiljoAI MCP Installer Test Suite")
-        print("=" * 60)
 
         start_time = time.time()
 
@@ -58,10 +56,8 @@ class TestRunner:
         self.print_summary()
         return self.results
 
-    def run_unit_tests(self) -> Dict[str, Any]:
+    def run_unit_tests(self) -> dict[str, Any]:
         """Run all unit tests"""
-        print("\n[UNIT] Running Unit Tests...")
-        print("-" * 40)
 
         unit_test_files = [
             "tests/installer/unit/test_profile.py",
@@ -75,10 +71,8 @@ class TestRunner:
 
         for test_file in unit_test_files:
             if not Path(test_file).exists():
-                print(f"[WARN] Test file not found: {test_file}")
                 continue
 
-            print(f"Running {test_file}...")
 
             try:
                 # Run individual test file
@@ -86,26 +80,21 @@ class TestRunner:
                 results["details"][test_file] = result
 
                 if result["success"]:
-                    print(f"[OK] {test_file}: {result['tests_passed']} passed")
                     results["tests_passed"] += result["tests_passed"]
                 else:
-                    print(f"[FAIL] {test_file}: {result['tests_failed']} failed")
                     results["success"] = False
                     results["tests_failed"] += result["tests_failed"]
 
                 results["tests_run"] += result["tests_run"]
 
-            except Exception as e:
-                print(f"[ERR] Error running {test_file}: {e}")
+            except Exception:
                 results["success"] = False
 
         results["time"] = time.time() - start_time
         return results
 
-    def run_integration_tests(self) -> Dict[str, Any]:
+    def run_integration_tests(self) -> dict[str, Any]:
         """Run integration tests"""
-        print("\n[INTEG] Running Integration Tests...")
-        print("-" * 40)
 
         integration_files = ["tests/installer/integration/test_installation_flow.py"]
 
@@ -115,36 +104,29 @@ class TestRunner:
 
         for test_file in integration_files:
             if not Path(test_file).exists():
-                print(f"[WARN] Integration test not found: {test_file}")
                 continue
 
-            print(f"Running {test_file}...")
 
             try:
                 result = self.run_pytest_file(test_file)
                 results["details"][test_file] = result
 
                 if result["success"]:
-                    print(f"[OK] {test_file}: {result['tests_passed']} passed")
                     results["tests_passed"] += result["tests_passed"]
                 else:
-                    print(f"[FAIL] {test_file}: {result['tests_failed']} failed")
                     results["success"] = False
                     results["tests_failed"] += result["tests_failed"]
 
                 results["tests_run"] += result["tests_run"]
 
-            except Exception as e:
-                print(f"[ERR] Error running {test_file}: {e}")
+            except Exception:
                 results["success"] = False
 
         results["time"] = time.time() - start_time
         return results
 
-    def run_performance_tests(self) -> Dict[str, Any]:
+    def run_performance_tests(self) -> dict[str, Any]:
         """Run performance benchmarks"""
-        print("\n[PERF] Running Performance Tests...")
-        print("-" * 40)
 
         # Simple performance tests
         results = {"success": True, "tests_run": 0, "time": 0, "benchmarks": {}}
@@ -162,16 +144,14 @@ class TestRunner:
             results["benchmarks"]["health_checks"] = health_benchmark
             results["tests_run"] += 1
 
-            print("[OK] Performance benchmarks completed")
 
-        except Exception as e:
-            print(f"[ERR] Performance test error: {e}")
+        except Exception:
             results["success"] = False
 
         results["time"] = time.time() - start_time
         return results
 
-    def run_pytest_file(self, test_file: str) -> Dict[str, Any]:
+    def run_pytest_file(self, test_file: str) -> dict[str, Any]:
         """Run a specific pytest file and parse results"""
         try:
             # Use Python's subprocess to run pytest
@@ -187,7 +167,7 @@ class TestRunner:
         except Exception as e:
             return {"success": False, "tests_run": 0, "tests_passed": 0, "tests_failed": 1, "error": str(e)}
 
-    def parse_pytest_output(self, stdout: str, stderr: str, returncode: int) -> Dict[str, Any]:
+    def parse_pytest_output(self, stdout: str, stderr: str, returncode: int) -> dict[str, Any]:
         """Parse pytest output to extract results"""
         result = {
             "success": returncode == 0,
@@ -220,7 +200,7 @@ class TestRunner:
 
         return result
 
-    def benchmark_config_generation(self) -> Dict[str, float]:
+    def benchmark_config_generation(self) -> dict[str, float]:
         """Benchmark configuration generation"""
         try:
             from installer.config.config_manager import ConfigurationManager
@@ -231,7 +211,7 @@ class TestRunner:
             times = []
             for profile in profiles:
                 start = time.time()
-                config = manager.generate_configuration(profile)
+                manager.generate_configuration(profile)
                 end = time.time()
                 times.append(end - start)
 
@@ -247,7 +227,7 @@ class TestRunner:
         except Exception as e:
             return {"error": str(e)}
 
-    def benchmark_health_checks(self) -> Dict[str, float]:
+    def benchmark_health_checks(self) -> dict[str, float]:
         """Benchmark health check performance"""
         try:
             from unittest.mock import Mock, patch
@@ -280,45 +260,32 @@ class TestRunner:
 
     def print_summary(self):
         """Print test results summary"""
-        print("\n" + "=" * 60)
-        print("[SUMMARY] TEST SUMMARY")
-        print("=" * 60)
 
         # Unit tests
-        unit = self.results["unit_tests"]
-        print(f"Unit Tests:        {unit['tests_passed']}/{unit['tests_run']} passed ({unit['time']:.2f}s)")
+        self.results["unit_tests"]
 
         # Integration tests
-        integration = self.results["integration_tests"]
-        print(
-            f"Integration Tests: {integration['tests_passed']}/{integration['tests_run']} passed ({integration['time']:.2f}s)"
-        )
+        self.results["integration_tests"]
 
         # Performance tests
         perf = self.results["performance_tests"]
-        print(f"Performance Tests: {perf['tests_run']} benchmarks ({perf['time']:.2f}s)")
 
         # Overall
-        print(f"Total Time:        {self.results['total_time']:.2f}s")
 
         if self.results["overall_success"]:
-            print("[SUCCESS] ALL TESTS PASSED!")
+            pass
         else:
-            print("[FAILED] SOME TESTS FAILED")
+            pass
 
         # Performance details
         if perf.get("benchmarks"):
-            print("\n[BENCH] Performance Benchmarks:")
-            for name, benchmark in perf["benchmarks"].items():
+            for benchmark in perf["benchmarks"].values():
                 if "error" not in benchmark:
-                    if "avg_time" in benchmark:
-                        print(f"  {name}: {benchmark['avg_time'] * 1000:.2f}ms average")
-                    elif "avg_check_time" in benchmark:
-                        print(f"  {name}: {benchmark['avg_check_time'] * 1000:.2f}ms per check")
+                    if "avg_time" in benchmark or "avg_check_time" in benchmark:
+                        pass
 
-    def run_specific_test(self, test_pattern: str) -> Dict[str, Any]:
+    def run_specific_test(self, test_pattern: str) -> dict[str, Any]:
         """Run tests matching a specific pattern"""
-        print(f"[TARGET] Running tests matching: {test_pattern}")
 
         cmd = [sys.executable, "-m", "pytest", "-k", test_pattern, "-v", "--tb=short"]
 
@@ -330,7 +297,7 @@ class TestRunner:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def check_test_coverage(self) -> Dict[str, Any]:
+    def check_test_coverage(self) -> dict[str, Any]:
         """Check test coverage (if coverage package available)"""
         try:
             cmd = [sys.executable, "-m", "pytest", "--cov=installer", "--cov-report=term-missing", "tests/"]
@@ -367,7 +334,6 @@ def main():
     if args.coverage:
         # Run with coverage
         result = runner.check_test_coverage()
-        print(result["output"])
         return 0 if result["success"] else 1
 
     if args.quick:

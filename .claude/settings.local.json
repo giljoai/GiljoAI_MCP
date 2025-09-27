@@ -38,7 +38,10 @@
       "Bash(for:*)",
       "Bash(bandit:*)",
       "Read(//c/projects/**)",
-      "mcp__serena-mcp__find_referencing_symbols"
+      "mcp__serena-mcp__find_referencing_symbols",
+      "Bash(gh run list:*)",
+      "Bash(pre-commit run:*)",
+      "Bash(gh run view:*)"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",

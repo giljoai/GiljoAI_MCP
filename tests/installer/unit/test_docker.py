@@ -57,14 +57,14 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "Docker version 20.10.17", "")
 
             is_installed = await installer.check_installation()
-            assert is_installed == True
+            assert is_installed
 
         # Mock failed docker command
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
 
             is_installed = await installer.check_installation()
-            assert is_installed == False
+            assert not is_installed
 
     @pytest.mark.asyncio
     async def test_install_windows(self):
@@ -88,7 +88,7 @@ class TestDockerInstaller:
 
             with patch("pathlib.Path.read_text", return_value="ID=ubuntu"):
                 result = await installer.install()
-                assert result.success == True
+                assert result.success
 
     @pytest.mark.asyncio
     async def test_install_linux_centos(self):
@@ -101,7 +101,7 @@ class TestDockerInstaller:
 
             with patch("pathlib.Path.read_text", return_value="ID=centos"):
                 result = await installer.install()
-                assert result.success == True
+                assert result.success
 
     @pytest.mark.asyncio
     async def test_install_macos(self):
@@ -140,14 +140,14 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
             status = await installer.check_daemon_status()
-            assert status == True
+            assert status
 
         # Mock unhealthy daemon
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(1, "", "Cannot connect to daemon")
 
             status = await installer.check_daemon_status()
-            assert status == False
+            assert not status
 
     @pytest.mark.asyncio
     async def test_start_daemon(self):
@@ -158,7 +158,7 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.start_daemon()
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_stop_daemon(self):
@@ -169,7 +169,7 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.stop_daemon()
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_test_container_runtime(self):
@@ -181,14 +181,14 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "Hello from Docker!", "")
 
             result = await installer.test_container_runtime()
-            assert result.success == True
+            assert result.success
 
         # Mock failed container run
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(1, "", "Unable to find image")
 
             result = await installer.test_container_runtime()
-            assert result.success == False
+            assert not result.success
 
     @pytest.mark.asyncio
     async def test_pull_image(self):
@@ -199,7 +199,7 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "Pull complete", "")
 
             result = await installer.pull_image("hello-world")
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_run_container(self):
@@ -210,7 +210,7 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "container_id_123", "")
 
             result = await installer.run_container("hello-world", "test-container")
-            assert result.success == True
+            assert result.success
             assert "container_id_123" in result.data
 
     @pytest.mark.asyncio
@@ -223,7 +223,7 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "docker-compose version 1.29.2", "")
 
             has_compose = await installer.check_compose_installation()
-            assert has_compose == True
+            assert has_compose
 
         # Mock docker-compose not available, but docker compose available
         with patch("subprocess.run") as mock_run:
@@ -237,7 +237,7 @@ class TestDockerInstaller:
             mock_run.side_effect = side_effect
 
             has_compose = await installer.check_compose_installation()
-            assert has_compose == True
+            assert has_compose
 
     @pytest.mark.asyncio
     async def test_install_compose(self):
@@ -248,7 +248,7 @@ class TestDockerInstaller:
             mock_run.return_value = MockSubprocessResult(0, "", "")
 
             result = await installer.install_compose()
-            assert result.success == True
+            assert result.success
 
     @pytest.mark.asyncio
     async def test_compose_up(self):
@@ -260,7 +260,7 @@ class TestDockerInstaller:
 
             with tempfile.NamedTemporaryFile(suffix=".yml") as compose_file:
                 result = await installer.compose_up(Path(compose_file.name))
-                assert result.success == True
+                assert result.success
 
     @pytest.mark.asyncio
     async def test_compose_down(self):
@@ -272,7 +272,7 @@ class TestDockerInstaller:
 
             with tempfile.NamedTemporaryFile(suffix=".yml") as compose_file:
                 result = await installer.compose_down(Path(compose_file.name))
-                assert result.success == True
+                assert result.success
 
     def test_get_docker_info(self):
         """Test Docker system info"""
@@ -317,7 +317,7 @@ Server:
             mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
             result = await installer.install()
-            assert result.success == False
+            assert not result.success
             assert "error" in result.message.lower()
 
     def test_detect_linux_distro(self):
@@ -368,7 +368,7 @@ Server:
         valid_config = {"log-driver": "json-file", "storage-driver": "overlay2"}
 
         is_valid = installer.validate_docker_config(valid_config)
-        assert is_valid == True
+        assert is_valid
 
         # Invalid config (unknown option)
         invalid_config = {"invalid-option": "value"}
@@ -459,12 +459,12 @@ def test_environment():
 
 # Parametrized tests
 @pytest.mark.parametrize(
-    "platform,expected_method",
+    ("platform", "expected_method"),
     [("Windows", "Docker Desktop"), ("Linux", "package manager"), ("Darwin", "Docker Desktop")],
 )
 def test_installation_method_by_platform(platform, expected_method):
     """Test installation method by platform"""
-    installer = DockerInstaller()
+    DockerInstaller()
 
     with patch("platform.system", return_value=platform):
         # This would depend on implementation
@@ -473,7 +473,7 @@ def test_installation_method_by_platform(platform, expected_method):
 
 
 @pytest.mark.parametrize(
-    "version_output,expected",
+    ("version_output", "expected"),
     [
         ("Docker version 20.10.17, build 100c701", "20.10.17"),
         ("Docker version 19.03.8, build afacb8b", "19.03.8"),
@@ -496,7 +496,7 @@ def test_version_parsing(version_output, expected):
 
 
 @pytest.mark.parametrize(
-    "distro_id,expected",
+    ("distro_id", "expected"),
     [("ubuntu", "ubuntu"), ("centos", "centos"), ("fedora", "fedora"), ("debian", "debian"), ("unknown", "unknown")],
 )
 def test_linux_distro_detection(distro_id, expected):

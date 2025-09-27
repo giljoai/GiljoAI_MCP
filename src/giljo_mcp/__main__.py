@@ -14,12 +14,12 @@ src_dir = Path(__file__).parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-# All imports after path setup
-from giljo_mcp.auth import AuthManager
-from giljo_mcp.config_manager import DeploymentMode, get_config
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.lock_manager import get_lock_manager
-from giljo_mcp.server import create_server
+# All imports after path setup - noqa: E402 suppressed for path manipulation
+from giljo_mcp.auth import AuthManager  # noqa: E402
+from giljo_mcp.config_manager import DeploymentMode, get_config  # noqa: E402
+from giljo_mcp.database import DatabaseManager  # noqa: E402
+from giljo_mcp.lock_manager import get_lock_manager  # noqa: E402
+from giljo_mcp.server import create_server  # noqa: E402
 
 
 # Configure logging
@@ -146,7 +146,7 @@ async def startup_sequence():
 
         # Step 6: Get FastMCP application
         # Use configured host or default to localhost for LOCAL mode
-        mcp_host = config.server.api_host if hasattr(config.server, 'api_host') else (
+        mcp_host = config.server.api_host if hasattr(config.server, "api_host") else (
             "localhost" if config.server.mode == DeploymentMode.LOCAL else "127.0.0.1"
         )
         mcp_app = await server.run(

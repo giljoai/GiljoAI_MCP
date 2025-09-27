@@ -2,7 +2,7 @@
 Mock utilities for installer testing
 """
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 from unittest.mock import Mock, patch
 
 
@@ -121,7 +121,7 @@ class MockSocket:
         self.closed = True
 
 
-def mock_subprocess_run(command: List[str], **kwargs) -> MockProcess:
+def mock_subprocess_run(command: list[str], **kwargs) -> MockProcess:
     """Mock subprocess.run based on command"""
     cmd = " ".join(command) if isinstance(command, list) else command
 
@@ -178,8 +178,8 @@ class MockFileSystem:
     """Mock file system operations"""
 
     def __init__(self):
-        self.files: Dict[str, str] = {}
-        self.dirs: Set[str] = set()
+        self.files: dict[str, str] = {}
+        self.dirs: set[str] = set()
 
     def write_file(self, path: str, content: str):
         self.files[path] = content
@@ -194,7 +194,7 @@ class MockFileSystem:
         self.dirs.add(path)
 
 
-def create_mock_patches() -> Dict[str, Any]:
+def create_mock_patches() -> dict[str, Any]:
     """Create common mock patches for testing"""
     return {
         "subprocess.run": mock_subprocess_run,
@@ -215,7 +215,7 @@ def patch_network_calls():
     """Patch network-related calls for offline testing"""
 
     def mock_connect_ex(address):
-        host, port = address
+        _host, port = address
         # Simulate some ports as in use, others as available
         in_use_ports = {5432, 6379}  # PostgreSQL, Redis
         return 0 if port in in_use_ports else 1
@@ -266,7 +266,7 @@ class TestDataGenerator:
         return "\n".join(lines)
 
     @staticmethod
-    def create_invalid_config() -> Dict[str, Any]:
+    def create_invalid_config() -> dict[str, Any]:
         """Create invalid configuration for testing validation"""
         return {
             "API_PORT": 99999,  # Invalid port

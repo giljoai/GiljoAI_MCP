@@ -58,8 +58,8 @@ class TestConfigurationValue:
         assert value.key == "DATABASE_URL"
         assert value.value == "postgresql://user:pass@localhost/db"
         assert value.description == "Database connection string"
-        assert value.required == True
-        assert value.secret == True
+        assert value.required
+        assert value.secret
 
     def test_configuration_value_to_env_line(self):
         """Test converting value to .env line"""
@@ -124,7 +124,7 @@ class TestConfiguration:
 
         assert len(config.values) == 2
         assert config.get_value("APP_NAME") == "GiljoAI_MCP"
-        assert config.get_value("DEBUG") == False
+        assert not config.get_value("DEBUG")
 
     def test_configuration_get_value_default(self):
         """Test getting value with default"""
@@ -144,7 +144,7 @@ class TestConfiguration:
 
         assert config_dict["profile_type"] == "enterprise"
         assert config_dict["values"]["API_PORT"] == 8000
-        assert config_dict["values"]["DEBUG"] == False
+        assert not config_dict["values"]["DEBUG"]
         assert "created_at" in config_dict
 
     def test_configuration_to_env(self):
@@ -214,9 +214,9 @@ class TestConfigurationManager:
 
         assert config.profile_type == "developer"
         assert config.get_value("APP_ENV") == "development"
-        assert config.get_value("DEBUG") == True
+        assert config.get_value("DEBUG")
         assert config.get_value("DATABASE_TYPE") == "sqlite"
-        assert config.get_value("AUTH_ENABLED") == False
+        assert not config.get_value("AUTH_ENABLED")
         assert config.get_value("LOG_LEVEL") == "DEBUG"
 
     def test_generate_team_configuration(self):
@@ -231,12 +231,12 @@ class TestConfigurationManager:
 
         assert config.profile_type == "team"
         assert config.get_value("APP_ENV") == "staging"
-        assert config.get_value("DEBUG") == False
+        assert not config.get_value("DEBUG")
         assert config.get_value("DATABASE_TYPE") == "postgresql"
         assert "postgresql://team_user" in config.get_value("DATABASE_URL")
         assert config.get_value("TEAM_NAME") == "Alpha Team"
         assert config.get_value("TEAM_SIZE") == 10
-        assert config.get_value("AUTH_ENABLED") == True
+        assert config.get_value("AUTH_ENABLED")
 
     def test_generate_enterprise_configuration(self):
         """Test generating enterprise configuration"""
@@ -248,11 +248,11 @@ class TestConfigurationManager:
 
         assert config.profile_type == "enterprise"
         assert config.get_value("APP_ENV") == "production"
-        assert config.get_value("SECURE_COOKIES") == True
+        assert config.get_value("SECURE_COOKIES")
         assert config.get_value("AUTH_METHOD") == "oauth"
         assert config.get_value("ENTERPRISE_NAME") == "MegaCorp"
         assert config.get_value("COMPLIANCE_MODE") == "HIPAA"
-        assert config.get_value("AUDIT_LOGGING") == True
+        assert config.get_value("AUDIT_LOGGING")
 
     def test_generate_research_configuration(self):
         """Test generating research configuration"""
@@ -262,9 +262,9 @@ class TestConfigurationManager:
 
         assert config.profile_type == "research"
         assert config.get_value("APP_ENV") == "research"
-        assert config.get_value("EXPERIMENT_MODE") == True
-        assert config.get_value("DATA_COLLECTION") == True
-        assert config.get_value("GPU_ENABLED") == False  # Default
+        assert config.get_value("EXPERIMENT_MODE")
+        assert config.get_value("DATA_COLLECTION")
+        assert not config.get_value("GPU_ENABLED")  # Default
 
     def test_configuration_with_connection_strings(self):
         """Test configuration with provided connection strings"""
@@ -313,7 +313,7 @@ class TestConfigurationManager:
         config.add_value("APP_NAME", "GiljoAI_MCP")
         config.add_value("DEBUG", True)
 
-        saved_path = manager.save_configuration(config, format=ConfigFormat.ENV)
+        manager.save_configuration(config, format=ConfigFormat.ENV)
 
         # Should have written the file
         mock_write.assert_called_once()
@@ -364,7 +364,7 @@ CORS_ORIGINS=["http://localhost:3000"]
         config = manager.load_configuration(Path("test.env"))
 
         assert config.get_value("APP_NAME") == "GiljoAI_MCP"
-        assert config.get_value("DEBUG") == True
+        assert config.get_value("DEBUG")
         assert config.get_value("API_PORT") == 8000
 
     @patch("builtins.open", new_callable=mock_open)
@@ -378,7 +378,7 @@ CORS_ORIGINS=["http://localhost:3000"]
 
         assert config.profile_type == "team"
         assert config.get_value("APP_NAME") == "GiljoAI_MCP"
-        assert config.get_value("DEBUG") == False
+        assert not config.get_value("DEBUG")
 
     def test_validate_valid_configuration(self):
         """Test validating valid configuration"""
@@ -392,7 +392,7 @@ CORS_ORIGINS=["http://localhost:3000"]
 
         is_valid, errors = manager.validate_configuration(config)
 
-        assert is_valid == True
+        assert is_valid
         assert len(errors) == 0
 
     def test_validate_invalid_configuration(self):
@@ -409,7 +409,7 @@ CORS_ORIGINS=["http://localhost:3000"]
 
         is_valid, errors = manager.validate_configuration(config)
 
-        assert is_valid == False
+        assert not is_valid
         assert len(errors) > 0
 
         # Check specific errors
@@ -431,7 +431,7 @@ CORS_ORIGINS=["http://localhost:3000"]
 
         is_valid, errors = manager.validate_configuration(config)
 
-        assert is_valid == False
+        assert not is_valid
         assert any("OAUTH_CLIENT_ID" in error for error in errors)
         assert any("OAUTH_CLIENT_SECRET" in error for error in errors)
 
@@ -469,8 +469,8 @@ CORS_ORIGINS=["http://localhost:3000"]
         assert "TEAM_NAME" in diff["added"]
         assert "API_PORT" in diff["removed"]
         assert "DEBUG" in diff["modified"]
-        assert diff["modified"]["DEBUG"]["old"] == True
-        assert diff["modified"]["DEBUG"]["new"] == False
+        assert diff["modified"]["DEBUG"]["old"]
+        assert not diff["modified"]["DEBUG"]["new"]
         assert "APP_NAME" in diff["unchanged"]
 
     def test_migration_configuration(self):
@@ -496,16 +496,16 @@ CORS_ORIGINS=["http://localhost:3000"]
 
         # Developer defaults
         dev_defaults = manager._get_profile_defaults("developer")
-        assert dev_defaults["debug"] == True
+        assert dev_defaults["debug"]
         assert dev_defaults["database"] == "sqlite"
-        assert dev_defaults["auth_enabled"] == False
+        assert not dev_defaults["auth_enabled"]
 
         # Enterprise defaults
         ent_defaults = manager._get_profile_defaults("enterprise")
-        assert ent_defaults["debug"] == False
+        assert not ent_defaults["debug"]
         assert ent_defaults["database"] == "postgresql"
-        assert ent_defaults["auth_enabled"] == True
-        assert ent_defaults["secure_cookies"] == True
+        assert ent_defaults["auth_enabled"]
+        assert ent_defaults["secure_cookies"]
 
 
 class TestConvenienceFunctions:
@@ -516,7 +516,7 @@ class TestConvenienceFunctions:
         config = generate_config_for_profile("developer")
 
         assert config.profile_type == "developer"
-        assert config.get_value("DEBUG") == True
+        assert config.get_value("DEBUG")
 
         # With user inputs
         config_with_inputs = generate_config_for_profile("team", user_inputs={"team_name": "Test Team"})
@@ -534,7 +534,7 @@ class TestConvenienceFunctions:
 
         is_valid, errors = validate_env_file("test.env")
 
-        assert is_valid == True
+        assert is_valid
         assert len(errors) == 0
         mock_load.assert_called_once()
         mock_validate.assert_called_once()
@@ -570,7 +570,7 @@ def temp_config_dir():
 
 # Parameterized tests
 @pytest.mark.parametrize(
-    "profile,expected_debug", [("developer", True), ("team", False), ("enterprise", False), ("research", True)]
+    ("profile", "expected_debug"), [("developer", True), ("team", False), ("enterprise", False), ("research", True)]
 )
 def test_profile_debug_settings(config_manager, profile, expected_debug):
     """Test debug settings for different profiles"""
@@ -579,7 +579,7 @@ def test_profile_debug_settings(config_manager, profile, expected_debug):
 
 
 @pytest.mark.parametrize(
-    "profile,expected_db",
+    ("profile", "expected_db"),
     [("developer", "sqlite"), ("team", "postgresql"), ("enterprise", "postgresql"), ("research", "postgresql")],
 )
 def test_profile_database_settings(config_manager, profile, expected_db):
@@ -594,7 +594,7 @@ def test_valid_port_validation(config_manager, port):
     config = Configuration(profile_type="test")
     config.add_value("API_PORT", port)
 
-    is_valid, errors = config_manager.validate_configuration(config)
+    _is_valid, errors = config_manager.validate_configuration(config)
     # Should not have port-related errors
     port_errors = [e for e in errors if "API_PORT" in e]
     assert len(port_errors) == 0
@@ -606,7 +606,7 @@ def test_invalid_port_validation(config_manager, invalid_port):
     config = Configuration(profile_type="test")
     config.add_value("API_PORT", invalid_port)
 
-    is_valid, errors = config_manager.validate_configuration(config)
+    _is_valid, errors = config_manager.validate_configuration(config)
     # Should have port-related error
     port_errors = [e for e in errors if "API_PORT" in e]
     assert len(port_errors) > 0

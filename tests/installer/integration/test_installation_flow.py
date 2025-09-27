@@ -67,11 +67,11 @@ class TestInstallationFlow:
         )
 
         assert configuration.get_value("TEAM_NAME") == "Test Team"
-        assert configuration.get_value("AUTH_ENABLED") == True
+        assert configuration.get_value("AUTH_ENABLED")
 
         # Step 4: Configuration validation
         is_valid, errors = config_manager.validate_configuration(configuration)
-        assert is_valid == True
+        assert is_valid
         assert len(errors) == 0
 
         # Step 5: Save configuration
@@ -120,8 +120,8 @@ class TestInstallationFlow:
         # Verify enterprise-specific settings
         assert config.get_value("ENTERPRISE_NAME") == "TestCorp"
         assert config.get_value("COMPLIANCE_MODE") == "SOC2"
-        assert config.get_value("AUDIT_LOGGING") == True
-        assert config.get_value("SECURE_COOKIES") == True
+        assert config.get_value("AUDIT_LOGGING")
+        assert config.get_value("SECURE_COOKIES")
         assert config.get_value("AUTH_METHOD") == "oauth"
 
     def test_configuration_migration_flow(self):
@@ -207,7 +207,7 @@ class TestErrorHandling:
         config.add_value("LOG_LEVEL", "INVALID")
 
         is_valid, errors = config_manager.validate_configuration(config)
-        assert is_valid == False
+        assert not is_valid
         assert len(errors) > 0
 
     @pytest.mark.asyncio
@@ -253,7 +253,7 @@ class TestPerformance:
             start_time = time.time()
 
             # Run subset of quick checks
-            report = await health_checker.check_all(["system", "python"])
+            await health_checker.check_all(["system", "python"])
 
             end_time = time.time()
             duration = end_time - start_time
@@ -287,7 +287,7 @@ class TestConcurrency:
     @pytest.mark.asyncio
     async def test_concurrent_health_checks(self):
         """Test running multiple health checks concurrently"""
-        health_checker = HealthChecker()
+        HealthChecker()
 
         # Create multiple health checkers
         checkers = [HealthChecker() for _ in range(3)]
@@ -386,7 +386,7 @@ async def test_full_installation_simulation(test_environment):
         _check_python=Mock(return_value=None),
         _check_network=Mock(return_value=None),
     ):
-        pre_check_report = await health_checker.check_installation_readiness()
+        await health_checker.check_installation_readiness()
 
     # Step 4: Generate configuration
     configuration = config_manager.generate_configuration(
@@ -394,8 +394,8 @@ async def test_full_installation_simulation(test_environment):
     )
 
     # Step 5: Validate configuration
-    is_valid, validation_errors = config_manager.validate_configuration(configuration)
-    assert is_valid == True
+    is_valid, _validation_errors = config_manager.validate_configuration(configuration)
+    assert is_valid
 
     # Step 6: Save configuration
     config_path = test_environment.config_dir / ".env"
@@ -408,7 +408,7 @@ async def test_full_installation_simulation(test_environment):
         _check_postgresql=Mock(return_value=None),
         _check_redis=Mock(return_value=None),
     ):
-        post_check_report = await health_checker.check_database_services()
+        await health_checker.check_database_services()
 
     # Verify the simulation completed successfully
     assert saved_path.exists()

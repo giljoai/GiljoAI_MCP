@@ -61,18 +61,18 @@ class TestProfileConfiguration:
         )
 
         assert config.database_type == "postgresql"
-        assert config.redis_enabled == True
-        assert config.auth_enabled == True
-        assert config.debug_mode == False
+        assert config.redis_enabled
+        assert config.auth_enabled
+        assert not config.debug_mode
 
     def test_profile_configuration_defaults(self):
         """Test default values"""
         config = ProfileConfiguration()
 
         assert config.database_type == "sqlite"
-        assert config.redis_enabled == False
-        assert config.auth_enabled == False
-        assert config.debug_mode == True
+        assert not config.redis_enabled
+        assert not config.auth_enabled
+        assert config.debug_mode
         assert config.log_level == "INFO"
 
     def test_profile_configuration_to_dict(self):
@@ -82,7 +82,7 @@ class TestProfileConfiguration:
         config_dict = asdict(config)
         assert isinstance(config_dict, dict)
         assert config_dict["database_type"] == "postgresql"
-        assert config_dict["redis_enabled"] == True
+        assert config_dict["redis_enabled"]
 
 
 class TestProfileDependencies:
@@ -92,17 +92,17 @@ class TestProfileDependencies:
         """Test creating profile dependencies"""
         deps = ProfileDependencies(requires_postgresql=True, requires_redis=True, requires_docker=False)
 
-        assert deps.requires_postgresql == True
-        assert deps.requires_redis == True
-        assert deps.requires_docker == False
+        assert deps.requires_postgresql
+        assert deps.requires_redis
+        assert not deps.requires_docker
 
     def test_profile_dependencies_defaults(self):
         """Test default dependency values"""
         deps = ProfileDependencies()
 
-        assert deps.requires_postgresql == False
-        assert deps.requires_redis == False
-        assert deps.requires_docker == False
+        assert not deps.requires_postgresql
+        assert not deps.requires_redis
+        assert not deps.requires_docker
         assert deps.min_python_version == "3.8"
         assert deps.recommended_memory_gb == 2
 
@@ -126,14 +126,14 @@ class TestProfile:
         assert profile.type == ProfileType.TEAM
         assert profile.name == "Team Profile"
         assert profile.configuration.database_type == "postgresql"
-        assert profile.dependencies.requires_postgresql == True
+        assert profile.dependencies.requires_postgresql
 
     def test_profile_validation(self):
         """Test profile validation"""
         # Valid profile
         profile = Profile(type=ProfileType.DEVELOPER, name="Developer", description="Development profile")
 
-        assert profile.is_valid() == True
+        assert profile.is_valid()
 
         # Invalid profile (missing name)
         invalid_profile = Profile(
@@ -142,7 +142,7 @@ class TestProfile:
             description="Test",
         )
 
-        assert invalid_profile.is_valid() == False
+        assert not invalid_profile.is_valid()
 
     def test_profile_get_dependencies(self):
         """Test getting profile dependencies"""
@@ -203,7 +203,7 @@ class TestProfileManager:
         dev_profile = manager.get_profile(ProfileType.DEVELOPER)
         assert dev_profile is not None
         assert dev_profile.type == ProfileType.DEVELOPER
-        assert dev_profile.configuration.debug_mode == True
+        assert dev_profile.configuration.debug_mode
         assert dev_profile.configuration.database_type == "sqlite"
 
         # Get team profile
@@ -211,7 +211,7 @@ class TestProfileManager:
         assert team_profile is not None
         assert team_profile.type == ProfileType.TEAM
         assert team_profile.configuration.database_type == "postgresql"
-        assert team_profile.dependencies.requires_postgresql == True
+        assert team_profile.dependencies.requires_postgresql
 
     def test_get_nonexistent_profile(self):
         """Test getting non-existent profile"""
@@ -247,17 +247,17 @@ class TestProfileManager:
 
         # Developer profile
         dev = manager.get_profile(ProfileType.DEVELOPER)
-        assert dev.configuration.debug_mode == True
-        assert dev.configuration.auth_enabled == False
+        assert dev.configuration.debug_mode
+        assert not dev.configuration.auth_enabled
         assert dev.configuration.database_type == "sqlite"
 
         # Enterprise profile
         ent = manager.get_profile(ProfileType.ENTERPRISE)
-        assert ent.configuration.debug_mode == False
-        assert ent.configuration.auth_enabled == True
+        assert not ent.configuration.debug_mode
+        assert ent.configuration.auth_enabled
         assert ent.configuration.database_type == "postgresql"
-        assert ent.dependencies.requires_postgresql == True
-        assert ent.dependencies.requires_redis == True
+        assert ent.dependencies.requires_postgresql
+        assert ent.dependencies.requires_redis
 
     def test_profile_dependencies_check(self):
         """Test checking profile dependencies"""
@@ -281,10 +281,10 @@ class TestProfileManager:
         """Test profile saving and loading"""
         mock_exists.return_value = False  # No existing profiles
 
-        manager = ProfileManager()
+        ProfileManager()
 
         # Create custom profile
-        custom_profile = Profile(
+        Profile(
             type=ProfileType.DEVELOPER,
             name="Custom Developer",
             description="Custom developer profile",
@@ -329,7 +329,7 @@ class TestProfileIntegration:
         # Check configuration
         config = team_profile.configuration
         assert config.database_type == "postgresql"
-        assert config.auth_enabled == True
+        assert config.auth_enabled
 
         # Check dependencies
         deps = team_profile.get_required_dependencies()
@@ -344,10 +344,10 @@ class TestProfileIntegration:
         profile = manager.get_profile(selected_type)
 
         # Verify enterprise requirements
-        assert profile.dependencies.requires_postgresql == True
-        assert profile.dependencies.requires_redis == True
-        assert profile.configuration.auth_enabled == True
-        assert profile.configuration.secure_cookies == True
+        assert profile.dependencies.requires_postgresql
+        assert profile.dependencies.requires_redis
+        assert profile.configuration.auth_enabled
+        assert profile.configuration.secure_cookies
 
         # Get installation requirements
         deps = profile.get_required_dependencies()
@@ -355,7 +355,7 @@ class TestProfileIntegration:
         assert "redis" in deps
 
         # Verify configuration would be production-ready
-        assert profile.configuration.debug_mode == False
+        assert not profile.configuration.debug_mode
         assert profile.configuration.log_level in ["WARNING", "ERROR"]
 
 
@@ -379,7 +379,7 @@ def temp_profiles_dir():
 
 # Parameterized tests
 @pytest.mark.parametrize(
-    "profile_type,expected_db",
+    ("profile_type", "expected_db"),
     [
         (ProfileType.DEVELOPER, "sqlite"),
         (ProfileType.TEAM, "postgresql"),
@@ -394,7 +394,7 @@ def test_profile_database_types(profile_manager, profile_type, expected_db):
 
 
 @pytest.mark.parametrize(
-    "profile_type,requires_auth",
+    ("profile_type", "requires_auth"),
     [
         (ProfileType.DEVELOPER, False),
         (ProfileType.TEAM, True),

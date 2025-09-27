@@ -394,7 +394,7 @@ class TestInstallationHealthCheck:
 
             result = await installation_check.pre_installation_check()
 
-            assert result["ready"] == True
+            assert result["ready"]
             assert len(result["errors"]) == 0
             assert "System" in result["details"]
 
@@ -418,9 +418,9 @@ class TestInstallationHealthCheck:
 
             result = await installation_check.check_database_health()
 
-            assert result["postgresql"]["healthy"] == True
-            assert result["redis"]["healthy"] == False
-            assert result["both_healthy"] == False
+            assert result["postgresql"]["healthy"]
+            assert not result["redis"]["healthy"]
+            assert not result["both_healthy"]
 
     @pytest.mark.asyncio
     async def test_gui_callback_integration(self):
@@ -476,8 +476,8 @@ class TestHealthCheckOrchestrator:
             result = await orchestrator.full_installation_workflow()
 
             assert result["status"] == "ready"
-            assert result["needs_postgresql"] == True
-            assert result["needs_redis"] == True
+            assert result["needs_postgresql"]
+            assert result["needs_redis"]
 
     @pytest.mark.asyncio
     async def test_parallel_service_check(self):
@@ -500,9 +500,9 @@ class TestHealthCheckOrchestrator:
             result = await orchestrator.parallel_service_check()
 
             assert "report" in result
-            assert result["postgresql_ready"] == True
-            assert result["redis_ready"] == False
-            assert result["ports_available"] == True
+            assert result["postgresql_ready"]
+            assert not result["redis_ready"]
+            assert result["ports_available"]
 
 
 # Pytest fixtures
