@@ -1596,25 +1596,45 @@ class GiljoSetupGUI:
         self.config_data = {}
         self.current_page_index = 0
 
-        # Create pages
-        self.pages = [
-            WelcomePage(self.root),
-            ProfileSelectionPage(self.root),
-            DatabasePage(self.root),
-            PortsPage(self.root),
-            SecurityPage(self.root),
-            ReviewPage(self.root, lambda: self.config_data),
-            ProgressPage(self.root),
-            ServiceControlPage(self.root)
-        ]
-
         # Main container
         self.main_frame = ttk.Frame(self.root)
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Content area
-        self.content_frame = ttk.Frame(self.main_frame)
-        self.content_frame.pack(fill="both", expand=True)
+        # Content area with scrollbar support
+        self.content_container = ttk.Frame(self.main_frame)
+        self.content_container.pack(fill="both", expand=True)
+
+        # Add canvas and scrollbar for scrollable content
+        self.canvas = tk.Canvas(self.content_container, highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self.content_container, orient="vertical", command=self.canvas.yview)
+        self.content_frame = ttk.Frame(self.canvas)
+
+        # Configure canvas
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas_window = self.canvas.create_window(0, 0, anchor="nw", window=self.content_frame)
+
+        # Pack canvas and scrollbar
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        # Bind to configure scrollregion when content changes
+        self.content_frame.bind("<Configure>", self._on_frame_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+
+        # Bind mouse wheel for scrolling
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Create pages with correct parent (content_frame)
+        self.pages = [
+            WelcomePage(self.content_frame),
+            ProfileSelectionPage(self.content_frame),
+            DatabasePage(self.content_frame),
+            PortsPage(self.content_frame),
+            SecurityPage(self.content_frame),
+            ReviewPage(self.content_frame, lambda: self.config_data),
+            ProgressPage(self.content_frame),
+            ServiceControlPage(self.content_frame)
+        ]
 
         # Navigation buttons
         self.nav_frame = ttk.Frame(self.main_frame)
@@ -1631,6 +1651,19 @@ class GiljoSetupGUI:
 
         # Show first page
         self.show_page(0)
+
+    def _on_frame_configure(self, event):
+        """Update scroll region when frame size changes"""
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event):
+        """Update canvas window width when canvas size changes"""
+        canvas_width = event.width
+        self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+
+    def _on_mousewheel(self, event):
+        """Handle mouse wheel scrolling"""
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
     def show_page(self, index):
         """Display a specific page"""
@@ -1653,6 +1686,9 @@ class GiljoSetupGUI:
 
             # Update window title
             self.root.title(f"GiljoAI MCP Setup - {page.title}")
+
+            # Reset scroll position to top
+            self.canvas.yview_moveto(0)
 
     def update_navigation(self):
         """Update navigation button states"""

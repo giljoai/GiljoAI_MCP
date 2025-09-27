@@ -41,7 +41,9 @@
       "mcp__serena-mcp__find_referencing_symbols",
       "Bash(gh run list:*)",
       "Bash(pre-commit run:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Read(//c/install_test/Giljo_MCP/**)",
+      "WebFetch(domain:github.com)"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",
