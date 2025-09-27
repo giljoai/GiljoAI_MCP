@@ -20,7 +20,8 @@ import pytest_asyncio
 
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.tools.message import MessageTools
+# TODO: MessageTools class doesn't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.message import MessageTools
 
 
 class TenantTestEnvironment:

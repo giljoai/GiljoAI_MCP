@@ -14,7 +14,8 @@ from sqlalchemy.orm import sessionmaker
 
 from src.giljo_mcp.database import init_db
 from src.giljo_mcp.models import AgentInteraction
-from src.giljo_mcp.tools.agent import AgentTools
+# TODO: AgentTools class doesn't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.agent import AgentTools
 
 
 class TestSubAgentLifecycle:

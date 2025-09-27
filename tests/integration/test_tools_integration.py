@@ -20,26 +20,30 @@ from src.giljo_mcp.tools.agent import (
     _get_agent_health,
     _handoff_agent_work,
 )
-from src.giljo_mcp.tools.context import (
-    _get_project_context,
-    _get_vision_overview,
-    _update_discovery_cache,
-)
-from src.giljo_mcp.tools.message import (
-    _acknowledge_message,
-    _broadcast_message,
-    _get_pending_messages,
-    _send_message,
-)
-from src.giljo_mcp.tools.task import (
-    _create_task,
-    _get_task_dependencies,
-    _update_task_status,
-)
-from src.giljo_mcp.tools.template import (
-    _create_template,
-    _get_template,
-)
+# TODO: These context functions don't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.context import (
+#     _get_project_context,
+#     _get_vision_overview,
+#     _update_discovery_cache,
+# )
+# TODO: These message functions don't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.message import (
+#     _acknowledge_message,
+#     _broadcast_message,
+#     _get_pending_messages,
+#     _send_message,
+# )
+# TODO: These task functions don't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.task import (
+#     _create_task,
+#     _get_task_dependencies,
+#     _update_task_status,
+# )
+# TODO: These template functions don't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.template import (
+#     _create_template,
+#     _get_template,
+# )
 from tests.utils.tools_helpers import (
     ToolsTestHelper,
 )

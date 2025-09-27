@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import logging
 
-from src.giljo_mcp.api.websocket import WebSocketManager
+from api.websocket import WebSocketManager
 
 
 # Configure logging

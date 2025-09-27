@@ -17,7 +17,8 @@ from statistics import mean
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.tools.chunking import ChunkingTools
+# TODO: ChunkingTools class doesn't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.chunking import ChunkingTools
 from tests.benchmark_tools import PerformanceBenchmark
 
 

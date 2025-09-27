@@ -416,3 +416,19 @@ def set_db_manager(manager: DatabaseManager):
     """Set the global DatabaseManager instance."""
     global _db_manager
     _db_manager = manager
+
+async def init_db(database_url: Optional[str] = None) -> DatabaseManager:
+    """
+    Initialize database with table creation.
+
+    Convenience function for tests and quick setup.
+
+    Args:
+        database_url: Database connection URL. If None, uses SQLite default.
+
+    Returns:
+        DatabaseManager: Configured database manager with tables created.
+    """
+    db_manager = DatabaseManager(database_url, is_async=True)
+    await db_manager.create_tables_async()
+    return db_manager

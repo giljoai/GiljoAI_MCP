@@ -17,7 +17,8 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.tools.message import MessageTools
+# TODO: MessageTools class doesn't exist yet - commenting out for test collection
+# from src.giljo_mcp.tools.message import MessageTools
 from tests.benchmark_tools import PerformanceBenchmark
 
 
