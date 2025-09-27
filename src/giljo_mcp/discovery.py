@@ -29,8 +29,8 @@ class PathResolver:
     """
 
     DEFAULT_PATHS = {
-        "vision": "docs/Vision",
-        "sessions": "docs/Sessions",
+        "vision": "docs/vision",
+        "sessions": "docs/sessions",
         "devlog": "docs/devlog",
         "memories": ".serena/memories",
         "docs": "docs",

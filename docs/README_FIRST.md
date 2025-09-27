@@ -31,7 +31,7 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
 
 #### 📁 Vision Documents (HIGHEST PRIORITY)
 
-- **📁 `/docs/Vision/`**
+- **📁 `/docs/vision/`**
   - `VISION_DOCUMENT.md` - Complete vision, roadmap, and strategic goals
 
 #### 📁 Reference Manuals
@@ -76,7 +76,7 @@ GiljoAI-MCP now serves as the **persistent brain** for AI development teams, whi
 
 #### 📁 Development Tracking
 
-- **📁 `/docs/Sessions/`** - Agent session memories and project handoffs
+- **📁 `/docs/sessions/`** - Agent session memories and project handoffs
 - **📁 `/docs/devlog/`** - Development logs and project completion reports
   - `project_3_9_b_complete.md` - **NEW**: Project 3.9.b completion report (100% success)
   - `project_3_9_b_template_system.md` - **NEW**: Technical implementation details
@@ -192,14 +192,14 @@ We're about to begin building this system using orchestration to manage its own 
 1. **First Time?**
 
    - Read `README.md` for overview
-   - Check `docs/Vision/VISION_DOCUMENT.md` for goals
+   - Check `docs/vision/VISION_DOCUMENT.md` for goals
    - Review `docs/PROJECT_ORCHESTRATION_PLAN.md` for development strategy
 
 2. **Starting Development?**
 
    - Open `docs/PROJECT_CARDS.md` for ready-to-use project missions
    - Check `docs/PROJECT_FLOW_VISUAL.md` for dependencies
-   - Read `docs/Sessions/` for context and decisions
+   - Read `docs/sessions/` for context and decisions
 
 3. **Contributing Code?**
 
@@ -210,7 +210,7 @@ We're about to begin building this system using orchestration to manage its own 
 4. **Tracking Progress?**
    - Check `/docs/devlog/` for daily development logs
    - Review completed projects in orchestrator dashboard
-   - Update session memories in `/docs/Sessions/`
+   - Update session memories in `/docs/sessions/`
 
 ## ⚠️ Critical Requirements
 

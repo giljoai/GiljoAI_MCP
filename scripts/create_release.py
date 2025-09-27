@@ -76,7 +76,7 @@ def main():
     print("\n2. Removing development files...")
 
     files_to_remove = [
-        "docs/Sessions",
+        "docs/sessions",
         "docs/devlog",
         "docs/Development",
         "tests",

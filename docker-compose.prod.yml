@@ -65,7 +65,7 @@ services:
       # Production volumes (read-only where appropriate)
       - ./logs:/app/logs
       - ./data:/app/data
-      - ./docs/Vision:/app/docs/Vision:ro
+      - ./docs/vision:/app/docs/vision:ro
       - ./config.yaml:/app/config.yaml:ro
     deploy:
       resources:

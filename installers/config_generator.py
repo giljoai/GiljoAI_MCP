@@ -92,7 +92,7 @@ class ConfigGenerator:
                 "data_dir": "./data",
                 "log_dir": "./logs",
                 "config_dir": "./config",
-                "vision_dir": "./docs/Vision",
+                "vision_dir": "./docs/vision",
             },
             "session": {
                 "# Vision document processing": None,

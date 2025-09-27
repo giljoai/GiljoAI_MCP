@@ -180,7 +180,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                             summary=summary,
                             token_count=chunker.estimate_tokens(doc["content"]),
                             keywords=chunker.extract_keywords(doc["content"]),
-                            full_path=f"docs/Vision/{doc['name']}",
+                            full_path=f"docs/vision/{doc['name']}",
                             content_hash=chunker.calculate_content_hash(doc["content"]),
                             created_at=datetime.now(timezone.utc),
                         )
@@ -191,7 +191,7 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     large_doc_index = LargeDocumentIndex(
                         tenant_key=project.tenant_key,
                         project_id=project.id,
-                        document_path="docs/Vision",
+                        document_path="docs/vision",
                         document_type="markdown",
                         total_size=len(total_content),
                         total_tokens=chunker.estimate_tokens(total_content),

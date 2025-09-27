@@ -71,7 +71,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
-      - ./docs/Vision:/app/docs/Vision:ro
+      - ./docs/vision:/app/docs/vision:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -266,8 +266,8 @@ async def mock_discovery_manager():
 
     mock_discovery.get_discovery_paths = AsyncMock(
         return_value={
-            "vision": Path("docs/Vision"),
-            "sessions": Path("docs/Sessions"),
+            "vision": Path("docs/vision"),
+            "sessions": Path("docs/sessions"),
             "devlog": Path("docs/devlog"),
             "claude": Path("CLAUDE.md"),
         }
@@ -290,10 +290,10 @@ async def mock_path_resolver():
     # Mock path resolution
     mock_resolver.resolve_path = AsyncMock(return_value=Path("tests/temp"))
     mock_resolver.get_all_paths = AsyncMock(
-        return_value={"vision": Path("docs/Vision"), "sessions": Path("docs/Sessions"), "devlog": Path("docs/devlog")}
+        return_value={"vision": Path("docs/vision"), "sessions": Path("docs/sessions"), "devlog": Path("docs/devlog")}
     )
 
-    mock_resolver.DEFAULT_PATHS = {"vision": "docs/Vision", "sessions": "docs/Sessions", "devlog": "docs/devlog"}
+    mock_resolver.DEFAULT_PATHS = {"vision": "docs/vision", "sessions": "docs/sessions", "devlog": "docs/devlog"}
 
     return mock_resolver
 
