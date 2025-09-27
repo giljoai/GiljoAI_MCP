@@ -377,4 +377,4 @@ GiljoAI-MCP has a solid foundation with working MCP tools, database layer, and a
 
 The core value proposition - replacing AKE-MCP with better UI and easier installation - is achievable with 1-2 weeks of focused development on the critical missing pieces.
 
-# Test comment for line ending fix
+# Test comment - markdown no longer formatted by pre-commit
