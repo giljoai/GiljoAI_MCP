@@ -696,11 +696,12 @@ class ConfigManager:
             self.server.api_key = None  # No auth in local mode
 
         elif self.server.mode == DeploymentMode.LAN:
-            # LAN mode: bind to all interfaces, require API key
+            # LAN mode: bind to all interfaces for network access, require API key for security
+            # Note: 0.0.0.0 binding is intentional for LAN deployment
             if self.server.api_host in ("127.0.0.1", "localhost"):
-                self.server.api_host = "0.0.0.0"
+                self.server.api_host = "0.0.0.0"  # noqa: S104
             if self.server.dashboard_host in ("127.0.0.1", "localhost"):
-                self.server.dashboard_host = "0.0.0.0"
+                self.server.dashboard_host = "0.0.0.0"  # noqa: S104
 
             # Generate API key if not set
             if not self.server.api_key:

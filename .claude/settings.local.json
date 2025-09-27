@@ -37,7 +37,8 @@
       "Bash(robocopy:*)",
       "Bash(for:*)",
       "Bash(bandit:*)",
-      "Read(//c/projects/**)"
+      "Read(//c/projects/**)",
+      "mcp__serena-mcp__find_referencing_symbols"
     ],
     "additionalDirectories": [
       "F:\\AKE-MCP",

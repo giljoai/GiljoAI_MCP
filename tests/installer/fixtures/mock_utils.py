@@ -2,7 +2,7 @@
 Mock utilities for installer testing
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from unittest.mock import Mock, patch
 
 
@@ -22,6 +22,16 @@ class MockProcess:
 
     def wait(self):
         return self.returncode
+
+
+class MockSubprocessResult:
+    """Mock subprocess.run result"""
+
+    def __init__(self, returncode: int = 0, stdout: str = "", stderr: str = ""):
+        self.returncode = returncode
+        self.stdout = stdout.encode() if isinstance(stdout, str) else stdout
+        self.stderr = stderr.encode() if isinstance(stderr, str) else stderr
+        self.args = []
 
 
 class MockDatabaseConnection:

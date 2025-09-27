@@ -58,6 +58,42 @@ Each agent maintains focused context within limits while the orchestrator manage
 - Admin privileges (for dependency installation)
 ```
 
+### Dependencies
+
+GiljoAI MCP automatically installs all required dependencies. Here are the core components:
+
+#### **Core Runtime Dependencies**
+
+- **aiohttp>=3.8.0** - WebSocket client for real-time agent communication
+- **fastapi>=0.100.0** - REST API server and WebSocket endpoints
+- **websockets>=12.0** - WebSocket protocol implementation
+- **httpx>=0.25.0** - HTTP client for external API calls
+- **sqlalchemy>=2.0.0** - Database ORM with async support
+- **pydantic>=2.0.0** - Data validation and settings management
+
+#### **Database Support**
+
+- **aiosqlite>=0.19.0** - Async SQLite driver (default)
+- **asyncpg>=0.29.0** - PostgreSQL async driver (production)
+- **psycopg2-binary>=2.9.0** - PostgreSQL sync driver (backup)
+
+#### **Authentication & Security**
+
+- **python-jose[cryptography]>=3.3.0** - JWT token handling
+- **passlib[bcrypt]>=1.7.4** - Secure password hashing
+
+#### **AI Integration**
+
+- **openai>=1.0.0** - OpenAI API integration
+- **anthropic>=0.8.0** - Claude API integration
+- **tiktoken>=0.5.0** - Token counting and optimization
+
+All dependencies are automatically installed by the installer. For manual installation:
+
+```bash
+pip install -r requirements.txt
+```
+
 ### Install and Run
 
 ```bash

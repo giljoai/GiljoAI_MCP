@@ -160,6 +160,15 @@ class Bootstrap:
             self.print_status(f"GUI test failed: {str(e)[:50]} - CLI mode", "warning")
             return False
 
+    def test_gui_import(self) -> bool:
+        """Test if GUI libraries can be imported"""
+        try:
+            import tkinter
+            import tkinter.ttk
+            return True
+        except ImportError:
+            return False
+
     def check_python_version(self) -> bool:
         """Check if Python version meets requirements"""
         min_version = (3, 8)
@@ -410,8 +419,31 @@ class Bootstrap:
             return self.launch_cli_installer()
 
         try:
-            # Run setup_gui.py
-            result = subprocess.run([sys.executable, "setup_gui.py"], capture_output=False, text=True, check=False)
+            # Test GUI capability one more time before launching
+            if not self.test_gui_import():
+                self.print_status("GUI not available, switching to CLI", "warning")
+                return self.launch_cli_installer()
+
+            self.print_status("Opening GUI installer window...", "info")
+            print("📋 A GUI window should appear shortly. If no window appears, close this and try CLI mode.")
+
+            # Run setup_gui.py with proper GUI handling
+            if self.os_type == "windows":
+                # Windows: Launch GUI in separate window
+                result = subprocess.run(
+                    [sys.executable, "setup_gui.py"],
+                    capture_output=False,
+                    text=True,
+                    check=False
+                )
+            else:
+                # Unix-like: Standard execution
+                result = subprocess.run(
+                    [sys.executable, "setup_gui.py"],
+                    capture_output=False,
+                    text=True,
+                    check=False
+                )
 
             # If installation succeeded, run post-installation setup
             if result.returncode == 0:

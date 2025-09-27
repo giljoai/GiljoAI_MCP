@@ -227,9 +227,9 @@ class AssertionHelpers:
     @staticmethod
     def assert_tool_registered(registrar: MockMCPToolRegistrar, tool_name: str):
         """Assert that a tool was registered with the MCP server"""
-        assert (
-            tool_name in registrar.get_all_tools()
-        ), f"Tool '{tool_name}' not registered. Available tools: {registrar.get_all_tools()}"
+        assert tool_name in registrar.get_all_tools(), (
+            f"Tool '{tool_name}' not registered. Available tools: {registrar.get_all_tools()}"
+        )
 
     @staticmethod
     def assert_database_state(

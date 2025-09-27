@@ -154,9 +154,9 @@ class TestMultiTenantLoad:
         # Baseline validation
         assert metrics["setup_time_ms"] < 30000, f"Baseline setup too slow: {metrics['setup_time_ms']:.2f}ms"
         assert metrics["agents_created"] >= 45, f"Too few agents created: {metrics['agents_created']}/50"
-        assert (
-            metrics["messages_per_second"] >= 40
-        ), f"Baseline throughput too low: {metrics['messages_per_second']:.1f}/s"
+        assert metrics["messages_per_second"] >= 40, (
+            f"Baseline throughput too low: {metrics['messages_per_second']:.1f}/s"
+        )
 
     async def test_dual_tenant_isolation_performance(self, orchestrator, message_tools, db_session):
         """Test performance with 2 tenants running concurrently"""

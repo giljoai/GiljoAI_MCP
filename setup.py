@@ -600,6 +600,10 @@ class GiljoSetup:
 
                 if result.returncode == 0:
                     console.print("[green]✓ Dependencies installed successfully[/green]")
+
+                    # Validate critical dependencies
+                    progress.update(task, description="Validating critical dependencies...")
+                    self._validate_critical_dependencies()
                 else:
                     console.print("[red]✗ Error installing dependencies[/red]")
                     console.print(result.stderr)
@@ -611,6 +615,33 @@ class GiljoSetup:
                         [sys.executable, "-m", "pip", "install", "psycopg2-binary"], check=False, capture_output=True
                     )
                     console.print("[green]✓ PostgreSQL adapter installed[/green]")
+
+    def _validate_critical_dependencies(self):
+        """Validate that critical dependencies are properly installed"""
+        critical_deps = {
+            'aiohttp': 'WebSocket client for real-time agent communication',
+            'fastapi': 'REST API server and WebSocket endpoints',
+            'websockets': 'WebSocket protocol implementation',
+            'httpx': 'HTTP client for external API calls',
+            'sqlalchemy': 'Database ORM with async support',
+            'pydantic': 'Data validation and settings management'
+        }
+
+        missing_deps = []
+        for dep, purpose in critical_deps.items():
+            try:
+                __import__(dep)
+                console.print(f"[green]✓ {dep}[/green] - {purpose}")
+            except ImportError:
+                missing_deps.append(dep)
+                console.print(f"[red]✗ {dep}[/red] - {purpose} (MISSING)")
+
+        if missing_deps:
+            console.print(f"\n[yellow]Warning: {len(missing_deps)} critical dependencies are missing![/yellow]")
+            console.print("The application may not function correctly.")
+            console.print("Try running: pip install -r requirements.txt")
+        else:
+            console.print("[green]✓ All critical dependencies validated[/green]")
 
     def _create_desktop_launcher(self):
         """Create desktop launcher/shortcut for the current OS"""

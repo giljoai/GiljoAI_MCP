@@ -1,9 +1,9 @@
 {
-  "timestamp": "2025-09-18T19:46:39.416124",
+  "timestamp": "2025-09-26T20:31:51.707739",
   "platform": {
     "system": "Windows",
-    "release": "10",
-    "python": "3.11.9"
+    "release": "11",
+    "python": "3.13.7"
   },
   "summary": {
     "total": 27,
@@ -15,27 +15,27 @@
     {
       "name": "setup_gui exists",
       "passed": true,
-      "message": "Size: 29,974 bytes"
+      "message": "Size: 62,109 bytes"
     },
     {
       "name": "setup_platform exists",
       "passed": true,
-      "message": "Size: 19,678 bytes"
+      "message": "Size: 18,369 bytes"
     },
     {
       "name": "setup_migration exists",
       "passed": true,
-      "message": "Size: 24,064 bytes"
+      "message": "Size: 23,745 bytes"
     },
     {
       "name": "setup_dependencies exists",
       "passed": true,
-      "message": "Size: 23,645 bytes"
+      "message": "Size: 22,851 bytes"
     },
     {
       "name": "setup_config exists",
       "passed": true,
-      "message": "Size: 24,656 bytes"
+      "message": "Size: 23,129 bytes"
     },
     {
       "name": "Import setup_gui",
@@ -80,7 +80,7 @@
     {
       "name": "Platform detection",
       "passed": false,
-      "message": "unhashable type: 'slice'"
+      "message": "slice(None, 3, None)"
     },
     {
       "name": "GUI has SetupWizard",
@@ -100,7 +100,7 @@
     {
       "name": "AKE-MCP detected",
       "passed": true,
-      "message": "F:\\AKE-MCP"
+      "message": "Not present (expected in test)"
     },
     {
       "name": "Migration tool",
@@ -110,7 +110,7 @@
     {
       "name": "Config manager",
       "passed": false,
-      "message": "Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpkcuvte8b.json"
+      "message": "Unsupported format: C:\\Users\\PATRIK~1\\AppData\\Local\\Temp\\tmp4dwdkyzc.json"
     },
     {
       "name": "setup.py has --gui flag",
@@ -150,12 +150,12 @@
   ],
   "errors": [
     "Platform python_version: Not detected",
-    "Platform detection: unhashable type: 'slice'",
+    "Platform detection: slice(None, 3, None)",
     "GUI has SetupWizard: Not found",
     "GUI has GUISetupManager: Not found",
     "Dependency manager: 'DependencyManager' object has no attribute 'get_installed_packages'",
     "Migration tool: 'AKEMCPMigrator' object has no attribute 'validate_data'",
-    "Config manager: Unsupported format: C:\\Users\\giljo\\AppData\\Local\\Temp\\tmpkcuvte8b.json",
+    "Config manager: Unsupported format: C:\\Users\\PATRIK~1\\AppData\\Local\\Temp\\tmp4dwdkyzc.json",
     "Legacy method detect_platform: Not found",
     "Legacy method setup_database: Not found",
     "Legacy method create_directories: Not found",

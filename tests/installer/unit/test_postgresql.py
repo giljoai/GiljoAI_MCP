@@ -71,40 +71,37 @@ class TestPostgreSQLInstaller:
         """Test Windows PostgreSQL installation"""
         installer = PostgreSQLInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                with patch.object(installer, "_download_postgresql_windows") as mock_download:
-                    mock_download.return_value = Path("mock_installer.exe")
+            with patch.object(installer, "_download_postgresql_windows") as mock_download:
+                mock_download.return_value = Path("mock_installer.exe")
 
-                    result = await installer.install()
-                    assert result.success == True
-                    assert "PostgreSQL installation completed" in result.message
+                result = await installer.install()
+                assert result.success == True
+                assert "PostgreSQL installation completed" in result.message
 
     @pytest.mark.asyncio
     async def test_install_linux(self):
         """Test Linux PostgreSQL installation"""
         installer = PostgreSQLInstaller()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.install()
-                assert result.success == True
+            result = await installer.install()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_install_macos(self):
         """Test macOS PostgreSQL installation"""
         installer = PostgreSQLInstaller()
 
-        with patch("platform.system", return_value="Darwin"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Darwin"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.install()
-                assert result.success == True
+            result = await installer.install()
+            assert result.success == True
 
     def test_get_version(self):
         """Test version detection"""
@@ -157,36 +154,33 @@ class TestPostgreSQLInstaller:
         """Test PostgreSQL service start"""
         installer = PostgreSQLInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.start_service()
-                assert result.success == True
+            result = await installer.start_service()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_stop_service(self):
         """Test PostgreSQL service stop"""
         installer = PostgreSQLInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.stop_service()
-                assert result.success == True
+            result = await installer.stop_service()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_get_service_status(self):
         """Test PostgreSQL service status check"""
         installer = PostgreSQLInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "RUNNING", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "RUNNING", "")
 
-                status = await installer.get_service_status()
-                assert status == "running"
+            status = await installer.get_service_status()
+            assert status == "running"
 
     def test_get_default_port(self):
         """Test default port retrieval"""
@@ -206,13 +200,12 @@ class TestPostgreSQLInstaller:
         """Test error handling during installation"""
         installer = PostgreSQLInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
-                result = await installer.install()
-                assert result.success == False
-                assert "error" in result.message.lower()
+            result = await installer.install()
+            assert result.success == False
+            assert "error" in result.message.lower()
 
     @pytest.mark.asyncio
     async def test_download_postgresql_windows(self):

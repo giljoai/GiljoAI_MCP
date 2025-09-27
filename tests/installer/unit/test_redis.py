@@ -71,42 +71,39 @@ class TestRedisInstaller:
         """Test Windows Redis installation"""
         installer = RedisInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                with patch.object(installer, "_download_redis_windows") as mock_download:
-                    mock_download.return_value = Path("mock_redis.zip")
+            with patch.object(installer, "_download_redis_windows") as mock_download:
+                mock_download.return_value = Path("mock_redis.zip")
 
-                with patch.object(installer, "_extract_redis_windows"):
-                    with patch.object(installer, "_create_redis_service"):
-                        result = await installer.install()
-                        assert result.success == True
-                        assert "Redis installation completed" in result.message
+            with patch.object(installer, "_extract_redis_windows"):
+                with patch.object(installer, "_create_redis_service"):
+                    result = await installer.install()
+                    assert result.success == True
+                    assert "Redis installation completed" in result.message
 
     @pytest.mark.asyncio
     async def test_install_linux(self):
         """Test Linux Redis installation"""
         installer = RedisInstaller()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.install()
-                assert result.success == True
+            result = await installer.install()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_install_macos(self):
         """Test macOS Redis installation via Homebrew"""
         installer = RedisInstaller()
 
-        with patch("platform.system", return_value="Darwin"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Darwin"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.install()
-                assert result.success == True
+            result = await installer.install()
+            assert result.success == True
 
     def test_get_version(self):
         """Test version detection"""
@@ -148,36 +145,33 @@ class TestRedisInstaller:
         """Test Redis service start"""
         installer = RedisInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.start_service()
-                assert result.success == True
+            result = await installer.start_service()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_stop_service(self):
         """Test Redis service stop"""
         installer = RedisInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.stop_service()
-                assert result.success == True
+            result = await installer.stop_service()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_get_service_status(self):
         """Test Redis service status check"""
         installer = RedisInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "RUNNING", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "RUNNING", "")
 
-                status = await installer.get_service_status()
-                assert status == "running"
+            status = await installer.get_service_status()
+            assert status == "running"
 
     def test_get_default_port(self):
         """Test default port retrieval"""
@@ -197,13 +191,12 @@ class TestRedisInstaller:
         """Test error handling during installation"""
         installer = RedisInstaller()
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
-                result = await installer.install()
-                assert result.success == False
-                assert "error" in result.message.lower()
+            result = await installer.install()
+            assert result.success == False
+            assert "error" in result.message.lower()
 
     @pytest.mark.asyncio
     async def test_download_redis_windows(self):
@@ -274,11 +267,10 @@ class TestRedisInstaller:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
-            with patch("shutil.copy2") as mock_copy:
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    backup_path = Path(temp_dir) / "backup"
-                    result = await installer.backup_redis_data(backup_path)
-                    assert result.success == True
+            with patch("shutil.copy2") as mock_copy, tempfile.TemporaryDirectory() as temp_dir:
+                backup_path = Path(temp_dir) / "backup"
+                result = await installer.backup_redis_data(backup_path)
+                assert result.success == True
 
     @pytest.mark.asyncio
     async def test_restore_redis_data(self):
@@ -288,12 +280,11 @@ class TestRedisInstaller:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MockSubprocessResult(0, "OK", "")
 
-            with patch("shutil.copy2") as mock_copy:
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    backup_path = Path(temp_dir) / "dump.rdb"
-                    backup_path.touch()
-                    result = await installer.restore_redis_data(backup_path)
-                    assert result.success == True
+            with patch("shutil.copy2") as mock_copy, tempfile.TemporaryDirectory() as temp_dir:
+                backup_path = Path(temp_dir) / "dump.rdb"
+                backup_path.touch()
+                result = await installer.restore_redis_data(backup_path)
+                assert result.success == True
 
     @pytest.mark.asyncio
     async def test_flush_redis_data(self):

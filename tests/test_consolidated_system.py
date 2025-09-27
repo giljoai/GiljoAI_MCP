@@ -238,9 +238,9 @@ class TestBackwardCompatibility:
         # Verify no duplicate _apply_augmentation method
         adapter_methods = inspect.getmembers(TemplateAdapter, predicate=inspect.ismethod)
         method_names = [name for name, _ in adapter_methods]
-        assert (
-            "_apply_augmentation" not in method_names
-        ), "TemplateAdapter should not have its own _apply_augmentation method"
+        assert "_apply_augmentation" not in method_names, (
+            "TemplateAdapter should not have its own _apply_augmentation method"
+        )
 
     def test_mission_templates_uses_consolidated_enums(self):
         """Verify template_adapter provides mission template compatibility"""
@@ -248,18 +248,18 @@ class TestBackwardCompatibility:
         from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2
 
         # Check compatibility class exists
-        assert hasattr(
-            ta_module, "MissionTemplateGeneratorV2"
-        ), "template_adapter should provide MissionTemplateGeneratorV2"
+        assert hasattr(ta_module, "MissionTemplateGeneratorV2"), (
+            "template_adapter should provide MissionTemplateGeneratorV2"
+        )
 
         # Check it provides the same interface
         generator = MissionTemplateGeneratorV2()
-        assert hasattr(
-            generator, "generate_orchestrator_mission"
-        ), "MissionTemplateGeneratorV2 should have generate_orchestrator_mission method"
-        assert hasattr(
-            generator, "generate_agent_mission"
-        ), "MissionTemplateGeneratorV2 should have generate_agent_mission method"
+        assert hasattr(generator, "generate_orchestrator_mission"), (
+            "MissionTemplateGeneratorV2 should have generate_orchestrator_mission method"
+        )
+        assert hasattr(generator, "generate_agent_mission"), (
+            "MissionTemplateGeneratorV2 should have generate_agent_mission method"
+        )
 
 
 class TestEdgeCases:

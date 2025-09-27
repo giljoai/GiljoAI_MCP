@@ -312,9 +312,9 @@ class TestRunner:
             for name, benchmark in perf["benchmarks"].items():
                 if "error" not in benchmark:
                     if "avg_time" in benchmark:
-                        print(f"  {name}: {benchmark['avg_time']*1000:.2f}ms average")
+                        print(f"  {name}: {benchmark['avg_time'] * 1000:.2f}ms average")
                     elif "avg_check_time" in benchmark:
-                        print(f"  {name}: {benchmark['avg_check_time']*1000:.2f}ms per check")
+                        print(f"  {name}: {benchmark['avg_check_time'] * 1000:.2f}ms per check")
 
     def run_specific_test(self, test_pattern: str) -> Dict[str, Any]:
         """Run tests matching a specific pattern"""

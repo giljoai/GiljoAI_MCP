@@ -154,24 +154,22 @@ class TestDockerInstaller:
         """Test Docker daemon start"""
         installer = DockerInstaller()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.start_daemon()
-                assert result.success == True
+            result = await installer.start_daemon()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_stop_daemon(self):
         """Test Docker daemon stop"""
         installer = DockerInstaller()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.stop_daemon()
-                assert result.success == True
+            result = await installer.stop_daemon()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_test_container_runtime(self):
@@ -246,12 +244,11 @@ class TestDockerInstaller:
         """Test Docker Compose installation"""
         installer = DockerInstaller()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await installer.install_compose()
-                assert result.success == True
+            result = await installer.install_compose()
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_compose_up(self):
@@ -316,13 +313,12 @@ Server:
         """Test error handling during installation"""
         installer = DockerInstaller()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "error")
 
-                result = await installer.install()
-                assert result.success == False
-                assert "error" in result.message.lower()
+            result = await installer.install()
+            assert result.success == False
+            assert "error" in result.message.lower()
 
     def test_detect_linux_distro(self):
         """Test Linux distribution detection"""

@@ -71,12 +71,11 @@ class TestServiceManager:
 
         service_config = ServiceConfig(name="test-service", display_name="Test Service", executable="C:/test/app.exe")
 
-        with patch("platform.system", return_value="Windows"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Windows"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await manager.install_service(service_config)
-                assert result.success == True
+            result = await manager.install_service(service_config)
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_install_service_linux(self):
@@ -85,14 +84,13 @@ class TestServiceManager:
 
         service_config = ServiceConfig(name="test-service", display_name="Test Service", executable="/usr/bin/test")
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("pathlib.Path.write_text") as mock_write:
-                with patch("subprocess.run") as mock_run:
-                    mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("pathlib.Path.write_text") as mock_write:
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                    result = await manager.install_service(service_config)
-                    assert result.success == True
-                    mock_write.assert_called()  # Should write systemd unit file
+                result = await manager.install_service(service_config)
+                assert result.success == True
+                mock_write.assert_called()  # Should write systemd unit file
 
     @pytest.mark.asyncio
     async def test_install_service_macos(self):
@@ -103,62 +101,57 @@ class TestServiceManager:
             name="test-service", display_name="Test Service", executable="/usr/local/bin/test"
         )
 
-        with patch("platform.system", return_value="Darwin"):
-            with patch("pathlib.Path.write_text") as mock_write:
-                with patch("subprocess.run") as mock_run:
-                    mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Darwin"), patch("pathlib.Path.write_text") as mock_write:
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                    result = await manager.install_service(service_config)
-                    assert result.success == True
-                    mock_write.assert_called()  # Should write plist file
+                result = await manager.install_service(service_config)
+                assert result.success == True
+                mock_write.assert_called()  # Should write plist file
 
     @pytest.mark.asyncio
     async def test_uninstall_service(self):
         """Test service uninstallation"""
         manager = ServiceManager()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await manager.uninstall_service("test-service")
-                assert result.success == True
+            result = await manager.uninstall_service("test-service")
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_start_service(self):
         """Test service starting"""
         manager = ServiceManager()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await manager.start_service("test-service")
-                assert result.success == True
+            result = await manager.start_service("test-service")
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_stop_service(self):
         """Test service stopping"""
         manager = ServiceManager()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await manager.stop_service("test-service")
-                assert result.success == True
+            result = await manager.stop_service("test-service")
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_restart_service(self):
         """Test service restarting"""
         manager = ServiceManager()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await manager.restart_service("test-service")
-                assert result.success == True
+            result = await manager.restart_service("test-service")
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_get_service_status(self):
@@ -166,52 +159,47 @@ class TestServiceManager:
         manager = ServiceManager()
 
         # Mock running service
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "active (running)", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "active (running)", "")
 
-                status = await manager.get_service_status("test-service")
-                assert status == ServiceStatus.RUNNING
+            status = await manager.get_service_status("test-service")
+            assert status == ServiceStatus.RUNNING
 
         # Mock stopped service
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(3, "inactive (dead)", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(3, "inactive (dead)", "")
 
-                status = await manager.get_service_status("test-service")
-                assert status == ServiceStatus.STOPPED
+            status = await manager.get_service_status("test-service")
+            assert status == ServiceStatus.STOPPED
 
         # Mock unknown service
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(4, "could not be found", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(4, "could not be found", "")
 
-                status = await manager.get_service_status("nonexistent-service")
-                assert status == ServiceStatus.NOT_FOUND
+            status = await manager.get_service_status("nonexistent-service")
+            assert status == ServiceStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     async def test_enable_service(self):
         """Test service auto-start enabling"""
         manager = ServiceManager()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await manager.enable_service("test-service")
-                assert result.success == True
+            result = await manager.enable_service("test-service")
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_disable_service(self):
         """Test service auto-start disabling"""
         manager = ServiceManager()
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, "", "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, "", "")
 
-                result = await manager.disable_service("test-service")
-                assert result.success == True
+            result = await manager.disable_service("test-service")
+            assert result.success == True
 
     @pytest.mark.asyncio
     async def test_list_services(self):
@@ -222,14 +210,13 @@ class TestServiceManager:
 redis.service         loaded active running   Advanced key-value store
 test.service          loaded inactive dead    Test service"""
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MockSubprocessResult(0, mock_output, "")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.return_value = MockSubprocessResult(0, mock_output, "")
 
-                services = await manager.list_services()
-                assert len(services) >= 3
-                service_names = [s["name"] for s in services]
-                assert "postgresql.service" in service_names
+            services = await manager.list_services()
+            assert len(services) >= 3
+            service_names = [s["name"] for s in services]
+            assert "postgresql.service" in service_names
 
     @pytest.mark.asyncio
     async def test_check_dependencies(self):
@@ -374,21 +361,19 @@ test.service          loaded inactive dead    Test service"""
         # Test installation error
         service_config = ServiceConfig(name="failing-service", executable="/nonexistent/binary")
 
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "Service creation failed")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, "cmd", "Service creation failed")
 
-                result = await manager.install_service(service_config)
-                assert result.success == False
-                assert "error" in result.message.lower()
+            result = await manager.install_service(service_config)
+            assert result.success == False
+            assert "error" in result.message.lower()
 
         # Test start error
-        with patch("platform.system", return_value="Linux"):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl", "Unit not found")
+        with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl", "Unit not found")
 
-                result = await manager.start_service("nonexistent-service")
-                assert result.success == False
+            result = await manager.start_service("nonexistent-service")
+            assert result.success == False
 
     @pytest.mark.asyncio
     async def test_windows_service_operations(self):
@@ -541,13 +526,12 @@ def test_status_parsing(status_output, expected_status):
     """Test service status parsing"""
     manager = ServiceManager()
 
-    with patch("platform.system", return_value="Linux"):
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MockSubprocessResult(0, status_output, "")
+    with patch("platform.system", return_value="Linux"), patch("subprocess.run") as mock_run:
+        mock_run.return_value = MockSubprocessResult(0, status_output, "")
 
-            # This would need to be implemented in the actual ServiceManager
-            # For now, test that different outputs are handled
-            assert True  # Placeholder
+        # This would need to be implemented in the actual ServiceManager
+        # For now, test that different outputs are handled
+        assert True  # Placeholder
 
 
 if __name__ == "__main__":

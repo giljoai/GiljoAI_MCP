@@ -14,6 +14,7 @@ src_dir = Path(__file__).parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
+# All imports after path setup
 from giljo_mcp.auth import AuthManager
 from giljo_mcp.config_manager import DeploymentMode, get_config
 from giljo_mcp.database import DatabaseManager
@@ -67,14 +68,14 @@ async def check_database_connection(config) -> bool:
                 logger.info(f"Using fallback host {host} for PostgreSQL")
                 config.database.pg_host = host
 
-            return True
-
         except Exception as e:
             logger.warning(f"Database connection attempt {attempt} failed: {e}")
             if config.database.type != "postgresql" or attempt == len(hosts_to_try):
                 logger.exception("All database connection attempts failed")
                 return False
             continue
+        else:
+            return True
 
     return False
 
@@ -85,10 +86,11 @@ async def run_migrations(config) -> bool:
         # For now, we rely on SQLAlchemy's create_all
         # In production, we would use Alembic
         logger.info("Database schema up to date (using SQLAlchemy create_all)")
+    except Exception:
+        logger.exception("Migration check failed")
+        return False
+    else:
         return True
-
-    except Exception as e:
-        logger.exception(f"Migration check failed: {e}")
         return False
 
 
@@ -143,8 +145,12 @@ async def startup_sequence():
         server = create_server(config)
 
         # Step 6: Get FastMCP application
+        # Use configured host or default to localhost for LOCAL mode
+        mcp_host = config.server.api_host if hasattr(config.server, 'api_host') else (
+            "localhost" if config.server.mode == DeploymentMode.LOCAL else "127.0.0.1"
+        )
         mcp_app = await server.run(
-            host=("localhost" if config.server.mode == DeploymentMode.LOCAL else "0.0.0.0"),
+            host=mcp_host,
             port=config.server.mcp_port,
         )
 
@@ -166,11 +172,11 @@ async def startup_sequence():
             logger.info("Server initialized. Ready for MCP client connections.")
             # In production, the MCP client would connect via stdio
 
-        return True
-
     except Exception as e:
         logger.error(f"Startup failed: {e}", exc_info=True)
         return False
+    else:
+        return True
 
 
 def main():

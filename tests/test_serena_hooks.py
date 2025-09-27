@@ -108,8 +108,9 @@ class TestSerenaHooksIntegration:
     async def test_with_real_managers(self):
         """Test SerenaHooks with actual manager instances (if available)"""
         try:
-            from src.giljo_mcp.database import DatabaseManager
             from src.giljo_mcp.tenant_manager import TenantManager
+
+            from src.giljo_mcp.database import DatabaseManager
 
             # Create real instances
             db_manager = DatabaseManager("sqlite:///test.db")

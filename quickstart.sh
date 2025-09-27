@@ -316,6 +316,12 @@ echo
 echo "[4/4] Launching GiljoAI MCP installer..."
 echo
 echo "============================================================"
+echo
+echo "The installer will detect if you can use GUI mode or CLI mode."
+echo "If GUI is available, you'll be prompted to choose:"
+echo "  - Option 1: GUI Installer (recommended for desktop users)"
+echo "  - Option 2: CLI Installer (recommended for servers/remote)"
+echo
 
 # Launch bootstrap with Python
 $PYTHON_CMD bootstrap.py
