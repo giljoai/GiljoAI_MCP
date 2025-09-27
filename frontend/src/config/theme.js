@@ -2,7 +2,7 @@
 export const darkTheme = {
   dark: true,
   colors: {
-    // Primary colors from Docs/Website colors.txt
+    // Primary colors from docs/Website colors.txt
     background: '#0e1c2d', // Darkest blue
     surface: '#182739', // Almost as dark blue
     'surface-variant': '#1e3147', // A hue lighter dark blue

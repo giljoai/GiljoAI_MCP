@@ -40,7 +40,6 @@ docs/development/ export-ignore
 
 # ADR (Architecture Decision Records) - internal only
 docs/adr/ export-ignore
-Docs/adr/ export-ignore
 
 # =============================================================================
 # TEST AND DEVELOPMENT FILES TO EXCLUDE
@@ -240,7 +239,6 @@ BACKLOG.md export-ignore
 
 # Test documentation (internal)
 docs/tests/ export-ignore
-Docs/tests/ export-ignore
 **/TEST_*.md export-ignore
 **/WEBSOCKET_*.md export-ignore
 

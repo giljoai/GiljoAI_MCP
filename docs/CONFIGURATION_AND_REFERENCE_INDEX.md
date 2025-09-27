@@ -73,7 +73,7 @@ This document provides a comprehensive index of all configuration, environment, 
 #### API Configuration
 
 - Check: `.env`, `config.yaml`
-- API endpoints: See `/Docs/api/api_implementation_guide.md`
+- API endpoints: See `/docs/api/api_implementation_guide.md`
 
 #### Frontend Configuration
 
@@ -136,11 +136,11 @@ This document provides a comprehensive index of all configuration, environment, 
 
 For detailed documentation on specific configurations:
 
-- **Docker**: See `/Docs/docker/docker_setup_guide.md`
-- **API**: See `/Docs/api/api_implementation_guide.md`
-- **Template System**: See `/Docs/api/templates.md` and `/Docs/guides/template_migration.md`
-- **Testing**: See `/Docs/tests/CONSOLIDATED_TEST_DOCUMENTATION.md`
-- **Scripts**: See `/Docs/scripts/scripts_setup_guide.md`
+- **Docker**: See `/docs/docker/docker_setup_guide.md`
+- **API**: See `/docs/api/api_implementation_guide.md`
+- **Template System**: See `/docs/api/templates.md` and `/docs/guides/template_migration.md`
+- **Testing**: See `/docs/tests/CONSOLIDATED_TEST_DOCUMENTATION.md`
+- **Scripts**: See `/docs/scripts/scripts_setup_guide.md`
 
 ## 🔄 Configuration Load Order
 

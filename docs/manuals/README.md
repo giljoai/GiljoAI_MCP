@@ -52,11 +52,11 @@ How to orchestrate multi-agent workflows:
 
 ## Quick Links
 
-- [Project Documentation](/Docs/README_FIRST.md)
-- [Technical Architecture](/Docs/TECHNICAL_ARCHITECTURE.md)
-- [Vision Documents](/Docs/Vision/)
-- [Session Memories](/Docs/Sessions/)
-- [Development Log](/Docs/devlog/)
+- [Project Documentation](/docs/README_FIRST.md)
+- [Technical Architecture](/docs/TECHNICAL_ARCHITECTURE.md)
+- [Vision Documents](/docs/Vision/)
+- [Session Memories](/docs/Sessions/)
+- [Development Log](/docs/devlog/)
 
 ## Contributing
 

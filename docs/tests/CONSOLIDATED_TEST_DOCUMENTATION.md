@@ -14,7 +14,7 @@ This document consolidates all test-related documentation for the GiljoAI MCP pr
 
 ### Docker Testing
 
-Located in `/Docs/docker/tests/`:
+Located in `/docs/docker/tests/`:
 
 - `TEST_PLAN.md` - Docker container test strategy
 - `TEST_REPORT.md` - Docker test execution results
@@ -33,7 +33,7 @@ See `WEBSOCKET_SECURITY_VALIDATION.md` for security validation
 
 ### For Docker Testing
 
-See `/Docs/docker/tests/` directory for container-specific testing
+See `/docs/docker/tests/` directory for container-specific testing
 
 ## Test Categories
 
@@ -107,6 +107,6 @@ docker-compose -f docker/docker-compose.test.yml up --abort-on-container-exit
 
 ## Related Documentation
 
-- `/Docs/devlog/project_*_test_*.md` - Test implementation logs
-- `/Docs/Sessions/project_*_test_*.md` - Test session reports
-- `/Docs/manuals/MISSION_TEMPLATES_TESTING_GUIDE.md` - Mission template testing
+- `/docs/devlog/project_*_test_*.md` - Test implementation logs
+- `/docs/Sessions/project_*_test_*.md` - Test session reports
+- `/docs/manuals/MISSION_TEMPLATES_TESTING_GUIDE.md` - Mission template testing

@@ -37,8 +37,8 @@
 ## Files to EXCLUDE from Distribution
 /.git/                    # Git repository data
 /.github/                 # GitHub specific files
-/Docs/Sessions/          # Development session logs
-/Docs/devlog/            # Development logs
+/docs/Sessions/          # Development session logs
+/docs/devlog/            # Development logs
 /backups/                # Database backups
 /__pycache__/            # Python cache (all locations)
 /*.pyc                   # Compiled Python files

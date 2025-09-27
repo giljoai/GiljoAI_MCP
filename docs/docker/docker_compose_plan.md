@@ -72,7 +72,7 @@
 - **Volumes**:
   - ./logs:/app/logs
   - ./data:/app/data (for SQLite in dev mode)
-  - ./Docs/Vision:/app/Docs/Vision (read-only)
+  - ./docs/Vision:/app/docs/Vision (read-only)
 - **Depends On**: postgres (with health check)
 - **Health Check**:
   - Command: curl -f http://localhost:6002/health || exit 1
@@ -126,8 +126,8 @@
    - Purpose: Application logs persistence
 
 3. **vision_docs** (bind mount):
-   - Host: ./Docs/Vision
-   - Container: /app/Docs/Vision
+   - Host: ./docs/Vision
+   - Container: /app/docs/Vision
    - Mode: read-only
    - Purpose: Vision document access
 

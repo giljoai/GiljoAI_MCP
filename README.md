@@ -314,7 +314,7 @@ Access the real-time dashboard at: **http://localhost:6000**
 
 ```
 giljo_mcp/
-├── Docs/          # All documentation (centralized)
+├── docs/          # All documentation (centralized)
 │   ├── Vision/    # Vision documents (highest priority)
 │   ├── Sessions/  # Development session memories
 │   ├── devlog/    # Development logs
