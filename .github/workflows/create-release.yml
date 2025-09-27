@@ -122,17 +122,6 @@ jobs:
           *This is a clean release build with development artifacts removed.*
           EOF
 
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.event.inputs.version }}
-          release_name: Release v${{ github.event.inputs.version }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ github.event.inputs.prerelease }}
-
       - name: Generate release archive
         run: |
           # The .gitattributes file will automatically exclude dev files
@@ -146,10 +135,14 @@ jobs:
             -o GiljoAI_MCP-v${{ github.event.inputs.version }}.zip \
             HEAD
 
-      - name: Upload release assets
+      - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.event.inputs.version }}
+          name: Release v${{ github.event.inputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease }}
           files: |
             GiljoAI_MCP-v${{ github.event.inputs.version }}.tar.gz
             GiljoAI_MCP-v${{ github.event.inputs.version }}.zip

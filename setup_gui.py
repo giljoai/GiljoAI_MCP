@@ -137,8 +137,10 @@ process and default configurations for your specific use case."""
 
         dev_desc = """• Personal coding assistant with local SQLite database
 • Minimal setup with default ports (8000 for API, 8001 for WebSocket)
-• Single-user authentication with simple API key
-• Optimized for individual productivity and learning
+• Up to 5 concurrent agents
+• Debug logging for development
+• Hot-reload support (Coming Soon)
+• Mock external services (Coming Soon)
 • Ideal for: Solo developers, hobbyists, students"""
 
         ttk.Label(dev_frame, text=dev_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
@@ -157,7 +159,9 @@ process and default configurations for your specific use case."""
 
         team_desc = """• Shared PostgreSQL database for team collaboration
 • Network-accessible with configurable ports
-• Multi-user authentication with role-based access
+• Up to 20 concurrent agents
+• API key authentication
+• Redis caching enabled
 • Project isolation and team management features
 • Ideal for: Small to medium development teams, startups"""
 
@@ -175,10 +179,13 @@ process and default configurations for your specific use case."""
             command=self._on_profile_change,
         ).pack(anchor="w")
 
-        enterprise_desc = """• Production-grade PostgreSQL with replication support
-• Advanced security with OAuth2/SAML integration
-• High availability and load balancing ready
-• Audit logging and compliance features
+        enterprise_desc = """• Production-grade PostgreSQL
+• Up to 100 concurrent agents
+• OAuth2 authentication (configuration required)
+• Docker containerization ready
+• LDAP integration (Coming Soon)
+• Audit logging (Coming Soon)
+• Compliance modes (Coming Soon)
 • Ideal for: Large organizations, regulated industries"""
 
         ttk.Label(enterprise_frame, text=enterprise_desc, justify=tk.LEFT, foreground="gray").pack(
@@ -197,10 +204,15 @@ process and default configurations for your specific use case."""
             command=self._on_profile_change,
         ).pack(anchor="w")
 
-        research_desc = """• Flexible configuration for experimentation
-• Extended agent templates for research scenarios
-• Detailed logging and metrics collection
-• Educational resources and examples included
+        research_desc = """• PostgreSQL with Redis caching
+• Up to 50 concurrent agents
+• Debug logging enabled
+• No authentication (open access)
+• Example projects included (3 demos)
+• Experiment mode (Coming Soon)
+• Data collection/telemetry (Coming Soon)
+• GPU acceleration support (Coming Soon)
+• Educational resources (Coming Soon)
 • Ideal for: Researchers, educators, AI labs"""
 
         ttk.Label(research_frame, text=research_desc, justify=tk.LEFT, foreground="gray").pack(
