@@ -710,7 +710,7 @@ class SecurityPage(WizardPage):
                 self.cors_origins_var.set("*")  # Allow all for research
 
             # Update UI state
-            self._toggle_api_key()
+            self._on_api_toggle()
 
 
 class ReviewPage(WizardPage):
@@ -1582,7 +1582,8 @@ class GiljoSetupGUI:
 
         # Configure style
         style = ttk.Style()
-        style.theme_use('clam')
+        # Comment out clam theme as it causes text rendering issues on Windows
+        # style.theme_use('clam')
 
         # Set window icon (if available)
         try:
@@ -1755,6 +1756,11 @@ class GiljoSetupGUI:
         self.root.destroy()
         # Exit with success code
         return 0
+
+
+def gui():
+    """GUI wrapper function for compatibility with test_gui.py"""
+    return main()
 
 
 def main():
