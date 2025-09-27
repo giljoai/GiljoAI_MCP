@@ -5,6 +5,7 @@ Supports LOCAL (no auth), LAN (API key), and WAN (JWT) modes
 
 import json
 import logging
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -38,6 +39,13 @@ class AuthManager:
 
     def _get_or_create_jwt_secret(self) -> str:
         """Get or create JWT secret for token signing"""
+        # First check environment variables
+        env_secret = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY")
+        if env_secret:
+            logger.info("Using JWT secret from environment variable")
+            return env_secret
+
+        # Fall back to file-based secret
         secret_file = Path.home() / ".giljo-mcp" / "jwt_secret"
         secret_file.parent.mkdir(parents=True, exist_ok=True)
 

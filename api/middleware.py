@@ -48,7 +48,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if not api_key:
                 return JSONResponse(status_code=401, content={"error": "Missing API key"})
 
-            if not await auth_manager.validate_key(api_key):
+            # Validate API key - validate_api_key is synchronous
+            if not auth_manager.validate_api_key(api_key):
                 return JSONResponse(status_code=401, content={"error": "Invalid API key"})
 
         # Process request

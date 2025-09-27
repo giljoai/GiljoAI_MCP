@@ -5,16 +5,22 @@ Provides REST API and WebSocket endpoints for orchestration system
 
 import asyncio
 import logging
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
+
+from dotenv import load_dotenv
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -75,8 +81,20 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     # Initialize tool accessor
     state.tool_accessor = ToolAccessor(state.db_manager, state.tenant_manager)
 
-    # Initialize auth
+    # Initialize auth with environment variables
     state.auth = AuthManager(state.config)
+
+    # Load API key from environment if available
+    api_key = os.getenv("API_KEY") or os.getenv("GILJO_MCP_API_KEY")
+    if api_key and state.auth.mode != "LOCAL":
+        # Add the configured API key to AuthManager
+        state.auth.api_keys[api_key] = {
+            "name": "Installer Generated",
+            "created_at": "2024-01-01T00:00:00Z",
+            "permissions": ["*"],
+            "active": True,
+        }
+        logger.info("Loaded API key from environment")
 
     # Initialize WebSocket manager
     state.websocket_manager = WebSocketManager()
@@ -168,10 +186,29 @@ def create_app() -> FastAPI:
         license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
     )
 
-    # Configure CORS
+    # Configure CORS from environment
+    cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:*")
+    # Parse CORS origins (handle both comma-separated and JSON array formats)
+    if cors_origins_str.startswith("["):
+        # JSON array format from installer
+        import json
+        try:
+            cors_origins = json.loads(cors_origins_str)
+        except json.JSONDecodeError:
+            cors_origins = ["http://localhost:*"]
+    else:
+        # Comma-separated format
+        cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+
+    # If no valid origins, default to localhost
+    if not cors_origins:
+        cors_origins = ["http://localhost:*"]
+
+    logger.info(f"Configuring CORS with origins: {cors_origins}")
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure based on deployment
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
