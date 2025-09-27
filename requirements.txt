@@ -48,7 +48,7 @@ ruff>=0.1.0                # Fast linter
 mypy>=1.5.0                # Type checking
 
 # Phase 2: Installer Dependencies
-pywin32>=306               # Windows service management (Windows only)
+pywin32>=306; sys_platform == "win32"  # Windows service management (Windows only)
 docker>=6.0.0              # Docker API integration
 # pathlib is built into Python 3.4+ - no external package needed
 
