@@ -40,80 +40,93 @@ class WizardPage(ttk.Frame):
         return {}
 
 
-class WelcomePage(WizardPage):
-    """Welcome page with overview"""
+# REMOVED: WelcomePage was redundant with ProfileSelectionPage
+# The "mode" selection duplicated profile selection without affecting installation
+# Kept here for reference only
+
+# DEPRECATED - DO NOT USE
+# class WelcomePage(WizardPage):
+#     # Welcome page with overview - DEPRECATED
+#
+#     def __init__(self, parent):
+#         super().__init__(parent, "Welcome to GiljoAI MCP Setup")
+
+#         # Title
+#         title_label = ttk.Label(self, text="GiljoAI MCP Setup Wizard", font=("Helvetica", 16, "bold"))
+#         title_label.pack(pady=20)
+
+#         # Description
+#         desc_text = '''This wizard will guide you through the initial setup of GiljoAI MCP.
+
+# We'll configure:
+# • Database connection (SQLite or PostgreSQL)
+# • Server ports and network settings
+# • Security keys and API configuration
+# • Import settings from AKE-MCP (if detected)
+#
+# The setup process will:
+# 1. Check your system requirements
+# 2. Validate port availability
+# 3. Create configuration files
+# 4. Initialize the database
+# 5. Install dependencies
+#
+# Click 'Next' to begin.'''
+
+#         desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
+#         desc_label.pack(padx=20, pady=10)
+#
+#         # Mode selection
+#         self.mode_var = tk.StringVar(value="local")
+#         mode_frame = ttk.LabelFrame(self, text="Setup Mode", padding=10)
+#         mode_frame.pack(padx=20, pady=10, fill="x")
+#
+#         ttk.Radiobutton(
+#             mode_frame,
+#             text="Local Development (Single machine, SQLite, full features)",
+#             variable=self.mode_var,
+#             value="local",
+#         ).pack(anchor="w")
+#         ttk.Radiobutton(
+#             mode_frame,
+#             text="Network Shared (Multi-user, PostgreSQL, LAN accessible)",
+#             variable=self.mode_var,
+#             value="lan",
+#         ).pack(anchor="w")
+#         ttk.Radiobutton(
+#             mode_frame,
+#             text="High Performance (Production-ready, optimized for scale)",
+#             variable=self.mode_var,
+#             value="wan",
+#         ).pack(anchor="w")
+#
+#     def get_data(self) -> dict:
+#         return {"mode": self.mode_var.get()}
+# End of deprecated WelcomePage
+
+
+class ProfileSelectionPage(WizardPage):
+    """Welcome and profile selection page"""
 
     def __init__(self, parent):
         super().__init__(parent, "Welcome to GiljoAI MCP Setup")
 
-        # Title
-        title_label = ttk.Label(self, text="GiljoAI MCP Setup Wizard", font=("Helvetica", 16, "bold"))
-        title_label.pack(pady=20)
+        # Welcome Title
+        title_label = ttk.Label(self, text="GiljoAI MCP Coding Orchestrator", font=("Helvetica", 16, "bold"))
+        title_label.pack(pady=10)
 
-        # Description
-        desc_text = """This wizard will guide you through the initial setup of GiljoAI MCP.
+        # Welcome message
+        welcome_text = """Welcome to the GiljoAI MCP installation wizard.
 
-We'll configure:
-• Database connection (SQLite or PostgreSQL)
-• Server ports and network settings
-• Security keys and API configuration
-• Import settings from AKE-MCP (if detected)
+This wizard will help you:
+• Check system requirements and port availability
+• Configure your database and security settings
+• Install required dependencies
+• Initialize your orchestrator
 
-The setup process will:
-1. Check your system requirements
-2. Validate port availability
-3. Create configuration files
-4. Initialize the database
-5. Install dependencies
+Select the profile below that best matches your needs:"""
 
-Click 'Next' to begin."""
-
-        desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
-        desc_label.pack(padx=20, pady=10)
-
-        # Mode selection
-        self.mode_var = tk.StringVar(value="local")
-        mode_frame = ttk.LabelFrame(self, text="Setup Mode", padding=10)
-        mode_frame.pack(padx=20, pady=10, fill="x")
-
-        ttk.Radiobutton(
-            mode_frame,
-            text="Local Development (Single machine, SQLite, full features)",
-            variable=self.mode_var,
-            value="local",
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frame,
-            text="Network Shared (Multi-user, PostgreSQL, LAN accessible)",
-            variable=self.mode_var,
-            value="lan",
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frame,
-            text="High Performance (Production-ready, optimized for scale)",
-            variable=self.mode_var,
-            value="wan",
-        ).pack(anchor="w")
-
-    def get_data(self) -> dict:
-        return {"mode": self.mode_var.get()}
-
-
-class ProfileSelectionPage(WizardPage):
-    """Profile selection page for different user types"""
-
-    def __init__(self, parent):
-        super().__init__(parent, "Select Installation Profile")
-
-        # Title
-        title_label = ttk.Label(self, text="Choose Your Installation Profile", font=("Helvetica", 16, "bold"))
-        title_label.pack(pady=20)
-
-        # Description
-        desc_text = """Select the profile that best matches your needs. This will customize the installation
-process and default configurations for your specific use case."""
-
-        desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
+        desc_label = ttk.Label(self, text=welcome_text, justify=tk.LEFT)
         desc_label.pack(padx=20, pady=10)
 
         # Profile selection
@@ -788,13 +801,6 @@ class ReviewPage(WizardPage):
             "research": "AI Research & Education",
         }
         self.text.insert(tk.END, f"Profile: {profile_display.get(profile, profile.capitalize())}\n\n")
-
-        # Deployment Mode
-        self.text.insert(tk.END, "DEPLOYMENT MODE\n")
-        self.text.insert(tk.END, "-" * 30 + "\n")
-        mode_display = {"local": "Local Development", "lan": "Network Shared", "wan": "High Performance"}
-        mode = config.get("mode", "local")
-        self.text.insert(tk.END, f"Mode: {mode_display.get(mode, mode.capitalize())}\n\n")
 
         # Database
         self.text.insert(tk.END, "DATABASE CONFIGURATION\n")
@@ -1712,7 +1718,7 @@ class GiljoSetupGUI:
 
         # Create pages with correct parent (content_frame)
         self.pages = [
-            WelcomePage(self.content_frame),
+            # WelcomePage removed - ProfileSelection now serves as welcome
             ProfileSelectionPage(self.content_frame),
             DatabasePage(self.content_frame),
             PortsPage(self.content_frame),
