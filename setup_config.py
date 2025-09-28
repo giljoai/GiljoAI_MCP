@@ -510,6 +510,143 @@ class ConfigurationManager:
         print(f"Configuration template generated: {output_path}")
         return output_path
 
+    def generate_from_profile(self, profile: str, config_values: dict) -> bool:
+        """Generate .env file from profile configuration"""
+        try:
+            env_path = self.root_path / ".env"
+
+            env_content = []
+            env_content.append(f"# GiljoAI MCP Configuration - {profile} profile")
+            env_content.append(f"# Generated: {datetime.now().isoformat()}")
+            env_content.append("")
+
+            # Environment
+            env_content.append(f"ENVIRONMENT={profile}")
+            env_content.append("")
+
+            # Database configuration
+            if profile in ["team", "enterprise"]:
+                env_content.append("# PostgreSQL Configuration")
+                env_content.append(f"DATABASE_TYPE=postgresql")
+                env_content.append(f"PG_HOST={config_values.get('pg_host', 'localhost')}")
+                env_content.append(f"PG_PORT={config_values.get('pg_port', 5432)}")
+                env_content.append(f"PG_DATABASE={config_values.get('pg_database', 'giljo_mcp')}")
+                env_content.append(f"PG_USER={config_values.get('pg_user', 'postgres')}")
+                env_content.append(f"PG_PASSWORD={config_values.get('pg_password', '')}")
+            else:
+                env_content.append("# SQLite Configuration")
+                env_content.append(f"DATABASE_TYPE=sqlite")
+                env_content.append(f"DB_PATH={config_values.get('db_path', 'data/giljo_mcp.db')}")
+            env_content.append("")
+
+            # Redis configuration (for all profiles now)
+            env_content.append("# Redis Configuration")
+            env_content.append(f"REDIS_ENABLED={'true' if profile != 'minimal' else 'false'}")
+            env_content.append(f"REDIS_HOST={config_values.get('redis_host', 'localhost')}")
+            env_content.append(f"REDIS_PORT={config_values.get('redis_port', 6379)}")
+            env_content.append(f"REDIS_PASSWORD={config_values.get('redis_password', '')}")
+            env_content.append("")
+
+            # Server configuration
+            env_content.append("# Server Configuration")
+            env_content.append(f"API_PORT={config_values.get('api_port', 6002)}")
+            env_content.append(f"WEBSOCKET_PORT={config_values.get('websocket_port', 6003)}")
+            env_content.append(f"DASHBOARD_PORT={config_values.get('dashboard_port', 6000)}")
+            env_content.append(f"SERVER_PORT={config_values.get('server_port', 6001)}")
+            env_content.append("")
+
+            # Security configuration
+            env_content.append("# Security Configuration")
+            env_content.append(f"API_KEY_ENABLED={'true' if profile in ['team', 'enterprise'] else 'false'}")
+            if profile in ['team', 'enterprise']:
+                env_content.append(f"API_KEY={config_values.get('api_key', '')}")
+            env_content.append(f"JWT_SECRET={config_values.get('jwt_secret', '')}")
+            env_content.append("")
+
+            # Write the .env file
+            with open(env_path, 'w') as f:
+                f.write('\n'.join(env_content))
+
+            return True
+        except Exception as e:
+            print(f"Error generating .env file: {e}")
+            return False
+
+    def generate_yaml_config(self, config_values: dict) -> bool:
+        """Generate config.yaml from configuration values"""
+        try:
+            yaml_path = self.root_path / "config.yaml"
+
+            config = {
+                'database': {
+                    'type': config_values.get('database_type', 'sqlite'),
+                    'sqlite': {
+                        'path': config_values.get('db_path', 'data/giljo_mcp.db')
+                    },
+                    'postgresql': {
+                        'host': config_values.get('pg_host', 'localhost'),
+                        'port': config_values.get('pg_port', 5432),
+                        'database': config_values.get('pg_database', 'giljo_mcp'),
+                        'user': config_values.get('pg_user', 'postgres'),
+                        'password': config_values.get('pg_password', '')
+                    }
+                },
+                'redis': {
+                    'enabled': config_values.get('redis_enabled', False),
+                    'host': config_values.get('redis_host', 'localhost'),
+                    'port': config_values.get('redis_port', 6379),
+                    'password': config_values.get('redis_password', '')
+                },
+                'server': {
+                    'ports': {
+                        'api': config_values.get('api_port', 6002),
+                        'websocket': config_values.get('websocket_port', 6003),
+                        'dashboard': config_values.get('dashboard_port', 6000),
+                        'server': config_values.get('server_port', 6001)
+                    }
+                },
+                'security': {
+                    'api_key_enabled': config_values.get('api_key_enabled', False),
+                    'api_key': config_values.get('api_key', ''),
+                    'jwt_secret': config_values.get('jwt_secret', '')
+                }
+            }
+
+            with open(yaml_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+            return True
+        except Exception as e:
+            print(f"Error generating config.yaml: {e}")
+            return False
+
+    def validate_configuration(self, config_values: dict) -> tuple:
+        """Validate configuration values"""
+        errors = []
+
+        # Check required fields
+        if not config_values.get('database_type'):
+            errors.append("Database type not specified")
+
+        if config_values.get('database_type') == 'postgresql':
+            required_pg = ['pg_host', 'pg_port', 'pg_database', 'pg_user']
+            for field in required_pg:
+                if not config_values.get(field):
+                    errors.append(f"PostgreSQL {field} not specified")
+
+        # Check port conflicts
+        ports = [
+            config_values.get('api_port', 6002),
+            config_values.get('websocket_port', 6003),
+            config_values.get('dashboard_port', 6000),
+            config_values.get('server_port', 6001)
+        ]
+        if len(ports) != len(set(ports)):
+            errors.append("Port conflict detected - ports must be unique")
+
+        is_valid = len(errors) == 0
+        return is_valid, errors
+
 
 def main():
     """CLI interface for configuration management"""

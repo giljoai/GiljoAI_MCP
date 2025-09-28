@@ -1,5 +1,51 @@
 THIS DOCUMENT IS NOW RETIRED AS WE HAVE A PLAN IN PROJECT_PROPOSAL_CONTINUED.md
 
+## Enterprise SaaS Features
+
+### PROJECT SAAS AUTHENTICATION & SUBSCRIPTION MANAGEMENT
+
+- **Description**: Lightweight MCP installer with OAuth-based subscription validation for SaaS deployment
+- **Implementation Strategy**:
+  1. **Installer Flow**:
+     - User signs up at giljoai.com
+     - Downloads lightweight installer
+     - Authenticates with email/password
+     - Backend generates unique API key per device/installation
+     - Installer auto-configures .mcp.json with credentials
+
+  2. **Architecture Components**:
+     - OAuth login during installation (no manual key handling)
+     - Per-device API keys for granular tracking
+     - Regional endpoint selection (us-east, eu-west, ap-south)
+     - Subscription tier enforcement at MCP protocol level
+     - Usage tracking and limits per tier
+
+  3. **Client Proxy Approach**:
+     ```javascript
+     // @giljoai/mcp-proxy npm package
+     - Validates subscription on startup
+     - Proxies MCP requests to SaaS backend
+     - Handles rate limiting locally
+     - Auto-updates proxy version
+     - Caches subscription status
+     ```
+
+  4. **Subscription Tiers**:
+     - Free: 2 agents, 1 project, 100 calls/day
+     - Starter ($29): 5 agents, 3 projects, 1000 calls/day
+     - Pro ($99): 50 agents, unlimited projects, 10000 calls/day
+     - Enterprise (custom): Unlimited everything
+
+  5. **Security Benefits**:
+     - No API keys visible to users
+     - Per-device revocation capability
+     - Anomaly detection (multiple IPs per key)
+     - Auto-rotation of credentials
+     - Team management with role-based access
+
+- **Priority**: HIGH - Critical for monetization
+- **Compatibility**: Works with any MCP client (Claude, Codex, Gemini CLI)
+
 ## Phase 3 (Post-MVP) Advanced Template Features
 
 ### PROJECT TEMPLATE MARKETPLACE

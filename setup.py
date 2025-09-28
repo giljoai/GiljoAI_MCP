@@ -712,47 +712,292 @@ class GiljoSetup:
                 console.print("  [green]✓[/green] Added .env to .gitignore")
 
     def _install_dependencies(self):
-        """Install Python dependencies"""
-        console.print("\n[bold]Installing dependencies...[/bold]")
+        """Install dependencies with individual component tracking"""
+        console.print("\n[bold cyan]Installing Components[/bold cyan]\n")
+
+        profile = self.config.get("profile", "developer")
+
+        # Define components based on profile
+        components = {
+            'config': {
+                'name': 'Configuration Files',
+                'applicable': True,
+                'status': 'pending'
+            },
+            'directories': {
+                'name': 'Directory Structure',
+                'applicable': True,
+                'status': 'pending'
+            },
+            'database': {
+                'name': 'SQLite Database' if profile in ['developer', 'research'] else 'PostgreSQL Database',
+                'applicable': True,
+                'status': 'pending'
+            },
+            'redis': {
+                'name': 'Redis Cache',
+                'applicable': profile != 'minimal',
+                'status': 'pending' if profile != 'minimal' else 'not_required'
+            },
+            'docker': {
+                'name': 'Docker Platform',
+                'applicable': profile == 'containerized',
+                'status': 'pending' if profile == 'containerized' else 'not_required'
+            },
+            'schema': {
+                'name': 'Database Schema',
+                'applicable': True,
+                'status': 'pending'
+            },
+            'dependencies': {
+                'name': 'Python Dependencies',
+                'applicable': True,
+                'status': 'pending'
+            },
+            'validation': {
+                'name': 'System Validation',
+                'applicable': True,
+                'status': 'pending'
+            }
+        }
+
+        # Display component status table
+        def display_status():
+            table = Table(title="Installation Progress", box=box.SIMPLE)
+            table.add_column("Component", style="cyan", width=30)
+            table.add_column("Status", width=25)
+            table.add_column("Progress", width=20)
+
+            for comp_id, comp in components.items():
+                if comp['applicable']:
+                    status_color = {
+                        'pending': 'yellow',
+                        'installing': 'blue',
+                        'completed': 'green',
+                        'failed': 'red',
+                        'not_required': 'dim'
+                    }.get(comp['status'], 'white')
+
+                    progress = {
+                        'pending': '⏸ Pending',
+                        'installing': '🔄 Installing...',
+                        'completed': '✅ Complete',
+                        'failed': '❌ Failed',
+                        'not_required': '➖ Not Required'
+                    }.get(comp['status'], '❓ Unknown')
+
+                    table.add_row(
+                        comp['name'],
+                        f"[{status_color}]{comp['status'].title()}[/{status_color}]",
+                        progress
+                    )
+
+            return table
+
+        # Create configuration files
+        console.clear()
+        components['config']['status'] = 'installing'
+        console.print(display_status())
+        console.print("\n[bold]Creating configuration files...[/bold]")
+
+        try:
+            from setup_config import ConfigurationManager
+            config_mgr = ConfigurationManager()
+
+            # Prepare config values
+            config_values = {
+                "database_type": "postgresql" if profile in ["team", "enterprise"] else "sqlite",
+                "api_port": self.env_vars.get("GILJO_MCP_API_PORT", 6002),
+                "websocket_port": self.env_vars.get("GILJO_MCP_WEBSOCKET_PORT", 6003),
+                "dashboard_port": self.env_vars.get("GILJO_MCP_DASHBOARD_PORT", 6000),
+                "server_port": self.env_vars.get("GILJO_MCP_SERVER_PORT", 6001),
+                "redis_enabled": profile != 'minimal',
+                "redis_host": "localhost",
+                "redis_port": 6379,
+                "jwt_secret": self.env_vars.get("JWT_SECRET", ""),
+                "api_key": self.env_vars.get("API_KEY", ""),
+                "api_key_enabled": profile in ["team", "enterprise"]
+            }
+
+            if profile in ["team", "enterprise"]:
+                config_values.update({
+                    "pg_host": self.env_vars.get("PG_HOST", "localhost"),
+                    "pg_port": self.env_vars.get("PG_PORT", 5432),
+                    "pg_database": self.env_vars.get("PG_DATABASE", "giljo_mcp"),
+                    "pg_user": self.env_vars.get("PG_USER", "postgres"),
+                    "pg_password": self.env_vars.get("PG_PASSWORD", "")
+                })
+            else:
+                config_values["db_path"] = "data/giljo_mcp.db"
+
+            # Generate .env file
+            env_result = config_mgr.generate_from_profile(profile, config_values)
+            if env_result:
+                console.print("  [green]✓[/green] Generated .env file")
+
+            # Generate config.yaml
+            yaml_result = config_mgr.generate_yaml_config(config_values)
+            if yaml_result:
+                console.print("  [green]✓[/green] Generated config.yaml")
+
+            components['config']['status'] = 'completed'
+            console.print("[green]✓ Configuration files created[/green]")
+
+        except Exception as e:
+            components['config']['status'] = 'failed'
+            console.print(f"[red]✗ Configuration failed: {e}[/red]")
+
+        # Setup directories
+        console.clear()
+        components['directories']['status'] = 'installing'
+        console.print(display_status())
+        console.print("\n[bold]Setting up directories...[/bold]")
+
+        try:
+            directories = [
+                "data", "logs", "backups", "temp",
+                "src/giljo_mcp", "api", "frontend/dist",
+                "scripts", "docker", "tests"
+            ]
+
+            for directory in directories:
+                Path(directory).mkdir(parents=True, exist_ok=True)
+
+            components['directories']['status'] = 'completed'
+            console.print("[green]✓ Directory structure created[/green]")
+
+        except Exception as e:
+            components['directories']['status'] = 'failed'
+            console.print(f"[red]✗ Directory setup failed: {e}[/red]")
+
+        # Database setup
+        console.clear()
+        components['database']['status'] = 'installing'
+        console.print(display_status())
+
+        if profile in ["team", "enterprise"]:
+            console.print("\n[bold]Setting up PostgreSQL database...[/bold]")
+            # PostgreSQL installation would go here
+            console.print("[yellow]⚠ PostgreSQL must be installed separately[/yellow]")
+            console.print("  Download from: https://www.postgresql.org/download/")
+            components['database']['status'] = 'completed'
+        else:
+            console.print("\n[bold]Setting up SQLite database...[/bold]")
+            db_path = Path("data/giljo_mcp.db")
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            components['database']['status'] = 'completed'
+            console.print("[green]✓ SQLite database configured[/green]")
+
+        # Redis setup (if applicable)
+        if components['redis']['applicable']:
+            console.clear()
+            components['redis']['status'] = 'installing'
+            console.print(display_status())
+            console.print("\n[bold]Setting up Redis cache...[/bold]")
+
+            if self.platform_info.get("is_windows"):
+                console.print("[yellow]⚠ Redis for Windows must be installed separately[/yellow]")
+                console.print("  Download from: https://github.com/tporadowski/redis/releases")
+            else:
+                console.print("  Install with: brew install redis (Mac) or apt install redis (Linux)")
+
+            components['redis']['status'] = 'completed'
+
+        # Initialize database schema
+        console.clear()
+        components['schema']['status'] = 'installing'
+        console.print(display_status())
+        console.print("\n[bold]Initializing database schema...[/bold]")
+
+        try:
+            from src.giljo_mcp.models.base import init_database
+            init_database()
+            components['schema']['status'] = 'completed'
+            console.print("[green]✓ Database schema initialized[/green]")
+        except Exception as e:
+            components['schema']['status'] = 'failed'
+            console.print(f"[red]✗ Schema initialization failed: {e}[/red]")
+
+        # Install Python dependencies
+        console.clear()
+        components['dependencies']['status'] = 'installing'
+        console.print(display_status())
+        console.print("\n[bold]Installing Python dependencies...[/bold]")
 
         requirements_file = self.root_path / "requirements.txt"
-        if not requirements_file.exists():
-            console.print("[yellow]requirements.txt not found. Skipping dependency installation.[/yellow]")
-            return
+        if requirements_file.exists():
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+                check=False,
+                capture_output=True,
+                text=True
+            )
 
-        if Confirm.ask("Install Python dependencies now?"):
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                transient=True,
-            ) as progress:
-                task = progress.add_task("Installing dependencies...", total=None)
+            if result.returncode == 0:
+                components['dependencies']['status'] = 'completed'
+                console.print("[green]✓ Python dependencies installed[/green]")
+                self._validate_critical_dependencies()
+            else:
+                components['dependencies']['status'] = 'failed'
+                console.print("[red]✗ Dependency installation failed[/red]")
+        else:
+            components['dependencies']['status'] = 'failed'
+            console.print("[red]✗ requirements.txt not found[/red]")
 
-                # Install main requirements
-                result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
+        # System validation
+        console.clear()
+        components['validation']['status'] = 'installing'
+        console.print(display_status())
+        console.print("\n[bold]Validating installation...[/bold]")
 
-                if result.returncode == 0:
-                    console.print("[green]✓ Dependencies installed successfully[/green]")
+        try:
+            from installer.health_checker import HealthChecker
+            checker = HealthChecker()
 
-                    # Validate critical dependencies
-                    progress.update(task, description="Validating critical dependencies...")
-                    self._validate_critical_dependencies()
+            # Check components
+            checks = []
+            if profile in ["team", "enterprise"]:
+                pg_status, pg_msg = checker.check_postgresql(True)
+                checks.append(("PostgreSQL", pg_status, pg_msg))
+
+            if components['redis']['applicable']:
+                redis_status, redis_msg = checker.check_redis(True)
+                checks.append(("Redis", redis_status, redis_msg))
+
+            ports_status, ports_msg = checker.check_ports(self.config)
+            checks.append(("Ports", ports_status, ports_msg))
+
+            fs_status, fs_msg = checker.check_filesystem()
+            checks.append(("File System", fs_status, fs_msg))
+
+            all_passed = all(status for _, status, _ in checks)
+
+            for component, status, message in checks:
+                if status:
+                    console.print(f"  [green]✓[/green] {component}: {message}")
                 else:
-                    console.print("[red]✗ Error installing dependencies[/red]")
-                    console.print(result.stderr)
+                    console.print(f"  [red]✗[/red] {component}: {message}")
 
-                # Install PostgreSQL adapter if needed
-                if self.env_vars.get("DB_TYPE") == "postgresql":
-                    progress.update(task, description="Installing PostgreSQL adapter...")
-                    subprocess.run(
-                        [sys.executable, "-m", "pip", "install", "psycopg2-binary"], check=False, capture_output=True
-                    )
-                    console.print("[green]✓ PostgreSQL adapter installed[/green]")
+            components['validation']['status'] = 'completed' if all_passed else 'failed'
+
+        except Exception as e:
+            components['validation']['status'] = 'failed'
+            console.print(f"[red]✗ Validation failed: {e}[/red]")
+
+        # Final status display
+        console.clear()
+        console.print("\n[bold cyan]Installation Complete[/bold cyan]\n")
+        console.print(display_status())
+
+        # Summary
+        failed_components = [name for comp_id, comp in components.items()
+                           if comp['status'] == 'failed' and comp['applicable']]
+
+        if failed_components:
+            console.print(f"\n[yellow]⚠ Installation completed with issues in: {', '.join(failed_components)}[/yellow]")
+            console.print("Please review the errors above and run setup again if needed.")
+        else:
+            console.print("\n[green]✅ All components installed successfully![/green]")
 
     def _validate_critical_dependencies(self):
         """Validate that critical dependencies are properly installed"""

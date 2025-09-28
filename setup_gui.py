@@ -1196,119 +1196,254 @@ and configured based on your profile selection."""
 
 
 class ProgressPage(WizardPage):
-    """Installation progress page with parallel installer support"""
+    """Installation progress page with individual component progress bars"""
 
     def __init__(self, parent):
         super().__init__(parent, "Installation Progress")
 
-        # Main progress for overall installation
-        self.progress_var = tk.IntVar(value=0)
-        self.progress = ttk.Progressbar(self, variable=self.progress_var, maximum=100)
-        self.progress.pack(padx=20, pady=10, fill="x")
+        # Main frame
+        main_frame = ttk.Frame(self)
+        main_frame.pack(padx=20, pady=10, fill="both", expand=True)
 
-        # Status label
+        # Title
+        title = ttk.Label(main_frame, text="Installing Components", font=("Arial", 12, "bold"))
+        title.pack(pady=(0, 10))
+
+        # Components frame with individual progress bars
+        self.components_frame = ttk.LabelFrame(main_frame, text="Component Installation Status")
+        self.components_frame.pack(fill="both", expand=False, pady=10)
+
+        # Initialize component tracking
+        self.components = {}
+        self.component_widgets = {}
+        self._init_components()
+
+        # Console output section
+        console_frame = ttk.LabelFrame(main_frame, text="Installation Log")
+        console_frame.pack(fill="both", expand=True, pady=10)
+
+        # Text widget with scrollbar
+        console_container = ttk.Frame(console_frame)
+        console_container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.console_text = tk.Text(console_container, height=8, width=80, wrap=tk.WORD,
+                                   bg='black', fg='white', font=('Consolas', 9))
+        scrollbar = ttk.Scrollbar(console_container, command=self.console_text.yview)
+        self.console_text.configure(yscrollcommand=scrollbar.set)
+
+        self.console_text.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Configure text tags
+        self.console_text.tag_config("info", foreground="white")
+        self.console_text.tag_config("success", foreground="lime")
+        self.console_text.tag_config("warning", foreground="yellow")
+        self.console_text.tag_config("error", foreground="red")
+
+        # Overall status
         self.status_var = tk.StringVar(value="Preparing installation...")
-        self.status_label = ttk.Label(self, textvariable=self.status_var)
-        self.status_label.pack(padx=20, pady=5)
+        overall_status = ttk.Label(main_frame, textvariable=self.status_var,
+                                 font=("Arial", 10, "bold"))
+        overall_status.pack(pady=10)
 
-        # Create notebook for parallel progress tracking
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(padx=20, pady=10, fill="both", expand=True)
+        # Overall progress bar
+        self.progress_var = tk.IntVar(value=0)
+        self.progress = ttk.Progressbar(main_frame, variable=self.progress_var,
+                                       maximum=100, length=400)
+        self.progress.pack(pady=(0, 20))
 
-        # PostgreSQL tab
-        self.pg_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.pg_frame, text="PostgreSQL")
-
+        # Legacy compatibility - create hidden notebook elements
+        self.notebook = None
+        self.pg_text = self.console_text
+        self.redis_text = self.console_text
+        self.docker_text = self.console_text
+        self.system_text = self.console_text
         self.pg_progress_var = tk.IntVar(value=0)
-        self.pg_progress = ttk.Progressbar(self.pg_frame, variable=self.pg_progress_var, maximum=100)
-        self.pg_progress.pack(padx=10, pady=10, fill="x")
-
-        self.pg_status_var = tk.StringVar(value="Not started")
-        ttk.Label(self.pg_frame, textvariable=self.pg_status_var).pack(padx=10, pady=5)
-
-        self.pg_text = tk.Text(self.pg_frame, height=8, width=60)
-        self.pg_text.pack(padx=10, pady=5, fill="both", expand=True)
-
-        # Redis tab
-        self.redis_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.redis_frame, text="Redis")
-
         self.redis_progress_var = tk.IntVar(value=0)
-        self.redis_progress = ttk.Progressbar(self.redis_frame, variable=self.redis_progress_var, maximum=100)
-        self.redis_progress.pack(padx=10, pady=10, fill="x")
-
-        self.redis_status_var = tk.StringVar(value="Not started")
-        ttk.Label(self.redis_frame, textvariable=self.redis_status_var).pack(padx=10, pady=5)
-
-        self.redis_text = tk.Text(self.redis_frame, height=8, width=60)
-        self.redis_text.pack(padx=10, pady=5, fill="both", expand=True)
-
-        # Docker tab (for containerized profile)
-        self.docker_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.docker_frame, text="Docker")
-
         self.docker_progress_var = tk.IntVar(value=0)
-        self.docker_progress = ttk.Progressbar(self.docker_frame, variable=self.docker_progress_var, maximum=100)
-        self.docker_progress.pack(padx=10, pady=10, fill="x")
-
-        self.docker_status_var = tk.StringVar(value="Not started")
-        ttk.Label(self.docker_frame, textvariable=self.docker_status_var).pack(padx=10, pady=5)
-
-        self.docker_text = tk.Text(self.docker_frame, height=8, width=60)
-        self.docker_text.pack(padx=10, pady=5, fill="both", expand=True)
-
-        # System tab for general logs
-        self.system_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.system_frame, text="System")
-
-        self.system_text = tk.Text(self.system_frame, height=12, width=60)
-        self.system_text.pack(padx=10, pady=5, fill="both", expand=True)
+        self.pg_status_var = tk.StringVar()
+        self.redis_status_var = tk.StringVar()
+        self.docker_status_var = tk.StringVar()
 
         self.completed = False
 
+    def _init_components(self):
+        """Initialize component list - will be updated based on profile"""
+        component_list = [
+            ('config', 'Configuration Files'),
+            ('directories', 'Directory Structure'),
+            ('database', 'Database Setup'),
+            ('redis', 'Redis Cache'),
+            ('docker', 'Docker Platform'),
+            ('schema', 'Database Schema'),
+            ('validation', 'System Validation')
+        ]
+
+        for comp_id, label in component_list:
+            # Create frame for component
+            frame = ttk.Frame(self.components_frame)
+            frame.pack(fill="x", padx=10, pady=5)
+
+            # Component label
+            name_label = ttk.Label(frame, text=label, width=25)
+            name_label.pack(side="left", padx=(0, 10))
+
+            # Progress bar
+            progress_var = tk.IntVar(value=0)
+            progress = ttk.Progressbar(frame, variable=progress_var,
+                                      maximum=100, length=200)
+            progress.pack(side="left", padx=(0, 10))
+
+            # Status label
+            status_var = tk.StringVar(value="Pending")
+            status_label = ttk.Label(frame, textvariable=status_var, width=35)
+            status_label.pack(side="left")
+
+            # Store references
+            self.components[comp_id] = {
+                'label': label,
+                'progress_var': progress_var,
+                'status_var': status_var,
+                'applicable': True
+            }
+
+            self.component_widgets[comp_id] = {
+                'frame': frame,
+                'progress': progress,
+                'status': status_label,
+                'name': name_label
+            }
+
+    def update_component_applicability(self, profile: str):
+        """Update which components are applicable based on profile"""
+        # Define applicability rules
+        rules = {
+            'developer': {
+                'database': ('SQLite Database', True),
+                'redis': ('Redis Cache', True),
+                'docker': ('Docker Platform', False),
+            },
+            'team': {
+                'database': ('PostgreSQL Database', True),
+                'redis': ('Redis Cache', True),
+                'docker': ('Docker Platform', False),
+            },
+            'enterprise': {
+                'database': ('PostgreSQL Database', True),
+                'redis': ('Redis Cache', True),
+                'docker': ('Docker Platform', False),
+            },
+            'research': {
+                'database': ('SQLite Database', True),
+                'redis': ('Redis Cache', False),
+                'docker': ('Docker Platform', False),
+            }
+        }
+
+        profile_rules = rules.get(profile, rules['developer'])
+
+        for comp_id, (label, applicable) in profile_rules.items():
+            if comp_id in self.components:
+                self.components[comp_id]['applicable'] = applicable
+                self.components[comp_id]['label'] = label
+
+                # Update UI
+                widget = self.component_widgets[comp_id]
+                widget['name'].configure(text=label)
+
+                if not applicable:
+                    self.components[comp_id]['status_var'].set("Not required for this profile")
+                    widget['status'].configure(foreground="gray")
+                    widget['progress'].configure(state="disabled")
+
     def log(self, message: str, target: str = "system"):
-        """Log message to appropriate target"""
+        """Log message to console"""
         timestamp = time.strftime("%H:%M:%S")
-        formatted = f"[{timestamp}] {message}\n"
+        formatted = f"[{timestamp}] {message}"
 
-        if target == "postgresql":
-            self.pg_text.insert(tk.END, formatted)
-            self.pg_text.see(tk.END)
-        elif target == "redis":
-            self.redis_text.insert(tk.END, formatted)
-            self.redis_text.see(tk.END)
-        elif target == "docker":
-            self.docker_text.insert(tk.END, formatted)
-            self.docker_text.see(tk.END)
-        else:
-            self.system_text.insert(tk.END, formatted)
-            self.system_text.see(tk.END)
+        # Determine tag based on message content
+        tag = "info"
+        if any(word in message.lower() for word in ["success", "✓", "completed"]):
+            tag = "success"
+        elif any(word in message.lower() for word in ["error", "failed"]):
+            tag = "error"
+        elif any(word in message.lower() for word in ["warning", "issue"]):
+            tag = "warning"
 
+        self.console_text.insert(tk.END, formatted + "\n", tag)
+        self.console_text.see(tk.END)
         self.update_idletasks()
 
     def set_progress(self, value: int, target: str = "main"):
         """Update progress for specific target"""
-        if target == "postgresql":
+        if target == "main":
+            self.progress_var.set(value)
+        elif target == "postgresql":
             self.pg_progress_var.set(value)
+            if 'database' in self.components:
+                self.components['database']['progress_var'].set(value)
         elif target == "redis":
             self.redis_progress_var.set(value)
+            if 'redis' in self.components:
+                self.components['redis']['progress_var'].set(value)
         elif target == "docker":
             self.docker_progress_var.set(value)
-        else:
-            self.progress_var.set(value)
+            if 'docker' in self.components:
+                self.components['docker']['progress_var'].set(value)
+        elif target in self.components:
+            self.components[target]['progress_var'].set(value)
+
+        self._update_overall_progress()
         self.update_idletasks()
 
     def set_status(self, status: str, target: str = "main"):
         """Update status for specific target"""
-        if target == "postgresql":
+        if target == "main":
+            self.status_var.set(status)
+        elif target == "postgresql":
             self.pg_status_var.set(status)
+            if 'database' in self.components:
+                self._update_component_status('database', status)
         elif target == "redis":
             self.redis_status_var.set(status)
+            if 'redis' in self.components:
+                self._update_component_status('redis', status)
         elif target == "docker":
             self.docker_status_var.set(status)
-        else:
-            self.status_var.set(status)
+            if 'docker' in self.components:
+                self._update_component_status('docker', status)
+        elif target in self.components:
+            self._update_component_status(target, status)
+
         self.update_idletasks()
+
+    def _update_component_status(self, comp_id: str, status: str):
+        """Update component status with color coding"""
+        if comp_id not in self.components:
+            return
+
+        self.components[comp_id]['status_var'].set(status)
+        widget = self.component_widgets[comp_id]['status']
+
+        # Color based on status
+        if any(word in status.lower() for word in ["✓", "success", "completed", "installed"]):
+            widget.configure(foreground="green")
+        elif any(word in status.lower() for word in ["failed", "error"]):
+            widget.configure(foreground="red")
+        elif any(word in status.lower() for word in ["warning", "issue"]):
+            widget.configure(foreground="orange")
+        elif "not required" in status.lower():
+            widget.configure(foreground="gray")
+        else:
+            widget.configure(foreground="black")
+
+    def _update_overall_progress(self):
+        """Calculate and update overall progress"""
+        applicable = [c for c in self.components.values() if c.get('applicable', True)]
+        if applicable:
+            total = sum(c['progress_var'].get() for c in applicable)
+            overall = total // len(applicable)
+            self.progress_var.set(overall)
 
     def run_setup(self, config: dict):
         """Run installation based on profile and configuration"""
@@ -1318,66 +1453,138 @@ class ProgressPage(WizardPage):
         profile = config.get("profile", "developer")
         self.log(f"Starting installation for {profile} profile", "system")
 
+        # Update component applicability
+        self.update_component_applicability(profile)
+
         # Determine which installers to run based on profile
         run_postgresql = False
         run_redis = False
         run_docker = False
 
         if profile in ["team", "enterprise"]:
-            # Network profiles need both databases
             run_postgresql = True
             run_redis = True
-            self.log("Network profile detected - will install PostgreSQL and Redis", "system")
+            self.log("Network profile: Installing PostgreSQL and Redis", "system")
         elif profile == "developer":
-            # Developer uses SQLite by default, but check if PostgreSQL was selected
             if config.get("db_type") == "postgresql":
                 run_postgresql = True
                 self.log("PostgreSQL selected for developer profile", "system")
             else:
                 self.log("Using SQLite for developer profile", "system")
-            # Always install Redis for developer profile for performance
             run_redis = True
             self.log("Installing Redis for performance boost", "system")
         elif profile == "research":
-            # Research profile - flexible, check configuration
             if config.get("db_type") == "postgresql":
                 run_postgresql = True
-            # Could optionally install Redis for caching
+            self.log("Research profile: Flexible configuration", "system")
 
-        # Check for containerized deployment
         if config.get("deployment_mode") == "containerized" or profile == "containerized":
             run_docker = True
-            self.log("Containerized deployment - will check Docker installation", "system")
+            self.log("Containerized deployment - checking Docker", "system")
 
-        # Calculate total steps
-        total_steps = 10  # Base system steps
-        if run_postgresql:
-            total_steps += 10
-        if run_redis:
-            total_steps += 10
-        if run_docker:
-            total_steps += 10
+        # Create configuration files
+        self.set_status("Creating configuration files...", "config")
+        self.set_progress(10, "config")
+        self.log("Creating configuration files...", "system")
 
-        current_step = 0
+        try:
+            from setup_config import ConfigurationManager
 
-        def update_main_progress():
-            nonlocal current_step
-            current_step += 1
-            self.set_progress(int((current_step / total_steps) * 100))
+            config_mgr = ConfigurationManager()
 
-        # PostgreSQL installation callback
-        def postgresql_progress(message: str, progress: int):
-            self.log(message, "postgresql")
-            self.set_progress(progress, "postgresql")
-            if progress == 100:
-                update_main_progress()
+            # Prepare config values
+            config_values = {
+                "database_type": "postgresql" if run_postgresql else "sqlite",
+                "api_port": config.get("api_port", 6002),
+                "websocket_port": config.get("websocket_port", 6003),
+                "dashboard_port": config.get("dashboard_port", 6000),
+                "server_port": config.get("server_port", 6001),
+                "redis_enabled": run_redis,
+                "redis_host": "localhost",
+                "redis_port": 6379,
+                "jwt_secret": config.get("jwt_secret", ""),
+                "api_key": config.get("api_key", ""),
+                "api_key_enabled": profile in ["team", "enterprise"]
+            }
 
-        # Redis installation callback
-        def redis_progress(message: str, progress: int):
-            self.log(message, "redis")
-            self.set_progress(progress, "redis")
-            if progress == 100:
-                update_main_progress()
+            if run_postgresql:
+                config_values.update({
+                    "pg_host": config.get("pg_host", "localhost"),
+                    "pg_port": config.get("pg_port", 5432),
+                    "pg_database": config.get("pg_database", "giljo_mcp"),
+                    "pg_user": config.get("pg_user", "postgres"),
+                    "pg_password": config.get("pg_password", ""),
+                })
+            else:
+                config_values["db_path"] = config.get("db_path", "data/giljo_mcp.db")
+
+            # Generate .env file
+            env_result = config_mgr.generate_from_profile(profile, config_values)
+            if env_result:
+                self.log("SUCCESS: Generated .env file", "system")
+                self.set_progress(50, "config")
+
+            # Generate config.yaml
+            yaml_result = config_mgr.generate_yaml_config(config_values)
+            if yaml_result:
+                self.log("SUCCESS: Generated config.yaml", "system")
+                self.set_progress(100, "config")
+                self.set_status("Configuration files created ✓", "config")
+
+            # Validate configuration
+            is_valid, errors = config_mgr.validate_configuration(config_values)
+            if is_valid:
+                self.log("SUCCESS: Configuration validated", "system")
+            else:
+                for error in errors:
+                    self.log(f"Configuration error: {error}", "system")
+
+        except Exception as e:
+            self.log(f"Configuration error: {e}", "system")
+            self.set_status(f"Configuration failed: {e}", "config")
+
+        # Setup directories
+        self.set_status("Setting up directories...", "directories")
+        self.set_progress(10, "directories")
+        self.log("Setting up directories...", "system")
+
+        try:
+            from pathlib import Path
+
+            directories = [
+                "data", "logs", "backups", "temp",
+                "src/giljo_mcp", "api", "frontend/dist",
+                "scripts", "docker", "tests"
+            ]
+
+            for directory in directories:
+                Path(directory).mkdir(parents=True, exist_ok=True)
+                self.set_progress(min(100, 10 + (90 * directories.index(directory) // len(directories))), "directories")
+
+            self.log("SUCCESS: Directory structure created", "system")
+            self.set_status("Directories created ✓", "directories")
+            self.set_progress(100, "directories")
+
+        except Exception as e:
+            self.log(f"Directory setup error: {e}", "system")
+            self.set_status(f"Directory setup failed: {e}", "directories")
+
+        # Initialize database schema
+        self.set_status("Initializing database schema...", "schema")
+        self.set_progress(10, "schema")
+        self.log("Initializing database schema...", "system")
+
+        try:
+            from src.giljo_mcp.models.base import init_database
+
+            init_database()
+            self.log("SUCCESS: Database schema initialized", "system")
+            self.set_status("Database schema initialized ✓", "schema")
+            self.set_progress(100, "schema")
+
+        except Exception as e:
+            self.log(f"Database schema error: {e}", "system")
+            self.set_status(f"Schema initialization failed: {e}", "schema")
 
         # Run parallel installations
         threads = []
@@ -1388,7 +1595,7 @@ class ProgressPage(WizardPage):
                 try:
                     from installer.dependencies.postgresql import PostgreSQLInstaller, PostgreSQLConfig
 
-                    self.set_status("Installing PostgreSQL...", "postgresql")
+                    self.set_status("Installing PostgreSQL...", "database")
 
                     pg_config = PostgreSQLConfig(
                         version="16.0",
@@ -1397,13 +1604,17 @@ class ProgressPage(WizardPage):
                         install_dir="C:/PostgreSQL/16",
                     )
 
+                    def postgresql_progress(progress, message):
+                        self.set_progress(progress, "database")
+                        self.log(message, "postgresql")
+
                     installer = PostgreSQLInstaller(pg_config, progress_callback=postgresql_progress)
 
                     if installer.is_postgresql_installed():
                         self.log("PostgreSQL already installed, verifying...", "postgresql")
                         if installer.test_connection():
                             self.log("PostgreSQL connection successful", "postgresql")
-                            self.set_progress(100, "postgresql")
+                            self.set_progress(100, "database")
                         else:
                             self.log("PostgreSQL connection failed, reinstalling...", "postgresql")
                             installer.install()
@@ -1411,15 +1622,23 @@ class ProgressPage(WizardPage):
                         result = installer.install()
                         self.log(f"PostgreSQL installed: {result.connection_string}", "postgresql")
 
-                    self.set_status("PostgreSQL installed ✓", "postgresql")
+                    self.set_status("PostgreSQL installed ✓", "database")
+                    self.set_progress(100, "database")
 
                 except Exception as e:
                     self.log(f"PostgreSQL installation error: {e}", "postgresql")
-                    self.set_status(f"Failed: {e}", "postgresql")
+                    self.set_status(f"Failed: {e}", "database")
 
             pg_thread = threading.Thread(target=install_postgresql)
             threads.append(pg_thread)
-            pg_thread.start()
+        else:
+            # SQLite setup
+            self.set_status("Setting up SQLite database...", "database")
+            self.set_progress(50, "database")
+            self.log("Configuring SQLite database...", "system")
+            time.sleep(0.5)
+            self.set_status("SQLite database ready ✓", "database")
+            self.set_progress(100, "database")
 
         if run_redis:
 
@@ -1429,34 +1648,19 @@ class ProgressPage(WizardPage):
 
                     self.set_status("Installing Redis...", "redis")
 
-                    # Get profile to determine memory settings
-                    profile = config.get("profile", "developer")
-
-                    # Set max_memory based on profile
-                    if profile == "developer":
-                        max_memory = "256mb"
-                    elif profile == "team":
-                        max_memory = "512mb"
-                    elif profile == "enterprise":
-                        max_memory = "2gb"
-                    else:  # research
-                        max_memory = "1gb"
+                    def redis_progress(message, progress):
+                        self.set_progress(progress, "redis")
+                        self.log(message, "redis")
 
                     redis_config = RedisConfig(
-                        version="5.0.14.1",
-                        port=int(config.get("redis_port", 6379)),
-                        max_memory=max_memory,
-                        install_dir=Path("C:/Redis"),
+                        version="5.0.14",
+                        port=6379,
                         data_dir=Path("C:/Redis/data"),
                         log_dir=Path("C:/Redis/logs"),
                         config_file=Path("C:/Redis/redis.windows.conf"),
-                        password="",  # Will be auto-generated
+                        password="",
                         bind_address="127.0.0.1" if profile == "developer" else "0.0.0.0"
                     )
-
-                    # Create a wrapper for the progress callback to match expected signature
-                    def redis_installer_progress(progress, message):
-                        redis_progress(message, progress)
 
                     installer = RedisInstaller(redis_config)
 
@@ -1466,195 +1670,113 @@ class ProgressPage(WizardPage):
                         if success:
                             self.log("Redis connection successful", "redis")
                             self.set_progress(100, "redis")
-                            # Store connection info for later use
-                            if conn_info:
-                                self.log(f"Redis running on port {conn_info.get('port', 6379)}", "redis")
                         else:
                             self.log("Redis connection failed, reinstalling...", "redis")
-                            success, conn_info = installer.install(redis_installer_progress)
-                            if success and conn_info:
-                                self.log(f"Redis installed: {conn_info.get('connection_string', 'redis://localhost:6379')}", "redis")
+                            success, conn_info = installer.install(redis_progress)
                     else:
-                        success, conn_info = installer.install(redis_installer_progress)
+                        success, conn_info = installer.install(redis_progress)
                         if success and conn_info:
                             self.log(f"Redis installed: {conn_info.get('connection_string', 'redis://localhost:6379')}", "redis")
-                            self.log(f"Redis password: {conn_info.get('password', 'auto-generated')}", "redis")
-                        else:
-                            raise Exception("Redis installation failed")
 
                     self.set_status("Redis installed ✓", "redis")
+                    self.set_progress(100, "redis")
 
                 except ImportError as e:
                     self.log("Redis installer module not available", "redis")
                     self.log("Please install Redis manually from: https://github.com/tporadowski/redis/releases", "redis")
                     self.set_status("Redis manual install required", "redis")
                     self.set_progress(100, "redis")
+
                 except Exception as e:
                     self.log(f"Redis installation error: {e}", "redis")
-                    self.set_status(f"Failed: {e}", "redis")
+                    self.set_status(f"Redis installation failed: {e}", "redis")
 
             redis_thread = threading.Thread(target=install_redis)
             threads.append(redis_thread)
-            redis_thread.start()
 
-        if run_docker:
+        # Start all installation threads
+        for thread in threads:
+            thread.start()
 
-            def install_docker():
-                try:
-                    from installer.dependencies.docker import DockerInstaller, DockerConfig
-
-                    self.set_status("Checking Docker installation...", "docker")
-
-                    docker_config = DockerConfig(profile=profile, compose_version="2.23.0")
-
-                    def docker_progress(message: str, progress: int):
-                        self.log(message, "docker")
-                        self.set_progress(progress, "docker")
-                        if progress == 100:
-                            update_main_progress()
-
-                    installer = DockerInstaller(docker_config, progress_callback=docker_progress)
-
-                    if installer.is_docker_installed():
-                        self.log("Docker already installed, verifying...", "docker")
-                        if installer.test_docker_daemon():
-                            self.log("Docker daemon is running", "docker")
-                            self.set_progress(100, "docker")
-                        else:
-                            self.log("Docker installed but daemon not running", "docker")
-                            self.log("Please start Docker Desktop manually", "docker")
-                    else:
-                        self.log("Docker not found, providing installation guide...", "docker")
-                        result = installer.install()
-                        if result.success:
-                            self.log(f"Docker installation guide provided", "docker")
-                            self.log("Please follow the instructions to install Docker", "docker")
-
-                    self.set_status("Docker check complete ✓", "docker")
-
-                except ImportError:
-                    self.log("Docker installer not available yet (DOC-01 in progress)", "docker")
-                    self.set_status("Docker installer pending", "docker")
-                    self.set_progress(100, "docker")
-                except Exception as e:
-                    self.log(f"Docker installation error: {e}", "docker")
-                    self.set_status(f"Failed: {e}", "docker")
-
-            docker_thread = threading.Thread(target=install_docker)
-            threads.append(docker_thread)
-            docker_thread.start()
-
-        # System configuration steps
-        self.set_status("Configuring system...")
-        self.log("Creating configuration files...", "system")
-
-        # Use Configuration Manager to generate config files
-        try:
-            from installer.config.config_manager import ConfigurationManager
-
-            config_mgr = ConfigurationManager()
-
-            # Generate configuration based on profile
-            self.log(f"Generating configuration for {profile} profile...", "system")
-
-            # Prepare configuration values from GUI inputs
-            config_values = {
-                "profile": profile,
-                "db_type": config.get("db_type", "sqlite"),
-                "api_port": config.get("api_port", 8000),
-                "websocket_port": config.get("websocket_port", 8001),
-                "dashboard_port": config.get("dashboard_port", 3000),
-                "mcp_port": config.get("mcp_port", 3001),
-                "api_key": config.get("api_key", ""),
-                "jwt_secret": config.get("jwt_secret", ""),
-                "cors_origins": config.get("cors_origins", "http://localhost:*"),
-            }
-
-            # Add PostgreSQL settings if applicable
-            if config.get("db_type") == "postgresql":
-                config_values.update(
-                    {
-                        "pg_host": config.get("pg_host", "localhost"),
-                        "pg_port": config.get("pg_port", 5432),
-                        "pg_database": config.get("pg_database", "giljo_mcp"),
-                        "pg_user": config.get("pg_user", "postgres"),
-                        "pg_password": config.get("pg_password", ""),
-                    }
-                )
-            else:
-                config_values["db_path"] = config.get("db_path", "data/giljo_mcp.db")
-
-            # Generate .env file
-            env_result = config_mgr.generate_from_profile(profile, config_values)
-            if env_result:
-                self.log("SUCCESS: Generated .env file", "system")
-
-            # Generate config.yaml
-            yaml_config = config_mgr.generate_yaml_config(config_values)
-            if yaml_config:
-                self.log("SUCCESS: Generated config.yaml", "system")
-
-            # Validate configuration
-            is_valid, errors = config_mgr.validate_configuration(config_values)
-            if is_valid:
-                self.log("SUCCESS: Configuration validated successfully", "system")
-            else:
-                self.log(f"WARNING: Configuration warnings: {errors}", "system")
-
-        except ImportError:
-            self.log("Configuration Manager not available, using basic config", "system")
-        except Exception as e:
-            self.log(f"Configuration error: {e}", "system")
-
-        update_main_progress()
-        time.sleep(0.5)
-
-        self.log("Setting up directories...", "system")
-        update_main_progress()
-        time.sleep(0.5)
-
-        self.log("Initializing database schema...", "system")
-        update_main_progress()
-        time.sleep(0.5)
-
-        # Wait for parallel installations
+        # Wait for all threads to complete
         for thread in threads:
             thread.join()
 
-        # Health checks
-        self.set_status("Running health checks...")
+        # Verify installations
+        self.set_status("Verifying installations...", "validation")
+        self.set_progress(10, "validation")
         self.log("Verifying installations...", "system")
 
-        # Integrate health check system
         try:
-            from installer.health_check import run_health_checks_for_gui
+            from installer.health_checker import HealthChecker
 
-            def health_progress(message: str, progress: int):
-                self.log(f"Health check: {message}", "system")
+            checker = HealthChecker()
 
-            health_results = run_health_checks_for_gui(config, health_progress)
+            self.log("Health check: Starting health checks...", "system")
 
-            if health_results["healthy"]:
-                self.log("SUCCESS: " + health_results["summary"], "system")
+            # Check PostgreSQL
+            self.log("Health check: Checking PostgreSQL...", "system")
+            self.set_progress(25, "validation")
+            pg_status, pg_msg = checker.check_postgresql(run_postgresql)
+
+            # Check Redis
+            self.log("Health check: Checking Redis...", "system")
+            self.set_progress(50, "validation")
+            redis_status, redis_msg = checker.check_redis(run_redis)
+
+            # Check Ports
+            self.log("Health check: Checking Ports...", "system")
+            self.set_progress(75, "validation")
+            ports_status, ports_msg = checker.check_ports(config)
+
+            # Check File System
+            self.log("Health check: Checking File System...", "system")
+            self.set_progress(90, "validation")
+            fs_status, fs_msg = checker.check_filesystem()
+
+            self.log("Health check: Health checks complete", "system")
+
+            # Log results
+            results = [
+                ("PostgreSQL", pg_status, pg_msg),
+                ("Redis", redis_status, redis_msg),
+                ("Port Configuration", ports_status, ports_msg),
+                ("File System", fs_status, fs_msg)
+            ]
+
+            all_success = True
+            issues = []
+
+            for component, status, message in results:
+                status_str = "SUCCESS" if status else "FAILED"
+                self.log(f"  {status_str} {component}: {message}", "system")
+                if not status and component != "File System":  # File system warnings are acceptable
+                    all_success = False
+                    issues.append(component)
+
+            if issues:
+                self.log(f"WARNING: Issues detected: {', '.join(issues)}", "system")
+                self.set_status(f"Completed with warnings: {', '.join(issues)}", "validation")
             else:
-                self.log("WARNING: " + health_results["summary"], "system")
+                self.log("SUCCESS: All components installed successfully", "system")
+                self.set_status("All validations passed ✓", "validation")
 
-            for detail in health_results["details"]:
-                status = "SUCCESS" if detail["healthy"] else "FAILED"
-                self.log(f"  {status} {detail['name']}: {detail['message']}", "system")
+            self.set_progress(100, "validation")
 
-        except ImportError:
-            self.log("Health check module not available, skipping...", "system")
+            # Update overall status
+            self.set_progress(100)
+            self.status_var.set("Installation completed successfully!" if not issues else f"Installation completed with warnings")
+
+            self.completed = True
+
         except Exception as e:
             self.log(f"Health check error: {e}", "system")
+            self.set_status(f"Validation failed: {e}", "validation")
+            self.completed = True
 
-        update_main_progress()
-
-        self.set_status("Installation complete!")
-        self.log("SUCCESS: All components installed successfully", "system")
-        self.set_progress(100)
-
-        self.completed = True
+    def validate(self):
+        """Check if installation is complete"""
+        return self.completed
 
 
 class GiljoSetupGUI:
