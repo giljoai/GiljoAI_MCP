@@ -36,17 +36,17 @@ if %errorlevel% equ 0 (
     for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
     echo [OK] Found Python !PYTHON_VERSION!
     
-    REM Check if it's 3.8 or higher
+    REM Check if it's 3.10 or higher
     for /f "tokens=1,2 delims=." %%a in ("!PYTHON_VERSION!") do (
         if %%a geq 3 (
             if %%a gtr 3 (
                 goto :python_ok
-            ) else if %%b geq 8 (
+            ) else if %%b geq 10 (
                 goto :python_ok
             )
         )
     )
-    echo [!] Python version too old. Need 3.8+, found !PYTHON_VERSION!
+    echo [!] Python version too old. Need 3.10+, found !PYTHON_VERSION!
     goto :install_python
 )
 
@@ -73,12 +73,12 @@ echo [X] Python not found on this system
 goto :install_python
 
 :check_version
-REM Verify Python version is 3.8+
+REM Verify Python version is 3.10+
 for /f "tokens=1,2 delims=." %%a in ("!PYTHON_VERSION!") do (
     if %%a geq 3 (
         if %%a gtr 3 (
             goto :python_ok
-        ) else if %%b geq 8 (
+        ) else if %%b geq 10 (
             goto :python_ok
         )
     )
@@ -90,10 +90,10 @@ REM STEP 2: Install Python if needed
 REM ============================================================
 :install_python
 echo.
-echo Python 3.8+ is required but not found or too old.
+echo Python 3.10+ is required but not found or too old.
 echo.
 echo Installation options:
-echo   1. Automatically download and install Python (recommended)
+echo   1. Automatically download and install Python 3.12 (recommended)
 echo   2. Use winget to install Python
 echo   3. Open Python download page in browser
 echo   4. Exit and install manually
@@ -189,10 +189,12 @@ exit /b 0
 
 :exit_manual
 echo.
-echo Please install Python 3.8+ manually from:
+echo Please install Python 3.10 or newer from:
 echo https://www.python.org/downloads/
 echo.
-echo Make sure to check "Add Python to PATH" during installation!
+echo Recommended: Python 3.11 or Python 3.12 (stable and well-tested)
+echo.
+echo IMPORTANT: Check "Add Python to PATH" during installation!
 pause
 exit /b 1
 
@@ -201,12 +203,12 @@ REM STEP 3: Python is OK, proceed with bootstrap
 REM ============================================================
 :python_ok
 echo.
-echo [2/4] Verifying Python components...
+echo [2/3] Checking Python installation...
 
 REM Set Python command if not set
 if not defined PYTHON_CMD set PYTHON_CMD=python
 
-REM Check for pip
+REM Check for pip (essential for Python packages)
 %PYTHON_CMD% -m pip --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [!] pip not found, installing...
@@ -218,22 +220,13 @@ if %errorlevel% neq 0 (
         exit /b 1
     )
 )
-echo [OK] pip is available
-
-REM Check for venv
-%PYTHON_CMD% -m venv --help >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [!] venv module not found
-    echo     Installing python venv support...
-    %PYTHON_CMD% -m pip install virtualenv
-)
-echo [OK] venv is available
+echo [OK] Python and pip are ready
 
 REM ============================================================
 REM STEP 4: Launch bootstrap.py
 REM ============================================================
 echo.
-echo [3/4] Checking for bootstrap.py...
+echo [3/3] Checking for bootstrap.py...
 
 if not exist "bootstrap.py" (
     echo [X] bootstrap.py not found in current directory
@@ -244,7 +237,7 @@ if not exist "bootstrap.py" (
 
 echo [OK] bootstrap.py found
 echo.
-echo [4/4] Launching GiljoAI MCP installer...
+echo Launching GiljoAI MCP installer...
 echo.
 echo ============================================================
 echo.

@@ -72,14 +72,14 @@ if command -v python3 &> /dev/null; then
     PYTHON_CMD="python3"
     echo -e "${GREEN}[OK]${NC} Found Python $PYTHON_VERSION"
     
-    # Check version is 3.8+
+    # Check version is 3.10+
     MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
     MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-    
-    if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 8 ]; then
+
+    if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 10 ]; then
         PYTHON_OK=true
     else
-        echo -e "${YELLOW}[!]${NC} Python version too old. Need 3.8+, found $PYTHON_VERSION"
+        echo -e "${YELLOW}[!]${NC} Python version too old. Need 3.10+, found $PYTHON_VERSION"
     fi
 # Check python command
 elif command -v python &> /dev/null; then
@@ -94,7 +94,7 @@ elif command -v python &> /dev/null; then
     if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 8 ]; then
         PYTHON_OK=true
     else
-        echo -e "${YELLOW}[!]${NC} Python version too old. Need 3.8+, found $PYTHON_VERSION"
+        echo -e "${YELLOW}[!]${NC} Python version too old. Need 3.10+, found $PYTHON_VERSION"
     fi
 else
     echo -e "${RED}[X]${NC} Python not found on this system"
@@ -105,7 +105,7 @@ fi
 # ============================================================
 if [ "$PYTHON_OK" = false ]; then
     echo
-    echo "Python 3.8+ is required but not found or too old."
+    echo "Python 3.10+ is required but not found or too old."
     echo
     echo "Installation options:"
     echo "  1. Automatically install Python (recommended)"
@@ -218,14 +218,16 @@ if [ "$PYTHON_OK" = false ]; then
             
         3)
             echo
-            echo "Please install Python 3.8+ manually from:"
+            echo "Please install Python 3.10 or newer from:"
             echo "https://www.python.org/downloads/"
             echo
+            echo "Recommended: Python 3.11 or Python 3.12 (stable and well-tested)"
+            echo
             echo "Installation commands for common systems:"
-            echo "  macOS:        brew install python3"
-            echo "  Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv"
-            echo "  RHEL/CentOS:  sudo yum install python3 python3-pip"
-            echo "  Arch:         sudo pacman -S python python-pip"
+            echo "  macOS:         brew install python@3.12"
+            echo "  Ubuntu/Debian: sudo apt install python3.12 python3-pip"
+            echo "  RHEL/CentOS:   sudo yum install python3.12"
+            echo "  Arch:          sudo pacman -S python python-pip"
             exit 0
             ;;
             
@@ -240,20 +242,20 @@ fi
 # STEP 3: Verify Python components
 # ============================================================
 echo
-echo "[2/4] Verifying Python components..."
+echo "[2/3] Checking Python installation..."
 
-# Check for pip
+# Check for pip (essential for Python packages)
 $PYTHON_CMD -m pip --version &> /dev/null
 if [ $? -ne 0 ]; then
     echo -e "${YELLOW}[!]${NC} pip not found, installing..."
-    
+
     # Try to install pip
     if [ "$OS" = "macos" ]; then
         $PYTHON_CMD -m ensurepip --default-pip
     elif [ "$OS" = "linux" ]; then
         # Try ensurepip first
         $PYTHON_CMD -m ensurepip --default-pip 2>/dev/null
-        
+
         if [ $? -ne 0 ]; then
             # Fallback to package manager
             case $PKG_MANAGER in
@@ -274,7 +276,7 @@ if [ $? -ne 0 ]; then
             esac
         fi
     fi
-    
+
     # Verify pip is now available
     $PYTHON_CMD -m pip --version &> /dev/null
     if [ $? -ne 0 ]; then
@@ -282,28 +284,13 @@ if [ $? -ne 0 ]; then
         exit 1
     fi
 fi
-echo -e "${GREEN}[OK]${NC} pip is available"
-
-# Check for venv
-$PYTHON_CMD -m venv --help &> /dev/null
-if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}[!]${NC} venv module not found"
-    
-    if [ "$OS" = "linux" ] && [ "$PKG_MANAGER" = "apt" ]; then
-        echo "Installing python3-venv..."
-        sudo apt install -y python3-venv
-    else
-        echo "Installing virtualenv as fallback..."
-        $PYTHON_CMD -m pip install virtualenv
-    fi
-fi
-echo -e "${GREEN}[OK]${NC} venv is available"
+echo -e "${GREEN}[OK]${NC} Python and pip are ready"
 
 # ============================================================
 # STEP 4: Launch bootstrap.py
 # ============================================================
 echo
-echo "[3/4] Checking for bootstrap.py..."
+echo "[3/3] Checking for bootstrap.py..."
 
 if [ ! -f "bootstrap.py" ]; then
     echo -e "${RED}[X]${NC} bootstrap.py not found in current directory"
@@ -313,7 +300,7 @@ fi
 
 echo -e "${GREEN}[OK]${NC} bootstrap.py found"
 echo
-echo "[4/4] Launching GiljoAI MCP installer..."
+echo "Launching GiljoAI MCP installer..."
 echo
 echo "============================================================"
 echo

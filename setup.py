@@ -60,8 +60,7 @@ try:
     from installer.config.config_manager import ConfigurationManager
     from installer.services.service_manager import ServiceManager
     from installer.dependencies.postgresql import PostgreSQLInstaller
-    from installer.dependencies.redis import RedisInstaller
-    from installer.dependencies.docker import DockerInstaller
+    # Redis and Docker removed - not needed for simplified installation
     from installer.core.health import HealthChecker
 
     PHASE2_AVAILABLE = True
@@ -519,7 +518,6 @@ class GiljoSetup:
             "frontend/public",
             "tests",
             "scripts",
-            "docker",
             "migrations",
         ]
 
@@ -669,11 +667,6 @@ class GiljoSetup:
                 'applicable': profile != 'minimal',
                 'status': 'pending' if profile != 'minimal' else 'not_required'
             },
-            'docker': {
-                'name': 'Docker Platform',
-                'applicable': profile == 'containerized',
-                'status': 'pending' if profile == 'containerized' else 'not_required'
-            },
             'schema': {
                 'name': 'Database Schema',
                 'applicable': True,
@@ -741,9 +734,9 @@ class GiljoSetup:
                 "websocket_port": self.env_vars.get("GILJO_MCP_WEBSOCKET_PORT", 6003),
                 "dashboard_port": self.env_vars.get("GILJO_MCP_DASHBOARD_PORT", 6000),
                 "server_port": self.env_vars.get("GILJO_MCP_SERVER_PORT", 6001),
-                "redis_enabled": profile != 'minimal',
-                "redis_host": "localhost",
-                "redis_port": 6379,
+                "redis_enabled": False,  # Redis removed
+                "redis_host": "",
+                "redis_port": 0,
                 "jwt_secret": self.env_vars.get("JWT_SECRET", ""),
                 "api_key": self.env_vars.get("API_KEY", ""),
                 "api_key_enabled": profile in ["team", "enterprise"]
@@ -787,7 +780,7 @@ class GiljoSetup:
             directories = [
                 "data", "logs", "backups", "temp",
                 "src/giljo_mcp", "api", "frontend/dist",
-                "scripts", "docker", "tests"
+                "scripts", "tests"
             ]
 
             for directory in directories:

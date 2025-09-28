@@ -860,14 +860,14 @@ class ProgressPage(WizardPage):
         self.notebook = None
         self.pg_text = self.console_text
         self.redis_text = self.console_text
-        self.docker_text = self.console_text
+        # Docker removed - not needed
         self.system_text = self.console_text
         self.pg_progress_var = tk.IntVar(value=0)
         self.redis_progress_var = tk.IntVar(value=0)
-        self.docker_progress_var = tk.IntVar(value=0)
+        # Docker progress removed
         self.pg_status_var = tk.StringVar()
         self.redis_status_var = tk.StringVar()
-        self.docker_status_var = tk.StringVar()
+        # Docker status removed
 
         self.completed = False
 
@@ -878,7 +878,6 @@ class ProgressPage(WizardPage):
             ('directories', 'Directory Structure'),
             ('database', 'Database Setup'),
             ('redis', 'Redis Cache'),
-            ('docker', 'Docker Platform'),
             ('schema', 'Database Schema'),
             ('validation', 'System Validation')
         ]
@@ -925,22 +924,18 @@ class ProgressPage(WizardPage):
             'developer': {
                 'database': ('SQLite Database', True),
                 'redis': ('Redis Cache', True),
-                'docker': ('Docker Platform', False),
             },
             'team': {
                 'database': ('PostgreSQL Database', True),
                 'redis': ('Redis Cache', True),
-                'docker': ('Docker Platform', False),
             },
             'enterprise': {
                 'database': ('PostgreSQL Database', True),
                 'redis': ('Redis Cache', True),
-                'docker': ('Docker Platform', False),
             },
             'research': {
                 'database': ('SQLite Database', True),
                 'redis': ('Redis Cache', False),
-                'docker': ('Docker Platform', False),
             }
         }
 
@@ -990,10 +985,7 @@ class ProgressPage(WizardPage):
             self.redis_progress_var.set(value)
             if 'redis' in self.components:
                 self.components['redis']['progress_var'].set(value)
-        elif target == "docker":
-            self.docker_progress_var.set(value)
-            if 'docker' in self.components:
-                self.components['docker']['progress_var'].set(value)
+        # Docker progress removed
         elif target in self.components:
             self.components[target]['progress_var'].set(value)
 
@@ -1012,10 +1004,7 @@ class ProgressPage(WizardPage):
             self.redis_status_var.set(status)
             if 'redis' in self.components:
                 self._update_component_status('redis', status)
-        elif target == "docker":
-            self.docker_status_var.set(status)
-            if 'docker' in self.components:
-                self._update_component_status('docker', status)
+        # Docker status removed
         elif target in self.components:
             self._update_component_status(target, status)
 
@@ -1049,7 +1038,7 @@ class ProgressPage(WizardPage):
             overall = total // len(applicable)
             self.progress_var.set(overall)
 
-    def create_installation_manifest(self, config: dict, postgresql_installed: bool, redis_installed: bool):
+    def create_installation_manifest(self, config: dict, postgresql_installed: bool, redis_installed: bool=False):
         """Create installation manifest for uninstaller to track what was installed"""
         try:
             import json
@@ -1103,31 +1092,19 @@ class ProgressPage(WizardPage):
         # Update component applicability
         self.update_component_applicability(profile)
 
-        # Determine which installers to run based on profile
+        # Determine database type based on deployment mode
+        # Local mode: SQLite (no additional services needed)
+        # Server mode: Can use PostgreSQL if configured
         run_postgresql = False
-        run_redis = False
-        run_docker = False
 
-        if profile in ["team", "enterprise"]:
-            run_postgresql = True
-            run_redis = True
-            self.log("Network profile: Installing PostgreSQL and Redis", "system")
-        elif profile == "developer":
+        if profile == "server":
             if config.get("db_type") == "postgresql":
                 run_postgresql = True
-                self.log("PostgreSQL selected for developer profile", "system")
+                self.log("Server mode: Using PostgreSQL database", "system")
             else:
-                self.log("Using SQLite for developer profile", "system")
-            run_redis = True
-            self.log("Installing Redis for performance boost", "system")
-        elif profile == "research":
-            if config.get("db_type") == "postgresql":
-                run_postgresql = True
-            self.log("Research profile: Flexible configuration", "system")
-
-        if config.get("deployment_mode") == "containerized" or profile == "containerized":
-            run_docker = True
-            self.log("Containerized deployment - checking Docker", "system")
+                self.log("Server mode: Using SQLite database", "system")
+        else:  # Local mode
+            self.log("Local mode: Using SQLite database (no additional services needed)", "system")
 
         # Create configuration files
         self.set_status("Creating configuration files...", "config")
@@ -1146,9 +1123,9 @@ class ProgressPage(WizardPage):
                 "websocket_port": config.get("websocket_port", 6003),
                 "dashboard_port": config.get("dashboard_port", 6000),
                 "server_port": config.get("server_port", 6001),
-                "redis_enabled": run_redis,
-                "redis_host": "localhost",
-                "redis_port": 6379,
+                "redis_enabled": False,  # Redis removed - not needed
+                "redis_host": "",
+                "redis_port": 0,
                 "jwt_secret": config.get("jwt_secret", ""),
                 "api_key": config.get("api_key", ""),
                 "api_key_enabled": profile in ["team", "enterprise"]
@@ -1293,60 +1270,7 @@ class ProgressPage(WizardPage):
             self.set_status("SQLite database ready ✓", "database")
             self.set_progress(100, "database")
 
-        if run_redis:
-
-            def install_redis():
-                try:
-                    from installer.dependencies.redis import RedisInstaller, RedisConfig
-
-                    self.set_status("Installing Redis...", "redis")
-
-                    def redis_progress(message, progress):
-                        self.set_progress(progress, "redis")
-                        self.log(message, "redis")
-
-                    redis_config = RedisConfig(
-                        version="5.0.14",
-                        port=6379,
-                        install_dir=Path("C:/Redis"),  # Fix: Add missing install_dir
-                        data_dir=Path("C:/Redis/data"),
-                        log_dir=Path("C:/Redis/logs"),
-                        config_file=Path("C:/Redis/redis.windows.conf"),
-                        password="",
-                        bind_address="127.0.0.1" if profile == "developer" else "0.0.0.0"
-                    )
-
-                    installer = RedisInstaller(redis_config)
-
-                    if installer.is_redis_installed():
-                        self.log("Redis already installed, verifying...", "redis")
-                        success, conn_info = installer.test_connection()
-                        if success:
-                            self.log("Redis connection successful", "redis")
-                            self.set_progress(100, "redis")
-                        else:
-                            self.log("Redis connection failed, reinstalling...", "redis")
-                            success, conn_info = installer.install(redis_progress)
-                    else:
-                        success, conn_info = installer.install(redis_progress)
-                        if success and conn_info:
-                            self.log(f"Redis installed: {conn_info.get('connection_string', 'redis://localhost:6379')}", "redis")
-
-                    self.set_status("Redis installed ✓", "redis")
-                    self.set_progress(100, "redis")
-
-                except ImportError as e:
-                    self.log("Redis installer module not available", "redis")
-                    self.log("Please install Redis manually from: https://github.com/tporadowski/redis/releases", "redis")
-                    self.set_status("Redis manual install required", "redis")
-                    self.set_progress(100, "redis")
-
-                except Exception as e:
-                    self.log(f"Redis installation error: {e}", "redis")
-                    self.set_status(f"Redis installation failed: {e}", "redis")
-
-            redis_thread = threading.Thread(target=install_redis)
-            threads.append(redis_thread)
+        # Redis removed - not needed for simplified installation
 
         # Start all installation threads
         for thread in threads:
@@ -1373,10 +1297,9 @@ class ProgressPage(WizardPage):
             self.set_progress(25, "validation")
             pg_status, pg_msg = checker.check_postgresql(run_postgresql)
 
-            # Check Redis
-            self.log("Health check: Checking Redis...", "system")
+            # Redis check removed - not needed
             self.set_progress(50, "validation")
-            redis_status, redis_msg = checker.check_redis(run_redis)
+            redis_status, redis_msg = "SUCCESS", "Redis not required (removed from installation)"
 
             # Check Ports
             self.log("Health check: Checking Ports...", "system")

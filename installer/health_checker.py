@@ -38,19 +38,8 @@ class HealthChecker:
             return False, "PostgreSQL driver not installed (psycopg2)"
 
     def check_redis(self, should_exist: bool = False) -> Tuple[bool, str]:
-        """Check Redis availability"""
-        if not should_exist:
-            return True, "Not required for this profile"
-
-        try:
-            import redis
-            r = redis.Redis(host='localhost', port=6379, socket_connect_timeout=3)
-            r.ping()
-            return True, "Redis is running and accessible"
-        except ImportError:
-            return True, "Redis client not installed (optional for performance)"
-        except:
-            return True, "Redis not running (optional for performance)"
+        """Check Redis availability - Redis has been removed from the installation"""
+        return True, "Redis not required (removed from installation)"
 
     def check_ports(self, config: Dict[str, Any]) -> Tuple[bool, str]:
         """Check if required ports are available"""
@@ -168,7 +157,7 @@ class HealthChecker:
             results["PostgreSQL"] = self.check_postgresql(False)
 
         # Redis check (optional for all profiles except minimal)
-        results["Redis"] = self.check_redis(profile != "minimal")
+        # Redis removed - not checking anymore
 
         # Port checks
         config = {
