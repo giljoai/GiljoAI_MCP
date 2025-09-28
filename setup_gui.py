@@ -896,10 +896,11 @@ and configured based on your profile selection."""
         self.auto_config_btn = ttk.Button(control_frame, text="Auto-Configure Services", command=self._auto_configure)
         self.auto_config_btn.pack(side="left", padx=5)
 
-        # Status label
+        # Status label with text wrapping
         self.status_var = tk.StringVar(value="Service status will be shown here")
-        self.status_label = ttk.Label(control_frame, textvariable=self.status_var)
-        self.status_label.pack(side="right", padx=5)
+        self.status_label = ttk.Label(control_frame, textvariable=self.status_var,
+                                      wraplength=400, justify="left")
+        self.status_label.pack(side="right", padx=5, fill="x", expand=True)
 
     def _create_service_widget(self, parent, service_name: str, display_name: str):
         """Create service control widget"""
@@ -1006,14 +1007,19 @@ and configured based on your profile selection."""
     def _get_service_manager(self):
         """Get ServiceManager instance"""
         try:
-            from installer.services.service_manager import ServiceManager
+            from installer.services.service_manager import get_platform_service_manager
 
-            return ServiceManager()
+            return get_platform_service_manager()
         except ImportError:
             self.status_var.set("Service Manager not available")
             return None
         except Exception as e:
-            self.status_var.set(f"Service Manager error: {e}")
+            # Wrap long error messages
+            error_msg = str(e)
+            if len(error_msg) > 60:
+                import textwrap
+                error_msg = "\n".join(textwrap.wrap(error_msg, 60))
+            self.status_var.set(f"Service Manager error:\n{error_msg}")
             return None
 
     def _refresh_all_services(self):
@@ -1083,7 +1089,11 @@ and configured based on your profile selection."""
             self.after(2000, self._refresh_all_services)
 
         except Exception as e:
-            self.status_var.set(f"Error starting {service_name}: {e}")
+            error_msg = str(e)
+            if len(error_msg) > 40:
+                import textwrap
+                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
+            self.status_var.set(f"Error starting {service_name}:\n{error_msg}")
 
     def _stop_service(self, service_name: str):
         """Stop a service"""
@@ -1103,7 +1113,11 @@ and configured based on your profile selection."""
             self.after(2000, self._refresh_all_services)
 
         except Exception as e:
-            self.status_var.set(f"Error stopping {service_name}: {e}")
+            error_msg = str(e)
+            if len(error_msg) > 40:
+                import textwrap
+                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
+            self.status_var.set(f"Error stopping {service_name}:\n{error_msg}")
 
     def _restart_service(self, service_name: str):
         """Restart a service"""
@@ -1123,7 +1137,11 @@ and configured based on your profile selection."""
             self.after(2000, self._refresh_all_services)
 
         except Exception as e:
-            self.status_var.set(f"Error restarting {service_name}: {e}")
+            error_msg = str(e)
+            if len(error_msg) > 40:
+                import textwrap
+                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
+            self.status_var.set(f"Error restarting {service_name}:\n{error_msg}")
 
     def _toggle_autostart(self, service_name: str, enabled: bool):
         """Toggle auto-start for a service"""
@@ -1145,7 +1163,11 @@ and configured based on your profile selection."""
                 self.status_var.set(f"FAILED: Failed to {action.replace('d', '')} auto-start for {service_name}")
 
         except Exception as e:
-            self.status_var.set(f"Error configuring auto-start for {service_name}: {e}")
+            error_msg = str(e)
+            if len(error_msg) > 40:
+                import textwrap
+                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
+            self.status_var.set(f"Error configuring auto-start:\n{error_msg}")
 
     def _auto_configure(self):
         """Auto-configure all services based on profile"""

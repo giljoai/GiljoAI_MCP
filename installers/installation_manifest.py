@@ -311,7 +311,8 @@ class InstallationManifest:
         Returns:
             List of absolute file paths
         """
-        return [info["absolute_path"] for info in self.manifest_data["files"].values()]
+        files_data = self.manifest_data.get("files", {})
+        return [info["absolute_path"] for info in files_data.values()]
 
     def get_all_shortcuts(self) -> List[Dict[str, str]]:
         """Get all created shortcuts
@@ -319,7 +320,7 @@ class InstallationManifest:
         Returns:
             List of shortcut information
         """
-        return self.manifest_data["shortcuts"]
+        return self.manifest_data.get("shortcuts", [])
 
     def get_installation_info(self) -> Dict[str, Any]:
         """Get general installation information

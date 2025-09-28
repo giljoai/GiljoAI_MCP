@@ -2,6 +2,13 @@
 """
 GiljoAI MCP - Quick Test Deployment Script
 Copies development files to test directory with smart data preservation
+
+This script simulates a GitHub release by excluding all files marked
+as 'export-ignore' in .gitattributes. This should copy ~400 files
+(matching release archives) instead of the full ~1600 development files.
+
+Note: robocopy has limitations with wildcards in directory names,
+so some patterns might need manual adjustment.
 """
 
 import os
@@ -20,7 +27,8 @@ BACKUP_DIR = Path("C:/install_test/Giljo_MCP_backup")
 PRESERVE_DIRS = ["data", "logs", "backups", "projects"]
 PRESERVE_FILES = [".env", "config.yaml"]
 
-# Exclusions for copy - based on .gitignore and .release-ignore
+# Exclusions for copy - based on .gitattributes export-ignore rules
+# This matches what GitHub releases exclude
 EXCLUDE_DIRS = [
     # Version control
     ".git",
@@ -31,7 +39,8 @@ EXCLUDE_DIRS = [
 
     # Python caches and build
     "__pycache__", "*.egg-info", "build", "dist",
-    ".pytest_cache", "htmlcov", "coverage",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    "htmlcov", "coverage", ".eggs",
 
     # Node/frontend build
     "node_modules",
@@ -41,16 +50,20 @@ EXCLUDE_DIRS = [
 
     # Development directories
     ".serena",  # Serena MCP cache
-    "tests",    # Test files
-    "benchmark*",
+    "tests", "Tests", "test", "Test",  # All test directories
+    "benchmark*", "performance*",
+    "scratch", "drafts",
 
-    # Documentation directories not for release
-    "docs/Sessions",  # Development session logs
-    "docs/devlog",    # Development logs
-    "docs/Vision",    # Internal vision docs
-    "docs/adr",       # Architecture Decision Records
-    "docs/planning",  # Planning docs
-    "docs/templates", # Templates (internal)
+    # Documentation directories not for release (from .gitattributes)
+    "docs/Sessions", "docs/sessions",  # Development session logs
+    "docs/devlog",                     # Development logs
+    "docs/Vision", "docs/vision",      # Internal vision docs
+    "docs/Development", "docs/development",  # Development docs
+    "docs/adr",                        # Architecture Decision Records
+    "docs/planning",                   # Planning docs
+    "docs/templates",                  # Templates (internal)
+    "docs/tests",                      # Test documentation
+    "agent_comms",                     # Agent communication files
 
     # Temp directories
     "tmp", "temp", "backups",
@@ -61,15 +74,37 @@ EXCLUDE_DIRS = [
 
 EXCLUDE_FILES = [
     # Python files
-    "*.pyc", "*.pyo", "*.pyd",
+    "*.pyc", "*.pyo", "*.pyd", "*.so",
 
-    # Test files
+    # Test files (from .gitattributes)
     "test_*.py", "*_test.py", "*.test.py",
     "conftest.py", "pytest.ini",
+    "*test_results*.json", "*test_report*.json",
+    "*validation_results*.json", "*validation_report*.json",
+    "test_*.db", "test_*.db-shm", "test_*.db-wal",
+
+    # Coverage files (from .gitattributes)
+    "coverage*.*", "*coverage*.py", "*coverage*.md",
+    "*coverage*.json", "*coverage*.xml", "*coverage*.html",
+    ".coverage",
+
+    # Benchmark and performance files (from .gitattributes)
+    "benchmark*.py", "*benchmark*.py",
+    "performance*.py", "*performance*.py",
+
+    # Debug and monitoring tools (from .gitattributes)
+    "debug*.py", "*debug*.py",
+    "monitor*.py", "*monitor*.py", "*_monitor.py",
+    "visual_*.py",
+
+    # Development scripts (from .gitattributes)
+    "fix_*.py", "final_*.py", "run_*.py",
+    "create_distribution.*",
 
     # Development configs
-    ".gitignore", ".dockerignore",
-    ".coveragerc", ".pre-commit-config.yaml",
+    ".gitignore", ".gitignore.release", ".gitattributes",
+    ".dockerignore", ".coveragerc",
+    ".pre-commit-config.yaml",
     ".claude*",  # Claude AI config files
     ".eslintrc*", ".prettierrc*",
     "tsconfig.json", "jest.config.*",
@@ -78,19 +113,48 @@ EXCLUDE_FILES = [
 
     # Environment and config files
     ".env", ".env.*", "*.key", "*.pem", "*.p12",
+    ".env.local", ".env.development", ".env.dev", ".env.test",
     "config.yaml", "config.yml",  # User configs trigger reinstall
 
-    # Logs and databases
+    # Logs and databases (from .gitattributes)
     "*.log", "*.sqlite", "*.sqlite3", "*.db",
 
-    # Temp and backup files
-    "*.tmp", "*.bak", "*.backup", "*.orig", "*~", ".~*",
-    "*.old", "*.swp", "*.swo",
-    ".DS_Store", "Thumbs.db",
+    # Temp and backup files (from .gitattributes)
+    "*.tmp", "*.temp", "*.TMP", "*.TEMP",
+    "*.bak", "*.BAK", "*.backup",
+    "*.old", "*.OLD",
+    "*.orig", "*~", ".~*",
+    "*.swp", "*.swo",
+    ".DS_Store", "Thumbs.db", "Desktop.ini",
+    ".AppleDouble", ".LSOverride", "ehthumbs.db",
+    ".directory",
 
-    # Development docs
-    "TODO.md", "CONTRIBUTING.md",
+    # Work in progress files (from .gitattributes)
+    "*WIP*", "*wip*", "*draft*", "*DRAFT*",
+
+    # Development docs (from .gitattributes)
+    "TODO.md", "NOTES.md", "ROADMAP.md",
+    "PLANNING.md", "BACKLOG.md",
     "*_INTERNAL.md", "*.md.bak",
+    # Note: robocopy doesn't support **/ patterns, using simple wildcards
+    "VISION*.md", "vision*.md",
+    "project_*.md", "PROJECT_*.md",
+    "workflow*.md", "WORKFLOW*.md",
+    "management*.md", "MANAGEMENT*.md",
+    "TEST_*.md", "WEBSOCKET_*.md",
+    "session_*.md", "devlog*.md",
+
+    # Reports (from .gitattributes)
+    "PRODUCTION_READINESS_REPORT.md",
+    "FINAL_CLEAN_COVERAGE_REPORT.md",
+    "WEBSOCKET_TEST_COVERAGE_REPORT.md",
+    "api_coverage_summary.md",
+    "coverage_gap_analysis_report.md",
+    "dependency_report.json",
+    "MANIFEST.txt",
+
+    # Agent files (from .gitattributes)
+    "*_agent_*.json", "orchestrator_*.json",
 
     # Specific exclusions
     "test_installation.py",  # Our test script

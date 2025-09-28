@@ -10,6 +10,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -113,21 +114,26 @@ class GiljoUninstaller:
         print()
 
         while True:
+            sys.stdout.flush()  # Ensure prompt is displayed
             choice = input("Select option [1-3]: ").strip()
 
             if choice == "1":
                 return "partial"
-            if choice == "2":
+            elif choice == "2":
                 # Double confirmation for complete uninstall
                 print("\n[WARNING] Complete uninstall will DELETE ALL DATA!")
+                sys.stdout.flush()
                 confirm = input("Type 'DELETE ALL' to confirm: ").strip()
                 if confirm == "DELETE ALL":
                     return "complete"
                 print("Complete uninstall cancelled.")
                 continue
-            if choice == "3":
+            elif choice == "3":
                 return "cancel"
-            print("Invalid choice. Please enter 1, 2, or 3.")
+            elif choice == "":
+                continue  # Ignore empty input
+            else:
+                print("Invalid choice. Please enter 1, 2, or 3.")
 
     def stop_services(self) -> bool:
         """Stop any running GiljoAI services
@@ -142,7 +148,9 @@ class GiljoUninstaller:
                 # Try to run stop script if it exists
                 stop_script = self.install_dir / "stop_giljo.bat"
                 if stop_script.exists():
-                    subprocess.run([str(stop_script)], capture_output=True, timeout=10, check=False)
+                    # Don't wait for stop script to complete, just trigger it
+                    subprocess.Popen([str(stop_script)], shell=True)
+                    time.sleep(2)  # Give it a moment to start stopping services
 
                 # Force kill by port
                 ports = [6000, 6001, 6002]
@@ -157,7 +165,9 @@ class GiljoUninstaller:
                 # Unix-like systems
                 stop_script = self.install_dir / "stop_giljo.sh"
                 if stop_script.exists():
-                    subprocess.run(["bash", str(stop_script)], capture_output=True, timeout=10, check=False)
+                    # Don't wait for stop script to complete, just trigger it
+                    subprocess.Popen(["bash", str(stop_script)])
+                    time.sleep(2)  # Give it a moment to start stopping services
 
                 # Force kill by port
                 subprocess.run("pkill -f 'giljo_mcp'", shell=True, capture_output=True, check=False)
@@ -180,16 +190,21 @@ class GiljoUninstaller:
 
         if self.manifest:
             # Use manifest to find shortcuts
-            for shortcut in self.manifest.get_all_shortcuts():
-                shortcut_path = Path(shortcut["path"])
-                if shortcut_path.exists():
-                    try:
-                        self.track_folder(shortcut_path)
-                        shortcut_path.unlink()
-                        print(f"  [OK] Removed: {shortcut_path}")
-                        removed += 1
-                    except Exception as e:
-                        print(f"  [FAIL] Could not remove {shortcut_path}: {e}")
+            try:
+                shortcuts = self.manifest.get_all_shortcuts()
+                for shortcut in shortcuts:
+                    shortcut_path = Path(shortcut["path"])
+                    if shortcut_path.exists():
+                        try:
+                            self.track_folder(shortcut_path)
+                            shortcut_path.unlink()
+                            print(f"  [OK] Removed: {shortcut_path}")
+                            removed += 1
+                        except Exception as e:
+                            print(f"  [FAIL] Could not remove {shortcut_path}: {e}")
+            except (KeyError, AttributeError) as e:
+                # Manifest might not have shortcuts section
+                print(f"  [INFO] No shortcuts found in manifest")
         else:
             # Fallback: Try common locations
             shortcuts_to_remove = []
@@ -363,7 +378,8 @@ class GiljoUninstaller:
                 file_info = None
 
                 # Get file info from manifest
-                for info in self.manifest.manifest_data["files"].values():
+                files_data = self.manifest.manifest_data.get("files", {})
+                for info in files_data.values():
                     if info["absolute_path"] == file_path_str:
                         file_info = info
                         break
@@ -425,7 +441,12 @@ class GiljoUninstaller:
         self.remove_postgresql()
 
         # Get files to remove
-        files_to_remove, files_to_keep = self.get_files_to_remove(keep_user_data=True)
+        try:
+            files_to_remove, files_to_keep = self.get_files_to_remove(keep_user_data=True)
+        except (KeyError, AttributeError) as e:
+            # Manifest might be missing or incomplete, use fallback
+            files_to_remove = []
+            files_to_keep = []
 
         # Show what will be kept
         if files_to_keep:
@@ -484,8 +505,12 @@ class GiljoUninstaller:
 
         print("\nRemoving all files and directories...")
 
-        # Get all files to remove
-        files_to_remove, _ = self.get_files_to_remove(keep_user_data=False)
+        # Try to get files from manifest, but don't fail if it doesn't work
+        try:
+            files_to_remove, _ = self.get_files_to_remove(keep_user_data=False)
+        except (KeyError, AttributeError) as e:
+            # Manifest might be missing or incomplete, just remove everything
+            files_to_remove = []
 
         removed_count = 0
         failed_count = 0
