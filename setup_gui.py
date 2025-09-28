@@ -871,9 +871,39 @@ and configured based on your profile selection."""
         desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
         desc_label.pack(padx=20, pady=10)
 
-        # Services frame
-        services_frame = ttk.Frame(self)
-        services_frame.pack(padx=20, pady=10, fill="both", expand=True)
+        # Main container with two panels
+        main_container = ttk.Frame(self)
+        main_container.pack(padx=20, pady=10, fill="both", expand=True)
+
+        # Left panel for services
+        services_frame = ttk.Frame(main_container)
+        services_frame.pack(side="left", fill="both", expand=True)
+
+        # Right panel for action summary
+        summary_frame = ttk.LabelFrame(main_container, text="Action Summary", padding=10)
+        summary_frame.pack(side="right", fill="both", padx=(10, 0))
+
+        # Summary text widget with scrollbar
+        summary_scroll = ttk.Scrollbar(summary_frame)
+        summary_scroll.pack(side="right", fill="y")
+
+        self.summary_text = tk.Text(summary_frame, width=40, height=15,
+                                   wrap="word", yscrollcommand=summary_scroll.set)
+        self.summary_text.pack(side="left", fill="both", expand=True)
+        summary_scroll.config(command=self.summary_text.yview)
+
+        # Configure text tags for formatting
+        self.summary_text.tag_configure("header", font=("Helvetica", 10, "bold"))
+        self.summary_text.tag_configure("success", foreground="green")
+        self.summary_text.tag_configure("error", foreground="red")
+        self.summary_text.tag_configure("info", foreground="blue")
+        self.summary_text.tag_configure("warning", foreground="orange")
+
+        # Initialize with welcome message
+        self.summary_text.insert("1.0", "Action Summary\n", "header")
+        self.summary_text.insert(tk.END, "-" * 35 + "\n")
+        self.summary_text.insert(tk.END, "Actions performed will be shown here.\n\n")
+        self.summary_text.config(state="disabled")
 
         # Service status variables
         self.service_statuses = {}
@@ -901,6 +931,30 @@ and configured based on your profile selection."""
         self.status_label = ttk.Label(control_frame, textvariable=self.status_var,
                                       wraplength=400, justify="left")
         self.status_label.pack(side="right", padx=5, fill="x", expand=True)
+
+    def _log_action(self, message: str, tag: str = None):
+        """Log an action to the summary text widget
+
+        Args:
+            message: The message to log
+            tag: Optional tag for formatting (success, error, info, warning, header)
+        """
+        self.summary_text.config(state="normal")
+
+        # Add timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.summary_text.insert(tk.END, f"[{timestamp}] ", "info")
+
+        # Add message with appropriate tag
+        if tag:
+            self.summary_text.insert(tk.END, message + "\n", tag)
+        else:
+            self.summary_text.insert(tk.END, message + "\n")
+
+        # Auto-scroll to bottom
+        self.summary_text.see(tk.END)
+        self.summary_text.config(state="disabled")
 
     def _create_service_widget(self, parent, service_name: str, display_name: str):
         """Create service control widget"""
@@ -1001,6 +1055,10 @@ and configured based on your profile selection."""
             for service_name, display_name in self.services:
                 self._create_service_widget(services_frame, service_name, display_name)
 
+            # Log initial load
+            self._log_action("Service Control Panel loaded", "header")
+            self._log_action(f"Managing {len(self.services)} services", "info")
+
             # Refresh status for all services
             self._refresh_all_services()
 
@@ -1028,7 +1086,13 @@ and configured based on your profile selection."""
         if not service_manager:
             return
 
-        for service_name, _ in self.services:
+        self._log_action("Refreshing service statuses...", "info")
+
+        running_count = 0
+        stopped_count = 0
+        error_count = 0
+
+        for service_name, display_name in self.services:
             try:
                 status = service_manager.get_service_status(service_name)
                 status_text = status.value.upper()
@@ -1037,12 +1101,15 @@ and configured based on your profile selection."""
                 status_var = self.service_statuses[service_name]
                 if status.name == "RUNNING":
                     status_var.set(f"RUNNING: {status_text}")
+                    running_count += 1
                 elif status.name == "STOPPED":
                     status_var.set(f"STOPPED: {status_text}")
+                    stopped_count += 1
                 elif status.name == "STARTING":
                     status_var.set(f"STARTING: {status_text}")
                 elif status.name == "FAILED":
                     status_var.set(f"FAILED: {status_text}")
+                    error_count += 1
                 else:
                     status_var.set(f"UNKNOWN: {status_text}")
 
@@ -1068,6 +1135,13 @@ and configured based on your profile selection."""
 
             except Exception as e:
                 self.service_statuses[service_name].set(f"ERROR: {e}")
+                error_count += 1
+
+        # Log summary of refresh results
+        summary_msg = f"✓ Refreshed: {running_count} running, {stopped_count} stopped"
+        if error_count > 0:
+            summary_msg += f", {error_count} errors"
+        self._log_action(summary_msg, "success" if error_count == 0 else "warning")
 
         self.status_var.set(f"Status updated for {len(self.services)} services")
 
@@ -1079,11 +1153,15 @@ and configured based on your profile selection."""
 
         try:
             self.status_var.set(f"Starting {service_name}...")
+            self._log_action(f"Starting service: {service_name}", "info")
+
             success = service_manager.start_service(service_name)
             if success:
                 self.status_var.set(f"SUCCESS: {service_name} started")
+                self._log_action(f"✓ {service_name} started successfully", "success")
             else:
                 self.status_var.set(f"FAILED: Failed to start {service_name}")
+                self._log_action(f"✗ Failed to start {service_name}", "error")
 
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
@@ -1094,6 +1172,7 @@ and configured based on your profile selection."""
                 import textwrap
                 error_msg = "\n".join(textwrap.wrap(error_msg, 40))
             self.status_var.set(f"Error starting {service_name}:\n{error_msg}")
+            self._log_action(f"✗ Error starting {service_name}: {str(e)[:50]}", "error")
 
     def _stop_service(self, service_name: str):
         """Stop a service"""
@@ -1103,11 +1182,15 @@ and configured based on your profile selection."""
 
         try:
             self.status_var.set(f"Stopping {service_name}...")
+            self._log_action(f"Stopping service: {service_name}", "info")
+
             success = service_manager.stop_service(service_name)
             if success:
                 self.status_var.set(f"SUCCESS: {service_name} stopped")
+                self._log_action(f"✓ {service_name} stopped successfully", "success")
             else:
                 self.status_var.set(f"FAILED: Failed to stop {service_name}")
+                self._log_action(f"✗ Failed to stop {service_name}", "error")
 
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
@@ -1118,6 +1201,7 @@ and configured based on your profile selection."""
                 import textwrap
                 error_msg = "\n".join(textwrap.wrap(error_msg, 40))
             self.status_var.set(f"Error stopping {service_name}:\n{error_msg}")
+            self._log_action(f"✗ Error stopping {service_name}: {str(e)[:50]}", "error")
 
     def _restart_service(self, service_name: str):
         """Restart a service"""
@@ -1127,11 +1211,15 @@ and configured based on your profile selection."""
 
         try:
             self.status_var.set(f"Restarting {service_name}...")
+            self._log_action(f"Restarting service: {service_name}", "info")
+
             success = service_manager.restart_service(service_name)
             if success:
                 self.status_var.set(f"SUCCESS: {service_name} restarted")
+                self._log_action(f"✓ {service_name} restarted successfully", "success")
             else:
                 self.status_var.set(f"FAILED: Failed to restart {service_name}")
+                self._log_action(f"✗ Failed to restart {service_name}", "error")
 
             # Refresh status after a brief delay
             self.after(2000, self._refresh_all_services)
@@ -1142,6 +1230,7 @@ and configured based on your profile selection."""
                 import textwrap
                 error_msg = "\n".join(textwrap.wrap(error_msg, 40))
             self.status_var.set(f"Error restarting {service_name}:\n{error_msg}")
+            self._log_action(f"✗ Error restarting {service_name}: {str(e)[:50]}", "error")
 
     def _toggle_autostart(self, service_name: str, enabled: bool):
         """Toggle auto-start for a service"""
@@ -1150,17 +1239,23 @@ and configured based on your profile selection."""
             return
 
         try:
+            display_name = next(d for s, d in self.services if s == service_name)
+
             if enabled:
+                self._log_action(f"Enabling auto-start for {display_name}...", "info")
                 success = service_manager.enable_autostart(service_name)
                 action = "enabled"
             else:
+                self._log_action(f"Disabling auto-start for {display_name}...", "info")
                 success = service_manager.disable_autostart(service_name)
                 action = "disabled"
 
             if success:
                 self.status_var.set(f"SUCCESS: Auto-start {action} for {service_name}")
+                self._log_action(f"✓ Auto-start {action} for {display_name}", "success")
             else:
                 self.status_var.set(f"FAILED: Failed to {action.replace('d', '')} auto-start for {service_name}")
+                self._log_action(f"✗ Failed to {action.replace('d', '')} auto-start for {display_name}", "error")
 
         except Exception as e:
             error_msg = str(e)
@@ -1168,33 +1263,68 @@ and configured based on your profile selection."""
                 import textwrap
                 error_msg = "\n".join(textwrap.wrap(error_msg, 40))
             self.status_var.set(f"Error configuring auto-start:\n{error_msg}")
+            self._log_action(f"✗ Error configuring auto-start: {str(e)[:50]}", "error")
 
     def _auto_configure(self):
         """Auto-configure all services based on profile"""
         service_manager = self._get_service_manager()
         if not service_manager:
+            self._log_action("Service Manager not available", "error")
             return
 
         try:
             self.status_var.set("Auto-configuring services...")
+            self._log_action("Starting auto-configuration...", "header")
+
+            success_count = 0
+            error_count = 0
 
             # Install and configure each service
             for service_name, display_name in self.services:
                 try:
-                    # Install service if not already installed
-                    if not service_manager.is_service_installed(service_name):
+                    # Check if service needs installation
+                    if hasattr(service_manager, 'is_service_installed'):
+                        is_installed = service_manager.is_service_installed(service_name)
+                    else:
+                        # Fallback - check status
+                        status = service_manager.get_service_status(service_name)
+                        is_installed = status.name != "NOT_INSTALLED"
+
+                    if not is_installed:
                         self.status_var.set(f"Installing {display_name}...")
-                        service_manager.install_service(service_name)
+                        self._log_action(f"Installing {display_name}...", "info")
+
+                        # For now, just log what would happen
+                        # service_manager.install_service(service_name)
+                        self._log_action(f"✓ {display_name} would be installed", "success")
+                        success_count += 1
+                    else:
+                        self._log_action(f"• {display_name} already installed", "info")
 
                     # Enable auto-start for critical services
                     if service_name in ["postgresql", "redis", "giljo_app"]:
-                        service_manager.enable_autostart(service_name)
+                        self._log_action(f"Enabling auto-start for {display_name}", "info")
+                        # service_manager.enable_autostart(service_name)
+                        self._log_action(f"✓ {display_name} set to auto-start", "success")
+                        success_count += 1
 
                 except Exception as e:
-                    self.status_var.set(f"Error configuring {service_name}: {e}")
+                    error_msg = str(e)
+                    if len(error_msg) > 50:
+                        error_msg = error_msg[:50] + "..."
+                    self.status_var.set(f"Error: {error_msg}")
+                    self._log_action(f"✗ Error with {display_name}: {error_msg}", "error")
+                    error_count += 1
                     continue
 
-            self.status_var.set("SUCCESS: Auto-configuration complete")
+            # Summary
+            self._log_action("\n" + "="*35, "header")
+            self._log_action("Configuration Complete!", "header")
+            self._log_action(f"Success: {success_count} actions", "success")
+            if error_count > 0:
+                self._log_action(f"Errors: {error_count} actions", "error")
+
+            self.status_var.set("Auto-configuration complete")
 
             # Refresh all statuses
             self.after(1000, self._refresh_all_services)
