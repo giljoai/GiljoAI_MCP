@@ -854,498 +854,17 @@ class ReviewPage(WizardPage):
         self.text.config(state="disabled")
 
 
-class ServiceControlPage(WizardPage):
-    """Service management page for controlling PostgreSQL, Redis, and GiljoAI services"""
-
-    def __init__(self, parent):
-        super().__init__(parent, "Service Management")
-
-        # Title
-        title_label = ttk.Label(self, text="Service Control Panel", font=("Helvetica", 16, "bold"))
-        title_label.pack(pady=20)
-
-        # Description
-        desc_text = """Configure and manage your services. Services will be automatically installed
-and configured based on your profile selection."""
-
-        desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
-        desc_label.pack(padx=20, pady=10)
-
-        # Main container with two panels
-        main_container = ttk.Frame(self)
-        main_container.pack(padx=20, pady=10, fill="both", expand=True)
-
-        # Left panel for services
-        services_frame = ttk.Frame(main_container)
-        services_frame.pack(side="left", fill="both", expand=True)
-
-        # Right panel for action summary
-        summary_frame = ttk.LabelFrame(main_container, text="Action Summary", padding=10)
-        summary_frame.pack(side="right", fill="both", padx=(10, 0))
-
-        # Summary text widget with scrollbar
-        summary_scroll = ttk.Scrollbar(summary_frame)
-        summary_scroll.pack(side="right", fill="y")
-
-        self.summary_text = tk.Text(summary_frame, width=40, height=15,
-                                   wrap="word", yscrollcommand=summary_scroll.set)
-        self.summary_text.pack(side="left", fill="both", expand=True)
-        summary_scroll.config(command=self.summary_text.yview)
-
-        # Configure text tags for formatting
-        self.summary_text.tag_configure("header", font=("Helvetica", 10, "bold"))
-        self.summary_text.tag_configure("success", foreground="green")
-        self.summary_text.tag_configure("error", foreground="red")
-        self.summary_text.tag_configure("info", foreground="blue")
-        self.summary_text.tag_configure("warning", foreground="orange")
-
-        # Initialize with welcome message
-        self.summary_text.insert("1.0", "Action Summary\n", "header")
-        self.summary_text.insert(tk.END, "-" * 35 + "\n")
-        self.summary_text.insert(tk.END, "Actions performed will be shown here.\n\n")
-        self.summary_text.config(state="disabled")
-
-        # Service status variables
-        self.service_statuses = {}
-        self.service_buttons = {}
-        self.autostart_vars = {}
-
-        # Create service controls
-        self.services = []  # Will be populated in on_enter based on profile
-        self.service_widgets = {}
-
-        # Control buttons frame
-        control_frame = ttk.Frame(self)
-        control_frame.pack(padx=20, pady=10, fill="x")
-
-        # Refresh button
-        self.refresh_btn = ttk.Button(control_frame, text="Refresh Status", command=self._refresh_all_services)
-        self.refresh_btn.pack(side="left", padx=5)
-
-        # Auto-configure button
-        self.auto_config_btn = ttk.Button(control_frame, text="Auto-Configure Services", command=self._auto_configure)
-        self.auto_config_btn.pack(side="left", padx=5)
-
-        # Status label with text wrapping
-        self.status_var = tk.StringVar(value="Service status will be shown here")
-        self.status_label = ttk.Label(control_frame, textvariable=self.status_var,
-                                      wraplength=400, justify="left")
-        self.status_label.pack(side="right", padx=5, fill="x", expand=True)
-
-    def _log_action(self, message: str, tag: str = None):
-        """Log an action to the summary text widget
-
-        Args:
-            message: The message to log
-            tag: Optional tag for formatting (success, error, info, warning, header)
-        """
-        self.summary_text.config(state="normal")
-
-        # Add timestamp
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.summary_text.insert(tk.END, f"[{timestamp}] ", "info")
-
-        # Add message with appropriate tag
-        if tag:
-            self.summary_text.insert(tk.END, message + "\n", tag)
-        else:
-            self.summary_text.insert(tk.END, message + "\n")
-
-        # Auto-scroll to bottom
-        self.summary_text.see(tk.END)
-        self.summary_text.config(state="disabled")
-
-    def _create_service_widget(self, parent, service_name: str, display_name: str):
-        """Create service control widget"""
-        # Service frame
-        service_frame = ttk.LabelFrame(parent, text=display_name, padding=10)
-        service_frame.pack(fill="x", pady=5)
-
-        # Status frame
-        status_frame = ttk.Frame(service_frame)
-        status_frame.pack(fill="x")
-
-        # Status indicator
-        status_var = tk.StringVar(value="Unknown")
-        status_label = ttk.Label(status_frame, textvariable=status_var, font=("Helvetica", 10, "bold"))
-        status_label.pack(side="left")
-
-        # Store status variable
-        self.service_statuses[service_name] = status_var
-
-        # Buttons frame
-        buttons_frame = ttk.Frame(service_frame)
-        buttons_frame.pack(fill="x", pady=5)
-
-        # Control buttons
-        start_btn = ttk.Button(buttons_frame, text="Start", command=lambda: self._start_service(service_name))
-        start_btn.pack(side="left", padx=2)
-
-        stop_btn = ttk.Button(buttons_frame, text="Stop", command=lambda: self._stop_service(service_name))
-        stop_btn.pack(side="left", padx=2)
-
-        restart_btn = ttk.Button(buttons_frame, text="Restart", command=lambda: self._restart_service(service_name))
-        restart_btn.pack(side="left", padx=2)
-
-        # Auto-start checkbox
-        autostart_var = tk.BooleanVar()
-        autostart_check = ttk.Checkbutton(
-            buttons_frame,
-            text="Auto-start on boot",
-            variable=autostart_var,
-            command=lambda: self._toggle_autostart(service_name, autostart_var.get()),
-        )
-        autostart_check.pack(side="right")
-
-        # Store references
-        self.service_buttons[service_name] = {"start": start_btn, "stop": stop_btn, "restart": restart_btn}
-        self.autostart_vars[service_name] = autostart_var
-        self.service_widgets[service_name] = service_frame
-
-        return service_frame
-
-    def on_enter(self):
-        """Setup services based on profile when entering the page"""
-        # Access the parent GiljoSetupGUI instance to get config data
-        parent = self.parent
-        while parent and not hasattr(parent, "config_data"):
-            parent = parent.master
-
-        if parent and hasattr(parent, "config_data"):
-            profile = parent.config_data.get("profile", "developer")
-
-            # Clear existing widgets
-            for widget in self.service_widgets.values():
-                widget.destroy()
-            self.service_widgets.clear()
-            self.services.clear()
-
-            # Determine services based on profile
-            services_frame = self.children["!frame"]  # Get the services frame
-
-            if profile == "developer":
-                # Developer may have PostgreSQL if selected, always has app service
-                if parent.config_data.get("db_type") == "postgresql":
-                    self.services.append(("postgresql", "PostgreSQL Database"))
-                self.services.append(("giljo_app", "GiljoAI Application"))
-
-            elif profile in ["team", "enterprise"]:
-                # Network profiles have all services
-                self.services.extend(
-                    [
-                        ("postgresql", "PostgreSQL Database"),
-                        ("redis", "Redis Cache"),
-                        ("giljo_app", "GiljoAI Application"),
-                        ("giljo_worker", "GiljoAI Worker"),
-                    ]
-                )
-
-            elif profile == "research":
-                # Research profile has flexible services
-                if parent.config_data.get("db_type") == "postgresql":
-                    self.services.append(("postgresql", "PostgreSQL Database"))
-                self.services.append(("giljo_app", "GiljoAI Application"))
-
-            # Add Docker if containerized
-            if parent.config_data.get("deployment_mode") == "containerized":
-                self.services.append(("docker", "Docker Daemon"))
-
-            # Create widgets for each service
-            for service_name, display_name in self.services:
-                self._create_service_widget(services_frame, service_name, display_name)
-
-            # Log initial load
-            self._log_action("Service Control Panel loaded", "header")
-            self._log_action(f"Managing {len(self.services)} services", "info")
-
-            # Refresh status for all services
-            self._refresh_all_services()
-
-    def _get_service_manager(self):
-        """Get ServiceManager instance"""
-        try:
-            from installer.services.service_manager import get_platform_service_manager
-
-            return get_platform_service_manager()
-        except ImportError:
-            self.status_var.set("Service Manager not available")
-            return None
-        except Exception as e:
-            # Wrap long error messages
-            error_msg = str(e)
-            if len(error_msg) > 60:
-                import textwrap
-                error_msg = "\n".join(textwrap.wrap(error_msg, 60))
-            self.status_var.set(f"Service Manager error:\n{error_msg}")
-            return None
-
-    def _refresh_all_services(self):
-        """Refresh status for all services"""
-        service_manager = self._get_service_manager()
-        if not service_manager:
-            return
-
-        self._log_action("Refreshing service statuses...", "info")
-
-        running_count = 0
-        stopped_count = 0
-        error_count = 0
-
-        for service_name, display_name in self.services:
-            try:
-                status = service_manager.get_service_status(service_name)
-                status_text = status.value.upper()
-
-                # Update status display with color
-                status_var = self.service_statuses[service_name]
-                if status.name == "RUNNING":
-                    status_var.set(f"RUNNING: {status_text}")
-                    running_count += 1
-                elif status.name == "STOPPED":
-                    status_var.set(f"STOPPED: {status_text}")
-                    stopped_count += 1
-                elif status.name == "STARTING":
-                    status_var.set(f"STARTING: {status_text}")
-                elif status.name == "FAILED":
-                    status_var.set(f"FAILED: {status_text}")
-                    error_count += 1
-                else:
-                    status_var.set(f"UNKNOWN: {status_text}")
-
-                # Update button states
-                buttons = self.service_buttons[service_name]
-                if status.name == "RUNNING":
-                    buttons["start"].config(state="disabled")
-                    buttons["stop"].config(state="normal")
-                    buttons["restart"].config(state="normal")
-                elif status.name == "STOPPED":
-                    buttons["start"].config(state="normal")
-                    buttons["stop"].config(state="disabled")
-                    buttons["restart"].config(state="disabled")
-                else:
-                    # Starting/stopping/unknown
-                    buttons["start"].config(state="disabled")
-                    buttons["stop"].config(state="disabled")
-                    buttons["restart"].config(state="disabled")
-
-                # Check auto-start status
-                is_autostart = service_manager.is_autostart_enabled(service_name)
-                self.autostart_vars[service_name].set(is_autostart)
-
-            except Exception as e:
-                self.service_statuses[service_name].set(f"ERROR: {e}")
-                error_count += 1
-
-        # Log summary of refresh results
-        summary_msg = f"✓ Refreshed: {running_count} running, {stopped_count} stopped"
-        if error_count > 0:
-            summary_msg += f", {error_count} errors"
-        self._log_action(summary_msg, "success" if error_count == 0 else "warning")
-
-        self.status_var.set(f"Status updated for {len(self.services)} services")
-
-    def _start_service(self, service_name: str):
-        """Start a service"""
-        service_manager = self._get_service_manager()
-        if not service_manager:
-            return
-
-        try:
-            self.status_var.set(f"Starting {service_name}...")
-            self._log_action(f"Starting service: {service_name}", "info")
-
-            success = service_manager.start_service(service_name)
-            if success:
-                self.status_var.set(f"SUCCESS: {service_name} started")
-                self._log_action(f"✓ {service_name} started successfully", "success")
-            else:
-                self.status_var.set(f"FAILED: Failed to start {service_name}")
-                self._log_action(f"✗ Failed to start {service_name}", "error")
-
-            # Refresh status after a brief delay
-            self.after(2000, self._refresh_all_services)
-
-        except Exception as e:
-            error_msg = str(e)
-            if len(error_msg) > 40:
-                import textwrap
-                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
-            self.status_var.set(f"Error starting {service_name}:\n{error_msg}")
-            self._log_action(f"✗ Error starting {service_name}: {str(e)[:50]}", "error")
-
-    def _stop_service(self, service_name: str):
-        """Stop a service"""
-        service_manager = self._get_service_manager()
-        if not service_manager:
-            return
-
-        try:
-            self.status_var.set(f"Stopping {service_name}...")
-            self._log_action(f"Stopping service: {service_name}", "info")
-
-            success = service_manager.stop_service(service_name)
-            if success:
-                self.status_var.set(f"SUCCESS: {service_name} stopped")
-                self._log_action(f"✓ {service_name} stopped successfully", "success")
-            else:
-                self.status_var.set(f"FAILED: Failed to stop {service_name}")
-                self._log_action(f"✗ Failed to stop {service_name}", "error")
-
-            # Refresh status after a brief delay
-            self.after(2000, self._refresh_all_services)
-
-        except Exception as e:
-            error_msg = str(e)
-            if len(error_msg) > 40:
-                import textwrap
-                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
-            self.status_var.set(f"Error stopping {service_name}:\n{error_msg}")
-            self._log_action(f"✗ Error stopping {service_name}: {str(e)[:50]}", "error")
-
-    def _restart_service(self, service_name: str):
-        """Restart a service"""
-        service_manager = self._get_service_manager()
-        if not service_manager:
-            return
-
-        try:
-            self.status_var.set(f"Restarting {service_name}...")
-            self._log_action(f"Restarting service: {service_name}", "info")
-
-            success = service_manager.restart_service(service_name)
-            if success:
-                self.status_var.set(f"SUCCESS: {service_name} restarted")
-                self._log_action(f"✓ {service_name} restarted successfully", "success")
-            else:
-                self.status_var.set(f"FAILED: Failed to restart {service_name}")
-                self._log_action(f"✗ Failed to restart {service_name}", "error")
-
-            # Refresh status after a brief delay
-            self.after(2000, self._refresh_all_services)
-
-        except Exception as e:
-            error_msg = str(e)
-            if len(error_msg) > 40:
-                import textwrap
-                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
-            self.status_var.set(f"Error restarting {service_name}:\n{error_msg}")
-            self._log_action(f"✗ Error restarting {service_name}: {str(e)[:50]}", "error")
-
-    def _toggle_autostart(self, service_name: str, enabled: bool):
-        """Toggle auto-start for a service"""
-        service_manager = self._get_service_manager()
-        if not service_manager:
-            return
-
-        try:
-            display_name = next(d for s, d in self.services if s == service_name)
-
-            if enabled:
-                self._log_action(f"Enabling auto-start for {display_name}...", "info")
-                success = service_manager.enable_autostart(service_name)
-                action = "enabled"
-            else:
-                self._log_action(f"Disabling auto-start for {display_name}...", "info")
-                success = service_manager.disable_autostart(service_name)
-                action = "disabled"
-
-            if success:
-                self.status_var.set(f"SUCCESS: Auto-start {action} for {service_name}")
-                self._log_action(f"✓ Auto-start {action} for {display_name}", "success")
-            else:
-                self.status_var.set(f"FAILED: Failed to {action.replace('d', '')} auto-start for {service_name}")
-                self._log_action(f"✗ Failed to {action.replace('d', '')} auto-start for {display_name}", "error")
-
-        except Exception as e:
-            error_msg = str(e)
-            if len(error_msg) > 40:
-                import textwrap
-                error_msg = "\n".join(textwrap.wrap(error_msg, 40))
-            self.status_var.set(f"Error configuring auto-start:\n{error_msg}")
-            self._log_action(f"✗ Error configuring auto-start: {str(e)[:50]}", "error")
-
-    def _auto_configure(self):
-        """Auto-configure all services based on profile"""
-        service_manager = self._get_service_manager()
-        if not service_manager:
-            self._log_action("Service Manager not available", "error")
-            return
-
-        try:
-            self.status_var.set("Auto-configuring services...")
-            self._log_action("Starting auto-configuration...", "header")
-
-            success_count = 0
-            error_count = 0
-
-            # Install and configure each service
-            for service_name, display_name in self.services:
-                try:
-                    # Check if service needs installation
-                    if hasattr(service_manager, 'is_service_installed'):
-                        is_installed = service_manager.is_service_installed(service_name)
-                    else:
-                        # Fallback - check status
-                        status = service_manager.get_service_status(service_name)
-                        is_installed = status.name != "NOT_INSTALLED"
-
-                    if not is_installed:
-                        self.status_var.set(f"Installing {display_name}...")
-                        self._log_action(f"Installing {display_name}...", "info")
-
-                        # For now, just log what would happen
-                        # service_manager.install_service(service_name)
-                        self._log_action(f"✓ {display_name} would be installed", "success")
-                        success_count += 1
-                    else:
-                        self._log_action(f"• {display_name} already installed", "info")
-
-                    # Enable auto-start for critical services
-                    if service_name in ["postgresql", "redis", "giljo_app"]:
-                        self._log_action(f"Enabling auto-start for {display_name}", "info")
-                        # service_manager.enable_autostart(service_name)
-                        self._log_action(f"✓ {display_name} set to auto-start", "success")
-                        success_count += 1
-
-                except Exception as e:
-                    error_msg = str(e)
-                    if len(error_msg) > 50:
-                        error_msg = error_msg[:50] + "..."
-                    self.status_var.set(f"Error: {error_msg}")
-                    self._log_action(f"✗ Error with {display_name}: {error_msg}", "error")
-                    error_count += 1
-                    continue
-
-            # Summary
-            self._log_action("\n" + "="*35, "header")
-            self._log_action("Configuration Complete!", "header")
-            self._log_action(f"Success: {success_count} actions", "success")
-            if error_count > 0:
-                self._log_action(f"Errors: {error_count} actions", "error")
-
-            self.status_var.set("Auto-configuration complete")
-
-            # Refresh all statuses
-            self.after(1000, self._refresh_all_services)
-
-        except Exception as e:
-            self.status_var.set(f"Auto-configuration error: {e}")
-
-    def validate(self) -> bool:
-        """Validate page - always valid (optional step)"""
-        return True
-
-    def get_data(self) -> dict:
-        """Return service configuration data"""
-        return {
-            "services_configured": len(self.services),
-            "service_list": [name for name, _ in self.services],
-            "autostart_services": [
-                name for name, _ in self.services if self.autostart_vars.get(name, tk.BooleanVar()).get()
-            ],
-        }
-
+# ServiceControlPage removed - Installation now completes directly
+# The service management functionality has been moved to the main application dashboard
+# which provides better real-time monitoring and control capabilities.
+# To manage services after installation:
+# 1. Run 'start_giljo.bat' to start all services
+# 2. Use the dashboard at http://localhost:6000 for monitoring
+# 3. Run 'stop_giljo.bat' to stop all services
+#
+# The ServiceControlPage class has been removed from this file.
+# It was used to show service status and control after installation,
+# but this functionality is now in the main application dashboard.
 
 class ProgressPage(WizardPage):
     """Installation progress page with individual component progress bars"""
@@ -1967,7 +1486,14 @@ class ProgressPage(WizardPage):
 
             # Update overall status
             self.set_progress(100)
-            self.status_var.set("Installation completed successfully!" if not issues else f"Installation completed with warnings")
+            completion_msg = "✅ Installation completed successfully!" if not issues else "⚠️ Installation completed with warnings"
+            self.status_var.set(completion_msg)
+
+            # Log final message
+            self.log("\n" + "="*60, "system")
+            self.log(completion_msg, "success" if not issues else "warning")
+            self.log("Click 'Finish' to complete the setup.", "info")
+            self.log("="*60, "system")
 
             self.completed = True
 
@@ -2051,8 +1577,7 @@ class GiljoSetupGUI:
             PortsPage(self.content_frame),
             SecurityPage(self.content_frame),
             ReviewPage(self.content_frame, lambda: self.config_data),
-            ProgressPage(self.content_frame),
-            ServiceControlPage(self.content_frame)
+            ProgressPage(self.content_frame)
         ]
 
         # Navigation buttons
@@ -2206,7 +1731,24 @@ class GiljoSetupGUI:
 
     def finish_setup(self):
         """Complete the setup process"""
-        messagebox.showinfo("Setup Complete", "GiljoAI MCP has been installed successfully!")
+        # Create a more informative completion message
+        message = """GiljoAI MCP has been installed successfully!
+
+To start using GiljoAI MCP:
+
+1. Run 'start_giljo.bat' to start all services
+2. The dashboard will open automatically at http://localhost:6000
+3. Use 'stop_giljo.bat' to stop all services when done
+
+The dashboard includes:
+• System health monitoring
+• Database connectivity status
+• Service management controls
+• Agent orchestration interface
+
+Thank you for installing GiljoAI MCP!"""
+
+        messagebox.showinfo("Installation Complete", message)
         self.root.quit()
         self.root.destroy()
         # Exit with success code

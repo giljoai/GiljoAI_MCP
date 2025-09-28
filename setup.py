@@ -1236,20 +1236,43 @@ Categories=Development;IDE;
 
         console.print(summary_table)
 
-        # Next steps
-        console.print("\n[bold]Next Steps:[/bold]")
-        console.print("1. Review the generated .env file")
-        console.print("2. Start the development server:")
-        console.print("   [cyan]python -m giljo_mcp.server[/cyan]")
-        console.print("3. Open the dashboard:")
-        console.print(f"   [cyan]http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}[/cyan]")
+        # Next steps - harmonized with GUI installer
+        console.print("\n[bold]To start using GiljoAI MCP:[/bold]")
+        console.print()
+
+        # Platform-specific start commands
+        if self.platform_info.get("is_windows"):
+            console.print("1. Run [cyan]start_giljo.bat[/cyan] to start all services")
+            console.print("   • This will start the MCP server, API server, and dashboard")
+            console.print("   • The dashboard will open automatically in your browser")
+            console.print()
+            console.print("2. Use [cyan]stop_giljo.bat[/cyan] to stop all services when done")
+        else:
+            console.print("1. Run [cyan]./start_giljo.sh[/cyan] to start all services")
+            console.print("   • This will start the MCP server, API server, and dashboard")
+            console.print("   • The dashboard will open automatically in your browser")
+            console.print()
+            console.print("2. Use [cyan]./stop_giljo.sh[/cyan] to stop all services when done")
+
+        console.print()
+        console.print("[bold]The dashboard includes:[/bold]")
+        console.print("• System health monitoring")
+        console.print("• Database connectivity status")
+        console.print("• Service management controls")
+        console.print("• Agent orchestration interface")
+        console.print()
+
+        console.print("[bold]Manual startup (alternative):[/bold]")
+        console.print(f"• MCP Server: [cyan]python -m giljo_mcp.server[/cyan] (port {self.env_vars.get('GILJO_MCP_SERVER_PORT', '6001')})")
+        console.print(f"• API Server: [cyan]python -m giljo_mcp.api_server[/cyan] (port {self.env_vars.get('GILJO_MCP_API_PORT', '6002')})")
+        console.print(f"• Dashboard: [cyan]cd frontend && npm run dev[/cyan] (port {self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')})")
 
         if self.env_vars.get("GILJO_MCP_MODE") != "local":
             console.print("\n[yellow]Security Note:[/yellow]")
             console.print("Your API key has been saved to .env")
             console.print("Keep this key secure and never commit it to version control!")
 
-        console.print("\n[bold cyan]Thank you for choosing GiljoAI MCP![/bold cyan]")
+        console.print("\n[bold cyan]Thank you for installing GiljoAI MCP![/bold cyan]")
 
 
 # ==============================================================================
