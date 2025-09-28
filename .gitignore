@@ -11,6 +11,10 @@ logs/
 *.sqlite
 *.db
 
+# Claude and Serena settings
+.claude/
+.serena/
+
 # Python
 __pycache__/
 *.pyc

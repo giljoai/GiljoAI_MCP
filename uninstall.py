@@ -36,6 +36,7 @@ class GiljoUninstaller:
         self.install_dir = Path(install_dir) if install_dir else Path.cwd()
         self.platform = platform.system().lower()
         self.manifest = None
+        self.accessed_folders = set()  # Track all folders accessed during uninstall
 
         # Try to load installation manifest
         if InstallationManifest:
@@ -71,6 +72,21 @@ class GiljoUninstaller:
             "package-lock.json",
         ]
 
+    def track_folder(self, path: Path):
+        """Track a folder that was accessed during uninstall
+
+        Args:
+            path: Path to add to tracking
+        """
+        if isinstance(path, str):
+            path = Path(path)
+
+        # Add the parent folder if it's a file
+        if path.is_file():
+            self.accessed_folders.add(str(path.parent))
+        else:
+            self.accessed_folders.add(str(path))
+
     def print_banner(self):
         """Print uninstaller banner"""
         print("\n" + "=" * 60)
@@ -103,7 +119,7 @@ class GiljoUninstaller:
                 return "partial"
             if choice == "2":
                 # Double confirmation for complete uninstall
-                print("\n⚠️  WARNING: Complete uninstall will DELETE ALL DATA!")
+                print("\n[WARNING] Complete uninstall will DELETE ALL DATA!")
                 confirm = input("Type 'DELETE ALL' to confirm: ").strip()
                 if confirm == "DELETE ALL":
                     return "complete"
@@ -168,6 +184,7 @@ class GiljoUninstaller:
                 shortcut_path = Path(shortcut["path"])
                 if shortcut_path.exists():
                     try:
+                        self.track_folder(shortcut_path)
                         shortcut_path.unlink()
                         print(f"  [OK] Removed: {shortcut_path}")
                         removed += 1
@@ -197,6 +214,7 @@ class GiljoUninstaller:
 
             for shortcut in shortcuts_to_remove:
                 try:
+                    self.track_folder(shortcut)
                     if shortcut.is_dir():
                         shutil.rmtree(shortcut)
                     else:
@@ -219,6 +237,7 @@ class GiljoUninstaller:
         if venv_path.exists():
             print("\nRemoving virtual environment...")
             try:
+                self.track_folder(venv_path)
                 shutil.rmtree(venv_path)
                 print(f"  [OK] Removed: {venv_path}")
                 return True
@@ -262,6 +281,7 @@ class GiljoUninstaller:
             for redis_path in redis_paths:
                 if redis_path.exists():
                     try:
+                        self.track_folder(redis_path)
                         shutil.rmtree(redis_path)
                         print(f"  [OK] Removed Redis from: {redis_path}")
                         removed_something = True
@@ -286,8 +306,7 @@ class GiljoUninstaller:
         Returns:
             Success status
         """
-        print("
-Checking PostgreSQL...")
+        print("\nChecking PostgreSQL...")
 
         try:
             # Check for PostgreSQL service
@@ -424,6 +443,7 @@ Checking PostgreSQL...")
         for file_path in files_to_remove:
             try:
                 if file_path.exists():
+                    self.track_folder(file_path)
                     if file_path.is_dir():
                         shutil.rmtree(file_path)
                     else:
@@ -478,6 +498,7 @@ Checking PostgreSQL...")
                 continue
 
             try:
+                self.track_folder(item)
                 if item.is_dir():
                     shutil.rmtree(item)
                 else:
@@ -556,6 +577,67 @@ Checking PostgreSQL...")
             print(f"  [WARNING] Could not create backup: {e}")
             return None
 
+    def print_access_summary(self):
+        """Print summary of folders that were accessed during uninstallation"""
+        if not self.accessed_folders:
+            return
+
+        print("\n" + "=" * 60)
+        print("UNINSTALLATION SUMMARY")
+        print("=" * 60)
+        print("\nFolders accessed during uninstallation:")
+        print("-" * 40)
+
+        # Sort and categorize folders
+        system_folders = []
+        appdata_folders = []
+        program_folders = []
+        install_folders = []
+
+        appdata_path = os.environ.get("APPDATA", "")
+        localappdata_path = os.environ.get("LOCALAPPDATA", "")
+        programfiles = os.environ.get("PROGRAMFILES", "")
+        programfiles_x86 = os.environ.get("PROGRAMFILES(X86)", "")
+
+        for folder in sorted(self.accessed_folders):
+            folder_lower = folder.lower()
+
+            if appdata_path and appdata_path.lower() in folder_lower:
+                appdata_folders.append(folder)
+            elif localappdata_path and localappdata_path.lower() in folder_lower:
+                appdata_folders.append(folder)
+            elif programfiles and programfiles.lower() in folder_lower:
+                program_folders.append(folder)
+            elif programfiles_x86 and programfiles_x86.lower() in folder_lower:
+                program_folders.append(folder)
+            elif "system32" in folder_lower or "windows" in folder_lower:
+                system_folders.append(folder)
+            else:
+                install_folders.append(folder)
+
+        # Print categorized folders
+        if install_folders:
+            print("\nInstallation directory:")
+            for folder in install_folders:
+                print(f"  • {folder}")
+
+        if appdata_folders:
+            print("\nApplication data folders (AppData):")
+            for folder in appdata_folders:
+                print(f"  • {folder}")
+
+        if program_folders:
+            print("\nProgram Files folders:")
+            for folder in program_folders:
+                print(f"  • {folder}")
+
+        if system_folders:
+            print("\nSystem folders:")
+            for folder in system_folders:
+                print(f"  • {folder}")
+
+        print("\n" + "=" * 60)
+
     def create_uninstall_receipt(self, partial: bool, files_kept: List[Path] = None, backup_path: Path = None):
         """Create an uninstall receipt/log
 
@@ -607,7 +689,7 @@ Checking PostgreSQL...")
 
         # Check if we're in the right directory
         if not (self.install_dir / "quickstart.bat").exists() and not (self.install_dir / "quickstart.sh").exists():
-            print("\n⚠️  WARNING: Installation files not found in current directory!")
+            print("\n[WARNING] Installation files not found in current directory!")
             print(f"Current directory: {self.install_dir}")
             response = input("\nContinue anyway? [y/N]: ").strip().lower()
             if response != "y":
@@ -633,9 +715,12 @@ Checking PostgreSQL...")
         else:  # complete
             success = self.perform_complete_uninstall()
 
+        # Print summary of accessed folders
+        self.print_access_summary()
+
         if success:
             print("\n" + "=" * 60)
-            print("✅ Uninstallation completed successfully!")
+            print("[SUCCESS] Uninstallation completed successfully!")
             print("=" * 60)
 
             if choice == "partial":
@@ -647,7 +732,7 @@ Checking PostgreSQL...")
 
             return 0
         print("\n" + "=" * 60)
-        print("⚠️  Uninstallation completed with warnings")
+        print("[WARNING] Uninstallation completed with warnings")
         print("=" * 60)
         print("Some files could not be removed. Please check the output above.")
         return 1
@@ -662,7 +747,7 @@ def main():
         print("\n\nUninstall cancelled by user.")
         return 1
     except Exception as e:
-        print(f"\n❌ Uninstaller error: {e}")
+        print(f"\n[ERROR] Uninstaller error: {e}")
         return 1
 
 

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(pip search:*)",
+      "WebSearch",
+      "Bash(uvx:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(claude mcp add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
