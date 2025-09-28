@@ -1,0 +1,501 @@
+#!/usr/bin/env python3
+"""
+GiljoAI MCP - Quick Test Deployment Script
+Copies development files to test directory with smart data preservation
+"""
+
+import os
+import sys
+import shutil
+import subprocess
+from pathlib import Path
+from datetime import datetime
+
+# Configuration
+SOURCE_DIR = Path(__file__).parent
+TEST_DIR = Path("C:/install_test/Giljo_MCP")
+BACKUP_DIR = Path("C:/install_test/Giljo_MCP_backup")
+
+# Directories to preserve
+PRESERVE_DIRS = ["data", "logs", "backups", "projects"]
+PRESERVE_FILES = [".env", "config.yaml"]
+
+# Exclusions for copy - based on .gitignore and .release-ignore
+EXCLUDE_DIRS = [
+    # Version control
+    ".git",
+    ".github",  # Keep workflows out of test copy
+
+    # Development environments
+    "venv", ".venv", "env", "ENV",
+
+    # Python caches and build
+    "__pycache__", "*.egg-info", "build", "dist",
+    ".pytest_cache", "htmlcov", "coverage",
+
+    # Node/frontend build
+    "node_modules",
+
+    # IDE and editor
+    ".vscode", ".idea", ".claude",
+
+    # Development directories
+    ".serena",  # Serena MCP cache
+    "tests",    # Test files
+    "benchmark*",
+
+    # Documentation directories not for release
+    "docs/Sessions",  # Development session logs
+    "docs/devlog",    # Development logs
+    "docs/Vision",    # Internal vision docs
+    "docs/adr",       # Architecture Decision Records
+    "docs/planning",  # Planning docs
+    "docs/templates", # Templates (internal)
+
+    # Temp directories
+    "tmp", "temp", "backups",
+
+    # Data directories (user will create their own)
+    "data", "logs", "secrets", "credentials"
+]
+
+EXCLUDE_FILES = [
+    # Python files
+    "*.pyc", "*.pyo", "*.pyd",
+
+    # Test files
+    "test_*.py", "*_test.py", "*.test.py",
+    "conftest.py", "pytest.ini",
+
+    # Development configs
+    ".gitignore", ".dockerignore",
+    ".coveragerc", ".pre-commit-config.yaml",
+    ".claude*",  # Claude AI config files
+    ".eslintrc*", ".prettierrc*",
+    "tsconfig.json", "jest.config.*",
+    "ruff.toml", ".ruff.toml",  # Python linter/formatter configs
+    "pyproject.toml",  # Often contains dev dependencies
+
+    # Environment and config files
+    ".env", ".env.*", "*.key", "*.pem", "*.p12",
+    "config.yaml", "config.yml",  # User configs trigger reinstall
+
+    # Logs and databases
+    "*.log", "*.sqlite", "*.sqlite3", "*.db",
+
+    # Temp and backup files
+    "*.tmp", "*.bak", "*.backup", "*.orig", "*~", ".~*",
+    "*.old", "*.swp", "*.swo",
+    ".DS_Store", "Thumbs.db",
+
+    # Development docs
+    "TODO.md", "CONTRIBUTING.md",
+    "*_INTERNAL.md", "*.md.bak",
+
+    # Specific exclusions
+    "test_installation.py",  # Our test script
+    "giltest.py",  # This deployment script itself
+    "giltest.bat",  # The batch wrapper
+    ".mcp.json",  # MCP config
+    "commit.bat",  # Git helper
+
+    # Session and personal files
+    "PHASE*.md", "PHASE*.jsonl"
+]
+
+
+def print_header():
+    """Print script header"""
+    print("=" * 60)
+    print("GiljoAI MCP - Quick Test Deployment Script")
+    print("=" * 60)
+    print()
+    print(f"Source: {SOURCE_DIR}")
+    print(f"Target: {TEST_DIR}")
+
+    # Verify source directory
+    if not SOURCE_DIR.exists():
+        print(f"\nERROR: Source directory does not exist!")
+        sys.exit(1)
+
+    # Show what's in source
+    print(f"\nSource directory contains:")
+    items = list(SOURCE_DIR.iterdir())[:10]  # Show first 10 items
+    for item in items:
+        if item.is_dir():
+            print(f"  📁 {item.name}/")
+        else:
+            print(f"  📄 {item.name}")
+    if len(list(SOURCE_DIR.iterdir())) > 10:
+        print(f"  ... and {len(list(SOURCE_DIR.iterdir())) - 10} more items")
+    print()
+
+
+def check_existing_installation():
+    """Check if test installation exists with data"""
+    has_data = (TEST_DIR / "data").exists()
+    has_config = (TEST_DIR / ".env").exists() or (TEST_DIR / "config.yaml").exists()
+
+    if TEST_DIR.exists():
+        if has_data:
+            print("IMPORTANT: Found existing data directory in test installation")
+        elif has_config:
+            print("Found existing configuration in test installation")
+        else:
+            print("Found existing installation (no data)")
+    else:
+        print("No existing installation found")
+
+    return has_data or has_config
+
+
+def get_user_choice(has_existing):
+    """Get user's choice for how to proceed"""
+    print()
+    print("Select an option:")
+    if has_existing:
+        print("  1. Preserve data (databases, projects, logs) - Recommended")
+    else:
+        print("  1. Preserve data (databases, projects, logs) - N/A")
+    print("  2. Clean install (delete everything)")
+    print("  3. Cancel operation")
+    print()
+
+    while True:
+        choice = input("Enter choice (1/2/3): ").strip()
+
+        if choice == "3":
+            print("Operation cancelled.")
+            return None
+
+        if choice == "1":
+            if not has_existing:
+                print("No existing data to preserve. Proceeding with clean install.")
+                return "clean"
+            return "preserve"
+
+        if choice == "2":
+            confirm = input("\nWARNING: Delete everything? (Y/N): ").strip().upper()
+            if confirm == "Y":
+                return "clean"
+            else:
+                print("Cancelled.\n")
+                continue
+
+        print("Invalid choice. Please enter 1, 2, or 3.")
+
+
+def backup_data():
+    """Backup important data and configuration"""
+    print("\n[1/5] Backing up important data...")
+
+    # Clean backup directory
+    if BACKUP_DIR.exists():
+        shutil.rmtree(BACKUP_DIR)
+    BACKUP_DIR.mkdir(parents=True)
+
+    backed_up = []
+
+    # Backup directories
+    for dir_name in PRESERVE_DIRS:
+        src = TEST_DIR / dir_name
+        if src.exists():
+            dst = BACKUP_DIR / dir_name
+            shutil.copytree(src, dst)
+            backed_up.append(dir_name)
+            print(f"      Backed up: {dir_name}/")
+
+    # Backup files
+    for file_name in PRESERVE_FILES:
+        src = TEST_DIR / file_name
+        if src.exists():
+            dst = BACKUP_DIR / file_name
+            shutil.copy2(src, dst)
+            backed_up.append(file_name)
+            print(f"      Backed up: {file_name}")
+
+    if backed_up:
+        print("      Backup complete!")
+    else:
+        print("      Nothing to backup")
+
+    return backed_up
+
+
+def clean_directory(preserve_mode=False):
+    """Clean the test directory"""
+    if preserve_mode:
+        print("[2/5] Cleaning test directory (preserving data)...")
+
+        # Delete everything except preserved directories
+        for item in TEST_DIR.iterdir():
+            if item.is_dir():
+                if item.name not in PRESERVE_DIRS:
+                    shutil.rmtree(item)
+            else:
+                if item.name not in PRESERVE_FILES:
+                    item.unlink()
+    else:
+        print("[1/3] Cleaning test directory...")
+        if TEST_DIR.exists():
+            try:
+                shutil.rmtree(TEST_DIR)
+                print("      Removed old test directory")
+            except Exception as e:
+                print(f"ERROR: Could not remove {TEST_DIR}")
+                print(f"      {e}")
+                print("Make sure no programs are using files in that directory.")
+                return False
+
+    return True
+
+
+def copy_files(preserve_mode=False):
+    """Copy files using robocopy"""
+    if preserve_mode:
+        print("[3/5] Copying updated files...")
+        # Exclude data directories when preserving
+        exclude_dirs = EXCLUDE_DIRS + PRESERVE_DIRS
+        exclude_files = EXCLUDE_FILES + PRESERVE_FILES + ["giljo_mcp.db"]
+    else:
+        print("[2/3] Copying files...")
+        exclude_dirs = EXCLUDE_DIRS
+        exclude_files = EXCLUDE_FILES
+
+    print("      This may take a moment...")
+
+    # Ensure target exists
+    TEST_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Build robocopy command
+    cmd = [
+        "robocopy",
+        str(SOURCE_DIR),
+        str(TEST_DIR),
+        "/E",  # Copy subdirectories including empty ones
+    ]
+
+    # Add exclusions
+    for dir_pattern in exclude_dirs:
+        cmd.extend(["/XD", dir_pattern])
+
+    for file_pattern in exclude_files:
+        cmd.extend(["/XF", file_pattern])
+
+    # Show the command being run
+    print("\n      Running robocopy command:")
+    print(f"      Source: {SOURCE_DIR}")
+    print(f"      Target: {TEST_DIR}")
+    print(f"      Excluding dirs: {', '.join(exclude_dirs)}")
+    print(f"      Excluding files: {', '.join(exclude_files)}")
+    print()
+
+    # Run robocopy with visible output
+    print("      Copy progress:")
+    print("-" * 50)
+    result = subprocess.run(cmd, text=True)
+    print("-" * 50)
+
+    # Robocopy exit codes 0-7 are success
+    if result.returncode <= 7:
+        # Count what was copied
+        file_count = 0
+        dir_count = 0
+        for root, dirs, files in os.walk(TEST_DIR):
+            dir_count += len(dirs)
+            file_count += len(files)
+
+        print(f"\n      Copy complete!")
+        print(f"      Copied {file_count} files in {dir_count} directories")
+
+        # Show sample of what was copied
+        print("\n      Sample of copied items:")
+        items_shown = 0
+        for item in TEST_DIR.iterdir():
+            if items_shown >= 10:
+                print("      ... and more")
+                break
+            if item.is_dir():
+                file_count_in_dir = sum(1 for _ in item.rglob("*") if _.is_file())
+                print(f"      📁 {item.name}/ ({file_count_in_dir} files)")
+            else:
+                print(f"      📄 {item.name}")
+            items_shown += 1
+
+        return True
+    else:
+        print(f"\nERROR: Robocopy failed with exit code {result.returncode}")
+        print("      Exit codes: 0-7=success, 8=some files failed, 16=serious error")
+        return False
+
+
+def restore_data():
+    """Restore backed up data"""
+    print("[4/5] Restoring preserved data...")
+
+    restored = []
+
+    # Restore directories
+    for dir_name in PRESERVE_DIRS:
+        src = BACKUP_DIR / dir_name
+        dst = TEST_DIR / dir_name
+        if src.exists() and not dst.exists():
+            shutil.copytree(src, dst)
+            restored.append(dir_name)
+            print(f"      Restored: {dir_name}/")
+
+    # Restore files
+    for file_name in PRESERVE_FILES:
+        src = BACKUP_DIR / file_name
+        dst = TEST_DIR / file_name
+        if src.exists() and not dst.exists():
+            shutil.copy2(src, dst)
+            restored.append(file_name)
+            print(f"      Restored: {file_name}")
+
+    # Clean up backup
+    if BACKUP_DIR.exists():
+        shutil.rmtree(BACKUP_DIR)
+
+    if restored:
+        print("      Restore complete!")
+
+    return restored
+
+
+def verify_deployment(preserved_items=None):
+    """Verify the deployment and show summary"""
+    print("\n" + "=" * 60)
+
+    # Check if files were actually copied
+    if not TEST_DIR.exists():
+        print("ERROR: Test directory does not exist!")
+        print("=" * 60)
+        return False
+
+    # Count files in target
+    file_count = 0
+    dir_count = 0
+    for root, dirs, files in os.walk(TEST_DIR):
+        dir_count += len(dirs)
+        file_count += len(files)
+
+    if file_count == 0:
+        print("ERROR: No files were copied!")
+        print("=" * 60)
+        print("\nTroubleshooting:")
+        print("1. Check if source directory has files")
+        print("2. Check robocopy output above for errors")
+        print("3. Verify no antivirus is blocking file copy")
+        return False
+
+    print("SUCCESS: Test deployment complete!")
+    print("=" * 60)
+    print()
+    print(f"Files have been copied to: {TEST_DIR}")
+    print(f"Total: {file_count} files in {dir_count} directories")
+
+    # Show key files that should exist
+    print("\nKey files verification:")
+    key_files = [
+        "bootstrap.py",
+        "quickstart.bat",
+        "setup.py",
+        "requirements.txt",
+        "README.md"
+    ]
+
+    for file_name in key_files:
+        file_path = TEST_DIR / file_name
+        if file_path.exists():
+            size = file_path.stat().st_size
+            print(f"  ✓ {file_name} ({size:,} bytes)")
+        else:
+            print(f"  ✗ {file_name} (missing)")
+
+    if preserved_items:
+        print("\nData preservation status:")
+        if (TEST_DIR / "data" / "giljo_mcp.db").exists():
+            print("  [OK] Database preserved")
+        if (TEST_DIR / ".env").exists():
+            print("  [OK] Configuration preserved")
+        if (TEST_DIR / "projects").exists():
+            print("  [OK] Projects preserved")
+
+    print("\nYou can now:")
+    print(f"  1. Navigate to {TEST_DIR}")
+    print("  2. Run quickstart.bat or bootstrap.py to test")
+    print()
+
+    return True
+
+
+def main():
+    """Main execution"""
+    try:
+        print_header()
+
+        # Check existing installation
+        has_existing = check_existing_installation()
+
+        # Get user choice
+        choice = get_user_choice(has_existing)
+        if choice is None:
+            return 1
+
+        preserve_mode = (choice == "preserve")
+
+        # Execute based on choice
+        if preserve_mode:
+            # Preserve workflow
+            backed_up = backup_data()
+
+            if not clean_directory(preserve_mode=True):
+                return 1
+
+            print("[3/5] Creating directory structure...")
+            TEST_DIR.mkdir(parents=True, exist_ok=True)
+
+            if not copy_files(preserve_mode=True):
+                return 1
+
+            restored = restore_data()
+
+            print("[5/5] Verification...")
+            if not verify_deployment(preserved_items=restored):
+                return 1
+
+        else:
+            # Clean install workflow
+            if not clean_directory(preserve_mode=False):
+                return 1
+
+            print("[2/3] Creating test directory...")
+            TEST_DIR.mkdir(parents=True, exist_ok=True)
+
+            if not copy_files(preserve_mode=False):
+                return 1
+
+            print("[3/3] Verification...")
+            if not verify_deployment():
+                return 1
+
+        # Ask if user wants to open directory
+        open_dir = input("Open test directory in Explorer? (Y/N): ").strip().upper()
+        if open_dir == "Y":
+            os.startfile(TEST_DIR)
+
+        return 0
+
+    except KeyboardInterrupt:
+        print("\n\nOperation cancelled by user.")
+        return 1
+    except Exception as e:
+        print(f"\nERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

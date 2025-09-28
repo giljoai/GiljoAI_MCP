@@ -253,10 +253,21 @@ class RedisInstaller:
             logger.info(f"Downloaded Redis to {archive_path}")
             return archive_path
 
+        except urllib.error.URLError as e:
+            self.status = InstallationStatus.FAILED
+            if "timed out" in str(e):
+                self.message = f"Download timed out. Check your internet connection and try again."
+            else:
+                self.message = f"Network error during download: {str(e)}"
+            logger.error(self.message)
+            logger.error(f"Failed URL: {url}")
+            raise
         except Exception as e:
             self.status = InstallationStatus.FAILED
-            self.message = f"Download failed: {str(e)}"
+            self.message = f"Download failed unexpectedly: {type(e).__name__}: {str(e)}"
             logger.error(self.message)
+            logger.error(f"Failed URL: {url}")
+            logger.error(f"Archive path: {archive_path}")
             raise
 
     def verify_archive(self) -> bool:
@@ -741,38 +752,59 @@ redis-server.exe "{self.config.config_file}"
         logger.info("Starting Redis installation process")
 
         try:
+            # Check if install_dir is set
+            if not self.config.install_dir:
+                logger.error("Installation directory not specified in configuration")
+                self.status = InstallationStatus.FAILED
+                self.message = "Installation directory not configured"
+                return False, None
+
+            logger.info(f"Redis will be installed to: {self.config.install_dir}")
+
             # Check if already installed
             if self.is_redis_installed():
                 logger.info("Redis is already installed")
                 # Try to connect with existing installation
                 success, conn_info = self.test_connection()
                 if success:
+                    logger.info("Existing Redis installation is working")
                     return True, conn_info
                 # If connection fails, try to reconfigure
+                logger.warning("Existing Redis installation not working, attempting to reconfigure...")
                 if self.configure_redis() and self.create_windows_service():
                     return self.test_connection()
                 return False, None
 
             # Download Redis
+            logger.info("Step 1/5: Downloading Redis...")
             self.download_redis(progress_callback)
 
             # Verify archive
+            logger.info("Step 2/5: Verifying downloaded archive...")
             if not self.verify_archive():
+                logger.error("Archive verification failed")
                 return False, None
 
             # Extract Redis
+            logger.info("Step 3/5: Extracting Redis files...")
             if not self.extract_redis(progress_callback):
+                logger.error("Extraction failed")
                 return False, None
 
             # Configure Redis
+            logger.info("Step 4/5: Configuring Redis...")
             if not self.configure_redis():
+                logger.error("Configuration failed")
                 return False, None
 
             # Create Windows service
+            logger.info("Step 5/5: Creating Windows service...")
             if not self.create_windows_service():
-                return False, None
+                logger.warning("Service creation failed - Redis will need to be started manually")
+                # Don't fail installation if service creation fails
 
             # Test connection
+            logger.info("Testing Redis connection...")
             return self.test_connection()
 
         except Exception as e:

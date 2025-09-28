@@ -926,6 +926,7 @@ class GiljoSetup:
 
         requirements_file = self.root_path / "requirements.txt"
         if requirements_file.exists():
+            console.print("[dim]Running: pip install -r requirements.txt[/dim]")
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
                 check=False,
@@ -940,6 +941,9 @@ class GiljoSetup:
             else:
                 components['dependencies']['status'] = 'failed'
                 console.print("[red]✗ Dependency installation failed[/red]")
+                if result.stderr:
+                    console.print(f"[dim]Error details: {result.stderr[:500]}[/dim]")
+                console.print("[yellow]You may need to run manually: pip install -r requirements.txt[/yellow]")
         else:
             components['dependencies']['status'] = 'failed'
             console.print("[red]✗ requirements.txt not found[/red]")

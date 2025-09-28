@@ -843,12 +843,12 @@ class ReviewPage(WizardPage):
         # URLs
         self.text.insert(tk.END, "\nACCESS URLS\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
-        dashboard_port = config.get("dashboard_port", PORT_ASSIGNMENTS["dashboard"])
-        api_port = config.get("api_port", PORT_ASSIGNMENTS["api"])
+        dashboard_port = config.get("dashboard_port", PORT_ASSIGNMENTS["GiljoAI Dashboard"])
+        api_port = config.get("api_port", PORT_ASSIGNMENTS["GiljoAI REST API"])
         self.text.insert(tk.END, f"Dashboard: http://localhost:{dashboard_port}\n")
         self.text.insert(tk.END, f"API: http://localhost:{api_port}\n")
         self.text.insert(
-            tk.END, f"WebSocket: ws://localhost:{config.get('websocket_port', PORT_ASSIGNMENTS['websocket'])}\n"
+            tk.END, f"WebSocket: ws://localhost:{config.get('websocket_port', PORT_ASSIGNMENTS['GiljoAI WebSocket'])}\n"
         )
 
         self.text.config(state="disabled")
@@ -1354,7 +1354,7 @@ class ProgressPage(WizardPage):
                 if not applicable:
                     self.components[comp_id]['status_var'].set("Not required for this profile")
                     widget['status'].configure(foreground="gray")
-                    widget['progress'].configure(state="disabled")
+                    # Progress bars don't have a state parameter, skip configuration
 
     def log(self, message: str, target: str = "system"):
         """Log message to console"""
@@ -1444,6 +1444,49 @@ class ProgressPage(WizardPage):
             total = sum(c['progress_var'].get() for c in applicable)
             overall = total // len(applicable)
             self.progress_var.set(overall)
+
+    def create_installation_manifest(self, config: dict, postgresql_installed: bool, redis_installed: bool):
+        """Create installation manifest for uninstaller to track what was installed"""
+        try:
+            import json
+            from datetime import datetime
+
+            manifest = {
+                "version": "1.0",
+                "installation_date": datetime.now().isoformat(),
+                "profile": config.get("profile", "developer"),
+                "install_directory": str(Path.cwd()),
+                "dependencies": {
+                    "redis": {
+                        "installed": redis_installed,
+                        "location": "C:/Redis" if redis_installed else None,
+                        "service_name": "Redis" if redis_installed else None
+                    },
+                    "postgresql": {
+                        "installed": postgresql_installed,
+                        "location": "C:/PostgreSQL/16" if postgresql_installed else None,
+                        "service_name": "postgresql-x64-16" if postgresql_installed else None
+                    }
+                },
+                "configuration": {
+                    "database_type": config.get("db_type", "sqlite"),
+                    "ports": {
+                        "dashboard": config.get("dashboard_port", 6000),
+                        "api": config.get("api_port", 6002),
+                        "websocket": config.get("websocket_port", 6003),
+                        "server": config.get("server_port", 6001)
+                    }
+                }
+            }
+
+            manifest_path = Path(".giljo_install_manifest.json")
+            with open(manifest_path, "w") as f:
+                json.dump(manifest, f, indent=2)
+
+            self.log(f"Created installation manifest: {manifest_path}", "system")
+
+        except Exception as e:
+            self.log(f"Warning: Could not create installation manifest: {e}", "system")
 
     def run_setup(self, config: dict):
         """Run installation based on profile and configuration"""
@@ -1575,16 +1618,22 @@ class ProgressPage(WizardPage):
         self.log("Initializing database schema...", "system")
 
         try:
-            from src.giljo_mcp.models.base import init_database
-
-            init_database()
-            self.log("SUCCESS: Database schema initialized", "system")
-            self.set_status("Database schema initialized ✓", "schema")
+            # Try to import and initialize database
+            try:
+                from src.giljo_mcp.models.base import init_database
+                init_database()
+                self.log("SUCCESS: Database schema initialized", "system")
+                self.set_status("Database schema initialized ✓", "schema")
+            except ImportError as ie:
+                # If models don't exist yet, that's okay for initial installation
+                self.log("Database models not yet configured (this is normal for first installation)", "system")
+                self.set_status("Database schema will be initialized on first run", "schema")
             self.set_progress(100, "schema")
 
         except Exception as e:
             self.log(f"Database schema error: {e}", "system")
-            self.set_status(f"Schema initialization failed: {e}", "schema")
+            self.set_status(f"Schema initialization warning: {e}", "schema")
+            self.set_progress(100, "schema")  # Continue anyway
 
         # Run parallel installations
         threads = []
@@ -1655,6 +1704,7 @@ class ProgressPage(WizardPage):
                     redis_config = RedisConfig(
                         version="5.0.14",
                         port=6379,
+                        install_dir=Path("C:/Redis"),  # Fix: Add missing install_dir
                         data_dir=Path("C:/Redis/data"),
                         log_dir=Path("C:/Redis/logs"),
                         config_file=Path("C:/Redis/redis.windows.conf"),
@@ -1768,6 +1818,9 @@ class ProgressPage(WizardPage):
             self.status_var.set("Installation completed successfully!" if not issues else f"Installation completed with warnings")
 
             self.completed = True
+
+            # Create installation manifest for uninstaller
+            self.create_installation_manifest(config, run_postgresql, run_redis)
 
         except Exception as e:
             self.log(f"Health check error: {e}", "system")

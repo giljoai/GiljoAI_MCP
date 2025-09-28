@@ -1,0 +1,25 @@
+database:
+  type: sqlite
+  sqlite:
+    path: data/giljo_mcp.db
+  postgresql:
+    host: localhost
+    port: 5432
+    database: giljo_mcp
+    user: postgres
+    password: ""
+redis:
+  enabled: true
+  host: localhost
+  port: 6379
+  password: ""
+server:
+  ports:
+    api: 6002
+    websocket: 6003
+    dashboard: 6000
+    server: 6001
+security:
+  api_key_enabled: false
+  api_key: test_key
+  jwt_secret: test_secret

@@ -1,90 +1,128 @@
 #!/usr/bin/env python3
 """
-Test Installation Components for GiljoAI MCP
-
-Tests launcher creator and config generator
+Test script to diagnose installation issues
 """
 
 import sys
+import subprocess
 from pathlib import Path
 
+def test_requirements():
+    """Test if requirements can be installed"""
+    print("Testing Python dependencies installation...")
 
-# Add installers to path
-sys.path.insert(0, str(Path.cwd() / "installers"))
+    # Check Python version
+    print(f"Python version: {sys.version}")
 
+    # Check if pip is available
+    try:
+        result = subprocess.run([sys.executable, "-m", "pip", "--version"],
+                              capture_output=True, text=True)
+        print(f"Pip version: {result.stdout.strip()}")
+    except Exception as e:
+        print(f"ERROR: pip not available: {e}")
+        return False
 
-def test_config_generator():
-    """Test configuration generator"""
-    print("Testing Configuration Generator...")
-    print("-" * 40)
+    # Check if requirements.txt exists
+    req_file = Path("requirements.txt")
+    if not req_file.exists():
+        print("ERROR: requirements.txt not found")
+        return False
+    print(f"Found requirements.txt ({req_file.stat().st_size} bytes)")
 
-    from config_generator import ConfigGenerator
+    # Try a dry run of pip install
+    print("\nTesting pip install (dry run)...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--dry-run", "-r", "requirements.txt"],
+        capture_output=True,
+        text=True
+    )
 
-    generator = ConfigGenerator()
+    if result.returncode != 0:
+        print("ERROR: pip install would fail")
+        print("STDERR:", result.stderr[:1000])
+        return False
 
-    # Test directory creation
-    success, msg = generator.create_required_directories()
-    print(f"[{'OK' if success else 'FAIL'}] {msg}")
+    print("SUCCESS: pip install test passed")
+    return True
 
-    # Test config creation
-    success, msg = generator.create_config_file()
-    print(f"[{'OK' if success else 'FAIL'}] {msg}")
+def test_imports():
+    """Test if critical imports work"""
+    print("\nTesting critical imports...")
 
-    # Test validation
-    if Path("config.yaml").exists():
-        valid, msg = generator.validate_config()
-        print(f"[{'OK' if valid else 'FAIL'}] Validation: {msg}")
+    critical_modules = {
+        'src.giljo_mcp.models.base': 'Database models',
+        'installer.health_checker': 'Health checker',
+        'setup_config': 'Configuration manager'
+    }
 
-    print()
+    for module, description in critical_modules.items():
+        try:
+            __import__(module)
+            print(f"[OK] {description} ({module})")
+        except ImportError as e:
+            print(f"[FAIL] {description} ({module}): {e}")
+        except Exception as e:
+            print(f"[ERROR] {description} ({module}): Unexpected error: {e}")
 
+def test_paths():
+    """Test if required paths exist or can be created"""
+    print("\nTesting paths...")
 
-def test_launcher_creator():
-    """Test launcher creator"""
-    print("Testing Launcher Creator...")
-    print("-" * 40)
+    paths_to_check = [
+        "data",
+        "logs",
+        "src/giljo_mcp",
+        "installer"
+    ]
 
-    from launcher_creator import LauncherCreator
+    for path_str in paths_to_check:
+        path = Path(path_str)
+        if path.exists():
+            print(f"[OK] {path_str} exists")
+        else:
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                print(f"[OK] {path_str} can be created")
+                path.rmdir()  # Clean up test
+            except Exception as e:
+                print(f"[FAIL] {path_str} cannot be created: {e}")
 
-    creator = LauncherCreator()
+def test_database():
+    """Test database initialization"""
+    print("\nTesting database initialization...")
 
-    # Test creating all launchers
-    results = creator.create_all_launchers()
+    try:
+        from src.giljo_mcp.models.base import init_database, get_database_url
 
-    # Print results
-    for name, (success, msg) in results.items():
-        print(f"[{'OK' if success else 'FAIL'}] {name}: {msg}")
+        db_url = get_database_url()
+        print(f"Database URL pattern: {db_url.split('://')[0]}://...")
 
-    print()
-
+        result = init_database()
+        if result:
+            print("[OK] Database initialization successful")
+        else:
+            print("[FAIL] Database initialization failed")
+    except ImportError as e:
+        print(f"[FAIL] Cannot import database modules: {e}")
+    except Exception as e:
+        print(f"[ERROR] Database initialization error: {e}")
 
 def main():
-    """Main test function"""
-    print("=" * 50)
-    print("GiljoAI MCP Installation Component Test")
-    print("=" * 50)
-    print()
+    """Run all tests"""
+    print("=" * 60)
+    print("GiljoAI MCP Installation Diagnostic")
+    print("=" * 60)
 
-    # Test config generator
-    test_config_generator()
+    # Run tests
+    test_requirements()
+    test_imports()
+    test_paths()
+    test_database()
 
-    # Test launcher creator
-    test_launcher_creator()
-
-    print("=" * 50)
-    print("Test Complete!")
-    print("=" * 50)
-
-    # Show what's been created
-    print("\nCreated files:")
-    files = ["config.yaml", "start_giljo.bat", "stop_giljo.bat", "open_dashboard.bat"]
-
-    for file in files:
-        path = Path(file)
-        if path.exists():
-            print(f"  [OK] {file}")
-        else:
-            print(f"  [MISSING] {file}")
-
+    print("\n" + "=" * 60)
+    print("Diagnostic complete")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()

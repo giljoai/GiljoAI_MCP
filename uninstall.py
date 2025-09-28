@@ -227,6 +227,102 @@ class GiljoUninstaller:
                 return False
         return True
 
+    def remove_redis(self) -> bool:
+        """Remove Redis installation and service
+
+        Returns:
+            Success status
+        """
+        print("\nRemoving Redis...")
+        removed_something = False
+
+        try:
+            # Stop and remove Redis service if it exists
+            try:
+                result = subprocess.run(["sc", "query", "Redis"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    print("  Stopping Redis service...")
+                    subprocess.run(["sc", "stop", "Redis"], capture_output=True, timeout=10, check=False)
+                    time.sleep(2)
+                    print("  Removing Redis service...")
+                    subprocess.run(["sc", "delete", "Redis"], capture_output=True, timeout=10, check=False)
+                    print("  [OK] Redis service removed")
+                    removed_something = True
+            except Exception as e:
+                print(f"  [WARNING] Could not remove Redis service: {e}")
+
+            # Remove Redis installation directories
+            redis_paths = [
+                Path("C:/Redis"),
+                Path("C:/Program Files/Redis"),
+                Path("C:/Program Files (x86)/Redis"),
+                Path("C:/tools/redis"),  # Chocolatey installation
+            ]
+
+            for redis_path in redis_paths:
+                if redis_path.exists():
+                    try:
+                        shutil.rmtree(redis_path)
+                        print(f"  [OK] Removed Redis from: {redis_path}")
+                        removed_something = True
+                    except Exception as e:
+                        print(f"  [FAIL] Could not remove {redis_path}: {e}")
+
+            if not removed_something:
+                print("  [INFO] No Redis installation found")
+
+            return True
+
+        except Exception as e:
+            print(f"  [ERROR] Redis removal failed: {e}")
+            return False
+
+    def remove_postgresql(self) -> bool:
+        """Remove PostgreSQL installation and service
+
+        Note: This only removes services and notes the installation.
+        Full PostgreSQL uninstallation should be done through its uninstaller.
+
+        Returns:
+            Success status
+        """
+        print("
+Checking PostgreSQL...")
+
+        try:
+            # Check for PostgreSQL service
+            pg_services = ["postgresql-x64-16", "postgresql-x64-15", "postgresql-x64-14", "postgresql"]
+            found_service = False
+
+            for service_name in pg_services:
+                result = subprocess.run(["sc", "query", service_name], capture_output=True, text=True)
+                if result.returncode == 0:
+                    found_service = True
+                    print(f"  [WARNING] PostgreSQL service '{service_name}' found")
+
+            if found_service:
+                print("  [INFO] PostgreSQL should be uninstalled using its own uninstaller")
+                print("         Go to Control Panel > Programs > Uninstall PostgreSQL")
+            else:
+                print("  [OK] No PostgreSQL service found")
+
+            # Check for PostgreSQL installation directory
+            pg_paths = [
+                Path("C:/PostgreSQL"),
+                Path("C:/Program Files/PostgreSQL"),
+            ]
+
+            for pg_path in pg_paths:
+                if pg_path.exists():
+                    print(f"  [INFO] PostgreSQL installation found at: {pg_path}")
+                    print("         Use PostgreSQL uninstaller to remove completely")
+
+            return True
+
+        except Exception as e:
+            print(f"  [ERROR] PostgreSQL check failed: {e}")
+            return False
+
     def get_files_to_remove(self, keep_user_data: bool) -> Tuple[List[Path], List[Path]]:
         """Get lists of files to remove and keep
 
@@ -304,6 +400,10 @@ class GiljoUninstaller:
 
         # Remove virtual environment
         self.remove_virtual_environment()
+
+        # Remove dependencies (Redis, PostgreSQL)
+        self.remove_redis()
+        self.remove_postgresql()
 
         # Get files to remove
         files_to_remove, files_to_keep = self.get_files_to_remove(keep_user_data=True)
