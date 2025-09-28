@@ -859,14 +859,14 @@ class ProgressPage(WizardPage):
         # Legacy compatibility - create hidden notebook elements
         self.notebook = None
         self.pg_text = self.console_text
-        self.redis_text = self.console_text
+        # Redis removed
         # Docker removed - not needed
         self.system_text = self.console_text
         self.pg_progress_var = tk.IntVar(value=0)
-        self.redis_progress_var = tk.IntVar(value=0)
+        # Redis progress removed
         # Docker progress removed
         self.pg_status_var = tk.StringVar()
-        self.redis_status_var = tk.StringVar()
+        # Redis status removed
         # Docker status removed
 
         self.completed = False
@@ -877,7 +877,6 @@ class ProgressPage(WizardPage):
             ('config', 'Configuration Files'),
             ('directories', 'Directory Structure'),
             ('database', 'Database Setup'),
-            ('redis', 'Redis Cache'),
             ('schema', 'Database Schema'),
             ('validation', 'System Validation')
         ]
@@ -923,19 +922,21 @@ class ProgressPage(WizardPage):
         rules = {
             'developer': {
                 'database': ('SQLite Database', True),
-                'redis': ('Redis Cache', True),
+            },
+            'local': {
+                'database': ('SQLite Database', True),
+            },
+            'server': {
+                'database': ('PostgreSQL/SQLite Database', True),
             },
             'team': {
                 'database': ('PostgreSQL Database', True),
-                'redis': ('Redis Cache', True),
             },
             'enterprise': {
                 'database': ('PostgreSQL Database', True),
-                'redis': ('Redis Cache', True),
             },
             'research': {
                 'database': ('SQLite Database', True),
-                'redis': ('Redis Cache', False),
             }
         }
 
@@ -981,10 +982,7 @@ class ProgressPage(WizardPage):
             self.pg_progress_var.set(value)
             if 'database' in self.components:
                 self.components['database']['progress_var'].set(value)
-        elif target == "redis":
-            self.redis_progress_var.set(value)
-            if 'redis' in self.components:
-                self.components['redis']['progress_var'].set(value)
+        # Redis removed - no longer needed
         # Docker progress removed
         elif target in self.components:
             self.components[target]['progress_var'].set(value)
@@ -1000,10 +998,7 @@ class ProgressPage(WizardPage):
             self.pg_status_var.set(status)
             if 'database' in self.components:
                 self._update_component_status('database', status)
-        elif target == "redis":
-            self.redis_status_var.set(status)
-            if 'redis' in self.components:
-                self._update_component_status('redis', status)
+        # Redis removed - no longer needed
         # Docker status removed
         elif target in self.components:
             self._update_component_status(target, status)
@@ -1316,7 +1311,6 @@ class ProgressPage(WizardPage):
             # Log results
             results = [
                 ("PostgreSQL", pg_status, pg_msg),
-                ("Redis", redis_status, redis_msg),
                 ("Port Configuration", ports_status, ports_msg),
                 ("File System", fs_status, fs_msg)
             ]
