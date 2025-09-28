@@ -641,9 +641,10 @@ class GiljoSetup:
 
     def _install_dependencies(self):
         """Install dependencies with individual component tracking"""
-        console.print("\n[bold cyan]Installing Components[/bold cyan]\n")
+        console.print("\n[bold cyan]Components to Install[/bold cyan]\n")
 
         profile = self.config.get("profile", "developer")
+        db_type = self.config.get("database_type", "sqlite")
 
         # Define components based on profile
         components = {
@@ -658,14 +659,9 @@ class GiljoSetup:
                 'status': 'pending'
             },
             'database': {
-                'name': 'SQLite Database' if profile in ['developer', 'research'] else 'PostgreSQL Database',
+                'name': 'PostgreSQL Database' if db_type == 'postgresql' else 'SQLite Database',
                 'applicable': True,
                 'status': 'pending'
-            },
-            'redis': {
-                'name': 'Redis Cache',
-                'applicable': profile != 'minimal',
-                'status': 'pending' if profile != 'minimal' else 'not_required'
             },
             'schema': {
                 'name': 'Database Schema',
@@ -717,6 +713,14 @@ class GiljoSetup:
 
             return table
 
+        # Show what will be installed and ask for confirmation
+        console.print(display_status())
+        console.print()
+
+        if not Confirm.ask("[bold cyan]Ready to install. Proceed?[/bold cyan]", default=True):
+            console.print("[yellow]Installation cancelled.[/yellow]")
+            return
+
         # Create configuration files
         console.clear()
         components['config']['status'] = 'installing'
@@ -765,6 +769,50 @@ class GiljoSetup:
 
             components['config']['status'] = 'completed'
             console.print("[green]✓ Configuration files created[/green]")
+
+            # Install PostgreSQL if selected
+            if db_type == 'postgresql' and PHASE2_AVAILABLE:
+                console.clear()
+                components['database']['status'] = 'installing'
+                console.print(display_status())
+                console.print("\n[bold]Installing PostgreSQL...[/bold]")
+
+                try:
+                    from installer.dependencies.postgresql import PostgreSQLInstaller, PostgreSQLConfig
+
+                    pg_config = PostgreSQLConfig(
+                        version="16.0",
+                        port=int(self.config.get("pg_port", 5432)),
+                        data_dir="C:/PostgreSQL/16/data",
+                        install_dir="C:/PostgreSQL/16"
+                    )
+
+                    installer = PostgreSQLInstaller(pg_config)
+
+                    if installer.is_postgresql_installed():
+                        console.print("  [yellow]![/yellow] PostgreSQL already installed, verifying...")
+                        if installer.test_connection():
+                            console.print("  [green]✓[/green] PostgreSQL connection successful")
+                        else:
+                            console.print("  [yellow]![/yellow] PostgreSQL connection failed, attempting reinstall...")
+                            result = installer.install()
+                            console.print(f"  [green]✓[/green] PostgreSQL installed: {result.connection_string}")
+                    else:
+                        console.print("  [blue]...[/blue] Installing PostgreSQL (this may take a few minutes)...")
+                        result = installer.install()
+                        console.print(f"  [green]✓[/green] PostgreSQL installed successfully")
+
+                    components['database']['status'] = 'completed'
+                    self.config['postgresql_installed'] = True
+
+                except Exception as e:
+                    components['database']['status'] = 'failed'
+                    console.print(f"  [red]✗[/red] PostgreSQL installation failed: {e}")
+                    console.print("  [yellow]![/yellow] You'll need to install PostgreSQL manually")
+                    self.config['postgresql_installed'] = False
+            else:
+                components['database']['status'] = 'completed'
+                self.config['postgresql_installed'] = False
 
         except Exception as e:
             components['config']['status'] = 'failed'
@@ -1137,8 +1185,64 @@ Categories=Development;IDE;
 
         console.print("  [green]✓[/green] Created application menu entry")
 
+    def _create_installation_manifest(self):
+        """Create installation manifest for uninstaller"""
+        try:
+            import json
+            from datetime import datetime
+
+            manifest = {
+                "version": "1.0",
+                "installation_date": datetime.now().isoformat(),
+                "profile": self.config.get("profile", "local"),
+                "deployment_mode": self.config.get("deployment_mode", "local"),
+                "install_directory": str(self.root_path),
+                "dependencies": {
+                    "postgresql": {
+                        "installed": self.config.get("postgresql_installed", False),
+                        "location": "C:/PostgreSQL/16" if self.config.get("postgresql_installed") else None,
+                        "service_name": "postgresql-x64-16" if self.config.get("postgresql_installed") else None,
+                        "database": self.config.get("pg_database", "giljo_mcp") if self.config.get("postgresql_installed") else None
+                    }
+                },
+                "configuration": {
+                    "database_type": self.config.get("database_type", "sqlite"),
+                    "ports": {
+                        "dashboard": self.env_vars.get("GILJO_MCP_DASHBOARD_PORT", 6000),
+                        "api": self.env_vars.get("GILJO_MCP_API_PORT", 6002),
+                        "websocket": self.env_vars.get("GILJO_MCP_WEBSOCKET_PORT", 6003),
+                        "server": self.env_vars.get("GILJO_MCP_SERVER_PORT", 6001)
+                    }
+                },
+                "files_created": [
+                    ".env",
+                    "config.yaml",
+                    "start_giljo.bat" if self.platform_info.get("is_windows") else "start_giljo.sh",
+                    "stop_giljo.bat" if self.platform_info.get("is_windows") else "stop_giljo.sh"
+                ],
+                "directories_created": [
+                    "data", "logs", "backups", "temp",
+                    "src/giljo_mcp", "api", "frontend/dist",
+                    "scripts", "tests"
+                ]
+            }
+
+            manifest_path = self.root_path / ".giljo_install_manifest.json"
+            with open(manifest_path, "w") as f:
+                json.dump(manifest, f, indent=2)
+
+            console.print("  [green]✓[/green] Created installation manifest")
+            return True
+
+        except Exception as e:
+            console.print(f"  [yellow]![/yellow] Could not create manifest: {e}")
+            return False
+
     def _show_summary(self):
         """Show setup summary"""
+        # Create installation manifest
+        self._create_installation_manifest()
+
         console.print("\n" + "=" * 60)
         console.print("[bold green]Setup Complete![/bold green]")
         console.print("=" * 60)

@@ -805,22 +805,39 @@ class ProgressPage(WizardPage):
     def __init__(self, parent):
         super().__init__(parent, "Installation Progress")
 
+        # Track if installation has started
+        self.installation_started = False
+        self.completed = False
+
         # Main frame
         main_frame = ttk.Frame(self)
         main_frame.pack(padx=20, pady=10, fill="both", expand=True)
 
         # Title
-        title = ttk.Label(main_frame, text="Installing Components", font=("Arial", 12, "bold"))
+        title = ttk.Label(main_frame, text="Ready to Install", font=("Arial", 12, "bold"))
         title.pack(pady=(0, 10))
+        self.title_label = title
 
         # Components frame with individual progress bars
-        self.components_frame = ttk.LabelFrame(main_frame, text="Component Installation Status")
+        self.components_frame = ttk.LabelFrame(main_frame, text="Components to Install")
         self.components_frame.pack(fill="both", expand=False, pady=10)
 
         # Initialize component tracking
         self.components = {}
         self.component_widgets = {}
         self._init_components()
+
+        # Install button frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=10)
+
+        self.install_button = ttk.Button(
+            button_frame,
+            text="Install",
+            command=self.start_installation,
+            style="Accent.TButton"
+        )
+        self.install_button.pack()
 
         # Console output section
         console_frame = ttk.LabelFrame(main_frame, text="Installation Log")
@@ -916,31 +933,27 @@ class ProgressPage(WizardPage):
                 'name': name_label
             }
 
-    def update_component_applicability(self, profile: str):
-        """Update which components are applicable based on profile"""
-        # Define applicability rules
+    def update_component_applicability(self, profile: str, config: dict = None):
+        """Update which components are applicable based on profile and config"""
+        # Determine actual database type from config
+        if config:
+            db_type = config.get('db_type', 'sqlite')
+            if db_type == 'postgresql':
+                database_label = 'PostgreSQL Database'
+            else:
+                database_label = 'SQLite Database'
+        else:
+            # Fallback to profile-based defaults
+            if profile == 'server' or profile in ['team', 'enterprise']:
+                database_label = 'PostgreSQL Database'
+            else:
+                database_label = 'SQLite Database'
+
         rules = {
-            'developer': {
-                'database': ('SQLite Database', True),
-            },
-            'local': {
-                'database': ('SQLite Database', True),
-            },
-            'server': {
-                'database': ('PostgreSQL/SQLite Database', True),
-            },
-            'team': {
-                'database': ('PostgreSQL Database', True),
-            },
-            'enterprise': {
-                'database': ('PostgreSQL Database', True),
-            },
-            'research': {
-                'database': ('SQLite Database', True),
-            }
+            'database': (database_label, True),
         }
 
-        profile_rules = rules.get(profile, rules['developer'])
+        profile_rules = rules
 
         for comp_id, (label, applicable) in profile_rules.items():
             if comp_id in self.components:
@@ -1076,16 +1089,47 @@ class ProgressPage(WizardPage):
         except Exception as e:
             self.log(f"Warning: Could not create installation manifest: {e}", "system")
 
+    def start_installation(self):
+        """Start the installation when user clicks Install"""
+        if not self.installation_started:
+            self.installation_started = True
+            self.install_button.config(state="disabled", text="Installing...")
+            self.title_label.config(text="Installing Components")
+            self.components_frame.config(text="Installation Progress")
+
+            # Run installation in thread
+            import threading
+            install_thread = threading.Thread(target=self.run_setup_internal, args=(self.config_data,))
+            install_thread.daemon = True
+            install_thread.start()
+
     def run_setup(self, config: dict):
-        """Run installation based on profile and configuration"""
+        """Store config and update display, but don't start installation"""
+        self.config_data = config
+        profile = config.get("profile", "developer")
+
+        # Update component display based on actual config
+        self.update_component_applicability(profile, config)
+
+        # Update component labels to show what will be installed
+        for comp_id in self.components:
+            if comp_id in self.component_widgets:
+                label_text = self.components[comp_id]['label']
+                self.component_widgets[comp_id]['name'].config(text=label_text)
+
+        self.log(f"Ready to install for {profile} profile", "info")
+        self.log("Click 'Install' to begin installation", "info")
+
+    def run_setup_internal(self, config: dict):
+        """Actually run installation based on profile and configuration"""
         import threading
         import time
 
         profile = config.get("profile", "developer")
         self.log(f"Starting installation for {profile} profile", "system")
 
-        # Update component applicability
-        self.update_component_applicability(profile)
+        # Update component applicability again with actual config
+        self.update_component_applicability(profile, config)
 
         # Determine database type based on deployment mode
         # Local mode: SQLite (no additional services needed)
@@ -1347,8 +1391,16 @@ class ProgressPage(WizardPage):
 
             self.completed = True
 
+            # Re-enable navigation
+            if hasattr(self.master, 'master') and hasattr(self.master.master, 'update_navigation'):
+                self.master.master.after(100, self.master.master.update_navigation)
+
             # Create installation manifest for uninstaller
-            self.create_installation_manifest(config, run_postgresql, run_redis)
+            try:
+                self.create_installation_manifest(config, run_postgresql, False)
+            except Exception as manifest_error:
+                self.log(f"Warning: Could not create manifest: {manifest_error}", "system")
+                # Not critical - continue
 
         except Exception as e:
             self.log(f"Health check error: {e}", "system")
@@ -1498,11 +1550,13 @@ class GiljoSetupGUI:
         if self.current_page_index == len(self.pages) - 1:
             self.next_btn.config(text="Finish", state="normal")
         elif isinstance(current_page, ProgressPage):
-            # Disable next during installation
+            # Enable/disable Next based on installation status
             if hasattr(current_page, 'completed') and current_page.completed:
                 self.next_btn.config(text="Next >", state="normal")
+            elif hasattr(current_page, 'installation_started') and current_page.installation_started:
+                self.next_btn.config(state="disabled")  # Disable during installation
             else:
-                self.next_btn.config(state="disabled")
+                self.next_btn.config(state="disabled")  # Disable until installation starts
         else:
             self.next_btn.config(text="Next >", state="normal")
 
@@ -1539,38 +1593,19 @@ class GiljoSetupGUI:
             self.finish_setup()
             return
         elif isinstance(current_page, ReviewPage):
-            # Start installation after review
+            # Move to progress page and prepare for installation
             progress_page = self.pages[self.current_page_index + 1]
             if isinstance(progress_page, ProgressPage):
                 self.show_page(self.current_page_index + 1)
-                # Start installation in a thread
-                import threading
-                install_thread = threading.Thread(target=self.run_installation)
-                install_thread.daemon = True
-                install_thread.start()
+                # Just prepare the installation, don't start it
+                progress_page.run_setup(self.config_data)
                 return
 
         # Normal page transition
         if self.current_page_index < len(self.pages) - 1:
             self.show_page(self.current_page_index + 1)
 
-    def run_installation(self):
-        """Run the installation process"""
-        try:
-            progress_page = None
-            for page in self.pages:
-                if isinstance(page, ProgressPage):
-                    progress_page = page
-                    break
-
-            if progress_page:
-                progress_page.run_setup(self.config_data)
-
-                # Update navigation when complete
-                self.root.after(1000, self.update_navigation)
-
-        except Exception as e:
-            messagebox.showerror("Installation Error", f"Installation failed: {str(e)}")
+    # run_installation method removed - installation now starts via Install button
 
     def cancel_setup(self):
         """Cancel the setup wizard"""
