@@ -487,8 +487,8 @@ class Bootstrap:
             return 1
 
         try:
-            # Run setup.py in CLI mode
-            result = subprocess.run([sys.executable, "setup.py", "--non-interactive"], capture_output=False, text=True, check=False)
+            # Run setup.py in interactive CLI mode (without --non-interactive flag)
+            result = subprocess.run([sys.executable, "setup.py"], capture_output=False, text=True, check=False)
 
             # If installation succeeded, run post-installation setup
             if result.returncode == 0:
