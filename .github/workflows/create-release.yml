@@ -90,15 +90,13 @@ jobs:
           - Python 3.8+
           - 4GB RAM minimum
           - Windows 10/11, macOS 10.15+, or Linux
-          - PostgreSQL 14+ (optional, for team/enterprise profiles)
+          - PostgreSQL 14+ (optional, for server deployment)
 
-          ## 🔧 Configuration Profiles
+          ## 🔧 Deployment Modes
 
           Choose during installation:
-          - **Developer**: SQLite, single-user, localhost
-          - **Team**: PostgreSQL, multi-user, network accessible
-          - **Enterprise**: Production PostgreSQL, high availability
-          - **Research**: Flexible configuration for experimentation
+          - **Local Development**: SQLite, no authentication, localhost only
+          - **Server Deployment**: PostgreSQL/SQLite, API key auth, network accessible
 
           ## 📖 Documentation
 

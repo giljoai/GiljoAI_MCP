@@ -106,7 +106,7 @@ class WizardPage(ttk.Frame):
 
 
 class ProfileSelectionPage(WizardPage):
-    """Welcome and profile selection page"""
+    """Welcome and deployment mode selection page"""
 
     def __init__(self, parent):
         super().__init__(parent, "Welcome to GiljoAI MCP Setup")
@@ -124,118 +124,63 @@ This wizard will help you:
 • Install required dependencies
 • Initialize your orchestrator
 
-Select the profile below that best matches your needs:"""
+Select the deployment mode that best matches your needs:"""
 
         desc_label = ttk.Label(self, text=welcome_text, justify=tk.LEFT)
         desc_label.pack(padx=20, pady=10)
 
-        # Profile selection
-        self.profile_var = tk.StringVar(value="developer")
+        # Deployment mode selection
+        self.mode_var = tk.StringVar(value="local")
 
-        # Create profile frames
-        profiles_frame = ttk.Frame(self)
-        profiles_frame.pack(padx=20, pady=10, fill="both", expand=True)
+        # Create deployment mode frames
+        modes_frame = ttk.Frame(self)
+        modes_frame.pack(padx=20, pady=10, fill="both", expand=True)
 
-        # Developer Profile
-        dev_frame = ttk.LabelFrame(profiles_frame, text="Developer Profile", padding=10)
-        dev_frame.pack(fill="x", pady=5)
-
-        ttk.Radiobutton(
-            dev_frame,
-            text="Individual Developer",
-            variable=self.profile_var,
-            value="developer",
-            command=self._on_profile_change,
-        ).pack(anchor="w")
-
-        dev_desc = """• Personal coding assistant with local SQLite database
-• Redis caching auto-installed for performance boost
-• Minimal setup with default ports (8000 for API, 8001 for WebSocket)
-• Up to 5 concurrent agents
-• Debug logging for development
-• Full features for single developer
-• Ideal for: Solo developers, hobbyists, students"""
-
-        ttk.Label(dev_frame, text=dev_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
-
-        # Team Profile
-        team_frame = ttk.LabelFrame(profiles_frame, text="Team Profile (Coming Soon)", padding=10)
-        team_frame.pack(fill="x", pady=5)
+        # Local Development Mode
+        local_frame = ttk.LabelFrame(modes_frame, text="Local Development", padding=10)
+        local_frame.pack(fill="x", pady=5)
 
         ttk.Radiobutton(
-            team_frame,
-            text="Development Team",
-            variable=self.profile_var,
-            value="team",
-            command=self._on_profile_change,
-            state="disabled"
+            local_frame,
+            text="Single Developer Mode",
+            variable=self.mode_var,
+            value="local",
+            command=self._on_mode_change,
         ).pack(anchor="w")
 
-        team_desc = """• Shared PostgreSQL database for team collaboration
-• Network-accessible with configurable ports
+        local_desc = """• SQLite database (zero configuration)
+• No authentication required
+• Localhost only (secure by default)
 • Up to 20 concurrent agents
+• Debug logging for development
+• Perfect for individual developers
+• Ideal for: Personal projects, learning, prototyping"""
+
+        ttk.Label(local_frame, text=local_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
+
+        # Server Deployment Mode
+        server_frame = ttk.LabelFrame(modes_frame, text="Server Deployment", padding=10)
+        server_frame.pack(fill="x", pady=5)
+
+        ttk.Radiobutton(
+            server_frame,
+            text="Team/Network Access Mode",
+            variable=self.mode_var,
+            value="server",
+            command=self._on_mode_change,
+        ).pack(anchor="w")
+
+        server_desc = """• PostgreSQL or SQLite database
 • API key authentication
-• Redis caching enabled
-• Project isolation and team management features
-• Ideal for: Small to medium development teams, startups"""
+• Network accessible (LAN/WAN)
+• Up to 20 concurrent agents per user
+• Multiple users can create projects
+• Configurable security settings
+• Ideal for: Team servers, CI/CD, remote access"""
 
-        ttk.Label(team_frame, text=team_desc, justify=tk.LEFT, foreground="gray50").pack(padx=20, pady=5, anchor="w")
+        ttk.Label(server_frame, text=server_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
 
-        # Enterprise Profile
-        enterprise_frame = ttk.LabelFrame(profiles_frame, text="Enterprise Profile (Coming Soon)", padding=10)
-        enterprise_frame.pack(fill="x", pady=5)
-
-        ttk.Radiobutton(
-            enterprise_frame,
-            text="Enterprise Deployment",
-            variable=self.profile_var,
-            value="enterprise",
-            command=self._on_profile_change,
-            state="disabled"
-        ).pack(anchor="w")
-
-        enterprise_desc = """• Production-grade PostgreSQL
-• Up to 100 concurrent agents
-• OAuth2 authentication (configuration required)
-• Docker containerization ready
-• LDAP integration (Coming Soon)
-• Audit logging (Coming Soon)
-• Compliance modes (Coming Soon)
-• Ideal for: Large organizations, regulated industries"""
-
-        ttk.Label(enterprise_frame, text=enterprise_desc, justify=tk.LEFT, foreground="gray50").pack(
-            padx=20, pady=5, anchor="w"
-        )
-
-        # Research Profile
-        research_frame = ttk.LabelFrame(profiles_frame, text="Research Profile (Coming Soon)", padding=10)
-        research_frame.pack(fill="x", pady=5)
-
-        ttk.Radiobutton(
-            research_frame,
-            text="AI Research & Education",
-            variable=self.profile_var,
-            value="research",
-            command=self._on_profile_change,
-            state="disabled"
-        ).pack(anchor="w")
-
-        research_desc = """• PostgreSQL with Redis caching
-• Up to 50 concurrent agents
-• Debug logging enabled
-• No authentication (open access)
-• Example projects included (3 demos)
-• Experiment mode (Coming Soon)
-• Data collection/telemetry (Coming Soon)
-• GPU acceleration support (Coming Soon)
-• Educational resources (Coming Soon)
-• Ideal for: Researchers, educators, AI labs"""
-
-        ttk.Label(research_frame, text=research_desc, justify=tk.LEFT, foreground="gray50").pack(
-            padx=20, pady=5, anchor="w"
-        )
-
-        # Status label for profile details
+        # Status label for mode details
         self.status_frame = ttk.Frame(self)
         self.status_frame.pack(padx=20, pady=10, fill="x")
 
@@ -243,37 +188,25 @@ Select the profile below that best matches your needs:"""
         self.status_label.pack()
 
         # Set initial status
-        self._on_profile_change()
+        self._on_mode_change()
 
-    def _on_profile_change(self):
-        """Update status based on selected profile"""
-        profile = self.profile_var.get()
+    def _on_mode_change(self):
+        """Update status based on selected mode"""
+        mode = self.mode_var.get()
 
         status_messages = {
-            "developer": "✓ Ready for quick setup with minimal configuration",
-            "team": "✓ Will configure network settings and multi-user support",
-            "enterprise": "✓ Will enable enterprise features and security options",
-            "research": "✓ Will include research templates and educational content",
+            "local": "✓ Ready for quick setup with minimal configuration",
+            "server": "✓ Will configure database and network settings",
         }
 
-        self.status_label.config(text=status_messages.get(profile, ""))
+        self.status_label.config(text=status_messages.get(mode, ""))
 
     def validate(self) -> bool:
-        """Validate that only Developer profile is selected"""
-        if self.profile_var.get() != "developer":
-            from tkinter import messagebox
-            messagebox.showwarning(
-                "Profile Not Available",
-                "Only the Developer profile is available in this release.\n\n"
-                "Team, Enterprise, and Research profiles are coming soon."
-            )
-            self.profile_var.set("developer")
-            self._on_profile_change()
-            return False
-        return True
+        """Validate deployment mode selection"""
+        return True  # Both modes are valid
 
     def get_data(self) -> dict:
-        return {"profile": self.profile_var.get()}
+        return {"deployment_mode": self.mode_var.get()}
 
     def on_enter(self):
         """Called when entering the page"""

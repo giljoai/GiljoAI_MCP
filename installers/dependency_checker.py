@@ -84,7 +84,7 @@ class DependencyChecker:
         6001: "MCP Server",
         6002: "API Server",
         5432: "PostgreSQL (optional)",
-        6379: "Redis (optional)",
+        # 6379: "Redis (removed - not implemented)",
     }
 
     def __init__(self):
@@ -113,7 +113,8 @@ class DependencyChecker:
         report["dependencies"]["git"] = asdict(self.check_git())
         report["dependencies"]["docker"] = asdict(self.check_docker())
         report["dependencies"]["postgresql"] = asdict(self.check_postgresql())
-        report["dependencies"]["redis"] = asdict(self.check_redis())
+        # Redis removed - not actually implemented
+        # report["dependencies"]["redis"] = asdict(self.check_redis())
 
         # Check ports (convert to dicts)
         report["ports"] = [asdict(p) for p in self.check_ports()]
@@ -347,42 +348,12 @@ class DependencyChecker:
             notes="Optional for production deployment (SQLite used by default)",
         )
 
-    def check_redis(self) -> DependencyInfo:
-        """Check Redis installation"""
-        try:
-            # Check if Redis CLI is available
-            result = subprocess.run(["redis-cli", "--version"], capture_output=True, text=True, timeout=5)
-
-            if result.returncode == 0:
-                # Parse version from "redis-cli 7.0.5"
-                version_str = result.stdout.strip()
-                parts = version_str.split()
-                version = parts[1] if len(parts) > 1 else "unknown"
-
-                status = DependencyStatus.INSTALLED.value
-
-                # Check if Redis server is running
-                if self._check_port_availability(6379):
-                    notes = "Redis installed but not running on port 6379"
-                else:
-                    notes = "Redis is running on port 6379"
-
-                return DependencyInfo(
-                    name="Redis",
-                    status=status,
-                    version=version,
-                    install_command=self._get_install_command("redis"),
-                    is_required=False,
-                    notes=notes,
-                )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            return DependencyInfo(
-                name="Redis",
-                status=DependencyStatus.NOT_FOUND.value,
-                install_command=self._get_install_command("redis"),
-                is_required=False,
-                notes="Optional for caching and performance",
-            )
+    # Redis removed - not actually implemented in codebase
+    # def check_redis(self) -> DependencyInfo:
+    #     """Check Redis installation"""
+    #     # Removed - Redis was never actually used in the codebase
+    #     # Only in-memory caching is implemented
+    #     pass
 
     def check_ports(self) -> List[PortInfo]:
         """Check availability of required ports"""
@@ -506,7 +477,7 @@ class DependencyChecker:
                 "git": "winget install Git.Git OR download from https://git-scm.com/",
                 "docker": "Download Docker Desktop from https://www.docker.com/products/docker-desktop/",
                 "postgresql": "Download from https://www.postgresql.org/download/windows/",
-                "redis": "Download from https://github.com/microsoftarchive/redis/releases",
+                # "redis": "Download from https://github.com/microsoftarchive/redis/releases",  # Removed - not implemented
             },
             "darwin": {  # macOS
                 "python": "brew install python3 OR download from https://www.python.org/",
@@ -514,7 +485,7 @@ class DependencyChecker:
                 "git": "brew install git OR xcode-select --install",
                 "docker": "Download Docker Desktop from https://www.docker.com/products/docker-desktop/",
                 "postgresql": "brew install postgresql",
-                "redis": "brew install redis",
+                # "redis": "brew install redis",  # Removed - not implemented
             },
             "linux": {
                 "python": "sudo apt install python3 (Ubuntu/Debian) OR sudo yum install python3 (RHEL/CentOS)",
@@ -522,7 +493,7 @@ class DependencyChecker:
                 "git": "sudo apt install git (Ubuntu/Debian) OR sudo yum install git (RHEL/CentOS)",
                 "docker": "curl -fsSL https://get.docker.com | sh",
                 "postgresql": "sudo apt install postgresql (Ubuntu/Debian) OR sudo yum install postgresql-server (RHEL/CentOS)",
-                "redis": "sudo apt install redis (Ubuntu/Debian) OR sudo yum install redis (RHEL/CentOS)",
+                # "redis": "sudo apt install redis (Ubuntu/Debian) OR sudo yum install redis (RHEL/CentOS)",  # Removed - not implemented
             },
         }
 

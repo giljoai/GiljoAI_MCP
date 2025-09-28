@@ -79,12 +79,12 @@ class EnhancedInstallationManifest:
                     "service_name": None,
                     "data_directory": None
                 },
-                "redis": {
-                    "installed": False,
-                    "location": None,
-                    "service_name": None,
-                    "config_file": None
-                },
+                # "redis": {  # Removed - not implemented
+                #     "installed": False,
+                #     "location": None,
+                #     "service_name": None,
+                #     "config_file": None
+                # },
                 "docker": {
                     "installed": False,
                     "containers": [],
@@ -95,7 +95,7 @@ class EnhancedInstallationManifest:
 
             # Configuration
             "configuration": {
-                "profile": None,
+                "deployment_mode": None,  # Changed from 'profile' to 'deployment_mode'
                 "database_type": None,
                 "home_config_dir": None,
                 "ports": {}
@@ -120,7 +120,8 @@ class EnhancedInstallationManifest:
         if "installation_date" in old_data:
             new_data["installation_date"] = old_data["installation_date"]
         if "profile" in old_data:
-            new_data["configuration"]["profile"] = old_data["profile"]
+            # Convert old 'profile' to new 'deployment_mode'
+            new_data["configuration"]["deployment_mode"] = old_data["profile"]
         if "dependencies" in old_data:
             new_data["dependencies"].update(old_data["dependencies"])
         if "configuration" in old_data:
@@ -174,10 +175,10 @@ class EnhancedInstallationManifest:
         self.manifest_data["services"].append(service_entry)
 
     def track_dependency(self, dep_name: str, details: Dict):
-        """Track installed dependencies like PostgreSQL, Redis, etc.
+        """Track installed dependencies like PostgreSQL, Docker, etc.
 
         Args:
-            dep_name: Name of dependency (postgresql, redis, docker)
+            dep_name: Name of dependency (postgresql, docker)
             details: Installation details
         """
         if dep_name in self.manifest_data["dependencies"]:
@@ -227,8 +228,9 @@ class EnhancedInstallationManifest:
                     text=True,
                     check=False
                 )
-                if "Redis" in result.stdout:
-                    self.track_service("Redis", "windows_service")
+                # Redis removed - not implemented
+                # if "Redis" in result.stdout:
+                #     self.track_service("Redis", "windows_service")
                 if "postgresql" in result.stdout:
                     self.track_service("postgresql-x64-16", "windows_service")
             except:
@@ -329,7 +331,7 @@ class EnhancedInstallationManifest:
 
         # Installation info
         report.append(f"\nInstalled: {self.manifest_data.get('installation_date', 'Unknown')}")
-        report.append(f"Profile: {self.manifest_data['configuration'].get('profile', 'Unknown')}")
+        report.append(f"Deployment Mode: {self.manifest_data['configuration'].get('deployment_mode', self.manifest_data['configuration'].get('profile', 'Unknown'))}")
         report.append(f"Install Directory: {self.manifest_data['install_directory']}")
 
         # External directories

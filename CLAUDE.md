@@ -6,6 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that transforms AI coding assistants into coordinated development teams. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks.
 
+## Deployment Modes
+
+The system supports two deployment modes:
+
+1. **Local Development Mode**
+   - SQLite database (zero configuration)
+   - No authentication required
+   - Localhost only (secure by default)
+   - Up to 20 concurrent agents
+   - Perfect for single developers
+
+2. **Server Deployment Mode**
+   - PostgreSQL or SQLite database
+   - API key authentication
+   - Network accessible (LAN/WAN)
+   - Up to 20 concurrent agents
+   - For teams or network access
+
 ## Development Commands
 
 ### Installation & Setup

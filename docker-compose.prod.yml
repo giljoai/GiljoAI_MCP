@@ -40,7 +40,6 @@ services:
     environment:
       # Production settings
       DEBUG: "false"
-      HOT_RELOAD: "false"
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PYTHONUNBUFFERED: 1
 

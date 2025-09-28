@@ -305,37 +305,18 @@ class ConfigurationManager:
             "MCP_MAX_AGENTS", profile_defaults.get("max_agents", 10), description="Maximum concurrent agents"
         )
 
-        # Profile-specific configurations
+        # Profile-specific configurations (simplified - removed unimplemented features)
         if profile_name == "developer":
-            config.add_value("HOT_RELOAD", True, description="Enable hot reload for development")
-            config.add_value("MOCK_EXTERNAL_SERVICES", True, description="Use mock external services")
-
+            pass  # No special config flags for developer mode
         elif profile_name == "team":
             config.add_value("TEAM_NAME", user_inputs.get("team_name", ""), description="Team name", required=True)
             config.add_value("TEAM_SIZE", user_inputs.get("team_size", 5), description="Team size")
-
         elif profile_name == "enterprise":
             config.add_value(
                 "ENTERPRISE_NAME", user_inputs.get("enterprise_name", ""), description="Enterprise name", required=True
             )
-            config.add_value(
-                "LDAP_ENABLED", user_inputs.get("ldap_enabled", False), description="Enable LDAP authentication"
-            )
-            config.add_value("AUDIT_LOGGING", True, description="Enable audit logging")
-            config.add_value(
-                "COMPLIANCE_MODE", user_inputs.get("compliance_mode", "SOC2"), description="Compliance mode"
-            )
-
         elif profile_name == "research":
-            config.add_value("EXPERIMENT_MODE", True, description="Enable experimental features")
-            config.add_value(
-                "DATA_COLLECTION",
-                user_inputs.get("data_collection", True),
-                description="Enable data collection for research",
-            )
-            config.add_value(
-                "GPU_ENABLED", user_inputs.get("gpu_enabled", False), description="Enable GPU acceleration"
-            )
+            pass  # No special config flags for research mode
 
         # Docker-specific configurations (for containerized profile)
         if profile_defaults.get("containerized", False):

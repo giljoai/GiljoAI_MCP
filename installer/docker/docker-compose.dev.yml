@@ -42,7 +42,6 @@ services:
       REDIS_URL: redis://redis:6379/0
 
       # Development features
-      GILJO_HOT_RELOAD: "true"
       GILJO_DEBUG_TOOLBAR: "true"
       GILJO_PROFILING: "false"
 

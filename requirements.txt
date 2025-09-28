@@ -54,7 +54,6 @@ docker>=6.0.0              # Docker API integration
 
 # Production & Services
 gunicorn>=21.0.0           # Production WSGI server
-redis>=5.0.0               # Redis cache/queue (now standard install)
 celery>=5.3.0              # Optional task queue
 
 # Documentation

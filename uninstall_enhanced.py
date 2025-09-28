@@ -222,29 +222,13 @@ class EnhancedGiljoUninstaller:
         """
         print("\nChecking dependencies...")
 
-        # Redis
+        # Redis - removed as not actually implemented
+        # Legacy check for old installations that may have Redis
         redis_info = self.manifest.manifest_data["dependencies"].get("redis", {})
         if redis_info.get("installed"):
-            print("\n  Redis:")
-            if redis_info.get("service_name"):
-                try:
-                    subprocess.run(
-                        ["sc", "delete", redis_info["service_name"]],
-                        capture_output=True,
-                        check=False
-                    )
-                    print(f"    [OK] Service removed: {redis_info['service_name']}")
-                except:
-                    pass
-
-            if redis_info.get("location"):
-                redis_path = Path(redis_info["location"])
-                if redis_path.exists():
-                    try:
-                        shutil.rmtree(redis_path)
-                        print(f"    [OK] Removed from: {redis_path}")
-                    except Exception as e:
-                        print(f"    [FAIL] Could not remove: {e}")
+            print("\n  Redis (Legacy - no longer used):")
+            print("    [INFO] Redis is no longer required by GiljoAI MCP")
+            print("    [INFO] You may uninstall Redis separately if not needed")
 
         # PostgreSQL - just note it
         pg_info = self.manifest.manifest_data["dependencies"].get("postgresql", {})

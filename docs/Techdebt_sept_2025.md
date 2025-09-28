@@ -240,20 +240,51 @@ All the unimplemented config flags:
    - Marked unimplemented features as "(Coming Soon)"
    - Set honest expectations
 
-2. **Complete WebSocket Implementation** (1 week)
+2. **Update CLI Installer Profile Selection** ✅ DONE (Sept 28, 2025)
+
+   - Disabled Team, Enterprise, and Research profiles in CLI installer
+   - Only Developer profile is now selectable in CLI mode
+   - Matches GUI installer behavior which grays out unavailable profiles
+   - Rationale: Prevents users from selecting non-functional profiles
+   - Code remains commented for future re-enablement when features are implemented
+
+3. **Simplify to Reality** ✅ DONE (Sept 28, 2025)
+
+   - **Removed fake profiles**: Replaced 4 fake profiles with 2 real deployment modes
+   - **Local Development Mode**: SQLite, no auth, localhost only
+   - **Server Deployment Mode**: PostgreSQL/SQLite, API key auth, network accessible
+   - **Removed unimplemented config flags**:
+     - HOT_RELOAD (no implementation)
+     - MOCK_EXTERNAL_SERVICES (no implementation)
+     - LDAP_ENABLED (no implementation)
+     - AUDIT_LOGGING (no implementation)
+     - COMPLIANCE_MODE (no implementation)
+     - EXPERIMENT_MODE (no implementation)
+     - DATA_COLLECTION (no implementation)
+     - GPU_ENABLED (no implementation)
+   - **Removed Redis**: Not actually implemented, only in-memory caching exists
+   - **Updated files**:
+     - setup.py: Simplified to Local/Server modes
+     - setup_gui.py: Simplified to Local/Server modes
+     - requirements.txt: Removed redis dependency
+     - config_manager.py: Removed fake config flags
+     - config.yaml.template: Removed features section
+     - docker-compose files: Removed HOT_RELOAD flags
+
+4. **Complete WebSocket Implementation** (1 week)
 
    - Add real-time event handlers
    - Implement progress broadcasting
    - Test with multiple concurrent connections
 
-3. **Complete Minimum Frontend Views** (1 week)
+5. **Complete Minimum Frontend Views** (1 week)
 
    - Project list and creation
    - Agent status dashboard
    - Message queue viewer
    - Basic task management
 
-4. **Integration Testing** (3 days)
+6. **Integration Testing** (3 days)
    - End-to-end workflow testing
    - Multi-agent coordination
    - Error scenarios

@@ -86,8 +86,4 @@ monitoring:
   readiness:
     path: ${READINESS_CHECK_PATH}
 
-features:
-  hot_reload: ${HOT_RELOAD}
-  experiment_mode: ${EXPERIMENT_MODE}
-  audit_logging: ${AUDIT_LOGGING}
-  data_collection: ${DATA_COLLECTION}
+# Features section removed - unimplemented flags have been removed

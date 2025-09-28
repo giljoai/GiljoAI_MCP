@@ -29,7 +29,6 @@ services:
     environment:
       # Development settings
       DEBUG: "true"
-      HOT_RELOAD: "true"
       LOG_LEVEL: DEBUG
       PYTHONUNBUFFERED: 1
 
