@@ -579,115 +579,52 @@ For detailed instructions, see INSTALL.md
 
     def _check_basic_dependencies(self) -> bool:
         """Check basic Python and system dependencies"""
-        print(f"\n{self.colors['BOLD']}Basic System Check:{self.colors['ENDC']}")
+        print(f"\n{self.colors['BOLD']}Checking Python environment...{self.colors['ENDC']}")
 
-        # Check Python modules
-        required_modules = ["pathlib", "json", "yaml", "sqlite3", "subprocess"]
-        optional_modules = ["psycopg2", "redis", "docker"]
-
+        # Check core Python modules (these should always be available)
+        required_modules = ["pathlib", "json", "sqlite3", "subprocess"]
         missing_required = []
-        missing_optional = []
 
         for module in required_modules:
             try:
                 __import__(module)
-                self.print_status(f"Python module '{module}' available", "success")
             except ImportError:
                 missing_required.append(module)
                 self.print_status(f"Python module '{module}' missing", "error")
 
-        for module in optional_modules:
-            try:
-                __import__(module)
-                self.print_status(f"Optional module '{module}' available", "success")
-            except ImportError:
-                missing_optional.append(module)
-                self.print_status(f"Optional module '{module}' not installed", "info")
-
         if missing_required:
-            print(f"\n{self.colors['RED']}Missing required modules may cause installation issues.{self.colors['ENDC']}")
-            response = input(f"{self.colors['YELLOW']}Continue anyway? [y/N]: {self.colors['ENDC']}").lower()
-            return response == "y"
+            print(f"\n{self.colors['RED']}Critical Python modules missing: {', '.join(missing_required)}{self.colors['ENDC']}")
+            print(f"{self.colors['RED']}Your Python installation may be incomplete.{self.colors['ENDC']}")
+            return False
 
+        self.print_status("Python environment ready", "success")
         return True
 
     def _check_integrated_dependencies(self) -> bool:
-        """Check dependencies using integrated Phase 2 components"""
+        """Check installer components availability"""
         try:
-            # Check health system availability
-            from installer.core.health import HealthChecker
+            # Just check if key installer components are available
+            print(f"\n{self.colors['BOLD']}Checking installer components...{self.colors['ENDC']}")
 
-            health_checker = HealthChecker()
+            # Check critical components only
+            critical_components = {
+                "config_manager": "installer.config.config_manager.ConfigurationManager",
+                "service_manager": "installer.services.service_manager.ServiceManager"
+            }
 
-            print(f"\n{self.colors['BOLD']}Integrated Health Check:{self.colors['ENDC']}")
+            missing = []
+            for name, module_path in critical_components.items():
+                try:
+                    module_name, class_name = module_path.rsplit(".", 1)
+                    module = __import__(module_name, fromlist=[class_name])
+                except ImportError:
+                    missing.append(name)
 
-            # Check individual components
-            components_status = {}
-
-            # Database check
-            try:
-                from installer.dependencies.postgresql import PostgreSQLInstaller
-
-                self.print_status("PostgreSQL installer available", "success")
-                components_status["postgresql"] = True
-            except ImportError:
-                self.print_status("PostgreSQL installer not available", "warning")
-                components_status["postgresql"] = False
-
-            # Redis check
-            try:
-                from installer.dependencies.redis import RedisInstaller
-
-                self.print_status("Redis installer available", "success")
-                components_status["redis"] = True
-            except ImportError:
-                self.print_status("Redis installer not available", "warning")
-                components_status["redis"] = False
-
-            # Docker check
-            try:
-                from installer.dependencies.docker import DockerInstaller
-
-                self.print_status("Docker installer available", "success")
-                components_status["docker"] = True
-            except ImportError:
-                self.print_status("Docker installer not available", "warning")
-                components_status["docker"] = False
-
-            # Service manager check
-            try:
-                from installer.services.service_manager import ServiceManager
-
-                self.print_status("Service Manager available", "success")
-                components_status["service_manager"] = True
-            except ImportError:
-                self.print_status("Service Manager not available", "warning")
-                components_status["service_manager"] = False
-
-            # Config manager check
-            try:
-                from installer.config.config_manager import ConfigurationManager
-
-                self.print_status("Configuration Manager available", "success")
-                components_status["config_manager"] = True
-            except ImportError:
-                self.print_status("Configuration Manager not available", "warning")
-                components_status["config_manager"] = False
-
-            # Check critical components
-            critical_missing = []
-            for component, available in components_status.items():
-                if not available and component in ["config_manager", "service_manager"]:
-                    critical_missing.append(component)
-
-            if critical_missing:
-                print(
-                    f"\n{self.colors['RED']}Critical components missing: {', '.join(critical_missing)}{self.colors['ENDC']}"
-                )
-                response = input(
-                    f"{self.colors['YELLOW']}Continue anyway? Installation may fail. [y/N]: {self.colors['ENDC']}"
-                ).lower()
-                return response == "y"
+            if missing:
+                self.print_status(f"Some installer components missing: {', '.join(missing)}", "warning")
+                # Not critical - can continue
+            else:
+                self.print_status("Installer components ready", "success")
 
             return True
 
