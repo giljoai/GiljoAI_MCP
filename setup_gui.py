@@ -227,7 +227,16 @@ Select your server deployment mode:"""
         return True  # Both modes are valid
 
     def get_data(self) -> dict:
-        return {"deployment_mode": self.mode_var.get()}
+        mode = self.mode_var.get()
+        # Map deployment_mode to profile for backward compatibility
+        profile_map = {
+            "local": "developer",
+            "server": "server"
+        }
+        return {
+            "deployment_mode": mode,
+            "profile": profile_map.get(mode, "developer")
+        }
 
     def on_enter(self):
         """Called when entering the page"""
@@ -508,7 +517,18 @@ class PortsPage(WizardPage):
         return True
 
     def get_data(self) -> dict:
-        return {f"{service}_port": self.port_vars[service].get() for service in self.port_vars}
+        # Map service names to expected config keys
+        port_mapping = {
+            "GiljoAI Orchestrator": "api_port",
+            "Frontend Dev Server": "dashboard_port",
+        }
+
+        result = {}
+        for service, var in self.port_vars.items():
+            # Use mapped name if available, otherwise use service name with _port suffix
+            key = port_mapping.get(service, f"{service}_port")
+            result[key] = var.get()
+        return result
 
     def on_enter(self):
         """Adapt port settings based on selected profile"""
@@ -1095,7 +1115,7 @@ class ProgressPage(WizardPage):
                     "database_type": config.get("db_type", "sqlite"),
                     "ports": {
                         "dashboard": config.get("dashboard_port", 6000),
-                        "api": config.get("api_port", 6002),
+                        "api": config.get("api_port", 7272),
                         "websocket": config.get("websocket_port", 6003),
                         "server": config.get("server_port", 6001)
                     }
@@ -1203,11 +1223,16 @@ class ProgressPage(WizardPage):
             self.set_status(f"Dependencies failed: {e}", "dependencies")
 
         # Determine database type based on deployment mode
+        deployment_mode = config.get("deployment_mode", "local")
         run_postgresql = False
-        if profile == "server" and config.get("db_type") == "postgresql":
+
+        # Only use PostgreSQL if explicitly selected in server mode
+        if deployment_mode == "server" and config.get("db_type") == "postgresql":
             run_postgresql = True
             self.log("\n[DATABASE MODE: PostgreSQL]", "system")
         else:
+            # Force SQLite for local mode or when PostgreSQL not selected
+            run_postgresql = False
             self.log("\n[DATABASE MODE: SQLite (Zero Configuration)]", "system")
 
         # Step 3: Create configuration files
@@ -1224,7 +1249,7 @@ class ProgressPage(WizardPage):
             # Prepare config values
             config_values = {
                 "database_type": "postgresql" if run_postgresql else "sqlite",
-                "api_port": config.get("api_port", 6002),
+                "api_port": config.get("api_port", 7272),
                 "websocket_port": config.get("websocket_port", 6003),
                 "dashboard_port": config.get("dashboard_port", 6000),
                 "server_port": config.get("server_port", 6001),
