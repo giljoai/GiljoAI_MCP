@@ -2,8 +2,10 @@
 setlocal EnableDelayedExpansion
 
 REM ============================================================
-REM GiljoAI MCP - Claude Registration Script
-REM Registers the MCP server with Claude Code
+REM GiljoAI MCP - Claude Global Registration Script
+REM Registers the MCP server globally with Claude Code
+REM This is a one-time setup for the MCP server installation
+REM Projects will connect to this server via .mcp.json configs
 REM ============================================================
 
 echo ============================================================

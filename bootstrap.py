@@ -55,8 +55,12 @@ class Bootstrap:
         """Print welcome header"""
         header = f"""
 {self.colors['HEADER']}{'='*60}
-   GiljoAI MCP Orchestrator - Universal Installer
+   GiljoAI MCP Server - System Installation
 {'='*60}{self.colors['ENDC']}
+
+{self.colors['YELLOW']}IMPORTANT: This installs the MCP orchestration SERVER{self.colors['ENDC']}
+{self.colors['YELLOW']}Install in a dedicated directory, NOT in project folders!{self.colors['ENDC']}
+{self.colors['YELLOW']}Recommended: C:\\GiljoAI_MCP or ~/giljo-mcp{self.colors['ENDC']}
         """
         print(header)
 
@@ -216,63 +220,45 @@ class Bootstrap:
     def show_platform_integration(self):
         """Show instructions for integrating with various coding platforms"""
         print(f"\n{self.colors['HEADER']}{'='*60}")
-        print("   Platform Integration - Final Step")
+        print("   Server Installation Complete!")
         print(f"{'='*60}{self.colors['ENDC']}")
 
-        print(f"\n{self.colors['BOLD']}To activate GiljoAI-MCP in your coding platform:{self.colors['ENDC']}\n")
+        print(f"\n{self.colors['BOLD']}MCP Server installed successfully!{self.colors['ENDC']}\n")
 
         # Get the current directory for path
         install_path = Path.cwd()
 
-        # Claude Desktop
-        print(f"{self.colors['BLUE']}For Claude Desktop:{self.colors['ENDC']}")
-        print("  1. Locate your Claude configuration file:")
-        if self.os_type == "windows":
-            print("     %APPDATA%\\Claude\\claude_desktop_config.json")
-        elif self.os_type == "darwin":
-            print("     ~/Library/Application Support/Claude/claude_desktop_config.json")
-        else:
-            print("     ~/.config/Claude/claude_desktop_config.json")
-        print("  2. Add this to the 'mcpServers' section:")
-        print(
-            f"""
-    "giljo-mcp": {{
-      "command": "python",
-      "args": ["-m", "src.giljo_mcp.server"],
-      "env": {{
-        "PYTHONPATH": "{install_path / 'src'}",
-        "GILJO_MCP_DB": "{install_path / 'data' / 'giljo_mcp.db'}"
-      }}
-    }}
-"""
-        )
-        print("  3. Restart Claude Desktop\n")
+        print(f"{self.colors['GREEN']}✓ Server Location:{self.colors['ENDC']} {install_path}")
+        print(f"{self.colors['GREEN']}✓ Server Type:{self.colors['ENDC']} Standalone orchestration server")
+        print(f"{self.colors['GREEN']}✓ Access:{self.colors['ENDC']} localhost:8000 (or network if configured)")
 
-        # VS Code with Continue
-        print(f"{self.colors['BLUE']}For VS Code with Continue:{self.colors['ENDC']}")
-        print("  1. Open Continue extension settings")
-        print("  2. Add to config.json:")
-        print(
-            f"""    "customCommands": [{{
-      "name": "giljo-mcp",
-      "command": "python -m src.giljo_mcp.server",
-      "cwd": "{install_path}"
-    }}]
-"""
-        )
+        print(f"\n{self.colors['HEADER']}Next Steps:{self.colors['ENDC']}")
+        print(f"\n{self.colors['BLUE']}1. Global Registration (Optional):{self.colors['ENDC']}")
+        print(f"   Run: {install_path / 'register_claude.bat'}")
+        print(f"   This registers the server globally with Claude")
 
-        # Generic MCP-compatible platforms
-        print(f"{self.colors['BLUE']}For other MCP-compatible platforms:{self.colors['ENDC']}")
-        print("  Server command: python -m src.giljo_mcp.server")
-        print(f"  Working directory: {install_path}")
-        print(f"  Python path: {install_path / 'src'}")
-        print(f"  Database: {install_path / 'data' / 'giljo_mcp.db'}")
+        print(f"\n{self.colors['BLUE']}2. Connect Your Projects:{self.colors['ENDC']}")
+        print(f"   In each development project folder, run:")
+        print(f"   {install_path / 'connect_project.bat'}")
+        print(f"   This creates a .mcp.json config in your project")
+
+        print(f"\n{self.colors['BLUE']}3. Start the Server:{self.colors['ENDC']}")
+        print(f"   Run: {install_path / 'start_giljo.bat'}")
+
+        print(f"\n{self.colors['YELLOW']}Remember:{self.colors['ENDC']}")
+        print(f"• This is a system-wide server, not project-specific")
+        print(f"• One server can handle multiple projects")
+        print(f"• Projects connect via .mcp.json configuration")
+
+        # Store installation path for projects
+        env_file = install_path / ".env.server"
+        with open(env_file, "w") as f:
+            f.write(f"GILJO_MCP_HOME={install_path}\n")
+            f.write(f"GILJO_MCP_MODE=server\n")
+            f.write(f"GILJO_MCP_PORT=8000\n")
 
         print(
-            f"\n{self.colors['YELLOW']}Note: After adding the configuration, restart your coding platform.{self.colors['ENDC']}"
-        )
-        print(
-            f"{self.colors['GREEN']}GiljoAI-MCP will then be available as 'giljo-mcp' in your platform's MCP servers.{self.colors['ENDC']}\n"
+            f"\n{self.colors['GREEN']}Server configuration saved to .env.server{self.colors['ENDC']}"
         )
 
     def post_installation_setup(self) -> bool:

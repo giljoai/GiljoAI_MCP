@@ -149,14 +149,22 @@ class GiljoSetup:
         """Display welcome message"""
         console.clear()
         welcome_text = """
-        [bold cyan]GiljoAI MCP Coding Orchestrator[/bold cyan]
-        [dim]Interactive Setup Wizard[/dim]
+        [bold cyan]GiljoAI MCP Orchestration Server[/bold cyan]
+        [dim]System-Wide Installation Wizard[/dim]
 
-        This wizard will help you configure GiljoAI MCP for your environment.
-        We'll set up database connections, create necessary directories,
-        and configure the system for your platform.
+        [bold red]⚠️ IMPORTANT: Installing MCP Server Infrastructure[/bold red]
+
+        This installs a standalone orchestration server that will:
+        • Coordinate multiple AI agents across ALL your projects
+        • Run as a system service on localhost:8000 (or network)
+        • Handle multiple projects simultaneously
+
+        [yellow]Install in a DEDICATED directory, NOT in project folders![/yellow]
+        Recommended: C:\\GiljoAI_MCP or ~/giljo-mcp
+
+        After installation, connect projects via lightweight config files.
         """
-        console.print(Panel(welcome_text, title="Welcome", border_style="cyan"))
+        console.print(Panel(welcome_text, title="MCP Server Installation", border_style="cyan"))
 
         # Show platform info
         platform_table = Table(title="Platform Information", show_header=False)
@@ -641,20 +649,31 @@ class GiljoSetup:
 
     def _install_dependencies(self):
         """Install dependencies with individual component tracking"""
-        console.print("\n[bold cyan]Components to Install[/bold cyan]\n")
+        console.print("\n[bold cyan]MCP Server Installation Components[/bold cyan]\n")
+        console.print("[yellow]Installing system-wide orchestration server...[/yellow]\n")
 
         profile = self.config.get("profile", "developer")
         db_type = self.config.get("database_type", "sqlite")
 
         # Define components based on profile
         components = {
+            'venv': {
+                'name': 'Python Virtual Environment',
+                'applicable': True,
+                'status': 'pending'
+            },
             'config': {
-                'name': 'Configuration Files',
+                'name': 'Server Configuration Files',
                 'applicable': True,
                 'status': 'pending'
             },
             'directories': {
-                'name': 'Directory Structure',
+                'name': 'Server Directory Structure',
+                'applicable': True,
+                'status': 'pending'
+            },
+            'dependencies': {
+                'name': 'MCP Server Dependencies',
                 'applicable': True,
                 'status': 'pending'
             },
@@ -668,13 +687,13 @@ class GiljoSetup:
                 'applicable': True,
                 'status': 'pending'
             },
-            'dependencies': {
-                'name': 'Python Dependencies',
+            'registration': {
+                'name': 'Claude MCP Registration',
                 'applicable': True,
                 'status': 'pending'
             },
             'validation': {
-                'name': 'System Validation',
+                'name': 'Installation Validation',
                 'applicable': True,
                 'status': 'pending'
             }
@@ -721,11 +740,55 @@ class GiljoSetup:
             console.print("[yellow]Installation cancelled.[/yellow]")
             return
 
-        # Create configuration files
+        console.print("\n[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]")
+        console.print("[bold cyan]          STARTING MCP SERVER INSTALLATION[/bold cyan]")
+        console.print("[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]\n")
+
+        # Step 1: Create Python Virtual Environment
+        console.clear()
+        components['venv']['status'] = 'installing'
+        console.print(display_status())
+        console.print("\n[bold]PHASE 1: Creating Python Virtual Environment...[/bold]")
+        console.print("[dim]This creates an isolated Python environment for the MCP server[/dim]\n")
+
+        try:
+            venv_path = Path.cwd() / "venv"
+            if not venv_path.exists():
+                console.print("[blue]→ Creating virtual environment...[/blue]")
+                result = subprocess.run(
+                    [sys.executable, "-m", "venv", "venv"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    console.print("  [green]✓[/green] Virtual environment created successfully")
+                    components['venv']['status'] = 'completed'
+                else:
+                    raise Exception(f"Failed to create venv: {result.stderr}")
+            else:
+                console.print("  [green]✓[/green] Virtual environment already exists")
+                components['venv']['status'] = 'completed'
+
+            # Verify pip is available
+            pip_path = venv_path / ("Scripts" if sys.platform == "win32" else "bin") / "pip"
+            if pip_path.exists():
+                console.print(f"  [green]✓[/green] Pip available at: {pip_path}")
+            else:
+                console.print(f"  [yellow]⚠[/yellow] Pip not found, using system pip")
+
+        except Exception as e:
+            components['venv']['status'] = 'failed'
+            console.print(f"  [red]✗[/red] Virtual environment creation failed: {e}")
+            console.print("[yellow]Continuing with system Python...[/yellow]")
+
+        input("\n[dim]Press Enter to continue...[/dim]")
+
+        # Step 2: Create configuration files
         console.clear()
         components['config']['status'] = 'installing'
         console.print(display_status())
-        console.print("\n[bold]Creating configuration files...[/bold]")
+        console.print("\n[bold]PHASE 2: Creating Server Configuration...[/bold]")
+        console.print("[dim]Setting up configuration for the orchestration server[/dim]\n")
 
         try:
             from setup_config import ConfigurationManager
@@ -1057,22 +1120,45 @@ class GiljoSetup:
             console.print("[green]✓ All critical dependencies validated[/green]")
 
     def _create_desktop_launcher(self):
-        """Create desktop launcher/shortcut for the current OS"""
-        console.print("\n[bold]Creating Desktop Launcher...[/bold]")
+        """Create desktop shortcuts for easy server management"""
+        console.print("\n[bold]Creating Desktop Shortcuts...[/bold]")
 
         try:
-            if self.platform_info.get("is_windows"):
-                self._create_windows_shortcut()
-            elif self.platform_info.get("is_mac"):
-                self._create_mac_app()
-            elif self.platform_info.get("is_linux"):
-                self._create_linux_desktop_entry()
+            from create_shortcuts import create_shortcuts, add_to_startup_windows
+
+            # Create shortcuts
+            shortcuts = create_shortcuts()
+
+            if shortcuts:
+                console.print(f"[green]✓[/green] Created {len(shortcuts)} desktop shortcuts:")
+                console.print("  • [cyan]Start Server[/cyan] - Launch the MCP orchestration server")
+                console.print("  • [cyan]Stop Server[/cyan] - Shutdown the server gracefully")
+                console.print("  • [cyan]Connect Project[/cyan] - Connect projects to the server")
+                console.print("  • [cyan]Check Status[/cyan] - View server running status")
+
+                # Ask about auto-start on Windows
+                if self.platform_info.get("is_windows"):
+                    console.print("\n[yellow]Optional: Auto-start with Windows[/yellow]")
+                    if Confirm.ask("Would you like the MCP server to start automatically with Windows?", default=False):
+                        if add_to_startup_windows():
+                            console.print("[green]✓[/green] Added to Windows startup")
+                            console.print("[dim]You can disable this later in Task Manager > Startup[/dim]")
+                        else:
+                            console.print("[yellow]Could not add to startup (requires admin rights)[/yellow]")
+
+                return True
             else:
-                console.print("[yellow]Desktop launcher not created - unknown OS[/yellow]")
+                console.print("[yellow]Desktop shortcuts could not be created[/yellow]")
+                console.print("[dim]You can run create_shortcuts.py manually later[/dim]")
                 return False
-            return True
+
+        except ImportError:
+            console.print("[yellow]Shortcut creation module not found[/yellow]")
+            console.print("[dim]Run 'python create_shortcuts.py' manually after setup[/dim]")
+            return False
         except Exception as e:
-            console.print(f"[yellow]Could not create desktop launcher: {e}[/yellow]")
+            console.print(f"[yellow]Could not create desktop shortcuts: {e}[/yellow]")
+            console.print("[dim]Run 'python create_shortcuts.py' manually after setup[/dim]")
             return False
 
     def _create_windows_shortcut(self):
@@ -1298,63 +1384,93 @@ Categories=Development;IDE;
         # Create installation manifest
         self._create_installation_manifest()
 
+        install_path = Path.cwd()
+
         console.print("\n" + "=" * 60)
-        console.print("[bold green]Setup Complete![/bold green]")
+        console.print("[bold green]MCP SERVER INSTALLATION COMPLETE![/bold green]")
         console.print("=" * 60)
 
+        # Installation summary
+        console.print(f"\n[bold cyan]✅ SERVER INSTALLED AT:[/bold cyan] {install_path}")
+        console.print("\nThis is a standalone MCP orchestration server that will coordinate")
+        console.print("multiple AI agents across ALL your development projects.\n")
+
         # Configuration summary
-        summary_table = Table(title="Configuration Summary", show_header=False)
+        summary_table = Table(title="Server Configuration", show_header=False)
         summary_table.add_column("Setting", style="cyan")
         summary_table.add_column("Value", style="green")
 
+        summary_table.add_row("Server Type", "Standalone Orchestration Server")
         summary_table.add_row("Database Type", self.env_vars.get("DB_TYPE", "sqlite"))
         summary_table.add_row("Deployment Mode", self.env_vars.get("GILJO_MCP_MODE", "local"))
-        summary_table.add_row(
-            "Dashboard URL", f"http://localhost:{self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')}"
-        )
-        summary_table.add_row("API URL", f"http://localhost:{self.env_vars.get('GILJO_MCP_API_PORT', '6002')}")
-        summary_table.add_row("MCP Server", f"localhost:{self.env_vars.get('GILJO_MCP_SERVER_PORT', '6001')}")
-        summary_table.add_row("WebSocket", f"ws://localhost:{self.env_vars.get('GILJO_MCP_WEBSOCKET_PORT', '6003')}")
+        summary_table.add_row("API Endpoint", f"http://localhost:{self.env_vars.get('GILJO_MCP_API_PORT', '8000')}")
+        summary_table.add_row("MCP Protocol", "stdio (via python -m giljo_mcp)")
+        summary_table.add_row("WebSocket", f"ws://localhost:{self.env_vars.get('GILJO_MCP_WEBSOCKET_PORT', '8000')}/ws")
 
         console.print(summary_table)
 
-        # Next steps - harmonized with GUI installer
-        console.print("\n[bold]To start using GiljoAI MCP:[/bold]")
-        console.print()
+        # CRITICAL NEXT STEPS
+        console.print("\n[bold red]═══════════════════════════════════════════════════════════[/bold red]")
+        console.print("[bold red]                    NEXT STEPS - IMPORTANT![/bold red]")
+        console.print("[bold red]═══════════════════════════════════════════════════════════[/bold red]\n")
 
-        # Platform-specific start commands
+        console.print("[bold green]DESKTOP SHORTCUTS CREATED![/bold green]")
+        console.print("Check your desktop for quick access icons:")
+        console.print("  • [cyan]GiljoAI MCP - Start Server[/cyan]")
+        console.print("  • [cyan]GiljoAI MCP - Stop Server[/cyan]")
+        console.print("  • [cyan]GiljoAI MCP - Connect Project[/cyan]")
+        console.print("  • [cyan]GiljoAI MCP - Check Status[/cyan]\n")
+
+        console.print("[bold]1. REGISTER WITH CLAUDE (Optional but recommended):[/bold]")
         if self.platform_info.get("is_windows"):
-            console.print("1. Run [cyan]start_giljo.bat[/cyan] to start all services")
-            console.print("   • This will start the MCP server, API server, and dashboard")
-            console.print("   • The dashboard will open automatically in your browser")
-            console.print()
-            console.print("2. Use [cyan]stop_giljo.bat[/cyan] to stop all services when done")
+            console.print(f"   Run: [cyan]{install_path}\\register_claude.bat[/cyan]")
         else:
-            console.print("1. Run [cyan]./start_giljo.sh[/cyan] to start all services")
-            console.print("   • This will start the MCP server, API server, and dashboard")
-            console.print("   • The dashboard will open automatically in your browser")
-            console.print()
-            console.print("2. Use [cyan]./stop_giljo.sh[/cyan] to stop all services when done")
+            console.print(f"   Run: [cyan]{install_path}/register_claude.sh[/cyan]")
+        console.print("   This registers the server globally with Claude\n")
 
-        console.print()
-        console.print("[bold]The dashboard includes:[/bold]")
-        console.print("• System health monitoring")
-        console.print("• Database connectivity status")
-        console.print("• Service management controls")
-        console.print("• Agent orchestration interface")
-        console.print()
+        console.print("[bold]2. START THE SERVER:[/bold]")
+        console.print("   Click the [cyan]Start Server[/cyan] desktop shortcut")
+        console.print("   OR run manually:")
+        if self.platform_info.get("is_windows"):
+            console.print(f"   [cyan]{install_path}\\start_giljo.bat[/cyan]")
+        else:
+            console.print(f"   [cyan]{install_path}/start_giljo.sh[/cyan]")
+        console.print("   Server will run at http://localhost:8000\n")
 
-        console.print("[bold]Manual startup (alternative):[/bold]")
-        console.print(f"• MCP Server: [cyan]python -m giljo_mcp.server[/cyan] (port {self.env_vars.get('GILJO_MCP_SERVER_PORT', '6001')})")
-        console.print(f"• API Server: [cyan]python -m giljo_mcp.api_server[/cyan] (port {self.env_vars.get('GILJO_MCP_API_PORT', '6002')})")
-        console.print(f"• Dashboard: [cyan]cd frontend && npm run dev[/cyan] (port {self.env_vars.get('GILJO_MCP_DASHBOARD_PORT', '6000')})")
+        console.print("[bold]3. CONNECT YOUR PROJECTS:[/bold]")
+        console.print("   In EACH development project folder where you want orchestration:")
+        if self.platform_info.get("is_windows"):
+            console.print(f"   Run: [cyan]{install_path}\\connect_project.bat[/cyan]")
+        else:
+            console.print(f"   Run: [cyan]python {install_path}/connect_project.py[/cyan]")
+        console.print()
+        console.print("   This creates a lightweight .mcp.json config that")
+        console.print("   connects your project to this MCP server.\n")
+
+        console.print("[bold]4. RESTART YOUR CODING AGENT:[/bold]")
+        console.print("   After connecting a project, restart Claude/Cursor/etc.")
+        console.print("   to load the MCP orchestration tools.\n")
+
+        console.print("[bold yellow]IMPORTANT NOTES:[/bold yellow]")
+        console.print("• [bold red]The server MUST be running for agents to connect![/bold red]")
+        console.print("• Use the desktop shortcut to start/stop the server easily")
+        console.print("• This server can handle multiple projects simultaneously")
+        console.print("• Each project needs its own .mcp.json connection file")
+        console.print("• The server runs independently from your projects")
+        console.print("• Do NOT copy server files to project folders\n")
+
+        console.print("[bold]Documentation:[/bold]")
+        console.print(f"• Installation Guide: [cyan]{install_path}\\INSTALLATION.md[/cyan]")
+        console.print(f"• Project Connection: [cyan]{install_path}\\PROJECT_CONNECTION.md[/cyan]")
 
         if self.env_vars.get("GILJO_MCP_MODE") != "local":
             console.print("\n[yellow]Security Note:[/yellow]")
             console.print("Your API key has been saved to .env")
+            console.print("Share this key with team members who need to connect.")
             console.print("Keep this key secure and never commit it to version control!")
 
-        console.print("\n[bold cyan]Thank you for installing GiljoAI MCP![/bold cyan]")
+        console.print("\n[bold cyan]Thank you for installing GiljoAI MCP Server![/bold cyan]")
+        console.print("[dim]Remember: Install once, use everywhere![/dim]")
 
 
 # ==============================================================================

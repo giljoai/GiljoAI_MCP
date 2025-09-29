@@ -109,22 +109,43 @@ class ProfileSelectionPage(WizardPage):
     """Welcome and deployment mode selection page"""
 
     def __init__(self, parent):
-        super().__init__(parent, "Welcome to GiljoAI MCP Setup")
+        super().__init__(parent, "GiljoAI MCP Server Installation")
 
         # Welcome Title
-        title_label = ttk.Label(self, text="GiljoAI MCP Coding Orchestrator", font=("Helvetica", 16, "bold"))
+        title_label = ttk.Label(self, text="GiljoAI MCP Orchestration Server", font=("Helvetica", 16, "bold"))
         title_label.pack(pady=10)
 
+        # IMPORTANT WARNING
+        warning_frame = ttk.Frame(self)
+        warning_frame.pack(padx=20, pady=10, fill="x")
+
+        warning_label = ttk.Label(
+            warning_frame,
+            text="⚠️ IMPORTANT: Installing System-Wide MCP Server",
+            font=("Helvetica", 10, "bold"),
+            foreground="red"
+        )
+        warning_label.pack()
+
+        warning_detail = ttk.Label(
+            warning_frame,
+            text="This installs a standalone server. Do NOT install in project folders!\nRecommended: C:\\GiljoAI_MCP or ~/giljo-mcp",
+            foreground="red"
+        )
+        warning_detail.pack()
+
         # Welcome message
-        welcome_text = """Welcome to the GiljoAI MCP installation wizard.
+        welcome_text = """This wizard will install the GiljoAI MCP orchestration server.
 
-This wizard will help you:
-• Check system requirements and port availability
-• Configure your database and security settings
-• Install required dependencies
-• Initialize your orchestrator
+What this installer does:
+• Installs a standalone MCP server (one-time, system-wide)
+• Creates its own Python environment and dependencies
+• Configures database and network settings
+• Registers globally with Claude (optional)
 
-Select the deployment mode that best matches your needs:"""
+After installation, you'll connect projects via lightweight config files.
+
+Select your server deployment mode:"""
 
         desc_label = ttk.Label(self, text=welcome_text, justify=tk.LEFT)
         desc_label.pack(padx=20, pady=10)
@@ -891,11 +912,11 @@ class ProgressPage(WizardPage):
     def _init_components(self):
         """Initialize component list - will be updated based on profile"""
         component_list = [
-            ('config', 'Configuration Files'),
-            ('directories', 'Directory Structure'),
-            ('database', 'Database Setup'),
-            ('schema', 'Database Schema'),
-            ('validation', 'System Validation')
+            ('venv', 'Python Virtual Environment'),
+            ('dependencies', 'Server Dependencies'),
+            ('config', 'Server Configuration'),
+            ('database', 'Database Initialization'),
+            ('registration', 'MCP Registration')
         ]
 
         for comp_id, label in component_list:
@@ -1124,30 +1145,74 @@ class ProgressPage(WizardPage):
         """Actually run installation based on profile and configuration"""
         import threading
         import time
+        import subprocess
+        import sys
 
         profile = config.get("profile", "developer")
-        self.log(f"Starting installation for {profile} profile", "system")
+        self.log(f"Installing GiljoAI MCP Server", "system")
+        self.log(f"Installation Mode: {profile}", "system")
+        self.log("="*60, "system")
 
         # Update component applicability again with actual config
         self.update_component_applicability(profile, config)
 
-        # Determine database type based on deployment mode
-        # Local mode: SQLite (no additional services needed)
-        # Server mode: Can use PostgreSQL if configured
-        run_postgresql = False
+        # Step 1: Create Python Virtual Environment
+        self.set_status("Creating Python virtual environment...", "venv")
+        self.set_progress(10, "venv")
+        self.log("\n[PHASE 1: VIRTUAL ENVIRONMENT]", "info")
+        self.log("Creating isolated Python environment for MCP server...", "system")
 
-        if profile == "server":
-            if config.get("db_type") == "postgresql":
-                run_postgresql = True
-                self.log("Server mode: Using PostgreSQL database", "system")
+        try:
+            venv_path = Path.cwd() / "venv"
+            if not venv_path.exists():
+                subprocess.run([sys.executable, "-m", "venv", "venv"], check=True)
+                self.log("✓ Virtual environment created", "success")
             else:
-                self.log("Server mode: Using SQLite database", "system")
-        else:  # Local mode
-            self.log("Local mode: Using SQLite database (no additional services needed)", "system")
+                self.log("✓ Virtual environment already exists", "info")
+            self.set_progress(100, "venv")
+            self.set_status("Virtual environment ready ✓", "venv")
+        except Exception as e:
+            self.log(f"✗ Failed to create virtual environment: {e}", "error")
+            self.set_status(f"Virtual environment failed: {e}", "venv")
 
-        # Create configuration files
-        self.set_status("Creating configuration files...", "config")
+        # Step 2: Install Dependencies
+        self.set_status("Installing server dependencies...", "dependencies")
+        self.set_progress(10, "dependencies")
+        self.log("\n[PHASE 2: DEPENDENCIES]", "info")
+        self.log("Installing required Python packages...", "system")
+
+        try:
+            # Determine pip path
+            pip_path = venv_path / ("Scripts" if sys.platform == "win32" else "bin") / "pip"
+
+            # Install requirements
+            self.log("Installing from requirements.txt...", "system")
+            subprocess.run([str(pip_path), "install", "-r", "requirements.txt"], check=True)
+            self.set_progress(50, "dependencies")
+
+            # Install the package itself
+            self.log("Installing giljo_mcp package...", "system")
+            subprocess.run([str(pip_path), "install", "-e", "."], check=True)
+            self.set_progress(100, "dependencies")
+
+            self.log("✓ All dependencies installed", "success")
+            self.set_status("Dependencies installed ✓", "dependencies")
+        except Exception as e:
+            self.log(f"✗ Failed to install dependencies: {e}", "error")
+            self.set_status(f"Dependencies failed: {e}", "dependencies")
+
+        # Determine database type based on deployment mode
+        run_postgresql = False
+        if profile == "server" and config.get("db_type") == "postgresql":
+            run_postgresql = True
+            self.log("\n[DATABASE MODE: PostgreSQL]", "system")
+        else:
+            self.log("\n[DATABASE MODE: SQLite (Zero Configuration)]", "system")
+
+        # Step 3: Create configuration files
+        self.set_status("Creating server configuration...", "config")
         self.set_progress(10, "config")
+        self.log("\n[PHASE 3: SERVER CONFIGURATION]", "info")
         self.log("Creating configuration files...", "system")
 
         try:
@@ -1443,6 +1508,22 @@ class ProgressPage(WizardPage):
                 self.log(f"Warning: Could not create manifest: {manifest_error}", "system")
                 # Not critical - continue
 
+            # Create desktop shortcuts
+            self.log("\nCreating desktop shortcuts...", "system")
+            try:
+                from create_shortcuts import create_shortcuts, add_to_startup_windows
+                shortcuts = create_shortcuts()
+                if shortcuts:
+                    self.log(f"✓ Created {len(shortcuts)} desktop shortcuts", "success")
+                    self.log("  • Start Server - Launch the MCP server", "info")
+                    self.log("  • Stop Server - Shutdown the server", "info")
+                    self.log("  • Connect Project - Connect projects to server", "info")
+                    self.log("  • Check Status - View server status", "info")
+                else:
+                    self.log("Desktop shortcuts could not be created", "warning")
+            except Exception as shortcut_error:
+                self.log(f"Warning: Could not create shortcuts: {shortcut_error}", "warning")
+
             # Register with Claude if available
             self.log("\nChecking Claude integration...", "system")
             try:
@@ -1694,22 +1775,46 @@ class GiljoSetupGUI:
 
     def finish_setup(self):
         """Complete the setup process"""
+        # Get installation path
+        install_path = Path.cwd()
+
         # Create a more informative completion message
-        message = """GiljoAI MCP has been installed successfully!
+        message = f"""GiljoAI MCP Server Installation Complete!
 
-To start using GiljoAI MCP:
+✅ SERVER INSTALLED AT: {install_path}
 
-1. Run 'start_giljo.bat' to start all services
-2. The dashboard will open automatically at http://localhost:6000
-3. Use 'stop_giljo.bat' to stop all services when done
+This is a standalone MCP orchestration server that will coordinate
+multiple AI agents across all your development projects.
 
-The dashboard includes:
-• System health monitoring
-• Database connectivity status
-• Service management controls
-• Agent orchestration interface
+NEXT STEPS:
+═══════════════════════════════════════════════════════════
 
-Thank you for installing GiljoAI MCP!"""
+1. REGISTER WITH CLAUDE (Optional but recommended):
+   Run: {install_path}\\register_claude.bat
+   This registers the server globally with Claude
+
+2. START THE SERVER:
+   Run: {install_path}\\start_giljo.bat
+   Server will run at http://localhost:8000
+
+3. CONNECT YOUR PROJECTS:
+   In each development project folder, run:
+   {install_path}\\connect_project.bat
+
+   This creates a lightweight .mcp.json config that
+   connects your project to this MCP server.
+
+4. RESTART YOUR CODING AGENT:
+   After connecting a project, restart Claude/Cursor
+   to load the MCP orchestration tools.
+
+IMPORTANT:
+• This server can handle multiple projects simultaneously
+• Each project needs its own .mcp.json connection file
+• The server runs independently from your projects
+
+Documentation: {install_path}\\INSTALLATION.md
+Project Connection Guide: {install_path}\\PROJECT_CONNECTION.md"""
 
         messagebox.showinfo("Installation Complete", message)
         self.root.quit()
