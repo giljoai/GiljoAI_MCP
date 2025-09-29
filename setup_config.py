@@ -337,8 +337,8 @@ class ConfigurationManager:
 
         # Validate database URL
         db_url = env_config.get("DATABASE_URL", "")
-        if db_url and not (db_url.startswith(("sqlite://", "postgresql://"))):
-            issues.append("Invalid DATABASE_URL format")
+        if db_url and not db_url.startswith("postgresql://"):
+            issues.append("Invalid DATABASE_URL format - must be PostgreSQL")
 
         # Validate ports
         port_keys = [
@@ -469,8 +469,7 @@ class ConfigurationManager:
                 "description": f"Configuration template for {environment} environment",
             },
             "database": {
-                "type": "sqlite" if environment == "development" else "postgresql",
-                "sqlite": {"path": "data/giljo_mcp.db"},
+                "type": "postgresql",  # Always PostgreSQL
                 "postgresql": {
                     "host": "localhost",
                     "port": 5432,
@@ -533,10 +532,6 @@ class ConfigurationManager:
                 env_content.append(f"PG_DATABASE={config_values.get('pg_database', 'giljo_mcp')}")
                 env_content.append(f"PG_USER={config_values.get('pg_user', 'postgres')}")
                 env_content.append(f"PG_PASSWORD={config_values.get('pg_password', '')}")
-            else:
-                env_content.append("# SQLite Configuration")
-                env_content.append(f"DATABASE_TYPE=sqlite")
-                env_content.append(f"DB_PATH={config_values.get('db_path', 'data/giljo_mcp.db')}")
             env_content.append("")
 
             # Redis configuration (for all profiles now)
@@ -579,10 +574,7 @@ class ConfigurationManager:
 
             config = {
                 'database': {
-                    'type': config_values.get('database_type', 'sqlite'),
-                    'sqlite': {
-                        'path': config_values.get('db_path', 'data/giljo_mcp.db')
-                    },
+                    'type': 'postgresql',  # Always PostgreSQL
                     'postgresql': {
                         'host': config_values.get('pg_host', 'localhost'),
                         'port': config_values.get('pg_port', 5432),

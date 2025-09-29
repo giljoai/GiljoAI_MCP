@@ -72,12 +72,10 @@ class ServerConfig:
 class DatabaseConfig:
     """Database configuration settings."""
 
-    type: str = "sqlite"  # sqlite or postgresql
+    type: str = "postgresql"  # PostgreSQL only
     database_name: str = "giljo_mcp.db"
     database_url: Optional[str] = None
 
-    # SQLite settings
-    sqlite_path: Path = field(default_factory=lambda: Path("./data/giljo_mcp.db"))
 
     # PostgreSQL settings
     host: str = "localhost"
@@ -147,21 +145,6 @@ class DatabaseConfig:
         if self.database_url:
             return self.database_url
 
-        if self.type == "sqlite":
-            # Use database_name if different from default
-            if self.database_name != "giljo_mcp.db":
-                base_path = self.sqlite_path.parent / self.database_name
-            else:
-                base_path = self.sqlite_path
-
-            # Support tenant-specific SQLite databases if multi-tenant enabled
-            if tenant_key:
-                db_path = base_path.parent / f"tenant_{tenant_key}.db"
-            else:
-                db_path = base_path
-
-            db_path.parent.mkdir(parents=True, exist_ok=True)
-            return f"sqlite:///{db_path.as_posix()}"
         if self.type == "postgresql":
             # Try to use DatabaseManager's method if available
             try:
@@ -521,8 +504,6 @@ class ConfigManager:
                 db = data["database"]
                 self.database.type = db.get("type", self.database.type)
 
-                if "sqlite" in db:
-                    self.database.sqlite_path = Path(db["sqlite"].get("path", self.database.sqlite_path))
 
                 if "postgresql" in db:
                     pg = db["postgresql"]
@@ -711,9 +692,7 @@ class ConfigManager:
                 logger.warning(f"Generated API key for LAN mode: {self.server.api_key}")
 
         elif self.server.mode == DeploymentMode.WAN:
-            # WAN mode: require strong auth, recommend PostgreSQL
-            if self.database.type == "sqlite":
-                logger.warning("SQLite is not recommended for WAN mode. Consider using PostgreSQL.")
+            # WAN mode: require strong auth
 
             if not self.server.api_key:
                 raise ConfigValidationError("API key is required for WAN mode")
@@ -738,8 +717,8 @@ class ConfigManager:
                 errors.append(f"Invalid port {port}: Must be between 1024 and 65535")
 
         # Database validation
-        if self.database.type not in ("sqlite", "postgresql"):
-            errors.append(f"Invalid database type: {self.database.type}")
+        if self.database.type != "postgresql":
+            errors.append(f"Only PostgreSQL is supported. Got: {self.database.type}")
 
         if self.database.type == "postgresql":
             # Only require password if no database URL is provided
@@ -835,9 +814,6 @@ class ConfigManager:
             },
             "database": {
                 "type": self.database.type,
-                "sqlite": {
-                    "path": str(self.database.sqlite_path),
-                },
                 "postgresql": {
                     "host": self.database.host,
                     "port": self.database.port,
@@ -1019,8 +995,7 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
             },
         },
         "database": {
-            "type": "sqlite",  # sqlite or postgresql
-            "sqlite": {"path": "./data/giljo_mcp.db"},
+            "type": "postgresql",  # PostgreSQL only
             "postgresql": {
                 "host": "localhost",
                 "port": 5432,

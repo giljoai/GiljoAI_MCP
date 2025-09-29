@@ -1,0 +1,200 @@
+class DatabasePage(WizardPage):
+    """Database configuration page"""
+
+    def __init__(self, parent):
+        super().__init__(parent, "Database Configuration")
+
+        self.db_type_var = tk.StringVar(value="sqlite")
+
+        # Database type selection
+        type_frame = ttk.LabelFrame(self, text="Database Type", padding=10)
+        type_frame.pack(padx=20, pady=10, fill="x")
+
+        ttk.Radiobutton(
+            type_frame,
+            text="SQLite (Recommended for Local Development)",
+            variable=self.db_type_var,
+            value="sqlite",
+            command=self._on_db_type_change,
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            type_frame,
+            text="PostgreSQL (For Network Shared or High Performance)",
+            variable=self.db_type_var,
+            value="postgresql",
+            command=self._on_db_type_change,
+        ).pack(anchor="w")
+
+        # SQLite configuration
+        self.sqlite_frame = ttk.LabelFrame(self, text="SQLite Configuration", padding=10)
+        self.sqlite_frame.pack(padx=20, pady=10, fill="x")
+
+        self.db_path_var = tk.StringVar(value="data/giljo_mcp.db")
+        path_frame = ttk.Frame(self.sqlite_frame)
+        path_frame.pack(fill="x")
+        ttk.Label(path_frame, text="Database Path:").pack(side="left", padx=5)
+        ttk.Entry(path_frame, textvariable=self.db_path_var, width=40).pack(side="left", padx=5)
+        ttk.Button(path_frame, text="Browse", command=self._browse_path).pack(side="left")
+
+        # PostgreSQL configuration
+        self.pg_frame = ttk.LabelFrame(self, text="PostgreSQL Configuration", padding=10)
+
+        self.pg_host_var = tk.StringVar(value="localhost")
+        self.pg_port_var = tk.StringVar(value="5432")
+        self.pg_database_var = tk.StringVar(value="giljo_mcp")
+        self.pg_user_var = tk.StringVar(value="postgres")
+        self.pg_password_var = tk.StringVar()
+
+        # Host
+        host_frame = ttk.Frame(self.pg_frame)
+        host_frame.pack(fill="x", pady=2)
+        ttk.Label(host_frame, text="Host:", width=12).pack(side="left")
+        ttk.Entry(host_frame, textvariable=self.pg_host_var, width=30).pack(side="left", padx=5)
+
+        # Port
+        port_frame = ttk.Frame(self.pg_frame)
+        port_frame.pack(fill="x", pady=2)
+        ttk.Label(port_frame, text="Port:", width=12).pack(side="left")
+        ttk.Entry(port_frame, textvariable=self.pg_port_var, width=30).pack(side="left", padx=5)
+
+        # Database
+        db_frame = ttk.Frame(self.pg_frame)
+        db_frame.pack(fill="x", pady=2)
+        ttk.Label(db_frame, text="Database:", width=12).pack(side="left")
+        ttk.Entry(db_frame, textvariable=self.pg_database_var, width=30).pack(side="left", padx=5)
+
+        # Username
+        user_frame = ttk.Frame(self.pg_frame)
+        user_frame.pack(fill="x", pady=2)
+        ttk.Label(user_frame, text="Username:", width=12).pack(side="left")
+        ttk.Entry(user_frame, textvariable=self.pg_user_var, width=30).pack(side="left", padx=5)
+
+        # Password
+        pass_frame = ttk.Frame(self.pg_frame)
+        pass_frame.pack(fill="x", pady=2)
+        ttk.Label(pass_frame, text="Password:", width=12).pack(side="left")
+        ttk.Entry(pass_frame, textvariable=self.pg_password_var, show="*", width=30).pack(side="left", padx=5)
+
+        # Test connection button
+        self.test_btn = ttk.Button(self.pg_frame, text="Test Connection", command=self._test_connection)
+        self.test_btn.pack(pady=10)
+
+        self.status_label = ttk.Label(self.pg_frame, text="")
+        self.status_label.pack()
+
+        # Initialize visibility
+        self._on_db_type_change()
+
+    def _on_db_type_change(self):
+        """Handle database type change"""
+        if self.db_type_var.get() == "sqlite":
+            self.sqlite_frame.pack(padx=20, pady=10, fill="x")
+            self.pg_frame.pack_forget()
+        else:
+            self.sqlite_frame.pack_forget()
+            self.pg_frame.pack(padx=20, pady=10, fill="x")
+
+    def _browse_path(self):
+        """Browse for database path"""
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".db", filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")]
+        )
+        if filename:
+            self.db_path_var.set(filename)
+
+    def _test_connection(self):
+        """Test PostgreSQL connection"""
+        self.status_label.config(text="Testing connection...", foreground="blue")
+        self.update()
+
+        # Run test in thread to avoid blocking
+        def test():
+            try:
+                import psycopg2
+
+                conn = psycopg2.connect(
+                    host=self.pg_host_var.get(),
+                    port=self.pg_port_var.get(),
+                    database=self.pg_database_var.get(),
+                    user=self.pg_user_var.get(),
+                    password=self.pg_password_var.get(),
+                )
+                conn.close()
+                self.status_label.config(text="✓ Connection successful", foreground="green")
+            except Exception as e:
+                self.status_label.config(text=f"✗ Connection failed: {e!s}", foreground="red")
+
+        thread = threading.Thread(target=test)
+        thread.start()
+
+    def validate(self) -> bool:
+        """Validate database configuration"""
+        if self.db_type_var.get() == "sqlite":
+            return bool(self.db_path_var.get())
+        return all([self.pg_host_var.get(), self.pg_port_var.get(), self.pg_database_var.get(), self.pg_user_var.get()])
+
+    def get_data(self) -> dict:
+        if self.db_type_var.get() == "sqlite":
+            return {"db_type": "sqlite", "db_path": self.db_path_var.get()}
+        return {
+            "db_type": "postgresql",
+            "pg_host": self.pg_host_var.get(),
+            "pg_port": self.pg_port_var.get(),
+            "pg_database": self.pg_database_var.get(),
+            "pg_user": self.pg_user_var.get(),
+            "pg_password": self.pg_password_var.get(),
+        }
+
+    def on_enter(self):
+        """Adapt database settings based on selected profile"""
+        # Access the parent GiljoSetupGUI instance to get config data
+        parent = self.parent
+        while parent and not hasattr(parent, "config_data"):
+            parent = parent.master
+
+        if parent and hasattr(parent, "config_data"):
+            profile = parent.config_data.get("profile", "developer")
+
+            # Set defaults based on profile
+            if profile == "developer":
+                # Default to SQLite for individual developers
+                self.db_type_var.set("sqlite")
+                self.db_path_var.set("data/giljo_mcp.db")
+                self._on_db_type_change()
+
+            elif profile == "team":
+                # Default to PostgreSQL for teams
+                self.db_type_var.set("postgresql")
+                self.pg_database_var.set("giljo_mcp_team")
+                self.pg_user_var.set("giljo_team")
+                self._on_db_type_change()
+
+            elif profile == "enterprise":
+                # PostgreSQL with enterprise defaults
+                self.db_type_var.set("postgresql")
+                self.pg_database_var.set("giljo_mcp_prod")
+                self.pg_user_var.set("giljo_enterprise")
+                self.pg_port_var.set("5432")
+                self._on_db_type_change()
+
+            elif profile == "research":
+                # Flexible setup, default to SQLite but show both options
+                self.db_type_var.set("sqlite")
+                self.db_path_var.set("data/research_giljo.db")
+                self._on_db_type_change()
+
+            # Update the instructions based on profile
+            self._update_instructions(profile)
+
+    def _update_instructions(self, profile: str):
+        """Update the page title and instructions based on profile"""
+        profile_titles = {
+            "developer": "Database Configuration - Developer Profile",
+            "team": "Database Configuration - Team Profile",
+            "enterprise": "Database Configuration - Enterprise Profile",
+            "research": "Database Configuration - Research Profile",
+        }
+
+        if hasattr(self, "title"):
+            self.title = profile_titles.get(profile, "Database Configuration")
+

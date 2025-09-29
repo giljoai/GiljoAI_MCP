@@ -1,7 +1,7 @@
 """
-DatabaseManager for GiljoAI MCP with SQLite/PostgreSQL support.
+DatabaseManager for GiljoAI MCP with PostgreSQL support.
 
-Provides connection pooling, tenant isolation, and seamless database switching.
+Provides connection pooling, tenant isolation, and production-ready database management.
 """
 
 from contextlib import asynccontextmanager, contextmanager
@@ -20,14 +20,13 @@ from .tenant import TenantManager
 
 class DatabaseManager:
     """
-    Manages database connections with support for both SQLite and PostgreSQL.
+    Manages PostgreSQL database connections.
 
     Features:
-    - Automatic database type detection
-    - Connection pooling optimization per database type
-    - Tenant isolation through filtered queries
-    - Zero-configuration SQLite for local development
-    - Production-ready PostgreSQL support
+    - PostgreSQL connection pooling
+    - Multi-tenant isolation through filtered queries
+    - High-performance async support
+    - Production-ready configuration
     """
 
     def __init__(self, database_url: Optional[str] = None, is_async: bool = False):
@@ -35,13 +34,18 @@ class DatabaseManager:
         Initialize DatabaseManager.
 
         Args:
-            database_url: Database connection URL. If None, uses SQLite default.
+            database_url: PostgreSQL connection URL. Required.
             is_async: Whether to use async engine and sessions.
         """
-        self.database_url = database_url or self._get_default_database_url()
+        if not database_url:
+            raise ValueError("PostgreSQL database_url is required")
+
+        self.database_url = database_url
         self.is_async = is_async
-        self.is_sqlite = "sqlite" in self.database_url
-        self.is_postgresql = "postgresql" in self.database_url
+
+        # Validate PostgreSQL URL
+        if "postgresql" not in self.database_url:
+            raise ValueError("Only PostgreSQL databases are supported")
 
         # Initialize engines and session factories
         if self.is_async:
@@ -51,85 +55,40 @@ class DatabaseManager:
             self.engine = self._create_sync_engine()
             self.SessionLocal = scoped_session(sessionmaker(self.engine, expire_on_commit=False))
 
-    def _get_default_database_url(self) -> str:
-        """Get default database URL (SQLite for zero-config local dev)."""
-        db_dir = Path.home() / ".giljo-mcp" / "data"
-        db_dir.mkdir(parents=True, exist_ok=True)
-        db_path = db_dir / "giljo_mcp.db"
-        return f"sqlite:///{db_path}"
 
     def _create_sync_engine(self) -> Engine:
-        """Create synchronous SQLAlchemy engine with optimized settings."""
-        if self.is_sqlite:
-            # SQLite optimizations
-            engine = create_engine(
-                self.database_url,
-                connect_args={"check_same_thread": False, "timeout": 30},
-                poolclass=pool.StaticPool,
-                echo=False,
-            )
-
-            # Enable foreign keys and WAL mode for SQLite
-            @event.listens_for(engine, "connect")
-            def set_sqlite_pragma(dbapi_conn, connection_record):
-                cursor = dbapi_conn.cursor()
-                cursor.execute("PRAGMA foreign_keys=ON")
-                cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.close()
-
-        elif self.is_postgresql:
-            # PostgreSQL optimizations
-            engine = create_engine(
-                self.database_url,
-                poolclass=QueuePool,
-                pool_size=20,
-                max_overflow=40,
-                pool_pre_ping=True,
-                pool_recycle=3600,
-                echo=False,
-            )
-        else:
-            # Generic database
-            engine = create_engine(self.database_url, poolclass=QueuePool, pool_pre_ping=True, echo=False)
-
+        """Create synchronous PostgreSQL engine with optimized settings."""
+        # PostgreSQL optimizations
+        engine = create_engine(
+            self.database_url,
+            poolclass=QueuePool,
+            pool_size=20,
+            max_overflow=40,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            echo=False,
+        )
         return engine
 
     def _create_async_engine(self) -> AsyncEngine:
-        """Create asynchronous SQLAlchemy engine with optimized settings."""
+        """Create asynchronous PostgreSQL engine with optimized settings."""
         # Convert URL for async drivers
         async_url = self.database_url
-        if self.is_sqlite:
-            # Only replace if not already an async dialect
-            if async_url.startswith("sqlite://"):
-                async_url = async_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
-        elif self.is_postgresql:
-            # Only replace if not already an async dialect
-            if async_url.startswith("postgresql://"):
-                async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        if self.is_sqlite:
-            # SQLite async optimizations
-            engine = create_async_engine(
-                async_url,
-                connect_args={"check_same_thread": False, "timeout": 30},
-                poolclass=pool.StaticPool,
-                echo=False,
-            )
-        elif self.is_postgresql:
-            # PostgreSQL async optimizations
-            # Note: AsyncEngine handles pooling internally, don't specify poolclass
-            engine = create_async_engine(
-                async_url,
-                pool_size=20,
-                max_overflow=40,
-                pool_pre_ping=True,
-                pool_recycle=3600,
-                echo=False,
-            )
-        else:
-            # Generic async database
-            # Let SQLAlchemy choose the appropriate pool for async
-            engine = create_async_engine(async_url, pool_pre_ping=True, echo=False)
+        # Only replace if not already an async dialect
+        if async_url.startswith("postgresql://"):
+            async_url = async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        # PostgreSQL async optimizations
+        # Note: AsyncEngine handles pooling internally, don't specify poolclass
+        engine = create_async_engine(
+            async_url,
+            pool_size=20,
+            max_overflow=40,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            echo=False,
+        )
 
         return engine
 
@@ -248,23 +207,6 @@ class DatabaseManager:
             return f"postgresql://{username}:{password}@{host}:{port}/{database}"
         return f"postgresql://{username}@{host}:{port}/{database}"
 
-    @staticmethod
-    def build_sqlite_url(db_path: Optional[Path] = None) -> str:
-        """
-        Build a SQLite connection URL.
-
-        Args:
-            db_path: Path to SQLite database file. If None, uses default.
-
-        Returns:
-            SQLite connection URL
-        """
-        if db_path is None:
-            db_dir = Path.home() / ".giljo-mcp" / "data"
-            db_dir.mkdir(parents=True, exist_ok=True)
-            db_path = db_dir / "giljo_mcp.db"
-
-        return f"sqlite:///{db_path}"
 
     def get_tenant_filter(self, tenant_key: str) -> dict[str, Any]:
         """
@@ -424,7 +366,7 @@ async def init_db(database_url: Optional[str] = None) -> DatabaseManager:
     Convenience function for tests and quick setup.
 
     Args:
-        database_url: Database connection URL. If None, uses SQLite default.
+        database_url: PostgreSQL connection URL. Required.
 
     Returns:
         DatabaseManager: Configured database manager with tables created.

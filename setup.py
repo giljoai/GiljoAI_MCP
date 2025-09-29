@@ -20,9 +20,11 @@ PORT_ASSIGNMENTS = {
     # New unified architecture - single server
     "GiljoAI Orchestrator": 7272,  # Main HTTP server (API + MCP tools + WebSocket)
 
+    # Required services
+    "PostgreSQL": 5432,  # Required database service
+
     # Optional development services
     "Frontend Dev Server": 6000,  # Vite dev server (optional)
-    "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
 
     # Alternative ports if 7272 is occupied
     "alternatives": [7273, 7274, 8747, 8823, 9456, 9789],
@@ -104,8 +106,8 @@ class GiljoSetup:
         }
 
     def check_python_version(self) -> bool:
-        """Verify Python version is 3.8+"""
-        return sys.version_info >= (3, 8)
+        """Verify Python version is 3.10+"""
+        return sys.version_info >= (3, 10)
 
     def check_system_requirements(self) -> List[str]:
         """Check system requirements and return list of issues"""
@@ -113,7 +115,7 @@ class GiljoSetup:
 
         # Python version
         if not self.check_python_version():
-            issues.append(f"Python 3.8+ required, found {sys.version}")
+            issues.append(f"Python 3.10+ required, found {sys.version}")
 
         # Check for pip
         try:
@@ -223,7 +225,7 @@ class GiljoSetup:
         return secrets.token_urlsafe(32)
 
     def create_config_file(self) -> bool:
-        """Create configuration file for v2.0 architecture"""
+        """Create configuration file for v2.0 architecture - PostgreSQL only"""
         config_data = {
             "version": "2.0.0",
             "server": {
@@ -233,8 +235,14 @@ class GiljoSetup:
                 "api_port": self.server_port,  # Same as main port in v2.0
             },
             "database": {
-                "type": self.config.get("database_type", "sqlite"),
-                "sqlite_path": str(self.root_path / "data" / "giljo_mcp.db"),
+                "type": "postgresql",  # Always PostgreSQL now
+                "postgresql": {
+                    "host": self.config.get("pg_host", "localhost"),
+                    "port": self.config.get("pg_port", 5432),
+                    "database": self.config.get("pg_database", "giljo_mcp"),
+                    "username": self.config.get("pg_user", "postgres"),
+                    "password": self.config.get("pg_password", ""),
+                }
             },
             "security": {
                 "api_key": self.generate_api_key() if self.deployment_mode != "LOCAL" else None,
@@ -247,16 +255,6 @@ class GiljoSetup:
                 "multi_user": True,
             }
         }
-
-        # Add PostgreSQL config if selected
-        if config_data["database"]["type"] == "postgresql":
-            config_data["database"]["postgresql"] = {
-                "host": self.config.get("pg_host", "localhost"),
-                "port": self.config.get("pg_port", 5432),
-                "database": self.config.get("pg_database", "giljo_mcp"),
-                "username": self.config.get("pg_username", "giljo_mcp"),
-                "password": self.config.get("pg_password", ""),
-            }
 
         # Write config file
         config_path = self.root_path / "config.yaml"
@@ -329,7 +327,7 @@ class GiljoSetup:
         print("\nArchitecture: Unified HTTP Server")
         print(f"Server Port: {self.server_port}")
         print(f"Deployment Mode: {self.deployment_mode}")
-        print(f"Database: {self.config.get('database_type', 'sqlite')}")
+        print("Database: PostgreSQL")
 
         print("\nKey Features:")
         print("✓ Multi-user support (multiple concurrent connections)")
@@ -347,3 +345,75 @@ class GiljoSetup:
         if self.deployment_mode != "LOCAL":
             print(f"\nAPI Key: {self.config.get('api_key', 'Check config.yaml')}")
             print("Save this key - you'll need it for remote connections")
+
+
+def main():
+    """Main entry point for setup"""
+    # Check if we should use enhanced CLI or basic setup
+    try:
+        from setup_cli import GiljoCLISetup
+        setup = GiljoCLISetup()
+        setup.run()
+    except ImportError:
+        # Fallback to basic setup
+        print("Enhanced CLI not available, using basic setup")
+        setup = GiljoSetup()
+
+        # Basic interactive setup
+        print("GiljoAI MCP Setup - PostgreSQL Edition")
+        print("="*40)
+
+        # Check requirements
+        issues = setup.check_system_requirements()
+        if issues:
+            print("\nSystem requirements check found issues:")
+            for issue in issues:
+                print(f"  - {issue}")
+
+            response = input("\nContinue anyway? (y/n): ")
+            if response.lower() != 'y':
+                sys.exit(1)
+
+        # Select deployment mode
+        print("\nDeployment Mode:")
+        print("1) Local (single user, no auth)")
+        print("2) Server (multi-user, API auth)")
+        choice = input("Select (1-2): ")
+
+        setup.deployment_mode = "LOCAL" if choice == "1" else "SERVER"
+
+        # Get PostgreSQL config
+        print("\nPostgreSQL Configuration:")
+        setup.config['database_type'] = 'postgresql'
+        setup.config['pg_host'] = input("Host [localhost]: ").strip() or "localhost"
+        setup.config['pg_port'] = input("Port [5432]: ").strip() or "5432"
+        setup.config['pg_database'] = input("Database [giljo_mcp]: ").strip() or "giljo_mcp"
+        setup.config['pg_user'] = input("Username [postgres]: ").strip() or "postgres"
+        setup.config['pg_password'] = input("Password: ").strip()
+
+        # Select port
+        setup.select_port()
+
+        # Run setup steps
+        print("\nRunning setup...")
+        if setup.create_venv():
+            print("✓ Virtual environment created")
+
+        if setup.install_requirements():
+            print("✓ Dependencies installed")
+
+        if setup.create_config_file():
+            print("✓ Configuration created")
+
+        if setup.create_directories():
+            print("✓ Directories created")
+
+        if setup.platform_info["is_windows"]:
+            setup.create_desktop_shortcuts()
+
+        # Show summary
+        setup.display_summary()
+
+
+if __name__ == "__main__":
+    main()
