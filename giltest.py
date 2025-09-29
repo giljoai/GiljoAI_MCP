@@ -1,14 +1,34 @@
 #!/usr/bin/env python3
 """
-GiljoAI MCP - Quick Test Deployment Script
-Copies development files to test directory with smart data preservation
+GiljoAI MCP - Release Simulation & Test Deployment Script
+==========================================================
 
-This script simulates a GitHub release by excluding all files marked
-as 'export-ignore' in .gitattributes. This should copy ~400 files
-(matching release archives) instead of the full ~1600 development files.
+PURPOSE:
+    Simulates a "download from GitHub release and extract" experience by copying
+    only the files that would be included in a GitHub release archive.
 
-Note: robocopy has limitations with wildcards in directory names,
-so some patterns might need manual adjustment.
+WHAT IT DOES:
+    1. Reads exclusion rules from .gitattributes (export-ignore)
+    2. Copies ONLY release-ready files (no dev files, tests, logs, etc.)
+    3. Preserves existing data if updating an installation
+    4. Simulates what a user would get downloading GiljoAI_MCP_v2.0.zip
+
+FILE COUNT:
+    - Development: ~1,600 files (includes tests, logs, sessions, etc.)
+    - Release Simulation: ~400 files (production-ready only)
+    - This script copies ~400 files to match GitHub release behavior
+
+USE CASES:
+    - Test installation scripts on clean "release" copy
+    - Verify installer works with release files (not dev environment)
+    - Simulate fresh user download experience
+    - Test upgrade scenarios (preserve data option)
+
+TECHNICAL NOTES:
+    - Uses robocopy for efficient file copying (Windows)
+    - Mirrors .gitattributes export-ignore rules
+    - Handles data preservation for upgrade testing
+    - Some patterns adjusted for robocopy limitations
 """
 
 import os
@@ -26,6 +46,29 @@ BACKUP_DIR = Path("C:/install_test/Giljo_MCP_backup")
 # Directories to preserve
 PRESERVE_DIRS = ["data", "logs", "backups", "projects"]
 PRESERVE_FILES = [".env", "config.yaml"]
+
+# ============================================================================
+# DOCUMENTATION POLICY FOR RELEASES
+# ============================================================================
+# KEEP (User-Facing):
+#   Root:
+#     - README.md, INSTALLATION.md, CLAUDE.md, CONTRIBUTING.md, SECURITY.md
+#     - LICENSE, PROJECT_CONNECTION.md
+#   docs/:
+#     - ARCHITECTURE_V2.md, TECHNICAL_ARCHITECTURE.md (architecture)
+#     - AI_TOOL_INTEGRATION.md (user guide we just created)
+#     - color_themes.md (UI customization)
+#     - installer_user_guide.md, installer_troubleshooting.md (user-facing)
+#
+# EXCLUDE (Development/Internal):
+#   Root:
+#     - NEXT_AGENT_*, PHASE*, context recovery.md, POSTGRESQL_MIGRATION.md
+#     - *_REPORT.md, *_summary.md, GILTEST_README.md
+#   docs/:
+#     - Sessions/, devlog/, adr/, backup_pre_subagent/, design/, component_specs/
+#     - AGENT_INSTRUCTIONS.md, audit_report*.md, linting_*.md, PROJECT_*.md
+#     - All internal planning, reports, and development guides
+# ============================================================================
 
 # Exclusions for copy - based on .gitattributes export-ignore rules
 # This matches what GitHub releases exclude
@@ -59,12 +102,18 @@ EXCLUDE_DIRS = [
     "docs/devlog",                     # Development logs
     "docs/Vision", "docs/vision",      # Internal vision docs
     "docs/Development", "docs/development",  # Development docs
-    "docs/adr",                        # Architecture Decision Records
+    "docs/adr",                        # Architecture Decision Records (internal)
     "docs/planning",                   # Planning docs
     "docs/templates",                  # Templates (internal)
     "docs/tests",                      # Test documentation
     "docs/techdebt",                   # Technical debt documentation
+    "docs/backup_pre_subagent",        # Backup documentation (internal)
+    "docs/design",                     # Design docs (internal)
+    "docs/component_specs",            # Component specs (internal)
+    "docs/dependencies",               # Dependency analysis (internal)
     "agent_comms",                     # Agent communication files
+    "sessions",                        # Session memory files (root level)
+    "devlog",                          # DevLog files (root level)
 
     # Temp directories
     "tmp", "temp", "backups",
@@ -145,6 +194,33 @@ EXCLUDE_FILES = [
     "TEST_*.md", "WEBSOCKET_*.md",
     "session_*.md", "devlog*.md",
     "NEXT_AGENT_MISSION.md",  # Agent task files
+    "NEXT_AGENT_HANDOFF.md",  # Agent handoff files
+    "context recovery.md",  # Development context
+
+    # Internal docs in docs/ folder (keep ARCHITECTURE_V2.md, TECHNICAL_ARCHITECTURE.md, AI_TOOL_INTEGRATION.md, color_themes.md)
+    "AGENT_INSTRUCTIONS.md",  # Internal agent guide
+    "audit_report*.md",       # Internal audits
+    "forensic_*.md",          # Internal analysis
+    "integration_report*.md", # Internal reports
+    "linting_*.md",           # Internal linting docs
+    "performance_analysis*.md", # Internal performance
+    "phase_*.md",             # Internal phase docs
+    "unification_*.md",       # Internal reports
+    "backend_enhancements*.md", # Internal planning
+    "gui_*.md",               # Internal GUI docs
+    "installer_developer_guide.md", # Internal (developer)
+    "installer_implementation_checklist.md", # Internal
+    "installer_ux_redesign_plan.md", # Internal planning
+    "CONFIGURATION_AND_REFERENCE_INDEX.md", # Internal
+    "DEPENDENCIES.md",        # Internal dependency list
+    "MESSAGE_QUEUE_GUIDE.md", # Internal (could be kept if user-facing?)
+    "PRODUCT_*.md",           # Internal product docs
+    "PROJECT_*.md",           # Internal project docs
+    "PROVEN_FEATURES*.md",    # Internal
+    "README_FIRST.md",        # Internal
+    "SUB_AGENT_*.md",         # Internal
+    "Techdebt*.md",           # Internal tech debt
+    "PRODUCTION_READINESS*.md" # Internal certification
 
     # Deprecated files (v2.0 architecture)
     "*.deprecated",  # All deprecated files
@@ -171,18 +247,34 @@ EXCLUDE_FILES = [
     "commit.bat",  # Git helper
 
     # Session and personal files
-    "PHASE*.md", "PHASE*.jsonl"
+    "PHASE*.md", "PHASE*.jsonl",
+
+    # Migration and update docs (internal)
+    "POSTGRESQL_MIGRATION.md",
+
+    # Build and distribution
+    "create_shortcuts.py",
+
+    # Testing documentation (internal)
+    "GILTEST_README.md"
 ]
 
 
 def print_header():
     """Print script header"""
-    print("=" * 60)
-    print("GiljoAI MCP - Quick Test Deployment Script")
-    print("=" * 60)
+    print("=" * 70)
+    print("  GiljoAI MCP - Release Simulation & Test Deployment")
+    print("=" * 70)
     print()
-    print(f"Source: {SOURCE_DIR}")
-    print(f"Target: {TEST_DIR}")
+    print("This script simulates downloading and extracting a GitHub release.")
+    print("It copies ONLY files that would be in a release archive (no dev files).")
+    print()
+    print(f"📦 Source (Development): {SOURCE_DIR}")
+    print(f"📁 Target (Release Test): {TEST_DIR}")
+    print()
+    print("Exclusions: Using .gitattributes export-ignore rules")
+    print("Expected: ~400 files (vs ~1,600 in development)")
+    print()
 
     # Verify source directory
     if not SOURCE_DIR.exists():
@@ -436,12 +528,12 @@ def restore_data():
 
 def verify_deployment(preserved_items=None):
     """Verify the deployment and show summary"""
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
 
     # Check if files were actually copied
     if not TEST_DIR.exists():
         print("ERROR: Test directory does not exist!")
-        print("=" * 60)
+        print("=" * 70)
         return False
 
     # Count files in target
@@ -453,18 +545,28 @@ def verify_deployment(preserved_items=None):
 
     if file_count == 0:
         print("ERROR: No files were copied!")
-        print("=" * 60)
+        print("=" * 70)
         print("\nTroubleshooting:")
         print("1. Check if source directory has files")
         print("2. Check robocopy output above for errors")
         print("3. Verify no antivirus is blocking file copy")
         return False
 
-    print("SUCCESS: Test deployment complete!")
-    print("=" * 60)
+    # Count source files for comparison
+    source_file_count = 0
+    for root, dirs, files in os.walk(SOURCE_DIR):
+        source_file_count += len(files)
+
+    print("✅ SUCCESS: Release Simulation Complete!")
+    print("=" * 70)
     print()
-    print(f"Files have been copied to: {TEST_DIR}")
-    print(f"Total: {file_count} files in {dir_count} directories")
+    print(f"📁 Release Test Directory: {TEST_DIR}")
+    print(f"📊 File Statistics:")
+    print(f"   • Development (source): {source_file_count:,} files")
+    print(f"   • Release (copied):     {file_count:,} files")
+    print(f"   • Excluded (dev only):  {source_file_count - file_count:,} files")
+    print(f"   • Reduction:            {((source_file_count - file_count) / source_file_count * 100):.1f}%")
+    print()
 
     # Show key files that should exist
     print("\nKey files verification:")
@@ -493,9 +595,34 @@ def verify_deployment(preserved_items=None):
         if (TEST_DIR / "projects").exists():
             print("  [OK] Projects preserved")
 
-    print("\nYou can now:")
+    # Show what was excluded
+    print("\n📦 Release Simulation Details:")
+    print("   Excluded from release (simulating GitHub export-ignore):")
+    print("   • Development docs (sessions/, devlog/, docs/Sessions/, docs/adr/)")
+    print("   • Internal docs (AGENT_*, PROJECT_*, audit_*, linting_*, etc.)")
+    print("   • Test files (tests/, test_*.py, *_test.py)")
+    print("   • Development tools (giltest.py, fix_*.py, debug*.py)")
+    print("   • Cache and builds (__pycache__/, venv/, .mypy_cache/)")
+    print("   • IDE configs (.vscode/, .idea/, .claude/)")
+    print("   • Logs and databases (logs/, *.log, *.db)")
+    print("   • Git metadata (.git/, .gitignore, .gitattributes)")
+    print("   • Coverage and reports (coverage*, *_REPORT.md)")
+    print()
+    print("   Included in release (user-facing documentation):")
+    print("   ✅ README.md, INSTALLATION.md, CLAUDE.md, LICENSE")
+    print("   ✅ docs/ARCHITECTURE_V2.md, docs/TECHNICAL_ARCHITECTURE.md")
+    print("   ✅ docs/AI_TOOL_INTEGRATION.md (new integration guide)")
+    print("   ✅ docs/color_themes.md, docs/installer_user_guide.md")
+    print()
+
+    print("✅ This simulates what a user gets from GitHub releases:")
+    print("   Download → Extract → Run quickstart.bat")
+    print()
+
+    print("You can now:")
     print(f"  1. Navigate to {TEST_DIR}")
-    print("  2. Run quickstart.bat or bootstrap.py to test")
+    print("  2. Run quickstart.bat to test installer")
+    print("  3. Verify installer works with 'release' files only")
     print()
 
     return True

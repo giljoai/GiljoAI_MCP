@@ -1,6 +1,22 @@
 @echo off
-REM GiljoAI MCP - Quick Test Deployment Script
-REM This batch file launches the Python deployment script
+REM ============================================================
+REM GiljoAI MCP - Release Simulation & Test Deployment
+REM ============================================================
+REM
+REM PURPOSE:
+REM   Simulates downloading and extracting a GitHub release
+REM   Copies ONLY files that would be in a release archive
+REM
+REM USAGE:
+REM   giltest.bat           - Run interactive deployment
+REM
+REM WHAT IT DOES:
+REM   1. Reads .gitattributes export-ignore rules
+REM   2. Copies ~400 files (release) vs ~1,600 (development)
+REM   3. Excludes: tests, dev docs, logs, caches, IDE configs
+REM   4. Target: C:\install_test\Giljo_MCP
+REM
+REM ============================================================
 
 python "%~dp0giltest.py" %*
 
