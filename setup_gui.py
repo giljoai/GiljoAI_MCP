@@ -192,7 +192,7 @@ Select your server deployment mode:"""
             command=self._on_mode_change,
         ).pack(anchor="w")
 
-        server_desc = """• PostgreSQL or SQLite database
+        server_desc = """• PostgreSQL database (network ready)
 • API key authentication
 • Network accessible (LAN/WAN)
 • Up to 20 concurrent agents per user
@@ -1265,34 +1265,80 @@ class ProgressPage(WizardPage):
         """Create installation manifest for uninstaller to track what was installed"""
         try:
             import json
+            import subprocess
             from datetime import datetime
 
+            # Get list of installed Python packages
+            installed_packages = []
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "freeze"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    installed_packages = result.stdout.strip().split('\n')
+            except:
+                pass
+
+            # Determine PostgreSQL installation location based on platform
+            pg_location = None
+            pg_service = None
+            if postgresql_installed:
+                if sys.platform == "win32":
+                    pg_location = "C:/PostgreSQL/16"
+                    pg_service = "postgresql-x64-16"
+                elif sys.platform == "darwin":
+                    pg_location = "/usr/local/opt/postgresql@16"
+                    pg_service = "postgresql"
+                else:
+                    pg_location = "/usr/lib/postgresql/16"
+                    pg_service = "postgresql"
+
             manifest = {
-                "version": "1.0",
+                "version": "2.0",
                 "installation_date": datetime.now().isoformat(),
-                "profile": config.get("profile", "developer"),
+                "installation_type": "gui",
+                "deployment_mode": config.get("deployment_mode", "local"),
+                "profile": config.get("profile", "developer"),  # Keep for compatibility
                 "install_directory": str(Path.cwd()),
+                "postgresql": {
+                    "mode": "fresh" if postgresql_installed else "existing",
+                    "installed": postgresql_installed,
+                    "host": config.get("pg_host", "localhost"),
+                    "port": config.get("pg_port", "5432"),
+                    "database": config.get("pg_database", "giljo_mcp"),
+                    "user": config.get("pg_user", "postgres"),
+                    "network_mode": config.get("pg_network_mode", "localhost")
+                },
                 "dependencies": {
-                    "redis": {
-                        "installed": redis_installed,
-                        "location": "C:/Redis" if redis_installed else None,
-                        "service_name": "Redis" if redis_installed else None
-                    },
                     "postgresql": {
                         "installed": postgresql_installed,
-                        "location": "C:/PostgreSQL/16" if postgresql_installed else None,
-                        "service_name": "postgresql-x64-16" if postgresql_installed else None
-                    }
+                        "location": pg_location,
+                        "service_name": pg_service
+                    },
+                    "python_packages": installed_packages
                 },
                 "configuration": {
-                    "database_type": config.get("db_type", "sqlite"),
+                    "database_type": "postgresql",  # Always PostgreSQL now
                     "ports": {
-                        "dashboard": config.get("dashboard_port", 6000),
                         "api": config.get("api_port", 7272),
+                        "dashboard": config.get("dashboard_port", 6000),
                         "websocket": config.get("websocket_port", 6003),
-                        "server": config.get("server_port", 6001)
                     }
-                }
+                },
+                "directories_created": [
+                    "venv", "data", "logs", "backups",
+                    ".giljo_mcp", ".giljo-config"
+                ],
+                "config_files_created": [
+                    ".env", "config.yaml", ".giljo_install_manifest.json"
+                ],
+                "shortcuts_created": [
+                    "Start GiljoAI Server.lnk",
+                    "Stop GiljoAI Server.lnk",
+                    "GiljoAI Dashboard.lnk"
+                ] if sys.platform == "win32" else []
             }
 
             manifest_path = Path(".giljo_install_manifest.json")

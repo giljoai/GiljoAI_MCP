@@ -352,6 +352,7 @@ class GiljoCLISetup(GiljoSetup):
         super().__init__()
         self.ui = TerminalUI()
         self.pg_installer = PostgreSQLInstaller(self.ui)
+        self.pg_mode = None  # Track if PostgreSQL was freshly installed
 
     def run(self):
         """Run the enhanced CLI setup"""
@@ -378,6 +379,8 @@ class GiljoCLISetup(GiljoSetup):
         if pg_mode == "exit":
             print("Setup cancelled.")
             sys.exit(0)
+
+        self.pg_mode = pg_mode  # Store for manifest creation
 
         if pg_mode == "existing":
             pg_config = self.pg_installer.configure_existing()
@@ -458,6 +461,93 @@ class GiljoCLISetup(GiljoSetup):
         else:
             return "exit"
 
+    def create_installation_manifest(self) -> bool:
+        """Create installation manifest for uninstaller"""
+        try:
+            import json
+            from datetime import datetime
+
+            # Get list of installed Python packages
+            installed_packages = []
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "freeze"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    installed_packages = result.stdout.strip().split('\n')
+            except:
+                pass
+
+            manifest = {
+                "version": "2.0",
+                "installation_date": datetime.now().isoformat(),
+                "installation_type": "cli",
+                "deployment_mode": self.deployment_mode,
+                "install_directory": str(Path.cwd()),
+                "postgresql": {
+                    "mode": self.pg_mode or "existing",
+                    "installed": self.pg_mode == "fresh",
+                    "host": self.config.get('pg_host', 'localhost'),
+                    "port": self.config.get('pg_port', '5432'),
+                    "database": self.config.get('pg_database', 'giljo_mcp'),
+                    "user": self.config.get('pg_user', 'postgres'),
+                },
+                "dependencies": {
+                    "postgresql": {
+                        "installed": self.pg_mode == "fresh",
+                        "location": self._get_pg_location(),
+                        "service_name": self._get_pg_service_name()
+                    },
+                    "python_packages": installed_packages
+                },
+                "configuration": {
+                    "database_type": "postgresql",
+                    "ports": {
+                        "api": self.server_port,
+                    }
+                },
+                "directories_created": [
+                    "venv", "data", "logs", "backups",
+                    ".giljo_mcp", ".giljo-config"
+                ],
+                "config_files_created": [
+                    ".env", "config.yaml"
+                ]
+            }
+
+            manifest_path = Path(".giljo_install_manifest.json")
+            with open(manifest_path, "w") as f:
+                json.dump(manifest, f, indent=2)
+
+            return True
+        except Exception as e:
+            print(f"Warning: Could not create manifest: {e}")
+            return True  # Don't fail installation
+
+    def _get_pg_location(self) -> Optional[str]:
+        """Get PostgreSQL installation location"""
+        if self.pg_mode != "fresh":
+            return None
+
+        if sys.platform == "win32":
+            return "C:/PostgreSQL/16"
+        elif sys.platform == "darwin":
+            return "/usr/local/opt/postgresql@16"
+        else:
+            return "/usr/lib/postgresql/16"
+
+    def _get_pg_service_name(self) -> Optional[str]:
+        """Get PostgreSQL service name"""
+        if self.pg_mode != "fresh":
+            return None
+
+        if sys.platform == "win32":
+            return "postgresql-x64-16"
+        else:
+            return "postgresql"
+
     def run_installation(self):
         """Run the installation with progress display"""
         self.ui.clear_screen()
@@ -470,6 +560,7 @@ class GiljoCLISetup(GiljoSetup):
             ("Installing dependencies", self.install_requirements),
             ("Creating configuration", self.create_config_file),
             ("Setting up directories", self.create_directories),
+            ("Creating installation manifest", self.create_installation_manifest),
         ]
 
         total_steps = len(steps)
