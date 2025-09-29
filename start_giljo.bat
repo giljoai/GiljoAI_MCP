@@ -1,8 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-echo Starting GiljoAI MCP Orchestrator...
-echo =====================================
+echo Starting GiljoAI MCP Orchestrator Server...
+echo ==========================================
+echo.
 
 :: Check if Python is available
 python --version >nul 2>&1
@@ -32,7 +33,7 @@ if not exist "venv\Scripts\activate.bat" (
     )
 )
 
-:: Check frontend dependencies
+:: Check frontend dependencies (optional for development)
 if exist "frontend\package.json" (
     cd frontend
     if not exist "node_modules" (
@@ -48,7 +49,6 @@ if !errorlevel! equ 0 (
     :: Claude CLI exists, check if giljo-mcp is registered
     claude mcp list 2>nul | findstr /i "giljo-mcp" >nul
     if !errorlevel! neq 0 (
-        echo.
         echo Claude detected but GiljoAI MCP not registered.
         echo Would you like to register it now? (Y/N^)
         choice /C YN /T 5 /D N /M "Register with Claude"
@@ -59,44 +59,78 @@ if !errorlevel! equ 0 (
     )
 )
 
-:: Start the MCP server in a new window for visibility
-echo Starting MCP server on port 6001...
-start "GiljoMCP Server" cmd /k "call venv\Scripts\activate && python -m giljo_mcp.server"
+echo.
+echo Starting unified orchestration server...
+echo ----------------------------------------
 
-:: Wait a moment for server to start
-timeout /t 3 /nobreak >nul
-
-:: Start the API server in a new window for visibility
+:: Start the API server (which now includes all MCP functionality)
 echo Starting API server on port 8000...
-start "GiljoMCP API" cmd /k "call venv\Scripts\activate && cd api && python run_api.py"
+echo This server handles:
+echo   - REST API endpoints
+echo   - MCP tool execution
+echo   - WebSocket connections
+echo   - Multi-user orchestration
+echo.
+
+:: Start in a new window for visibility
+start "GiljoAI Orchestrator" cmd /k "call venv\Scripts\activate && cd api && python run_api.py"
 
 :: Wait for API to be ready
-timeout /t 3 /nobreak >nul
+echo Waiting for server to start...
+timeout /t 5 /nobreak >nul
 
-:: Start the frontend development server in a new window
-if exist "frontend\package.json" (
-    echo Starting frontend on port 6000...
-    cd frontend
-    start "GiljoMCP Frontend" cmd /k "npm run dev"
-    cd ..
+:: Check if server is running
+curl -s http://localhost:8000/health >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Warning: Server may not have started properly
+    echo Please check the server window for errors
+) else (
+    echo Server is running and healthy!
 )
 
-:: Open browser to dashboard
-timeout /t 3 /nobreak >nul
-echo Opening dashboard in browser...
-start http://localhost:6000
+:: Optional: Start frontend for development
+if exist "frontend\package.json" (
+    echo.
+    echo Would you like to start the frontend development server? (Y/N^)
+    choice /C YN /T 5 /D N /M "Start frontend"
+    if !errorlevel! equ 1 (
+        echo Starting frontend on port 6000...
+        cd frontend
+        start "GiljoAI Frontend" cmd /k "npm run dev"
+        cd ..
+
+        :: Open browser to dashboard
+        timeout /t 3 /nobreak >nul
+        echo Opening dashboard in browser...
+        start http://localhost:6000
+    )
+)
 
 echo.
+echo ==========================================
 echo GiljoAI MCP Orchestrator is running!
-echo =====================================
-echo Dashboard: http://localhost:6000
-echo API: http://localhost:8000
-echo MCP Server: localhost:6001
+echo ==========================================
 echo.
-echo Press Ctrl+C to stop all services
+echo Server URL: http://localhost:8000
+echo.
+echo Available endpoints:
+echo   - API Documentation: http://localhost:8000/docs
+echo   - Health Check: http://localhost:8000/health
+echo   - MCP Tools: http://localhost:8000/mcp/tools
+echo   - WebSocket: ws://localhost:8000/ws
+echo.
+if exist "frontend\package.json" (
+    echo   - Frontend Dashboard: http://localhost:6000 (if started)
+    echo.
+)
+echo This server supports:
+echo   - Multiple concurrent connections
+echo   - Network access (LAN/WAN if configured)
+echo   - Persistent operation
+echo   - Multi-project orchestration
+echo.
+echo To connect Claude, use the MCP adapter (register_claude.bat)
+echo To stop the server, close the server window or use stop_giljo.bat
 echo.
 
-:: Keep the script running
-:loop
-timeout /t 60 /nobreak >nul
-goto loop
+pause

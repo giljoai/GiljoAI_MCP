@@ -283,7 +283,24 @@ Access the real-time dashboard at: **http://localhost:6000**
 
 </div>
 
-## 🏗️ Architecture
+## 🏗️ Architecture (v2.0)
+
+### NEW: Unified HTTP-Based Architecture
+
+**Major Update**: GiljoAI MCP v2.0 uses a unified HTTP server architecture for true multi-user support:
+
+```
+Multiple Clients → HTTP Server (port 8000) → Database
+       ↑
+Claude (via stdio adapter)
+```
+
+- **Single Server**: All functionality on port 8000
+- **Multi-User**: Multiple concurrent connections supported
+- **Persistent**: Server stays running between sessions
+- **Network Ready**: Can deploy on LAN/WAN/Cloud
+
+See [ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for details.
 
 ### System Layers
 
@@ -291,9 +308,9 @@ Access the real-time dashboard at: **http://localhost:6000**
 ┌─────────────────────────────────────┐
 │         Web Dashboard (Vue 3)       │ ← Real-time monitoring
 ├─────────────────────────────────────┤
-│      REST API + WebSocket API       │ ← External integration
+│   Unified HTTP Server (Port 8000)   │ ← All APIs & MCP tools
 ├─────────────────────────────────────┤
-│      MCP Protocol (20+ tools)       │ ← Agent communication
+│      MCP Stdio Adapter (Claude)     │ ← Claude compatibility
 ├─────────────────────────────────────┤
 │        Orchestration Engine         │ ← Brain of the system
 ├─────────────────────────────────────┤

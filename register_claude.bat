@@ -2,14 +2,13 @@
 setlocal EnableDelayedExpansion
 
 REM ============================================================
-REM GiljoAI MCP - Claude Global Registration Script
-REM Registers the MCP server globally with Claude Code
-REM This is a one-time setup for the MCP server installation
-REM Projects will connect to this server via .mcp.json configs
+REM GiljoAI MCP - Claude Registration Script
+REM Registers the MCP stdio adapter with Claude Code
+REM The adapter bridges Claude's stdio to the HTTP server
 REM ============================================================
 
 echo ============================================================
-echo   GiljoAI MCP - Claude Registration
+echo   GiljoAI MCP - Claude Registration (HTTP Bridge)
 echo ============================================================
 echo.
 
@@ -42,23 +41,49 @@ if not exist "%SCRIPT_DIR%\venv\Scripts\python.exe" (
     exit /b 1
 )
 
-echo Registering GiljoAI MCP with Claude...
+echo ============================================================
+echo IMPORTANT: Architecture Update
+echo ============================================================
+echo.
+echo GiljoAI MCP now uses a unified HTTP server architecture:
+echo   - The main server runs on port 8000 (HTTP/REST/WebSocket)
+echo   - Claude connects via a stdio adapter
+echo   - This enables multi-user support and persistence
+echo.
+echo Make sure the server is running before using with Claude:
+echo   Run: start_giljo.bat
 echo.
 
-REM Register the MCP server with Claude
-REM Using the full path to the Python executable in venv
-claude mcp add giljo-mcp "%SCRIPT_DIR%\venv\Scripts\python.exe -m giljo_mcp" --scope user
+echo Registering GiljoAI MCP adapter with Claude...
+echo.
+
+REM Register the MCP adapter (not the server directly)
+REM The adapter translates stdio to HTTP calls to localhost:8000
+claude mcp add giljo-mcp "%SCRIPT_DIR%\venv\Scripts\python.exe -m giljo_mcp.mcp_adapter" --scope user
 
 if %errorlevel% equ 0 (
     echo.
     echo ============================================================
-    echo SUCCESS! GiljoAI MCP has been registered with Claude!
+    echo SUCCESS! GiljoAI MCP adapter has been registered!
     echo ============================================================
     echo.
+    echo How it works:
+    echo   1. Start the server: run start_giljo.bat
+    echo   2. The server runs persistently on port 8000
+    echo   3. Claude connects through the stdio adapter
+    echo   4. Multiple users can connect simultaneously
+    echo.
     echo Next steps:
-    echo   1. Close Claude if it's running
-    echo   2. Restart Claude
-    echo   3. The MCP server will be available automatically
+    echo   1. Start the server (if not running): start_giljo.bat
+    echo   2. Close Claude if it's running
+    echo   3. Restart Claude
+    echo   4. The MCP tools will be available in Claude
+    echo.
+    echo Benefits of the new architecture:
+    echo   - Multiple concurrent connections supported
+    echo   - Server persists between Claude sessions
+    echo   - Can be accessed over network (if configured)
+    echo   - Supports team collaboration
     echo.
     echo You can verify the registration by running:
     echo   claude mcp list
@@ -68,7 +93,12 @@ if %errorlevel% equ 0 (
     echo [ERROR] Registration failed!
     echo.
     echo You can try registering manually:
-    echo   claude mcp add giljo-mcp "%SCRIPT_DIR%\venv\Scripts\python.exe -m giljo_mcp" --scope user
+    echo   claude mcp add giljo-mcp "%SCRIPT_DIR%\venv\Scripts\python.exe -m giljo_mcp.mcp_adapter" --scope user
+    echo.
+    echo Make sure:
+    echo   1. The virtual environment exists
+    echo   2. The mcp_adapter.py file is in src\giljo_mcp\
+    echo   3. Claude CLI is properly installed
     echo.
     pause
     exit /b 1

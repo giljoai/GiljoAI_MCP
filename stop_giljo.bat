@@ -3,35 +3,56 @@ setlocal EnableDelayedExpansion
 
 REM ============================================================
 REM GiljoAI MCP - Stop Server Script
-REM Gracefully shuts down the MCP orchestration server
+REM Gracefully shuts down the unified orchestration server
 REM ============================================================
 
 echo ============================================================
 echo   GiljoAI MCP Server Shutdown
 echo ============================================================
 echo.
-echo Stopping GiljoAI MCP Server components...
+echo Stopping GiljoAI MCP Orchestration Server...
 
-REM Kill Python processes running our services
-taskkill /F /IM python.exe /FI "WINDOWTITLE eq *giljo_mcp*" 2>nul
-
-REM Kill processes by port (using port 8000 for the unified server)
+REM Kill the main API server (port 8000)
+echo Stopping API server on port 8000...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000') do (
     taskkill /F /PID %%a 2>nul
-    if !errorlevel! equ 0 echo   [OK] Stopped process on port 8000
+    if !errorlevel! equ 0 (
+        echo   [OK] Stopped orchestration server (PID: %%a)
+    )
 )
 
-REM Also check legacy ports if configured differently
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :6000') do taskkill /F /PID %%a 2>nul
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :6001') do taskkill /F /PID %%a 2>nul
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :6002') do taskkill /F /PID %%a 2>nul
+REM Kill Python processes with our window titles
+taskkill /F /FI "WINDOWTITLE eq GiljoAI Orchestrator" 2>nul
+if !errorlevel! equ 0 echo   [OK] Stopped orchestrator window
 
-REM Kill any frontend dev server
-taskkill /F /IM node.exe /FI "WINDOWTITLE eq *frontend*" 2>nul
+REM Kill any frontend dev server (optional)
+if exist "frontend\package.json" (
+    echo Checking for frontend dev server...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr :6000') do (
+        taskkill /F /PID %%a 2>nul
+        if !errorlevel! equ 0 echo   [OK] Stopped frontend dev server
+    )
+    taskkill /F /FI "WINDOWTITLE eq GiljoAI Frontend" 2>nul
+)
+
+REM Clean up any orphaned Python processes from our venv
+echo Cleaning up any remaining processes...
+wmic process where "CommandLine like '%%giljo%%' and name='python.exe'" delete 2>nul
+
+REM Remove lock file if it exists
+set "LOCK_FILE=%USERPROFILE%\.giljo_mcp\locks\giljo_mcp.lock"
+if exist "%LOCK_FILE%" (
+    del "%LOCK_FILE%" 2>nul
+    if !errorlevel! equ 0 echo   [OK] Removed lock file
+)
 
 echo.
 echo ============================================================
 echo   Server shutdown complete!
 echo ============================================================
 echo.
+echo The GiljoAI MCP Orchestration Server has been stopped.
+echo To restart, run: start_giljo.bat
+echo.
+
 pause

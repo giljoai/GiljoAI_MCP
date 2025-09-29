@@ -33,7 +33,7 @@ from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
-from .endpoints import agents, configuration, context, messages, projects, statistics, tasks, templates
+from .endpoints import agents, configuration, context, messages, mcp_tools, projects, statistics, tasks, templates
 from .middleware import AuthMiddleware
 from .websocket import WebSocketManager
 
@@ -226,6 +226,9 @@ def create_app() -> FastAPI:
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
     app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
+
+    # MCP tool endpoints for stdio-to-HTTP bridge
+    app.include_router(mcp_tools.router, prefix="/mcp/tools", tags=["mcp_tools"])
 
     @app.get("/")
     async def root():
