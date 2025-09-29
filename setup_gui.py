@@ -454,6 +454,10 @@ class PortsPage(WizardPage):
         self.status_labels = {}
 
         for service, default_port in PORT_ASSIGNMENTS.items():
+            # Skip non-port entries like "alternatives" list
+            if not isinstance(default_port, int):
+                continue
+
             frame = ttk.Frame(ports_frame)
             frame.pack(fill="x", pady=5)
 
@@ -517,18 +521,15 @@ class PortsPage(WizardPage):
             profile = parent.config_data.get("profile", "developer")
 
             # Set port recommendations based on profile
+            # With unified architecture, we only need one main port
             if profile == "enterprise":
                 # Enterprise uses standard ports for production
-                self.port_vars["api"].set("80")
-                self.port_vars["websocket"].set("443")
-                self.port_vars["dashboard"].set("443")
-                self.port_vars["mcp"].set("3000")
+                if "GiljoAI Orchestrator" in self.port_vars:
+                    self.port_vars["GiljoAI Orchestrator"].set("443")
             elif profile == "team":
                 # Team uses higher ports to avoid conflicts
-                self.port_vars["api"].set("9000")
-                self.port_vars["websocket"].set("9001")
-                self.port_vars["dashboard"].set("9002")
-                self.port_vars["mcp"].set("9003")
+                if "GiljoAI Orchestrator" in self.port_vars:
+                    self.port_vars["GiljoAI Orchestrator"].set("9000")
             else:
                 # Developer and Research use default development ports
                 # These are already set in __init__, but we ensure they're correct
@@ -797,12 +798,12 @@ class ReviewPage(WizardPage):
         # URLs
         self.text.insert(tk.END, "\nACCESS URLS\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
-        dashboard_port = config.get("dashboard_port", PORT_ASSIGNMENTS["GiljoAI Dashboard"])
-        api_port = config.get("api_port", PORT_ASSIGNMENTS["GiljoAI REST API"])
+        dashboard_port = config.get("dashboard_port", PORT_ASSIGNMENTS.get("Frontend Dev Server", 6000))
+        api_port = config.get("api_port", PORT_ASSIGNMENTS.get("GiljoAI Orchestrator", 7272))
         self.text.insert(tk.END, f"Dashboard: http://localhost:{dashboard_port}\n")
         self.text.insert(tk.END, f"API: http://localhost:{api_port}\n")
         self.text.insert(
-            tk.END, f"WebSocket: ws://localhost:{config.get('websocket_port', PORT_ASSIGNMENTS['GiljoAI WebSocket'])}\n"
+            tk.END, f"WebSocket: ws://localhost:{config.get('websocket_port', api_port)}/ws\n"
         )
 
         self.text.config(state="disabled")
