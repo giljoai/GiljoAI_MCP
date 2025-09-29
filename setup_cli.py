@@ -353,13 +353,15 @@ class GiljoCLISetup(GiljoSetup):
         self.ui = TerminalUI()
         self.pg_installer = PostgreSQLInstaller(self.ui)
         self.pg_mode = None  # Track if PostgreSQL was freshly installed
+        self.non_interactive = os.environ.get('GILJO_NON_INTERACTIVE', '').lower() == 'true'
 
     def run(self):
         """Run the enhanced CLI setup"""
         self.ui.clear_screen()
 
-        # Show welcome screen
-        self.show_welcome()
+        # Show welcome screen (skip in non-interactive mode)
+        if not self.non_interactive:
+            self.show_welcome()
 
         # Check Python version
         if not self.check_python_version():
@@ -367,23 +369,43 @@ class GiljoCLISetup(GiljoSetup):
             sys.exit(1)
 
         # Select deployment mode
-        deployment_mode = self.select_deployment_mode()
-        if deployment_mode == "exit":
-            print("Setup cancelled.")
-            sys.exit(0)
+        if self.non_interactive:
+            deployment_mode = os.environ.get('GILJO_DEPLOYMENT_MODE', 'local').lower()
+            if deployment_mode not in ['local', 'server']:
+                deployment_mode = 'local'
+            print(self.ui.color(f"✓ Deployment mode: {deployment_mode}", "GREEN"))
+        else:
+            deployment_mode = self.select_deployment_mode()
+            if deployment_mode == "exit":
+                print("Setup cancelled.")
+                sys.exit(0)
 
         self.deployment_mode = deployment_mode
 
         # Configure PostgreSQL
-        pg_mode = self.pg_installer.prompt_installation_mode()
-        if pg_mode == "exit":
-            print("Setup cancelled.")
-            sys.exit(0)
+        if self.non_interactive:
+            pg_mode = os.environ.get('GILJO_PG_MODE', 'existing').lower()
+            print(self.ui.color(f"✓ PostgreSQL mode: {pg_mode}", "GREEN"))
+        else:
+            pg_mode = self.pg_installer.prompt_installation_mode()
+            if pg_mode == "exit":
+                print("Setup cancelled.")
+                sys.exit(0)
 
         self.pg_mode = pg_mode  # Store for manifest creation
 
         if pg_mode == "existing":
-            pg_config = self.pg_installer.configure_existing()
+            if self.non_interactive:
+                pg_config = {
+                    'pg_host': os.environ.get('GILJO_PG_HOST', 'localhost'),
+                    'pg_port': os.environ.get('GILJO_PG_PORT', '5432'),
+                    'pg_database': os.environ.get('GILJO_PG_DATABASE', 'giljo_mcp'),
+                    'pg_user': os.environ.get('GILJO_PG_USER', 'postgres'),
+                    'pg_password': os.environ.get('GILJO_PG_PASSWORD', ''),
+                }
+                print(self.ui.color(f"✓ PostgreSQL config: {pg_config['pg_host']}:{pg_config['pg_port']}/{pg_config['pg_database']}", "GREEN"))
+            else:
+                pg_config = self.pg_installer.configure_existing()
         else:
             pg_config = self.pg_installer.install_fresh()
 
@@ -395,12 +417,17 @@ class GiljoCLISetup(GiljoSetup):
         self.config['database_type'] = 'postgresql'
 
         # Select port
-        self.select_port()
+        if self.non_interactive:
+            port = int(os.environ.get('GILJO_SERVER_PORT', '7272'))
+            self.server_port = port
+            print(self.ui.color(f"✓ Server port: {port}", "GREEN"))
+        else:
+            self.select_port()
 
         # Run installation
         self.run_installation()
 
-        # Show summary
+        # Show summary (skip wait in non-interactive mode)
         self.show_summary()
 
     def show_welcome(self):
@@ -611,9 +638,10 @@ class GiljoCLISetup(GiljoSetup):
             f"Host: {self.config.get('pg_host', 'localhost')}",
             "",
             "Next Steps:",
-            "1. Start server: python -m giljo_mcp",
-            f"2. Access dashboard: http://localhost:{self.server_port}",
-            f"3. View API docs: http://localhost:{self.server_port}/docs",
+            "1. Register AI tools: python register_ai_tools.py",
+            "2. Read integration guide: docs/AI_TOOL_INTEGRATION.md",
+            "3. Start server: python -m giljo_mcp",
+            f"4. Access dashboard: http://localhost:{self.server_port}",
         ], "Configuration Summary", 60)
 
         for line in summary_box:
@@ -626,7 +654,8 @@ class GiljoCLISetup(GiljoSetup):
             print(self.ui.color("Save this key - you'll need it for remote connections", "YELLOW"))
 
         print("\n")
-        input(self.ui.center_text("Press Enter to exit..."))
+        if not self.non_interactive:
+            input(self.ui.center_text("Press Enter to exit..."))
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ Provides a graphical setup wizard as an alternative to CLI mode
 """
 
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -116,29 +117,15 @@ class ProfileSelectionPage(WizardPage):
         title_label = ttk.Label(self, text="GiljoAI MCP Orchestration Server", font=("Helvetica", 16, "bold"))
         title_label.pack(pady=10)
 
-        # IMPORTANT WARNING
-        warning_frame = ttk.Frame(self)
-        warning_frame.pack(padx=20, pady=10, fill="x")
+        # Installation recommendation
+        recommend_text = """It is recommended to install the GiljoMCP Server in a separate directory
+and not in the project folder."""
 
-        warning_label = ttk.Label(
-            warning_frame,
-            text="⚠️ IMPORTANT: Installing System-Wide MCP Server",
-            font=("Helvetica", 10, "bold"),
-            foreground="red"
-        )
-        warning_label.pack()
-
-        warning_detail = ttk.Label(
-            warning_frame,
-            text="This installs a standalone server. Do NOT install in project folders!\nRecommended: C:\\GiljoAI_MCP or ~/giljo-mcp",
-            foreground="red"
-        )
-        warning_detail.pack()
+        recommend_label = ttk.Label(self, text=recommend_text, justify=tk.LEFT, foreground="orange")
+        recommend_label.pack(padx=20, pady=(0, 10))
 
         # Welcome message
-        welcome_text = """This wizard will install the GiljoAI MCP orchestration server.
-
-What this installer does:
+        welcome_text = """What this installer does:
 • Installs a standalone MCP server (one-time, system-wide)
 • Creates its own Python environment and dependencies
 • Configures database and network settings
@@ -164,13 +151,13 @@ Select your server deployment mode:"""
 
         ttk.Radiobutton(
             local_frame,
-            text="Single Developer Mode",
+            text="Local on Device Mode",
             variable=self.mode_var,
             value="local",
             command=self._on_mode_change,
         ).pack(anchor="w")
 
-        local_desc = """• SQLite database (zero configuration)
+        local_desc = """• PostgreSQL database (locally installed)
 • No authentication required
 • Localhost only (secure by default)
 • Up to 20 concurrent agents
@@ -1387,6 +1374,11 @@ class ProgressPage(WizardPage):
         import time
         import subprocess
         import sys
+        import os
+        from pathlib import Path
+
+        # Set environment variable to skip editable install (prevents Unicode errors)
+        os.environ['GILJO_SKIP_EDITABLE_INSTALL'] = 'true'
 
         profile = config.get("profile", "developer")
         self.log(f"Installing GiljoAI MCP Server", "system")
@@ -1402,8 +1394,10 @@ class ProgressPage(WizardPage):
         self.log("\n[PHASE 1: VIRTUAL ENVIRONMENT]", "info")
         self.log("Creating isolated Python environment for MCP server...", "system")
 
+        # Define venv_path outside try block so it's accessible later
+        venv_path = Path.cwd() / "venv"
+
         try:
-            venv_path = Path.cwd() / "venv"
             if not venv_path.exists():
                 subprocess.run([sys.executable, "-m", "venv", "venv"], check=True)
                 self.log("✓ Virtual environment created", "success")
@@ -1414,6 +1408,8 @@ class ProgressPage(WizardPage):
         except Exception as e:
             self.log(f"✗ Failed to create virtual environment: {e}", "error")
             self.set_status(f"Virtual environment failed: {e}", "venv")
+            # Don't continue if venv creation failed
+            return
 
         # Step 2: Install Dependencies
         self.set_status("Installing server dependencies...", "dependencies")
@@ -1430,9 +1426,12 @@ class ProgressPage(WizardPage):
             subprocess.run([str(pip_path), "install", "-r", "requirements.txt"], check=True)
             self.set_progress(50, "dependencies")
 
-            # Install the package itself
-            self.log("Installing giljo_mcp package...", "system")
-            subprocess.run([str(pip_path), "install", "-e", "."], check=True)
+            # Install the package itself (skip if environment variable set)
+            if not os.environ.get('GILJO_SKIP_EDITABLE_INSTALL'):
+                self.log("Installing giljo_mcp package...", "system")
+                subprocess.run([str(pip_path), "install", "-e", "."], check=True)
+            else:
+                self.log("Skipping editable install (GILJO_SKIP_EDITABLE_INSTALL set)", "info")
             self.set_progress(100, "dependencies")
 
             self.log("✓ All dependencies installed", "success")
@@ -1626,20 +1625,25 @@ class ProgressPage(WizardPage):
             else:
                 self.log(f"Warning: Requirements installation had issues: {result.stderr}", "system")
 
-            # Install giljo-mcp package in editable mode
-            self.log("Installing giljo-mcp package in development mode...", "system")
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-e", ".", "--no-deps"],
-                capture_output=True,
-                text=True
-            )
-            if result.returncode == 0:
-                self.log("SUCCESS: giljo-mcp package installed", "system")
+            # Install giljo-mcp package in editable mode (skip if environment variable set)
+            if not os.environ.get('GILJO_SKIP_EDITABLE_INSTALL'):
+                self.log("Installing giljo-mcp package in development mode...", "system")
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-e", ".", "--no-deps"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    self.log("SUCCESS: giljo-mcp package installed", "system")
+                    self.set_progress(100, "packages")
+                    self.set_status("Python packages installed ✓", "packages")
+                else:
+                    self.log(f"Warning: giljo-mcp installation had issues: {result.stderr}", "system")
+                    self.set_status("Package installation completed with warnings", "packages")
+            else:
+                self.log("Skipping editable install (GILJO_SKIP_EDITABLE_INSTALL set)", "system")
                 self.set_progress(100, "packages")
                 self.set_status("Python packages installed ✓", "packages")
-            else:
-                self.log(f"Warning: giljo-mcp installation had issues: {result.stderr}", "system")
-                self.set_status("Package installation completed with warnings", "packages")
 
         except Exception as e:
             self.log(f"Package installation error: {e}", "system")
@@ -2096,32 +2100,34 @@ multiple AI agents across all your development projects.
 NEXT STEPS:
 ═══════════════════════════════════════════════════════════
 
-1. REGISTER WITH CLAUDE (Optional but recommended):
-   Run: {install_path}\\register_claude.bat
-   This registers the server globally with Claude
+1. CONNECT YOUR AI CODING AGENT:
+
+   We've created integration helpers for all major AI tools.
+   Run the universal wizard to configure all detected tools:
+
+   Run: python {install_path}\\register_ai_tools.py
+
+   Or register individual tools:
+   • Claude Code:  {install_path}\\register_claude.bat
+   • Codex CLI:    python {install_path}\\register_codex.py
+   • Gemini CLI:   python {install_path}\\register_gemini.py
+   • Grok CLI:     python {install_path}\\register_grok.py
+
+   📖 Detailed instructions: {install_path}\\docs\\AI_TOOL_INTEGRATION.md
 
 2. START THE SERVER:
    Run: {install_path}\\start_giljo.bat
    Server will run at http://localhost:8000
 
-3. CONNECT YOUR PROJECTS:
-   In each development project folder, run:
-   {install_path}\\connect_project.bat
-
-   This creates a lightweight .mcp.json config that
-   connects your project to this MCP server.
-
-4. RESTART YOUR CODING AGENT:
-   After connecting a project, restart Claude/Cursor
-   to load the MCP orchestration tools.
+3. VERIFY INTEGRATION:
+   Open your AI tool and check for "giljo-mcp" tools
 
 IMPORTANT:
 • This server can handle multiple projects simultaneously
-• Each project needs its own .mcp.json connection file
+• Register once, use across all your projects
 • The server runs independently from your projects
 
-Documentation: {install_path}\\INSTALLATION.md
-Project Connection Guide: {install_path}\\PROJECT_CONNECTION.md"""
+Documentation: {install_path}\\INSTALLATION.md"""
 
         messagebox.showinfo("Installation Complete", message)
         self.root.quit()

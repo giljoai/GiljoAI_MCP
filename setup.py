@@ -213,9 +213,10 @@ class GiljoSetup:
             subprocess.run([str(pip_path), "install", "-r", str(req_file)],
                          check=True)
 
-            # Install package in development mode
-            subprocess.run([str(pip_path), "install", "-e", "."],
-                         check=True, cwd=str(self.root_path))
+            # Install package in development mode (skip if during installation)
+            if not os.environ.get('GILJO_SKIP_EDITABLE_INSTALL'):
+                subprocess.run([str(pip_path), "install", "-e", "."],
+                             check=True, cwd=str(self.root_path))
             return True
         except subprocess.CalledProcessError:
             return False
@@ -349,6 +350,11 @@ class GiljoSetup:
 
 def main():
     """Main entry point for setup"""
+    # Don't run during pip install
+    import sys
+    if 'pip' in sys.modules or 'setuptools' in sys.modules:
+        return
+
     # Check if we should use enhanced CLI or basic setup
     try:
         from setup_cli import GiljoCLISetup

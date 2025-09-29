@@ -54,8 +54,60 @@ quickstart.bat      # Windows
 The installer will:
 - Create a Python virtual environment
 - Install all dependencies
-- Configure for localhost or network mode
-- Register with Claude globally (optional)
+- Configure PostgreSQL database
+- Set up server ports and security
+
+### Step 1.5: Connect Your AI Coding Agent (One-Time)
+
+After installing the server, connect your AI tool to enable orchestration:
+
+**Option A: Universal Wizard (Recommended)**
+
+```bash
+cd %INSTALL_DIR%  # Your installation directory
+python register_ai_tools.py
+```
+
+The wizard will:
+- Detect which AI CLIs are installed (Claude, Codex, Gemini, Grok)
+- Allow you to select which tools to configure
+- Automatically register with selected tools
+- Verify the integration
+
+**Option B: Individual Tool Registration**
+
+Register with specific AI tools using dedicated scripts:
+
+```bash
+# Claude Code
+register_claude.bat                    # Windows
+./register_claude.sh                   # Mac/Linux
+
+# Codex CLI (OpenAI)
+python register_codex.py
+
+# Gemini CLI (Google)
+python register_gemini.py
+
+# Grok CLI (xAI)
+python register_grok.py                # Helper with instructions
+```
+
+**Detailed Instructions:**
+
+For comprehensive integration guides including:
+- Manual configuration steps
+- Troubleshooting
+- Configuration file locations
+- Verification commands
+
+See: [`docs/AI_TOOL_INTEGRATION.md`](docs/AI_TOOL_INTEGRATION.md)
+
+**Supported AI Coding Agents:**
+- ✅ Claude Code (full MCP support with CLI commands)
+- ✅ Codex CLI (OpenAI - TOML configuration)
+- ✅ Gemini CLI (Google - JSON configuration)
+- ✅ Grok CLI (xAI - multiple implementations)
 
 ### Step 2: Configure Your Development Projects
 
