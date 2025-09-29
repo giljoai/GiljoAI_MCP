@@ -40,3 +40,4 @@ temp/
 *.bak
 venv/
 env/
+archive/

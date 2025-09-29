@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Port Conflict Checker for GiljoAI MCP
-Ensures no conflicts with other services
+Port Conflict Checker for GiljoAI MCP v2.0
+Ensures no conflicts with the unified HTTP server architecture
 """
 
 import socket
@@ -11,16 +11,27 @@ from pathlib import Path
 import yaml
 
 
-# Port assignments for different services
+# Port assignments for v2.0 architecture
 PORT_ASSIGNMENTS = {
-    # GiljoAI MCP Services
-    "GiljoAI Dashboard": 6000,
-    "GiljoAI MCP Server": 6001,
-    "GiljoAI REST API": 6002,
-    "GiljoAI WebSocket": 6003,
-    # Common services
-    "PostgreSQL": 5432,
-    "Vite Dev Server": 5173,
+    # Primary service - unified HTTP server
+    "GiljoAI Orchestrator": 8000,  # Main server (API + MCP + WebSocket)
+
+    # Optional services
+    "Frontend Dev Server": 6000,  # Vite dev server (development only)
+    "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
+
+    # Legacy ports (deprecated in v2.0)
+    # These are checked for migration purposes only
+    "Legacy MCP Server": 6001,  # Old stdio server (deprecated)
+    "Legacy REST API": 6002,  # Old separate API (deprecated)
+    "Legacy WebSocket": 6003,  # Old separate WebSocket (deprecated)
+}
+
+# New v2.0 default configuration
+DEFAULT_CONFIG = {
+    "server_port": 8000,
+    "enable_frontend_dev": False,
+    "database_type": "sqlite",
 }
 
 
@@ -41,58 +52,110 @@ def load_config() -> dict:
     if config_path.exists():
         with open(config_path) as f:
             return yaml.safe_load(f)
-    return {}
+
+    # Try JSON format
+    config_path = Path(__file__).parent.parent / "config.json"
+    if config_path.exists():
+        import json
+        with open(config_path) as f:
+            return json.load(f)
+
+    return DEFAULT_CONFIG
 
 
 def get_configured_ports(config: dict) -> list[tuple[str, int]]:
-    """Extract all configured ports from config."""
+    """Extract all configured ports from config for v2.0."""
     ports = []
 
-    # MCP Server
-    if "server" in config:
-        if "mcp" in config["server"]:
-            ports.append(("GiljoAI MCP Server", config["server"]["mcp"].get("port", 6001)))
-        if "api" in config["server"]:
-            ports.append(("GiljoAI REST API", config["server"]["api"].get("port", 6002)))
-        if "websocket" in config["server"]:
-            ports.append(("GiljoAI WebSocket", config["server"]["websocket"].get("port", 6003)))
-        if "dashboard" in config["server"]:
-            ports.append(("GiljoAI Dashboard", config["server"]["dashboard"].get("port", 6000)))
-            ports.append(("Vite Dev Server", config["server"]["dashboard"].get("dev_server_port", 5173)))
+    # Main orchestrator server (v2.0)
+    server_port = config.get("server", {}).get("port", 8000)
+    ports.append(("GiljoAI Orchestrator", server_port))
+
+    # Frontend dev server (optional)
+    if config.get("features", {}).get("frontend_dev", False):
+        ports.append(("Frontend Dev Server", 6000))
 
     # Database
-    if "database" in config and config["database"].get("type") == "postgresql":
-        ports.append(("PostgreSQL", config["database"]["postgresql"].get("port", 5432)))
+    if config.get("database", {}).get("type") == "postgresql":
+        pg_port = config.get("database", {}).get("postgresql", {}).get("port", 5432)
+        ports.append(("PostgreSQL", pg_port))
 
     return ports
+
+
+def check_legacy_ports() -> list[tuple[str, int, bool]]:
+    """Check if legacy ports are still in use (for migration warning)."""
+    legacy = []
+    for name, port in PORT_ASSIGNMENTS.items():
+        if "Legacy" in name:
+            in_use = check_port(port)
+            if in_use:
+                legacy.append((name, port, in_use))
+    return legacy
 
 
 def main():
     """Check for port conflicts."""
 
+    print("GiljoAI MCP v2.0 - Port Configuration Checker")
+    print("=" * 50)
+
     # Load configuration
     config = load_config()
-    get_configured_ports(config)
+    configured_ports = get_configured_ports(config)
 
-    # Check all ports
+    # Check configured ports
+    print("\nChecking configured ports:")
     conflicts = []
     available = []
 
-    for service, port in PORT_ASSIGNMENTS.items():
+    for service, port in configured_ports:
         in_use = check_port(port)
+        status = "IN USE" if in_use else "Available"
+        symbol = "❌" if in_use else "✅"
 
-        # Check for conflicts with GiljoAI services
-        if service.startswith("GiljoAI") and in_use:
+        print(f"  {symbol} {service:25} Port {port:5} - {status}")
+
+        if in_use:
             conflicts.append((service, port))
-        elif service.startswith("GiljoAI"):
+        else:
             available.append((service, port))
 
+    # Check for legacy services running
+    print("\nChecking for legacy services:")
+    legacy_running = check_legacy_ports()
+
+    if legacy_running:
+        print("  ⚠️  Legacy services detected!")
+        for service, port, _ in legacy_running:
+            print(f"     - {service} on port {port}")
+        print("\n  These should be stopped before running v2.0")
+        print("  Run: stop_giljo.bat to stop all services")
+    else:
+        print("  ✅ No legacy services running")
+
+    # Summary
+    print("\n" + "=" * 50)
     if conflicts:
+        print("❌ Port conflicts detected!")
+        print("\nThe following ports are already in use:")
         for service, port in conflicts:
-            pass
-        return 1
-    for service, port in available:
-        pass
+            print(f"  - {service}: {port}")
+
+        print("\nPossible solutions:")
+        print("1. Stop the conflicting service")
+        print("2. Change the port in config.yaml")
+
+        if any(port == 8000 for _, port in conflicts):
+            print("\nPort 8000 conflict detected!")
+            print("This is the main server port for GiljoAI MCP v2.0")
+            print("Make sure no other GiljoAI instance is running")
+
+        sys.exit(1)
+    else:
+        print("✅ All ports are available!")
+        print("\nYou can proceed with starting the server:")
+        print("  Run: start_giljo.bat")
 
     return 0
 

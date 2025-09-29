@@ -63,6 +63,7 @@ EXCLUDE_DIRS = [
     "docs/planning",                   # Planning docs
     "docs/templates",                  # Templates (internal)
     "docs/tests",                      # Test documentation
+    "docs/techdebt",                   # Technical debt documentation
     "agent_comms",                     # Agent communication files
 
     # Temp directories
@@ -143,6 +144,12 @@ EXCLUDE_FILES = [
     "management*.md", "MANAGEMENT*.md",
     "TEST_*.md", "WEBSOCKET_*.md",
     "session_*.md", "devlog*.md",
+    "NEXT_AGENT_MISSION.md",  # Agent task files
+
+    # Deprecated files (v2.0 architecture)
+    "*.deprecated",  # All deprecated files
+    "__main__.py.deprecated",
+    "server.py.deprecated",
 
     # Reports (from .gitattributes)
     "PRODUCTION_READINESS_REPORT.md",
