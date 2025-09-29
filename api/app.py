@@ -25,12 +25,12 @@ load_dotenv()
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.giljo_mcp.auth import AuthManager
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Project
-from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from giljo_mcp.auth import AuthManager
+from giljo_mcp.config_manager import get_config
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Project
+from giljo_mcp.tenant import TenantManager
+from giljo_mcp.tools.tool_accessor import ToolAccessor
 
 from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
 from .endpoints import agents, configuration, context, messages, projects, statistics, tasks, templates

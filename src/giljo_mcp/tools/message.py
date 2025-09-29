@@ -10,10 +10,10 @@ from typing import Any, Optional
 from fastmcp import FastMCP
 from sqlalchemy import and_, select
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.message_queue import MessageQueue
-from src.giljo_mcp.models import Agent, Message, Project
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.message_queue import MessageQueue
+from giljo_mcp.models import Agent, Message, Project
+from giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)

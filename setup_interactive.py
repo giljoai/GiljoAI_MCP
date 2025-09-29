@@ -919,6 +919,24 @@ class GiljoSetup:
             components['dependencies']['status'] = 'failed'
             console.print("[red]✗ requirements.txt not found[/red]")
 
+        # Install giljo-mcp package in development mode
+        console.print("\n[bold]Installing giljo-mcp package...[/bold]")
+        console.print("[dim]Running: pip install -e . --no-deps[/dim]")
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-e", ".", "--no-deps"],
+            check=False,
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode == 0:
+            console.print("[green]✓ giljo-mcp package installed[/green]")
+        else:
+            console.print("[red]✗ giljo-mcp package installation failed[/red]")
+            if result.stderr:
+                console.print(f"[dim]Error details: {result.stderr[:500]}[/dim]")
+            console.print("[yellow]You may need to run manually: pip install -e . --no-deps[/yellow]")
+
         # System validation
         console.clear()
         components['validation']['status'] = 'installing'
@@ -973,6 +991,43 @@ class GiljoSetup:
             console.print("Please review the errors above and run setup again if needed.")
         else:
             console.print("\n[green]✅ All components installed successfully![/green]")
+
+        # Register with Claude if available
+        console.print("\n[bold]Claude Integration[/bold]")
+        try:
+            import shutil
+
+            # Check if claude CLI is available
+            if shutil.which("claude"):
+                console.print("[dim]Claude CLI found. Registering MCP server...[/dim]")
+
+                # Get the installation directory
+                install_dir = Path.cwd()
+                python_path = install_dir / "venv" / "Scripts" / "python.exe"
+
+                # Register the MCP server with Claude
+                result = subprocess.run(
+                    ["claude", "mcp", "add", "giljo-mcp",
+                     f"{python_path} -m giljo_mcp",
+                     "--scope", "user"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+
+                if result.returncode == 0:
+                    console.print("[green]✅ Successfully registered with Claude![/green]")
+                    console.print("[cyan]Please restart Claude to activate the MCP server.[/cyan]")
+                else:
+                    console.print("[yellow]Could not auto-register with Claude.[/yellow]")
+                    console.print("[dim]You can register manually by running: register_claude.bat[/dim]")
+            else:
+                console.print("[yellow]Claude CLI not found.[/yellow]")
+                console.print("[dim]You can register later by running: register_claude.bat[/dim]")
+
+        except Exception as claude_error:
+            console.print(f"[yellow]Claude registration skipped: {claude_error}[/yellow]")
+            console.print("[dim]You can register manually later by running: register_claude.bat[/dim]")
 
     def _validate_critical_dependencies(self):
         """Validate that critical dependencies are properly installed"""

@@ -1,0 +1,3 @@
+[console_scripts]
+giljo-mcp = giljo_mcp.__main__:main
+giljo-setup = setup_gui:main

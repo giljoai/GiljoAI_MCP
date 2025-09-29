@@ -12,10 +12,10 @@ import yaml
 from fastmcp import FastMCP
 from sqlalchemy import delete, select
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.discovery import DiscoveryManager, PathResolver
-from src.giljo_mcp.models import Configuration, ContextIndex, LargeDocumentIndex, Project, Vision
-from src.giljo_mcp.tenant import TenantManager
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.discovery import DiscoveryManager, PathResolver
+from giljo_mcp.models import Configuration, ContextIndex, LargeDocumentIndex, Project, Vision
+from giljo_mcp.tenant import TenantManager
 
 from .chunking import EnhancedChunker
 
@@ -707,8 +707,8 @@ def register_context_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     }
 
                 # Get session stats
-                from src.giljo_mcp.models import Agent, Message
-                from src.giljo_mcp.models import Session as DBSession
+                from giljo_mcp.models import Agent, Message
+                from giljo_mcp.models import Session as DBSession
 
                 # Count agents
                 agent_query = select(Agent).where(Agent.project_id == project.id)
@@ -1274,10 +1274,10 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
     """Wrapper for MCP tool - Get the context index for intelligent querying"""
     from sqlalchemy import select
 
-    from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.discovery import DiscoveryManager, PathResolver
-    from src.giljo_mcp.models import Project
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.discovery import DiscoveryManager, PathResolver
+    from giljo_mcp.models import Project
+    from giljo_mcp.tenant import TenantManager
 
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()
@@ -1340,10 +1340,10 @@ async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool
     """Wrapper for MCP tool - Get the vision document for the active product"""
     from sqlalchemy import select
 
-    from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.discovery import PathResolver
-    from src.giljo_mcp.models import Project, Vision
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.discovery import PathResolver
+    from giljo_mcp.models import Project, Vision
+    from giljo_mcp.tenant import TenantManager
 
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()
@@ -1416,10 +1416,10 @@ async def get_vision_index() -> dict[str, Any]:
     """Wrapper for MCP tool - Get the vision document index"""
     from sqlalchemy import select
 
-    from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.discovery import PathResolver
-    from src.giljo_mcp.models import ContextIndex, Project
-    from src.giljo_mcp.tenant import TenantManager
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.discovery import PathResolver
+    from giljo_mcp.models import ContextIndex, Project
+    from giljo_mcp.tenant import TenantManager
 
     db_manager = DatabaseManager(is_async=True)
     tenant_manager = TenantManager()

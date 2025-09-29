@@ -12,9 +12,9 @@ from uuid import uuid4
 from fastmcp import FastMCP
 from sqlalchemy import select, update
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, Project, Session
-from src.giljo_mcp.tenant import TenantManager, current_tenant
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Agent, Project, Session
+from giljo_mcp.tenant import TenantManager, current_tenant
 
 
 logger = logging.getLogger(__name__)
@@ -258,7 +258,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
                 # Trigger auto-commit if git is configured
                 try:
-                    from src.giljo_mcp.config_manager import get_config
+                    from giljo_mcp.config_manager import get_config
 
                     from .git import commit_changes
 

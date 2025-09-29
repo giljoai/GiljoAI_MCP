@@ -11,10 +11,10 @@ from typing import Any, Optional
 from fastmcp import FastMCP
 from sqlalchemy import and_, select, update
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Agent, AgentInteraction, Job, Message, Project, Task
-from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.websocket_client import broadcast_sub_agent_event
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import Agent, AgentInteraction, Job, Message, Project, Task
+from giljo_mcp.tenant import TenantManager
+from giljo_mcp.websocket_client import broadcast_sub_agent_event
 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Helper functions for testing and internal use
 async def _ensure_agent(project_id: str, agent_name: str, mission: Optional[str] = None, session=None) -> dict[str, Any]:
     """Internal helper for ensure_agent - used by tests"""
-    from src.giljo_mcp.database import DatabaseManager
+    from giljo_mcp.database import DatabaseManager
 
     if session is None:
         db_manager = DatabaseManager()
@@ -86,7 +86,7 @@ async def _ensure_agent_with_session(session, project_id: str, agent_name: str, 
 
 async def _decommission_agent(agent_name: str, project_id: str, reason: str = "completed", session=None) -> dict[str, Any]:
     """Internal helper for decommission_agent - used by tests"""
-    from src.giljo_mcp.database import DatabaseManager
+    from giljo_mcp.database import DatabaseManager
 
     if session is None:
         db_manager = DatabaseManager()
@@ -123,7 +123,7 @@ async def _decommission_agent_with_session(session, agent_name: str, project_id:
 
 async def _get_agent_health(agent_name: Optional[str] = None, session=None) -> dict[str, Any]:
     """Internal helper for agent_health - used by tests"""
-    from src.giljo_mcp.database import DatabaseManager
+    from giljo_mcp.database import DatabaseManager
 
     if session is None:
         db_manager = DatabaseManager()
@@ -172,7 +172,7 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
 
 async def _handoff_agent_work(from_agent: str, to_agent: str, project_id: str, context: dict[str, Any], session=None) -> dict[str, Any]:
     """Internal helper for handoff - used by tests"""
-    from src.giljo_mcp.database import DatabaseManager
+    from giljo_mcp.database import DatabaseManager
 
     if session is None:
         db_manager = DatabaseManager()

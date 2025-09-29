@@ -477,18 +477,18 @@ class Bootstrap:
             return self.launch_cli_installer()
 
     def launch_cli_installer(self) -> int:
-        """Launch the CLI installer (setup.py)"""
+        """Launch the CLI installer (setup_interactive.py)"""
         self.print_status("Launching CLI installer...", "info")
 
-        # Check if setup.py exists
-        if not Path("setup.py").exists():
-            self.print_status("setup.py not found!", "error")
+        # Check if setup_interactive.py exists
+        if not Path("setup_interactive.py").exists():
+            self.print_status("setup_interactive.py not found!", "error")
             self.print_manual_instructions()
             return 1
 
         try:
-            # Run setup.py in interactive CLI mode (without --non-interactive flag)
-            result = subprocess.run([sys.executable, "setup.py"], capture_output=False, text=True, check=False)
+            # Run setup_interactive.py in interactive CLI mode (without --non-interactive flag)
+            result = subprocess.run([sys.executable, "setup_interactive.py"], capture_output=False, text=True, check=False)
 
             # If installation succeeded, run post-installation setup
             if result.returncode == 0:

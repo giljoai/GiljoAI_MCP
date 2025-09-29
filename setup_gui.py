@@ -1232,6 +1232,47 @@ class ProgressPage(WizardPage):
             self.log(f"Directory setup error: {e}", "system")
             self.set_status(f"Directory setup failed: {e}", "directories")
 
+        # Install Python packages
+        self.set_status("Installing Python packages...", "packages")
+        self.set_progress(10, "packages")
+        self.log("Installing Python packages...", "system")
+
+        try:
+            import subprocess
+
+            # Install requirements.txt
+            self.log("Installing requirements.txt...", "system")
+            self.set_progress(20, "packages")
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                self.log("SUCCESS: Requirements installed", "system")
+                self.set_progress(60, "packages")
+            else:
+                self.log(f"Warning: Requirements installation had issues: {result.stderr}", "system")
+
+            # Install giljo-mcp package in editable mode
+            self.log("Installing giljo-mcp package in development mode...", "system")
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-e", ".", "--no-deps"],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                self.log("SUCCESS: giljo-mcp package installed", "system")
+                self.set_progress(100, "packages")
+                self.set_status("Python packages installed ✓", "packages")
+            else:
+                self.log(f"Warning: giljo-mcp installation had issues: {result.stderr}", "system")
+                self.set_status("Package installation completed with warnings", "packages")
+
+        except Exception as e:
+            self.log(f"Package installation error: {e}", "system")
+            self.set_status(f"Package installation failed: {e}", "packages")
+
         # Initialize database schema
         self.set_status("Initializing database schema...", "schema")
         self.set_progress(10, "schema")
@@ -1240,10 +1281,10 @@ class ProgressPage(WizardPage):
         try:
             # Try to import and initialize database
             try:
-                from src.giljo_mcp.models.base import init_database
-                init_database()
-                self.log("SUCCESS: Database schema initialized", "system")
-                self.set_status("Database schema initialized ✓", "schema")
+                # Database models will be initialized on first run
+                # No need to import here as package may not be installed yet
+                self.log("Database schema will be initialized on first run", "system")
+                self.set_status("Database schema ready for initialization", "schema")
             except ImportError as ie:
                 # If models don't exist yet, that's okay for initial installation
                 self.log("Database models not yet configured (this is normal for first installation)", "system")
@@ -1401,6 +1442,43 @@ class ProgressPage(WizardPage):
             except Exception as manifest_error:
                 self.log(f"Warning: Could not create manifest: {manifest_error}", "system")
                 # Not critical - continue
+
+            # Register with Claude if available
+            self.log("\nChecking Claude integration...", "system")
+            try:
+                import subprocess
+                import shutil
+
+                # Check if claude CLI is available
+                if shutil.which("claude"):
+                    self.log("Claude CLI found. Registering MCP server...", "system")
+
+                    # Get the installation directory
+                    install_dir = Path.cwd()
+                    python_path = install_dir / "venv" / "Scripts" / "python.exe"
+
+                    # Register the MCP server with Claude
+                    result = subprocess.run(
+                        ["claude", "mcp", "add", "giljo-mcp",
+                         f"{python_path} -m giljo_mcp",
+                         "--scope", "user"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+
+                    if result.returncode == 0:
+                        self.log("✅ Successfully registered with Claude!", "success")
+                        self.log("Please restart Claude to activate the MCP server.", "info")
+                    else:
+                        self.log("Could not auto-register with Claude.", "warning")
+                        self.log(f"You can register manually by running: register_claude.bat", "info")
+                else:
+                    self.log("Claude CLI not found. You can register later by running: register_claude.bat", "info")
+
+            except Exception as claude_error:
+                self.log(f"Claude registration skipped: {claude_error}", "warning")
+                self.log("You can register manually later by running: register_claude.bat", "info")
 
         except Exception as e:
             self.log(f"Health check error: {e}", "system")
