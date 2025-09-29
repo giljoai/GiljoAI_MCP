@@ -63,8 +63,18 @@ echo.
 echo Starting unified orchestration server...
 echo ----------------------------------------
 
+:: Try to read port from config if exists
+set SERVER_PORT=7272
+if exist config.yaml (
+    for /f "tokens=2 delims=:" %%a in ('findstr /c:"port:" config.yaml 2^>nul') do (
+        set SERVER_PORT=%%a
+        :: Remove leading/trailing spaces
+        for /f "tokens=* delims= " %%b in ("!SERVER_PORT!") do set SERVER_PORT=%%b
+    )
+)
+
 :: Start the API server (which now includes all MCP functionality)
-echo Starting API server on port 8000...
+echo Starting API server on port !SERVER_PORT!...
 echo This server handles:
 echo   - REST API endpoints
 echo   - MCP tool execution
@@ -72,15 +82,18 @@ echo   - WebSocket connections
 echo   - Multi-user orchestration
 echo.
 
+:: Set environment variable for the port
+set GILJO_PORT=!SERVER_PORT!
+
 :: Start in a new window for visibility
-start "GiljoAI Orchestrator" cmd /k "call venv\Scripts\activate && cd api && python run_api.py"
+start "GiljoAI Orchestrator" cmd /k "call venv\Scripts\activate && set GILJO_PORT=!SERVER_PORT! && cd api && python run_api.py"
 
 :: Wait for API to be ready
 echo Waiting for server to start...
 timeout /t 5 /nobreak >nul
 
 :: Check if server is running
-curl -s http://localhost:8000/health >nul 2>&1
+curl -s http://localhost:!SERVER_PORT!/health >nul 2>&1
 if !errorlevel! neq 0 (
     echo Warning: Server may not have started properly
     echo Please check the server window for errors
@@ -111,13 +124,13 @@ echo ==========================================
 echo GiljoAI MCP Orchestrator is running!
 echo ==========================================
 echo.
-echo Server URL: http://localhost:8000
+echo Server URL: http://localhost:!SERVER_PORT!
 echo.
 echo Available endpoints:
-echo   - API Documentation: http://localhost:8000/docs
-echo   - Health Check: http://localhost:8000/health
-echo   - MCP Tools: http://localhost:8000/mcp/tools
-echo   - WebSocket: ws://localhost:8000/ws
+echo   - API Documentation: http://localhost:!SERVER_PORT!/docs
+echo   - Health Check: http://localhost:!SERVER_PORT!/health
+echo   - MCP Tools: http://localhost:!SERVER_PORT!/mcp/tools
+echo   - WebSocket: ws://localhost:!SERVER_PORT!/ws
 echo.
 if exist "frontend\package.json" (
     echo   - Frontend Dashboard: http://localhost:6000 (if started)

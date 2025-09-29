@@ -51,10 +51,13 @@ class MCPAdapter:
         Initialize the MCP adapter
 
         Args:
-            server_url: Base URL of the GiljoAI API server (default: http://localhost:8000)
+            server_url: Base URL of the GiljoAI API server (default: http://localhost:7272)
             api_key: Optional API key for authentication
         """
-        self.server_url = server_url or os.getenv("GILJO_API_URL", "http://localhost:8000")
+        # Try to get port from environment or config
+        default_port = os.getenv("GILJO_PORT", "7272")
+        default_url = f"http://localhost:{default_port}"
+        self.server_url = server_url or os.getenv("GILJO_API_URL", default_url)
         self.api_key = api_key or os.getenv("GILJO_API_KEY")
         self.client = httpx.AsyncClient(timeout=30.0)
         self.tenant_key: Optional[str] = None
@@ -368,8 +371,10 @@ async def main():
     # Determine server URL
     server_url = os.getenv("GILJO_API_URL")
     if not server_url:
-        # Use configured API port
-        api_port = getattr(config.server, "api_port", 8000)
+        # Use configured API port or environment variable
+        api_port = os.getenv("GILJO_PORT")
+        if not api_port:
+            api_port = getattr(config.server, "port", None) or getattr(config.server, "api_port", 7272)
         server_url = f"http://localhost:{api_port}"
 
     # Get API key if needed

@@ -14,22 +14,26 @@ import yaml
 # Port assignments for v2.0 architecture
 PORT_ASSIGNMENTS = {
     # Primary service - unified HTTP server
-    "GiljoAI Orchestrator": 8000,  # Main server (API + MCP + WebSocket)
+    "GiljoAI Orchestrator": 7272,  # Main server (API + MCP + WebSocket) - changed from 8000
 
     # Optional services
     "Frontend Dev Server": 6000,  # Vite dev server (development only)
     "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
+
+    # Alternative ports if 7272 is occupied
+    "alternatives": [7273, 7274, 8747, 8823, 9456, 9789],
 
     # Legacy ports (deprecated in v2.0)
     # These are checked for migration purposes only
     "Legacy MCP Server": 6001,  # Old stdio server (deprecated)
     "Legacy REST API": 6002,  # Old separate API (deprecated)
     "Legacy WebSocket": 6003,  # Old separate WebSocket (deprecated)
+    "Legacy Port 8000": 8000,  # Old default port (v2.0 early versions)
 }
 
 # New v2.0 default configuration
 DEFAULT_CONFIG = {
-    "server_port": 8000,
+    "server_port": 7272,  # Changed from 8000 to avoid conflicts
     "enable_frontend_dev": False,
     "database_type": "sqlite",
 }
@@ -68,7 +72,7 @@ def get_configured_ports(config: dict) -> list[tuple[str, int]]:
     ports = []
 
     # Main orchestrator server (v2.0)
-    server_port = config.get("server", {}).get("port", 8000)
+    server_port = config.get("server", {}).get("port", 7272)  # Changed default
     ports.append(("GiljoAI Orchestrator", server_port))
 
     # Frontend dev server (optional)
@@ -146,10 +150,18 @@ def main():
         print("1. Stop the conflicting service")
         print("2. Change the port in config.yaml")
 
-        if any(port == 8000 for _, port in conflicts):
-            print("\nPort 8000 conflict detected!")
+        if any(port == 7272 for _, port in conflicts):
+            print("\nPort 7272 conflict detected!")
             print("This is the main server port for GiljoAI MCP v2.0")
             print("Make sure no other GiljoAI instance is running")
+            print("\nAlternative ports you can use:")
+            for alt_port in PORT_ASSIGNMENTS.get("alternatives", []):
+                print(f"  - {alt_port}")
+
+        if any(port == 8000 for _, port in conflicts):
+            print("\nPort 8000 conflict detected!")
+            print("Note: GiljoAI MCP has moved from port 8000 to 7272")
+            print("This avoids conflicts with common development servers")
 
         sys.exit(1)
     else:

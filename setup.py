@@ -18,11 +18,14 @@ from typing import Any, Dict, List, Optional, Tuple
 # Updated port assignments for v2.0 architecture
 PORT_ASSIGNMENTS = {
     # New unified architecture - single server
-    "GiljoAI Orchestrator": 8000,  # Main HTTP server (API + MCP tools + WebSocket)
+    "GiljoAI Orchestrator": 7272,  # Main HTTP server (API + MCP tools + WebSocket)
 
     # Optional development services
     "Frontend Dev Server": 6000,  # Vite dev server (optional)
     "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
+
+    # Alternative ports if 7272 is occupied
+    "alternatives": [7273, 7274, 8747, 8823, 9456, 9789],
 
     # Deprecated ports (no longer used in v2.0)
     # "GiljoAI MCP Server": 6001,  # REMOVED - stdio server deprecated
@@ -41,6 +44,39 @@ def check_port(port: int, host: str = "127.0.0.1") -> bool:
         return False
 
 
+def find_available_port(preferred: int = 7272, alternatives: List[int] = None) -> Optional[int]:
+    """
+    Find an available port, starting with preferred.
+
+    Args:
+        preferred: The preferred port to use (default: 7272)
+        alternatives: List of alternative ports to try
+
+    Returns:
+        Available port number, or None if all are occupied
+    """
+    if alternatives is None:
+        alternatives = PORT_ASSIGNMENTS.get("alternatives", [7273, 7274, 8747, 8823, 9456])
+
+    # Check preferred first
+    if not check_port(preferred):
+        return preferred
+
+    # Try alternatives
+    for port in alternatives:
+        if not check_port(port):
+            return port
+
+    # Last resort: find random available in safe range
+    import random
+    for _ in range(10):
+        port = random.randint(7200, 9999)
+        if not check_port(port):
+            return port
+
+    return None
+
+
 class GiljoSetup:
     """Base setup class for GiljoAI MCP installation"""
 
@@ -51,8 +87,9 @@ class GiljoSetup:
         self.platform_info = self._detect_platform()
 
         # v2.0 Architecture defaults
-        self.server_port = 8000  # Single unified server
+        self.server_port = 7272  # Single unified server (changed from 8000)
         self.deployment_mode = "LOCAL"  # LOCAL, LAN, or WAN
+        self.selected_port = None  # Will be set during setup
 
     def _detect_platform(self) -> Dict[str, Any]:
         """Detect platform and environment details"""
@@ -93,13 +130,39 @@ class GiljoSetup:
 
         return issues
 
+    def select_port(self, preferred: int = None) -> int:
+        """
+        Select an available port for the server.
+
+        Args:
+            preferred: Preferred port (defaults to self.server_port)
+
+        Returns:
+            Selected available port
+
+        Raises:
+            RuntimeError: If no available port can be found
+        """
+        if preferred is None:
+            preferred = self.server_port
+
+        available_port = find_available_port(preferred)
+
+        if available_port is None:
+            raise RuntimeError("No available ports found in range 7200-9999")
+
+        self.selected_port = available_port
+        self.server_port = available_port
+        return available_port
+
     def validate_ports(self) -> List[Tuple[str, int, bool]]:
         """Check port availability for v2.0 architecture"""
         results = []
 
-        # Main server port (required)
-        is_used = check_port(self.server_port)
-        results.append(("GiljoAI Orchestrator", self.server_port, is_used))
+        # Main server port (required) - use selected_port if available
+        port_to_check = self.selected_port or self.server_port
+        is_used = check_port(port_to_check)
+        results.append(("GiljoAI Orchestrator", port_to_check, is_used))
 
         # Optional frontend dev server
         if self.config.get("enable_frontend_dev", False):

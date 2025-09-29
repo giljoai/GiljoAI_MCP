@@ -55,7 +55,7 @@ The original implementation used stdio (standard input/output) for MCP communica
 ### Component Details
 
 #### 1. Unified Orchestration Server (`api/app.py`)
-- **Port**: 8000
+- **Port**: 7272 (configurable, changed from 8000 to avoid conflicts)
 - **Protocol**: HTTP/WebSocket
 - **Features**:
   - Persistent operation (stays running)
@@ -70,7 +70,7 @@ The original implementation used stdio (standard input/output) for MCP communica
 - **Operation**:
   1. Receives MCP commands via stdio from Claude
   2. Translates to HTTP REST calls
-  3. Forwards to server on localhost:8000
+  3. Forwards to server on localhost:7272 (or configured port)
   4. Returns responses via stdio
 - **Benefits**:
   - Claude compatibility maintained
@@ -92,7 +92,7 @@ The original implementation used stdio (standard input/output) for MCP communica
 | Component | v1.0 (Old) | v2.0 (New) |
 |-----------|------------|------------|
 | Main Server | stdio-based MCP server | HTTP-based API server |
-| Port | 6001 (MCP), 8000 (API) | 8000 (unified) |
+| Port | 6001 (MCP), 8000 (API) | 7272 (unified, configurable) |
 | Claude Integration | Direct stdio | Stdio adapter → HTTP |
 | Multi-user | Not possible | Fully supported |
 | Persistence | Dies with client | Stays running |
@@ -129,7 +129,7 @@ python run_api.py
 ```
 
 The server will:
-1. Start on port 8000
+1. Start on port 7272 (or configured port)
 2. Stay running until stopped
 3. Accept multiple connections
 4. Provide all endpoints
@@ -150,7 +150,7 @@ All functionality available via HTTP:
 
 ```bash
 # Execute MCP tool
-POST http://localhost:8000/mcp/tools/execute
+POST http://localhost:7272/mcp/tools/execute
 {
   "tool": "create_project",
   "arguments": {
@@ -160,10 +160,10 @@ POST http://localhost:8000/mcp/tools/execute
 }
 
 # List tools
-GET http://localhost:8000/mcp/tools/list
+GET http://localhost:7272/mcp/tools/list
 
 # Health check
-GET http://localhost:8000/mcp/tools/health
+GET http://localhost:7272/mcp/tools/health
 ```
 
 ### Multi-User Example
@@ -176,7 +176,7 @@ import asyncio
 async def client_task(client_id):
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            "http://localhost:8000/mcp/tools/execute",
+            "http://localhost:7272/mcp/tools/execute",
             json={
                 "tool": "create_project",
                 "arguments": {
@@ -220,11 +220,28 @@ asyncio.run(main())
 
 ## Configuration
 
+### Port Configuration
+
+The default port has been changed from 8000 to **7272** to avoid conflicts with common development servers (Django, Python http.server, etc.).
+
+#### Port Selection Priority:
+1. Environment variable: `GILJO_PORT=7272`
+2. Config file: `config.yaml` → `server.port: 7272`
+3. Auto-discovery: If 7272 is occupied, tries: 7273, 7274, 8747, 8823, 9456, 9789
+4. Random selection: Finds available port in range 7200-9999
+
+#### Why 7272?
+- Memorable pattern (repeating digits)
+- Rarely used by other services
+- Far from common development ports (3000, 8000, 8080)
+- Easy to type and remember
+
 ### Environment Variables
 
 ```bash
 # Server configuration
-GILJO_API_URL=http://localhost:8000  # API server URL
+GILJO_PORT=7272                      # Server port (default: 7272)
+GILJO_API_URL=http://localhost:7272  # Full API server URL
 GILJO_API_KEY=your-api-key          # API key (if not LOCAL mode)
 
 # Database configuration
@@ -252,12 +269,17 @@ DATABASE_URL=sqlite:///giljo_mcp.db  # or postgresql://...
 
 ### Server Won't Start
 ```bash
-# Check if port 8000 is in use
-netstat -an | findstr :8000
+# Check if port 7272 is in use
+netstat -an | findstr :7272
 
 # Kill existing process
 # Windows
-for /f "tokens=5" %a in ('netstat -aon ^| findstr :8000') do taskkill /F /PID %a
+for /f "tokens=5" %a in ('netstat -aon ^| findstr :7272') do taskkill /F /PID %a
+
+# Port conflict? The server will auto-select an alternative
+# Or set custom port:
+set GILJO_PORT=8747
+start_giljo.bat
 ```
 
 ### Claude Can't Connect
@@ -266,8 +288,11 @@ for /f "tokens=5" %a in ('netstat -aon ^| findstr :8000') do taskkill /F /PID %a
 claude mcp remove giljo-mcp
 register_claude.bat
 
-# Check server is running
-curl http://localhost:8000/health
+# Check server is running (default port)
+curl http://localhost:7272/health
+
+# Or check configured port
+curl http://localhost:%GILJO_PORT%/health
 ```
 
 ### Multiple User Issues
@@ -276,7 +301,7 @@ curl http://localhost:8000/health
 tail -f ~/.giljo_mcp/logs/api.log
 
 # Test with curl
-curl -X POST http://localhost:8000/mcp/tools/execute \
+curl -X POST http://localhost:7272/mcp/tools/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "list_projects", "arguments": {}}'
 ```
