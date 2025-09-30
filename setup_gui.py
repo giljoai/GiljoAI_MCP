@@ -14,13 +14,6 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
-# Try to import PIL for splash screen image support
-try:
-    from PIL import Image, ImageTk
-    HAS_PIL = True
-except ImportError:
-    HAS_PIL = False
-
 # Import base setup class
 from setup import PORT_ASSIGNMENTS, GiljoSetup, check_port
 
@@ -81,28 +74,27 @@ class SplashScreen:
                         highlightthickness=2)
         frame.pack(fill='both', expand=True, padx=2, pady=2)
 
-        # Try to load logo (only if PIL is available)
-        if HAS_PIL:
-            logo_path = Path(__file__).parent / "frontend" / "public" / "giljologo_full.png"
-            if logo_path.exists():
-                try:
-                    # Load and resize logo
-                    img = Image.open(logo_path)
-                    # Resize to fit splash screen
-                    img = img.resize((400, 150), Image.Resampling.LANCZOS)
-                    photo = ImageTk.PhotoImage(img)
+        # Try to load logo using tkinter's native PhotoImage (supports PNG directly)
+        logo_path = Path(__file__).parent / "frontend" / "public" / "giljologo_full.png"
+        if logo_path.exists():
+            try:
+                # Load PNG directly with tkinter (no PIL needed!)
+                photo = tk.PhotoImage(file=str(logo_path))
 
-                    logo_label = tk.Label(frame, image=photo, bg=COLORS['bg_elevated'])
-                    logo_label.image = photo  # Keep a reference
-                    logo_label.pack(pady=30)
-                except Exception as e:
-                    # Fallback to text if image fails
-                    self._show_text_logo(frame)
-            else:
-                # Fallback to text logo
+                # Subsample to resize (tkinter native method)
+                # Note: subsample divides size, so subsample=2 makes it half size
+                # Adjust based on your logo's original size
+                # photo = photo.subsample(2, 2)  # Uncomment if logo is too large
+
+                logo_label = tk.Label(frame, image=photo, bg=COLORS['bg_elevated'])
+                logo_label.image = photo  # Keep a reference to prevent garbage collection
+                logo_label.pack(pady=30)
+            except Exception as e:
+                # Fallback to text if image fails
+                print(f"Could not load logo: {e}")
                 self._show_text_logo(frame)
         else:
-            # PIL not available, use text logo
+            # Fallback to text logo if file doesn't exist
             self._show_text_logo(frame)
 
         # Add loading message
