@@ -4,6 +4,7 @@ GiljoAI MCP GUI Setup - Tkinter-based wizard interface
 Provides a graphical setup wizard as an alternative to CLI mode
 """
 
+import platform
 import socket
 import subprocess
 import sys
@@ -2337,18 +2338,36 @@ class ProgressPage(WizardPage):
             # Create desktop shortcuts
             self.log("\nCreating desktop shortcuts...", "system")
             try:
-                from create_shortcuts import create_shortcuts, add_to_startup_windows
-                shortcuts = create_shortcuts()
-                if shortcuts:
-                    self.log(f"✓ Created {len(shortcuts)} desktop shortcuts", "success")
-                    self.log("  • Start Server - Launch the MCP server", "info")
-                    self.log("  • Stop Server - Shutdown the server", "info")
-                    self.log("  • Connect Project - Connect projects to server", "info")
-                    self.log("  • Check Status - View server status", "info")
+                # First check if pywin32 is available (required for Windows shortcuts)
+                if platform.system() == "Windows":
+                    try:
+                        import win32com.client
+                        pywin32_available = True
+                    except ImportError:
+                        pywin32_available = False
+                        self.log("Note: pywin32 not available for creating shortcuts", "warning")
+                        self.log("You can create shortcuts manually from the installation folder", "info")
                 else:
-                    self.log("Desktop shortcuts could not be created", "warning")
+                    pywin32_available = True  # Not needed on other platforms
+
+                if pywin32_available:
+                    from create_shortcuts import create_shortcuts, add_to_startup_windows
+                    shortcuts = create_shortcuts()
+                    if shortcuts:
+                        self.log(f"✓ Created {len(shortcuts)} desktop shortcuts", "success")
+                        self.log("  • Start Server - Launch the MCP server", "info")
+                        self.log("  • Stop Server - Shutdown the server", "info")
+                        self.log("  • Connect Project - Connect projects to server", "info")
+                        self.log("  • Check Status - View server status", "info")
+                    else:
+                        self.log("Desktop shortcuts could not be created", "warning")
+                        self.log("You can use the batch files in the installation folder instead", "info")
+            except ImportError as import_error:
+                self.log(f"Note: Could not import shortcuts module: {import_error}", "warning")
+                self.log("Desktop shortcuts can be created manually from the installation folder", "info")
             except Exception as shortcut_error:
                 self.log(f"Warning: Could not create shortcuts: {shortcut_error}", "warning")
+                self.log("You can use the batch files in the installation folder instead", "info")
 
             # Register with Claude if available
             self.log("\nChecking Claude integration...", "system")
@@ -2364,10 +2383,11 @@ class ProgressPage(WizardPage):
                     install_dir = Path.cwd()
                     python_path = install_dir / "venv" / "Scripts" / "python.exe"
 
-                    # Register the MCP server with Claude
+                    # Register the MCP adapter (not the server directly)
+                    # The adapter translates stdio to HTTP calls to localhost:8000
                     result = subprocess.run(
                         ["claude", "mcp", "add", "giljo-mcp",
-                         f"{python_path} -m giljo_mcp",
+                         f"{python_path} -m giljo_mcp.mcp_adapter",
                          "--scope", "user"],
                         capture_output=True,
                         text=True,
@@ -2377,15 +2397,33 @@ class ProgressPage(WizardPage):
                     if result.returncode == 0:
                         self.log("Successfully registered with Claude!", "success")
                         self.log("Please restart Claude to activate the MCP server.", "info")
+                        self.log("The MCP adapter will bridge Claude to the HTTP server on port 8000", "info")
                     else:
-                        self.log("Could not auto-register with Claude.", "warning")
-                        self.log(f"You can register manually by running: register_claude.bat", "info")
+                        error_msg = result.stderr.strip() if result.stderr else "Unknown error"
+                        self.log(f"Could not auto-register with Claude: {error_msg}", "warning")
+                        self.log("Manual registration instructions:", "info")
+                        self.log(f"  1. Open a terminal in: {install_dir}", "info")
+                        self.log(f"  2. Run: register_claude.bat", "info")
+                        self.log("  3. Restart Claude after registration", "info")
                 else:
-                    self.log("Claude CLI not found. You can register later by running: register_claude.bat", "info")
+                    self.log("Claude CLI not found. This is optional.", "info")
+                    self.log("If you have Claude Code installed:", "info")
+                    self.log(f"  1. Open a terminal in: {install_dir}", "info")
+                    self.log(f"  2. Run: register_claude.bat", "info")
+                    self.log("  3. Restart Claude after registration", "info")
 
+            except subprocess.TimeoutExpired:
+                self.log("Claude registration timed out", "warning")
+                self.log("You can complete registration manually:", "info")
+                self.log(f"  Run: register_claude.bat from the installation folder", "info")
+            except FileNotFoundError as e:
+                self.log(f"Could not find required file for Claude registration: {e}", "warning")
+                self.log("Manual registration available after installation:", "info")
+                self.log(f"  Run: register_claude.bat from the installation folder", "info")
             except Exception as claude_error:
-                self.log(f"Claude registration skipped: {claude_error}", "warning")
-                self.log("You can register manually later by running: register_claude.bat", "info")
+                self.log(f"Claude registration encountered an issue: {claude_error}", "warning")
+                self.log("Manual registration is available:", "info")
+                self.log(f"  Run: register_claude.bat from the installation folder", "info")
 
         except Exception as e:
             self.log(f"Health check error: {e}", "system")
