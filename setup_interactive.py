@@ -1310,8 +1310,13 @@ Categories=Development;IDE;
 
         console.clear()
 
-        # ASCII art box
-        console.print("""
+        # Get configuration values for dynamic instructions
+        pg_port = self.config.get("pg_port", "5432")
+        pg_user = self.config.get("pg_user", "postgres")
+        pg_database = self.config.get("pg_database", "giljo_mcp")
+
+        # ASCII art box with DYNAMIC values
+        guide_text = f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║         PostgreSQL Installation Guide - Version 18          ║
 ╠══════════════════════════════════════════════════════════════╣
@@ -1320,26 +1325,28 @@ Categories=Development;IDE;
 ║  Please install it manually following these steps:          ║
 ║                                                              ║
 ║  📥 Step 1: Download PostgreSQL 18                          ║
-║     • Press [D] to open download page in browser            ║
+║     • Go to: https://www.postgresql.org/download/           ║
 ║     • Download PostgreSQL 18 for your system                ║
+║     • Or press [D] to open in browser                       ║
 ║                                                              ║
 ║  🔧 Step 2: Run the Installer                               ║
 ║     • Windows: Right-click → Run as Administrator           ║
 ║     • Mac/Linux: Follow standard installation               ║
 ║                                                              ║
-║  ⚙️  Step 3: Installation Settings                          ║
-║     • Port: 5432 (default - REMEMBER THIS!)                 ║
-║     • Username: postgres (default)                          ║
-║     • Password: Choose secure password (REMEMBER IT!)       ║
+║  ⚙️  Step 3: USE THESE EXACT SETTINGS (YOU SELECTED THESE!) ║
+║     • Port: {pg_port:<48}║
+║     • Username: {pg_user:<44}║
+║     • Password: [Choose secure password - REMEMBER IT!]     ║
+║     • Database: {pg_database:<44}║
 ║     • Locale: Default                                       ║
-║     • Stack Builder: Skip                                   ║
+║     • Stack Builder: Skip (not needed)                      ║
 ║                                                              ║
 ║  ✅ Step 4: Complete Installation                           ║
 ║     • Let installer finish                                  ║
 ║     • PostgreSQL service will start automatically           ║
 ║                                                              ║
 ║  🔌 Step 5: Test Connection                                 ║
-║     • Press [T] to test connection after installation       ║
+║     • Press [T] to test with YOUR settings above            ║
 ║                                                              ║
 ║ ─────────────────────────────────────────────────────────── ║
 ║                                                              ║
@@ -1351,7 +1358,11 @@ Categories=Development;IDE;
 ║    [Q] - Quit installation                                  ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
-        """, style="cyan")
+        """
+
+        # Highlight the user's values in yellow
+        console.print(guide_text, style="cyan")
+        console.print(f"\n[yellow]⚠️ IMPORTANT: Use YOUR settings shown above: Port {pg_port}, User {pg_user}[/yellow]\n")
 
         connection_verified = False
 
@@ -1375,20 +1386,23 @@ Categories=Development;IDE;
                 console.print("[yellow]After downloading, install PostgreSQL and press [T] to test[/yellow]")
 
             elif choice == "t":
-                # Test connection
+                # Test connection with cached settings
                 console.print("\n[bold]Testing PostgreSQL connection...[/bold]")
+                console.print(f"[dim]Using your configuration: Port {pg_port}, User {pg_user}[/dim]\n")
 
-                # Get connection details
-                pg_host = Prompt.ask("PostgreSQL host", default="localhost")
-                pg_port = IntPrompt.ask("PostgreSQL port", default=5432)
-                pg_user = Prompt.ask("PostgreSQL username", default="postgres")
-                pg_password = Prompt.ask("PostgreSQL password", password=True)
+                # Only ask for password
+                pg_password = Prompt.ask("Enter the PostgreSQL password you set during installation", password=True)
 
-                # Test connection
+                if not pg_password:
+                    console.print("[yellow]Password is required for testing[/yellow]")
+                    continue
+
+                # Test connection with cached settings
+                console.print(f"[dim]Connecting to localhost:{pg_port} as {pg_user}...[/dim]")
                 try:
                     import psycopg2
                     conn = psycopg2.connect(
-                        host=pg_host,
+                        host="localhost",
                         port=pg_port,
                         database="postgres",
                         user=pg_user,
@@ -1396,16 +1410,13 @@ Categories=Development;IDE;
                     )
                     conn.close()
 
-                    console.print("[green]✓ Connection successful![/green]")
+                    console.print("[green]✅ Connection successful! PostgreSQL is ready.[/green]")
                     connection_verified = True
 
-                    # Save credentials to config
-                    self.config["pg_host"] = pg_host
-                    self.config["pg_port"] = pg_port
-                    self.config["pg_user"] = pg_user
+                    # Save password to config
                     self.config["pg_password"] = pg_password
 
-                    console.print("[cyan]Press [C] to continue with installation[/cyan]")
+                    console.print("\n[cyan]Press [C] to continue with installation[/cyan]")
 
                 except ImportError:
                     console.print("[yellow]Installing psycopg2-binary...[/yellow]")
