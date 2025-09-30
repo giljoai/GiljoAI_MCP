@@ -242,7 +242,7 @@ and not in the project folder."""
         recommend_label = ttk.Label(self, text=recommend_text, justify=tk.LEFT, foreground="orange")
         recommend_label.pack(padx=20, pady=(0, 10))
 
-        # Welcome message
+        # Welcome message with white text
         welcome_text = """What this installer does:
 • Installs a standalone MCP server (one-time, system-wide)
 • Creates its own Python environment and dependencies
@@ -253,7 +253,10 @@ After installation, you'll connect projects via lightweight config files.
 
 Select your server deployment mode:"""
 
-        desc_label = ttk.Label(self, text=welcome_text, justify=tk.LEFT)
+        # Use tk.Label instead of ttk.Label for white text
+        desc_label = tk.Label(self, text=welcome_text, justify=tk.LEFT,
+                             fg='#ffffff', bg=COLORS['bg_primary'],
+                             font=('Segoe UI', 9))
         desc_label.pack(padx=20, pady=10)
 
         # Deployment mode selection
@@ -283,7 +286,9 @@ Select your server deployment mode:"""
 • Perfect for individual developers
 • Ideal for: Personal projects, learning, prototyping"""
 
-        ttk.Label(local_frame, text=local_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
+        tk.Label(local_frame, text=local_desc, justify=tk.LEFT,
+                fg='#ffffff', bg=COLORS['bg_primary'],
+                font=('Segoe UI', 9)).pack(padx=20, pady=5, anchor="w")
 
         # Server Deployment Mode
         server_frame = ttk.LabelFrame(modes_frame, text="Server Deployment", padding=10)
@@ -305,13 +310,18 @@ Select your server deployment mode:"""
 • Configurable security settings
 • Ideal for: Team servers, CI/CD, remote access"""
 
-        ttk.Label(server_frame, text=server_desc, justify=tk.LEFT, foreground="gray").pack(padx=20, pady=5, anchor="w")
+        tk.Label(server_frame, text=server_desc, justify=tk.LEFT,
+                fg='#ffffff', bg=COLORS['bg_primary'],
+                font=('Segoe UI', 9)).pack(padx=20, pady=5, anchor="w")
 
-        # Status label for mode details
+        # Status label for mode details (yellow text)
         self.status_frame = ttk.Frame(self)
         self.status_frame.pack(padx=20, pady=10, fill="x")
 
-        self.status_label = ttk.Label(self.status_frame, text="", foreground="blue")
+        # Use tk.Label for yellow text
+        self.status_label = tk.Label(self.status_frame, text="",
+                                     fg='#ffc300', bg=COLORS['bg_primary'],
+                                     font=('Segoe UI', 9, 'bold'))
         self.status_label.pack()
 
         # Set initial status
@@ -362,7 +372,9 @@ class DatabasePage(WizardPage):
 
         desc_text = """GiljoAI MCP requires PostgreSQL for reliable multi-user operation.
 Choose how you want to set up PostgreSQL:"""
-        desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
+        desc_label = tk.Label(self, text=desc_text, justify=tk.LEFT,
+                             fg='#ffffff', bg=COLORS['bg_primary'],
+                             font=('Segoe UI', 9))
         desc_label.pack(padx=20, pady=5)
 
         # PostgreSQL setup mode selection
@@ -379,10 +391,11 @@ Choose how you want to set up PostgreSQL:"""
             command=self._on_mode_change,
         ).pack(anchor="w")
 
-        existing_desc = ttk.Label(
+        existing_desc = tk.Label(
             mode_frame,
             text="   • Use an already installed PostgreSQL server\n   • You'll provide connection credentials",
-            foreground="gray"
+            fg='#ffffff', bg=COLORS['bg_primary'],
+            font=('Segoe UI', 9)
         )
         existing_desc.pack(anchor="w", padx=20, pady=(0, 10))
 
@@ -394,10 +407,11 @@ Choose how you want to set up PostgreSQL:"""
             command=self._on_mode_change,
         ).pack(anchor="w")
 
-        fresh_desc = ttk.Label(
+        fresh_desc = tk.Label(
             mode_frame,
-            text="   • We'll download and install PostgreSQL\n   • Automatically configure for GiljoAI",
-            foreground="gray"
+            text="   • PostgreSQL will be downloaded and installed during the installation process\n   • Automatically configure for GiljoAI",
+            fg='#ffffff', bg=COLORS['bg_primary'],
+            font=('Segoe UI', 9)
         )
         fresh_desc.pack(anchor="w", padx=20)
 
@@ -776,9 +790,9 @@ class PortsPage(WizardPage):
         """Check if a port is available"""
         port = int(self.port_vars[service].get())
         if check_port(port):
-            self.status_labels[service].config(text="✗ In use", foreground="red")
+            self.status_labels[service].config(text="✗ In use", foreground="#c6298c")  # Pink/red
         else:
-            self.status_labels[service].config(text="✓ Available", foreground="green")
+            self.status_labels[service].config(text="✓ Available", foreground="#90ee90")  # Lighter green
 
     def _check_all_ports(self):
         """Check all ports"""
@@ -1027,8 +1041,13 @@ class ReviewPage(WizardPage):
         text_frame = ttk.Frame(self)
         text_frame.pack(padx=20, pady=10, fill="both", expand=True)
 
-        # Config display
-        self.text = tk.Text(text_frame, height=20, width=70, wrap="word")
+        # Config display with #315074 background
+        self.text = tk.Text(text_frame, height=20, width=70, wrap="word",
+                           bg='#315074', fg='#ffffff',
+                           font=('Segoe UI', 9),
+                           insertbackground='#ffffff',
+                           selectbackground='#1e3147',
+                           selectforeground='#ffffff')
         self.text.pack(side="left", fill="both", expand=True)
 
         # Scrollbar
