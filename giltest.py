@@ -572,12 +572,11 @@ def verify_deployment(preserved_items=None):
     print("\nKey files verification:")
     key_files = [
         "bootstrap.py",
-        "quickstart.bat",
+        "install.bat",
         "quickstart.sh",
         "setup.py",
         "setup_gui.py",  # GUI installer with PostgreSQL 18 guide
-        "setup_interactive.py",  # CLI installer with ASCII PostgreSQL guide
-        "setup_cli.py",  # Additional CLI setup
+        "setup_cli.py",  # CLI installer (PostgreSQL-focused, 663 lines)
         "setup_config.py",  # Configuration management
         "setup_platform.py",  # Platform-specific setup
         "requirements.txt",
@@ -625,12 +624,12 @@ def verify_deployment(preserved_items=None):
     print()
 
     print("This simulates what a user gets from GitHub releases:")
-    print("   Download -> Extract -> Run quickstart.bat")
+    print("   Download -> Extract -> Run install.bat")
     print()
 
     print("You can now:")
     print(f"  1. Navigate to {TEST_DIR}")
-    print("  2. Run quickstart.bat to test installer")
+    print("  2. Run install.bat to test installer")
     print("  3. Verify installer works with 'release' files only")
     print()
 
