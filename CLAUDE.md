@@ -31,7 +31,7 @@ The system supports two deployment modes:
 ```bash
 # Quick start - automatic installer with GUI
 python bootstrap.py              # Universal
-quickstart.bat                   # Windows
+install.bat                      # Windows
 ./quickstart.sh                  # Mac/Linux
 
 # Manual setup

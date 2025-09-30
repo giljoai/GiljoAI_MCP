@@ -46,8 +46,8 @@ cd C:\GiljoAI_MCP  # or your chosen location
 # 2. Run the installer
 python bootstrap.py
 
-# Or use the quick-start scripts:
-quickstart.bat      # Windows
+# Or use the installation scripts:
+install.bat         # Windows
 ./quickstart.sh     # Mac/Linux
 ```
 

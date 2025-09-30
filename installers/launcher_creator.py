@@ -304,7 +304,7 @@ echo =====================================
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo Error: Python is not installed or not in PATH
-    echo Please run quickstart.bat to install Python
+    echo Please run install.bat to install Python
     pause
     exit /b 1
 )

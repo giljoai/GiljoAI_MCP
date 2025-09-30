@@ -102,7 +102,7 @@ git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
 cd GiljoAI_MCP
 
 # 2. Run the advanced installer (3 minutes)
-quickstart.bat     # Windows
+install.bat        # Windows
 # OR
 ./quickstart.sh    # Mac/Linux
 # OR
