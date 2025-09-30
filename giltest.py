@@ -269,8 +269,8 @@ def print_header():
     print("This script simulates downloading and extracting a GitHub release.")
     print("It copies ONLY files that would be in a release archive (no dev files).")
     print()
-    print(f"📦 Source (Development): {SOURCE_DIR}")
-    print(f"📁 Target (Release Test): {TEST_DIR}")
+    print(f"Source (Development): {SOURCE_DIR}")
+    print(f"Target (Release Test): {TEST_DIR}")
     print()
     print("Exclusions: Using .gitattributes export-ignore rules")
     print("Expected: ~400 files (vs ~1,600 in development)")
@@ -286,9 +286,9 @@ def print_header():
     items = list(SOURCE_DIR.iterdir())[:10]  # Show first 10 items
     for item in items:
         if item.is_dir():
-            print(f"  📁 {item.name}/")
+            print(f"  - {item.name}/")
         else:
-            print(f"  📄 {item.name}")
+            print(f"  - {item.name}")
     if len(list(SOURCE_DIR.iterdir())) > 10:
         print(f"  ... and {len(list(SOURCE_DIR.iterdir())) - 10} more items")
     print()
@@ -480,9 +480,9 @@ def copy_files(preserve_mode=False):
                 break
             if item.is_dir():
                 file_count_in_dir = sum(1 for _ in item.rglob("*") if _.is_file())
-                print(f"      📁 {item.name}/ ({file_count_in_dir} files)")
+                print(f"      {item.name}/ ({file_count_in_dir} files)")
             else:
-                print(f"      📄 {item.name}")
+                print(f"      {item.name}")
             items_shown += 1
 
         return True
@@ -557,11 +557,11 @@ def verify_deployment(preserved_items=None):
     for root, dirs, files in os.walk(SOURCE_DIR):
         source_file_count += len(files)
 
-    print("✅ SUCCESS: Release Simulation Complete!")
+    print("SUCCESS: Release Simulation Complete!")
     print("=" * 70)
     print()
-    print(f"📁 Release Test Directory: {TEST_DIR}")
-    print(f"📊 File Statistics:")
+    print(f"Release Test Directory: {TEST_DIR}")
+    print(f"File Statistics:")
     print(f"   • Development (source): {source_file_count:,} files")
     print(f"   • Release (copied):     {file_count:,} files")
     print(f"   • Excluded (dev only):  {source_file_count - file_count:,} files")
@@ -573,7 +573,13 @@ def verify_deployment(preserved_items=None):
     key_files = [
         "bootstrap.py",
         "quickstart.bat",
+        "quickstart.sh",
         "setup.py",
+        "setup_gui.py",  # GUI installer with PostgreSQL 18 guide
+        "setup_interactive.py",  # CLI installer with ASCII PostgreSQL guide
+        "setup_cli.py",  # Additional CLI setup
+        "setup_config.py",  # Configuration management
+        "setup_platform.py",  # Platform-specific setup
         "requirements.txt",
         "README.md",
         "devuninstall.py",
@@ -584,9 +590,9 @@ def verify_deployment(preserved_items=None):
         file_path = TEST_DIR / file_name
         if file_path.exists():
             size = file_path.stat().st_size
-            print(f"  ✓ {file_name} ({size:,} bytes)")
+            print(f"  [OK] {file_name} ({size:,} bytes)")
         else:
-            print(f"  ✗ {file_name} (missing)")
+            print(f"  [MISSING] {file_name}")
 
     if preserved_items:
         print("\nData preservation status:")
@@ -598,7 +604,7 @@ def verify_deployment(preserved_items=None):
             print("  [OK] Projects preserved")
 
     # Show what was excluded
-    print("\n📦 Release Simulation Details:")
+    print("\nRelease Simulation Details:")
     print("   Excluded from release (simulating GitHub export-ignore):")
     print("   • Development docs (sessions/, devlog/, docs/Sessions/, docs/adr/)")
     print("   • Internal docs (AGENT_*, PROJECT_*, audit_*, linting_*, etc.)")
@@ -611,15 +617,15 @@ def verify_deployment(preserved_items=None):
     print("   • Coverage and reports (coverage*, *_REPORT.md)")
     print()
     print("   Included in release (user-facing files):")
-    print("   ✅ README.md, INSTALLATION.md, CLAUDE.md, LICENSE")
-    print("   ✅ devuninstall.py (dev reset), uninstall.py (production)")
-    print("   ✅ docs/ARCHITECTURE_V2.md, docs/TECHNICAL_ARCHITECTURE.md")
-    print("   ✅ docs/AI_TOOL_INTEGRATION.md (integration guide)")
-    print("   ✅ docs/color_themes.md, docs/installer_user_guide.md")
+    print("   - README.md, INSTALLATION.md, CLAUDE.md, LICENSE")
+    print("   - devuninstall.py (dev reset), uninstall.py (production)")
+    print("   - docs/ARCHITECTURE_V2.md, docs/TECHNICAL_ARCHITECTURE.md")
+    print("   - docs/AI_TOOL_INTEGRATION.md (integration guide)")
+    print("   - docs/color_themes.md, docs/installer_user_guide.md")
     print()
 
-    print("✅ This simulates what a user gets from GitHub releases:")
-    print("   Download → Extract → Run quickstart.bat")
+    print("This simulates what a user gets from GitHub releases:")
+    print("   Download -> Extract -> Run quickstart.bat")
     print()
 
     print("You can now:")
