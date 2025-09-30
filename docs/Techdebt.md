@@ -116,6 +116,55 @@ PROJECT MULTIAGENT COMMS AND INTERACTION
 investigate bashing in claude code or doing built in terminal with waiting and comms etc. how to leverage sub agents in claude code.
 The other alternative is the TERMINAL MUX proposal below.
 
+PROJECT CLAUDE AGENT SDK INTEGRATION
+- **Description**: Integrate Claude Agent SDK capabilities to enhance GiljoAI MCP orchestration
+- **Strategic Value**: Creates two-tier orchestration system leveraging native Claude capabilities
+- **Implementation Strategy**:
+  1. **Hybrid Agent Architecture**:
+     - SDK handles low-level agent behaviors and tool execution
+     - GiljoAI MCP provides high-level coordination and persistence
+     - Message queue routes between SDK subagents and GiljoAI agents
+
+  2. **Enhanced Capabilities**:
+     - **Context Management**: SDK's context compaction + GiljoAI's database persistence = infinite memory
+     - **Subagent Hierarchy**: SDK subagents for immediate tasks, GiljoAI for long-running teams
+     - **Unified Tools**: 40+ tools working in harmony (20+ from GiljoAI, 20+ from SDK)
+     - **Dual Communication**: SDK for immediate, GiljoAI for persistent messaging
+
+  3. **Integration Points**:
+     ```python
+     # Enhanced orchestrator detecting SDK capabilities
+     class SDKEnhancedOrchestrator(ProjectOrchestrator):
+         def spawn_agent(self, mission):
+             if sdk_available:
+                 return SDKEnhancedAgent(mission, self.message_queue)
+             return StandardAgent(mission, self.message_queue)
+     ```
+
+  4. **Template System Enhancement**:
+     - Templates generate SDK-compatible missions
+     - SDK agents execute autonomously
+     - Results persist in GiljoAI database
+
+  5. **Discovery System Synergy**:
+     - SDK's agentic search for active exploration
+     - GiljoAI caches and indexes discoveries
+     - Future agents start with pre-mapped codebase
+
+- **Benefits for Users**:
+  - Break ALL context limits through compaction + persistence
+  - Enterprise-ready with development agility
+  - Single MCP connection for coordinated teams
+  - Real-time monitoring through Vue dashboard
+
+- **Implementation Tasks**:
+  - Update MCP tools to detect SDK agent capabilities
+  - Enhance message queue for SDK/GiljoAI routing
+  - Extend templates with SDK-specific missions
+  - Add WebSocket events for SDK agent status
+
+- **Priority**: HIGH - Positions GiljoAI as enterprise orchestration layer on Claude's foundation
+
 PROJECT PRODUCT ISOLATION
 making tasks product specific, so they can be converted to projects within the product as the intent of tasks is ideas during dev, and potential technical debt or as reminder for the dev to do someting within the Product.
 

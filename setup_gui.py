@@ -17,19 +17,23 @@ from typing import Callable, Optional
 # Import base setup class
 from setup import PORT_ASSIGNMENTS, GiljoSetup, check_port
 
-# Enable DPI awareness for clearer text on Windows
+# Enable DPI awareness for clearer text on Windows - Method #2
 if sys.platform == "win32":
     try:
         import ctypes
-        # SetProcessDpiAwareness(1) enables system DPI awareness
-        # This makes text crisp and clear on high DPI displays
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        # SetProcessDpiAwareness(2) = Per Monitor DPI Aware V2
+        # This provides the best clarity on high DPI displays
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
     except Exception:
-        # Fallback for older Windows versions
+        # Fallback to SetProcessDpiAwareness(1) = System DPI Aware
         try:
-            ctypes.windll.user32.SetProcessDPIAware()
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
         except Exception:
-            pass  # DPI awareness not available
+            # Final fallback for older Windows versions
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass  # DPI awareness not available
 
 
 def is_admin():
@@ -56,7 +60,59 @@ COLORS = {
     'text_secondary': '#8f97b7',  # Light blue - secondary text
     'text_light': '#e1e1e1',      # Light gray - text on dark
     'accent_purple': '#8b5cf6',   # Purple - special features
+    # Additional color aliases for compatibility
+    'error': '#c6298c',           # Same as text_error
+    'warning': '#ffc300',         # Same as text_primary (yellow)
+    'success': '#67bd6d',         # Same as text_success
 }
+
+# Known large packages that take longer to download
+LARGE_PACKAGES = {
+    'pywin32': 'Windows system libraries',
+    'docker': 'Docker container management',
+    'openai': 'AI integration libraries',
+    'anthropic': 'Claude AI integration',
+    'google-generativeai': 'Google AI integration',
+    'mkdocs-material': 'Documentation theme',
+    'celery': 'Task queue system',
+    'tiktoken': 'Token counting data',
+    'psycopg2-binary': 'PostgreSQL drivers',
+    'psycopg2': 'PostgreSQL drivers',
+    'cryptography': 'Encryption libraries',
+    'sqlalchemy': 'Database ORM',
+    'grpcio': 'gRPC libraries',
+    'numpy': 'Numerical computing',
+    'pandas': 'Data analysis',
+}
+
+
+def extract_package_name(line):
+    """Extract clean package name from pip output line"""
+    # Handle "Collecting package_name" or "Downloading package_name-version.whl"
+    if "Collecting" in line:
+        # Extract after "Collecting "
+        parts = line.split("Collecting", 1)
+        if len(parts) > 1:
+            package_part = parts[1].strip()
+            # Remove version specifiers and other constraints
+            package_name = package_part.split()[0] if package_part else ""
+            # Clean up common separators
+            for sep in ['>=', '<=', '==', '>', '<', '[', '(', ' ']:
+                if sep in package_name:
+                    package_name = package_name.split(sep)[0]
+            return package_name.strip()
+    elif "Downloading" in line:
+        # Extract from "Downloading package-version.whl" or similar
+        parts = line.split("Downloading", 1)
+        if len(parts) > 1:
+            file_part = parts[1].strip()
+            # Extract package name from filename
+            if '/' in file_part:
+                file_part = file_part.split('/')[-1]
+            # Remove .whl, .tar.gz, etc and version
+            package_name = file_part.split('-')[0] if '-' in file_part else file_part.split('.')[0]
+            return package_name.strip()
+    return ""
 
 
 class WelcomePage(ttk.Frame):
@@ -1658,11 +1714,28 @@ class ProgressPage(WizardPage):
                     # Update progress based on package installation stages
                     if "Collecting" in line or "Downloading" in line:
                         package_count += 1
+                        # Extract package name for display
+                        package_name = extract_package_name(line)
+
                         # Progress from 15% to 45% during requirements.txt
                         progress = min(15 + (package_count * 0.5), 45)
                         current_progress = max(current_progress, progress)
                         self.set_progress(int(current_progress), "dependencies")
-                        if package_count % 5 == 0:  # Log every 5th package to avoid spam
+
+                        # Display package name with large package warning if applicable
+                        if package_name:
+                            # Check if it's a large package
+                            is_large = False
+                            for large_pkg in LARGE_PACKAGES:
+                                if large_pkg.lower() in package_name.lower():
+                                    is_large = True
+                                    break
+
+                            if is_large:
+                                self.log(f"  Downloading: {package_name} (large package, please wait)", "info")
+                            else:
+                                self.log(f"  Downloading: {package_name}", "system")
+                        elif package_count % 5 == 0:  # Fallback for unrecognized format
                             self.log(f"  Installing package {package_count}...", "system")
                     elif "Successfully installed" in line:
                         self.log(f"  {line}", "system")
@@ -1758,32 +1831,8 @@ class ProgressPage(WizardPage):
                     self._show_postgres_installation_guide(config)
                     # Guide window has closed, PostgreSQL should be ready
 
-                    # Old code below - no longer used
-                    pg_url = "https://get.enterprisedb.com/postgresql/postgresql-18.0-1-windows-x64.exe"
-                    # Note: In production, you should verify SSL certificates and checksums
-                    # This is a trusted PostgreSQL download source
-                    with tempfile.NamedTemporaryFile(suffix=".exe", delete=False) as tmp:
-                        # Use urlopen with context manager for safer downloading
-                        with urllib.request.urlopen(pg_url) as response:  # nosec B310 - trusted PostgreSQL source
-                            tmp.write(response.read())
-                        pg_installer = tmp.name
-
-                    # Run installer silently
-                    pg_password = config.get("pg_password", "postgres")
-                    pg_port = config.get("pg_port", "5432")
-
-                    install_cmd = [
-                        pg_installer,
-                        "--mode", "unattended",
-                        "--superpassword", pg_password,
-                        "--serverport", pg_port,
-                        "--enable-components", "server",
-                        "--disable-components", "pgAdmin,stackbuilder"
-                    ]
-
-                    self.log("Running PostgreSQL installer (this may take a few minutes)...", "system")
-                    subprocess.run(install_cmd, check=True)
-                    self.log("✓ PostgreSQL installed successfully", "success")
+                    # The old automatic installation code has been removed.
+                    # Users will manually install PostgreSQL using the guide window.
 
                 elif sys.platform == "darwin":
                     # macOS: Guide user through PostgreSQL installation
@@ -1927,10 +1976,28 @@ class ProgressPage(WizardPage):
                 line = line.strip()
                 if line:
                     # Show condensed output for key operations
-                    if "Collecting" in line:
-                        package_name = line.split("Collecting")[-1].strip()
+                    if "Collecting" in line or "Downloading" in line:
+                        # Extract clean package name
+                        package_name = extract_package_name(line)
                         package_count += 1
-                        self.log(f"  Downloading: {package_name}", "system")
+
+                        # Display package name with large package warning if applicable
+                        if package_name:
+                            # Check if it's a large package
+                            is_large = False
+                            for large_pkg in LARGE_PACKAGES:
+                                if large_pkg.lower() in package_name.lower():
+                                    is_large = True
+                                    break
+
+                            if is_large:
+                                self.log(f"  Downloading: {package_name} (large package, please wait)", "info")
+                            else:
+                                self.log(f"  Downloading: {package_name}", "system")
+                        else:
+                            # Fallback if extraction failed
+                            self.log(f"  Downloading package {package_count}...", "system")
+
                         # Update progress incrementally (20% to 60% over ~100 packages)
                         progress = min(20 + (package_count * 0.4), 60)
                         self.set_progress(int(progress), "packages")
@@ -2221,133 +2288,139 @@ class ProgressPage(WizardPage):
         import webbrowser
         import platform
 
-        # Create guide window
+        # Create guide window matching main wizard size/style
         guide_window = tk.Toplevel(self.master)
         guide_window.title("PostgreSQL Installation Guide")
-        guide_window.geometry("1050x975")  # Increased by 50% for DPI scaling
+        guide_window.geometry("900x750")  # Match wizard proportions
         guide_window.configure(bg=COLORS['bg_primary'])
+        guide_window.resizable(False, False)
+
+        # Center the window
+        guide_window.update_idletasks()
+        x = (guide_window.winfo_screenwidth() // 2) - (900 // 2)
+        y = (guide_window.winfo_screenheight() // 2) - (750 // 2)
+        guide_window.geometry(f"900x750+{x}+{y}")
 
         # Make it modal
         guide_window.transient(self.master)
         guide_window.grab_set()
 
+        # Configure ttk styles for this window
+        style = ttk.Style()
+
         # Main frame with padding
-        main_frame = ttk.Frame(guide_window, padding=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        main_frame = ttk.Frame(guide_window, style='TFrame')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=40, pady=40)
 
-        # Title
-        title_label = ttk.Label(main_frame,
-                               text="PostgreSQL Installation Guide",
-                               font=("Helvetica", 14, "bold"))
-        title_label.pack(pady=(0, 10))
+        # Title using tk.Label for styling control
+        title_label = tk.Label(main_frame,
+                              text="PostgreSQL Installation Guide",
+                              font=('Segoe UI', 14, 'bold'),
+                              fg='#ffffff',
+                              bg=COLORS['bg_primary'])
+        title_label.pack(pady=(0, 20))
 
-        # Instructions frame with embedded labels
-        instructions_frame = ttk.LabelFrame(main_frame, text="Installation Steps", padding=15)
+        # Instructions frame with yellow border style
+        instructions_frame = ttk.LabelFrame(main_frame, text="Installation Steps",
+                                           style='Yellow.TLabelframe', padding=15)
         instructions_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
-        # Create scrollable frame for instructions
-        inst_canvas = tk.Canvas(instructions_frame, bg=COLORS['bg_elevated'], highlightthickness=0)
-        inst_scrollbar = ttk.Scrollbar(instructions_frame, orient="vertical", command=inst_canvas.yview)
-        inst_scrollable = ttk.Frame(inst_canvas)
+        # Create frame for text and scrollbar
+        text_frame = ttk.Frame(instructions_frame)
+        text_frame.pack(fill=tk.BOTH, expand=True)
 
-        inst_scrollable.bind(
-            "<Configure>",
-            lambda e: inst_canvas.configure(scrollregion=inst_canvas.bbox("all"))
-        )
+        # Create text widget matching the theme
+        instructions_text = tk.Text(text_frame,
+                                   wrap=tk.WORD,
+                                   bg=COLORS['bg_elevated'],  # Medium dark blue
+                                   fg='#ffffff',  # White text
+                                   font=('Segoe UI', 10),
+                                   padx=15,
+                                   pady=15,
+                                   relief='flat',
+                                   borderwidth=0)
+        instructions_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        inst_canvas.create_window((0, 0), window=inst_scrollable, anchor="nw")
-        inst_canvas.configure(yscrollcommand=inst_scrollbar.set)
-
-        # Step 1: Download
-        step1_label = tk.Label(inst_scrollable,
-                              text="📥 Step 1: Download PostgreSQL 18",
-                              font=('Segoe UI', 11, 'bold'),
-                              fg=COLORS['text_primary'], bg=COLORS['bg_elevated'],
-                              anchor='w')
-        step1_label.pack(fill='x', padx=10, pady=(10, 5))
-
-        step1_text = tk.Label(inst_scrollable,
-                             text="Go to: https://www.postgresql.org/download/\nDownload PostgreSQL 18 for your operating system",
-                             font=('Segoe UI', 10),
-                             fg='#ffffff', bg=COLORS['bg_elevated'],
-                             anchor='w', justify='left')
-        step1_text.pack(fill='x', padx=20, pady=(0, 10))
-
-        # Step 2: Run Installer
-        step2_label = tk.Label(inst_scrollable,
-                              text="🔧 Step 2: Run the Installer",
-                              font=('Segoe UI', 11, 'bold'),
-                              fg=COLORS['text_primary'], bg=COLORS['bg_elevated'],
-                              anchor='w')
-        step2_label.pack(fill='x', padx=10, pady=(5, 5))
-
-        step2_text = tk.Label(inst_scrollable,
-                             text="• Windows: Right-click → Run as Administrator\n• Mac/Linux: Follow standard installation",
-                             font=('Segoe UI', 10),
-                             fg='#ffffff', bg=COLORS['bg_elevated'],
-                             anchor='w', justify='left')
-        step2_text.pack(fill='x', padx=20, pady=(0, 10))
-
-        # Step 3: Installation Settings (DYNAMIC)
-        step3_label = tk.Label(inst_scrollable,
-                              text="⚙️ Step 3: Use THESE EXACT Settings",
-                              font=('Segoe UI', 11, 'bold'),
-                              fg=COLORS['error'], bg=COLORS['bg_elevated'],  # Red to emphasize
-                              anchor='w')
-        step3_label.pack(fill='x', padx=10, pady=(5, 5))
+        # Add scrollbar with custom styling
+        scrollbar = tk.Scrollbar(text_frame,
+                                orient="vertical",
+                                command=instructions_text.yview,
+                                bg=COLORS['bg_elevated'],
+                                troughcolor=COLORS['bg_primary'],
+                                activebackground=COLORS['text_primary'],
+                                highlightthickness=0,
+                                width=14)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        instructions_text.configure(yscrollcommand=scrollbar.set)
 
         # Dynamic settings based on user's configuration
         pg_port = config.get("pg_port", "5432")
         pg_user = config.get("pg_user", "postgres")
         pg_database = config.get("pg_database", "giljo_mcp")
 
-        settings_text = f"""• Port: {pg_port} (⚠️ YOU SELECTED THIS - USE EXACTLY THIS!)
-• Username: {pg_user} (⚠️ YOU SELECTED THIS - USE EXACTLY THIS!)
-• Password: Choose a secure password and REMEMBER IT!
-• Database: Will be created automatically ({pg_database})
-• Locale: Default
-• Stack Builder: Skip (not needed)"""
+        # Build instructions content
+        instructions_content = f"""POSTGRESQL 18 INSTALLATION GUIDE
 
-        step3_text = tk.Label(inst_scrollable,
-                             text=settings_text,
-                             font=('Segoe UI', 10),
-                             fg=COLORS['warning'], bg=COLORS['bg_elevated'],  # Yellow for visibility
-                             anchor='w', justify='left')
-        step3_text.pack(fill='x', padx=20, pady=(0, 10))
+Step 1: Download PostgreSQL 18
+--------------------------------
+• Go to: https://www.postgresql.org/download/
+• Download PostgreSQL 18 for your operating system
+• Choose the installer for your platform (Windows/Mac/Linux)
 
-        # Step 4: Complete
-        step4_label = tk.Label(inst_scrollable,
-                              text="✅ Step 4: Complete Installation",
-                              font=('Segoe UI', 11, 'bold'),
-                              fg=COLORS['text_primary'], bg=COLORS['bg_elevated'],
-                              anchor='w')
-        step4_label.pack(fill='x', padx=10, pady=(5, 5))
+Step 2: Run the Installer
+--------------------------
+• Windows: Right-click → Run as Administrator
+• Mac: Open the .dmg file and run the installer
+• Linux: Follow your distribution's package manager
 
-        step4_text = tk.Label(inst_scrollable,
-                             text="• Let the installer finish\n• PostgreSQL service will start automatically\n• Installation complete!",
-                             font=('Segoe UI', 10),
-                             fg='#ffffff', bg=COLORS['bg_elevated'],
-                             anchor='w', justify='left')
-        step4_text.pack(fill='x', padx=20, pady=(0, 10))
+Step 3: IMPORTANT - Use YOUR Settings
+--------------------------------------
+When the installer asks for configuration:
 
-        # Step 5: Verify
-        step5_label = tk.Label(inst_scrollable,
-                              text="🔌 Step 5: Verify Installation",
-                              font=('Segoe UI', 11, 'bold'),
-                              fg=COLORS['text_primary'], bg=COLORS['bg_elevated'],
-                              anchor='w')
-        step5_label.pack(fill='x', padx=10, pady=(5, 5))
+  Port:     {pg_port}  ← YOU SELECTED THIS!
+  Username: {pg_user}  ← YOU SELECTED THIS!
+  Password: [Choose a secure password and REMEMBER IT]
+  Database: {pg_database} (will be created automatically)
 
-        step5_text = tk.Label(inst_scrollable,
-                             text="After installation, click 'Test Connection' below to verify",
-                             font=('Segoe UI', 10),
-                             fg='#ffffff', bg=COLORS['bg_elevated'],
-                             anchor='w', justify='left')
-        step5_text.pack(fill='x', padx=20, pady=(0, 10))
+  • Locale: Default (leave unchanged)
+  • Stack Builder: Skip (uncheck if asked)
 
-        # Pack canvas and scrollbar
-        inst_canvas.pack(side="left", fill="both", expand=True)
-        inst_scrollbar.pack(side="right", fill="y")
+Step 4: Complete Installation
+------------------------------
+• Let the installer finish completely
+• PostgreSQL service will start automatically
+• Do NOT close the installer early
+
+Step 5: Verify Installation
+----------------------------
+After installation is complete:
+• Click the 'Test Connection' button below
+• Enter the password you chose during installation
+• If successful, you're ready to continue!
+"""
+
+        # Insert the content into the text widget
+        instructions_text.insert('1.0', instructions_content)
+
+        # Configure tags for better formatting
+        instructions_text.tag_configure("heading", font=('Segoe UI', 12, 'bold'), foreground=COLORS['text_primary'])
+        instructions_text.tag_configure("step", font=('Segoe UI', 11, 'bold'), foreground='#ffffff')
+        instructions_text.tag_configure("important", font=('Segoe UI', 10, 'bold'), foreground=COLORS['warning'])
+        instructions_text.tag_configure("highlight", background='#315074')
+
+        # Apply tags to specific sections
+        instructions_text.tag_add("heading", "1.0", "1.end")
+
+        # Tag step headers
+        for line_num in [3, 10, 14, 19, 29, 34]:
+            instructions_text.tag_add("step", f"{line_num}.0", f"{line_num}.end")
+
+        # Highlight the user's configuration values
+        instructions_text.tag_add("important", "21.0", "24.end")
+        instructions_text.tag_add("highlight", "21.0", "24.end")
+
+        # Make text widget read-only
+        instructions_text.configure(state='disabled')
 
         # Buttons frame
         button_frame = ttk.Frame(main_frame)
@@ -2366,25 +2439,35 @@ class ProgressPage(WizardPage):
             webbrowser.open(url)
             self.log(f"Opened PostgreSQL download page: {url}", "info")
 
-        download_btn = tk.Button(button_frame,
-                               text="📥 Download PostgreSQL 18",
-                               command=open_download_page,
-                               bg=COLORS['success'], fg='#000000',
-                               font=('Segoe UI', 10, 'bold'),
-                               relief='flat', borderwidth=0,
-                               padx=20, pady=8, cursor='hand2')
+        # Custom button style for download button
+        style.configure('Download.TButton',
+                       background=COLORS['text_success'],
+                       foreground='#000000',
+                       borderwidth=0,
+                       relief='flat',
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Download.TButton',
+                 background=[('active', '#4fa855')],
+                 foreground=[('active', '#000000')])
+
+        download_btn = ttk.Button(button_frame,
+                                text="📥 Download PostgreSQL 18",
+                                command=open_download_page,
+                                style='Download.TButton')
         download_btn.pack(pady=5)
 
-        # Connection test frame - simplified with cached credentials
-        test_frame = ttk.LabelFrame(main_frame, text="Test PostgreSQL Connection", padding=10)
+        # Connection test frame with yellow border
+        test_frame = ttk.LabelFrame(main_frame, text="Test PostgreSQL Connection",
+                                   style='Yellow.TLabelframe', padding=15)
         test_frame.pack(fill=tk.X, pady=10)
 
-        # Show what we'll test with
+        # Show what we'll test with using tk.Label for white text
         test_info = tk.Label(test_frame,
                             text=f"Testing with your configuration:\nHost: localhost | Port: {pg_port} | User: {pg_user} | Database: {pg_database}",
                             font=('Segoe UI', 9),
-                            fg=COLORS['text_secondary'], bg=COLORS['bg_primary'],
-                            anchor='w', justify='left')
+                            fg='#ffffff',
+                            bg=COLORS['bg_primary'],
+                            justify='center')
         test_info.pack(fill='x', padx=10, pady=(5, 10))
 
         # Password entry (only thing we need from user)
@@ -2469,12 +2552,9 @@ class ProgressPage(WizardPage):
                 self.log(f"PostgreSQL connection test failed: {e}", "error")
 
         # Test button
-        test_btn = tk.Button(test_frame,
-                           text="🔌 Test Connection",
-                           command=test_connection,
-                           bg=COLORS['success'], fg='#000000',
-                           font=('Segoe UI', 10, 'bold'), relief='flat', borderwidth=0,
-                           padx=20, pady=8, cursor='hand2')
+        test_btn = ttk.Button(test_frame,
+                            text="Test Connection",
+                            command=test_connection)
         test_btn.pack(pady=(10, 10))
 
         # Bind Enter key to test connection
@@ -2497,21 +2577,33 @@ class ProgressPage(WizardPage):
             self.set_status("PostgreSQL ready ✓", "database")
             guide_window.destroy()
 
-        skip_btn = tk.Button(bottom_frame,
-                           text="Skip (Use Existing)",
-                           command=skip_postgres,
-                           bg=COLORS['bg_secondary'], fg='#ffffff',
-                           font=('Segoe UI', 9), relief='flat', borderwidth=0,
-                           padx=15, pady=5, cursor='hand2')
+        # Style for skip button
+        style.configure('Skip.TButton',
+                       background=COLORS['bg_elevated'],
+                       foreground='#ffffff',
+                       font=('Segoe UI', 9))
+
+        # Style for continue button (success style)
+        style.configure('Continue.TButton',
+                       background=COLORS['text_success'],
+                       foreground='#000000',
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Continue.TButton',
+                 background=[('disabled', COLORS['bg_elevated']),
+                            ('active', '#4fa855')],
+                 foreground=[('disabled', '#808080')])
+
+        skip_btn = ttk.Button(bottom_frame,
+                            text="Skip (Use Existing)",
+                            command=skip_postgres,
+                            style='Skip.TButton')
         skip_btn.pack(side=tk.LEFT, padx=5)
 
-        continue_btn = tk.Button(bottom_frame,
-                              text="Continue Installation",
-                              command=continue_installation,
-                              bg=COLORS['success'], fg='#000000',
-                              font=('Segoe UI', 10, 'bold'), relief='flat', borderwidth=0,
-                              padx=20, pady=8, cursor='hand2',
-                              state="disabled")  # Disabled until test succeeds
+        continue_btn = ttk.Button(bottom_frame,
+                                text="Continue Installation →",
+                                command=continue_installation,
+                                style='Continue.TButton',
+                                state="disabled")  # Disabled until test succeeds
         continue_btn.pack(side=tk.RIGHT, padx=5)
 
         # Wait for window to close
