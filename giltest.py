@@ -575,7 +575,9 @@ def verify_deployment(preserved_items=None):
         "quickstart.bat",
         "setup.py",
         "requirements.txt",
-        "README.md"
+        "README.md",
+        "devuninstall.py",
+        "uninstall.py"
     ]
 
     for file_name in key_files:
@@ -608,10 +610,11 @@ def verify_deployment(preserved_items=None):
     print("   • Git metadata (.git/, .gitignore, .gitattributes)")
     print("   • Coverage and reports (coverage*, *_REPORT.md)")
     print()
-    print("   Included in release (user-facing documentation):")
+    print("   Included in release (user-facing files):")
     print("   ✅ README.md, INSTALLATION.md, CLAUDE.md, LICENSE")
+    print("   ✅ devuninstall.py (dev reset), uninstall.py (production)")
     print("   ✅ docs/ARCHITECTURE_V2.md, docs/TECHNICAL_ARCHITECTURE.md")
-    print("   ✅ docs/AI_TOOL_INTEGRATION.md (new integration guide)")
+    print("   ✅ docs/AI_TOOL_INTEGRATION.md (integration guide)")
     print("   ✅ docs/color_themes.md, docs/installer_user_guide.md")
     print()
 
