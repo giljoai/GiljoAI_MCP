@@ -18,7 +18,7 @@ REM ============================================================
 REM This script launches the GUI installer directly
 REM Use this if you already have Python installed and want GUI mode
 REM
-REM For full installation with Python check, use: quickstart.bat
+REM For full installation with Python check, use: install.bat
 REM ============================================================
 
 title GiljoAI MCP GUI Installer
@@ -33,7 +33,7 @@ python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo %PINK%[X] Python not found!%RESET%
     echo.
-    echo Please install Python 3.10+ first, or use quickstart.bat
+    echo Please install Python 3.10+ first, or use install.bat
     echo for automatic Python installation.
     echo.
     pause

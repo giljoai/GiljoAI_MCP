@@ -696,7 +696,7 @@ class GiljoUninstaller:
                 f.write("Uninstallation completed.\n")
 
                 if partial:
-                    f.write("\nTo reinstall: Run quickstart.bat (Windows) or ./quickstart.sh (Unix)\n")
+                    f.write("\nTo reinstall: Run install.bat (Windows) or ./quickstart.sh (Unix)\n")
                     f.write("Your data and settings have been preserved.\n")
 
             print(f"\nUninstall receipt saved to: {receipt_path}")
@@ -713,7 +713,7 @@ class GiljoUninstaller:
         self.print_banner()
 
         # Check if we're in the right directory
-        if not (self.install_dir / "quickstart.bat").exists() and not (self.install_dir / "quickstart.sh").exists():
+        if not (self.install_dir / "install.bat").exists() and not (self.install_dir / "quickstart.sh").exists():
             print("\n[WARNING] Installation files not found in current directory!")
             print(f"Current directory: {self.install_dir}")
             response = input("\nContinue anyway? [y/N]: ").strip().lower()
