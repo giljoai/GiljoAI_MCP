@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 import tkinter as tk
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
@@ -113,6 +114,59 @@ def extract_package_name(line):
             package_name = file_part.split('-')[0] if '-' in file_part else file_part.split('.')[0]
             return package_name.strip()
     return ""
+
+
+def extract_packages_from_batch(line):
+    """Extract package names from 'Installing collected packages:' line"""
+    if "Installing collected packages:" in line:
+        packages_part = line.split("Installing collected packages:", 1)[1]
+        # Split by comma and clean up each package name
+        packages = [p.strip() for p in packages_part.split(",") if p.strip()]
+        return packages
+    return []
+
+
+class InstallationLogger:
+    """Logger for installation process with timestamped file output"""
+
+    def __init__(self, log_dir="install_logs"):
+        """Initialize logger with timestamp-based log file"""
+        self.log_dir = Path(log_dir)
+        self.log_dir.mkdir(exist_ok=True)
+
+        # Create log file with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.log_file = self.log_dir / f"install_{timestamp}.log"
+
+        # Write header
+        self.write("="*70, raw=True)
+        self.write(f"GiljoAI MCP Installation Log", raw=True)
+        self.write(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", raw=True)
+        self.write("="*70, raw=True)
+        self.write("")
+
+    def write(self, message, level="INFO", raw=False):
+        """Write message to log file with timestamp and level"""
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                if raw:
+                    # Write without timestamp for headers/separators
+                    f.write(f"{message}\n")
+                else:
+                    # Include milliseconds for precise timing
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+                    f.write(f"[{timestamp}] [{level:7s}] {message}\n")
+                f.flush()  # Ensure immediate write
+        except Exception as e:
+            # Silently fail if logging fails (don't interrupt installation)
+            pass
+
+    def close(self):
+        """Write closing message to log"""
+        self.write("")
+        self.write("="*70, raw=True)
+        self.write(f"Installation completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", raw=True)
+        self.write("="*70, raw=True)
 
 
 class WelcomePage(ttk.Frame):
@@ -440,172 +494,126 @@ class DatabasePage(WizardPage):
         title_label = ttk.Label(self, text="PostgreSQL Database Setup", font=("Helvetica", 12, "bold"))
         title_label.pack(pady=10)
 
-        desc_text = """GiljoAI MCP requires PostgreSQL for reliable multi-user operation.
-Choose how you want to set up PostgreSQL:"""
+        desc_text = """GiljoAI MCP requires PostgreSQL. Complete both steps below to configure your database."""
         desc_label = tk.Label(self, text=desc_text, justify=tk.LEFT,
                              fg='#ffffff', bg=COLORS['bg_primary'],
                              font=('Segoe UI', 9))
         desc_label.pack(padx=20, pady=5)
 
-        # PostgreSQL setup mode selection
-        self.setup_mode_var = tk.StringVar(value="existing")
+        # STEP 1: PostgreSQL Installation (if needed)
+        step1_frame = ttk.LabelFrame(self, text="Step 1: Install PostgreSQL (Skip if already installed)",
+                                    style='Yellow.TLabelframe', padding=15)
+        step1_frame.pack(padx=20, pady=10, fill="x")
 
-        mode_frame = ttk.LabelFrame(self, text="PostgreSQL Setup Mode", padding=10)
-        mode_frame.pack(padx=20, pady=10, fill="x")
+        install_desc = tk.Label(step1_frame,
+                              text="Configure these settings BEFORE installing. Write them down - you'll need them!",
+                              fg=COLORS['warning'], bg=COLORS['bg_primary'],
+                              font=('Segoe UI', 10, 'bold'))
+        install_desc.pack(anchor="w", pady=(0, 10))
 
-        ttk.Radiobutton(
-            mode_frame,
-            text="Attach to Existing PostgreSQL Server",
-            variable=self.setup_mode_var,
-            value="existing",
-            command=self._on_mode_change,
-        ).pack(anchor="w")
-
-        existing_desc = tk.Label(
-            mode_frame,
-            text="   • Use an already installed PostgreSQL server\n   • You'll provide connection credentials",
-            fg='#ffffff', bg=COLORS['bg_primary'],
-            font=('Segoe UI', 9)
-        )
-        existing_desc.pack(anchor="w", padx=20, pady=(0, 10))
-
-        ttk.Radiobutton(
-            mode_frame,
-            text="Install Fresh PostgreSQL Server",
-            variable=self.setup_mode_var,
-            value="fresh",
-            command=self._on_mode_change,
-        ).pack(anchor="w")
-
-        fresh_desc = tk.Label(
-            mode_frame,
-            text="   • We'll guide you through PostgreSQL installation\n   • You'll install it yourself with our help",
-            fg='#ffffff', bg=COLORS['bg_primary'],
-            font=('Segoe UI', 9)
-        )
-        fresh_desc.pack(anchor="w", padx=20)
-
-        # Connection configuration frame (for both modes)
-        self.config_frame = ttk.LabelFrame(self, text="Database Connection Details", padding=10)
-        self.config_frame.pack(padx=20, pady=10, fill="x")
-
-        # Network configuration
-        network_frame = ttk.Frame(self.config_frame)
-        network_frame.pack(fill="x", pady=5)
-
-        ttk.Label(network_frame, text="Network Mode:", width=15).pack(side="left")
-        self.network_mode_var = tk.StringVar(value="localhost")
-        self.network_combo = ttk.Combobox(
-            network_frame,
-            textvariable=self.network_mode_var,
-            values=["localhost", "network"],
-            state="readonly",
-            width=27
-        )
-        self.network_combo.pack(side="left", padx=5)
-        self.network_combo.bind("<<ComboboxSelected>>", self._on_network_change)
-
-        # Host/IP (shown for network mode or existing server)
-        self.host_frame = ttk.Frame(self.config_frame)
-        self.pg_host_var = tk.StringVar(value="localhost")
-        ttk.Label(self.host_frame, text="Host/IP:", width=15).pack(side="left")
-        self.host_entry = ttk.Entry(self.host_frame, textvariable=self.pg_host_var, width=30)
-        self.host_entry.pack(side="left", padx=5)
-
-        # Port
-        port_frame = ttk.Frame(self.config_frame)
-        port_frame.pack(fill="x", pady=2)
-        self.pg_port_var = tk.StringVar(value="5432")
-        ttk.Label(port_frame, text="Port:", width=15).pack(side="left")
-        self.port_entry = ttk.Entry(port_frame, textvariable=self.pg_port_var, width=30)
-        self.port_entry.pack(side="left", padx=5)
-
-        # Check port button (for existing mode)
-        self.check_port_btn = tk.Button(port_frame, text="Check", command=self._check_port,
-                                       bg=COLORS['bg_elevated'], fg='#ffffff',
-                                       font=('Segoe UI', 9), relief='flat', borderwidth=0,
-                                       padx=10, pady=4, cursor='hand2',
-                                       activebackground=COLORS['border'], activeforeground='#ffffff')
-
-        # Database name
-        db_frame = ttk.Frame(self.config_frame)
-        db_frame.pack(fill="x", pady=2)
-        self.pg_database_var = tk.StringVar(value="giljo_mcp")
-        ttk.Label(db_frame, text="Database Name:", width=15).pack(side="left")
-        ttk.Entry(db_frame, textvariable=self.pg_database_var, width=30).pack(side="left", padx=5)
-
-        db_help = ttk.Label(db_frame, text="(Will be created if doesn't exist)", foreground=COLORS['text_primary'])  # Yellow
-        db_help.pack(side="left", padx=5)
-
-        # Credentials section
-        cred_separator = ttk.Separator(self.config_frame, orient="horizontal")
-        cred_separator.pack(fill="x", pady=10)
-
-        cred_label = ttk.Label(self.config_frame, text="Database Credentials", font=("Helvetica", 10, "bold"))
-        cred_label.pack(anchor="w")
-
-        # Username
-        user_frame = ttk.Frame(self.config_frame)
-        user_frame.pack(fill="x", pady=2)
+        # Username field (with default)
+        user_frame = ttk.Frame(step1_frame)
+        user_frame.pack(fill="x", pady=3)
         self.pg_user_var = tk.StringVar(value="postgres")
         ttk.Label(user_frame, text="Username:", width=15).pack(side="left")
-        self.user_entry = ttk.Entry(user_frame, textvariable=self.pg_user_var, width=30)
+        self.user_entry = ttk.Entry(user_frame, textvariable=self.pg_user_var, width=25)
         self.user_entry.pack(side="left", padx=5)
+        tk.Label(user_frame, text="(default: postgres)",
+                fg='#888888', bg=COLORS['bg_primary'],
+                font=('Segoe UI', 8)).pack(side="left", padx=5)
 
-        # Password
-        pass_frame = ttk.Frame(self.config_frame)
-        pass_frame.pack(fill="x", pady=2)
+        # Password field
+        pass_frame = ttk.Frame(step1_frame)
+        pass_frame.pack(fill="x", pady=3)
         self.pg_password_var = tk.StringVar()
         ttk.Label(pass_frame, text="Password:", width=15).pack(side="left")
-        self.pass_entry = ttk.Entry(pass_frame, textvariable=self.pg_password_var, show="*", width=30)
-        self.pass_entry.pack(side="left", padx=5)
+        self.password_entry = ttk.Entry(pass_frame, textvariable=self.pg_password_var, width=25, show="*")
+        self.password_entry.pack(side="left", padx=5)
 
-        # Show/hide password
+        # Show/hide password toggle
         self.show_pass_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            pass_frame,
-            text="Show",
-            variable=self.show_pass_var,
-            command=self._toggle_password
-        ).pack(side="left", padx=5)
+        ttk.Checkbutton(pass_frame,
+                       text="Show",
+                       variable=self.show_pass_var,
+                       command=self._toggle_password).pack(side="left", padx=5)
 
-        # Important note for fresh install
-        self.note_frame = ttk.Frame(self.config_frame)
-        note_label = ttk.Label(
-            self.note_frame,
-            text="IMPORTANT: Write down these credentials! You'll need them to access the database.",
-            foreground="red",
-            font=("Helvetica", 9, "bold")
-        )
-        note_label.pack(pady=5)
+        # Port field (with default)
+        port_frame = ttk.Frame(step1_frame)
+        port_frame.pack(fill="x", pady=3)
+        self.pg_port_var = tk.StringVar(value="5432")
+        ttk.Label(port_frame, text="Port:", width=15).pack(side="left")
+        self.port_entry = ttk.Entry(port_frame, textvariable=self.pg_port_var, width=25)
+        self.port_entry.pack(side="left", padx=5)
+        tk.Label(port_frame, text="(default: 5432)",
+                fg='#888888', bg=COLORS['bg_primary'],
+                font=('Segoe UI', 8)).pack(side="left", padx=5)
 
-        # Test connection button (for existing mode)
-        self.test_frame = ttk.Frame(self.config_frame)
-        self.test_btn = tk.Button(
-            self.test_frame,
-            text="Test Connection",
-            command=self._test_connection,
-            bg=COLORS['bg_elevated'], fg='#ffffff',
-            font=('Segoe UI', 9), relief='flat', borderwidth=0,
-            padx=15, pady=6, cursor='hand2',
-            activebackground=COLORS['border'], activeforeground='#ffffff'
-        )
-        self.test_btn.pack(pady=10)
+        # Install button
+        install_btn_frame = ttk.Frame(step1_frame)
+        install_btn_frame.pack(fill="x", pady=(10, 5))
 
-        self.status_label = ttk.Label(self.test_frame, text="")
-        self.status_label.pack()
+        def open_postgres_download():
+            import webbrowser
+            webbrowser.open("https://www.postgresql.org/download/")
 
-        # Install note (for fresh mode)
-        self.install_note_frame = ttk.Frame(self.config_frame)
-        install_note = ttk.Label(
-            self.install_note_frame,
-            text="PostgreSQL will be downloaded and installed during the installation process.",
-            foreground=COLORS['text_primary']  # Yellow
-        )
-        install_note.pack(pady=5)
+        self.install_btn = tk.Button(install_btn_frame,
+                                    text="📥 Download PostgreSQL Installer",
+                                    command=open_postgres_download,
+                                    bg=COLORS['bg_elevated'], fg='#ffffff',
+                                    font=('Segoe UI', 9), relief='flat', borderwidth=0,
+                                    padx=15, pady=6, cursor='hand2',
+                                    activebackground=COLORS['border'], activeforeground='#ffffff')
+        self.install_btn.pack()
 
-        # Initialize visibility based on mode
-        self._on_mode_change()
+        tk.Label(install_btn_frame,
+                text="Click above to download PostgreSQL, then install using YOUR settings from above",
+                fg='#ffffff', bg=COLORS['bg_primary'],
+                font=('Segoe UI', 9)).pack(pady=(5, 0))
+
+        # STEP 2: Test Database Connection
+        step2_frame = ttk.LabelFrame(self, text="Step 2: Test Database Connection",
+                                    style='Yellow.TLabelframe', padding=15)
+        step2_frame.pack(padx=20, pady=10, fill="x")
+
+        test_desc = tk.Label(step2_frame,
+                           text="After installation (or if using existing PostgreSQL), test your connection:",
+                           fg='#ffffff', bg=COLORS['bg_primary'],
+                           font=('Segoe UI', 9))
+        test_desc.pack(anchor="w", pady=(0, 10))
+
+        # Host configuration (hidden by default for localhost)
+        self.pg_host_var = tk.StringVar(value="localhost")
+
+        # Note about using same credentials
+        note_label = tk.Label(step2_frame,
+                            text="💡 Use the same Username, Password, and Port from Step 1 (or your existing PostgreSQL)",
+                            fg=COLORS['text_primary'], bg=COLORS['bg_primary'],
+                            font=('Segoe UI', 9, 'bold'))
+        note_label.pack(anchor="w", pady=(0, 10))
+
+        # Database name (fixed)
+        self.pg_database_var = tk.StringVar(value="giljo_mcp")
+
+        # Test button
+        test_btn_frame = ttk.Frame(step2_frame)
+        test_btn_frame.pack(fill="x", pady=(10, 5))
+
+        self.test_btn = tk.Button(test_btn_frame,
+                                text="🔌 Test Connection",
+                                command=self._test_connection,
+                                bg=COLORS['bg_elevated'], fg='#ffffff',
+                                font=('Segoe UI', 9), relief='flat', borderwidth=0,
+                                padx=15, pady=6, cursor='hand2',
+                                activebackground=COLORS['border'], activeforeground='#ffffff')
+        self.test_btn.pack()
+
+        # Connection status label
+        self.status_label = tk.Label(step2_frame,
+                                    text="Click 'Test Connection' after entering your PostgreSQL credentials",
+                                    fg='#888888', bg=COLORS['bg_primary'],
+                                    font=('Segoe UI', 9))
+        self.status_label.pack(pady=(5, 0))
+
 
     def _on_mode_change(self):
         """Handle setup mode change"""
@@ -654,9 +662,9 @@ Choose how you want to set up PostgreSQL:"""
     def _toggle_password(self):
         """Toggle password visibility"""
         if self.show_pass_var.get():
-            self.pass_entry.config(show="")
+            self.password_entry.config(show="")
         else:
-            self.pass_entry.config(show="*")
+            self.password_entry.config(show="*")
 
     def _check_port(self):
         """Check if PostgreSQL port is accessible"""
@@ -721,12 +729,12 @@ Choose how you want to set up PostgreSQL:"""
                     conn2.close()
                     self.status_label.config(
                         text=f"✓ Connected successfully! Database '{db_name}' exists.",
-                        foreground="green"
+                        fg=COLORS['text_success']
                     )
                 else:
                     self.status_label.config(
                         text=f"✓ Connection successful! Database '{db_name}' will be created.",
-                        foreground="green"
+                        fg=COLORS['text_success']
                     )
 
             except psycopg2.OperationalError as e:
@@ -768,31 +776,18 @@ Choose how you want to set up PostgreSQL:"""
             messagebox.showerror("Validation Error", "Port must be a valid number.")
             return False
 
-        # For existing mode, recommend testing connection
-        if self.setup_mode_var.get() == "existing":
-            if not hasattr(self, '_connection_tested'):
-                result = messagebox.askyesno(
-                    "Connection Test",
-                    "Would you like to test the database connection before proceeding?"
-                )
-                if result:
-                    self._test_connection()
-                    return False  # Don't proceed yet, let user see result
-
         return True
 
     def get_data(self) -> dict:
         """Return database configuration"""
         return {
-            "db_type": "postgresql",  # Always PostgreSQL now
-            "pg_setup_mode": self.setup_mode_var.get(),
-            "pg_network_mode": self.network_mode_var.get(),
+            "db_type": "postgresql",  # Always PostgreSQL
             "pg_host": self.pg_host_var.get(),
             "pg_port": self.pg_port_var.get(),
             "pg_database": self.pg_database_var.get(),
             "pg_user": self.pg_user_var.get(),
             "pg_password": self.pg_password_var.get(),
-            "install_postgresql": self.setup_mode_var.get() == "fresh"
+            "install_postgresql": False  # User handles installation manually
         }
 
     def on_enter(self):
@@ -1426,7 +1421,7 @@ class ProgressPage(WizardPage):
                     # Progress bars don't have a state parameter, skip configuration
 
     def log(self, message: str, target: str = "system"):
-        """Log message to console"""
+        """Log message to console and file"""
         timestamp = time.strftime("%H:%M:%S")
         formatted = f"[{timestamp}] {message}"
 
@@ -1434,11 +1429,30 @@ class ProgressPage(WizardPage):
         tag = "info"
         if any(word in message.lower() for word in ["success", "✓", "completed"]):
             tag = "success"
-        elif any(word in message.lower() for word in ["error", "failed"]):
+        elif any(word in message.lower() for word in ["error", "failed", "✗"]):
             tag = "error"
         elif any(word in message.lower() for word in ["warning", "issue"]):
             tag = "warning"
 
+        # Write to file logger if available
+        if hasattr(self, 'install_logger') and self.install_logger:
+            # Determine log level
+            if tag == "error":
+                level = "ERROR"
+            elif tag == "warning":
+                level = "WARNING"
+            elif tag == "success":
+                level = "SUCCESS"
+            elif target == "info":
+                level = "INFO"
+            else:
+                level = "DEBUG" if target == "system" else "INFO"
+
+            # Write to log file (remove formatting characters for cleaner logs)
+            clean_message = message.replace("✓", "[OK]").replace("✗", "[FAIL]").replace("•", "-")
+            self.install_logger.write(clean_message, level)
+
+        # Display in GUI console
         self.console_text.insert(tk.END, formatted + "\n", tag)
         self.console_text.see(tk.END)
         self.update_idletasks()
@@ -1635,6 +1649,12 @@ class ProgressPage(WizardPage):
         os.environ['GILJO_SKIP_EDITABLE_INSTALL'] = 'true'
 
         profile = config.get("profile", "developer")
+
+        # Initialize installation logger
+        self.install_logger = InstallationLogger()
+        self.log(f"Installation log: {self.install_logger.log_file}", "info")
+        self.log("", "system")  # Empty line for clarity
+
         self.log(f"Installing GiljoAI MCP Server", "system")
         self.log(f"Installation Mode: {profile}", "system")
         self.log("="*60, "system")
@@ -1737,6 +1757,29 @@ class ProgressPage(WizardPage):
                                 self.log(f"  Downloading: {package_name}", "system")
                         elif package_count % 5 == 0:  # Fallback for unrecognized format
                             self.log(f"  Installing package {package_count}...", "system")
+                    elif "Installing collected packages:" in line:
+                        # Handle batch installation
+                        packages = extract_packages_from_batch(line)
+                        if packages:
+                            package_count_batch = len(packages)
+                            # Check for large packages in the batch
+                            large_in_batch = []
+                            for pkg in packages[:20]:  # Check first 20 packages
+                                for large_pkg in LARGE_PACKAGES:
+                                    if large_pkg.lower() in pkg.lower():
+                                        large_in_batch.append(pkg)
+                                        break
+
+                            if large_in_batch:
+                                self.log(f"Installing batch of {package_count_batch} packages (including large: {', '.join(large_in_batch[:3])}{'...' if len(large_in_batch) > 3 else ''})", "info")
+                                self.log("This batch installation may take several minutes, please wait...", "warning")
+                            else:
+                                self.log(f"Installing batch of {package_count_batch} packages...", "info")
+                                self.log("Processing dependencies, this may take a few minutes...", "system")
+
+                            # Jump progress to show we're in batch mode
+                            current_progress = max(current_progress, 35)
+                            self.set_progress(current_progress, "dependencies")
                     elif "Successfully installed" in line:
                         self.log(f"  {line}", "system")
                     elif "ERROR" in line or "error" in line:
@@ -1811,57 +1854,9 @@ class ProgressPage(WizardPage):
             self.log(f"Failed to install dependencies: {e}", "error")
             self.set_status(f"Dependencies failed: {e}", "dependencies")
 
-        # PostgreSQL is always used now
-        pg_setup_mode = config.get("pg_setup_mode", "existing")
-        install_postgresql = config.get("install_postgresql", False)
-
-        # Step 2.5: Install PostgreSQL if needed
-        if install_postgresql and pg_setup_mode == "fresh":
-            self.set_status("Installing PostgreSQL server...", "database")
-            self.set_progress(10, "database")
-            self.log("\n[PHASE 2.5: POSTGRESQL INSTALLATION]", "info")
-            self.log("Downloading and installing PostgreSQL...", "system")
-
-            try:
-                # Install PostgreSQL based on platform
-                if sys.platform == "win32":
-                    # Windows: Guide user through PostgreSQL installation
-                    self.log("Opening PostgreSQL installation guide", "info")
-                    self.log("You'll install PostgreSQL yourself with our help", "system")
-                    self._show_postgres_installation_guide(config)
-                    # Guide window has closed, PostgreSQL should be ready
-
-                    # The old automatic installation code has been removed.
-                    # Users will manually install PostgreSQL using the guide window.
-
-                elif sys.platform == "darwin":
-                    # macOS: Guide user through PostgreSQL installation
-                    self.log("Opening PostgreSQL installation guide for macOS", "info")
-                    self.log("You'll install PostgreSQL via Homebrew with our help", "system")
-                    self._show_postgres_installation_guide(config)
-                    # Guide window has closed, PostgreSQL should be ready
-
-                else:
-                    # Linux: Guide user through PostgreSQL installation
-                    self.log("Opening PostgreSQL installation guide for Linux", "info")
-                    self.log("You'll install PostgreSQL via package manager with our help", "system")
-                    self._show_postgres_installation_guide(config)
-                    # Guide window has closed, PostgreSQL should be ready
-
-                self.set_progress(100, "database")
-                self.set_status("PostgreSQL installed ✓", "database")
-
-            except Exception as e:
-                if str(e) == "SKIP_POSTGRESQL":
-                    # User chose to skip PostgreSQL, continue with external
-                    pass  # Already logged, continue installation
-                else:
-                    self.log(f"✗ Failed to install PostgreSQL: {e}", "error")
-                    self.log("Please install PostgreSQL manually and retry", "error")
-                    self.set_status(f"PostgreSQL installation failed: {e}", "database")
-                    return
-
+        # PostgreSQL is always used, but user installs it manually
         self.log("\n[DATABASE MODE: PostgreSQL]", "system")
+        self.log("Using PostgreSQL database (user-installed)", "system")
 
         # Step 3: Create configuration files
         self.set_status("Creating server configuration...", "config")
@@ -2001,6 +1996,29 @@ class ProgressPage(WizardPage):
                         # Update progress incrementally (20% to 60% over ~100 packages)
                         progress = min(20 + (package_count * 0.4), 60)
                         self.set_progress(int(progress), "packages")
+                    elif "Installing collected packages:" in line:
+                        # Handle batch installation
+                        packages = extract_packages_from_batch(line)
+                        if packages:
+                            package_count_batch = len(packages)
+                            # Check for large packages in the batch
+                            large_in_batch = []
+                            for pkg in packages[:20]:  # Check first 20 packages
+                                for large_pkg in LARGE_PACKAGES:
+                                    if large_pkg.lower() in pkg.lower():
+                                        large_in_batch.append(pkg)
+                                        break
+
+                            if large_in_batch:
+                                self.log(f"Installing batch of {package_count_batch} packages (including large: {', '.join(large_in_batch[:3])}{'...' if len(large_in_batch) > 3 else ''})", "info")
+                                self.log("This batch installation may take several minutes, please wait...", "warning")
+                            else:
+                                self.log(f"Installing batch of {package_count_batch} packages...", "info")
+                                self.log("Processing dependencies, this may take a few minutes...", "system")
+
+                            # Jump progress to show we're in batch mode
+                            progress = min(50, progress + 5)
+                            self.set_progress(int(progress), "packages")
                     elif "Installing" in line and "collected" in line:
                         self.log(f"  {line}", "system")
                     elif "Successfully installed" in line:
@@ -2212,6 +2230,11 @@ class ProgressPage(WizardPage):
             self.log("Click 'Finish' to complete the setup.", "info")
             self.log("="*60, "system")
 
+            # Close the installation logger
+            if hasattr(self, 'install_logger') and self.install_logger:
+                self.install_logger.close()
+                self.log(f"\nFull installation log saved to: {self.install_logger.log_file}", "info")
+
             self.completed = True
 
             # Re-enable navigation
@@ -2282,336 +2305,6 @@ class ProgressPage(WizardPage):
             self.log(f"Health check error: {e}", "system")
             self.set_status(f"Validation failed: {e}", "validation")
             self.completed = True
-
-    def _show_postgres_installation_guide(self, config):
-        """Show PostgreSQL installation guide window"""
-        import webbrowser
-        import platform
-
-        # Create guide window matching main wizard size/style
-        guide_window = tk.Toplevel(self.master)
-        guide_window.title("PostgreSQL Installation Guide")
-        guide_window.geometry("900x750")  # Match wizard proportions
-        guide_window.configure(bg=COLORS['bg_primary'])
-        guide_window.resizable(False, False)
-
-        # Center the window
-        guide_window.update_idletasks()
-        x = (guide_window.winfo_screenwidth() // 2) - (900 // 2)
-        y = (guide_window.winfo_screenheight() // 2) - (750 // 2)
-        guide_window.geometry(f"900x750+{x}+{y}")
-
-        # Make it modal
-        guide_window.transient(self.master)
-        guide_window.grab_set()
-
-        # Configure ttk styles for this window
-        style = ttk.Style()
-
-        # Main frame with padding
-        main_frame = ttk.Frame(guide_window, style='TFrame')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=40, pady=40)
-
-        # Title using tk.Label for styling control
-        title_label = tk.Label(main_frame,
-                              text="PostgreSQL Installation Guide",
-                              font=('Segoe UI', 14, 'bold'),
-                              fg='#ffffff',
-                              bg=COLORS['bg_primary'])
-        title_label.pack(pady=(0, 20))
-
-        # Instructions frame with yellow border style
-        instructions_frame = ttk.LabelFrame(main_frame, text="Installation Steps",
-                                           style='Yellow.TLabelframe', padding=15)
-        instructions_frame.pack(fill=tk.BOTH, expand=True, pady=10)
-
-        # Create frame for text and scrollbar
-        text_frame = ttk.Frame(instructions_frame)
-        text_frame.pack(fill=tk.BOTH, expand=True)
-
-        # Create text widget matching the theme
-        instructions_text = tk.Text(text_frame,
-                                   wrap=tk.WORD,
-                                   bg=COLORS['bg_elevated'],  # Medium dark blue
-                                   fg='#ffffff',  # White text
-                                   font=('Segoe UI', 10),
-                                   padx=15,
-                                   pady=15,
-                                   relief='flat',
-                                   borderwidth=0)
-        instructions_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        # Add scrollbar with custom styling
-        scrollbar = tk.Scrollbar(text_frame,
-                                orient="vertical",
-                                command=instructions_text.yview,
-                                bg=COLORS['bg_elevated'],
-                                troughcolor=COLORS['bg_primary'],
-                                activebackground=COLORS['text_primary'],
-                                highlightthickness=0,
-                                width=14)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        instructions_text.configure(yscrollcommand=scrollbar.set)
-
-        # Dynamic settings based on user's configuration
-        pg_port = config.get("pg_port", "5432")
-        pg_user = config.get("pg_user", "postgres")
-        pg_database = config.get("pg_database", "giljo_mcp")
-
-        # Build instructions content
-        instructions_content = f"""POSTGRESQL 18 INSTALLATION GUIDE
-
-Step 1: Download PostgreSQL 18
---------------------------------
-• Go to: https://www.postgresql.org/download/
-• Download PostgreSQL 18 for your operating system
-• Choose the installer for your platform (Windows/Mac/Linux)
-
-Step 2: Run the Installer
---------------------------
-• Windows: Right-click → Run as Administrator
-• Mac: Open the .dmg file and run the installer
-• Linux: Follow your distribution's package manager
-
-Step 3: IMPORTANT - Use YOUR Settings
---------------------------------------
-When the installer asks for configuration:
-
-  Port:     {pg_port}  ← YOU SELECTED THIS!
-  Username: {pg_user}  ← YOU SELECTED THIS!
-  Password: [Choose a secure password and REMEMBER IT]
-  Database: {pg_database} (will be created automatically)
-
-  • Locale: Default (leave unchanged)
-  • Stack Builder: Skip (uncheck if asked)
-
-Step 4: Complete Installation
-------------------------------
-• Let the installer finish completely
-• PostgreSQL service will start automatically
-• Do NOT close the installer early
-
-Step 5: Verify Installation
-----------------------------
-After installation is complete:
-• Click the 'Test Connection' button below
-• Enter the password you chose during installation
-• If successful, you're ready to continue!
-"""
-
-        # Insert the content into the text widget
-        instructions_text.insert('1.0', instructions_content)
-
-        # Configure tags for better formatting
-        instructions_text.tag_configure("heading", font=('Segoe UI', 12, 'bold'), foreground=COLORS['text_primary'])
-        instructions_text.tag_configure("step", font=('Segoe UI', 11, 'bold'), foreground='#ffffff')
-        instructions_text.tag_configure("important", font=('Segoe UI', 10, 'bold'), foreground=COLORS['warning'])
-        instructions_text.tag_configure("highlight", background='#315074')
-
-        # Apply tags to specific sections
-        instructions_text.tag_add("heading", "1.0", "1.end")
-
-        # Tag step headers
-        for line_num in [3, 10, 14, 19, 29, 34]:
-            instructions_text.tag_add("step", f"{line_num}.0", f"{line_num}.end")
-
-        # Highlight the user's configuration values
-        instructions_text.tag_add("important", "21.0", "24.end")
-        instructions_text.tag_add("highlight", "21.0", "24.end")
-
-        # Make text widget read-only
-        instructions_text.configure(state='disabled')
-
-        # Buttons frame
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=10)
-
-        def open_download_page():
-            """Open PostgreSQL download page in browser"""
-            system = platform.system()
-            if system == "Windows":
-                url = "https://www.postgresql.org/download/windows/"
-            elif system == "Darwin":
-                url = "https://www.postgresql.org/download/macos/"
-            else:
-                url = "https://www.postgresql.org/download/linux/"
-
-            webbrowser.open(url)
-            self.log(f"Opened PostgreSQL download page: {url}", "info")
-
-        # Custom button style for download button
-        style.configure('Download.TButton',
-                       background=COLORS['text_success'],
-                       foreground='#000000',
-                       borderwidth=0,
-                       relief='flat',
-                       font=('Segoe UI', 10, 'bold'))
-        style.map('Download.TButton',
-                 background=[('active', '#4fa855')],
-                 foreground=[('active', '#000000')])
-
-        download_btn = ttk.Button(button_frame,
-                                text="📥 Download PostgreSQL 18",
-                                command=open_download_page,
-                                style='Download.TButton')
-        download_btn.pack(pady=5)
-
-        # Connection test frame with yellow border
-        test_frame = ttk.LabelFrame(main_frame, text="Test PostgreSQL Connection",
-                                   style='Yellow.TLabelframe', padding=15)
-        test_frame.pack(fill=tk.X, pady=10)
-
-        # Show what we'll test with using tk.Label for white text
-        test_info = tk.Label(test_frame,
-                            text=f"Testing with your configuration:\nHost: localhost | Port: {pg_port} | User: {pg_user} | Database: {pg_database}",
-                            font=('Segoe UI', 9),
-                            fg='#ffffff',
-                            bg=COLORS['bg_primary'],
-                            justify='center')
-        test_info.pack(fill='x', padx=10, pady=(5, 10))
-
-        # Password entry (only thing we need from user)
-        pass_frame = ttk.Frame(test_frame)
-        pass_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(pass_frame, text="PostgreSQL Password:", width=18).pack(side=tk.LEFT, padx=(10, 5))
-        pass_var = tk.StringVar()
-        pass_entry = ttk.Entry(pass_frame, textvariable=pass_var, width=25, show="*")
-        pass_entry.pack(side=tk.LEFT, padx=5)
-
-        # Show/hide password toggle
-        show_pass_var = tk.BooleanVar(value=False)
-        def toggle_password():
-            pass_entry.config(show="" if show_pass_var.get() else "*")
-
-        ttk.Checkbutton(pass_frame,
-                       text="Show",
-                       variable=show_pass_var,
-                       command=toggle_password).pack(side=tk.LEFT, padx=5)
-
-        # Status label
-        status_label = ttk.Label(test_frame, text="Enter the password you set during PostgreSQL installation",
-                                foreground=COLORS['text_secondary'])
-        status_label.pack(pady=(10, 5))
-
-        def test_connection():
-            """Test PostgreSQL connection with cached settings"""
-            if not pass_var.get():
-                status_label.config(text="⚠️ Please enter your PostgreSQL password", foreground=COLORS['warning'])
-                return
-
-            status_label.config(text="Testing connection...", foreground=COLORS['text_primary'])
-            guide_window.update()  # Force UI update
-
-            try:
-                import psycopg2
-                conn = psycopg2.connect(
-                    host="localhost",
-                    port=pg_port,
-                    database="postgres",  # Use default database for testing
-                    user=pg_user,
-                    password=pass_var.get()
-                )
-                conn.close()
-
-                status_label.config(text="✅ Connection successful! PostgreSQL is ready.", foreground=COLORS['success'])
-                self.log("PostgreSQL connection test successful", "success")
-
-                # Save the password to config for later use
-                config["pg_password"] = pass_var.get()
-
-                # Enable continue button
-                continue_btn.config(state="normal")
-
-                # Focus on continue button
-                continue_btn.focus_set()
-
-            except ImportError:
-                status_label.config(text="Installing psycopg2...", foreground=COLORS['warning'])
-                # Try to install psycopg2
-                import subprocess
-                try:
-                    subprocess.run([sys.executable, "-m", "pip", "install", "psycopg2-binary"], check=True)
-                    test_connection()  # Retry after install
-                except:
-                    status_label.config(text="❌ Failed to install psycopg2. Please install manually.", foreground=COLORS['error'])
-
-            except Exception as e:
-                error_msg = str(e)
-                if "password authentication failed" in error_msg:
-                    status_label.config(text="❌ Wrong password. Use the password you set during installation.", foreground=COLORS['error'])
-                elif "could not connect to server" in error_msg:
-                    status_label.config(text="❌ PostgreSQL not running. Please complete installation first.", foreground=COLORS['error'])
-                elif "database" in error_msg and "does not exist" in error_msg:
-                    # This is actually OK - we just need to connect to postgres default db
-                    status_label.config(text="✅ Connection successful! Database will be created.", foreground=COLORS['success'])
-                    config["pg_password"] = pass_var.get()
-                    continue_btn.config(state="normal")
-                else:
-                    status_label.config(text=f"❌ Connection failed: {error_msg[:60]}", foreground=COLORS['error'])
-
-                self.log(f"PostgreSQL connection test failed: {e}", "error")
-
-        # Test button
-        test_btn = ttk.Button(test_frame,
-                            text="Test Connection",
-                            command=test_connection)
-        test_btn.pack(pady=(10, 10))
-
-        # Bind Enter key to test connection
-        pass_entry.bind('<Return>', lambda e: test_connection())
-
-        # Bottom buttons
-        bottom_frame = ttk.Frame(main_frame)
-        bottom_frame.pack(fill=tk.X, pady=(10, 0))
-
-        def skip_postgres():
-            """Skip PostgreSQL installation"""
-            self.log("User chose to skip PostgreSQL installation", "info")
-            guide_window.destroy()
-            raise Exception("SKIP_POSTGRESQL")
-
-        def continue_installation():
-            """Continue with installation after successful test"""
-            self.log("PostgreSQL verified, continuing installation", "success")
-            self.set_progress(100, "database")
-            self.set_status("PostgreSQL ready ✓", "database")
-            guide_window.destroy()
-
-        # Style for skip button
-        style.configure('Skip.TButton',
-                       background=COLORS['bg_elevated'],
-                       foreground='#ffffff',
-                       font=('Segoe UI', 9))
-
-        # Style for continue button (success style)
-        style.configure('Continue.TButton',
-                       background=COLORS['text_success'],
-                       foreground='#000000',
-                       font=('Segoe UI', 10, 'bold'))
-        style.map('Continue.TButton',
-                 background=[('disabled', COLORS['bg_elevated']),
-                            ('active', '#4fa855')],
-                 foreground=[('disabled', '#808080')])
-
-        skip_btn = ttk.Button(bottom_frame,
-                            text="Skip (Use Existing)",
-                            command=skip_postgres,
-                            style='Skip.TButton')
-        skip_btn.pack(side=tk.LEFT, padx=5)
-
-        continue_btn = ttk.Button(bottom_frame,
-                                text="Continue Installation →",
-                                command=continue_installation,
-                                style='Continue.TButton',
-                                state="disabled")  # Disabled until test succeeds
-        continue_btn.pack(side=tk.RIGHT, padx=5)
-
-        # Wait for window to close
-        self.master.wait_window(guide_window)
-
-    def validate(self):
-        """Check if installation is complete"""
-        return self.completed
 
 
 class GiljoSetupGUI:

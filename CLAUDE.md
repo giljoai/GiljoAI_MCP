@@ -275,3 +275,10 @@ pytest tests/ -m "not slow"    # Skip slow tests
 - Vue 3 dashboard implementation
 - Real-time monitoring
 - Visual orchestration control
+
+## Important Coding Guidelines
+
+- **No Emojis in Code**: Never use emojis in code unless specifically requested by the user or when the project has icon files to use as defaults
+- **Professional Code**: Keep all code clean, professional, and emoji-free
+- **File Creation**: Only create files when absolutely necessary; prefer editing existing files
+- **Documentation**: Only create documentation files when explicitly requested
