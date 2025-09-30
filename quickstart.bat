@@ -1,6 +1,22 @@
 @echo off
 setlocal EnableDelayedExpansion
 
+REM Enable ANSI color codes in Windows 10+
+reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1 /f >nul 2>&1
+
+REM GiljoAI Color Palette (ANSI escape codes)
+REM Primary Yellow: #ffc300
+REM Success Green: #67bd6d
+REM Error Pink: #c6298c
+REM Light Gray: #e1e1e1
+set "ESC="
+set "YELLOW=%ESC%[38;2;255;195;0m"
+set "GREEN=%ESC%[38;2;103;189;109m"
+set "PINK=%ESC%[38;2;198;41;140m"
+set "GRAY=%ESC%[38;2;225;225;225m"
+set "BLUE=%ESC%[38;2;30;49;71m"
+set "RESET=%ESC%[0m"
+
 REM ============================================================
 REM GiljoAI MCP Intelligent Quick Start for Windows
 REM ============================================================
@@ -12,29 +28,29 @@ REM ============================================================
 
 title GiljoAI MCP Quick Start
 
-echo ============================================================
-echo   GiljoAI MCP Orchestrator - Intelligent Quick Start
-echo ============================================================
+echo %YELLOW%============================================================%RESET%
+echo %YELLOW%  GiljoAI MCP Orchestrator - Intelligent Quick Start%RESET%
+echo %YELLOW%============================================================%RESET%
 echo.
 
 REM Check if we're running with admin privileges (needed for some installs)
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [!] Note: Not running as Administrator
-    echo     Some installation options may require admin rights
+    echo %GRAY%[!] Note: Not running as Administrator%RESET%
+    echo %GRAY%    Some installation options may require admin rights%RESET%
     echo.
 )
 
 REM ============================================================
 REM STEP 1: Check for Python
 REM ============================================================
-echo [1/4] Checking for Python installation...
+echo %GRAY%[1/4] Checking for Python installation...%RESET%
 
 REM Try python command first
 python --version >nul 2>&1
 if %errorlevel% equ 0 (
     for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
-    echo [OK] Found Python !PYTHON_VERSION!
+    echo %GREEN%[OK] Found Python !PYTHON_VERSION!%RESET%
     
     REM Check if it's 3.10 or higher
     for /f "tokens=1,2 delims=." %%a in ("!PYTHON_VERSION!") do (
@@ -46,7 +62,7 @@ if %errorlevel% equ 0 (
             )
         )
     )
-    echo [!] Python version too old. Need 3.10+, found !PYTHON_VERSION!
+    echo %PINK%[!] Python version too old. Need 3.10+, found !PYTHON_VERSION!%RESET%
     goto :install_python
 )
 
@@ -54,7 +70,7 @@ REM Try python3 command
 python3 --version >nul 2>&1
 if %errorlevel% equ 0 (
     for /f "tokens=2" %%i in ('python3 --version 2^>^&1') do set PYTHON_VERSION=%%i
-    echo [OK] Found Python !PYTHON_VERSION!
+    echo %GREEN%[OK] Found Python !PYTHON_VERSION!%RESET%
     set PYTHON_CMD=python3
     goto :check_version
 )
@@ -63,13 +79,13 @@ REM Try py launcher
 py --version >nul 2>&1
 if %errorlevel% equ 0 (
     for /f "tokens=2" %%i in ('py --version 2^>^&1') do set PYTHON_VERSION=%%i
-    echo [OK] Found Python !PYTHON_VERSION! via py launcher
+    echo %GREEN%[OK] Found Python !PYTHON_VERSION! via py launcher%RESET%
     set PYTHON_CMD=py
     goto :check_version
 )
 
 REM No Python found
-echo [X] Python not found on this system
+echo %PINK%[X] Python not found on this system%RESET%
 goto :install_python
 
 :check_version
@@ -83,14 +99,14 @@ for /f "tokens=1,2 delims=." %%a in ("!PYTHON_VERSION!") do (
         )
     )
 )
-echo [!] Python version too old. Need 3.8+, found !PYTHON_VERSION!
+echo %PINK%[!] Python version too old. Need 3.8+, found !PYTHON_VERSION!%RESET%
 
 REM ============================================================
 REM STEP 2: Install Python if needed
 REM ============================================================
 :install_python
 echo.
-echo Python 3.10+ is required but not found or too old.
+echo %YELLOW%Python 3.10+ is required but not found or too old.%RESET%
 echo.
 echo Installation options:
 echo   1. Automatically download and install Python 3.12 (recommended)
@@ -107,7 +123,7 @@ if %errorlevel% equ 4 goto :exit_manual
 
 :auto_install
 echo.
-echo [2/4] Downloading Python installer...
+echo %GRAY%[2/4] Downloading Python installer...%RESET%
 
 REM Determine architecture
 if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
@@ -122,30 +138,30 @@ REM Download using PowerShell
 powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%PYTHON_URL%' -OutFile '%TEMP%\%PYTHON_INSTALLER%'}" >nul 2>&1
 
 if exist "%TEMP%\%PYTHON_INSTALLER%" (
-    echo [OK] Download complete
+    echo %GREEN%[OK] Download complete%RESET%
     echo.
-    echo [3/4] Installing Python...
-    echo      Please follow the installer prompts
-    echo      IMPORTANT: Check "Add Python to PATH"!
+    echo %GRAY%[3/4] Installing Python...%RESET%
+    echo %GRAY%     Please follow the installer prompts%RESET%
+    echo %YELLOW%     IMPORTANT: Check "Add Python to PATH"!%RESET%
     echo.
     
     REM Run installer with recommended options
     "%TEMP%\%PYTHON_INSTALLER%" /passive PrependPath=1 Include_test=0 Include_pip=1 Include_launcher=1
     
     if %errorlevel% equ 0 (
-        echo [OK] Python installed successfully
+        echo %GREEN%[OK] Python installed successfully%RESET%
         echo.
-        echo Please close and reopen this window for PATH changes to take effect
+        echo %YELLOW%Please close and reopen this window for PATH changes to take effect%RESET%
         pause
         exit /b 0
     ) else (
-        echo [X] Installation failed. Please install manually.
+        echo %PINK%[X] Installation failed. Please install manually.%RESET%
         start https://www.python.org/downloads/
         pause
         exit /b 1
     )
 ) else (
-    echo [X] Download failed
+    echo %PINK%[X] Download failed%RESET%
     goto :browser_install
 )
 
@@ -203,7 +219,7 @@ REM STEP 3: Python is OK, proceed with bootstrap
 REM ============================================================
 :python_ok
 echo.
-echo [2/3] Checking Python installation...
+echo %GRAY%[2/3] Checking Python installation...%RESET%
 
 REM Set Python command if not set
 if not defined PYTHON_CMD set PYTHON_CMD=python
@@ -211,37 +227,37 @@ if not defined PYTHON_CMD set PYTHON_CMD=python
 REM Check for pip (essential for Python packages)
 %PYTHON_CMD% -m pip --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [!] pip not found, installing...
+    echo %YELLOW%[!] pip not found, installing...%RESET%
     %PYTHON_CMD% -m ensurepip --default-pip
     if %errorlevel% neq 0 (
-        echo [X] Failed to install pip
-        echo     Please reinstall Python with pip included
+        echo %PINK%[X] Failed to install pip%RESET%
+        echo %GRAY%    Please reinstall Python with pip included%RESET%
         pause
         exit /b 1
     )
 )
-echo [OK] Python and pip are ready
+echo %GREEN%[OK] Python and pip are ready%RESET%
 
 REM ============================================================
 REM STEP 4: Launch bootstrap.py
 REM ============================================================
 echo.
-echo [3/3] Checking for bootstrap.py...
+echo %GRAY%[3/3] Checking for bootstrap.py...%RESET%
 
 if not exist "bootstrap.py" (
-    echo [X] bootstrap.py not found in current directory
-    echo     Please make sure you're in the GiljoAI MCP directory
+    echo %PINK%[X] bootstrap.py not found in current directory%RESET%
+    echo %GRAY%    Please make sure you're in the GiljoAI MCP directory%RESET%
     pause
     exit /b 1
 )
 
-echo [OK] bootstrap.py found
+echo %GREEN%[OK] bootstrap.py found%RESET%
 echo.
-echo Launching GiljoAI MCP installer...
+echo %YELLOW%Launching GiljoAI MCP installer...%RESET%
 echo.
-echo ============================================================
+echo %YELLOW%============================================================%RESET%
 echo.
-echo Starting GiljoAI MCP installer...
+echo %GRAY%Starting GiljoAI MCP installer...%RESET%
 echo.
 
 REM Launch bootstrap with Python
@@ -249,18 +265,18 @@ REM Launch bootstrap with Python
 
 if %errorlevel% neq 0 (
     echo.
-    echo [X] Installation encountered an error
-    echo     Please check the error messages above
+    echo %PINK%[X] Installation encountered an error%RESET%
+    echo %GRAY%    Please check the error messages above%RESET%
     pause
     exit /b %errorlevel%
 )
 
 echo.
-echo ============================================================
-echo   Installation completed successfully!
-echo ============================================================
+echo %GREEN%============================================================%RESET%
+echo %GREEN%  Installation completed successfully!%RESET%
+echo %GREEN%============================================================%RESET%
 echo.
-echo To start GiljoAI MCP, use the launcher created on your desktop
-echo or run: python -m src.giljo_mcp.mcp_server
+echo %GRAY%To start GiljoAI MCP, use the launcher created on your desktop%RESET%
+echo %GRAY%or run: python -m src.giljo_mcp.mcp_server%RESET%
 echo.
 pause

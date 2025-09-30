@@ -13,9 +13,127 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
+from PIL import Image, ImageTk
 
 # Import base setup class
 from setup import PORT_ASSIGNMENTS, GiljoSetup, check_port
+
+
+def is_admin():
+    """Check if running with administrator privileges on Windows"""
+    if sys.platform != "win32":
+        return True  # Not needed on Unix systems
+
+    try:
+        import ctypes
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        return False
+
+
+# GiljoAI Official Color Palette
+COLORS = {
+    'bg_primary': '#0e1c2d',      # Darkest blue - primary background
+    'bg_secondary': '#182739',    # Dark blue - secondary background, panels
+    'bg_elevated': '#1e3147',     # Medium dark blue - cards, elevated surfaces
+    'border': '#315074',          # Medium blue - borders, dividers
+    'text_primary': '#ffc300',    # Primary yellow - main text, highlights
+    'text_success': '#67bd6d',    # Success green - success states
+    'text_error': '#c6298c',      # Alert pink/red - errors
+    'text_secondary': '#8f97b7',  # Light blue - secondary text
+    'text_light': '#e1e1e1',      # Light gray - text on dark
+    'accent_purple': '#8b5cf6',   # Purple - special features
+}
+
+
+class SplashScreen:
+    """Splash screen with GiljoAI logo"""
+
+    def __init__(self, root_window):
+        self.root = root_window
+        self.splash = tk.Toplevel()
+        self.splash.title("GiljoAI MCP")
+
+        # Remove window decorations
+        self.splash.overrideredirect(True)
+
+        # Set size and center on screen
+        splash_width = 500
+        splash_height = 300
+        screen_width = self.splash.winfo_screenwidth()
+        screen_height = self.splash.winfo_screenheight()
+        x = (screen_width - splash_width) // 2
+        y = (screen_height - splash_height) // 2
+        self.splash.geometry(f"{splash_width}x{splash_height}+{x}+{y}")
+
+        # Set background color
+        self.splash.configure(bg=COLORS['bg_primary'])
+
+        # Create frame with border
+        frame = tk.Frame(self.splash, bg=COLORS['bg_elevated'],
+                        highlightbackground=COLORS['border'],
+                        highlightthickness=2)
+        frame.pack(fill='both', expand=True, padx=2, pady=2)
+
+        # Try to load logo
+        logo_path = Path(__file__).parent / "frontend" / "public" / "giljologo_full.png"
+        if logo_path.exists():
+            try:
+                # Load and resize logo
+                img = Image.open(logo_path)
+                # Resize to fit splash screen
+                img = img.resize((400, 150), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+
+                logo_label = tk.Label(frame, image=photo, bg=COLORS['bg_elevated'])
+                logo_label.image = photo  # Keep a reference
+                logo_label.pack(pady=30)
+            except Exception as e:
+                # Fallback to text if image fails
+                self._show_text_logo(frame)
+        else:
+            # Fallback to text logo
+            self._show_text_logo(frame)
+
+        # Add loading message
+        loading_label = tk.Label(frame,
+                                text="Initializing Setup Wizard...",
+                                font=('Helvetica', 11),
+                                fg=COLORS['text_primary'],
+                                bg=COLORS['bg_elevated'])
+        loading_label.pack(pady=10)
+
+        # Add version info
+        version_label = tk.Label(frame,
+                                text="GiljoAI MCP Orchestrator",
+                                font=('Helvetica', 9),
+                                fg=COLORS['text_secondary'],
+                                bg=COLORS['bg_elevated'])
+        version_label.pack(pady=5)
+
+        # Bring to front
+        self.splash.lift()
+        self.splash.attributes('-topmost', True)
+
+    def _show_text_logo(self, parent):
+        """Fallback text logo if image not available"""
+        logo_text = tk.Label(parent,
+                            text="GiljoAI",
+                            font=('Helvetica', 48, 'bold'),
+                            fg=COLORS['text_primary'],
+                            bg=COLORS['bg_elevated'])
+        logo_text.pack(pady=30)
+
+        subtitle = tk.Label(parent,
+                           text="MCP Orchestrator",
+                           font=('Helvetica', 16),
+                           fg=COLORS['text_success'],
+                           bg=COLORS['bg_elevated'])
+        subtitle.pack()
+
+    def destroy(self):
+        """Close the splash screen"""
+        self.splash.destroy()
 
 
 class WizardPage(ttk.Frame):
@@ -1054,18 +1172,24 @@ class ProgressPage(WizardPage):
         console_container.pack(fill="both", expand=True, padx=10, pady=10)
 
         self.console_text = tk.Text(console_container, height=8, width=80, wrap=tk.WORD,
-                                   bg='black', fg='white', font=('Consolas', 9))
+                                   bg=COLORS['bg_primary'],
+                                   fg=COLORS['text_primary'],
+                                   font=('Consolas', 9),
+                                   insertbackground=COLORS['text_primary'],
+                                   selectbackground=COLORS['bg_elevated'],
+                                   selectforeground=COLORS['text_primary'])
         scrollbar = ttk.Scrollbar(console_container, command=self.console_text.yview)
         self.console_text.configure(yscrollcommand=scrollbar.set)
 
         self.console_text.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Configure text tags
-        self.console_text.tag_config("info", foreground="white")
-        self.console_text.tag_config("success", foreground="lime")
-        self.console_text.tag_config("warning", foreground="yellow")
-        self.console_text.tag_config("error", foreground="red")
+        # Configure text tags with GiljoAI colors
+        self.console_text.tag_config("info", foreground=COLORS['text_light'])
+        self.console_text.tag_config("success", foreground=COLORS['text_success'])
+        self.console_text.tag_config("warning", foreground=COLORS['text_primary'])
+        self.console_text.tag_config("error", foreground=COLORS['text_error'])
+        self.console_text.tag_config("system", foreground=COLORS['text_secondary'])
 
         # Overall status
         self.status_var = tk.StringVar(value="Preparing installation...")
@@ -1454,6 +1578,43 @@ class ProgressPage(WizardPage):
             try:
                 # Install PostgreSQL based on platform
                 if sys.platform == "win32":
+                    # Check for admin privileges on Windows
+                    if not is_admin():
+                        self.log("⚠ PostgreSQL installation requires Administrator privileges", "warning")
+                        self.log("", "system")
+                        self.log("Please choose an option:", "system")
+                        self.log("  1. Restart installer as Administrator, OR", "system")
+                        self.log("  2. Install PostgreSQL manually from: https://www.postgresql.org/download/windows/", "system")
+                        self.log("  3. Skip PostgreSQL installation (you can use external PostgreSQL)", "system")
+                        self.log("", "system")
+
+                        # Ask user what to do
+                        from tkinter import messagebox
+                        response = messagebox.askyesnocancel(
+                            "Administrator Required",
+                            "PostgreSQL installation requires Administrator privileges.\n\n"
+                            "• Yes: Skip PostgreSQL (use external installation)\n"
+                            "• No: Exit and restart as Administrator\n"
+                            "• Cancel: Abort installation",
+                            icon=messagebox.WARNING
+                        )
+
+                        if response is None:  # Cancel
+                            self.log("Installation aborted by user", "error")
+                            self.set_status("Installation aborted", "database")
+                            return
+                        elif response:  # Yes - Skip PostgreSQL
+                            self.log("Skipping PostgreSQL installation (will use external PostgreSQL)", "warning")
+                            self.set_progress(100, "database")
+                            self.set_status("PostgreSQL skipped (external)", "database")
+                            # Continue without PostgreSQL install
+                            raise Exception("SKIP_POSTGRESQL")
+                        else:  # No - Exit
+                            self.log("Please restart installer as Administrator", "warning")
+                            self.log("Right-click setup_gui.py → Run as Administrator", "info")
+                            self.set_status("Waiting for admin restart", "database")
+                            return
+
                     # Windows: Download and run PostgreSQL installer
                     self.log("Downloading PostgreSQL installer for Windows...", "system")
                     import urllib.request
@@ -1513,10 +1674,14 @@ class ProgressPage(WizardPage):
                 self.set_status("PostgreSQL installed ✓", "database")
 
             except Exception as e:
-                self.log(f"✗ Failed to install PostgreSQL: {e}", "error")
-                self.log("Please install PostgreSQL manually and retry", "error")
-                self.set_status(f"PostgreSQL installation failed: {e}", "database")
-                return
+                if str(e) == "SKIP_POSTGRESQL":
+                    # User chose to skip PostgreSQL, continue with external
+                    pass  # Already logged, continue installation
+                else:
+                    self.log(f"✗ Failed to install PostgreSQL: {e}", "error")
+                    self.log("Please install PostgreSQL manually and retry", "error")
+                    self.set_status(f"PostgreSQL installation failed: {e}", "database")
+                    return
 
         self.log("\n[DATABASE MODE: PostgreSQL]", "system")
 
@@ -1942,10 +2107,69 @@ class GiljoSetupGUI:
         y = (self.root.winfo_screenheight() // 2) - (600 // 2)
         self.root.geometry(f"800x600+{x}+{y}")
 
-        # Configure style
+        # Configure GiljoAI color theme
         style = ttk.Style()
-        # Comment out clam theme as it causes text rendering issues on Windows
-        # style.theme_use('clam')
+        # Use default theme as base (better Windows compatibility)
+
+        # Configure root window background
+        self.root.configure(bg=COLORS['bg_primary'])
+
+        # Configure ttk widget styles
+        style.configure('TFrame', background=COLORS['bg_primary'])
+        style.configure('TLabel',
+                       background=COLORS['bg_primary'],
+                       foreground=COLORS['text_primary'])
+        style.configure('TLabelframe',
+                       background=COLORS['bg_primary'],
+                       foreground=COLORS['text_primary'],
+                       bordercolor=COLORS['border'])
+        style.configure('TLabelframe.Label',
+                       background=COLORS['bg_primary'],
+                       foreground=COLORS['text_primary'])
+
+        # Button styles
+        style.configure('TButton',
+                       background=COLORS['bg_elevated'],
+                       foreground=COLORS['text_primary'],
+                       bordercolor=COLORS['border'],
+                       lightcolor=COLORS['border'],
+                       darkcolor=COLORS['border'])
+        style.map('TButton',
+                 background=[('active', COLORS['border'])],
+                 foreground=[('active', COLORS['text_primary'])])
+
+        # Entry/Input styles
+        style.configure('TEntry',
+                       fieldbackground=COLORS['bg_elevated'],
+                       foreground=COLORS['text_primary'],
+                       bordercolor=COLORS['border'])
+
+        # Radiobutton styles
+        style.configure('TRadiobutton',
+                       background=COLORS['bg_primary'],
+                       foreground=COLORS['text_primary'])
+
+        # Checkbutton styles
+        style.configure('TCheckbutton',
+                       background=COLORS['bg_primary'],
+                       foreground=COLORS['text_primary'])
+
+        # Progress bar styles
+        style.configure('Horizontal.TProgressbar',
+                       background=COLORS['text_primary'],
+                       troughcolor=COLORS['bg_elevated'],
+                       bordercolor=COLORS['border'],
+                       lightcolor=COLORS['text_primary'],
+                       darkcolor=COLORS['text_primary'])
+
+        # Scrollbar styles
+        style.configure('Vertical.TScrollbar',
+                       background=COLORS['bg_elevated'],
+                       troughcolor=COLORS['bg_primary'],
+                       bordercolor=COLORS['border'],
+                       arrowcolor=COLORS['text_primary'])
+        style.map('Vertical.TScrollbar',
+                 background=[('active', COLORS['text_primary'])])
 
         # Set window icon (if available)
         try:
@@ -1967,7 +2191,9 @@ class GiljoSetupGUI:
         self.content_container.pack(fill="both", expand=True)
 
         # Add canvas and scrollbar for scrollable content
-        self.canvas = tk.Canvas(self.content_container, highlightthickness=0)
+        self.canvas = tk.Canvas(self.content_container,
+                               highlightthickness=0,
+                               bg=COLORS['bg_primary'])
         self.scrollbar = ttk.Scrollbar(self.content_container, orient="vertical", command=self.canvas.yview)
         self.content_frame = ttk.Frame(self.canvas)
 
@@ -2189,8 +2415,17 @@ def gui():
 def main():
     """Main entry point for GUI installer"""
     try:
-        # Create root window
+        # Create hidden root window for splash
         root = tk.Tk()
+        root.withdraw()  # Hide main window initially
+
+        # Show splash screen
+        splash = SplashScreen(root)
+        root.update()
+
+        # Wait 2.5 seconds to show splash
+        root.after(2500, splash.destroy)
+        root.after(2500, root.deiconify)  # Show main window after splash
 
         # Create and run the setup GUI
         app = GiljoSetupGUI(root)

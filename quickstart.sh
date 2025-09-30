@@ -9,18 +9,23 @@
 #   3. Launch bootstrap.py for full installation
 # ============================================================
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+# GiljoAI Official Color Palette (ANSI RGB codes)
+# Primary Yellow: #ffc300 = RGB(255, 195, 0)
+# Success Green: #67bd6d = RGB(103, 189, 109)
+# Error Pink: #c6298c = RGB(198, 41, 140)
+# Light Gray: #e1e1e1 = RGB(225, 225, 225)
+YELLOW='\033[38;2;255;195;0m'
+GREEN='\033[38;2;103;189;109m'
+RED='\033[38;2;198;41;140m'
+GRAY='\033[38;2;225;225;225m'
+BLUE='\033[38;2;30;49;71m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Print header
-echo "============================================================"
-echo "  GiljoAI MCP Orchestrator - Intelligent Quick Start"
-echo "============================================================"
+echo -e "${YELLOW}============================================================${NC}"
+echo -e "${YELLOW}  GiljoAI MCP Orchestrator - Intelligent Quick Start${NC}"
+echo -e "${YELLOW}============================================================${NC}"
 echo
 
 # Detect OS
@@ -318,10 +323,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo
-echo "============================================================"
-echo "  Installation completed successfully!"
-echo "============================================================"
+echo -e "${GREEN}============================================================${NC}"
+echo -e "${GREEN}  Installation completed successfully!${NC}"
+echo -e "${GREEN}============================================================${NC}"
 echo
-echo "To start GiljoAI MCP, use the launcher created on your desktop"
-echo "or run: $PYTHON_CMD -m src.giljo_mcp.mcp_server"
+echo -e "${GRAY}To start GiljoAI MCP, use the launcher created on your desktop${NC}"
+echo -e "${GRAY}or run: $PYTHON_CMD -m src.giljo_mcp.mcp_server${NC}"
 echo
