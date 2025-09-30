@@ -41,7 +41,7 @@ class InstallationStatus(Enum):
 class PostgreSQLConfig:
     """PostgreSQL installation configuration."""
 
-    version: str = "15.4"
+    version: str = "18.0"
     architecture: str = "x86_64"  # or "x86"
     port: int = 5432
     superuser: str = "postgres"
@@ -49,11 +49,11 @@ class PostgreSQLConfig:
     database_name: str = "giljo_mcp"
     database_user: str = "giljo"
     database_password: str = ""
-    install_dir: Path = Path("C:/Program Files/PostgreSQL/15")
-    data_dir: Path = Path("C:/Program Files/PostgreSQL/15/data")
+    install_dir: Path = Path("C:/Program Files/PostgreSQL/18")
+    data_dir: Path = Path("C:/Program Files/PostgreSQL/18/data")
     locale: str = "en_US.UTF-8"
     enable_service: bool = True
-    service_name: str = "postgresql-x64-15"
+    service_name: str = "postgresql-x64-18"
     service_account: str = "NT AUTHORITY\\NetworkService"
     max_connections: int = 100
     shared_buffers: str = "128MB"
@@ -80,6 +80,10 @@ class PostgreSQLInstaller:
         "16.0": {
             "x86_64": "https://get.enterprisedb.com/postgresql/postgresql-16.0-1-windows-x64.exe",
             "x86": "https://get.enterprisedb.com/postgresql/postgresql-16.0-1-windows.exe",
+        },
+        "18.0": {
+            "x86_64": "https://get.enterprisedb.com/postgresql/postgresql-18.0-1-windows-x64.exe",
+            "x86": "https://get.enterprisedb.com/postgresql/postgresql-18.0-1-windows.exe",
         },
     }
 

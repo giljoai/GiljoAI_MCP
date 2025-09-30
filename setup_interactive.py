@@ -838,41 +838,17 @@ class GiljoSetup:
                 console.clear()
                 components['database']['status'] = 'installing'
                 console.print(display_status())
-                console.print("\n[bold]Installing PostgreSQL...[/bold]")
+                console.print("\n[bold]PostgreSQL Installation Guide[/bold]")
 
-                try:
-                    from installer.dependencies.postgresql import PostgreSQLInstaller, PostgreSQLConfig
-
-                    pg_config = PostgreSQLConfig(
-                        version="16.0",
-                        port=int(self.config.get("pg_port", 5432)),
-                        data_dir="C:/PostgreSQL/16/data",
-                        install_dir="C:/PostgreSQL/16"
-                    )
-
-                    installer = PostgreSQLInstaller(pg_config)
-
-                    if installer.is_postgresql_installed():
-                        console.print("  [yellow]![/yellow] PostgreSQL already installed, verifying...")
-                        if installer.test_connection():
-                            console.print("  [green]✓[/green] PostgreSQL connection successful")
-                        else:
-                            console.print("  [yellow]![/yellow] PostgreSQL connection failed, attempting reinstall...")
-                            result = installer.install()
-                            console.print(f"  [green]✓[/green] PostgreSQL installed: {result.connection_string}")
-                    else:
-                        console.print("  [blue]...[/blue] Installing PostgreSQL (this may take a few minutes)...")
-                        result = installer.install()
-                        console.print(f"  [green]✓[/green] PostgreSQL installed successfully")
-
-                    components['database']['status'] = 'completed'
-                    self.config['postgresql_installed'] = True
-
-                except Exception as e:
+                # Show PostgreSQL installation guide
+                if not self._show_postgres_install_guide():
                     components['database']['status'] = 'failed'
-                    console.print(f"  [red]✗[/red] PostgreSQL installation failed: {e}")
-                    console.print("  [yellow]![/yellow] You'll need to install PostgreSQL manually")
+                    console.print("  [red]✗[/red] PostgreSQL installation cancelled or failed")
                     self.config['postgresql_installed'] = False
+                else:
+                    components['database']['status'] = 'completed'
+                    console.print("  [green]✓[/green] PostgreSQL installed and verified")
+                    self.config['postgresql_installed'] = True
             else:
                 components['database']['status'] = 'completed'
                 self.config['postgresql_installed'] = False
@@ -1326,6 +1302,141 @@ Categories=Development;IDE;
 
         console.print("  [green]✓[/green] Created application menu entry")
 
+    def _show_postgres_install_guide(self) -> bool:
+        """Show PostgreSQL installation guide with ASCII art"""
+        import webbrowser
+        import platform
+        import time
+
+        console.clear()
+
+        # ASCII art box
+        console.print("""
+╔══════════════════════════════════════════════════════════════╗
+║         PostgreSQL Installation Guide - Version 18          ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  GiljoAI needs PostgreSQL database.                         ║
+║  Please install it manually following these steps:          ║
+║                                                              ║
+║  📥 Step 1: Download PostgreSQL 18                          ║
+║     • Press [D] to open download page in browser            ║
+║     • Download PostgreSQL 18 for your system                ║
+║                                                              ║
+║  🔧 Step 2: Run the Installer                               ║
+║     • Windows: Right-click → Run as Administrator           ║
+║     • Mac/Linux: Follow standard installation               ║
+║                                                              ║
+║  ⚙️  Step 3: Installation Settings                          ║
+║     • Port: 5432 (default - REMEMBER THIS!)                 ║
+║     • Username: postgres (default)                          ║
+║     • Password: Choose secure password (REMEMBER IT!)       ║
+║     • Locale: Default                                       ║
+║     • Stack Builder: Skip                                   ║
+║                                                              ║
+║  ✅ Step 4: Complete Installation                           ║
+║     • Let installer finish                                  ║
+║     • PostgreSQL service will start automatically           ║
+║                                                              ║
+║  🔌 Step 5: Test Connection                                 ║
+║     • Press [T] to test connection after installation       ║
+║                                                              ║
+║ ─────────────────────────────────────────────────────────── ║
+║                                                              ║
+║  Options:                                                    ║
+║    [D] - Open download page                                 ║
+║    [T] - Test PostgreSQL connection                         ║
+║    [C] - Continue (connection verified)                     ║
+║    [S] - Skip (use existing PostgreSQL)                     ║
+║    [Q] - Quit installation                                  ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+        """, style="cyan")
+
+        connection_verified = False
+
+        while True:
+            choice = Prompt.ask("\n[bold]Select option[/bold]",
+                              choices=["d", "t", "c", "s", "q"],
+                              default="d").lower()
+
+            if choice == "d":
+                # Open download page
+                system = platform.system()
+                if system == "Windows":
+                    url = "https://www.postgresql.org/download/windows/"
+                elif system == "Darwin":
+                    url = "https://www.postgresql.org/download/macos/"
+                else:
+                    url = "https://www.postgresql.org/download/linux/"
+
+                console.print(f"\n[green]Opening download page: {url}[/green]")
+                webbrowser.open(url)
+                console.print("[yellow]After downloading, install PostgreSQL and press [T] to test[/yellow]")
+
+            elif choice == "t":
+                # Test connection
+                console.print("\n[bold]Testing PostgreSQL connection...[/bold]")
+
+                # Get connection details
+                pg_host = Prompt.ask("PostgreSQL host", default="localhost")
+                pg_port = IntPrompt.ask("PostgreSQL port", default=5432)
+                pg_user = Prompt.ask("PostgreSQL username", default="postgres")
+                pg_password = Prompt.ask("PostgreSQL password", password=True)
+
+                # Test connection
+                try:
+                    import psycopg2
+                    conn = psycopg2.connect(
+                        host=pg_host,
+                        port=pg_port,
+                        database="postgres",
+                        user=pg_user,
+                        password=pg_password
+                    )
+                    conn.close()
+
+                    console.print("[green]✓ Connection successful![/green]")
+                    connection_verified = True
+
+                    # Save credentials to config
+                    self.config["pg_host"] = pg_host
+                    self.config["pg_port"] = pg_port
+                    self.config["pg_user"] = pg_user
+                    self.config["pg_password"] = pg_password
+
+                    console.print("[cyan]Press [C] to continue with installation[/cyan]")
+
+                except ImportError:
+                    console.print("[yellow]Installing psycopg2-binary...[/yellow]")
+                    import subprocess
+                    subprocess.run([sys.executable, "-m", "pip", "install", "psycopg2-binary"], check=True)
+                    # Retry
+                    return self._show_postgres_install_guide()
+
+                except Exception as e:
+                    console.print(f"[red]✗ Connection failed: {e}[/red]")
+                    console.print("[yellow]Please check your PostgreSQL installation and credentials[/yellow]")
+
+            elif choice == "c":
+                # Continue
+                if connection_verified:
+                    console.print("[green]Continuing with installation...[/green]")
+                    return True
+                else:
+                    console.print("[red]Please test connection first (press [T])[/red]")
+
+            elif choice == "s":
+                # Skip
+                console.print("[yellow]Skipping PostgreSQL installation[/yellow]")
+                console.print("[cyan]Using existing PostgreSQL installation[/cyan]")
+                return False
+
+            elif choice == "q":
+                # Quit
+                console.print("[red]Installation cancelled[/red]")
+                sys.exit(1)
+
     def _create_installation_manifest(self):
         """Create installation manifest for uninstaller"""
         try:
@@ -1341,8 +1452,8 @@ Categories=Development;IDE;
                 "dependencies": {
                     "postgresql": {
                         "installed": self.config.get("postgresql_installed", False),
-                        "location": "C:/PostgreSQL/16" if self.config.get("postgresql_installed") else None,
-                        "service_name": "postgresql-x64-16" if self.config.get("postgresql_installed") else None,
+                        "location": "C:/PostgreSQL/18" if self.config.get("postgresql_installed") else None,
+                        "service_name": "postgresql-x64-18" if self.config.get("postgresql_installed") else None,
                         "database": self.config.get("pg_database", "giljo_mcp") if self.config.get("postgresql_installed") else None
                     }
                 },
