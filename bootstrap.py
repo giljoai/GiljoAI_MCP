@@ -400,6 +400,37 @@ class Bootstrap:
 
         return success
 
+    def install_test_dependencies(self) -> bool:
+        """Install minimal dependencies needed for connection testing"""
+        self.print_status("Installing test dependencies (psycopg2-binary)...", "info")
+
+        try:
+            import subprocess
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "psycopg2-binary"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            if result.returncode == 0:
+                self.print_status("Test dependencies installed successfully", "success")
+                return True
+            else:
+                self.print_status(f"Failed to install test dependencies: {result.stderr[:100]}", "warning")
+                return False
+        except Exception as e:
+            self.print_status(f"Could not install test dependencies: {e}", "warning")
+            return False
+
+    def check_test_dependencies(self) -> bool:
+        """Check if test dependencies (psycopg2) are available"""
+        try:
+            import psycopg2
+            return True
+        except ImportError:
+            return False
+
     def launch_gui_installer(self) -> int:
         """Launch the GUI installer (setup_gui.py)"""
         self.print_status("Launching GUI installer...", "info")
@@ -414,6 +445,17 @@ class Bootstrap:
             if not self.test_gui_import():
                 self.print_status("GUI not available, switching to CLI", "warning")
                 return self.launch_cli_installer()
+
+            # Check for test dependencies (optional)
+            if not self.check_test_dependencies():
+                self.print_status("PostgreSQL test dependencies not found", "warning")
+                print(f"\n{self.colors['YELLOW']}For PostgreSQL connection testing during setup:{self.colors['ENDC']}")
+                response = input(f"{self.colors['BLUE']}Install test dependencies now? [Y/n]: {self.colors['ENDC']}").strip().lower()
+
+                if response in ['', 'y', 'yes']:
+                    self.install_test_dependencies()
+                else:
+                    print(f"{self.colors['YELLOW']}You can install later or test connections after full installation.{self.colors['ENDC']}")
 
             self.print_status("Opening GUI installer window...", "info")
             print("A GUI window should appear shortly. If no window appears, close this and try CLI mode.")

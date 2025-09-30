@@ -594,6 +594,35 @@ class DatabasePage(WizardPage):
         # Database name (fixed)
         self.pg_database_var = tk.StringVar(value="giljo_mcp")
 
+        # Check if psycopg2 is available
+        self.psycopg2_available = self._check_psycopg2()
+
+        # Install dependencies button (if psycopg2 not available)
+        if not self.psycopg2_available:
+            install_deps_frame = ttk.Frame(step2_frame)
+            install_deps_frame.pack(fill="x", pady=(5, 5))
+
+            warning_label = tk.Label(install_deps_frame,
+                                    text="⚠ Test dependencies not installed",
+                                    fg=COLORS['warning'], bg=COLORS['bg_primary'],
+                                    font=('Segoe UI', 9, 'bold'))
+            warning_label.pack(pady=(0, 5))
+
+            self.install_deps_btn = tk.Button(install_deps_frame,
+                                            text="📦 Install Test Dependencies (psycopg2-binary)",
+                                            command=self._install_test_deps,
+                                            bg=COLORS['accent_purple'], fg='#ffffff',
+                                            font=('Segoe UI', 9), relief='flat', borderwidth=0,
+                                            padx=15, pady=6, cursor='hand2',
+                                            activebackground='#7c3aed', activeforeground='#ffffff')
+            self.install_deps_btn.pack()
+
+            deps_note = tk.Label(install_deps_frame,
+                                text="(Required for testing PostgreSQL connections. Takes ~5 seconds)",
+                                fg='#888888', bg=COLORS['bg_primary'],
+                                font=('Segoe UI', 8))
+            deps_note.pack(pady=(2, 0))
+
         # Test button
         test_btn_frame = ttk.Frame(step2_frame)
         test_btn_frame.pack(fill="x", pady=(10, 5))
@@ -666,6 +695,52 @@ class DatabasePage(WizardPage):
         else:
             self.password_entry.config(show="*")
 
+    def _check_psycopg2(self) -> bool:
+        """Check if psycopg2 is available"""
+        try:
+            import psycopg2
+            return True
+        except ImportError:
+            return False
+
+    def _install_test_deps(self):
+        """Install test dependencies (psycopg2-binary) in a thread"""
+        self.install_deps_btn.config(state='disabled', text="Installing...")
+        self.update()
+
+        def install():
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "psycopg2-binary"],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+
+                if result.returncode == 0:
+                    self.status_label.config(
+                        text="✓ Test dependencies installed successfully!",
+                        fg=COLORS['text_success']
+                    )
+                    self.psycopg2_available = True
+                    # Hide the install button after success
+                    self.install_deps_btn.master.pack_forget()
+                else:
+                    self.status_label.config(
+                        text=f"✗ Installation failed: {result.stderr[:100]}",
+                        fg=COLORS['text_error']
+                    )
+                    self.install_deps_btn.config(state='normal', text="📦 Install Test Dependencies (psycopg2-binary)")
+            except Exception as e:
+                self.status_label.config(
+                    text=f"✗ Error installing dependencies: {str(e)[:100]}",
+                    fg=COLORS['text_error']
+                )
+                self.install_deps_btn.config(state='normal', text="📦 Install Test Dependencies (psycopg2-binary)")
+
+        thread = threading.Thread(target=install, daemon=True)
+        thread.start()
+
     def _check_port(self):
         """Check if PostgreSQL port is accessible"""
         try:
@@ -693,7 +768,14 @@ class DatabasePage(WizardPage):
         def test():
             try:
                 import psycopg2
+            except ImportError:
+                self.status_label.config(
+                    text="✗ psycopg2 not installed. Run: pip install psycopg2-binary",
+                    foreground="red"
+                )
+                return
 
+            try:
                 # First try to connect to the postgres database to check credentials
                 conn = psycopg2.connect(
                     host=self.pg_host_var.get(),

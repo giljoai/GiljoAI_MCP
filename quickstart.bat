@@ -18,12 +18,21 @@ set "BLUE=%ESC%[38;2;30;49;71m"
 set "RESET=%ESC%[0m"
 
 REM ============================================================
-REM GiljoAI MCP Intelligent Quick Start for Windows
+REM GiljoAI MCP Installation Launcher for Windows
 REM ============================================================
-REM This script will:
-REM   1. Check for Python 3.8+
-REM   2. Install Python if missing
-REM   3. Launch bootstrap.py for full installation
+REM This is the PRIMARY entry point for installing GiljoAI MCP
+REM
+REM What this script does:
+REM   1. Check for Python 3.10+ (ONLY dependency required)
+REM   2. Install Python if missing (interactive)
+REM   3. Launch bootstrap.py for full installation wizard
+REM
+REM You can also run these directly if Python is installed:
+REM   - python bootstrap.py    (full installer, auto-detects GUI/CLI)
+REM   - python setup_gui.py    (direct GUI installer)
+REM   - python setup_cli.py    (direct CLI installer)
+REM
+REM Note: "quickstart" is a legacy name - this is the full installer
 REM ============================================================
 
 title GiljoAI MCP Quick Start
