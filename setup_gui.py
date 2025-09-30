@@ -1610,35 +1610,80 @@ class ProgressPage(WizardPage):
 
         try:
             import subprocess
+            import threading
 
-            # Install requirements.txt
-            self.log("Installing requirements.txt...", "system")
+            # Install requirements.txt with live output
+            self.log("Installing requirements.txt (this may take 2-5 minutes)...", "system")
+            self.log("Downloading and installing packages...", "system")
             self.set_progress(20, "packages")
-            result = subprocess.run(
+
+            # Start subprocess with live output streaming
+            process = subprocess.Popen(
                 [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-                capture_output=True,
-                text=True
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
             )
-            if result.returncode == 0:
-                self.log("SUCCESS: Requirements installed", "system")
+
+            # Stream output line by line
+            package_count = 0
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    # Show condensed output for key operations
+                    if "Collecting" in line:
+                        package_name = line.split("Collecting")[-1].strip()
+                        package_count += 1
+                        self.log(f"  Downloading: {package_name}", "system")
+                        # Update progress incrementally (20% to 60% over ~100 packages)
+                        progress = min(20 + (package_count * 0.4), 60)
+                        self.set_progress(int(progress), "packages")
+                    elif "Installing" in line and "collected" in line:
+                        self.log(f"  {line}", "system")
+                    elif "Successfully installed" in line:
+                        self.log(f"  {line}", "system")
+                    elif "ERROR" in line or "error" in line:
+                        self.log(f"  {line}", "system")
+
+            process.wait()
+
+            if process.returncode == 0:
+                self.log("SUCCESS: All requirements installed", "system")
                 self.set_progress(60, "packages")
             else:
-                self.log(f"Warning: Requirements installation had issues: {result.stderr}", "system")
+                self.log(f"Warning: Requirements installation completed with return code {process.returncode}", "system")
 
             # Install giljo-mcp package in editable mode (skip if environment variable set)
             if not os.environ.get('GILJO_SKIP_EDITABLE_INSTALL'):
                 self.log("Installing giljo-mcp package in development mode...", "system")
-                result = subprocess.run(
+                self.set_progress(70, "packages")
+
+                process = subprocess.Popen(
                     [sys.executable, "-m", "pip", "install", "-e", ".", "--no-deps"],
-                    capture_output=True,
-                    text=True
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
                 )
-                if result.returncode == 0:
+
+                # Stream editable install output
+                for line in process.stdout:
+                    line = line.strip()
+                    if line:
+                        if "Successfully installed" in line or "Preparing" in line or "Building" in line:
+                            self.log(f"  {line}", "system")
+
+                process.wait()
+
+                if process.returncode == 0:
                     self.log("SUCCESS: giljo-mcp package installed", "system")
                     self.set_progress(100, "packages")
                     self.set_status("Python packages installed ✓", "packages")
                 else:
-                    self.log(f"Warning: giljo-mcp installation had issues: {result.stderr}", "system")
+                    self.log(f"Warning: giljo-mcp installation completed with return code {process.returncode}", "system")
                     self.set_status("Package installation completed with warnings", "packages")
             else:
                 self.log("Skipping editable install (GILJO_SKIP_EDITABLE_INSTALL set)", "system")
