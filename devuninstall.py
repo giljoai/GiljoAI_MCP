@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
 GiljoAI MCP Development Uninstaller
-Resets installation to simulate fresh install (keeps Python deps & PostgreSQL server)
+Nuclear reset for testing - removes ALL files and PostgreSQL
 
 Use this for development/testing - it removes:
-- All installation files and folders
-- giljo_mcp database (but keeps PostgreSQL server)
+- ALL files in the installation folder
+- PostgreSQL database AND server
 - User config files from APPDATA
-- Generated configs and data
+- Everything related to this installation
 
 Preserves:
-- Python packages (for other projects)
-- PostgreSQL server installation
-- Source code repository files
+- Python packages (for other projects on this machine)
 """
 
 import json
@@ -46,31 +44,27 @@ class GiljoDevUninstaller:
         """Log with ASCII-only characters for Windows compatibility"""
         print(f"[{level}] {message}")
 
-    def remove_installation_folders(self):
-        """Remove all installation folders"""
-        self.log("Removing installation folders...")
-
-        folders_to_remove = [
-            "venv", "data", "logs", "backups",
-            ".giljo_mcp", ".giljo-config", ".giljo_install_manifest.json",
-            "config", "giljo_backup", "giljo_export",
-            "__pycache__", "node_modules", ".pytest_cache",
-            "frontend/node_modules", "frontend/dist", "frontend/build"
-        ]
+    def remove_all_installation_files(self):
+        """Remove ALL files in installation directory except this script"""
+        self.log("Removing ALL installation files...")
+        script_name = Path(__file__).name
 
         removed = 0
-        for folder_name in folders_to_remove:
-            folder_path = self.root_path / folder_name
-            if folder_path.exists():
-                try:
-                    if folder_path.is_dir():
-                        shutil.rmtree(folder_path)
-                    else:
-                        folder_path.unlink()
-                    self.log(f"Removed: {folder_name}", "SUCCESS")
-                    removed += 1
-                except Exception as e:
-                    self.log(f"Failed to remove {folder_name}: {e}", "ERROR")
+        for item in self.root_path.iterdir():
+            # Skip this script and log files
+            if item.name in [script_name, "devuninstall.log"]:
+                continue
+
+            try:
+                if item.is_dir():
+                    shutil.rmtree(item)
+                    self.log(f"Removed directory: {item.name}", "SUCCESS")
+                else:
+                    item.unlink()
+                    self.log(f"Removed file: {item.name}", "SUCCESS")
+                removed += 1
+            except Exception as e:
+                self.log(f"Failed to remove {item.name}: {e}", "ERROR")
 
         return removed
 
@@ -123,9 +117,9 @@ class GiljoDevUninstaller:
 
         return removed
 
-    def drop_database(self):
-        """Drop the giljo_mcp database only (keep PostgreSQL server)"""
-        self.log("Dropping giljo_mcp database...")
+    def remove_postgresql_completely(self):
+        """Remove PostgreSQL database AND server"""
+        self.log("Removing PostgreSQL completely...")
 
         pg_info = self.manifest.get('postgresql', {})
         host = pg_info.get('host', 'localhost')
@@ -134,8 +128,8 @@ class GiljoDevUninstaller:
         password = pg_info.get('password', '')
         database = pg_info.get('database', 'giljo_mcp')
 
+        # First, drop the database
         try:
-            # Try with password from manifest
             if password:
                 env = os.environ.copy()
                 env['PGPASSWORD'] = password
@@ -146,23 +140,48 @@ class GiljoDevUninstaller:
                     capture_output=True,
                     timeout=10
                 )
-                self.log(f"Database '{database}' dropped", "SUCCESS")
             else:
-                # Try without password
                 subprocess.run(
                     ["psql", "-h", host, "-p", port, "-U", user,
                      "-c", f"DROP DATABASE IF EXISTS {database};"],
                     capture_output=True,
                     timeout=10
                 )
-                self.log(f"Database '{database}' dropped", "SUCCESS")
-
+            self.log(f"Database '{database}' dropped", "SUCCESS")
         except FileNotFoundError:
-            self.log("psql not in PATH - manual database drop required", "WARNING")
-            self.log(f"Run: DROP DATABASE IF EXISTS {database};", "INFO")
+            self.log("psql not in PATH", "WARNING")
         except Exception as e:
             self.log(f"Could not drop database: {e}", "WARNING")
-            self.log(f"You may need to manually drop database: {database}", "INFO")
+
+        # Then, uninstall PostgreSQL server
+        pg_deps = self.manifest.get('dependencies', {}).get('postgresql', {})
+
+        if pg_deps.get('installed'):
+            self.log("Uninstalling PostgreSQL server...", "INFO")
+            try:
+                if self.platform == "win32":
+                    location = pg_deps.get('location', 'C:/PostgreSQL/16')
+                    uninstaller = Path(location) / "uninstall-postgresql.exe"
+                    if uninstaller.exists():
+                        subprocess.run([str(uninstaller), "--mode", "unattended"], timeout=120)
+                        self.log("PostgreSQL server uninstalled", "SUCCESS")
+                    else:
+                        self.log(f"PostgreSQL uninstaller not found at: {uninstaller}", "WARNING")
+                elif self.platform == "darwin":
+                    subprocess.run(["brew", "uninstall", "postgresql@16"], timeout=60)
+                    subprocess.run(["brew", "services", "stop", "postgresql@16"], timeout=30)
+                    self.log("PostgreSQL server uninstalled", "SUCCESS")
+                else:
+                    subprocess.run(["sudo", "apt", "remove", "postgresql", "postgresql-contrib", "-y"], timeout=120)
+                    self.log("PostgreSQL server uninstalled", "SUCCESS")
+            except Exception as e:
+                self.log(f"Failed to uninstall PostgreSQL: {e}", "ERROR")
+        else:
+            self.log("PostgreSQL was external - attempting manual uninstall instructions", "INFO")
+            self.log("To uninstall PostgreSQL manually:", "INFO")
+            self.log("  Windows: Control Panel > Programs > Uninstall PostgreSQL", "INFO")
+            self.log("  Mac: brew uninstall postgresql@16", "INFO")
+            self.log("  Linux: sudo apt remove postgresql postgresql-contrib", "INFO")
 
     def remove_appdata_configs(self):
         """Remove config files from APPDATA and user directories"""
@@ -209,16 +228,14 @@ class GiljoDevUninstaller:
         print("="*70)
 
         print("\n[INFO] This will remove:")
-        print("  - All installation folders (venv, data, logs, etc.)")
-        print("  - Generated config files (config.yaml, .env, etc.)")
-        print("  - giljo_mcp database (but keeps PostgreSQL server)")
+        print("  - ALL files in this installation folder")
+        print("  - PostgreSQL database AND server")
         print("  - User config files from APPDATA")
-        print("  - Test artifacts and scripts")
+        print("  - EVERYTHING related to this installation")
 
         print("\n[INFO] This will preserve:")
-        print("  - Python packages (for other projects)")
-        print("  - PostgreSQL server installation")
-        print("  - Source code repository files")
+        print("  - Python packages (for other projects on this machine)")
+        print("  - Only this script and log file will remain")
 
         confirm = input("\nType 'RESET' to confirm: ")
         if confirm != "RESET":
@@ -230,23 +247,20 @@ class GiljoDevUninstaller:
         print("="*70)
 
         # Execute uninstall steps
-        folders_removed = self.remove_installation_folders()
-        configs_removed = self.remove_generated_configs()
-        tests_removed = self.remove_test_artifacts()
+        self.remove_postgresql_completely()
         appdata_removed = self.remove_appdata_configs()
-        self.drop_database()
+        files_removed = self.remove_all_installation_files()
 
         print("\n" + "="*70)
         print("DEVELOPMENT RESET COMPLETE")
         print("="*70)
-        print(f"\nFolders removed: {folders_removed}")
-        print(f"Configs removed: {configs_removed}")
-        print(f"Test files removed: {tests_removed}")
+        print(f"\nFiles removed: {files_removed}")
         print(f"APPDATA locations removed: {appdata_removed}")
+        print("PostgreSQL: REMOVED")
 
         print("\n[OK] Environment reset for fresh installation!")
         print("[OK] You can now reinstall: python run_cli_install.py")
-        print("\n[NOTE] Python packages and PostgreSQL server preserved.")
+        print("\n[NOTE] Python packages preserved for other projects.")
 
 
 if __name__ == "__main__":
