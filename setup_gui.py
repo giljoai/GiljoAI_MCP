@@ -2178,6 +2178,10 @@ class ProgressPage(WizardPage):
             self.set_status(f"Schema initialization warning: {e}", "schema")
             self.set_progress(100, "schema")  # Continue anyway
 
+        # PostgreSQL installation is now manual (not automatic)
+        # Users install PostgreSQL themselves using the Database Configuration page
+        run_postgresql = False
+
         # Run parallel installations
         threads = []
 
