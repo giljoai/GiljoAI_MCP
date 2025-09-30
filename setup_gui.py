@@ -45,97 +45,95 @@ COLORS = {
 }
 
 
-class SplashScreen:
-    """Splash screen with GiljoAI logo"""
+class WelcomePage(ttk.Frame):
+    """Welcome page with logo - first page of wizard"""
 
-    def __init__(self, root_window):
-        self.root = root_window
-        self.splash = tk.Toplevel()
-        self.splash.title("GiljoAI MCP")
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title = "Welcome to GiljoAI MCP"
 
-        # Remove window decorations
-        self.splash.overrideredirect(True)
+        # Main container
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=40, pady=40)
 
-        # Set size and center on screen
-        splash_width = 500
-        splash_height = 300
-        screen_width = self.splash.winfo_screenwidth()
-        screen_height = self.splash.winfo_screenheight()
-        x = (screen_width - splash_width) // 2
-        y = (screen_height - splash_height) // 2
-        self.splash.geometry(f"{splash_width}x{splash_height}+{x}+{y}")
-
-        # Set background color
-        self.splash.configure(bg=COLORS['bg_primary'])
-
-        # Create frame with border
-        frame = tk.Frame(self.splash, bg=COLORS['bg_elevated'],
-                        highlightbackground=COLORS['border'],
-                        highlightthickness=2)
-        frame.pack(fill='both', expand=True, padx=2, pady=2)
-
-        # Try to load logo using tkinter's native PhotoImage (supports PNG directly)
+        # Try to load and display logo
         logo_path = Path(__file__).parent / "frontend" / "public" / "giljologo_full.png"
         if logo_path.exists():
             try:
-                # Load PNG directly with tkinter (no PIL needed!)
+                # Load PNG directly with tkinter
                 photo = tk.PhotoImage(file=str(logo_path))
 
-                # Subsample to resize (tkinter native method)
-                # Note: subsample divides size, so subsample=2 makes it half size
-                # Adjust based on your logo's original size
-                # photo = photo.subsample(2, 2)  # Uncomment if logo is too large
+                # Resize to fit nicely (subsample to make smaller)
+                # Get original size and calculate appropriate subsample
+                width = photo.width()
+                height = photo.height()
 
-                logo_label = tk.Label(frame, image=photo, bg=COLORS['bg_elevated'])
-                logo_label.image = photo  # Keep a reference to prevent garbage collection
-                logo_label.pack(pady=30)
+                # Target width ~600px for 800px window
+                target_width = 600
+                subsample_factor = max(1, width // target_width)
+
+                if subsample_factor > 1:
+                    photo = photo.subsample(subsample_factor, subsample_factor)
+
+                logo_label = tk.Label(main_frame, image=photo, bg=COLORS['bg_primary'])
+                logo_label.image = photo  # Keep reference
+                logo_label.pack(pady=(0, 30))
             except Exception as e:
-                # Fallback to text if image fails
-                print(f"Could not load logo: {e}")
-                self._show_text_logo(frame)
+                # Fallback to text logo
+                logo_text = tk.Label(main_frame,
+                                    text="GiljoAI",
+                                    font=('Segoe UI', 48, 'bold'),
+                                    fg=COLORS['text_primary'],
+                                    bg=COLORS['bg_primary'])
+                logo_text.pack(pady=(0, 10))
+
+                subtitle = tk.Label(main_frame,
+                                   text="MCP Orchestrator",
+                                   font=('Segoe UI', 18),
+                                   fg=COLORS['text_success'],
+                                   bg=COLORS['bg_primary'])
+                subtitle.pack(pady=(0, 30))
         else:
-            # Fallback to text logo if file doesn't exist
-            self._show_text_logo(frame)
-
-        # Add loading message
-        loading_label = tk.Label(frame,
-                                text="Initializing Setup Wizard...",
-                                font=('Helvetica', 11),
+            # Fallback if no logo file
+            logo_text = tk.Label(main_frame,
+                                text="GiljoAI",
+                                font=('Segoe UI', 48, 'bold'),
                                 fg=COLORS['text_primary'],
-                                bg=COLORS['bg_elevated'])
-        loading_label.pack(pady=10)
+                                bg=COLORS['bg_primary'])
+            logo_text.pack(pady=(0, 10))
 
-        # Add version info
-        version_label = tk.Label(frame,
-                                text="GiljoAI MCP Orchestrator",
-                                font=('Helvetica', 9),
-                                fg=COLORS['text_secondary'],
-                                bg=COLORS['bg_elevated'])
-        version_label.pack(pady=5)
+            subtitle = tk.Label(main_frame,
+                               text="MCP Orchestrator",
+                               font=('Segoe UI', 18),
+                               fg=COLORS['text_success'],
+                               bg=COLORS['bg_primary'])
+            subtitle.pack(pady=(0, 30))
 
-        # Bring to front
-        self.splash.lift()
-        self.splash.attributes('-topmost', True)
+        # Welcome message
+        welcome_text = tk.Label(main_frame,
+                               text="Welcome to the GiljoAI MCP Setup Wizard",
+                               font=('Segoe UI', 14, 'bold'),
+                               fg='#ffffff',
+                               bg=COLORS['bg_primary'])
+        welcome_text.pack(pady=(0, 20))
 
-    def _show_text_logo(self, parent):
-        """Fallback text logo if image not available"""
-        logo_text = tk.Label(parent,
-                            text="GiljoAI",
-                            font=('Helvetica', 48, 'bold'),
-                            fg=COLORS['text_primary'],
-                            bg=COLORS['bg_elevated'])
-        logo_text.pack(pady=30)
+        description = tk.Label(main_frame,
+                             text="This wizard will guide you through the installation of GiljoAI MCP,\n"
+                                  "a multi-agent orchestration system for AI-powered development.\n\n"
+                                  "Click Next to begin the setup process.",
+                             font=('Segoe UI', 10),
+                             fg='#ffffff',
+                             bg=COLORS['bg_primary'],
+                             justify='center')
+        description.pack(pady=(0, 30))
 
-        subtitle = tk.Label(parent,
-                           text="MCP Orchestrator",
-                           font=('Helvetica', 16),
-                           fg=COLORS['text_success'],
-                           bg=COLORS['bg_elevated'])
-        subtitle.pack()
+    def validate(self) -> bool:
+        """Always valid - just a welcome screen"""
+        return True
 
-    def destroy(self):
-        """Close the splash screen"""
-        self.splash.destroy()
+    def get_data(self) -> dict:
+        """No data to collect from welcome page"""
+        return {}
 
 
 class WizardPage(ttk.Frame):
@@ -2100,18 +2098,25 @@ class GiljoSetupGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("GiljoAI MCP Setup Wizard")
-        self.root.geometry("800x600")
+        self.root.geometry("800x700")  # Increased height by 100px
         self.root.resizable(True, True)
 
         # Center window
         self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() // 2) - (800 // 2)
-        y = (self.root.winfo_screenheight() // 2) - (600 // 2)
-        self.root.geometry(f"800x600+{x}+{y}")
+        y = (self.root.winfo_screenheight() // 2) - (700 // 2)  # Updated for new height
+        self.root.geometry(f"800x700+{x}+{y}")
 
         # Configure GiljoAI color theme
         style = ttk.Style()
         # Use default theme as base (better Windows compatibility)
+
+        # Fix font rendering - use system default fonts for crisp text
+        import tkinter.font as tkfont
+        default_font = tkfont.nametofont("TkDefaultFont")
+        default_font.configure(family="Segoe UI", size=9)  # Windows default
+        text_font = tkfont.nametofont("TkTextFont")
+        text_font.configure(family="Segoe UI", size=9)
 
         # Configure root window background
         self.root.configure(bg=COLORS['bg_primary'])
@@ -2123,28 +2128,46 @@ class GiljoSetupGUI:
                        foreground=COLORS['text_primary'])
         style.configure('TLabelframe',
                        background=COLORS['bg_primary'],
-                       foreground=COLORS['text_primary'],
-                       bordercolor=COLORS['border'])
+                       foreground='#ffffff',  # White text for frame labels
+                       bordercolor='#ffc300',  # Yellow borders
+                       relief='solid')
         style.configure('TLabelframe.Label',
                        background=COLORS['bg_primary'],
-                       foreground=COLORS['text_primary'])
+                       foreground='#ffffff',  # White text
+                       font=('Segoe UI', 9, 'bold'))
 
-        # Button styles
+        # Specific style for yellow-bordered frames
+        style.configure('Yellow.TLabelframe',
+                       background=COLORS['bg_primary'],
+                       foreground='#ffffff',
+                       bordercolor='#ffc300',
+                       borderwidth=2,
+                       relief='solid')
+        style.configure('Yellow.TLabelframe.Label',
+                       background=COLORS['bg_primary'],
+                       foreground='#ffffff',
+                       font=('Segoe UI', 9, 'bold'))
+
+        # Button styles - #1e3147 background with white text
         style.configure('TButton',
-                       background=COLORS['bg_elevated'],
-                       foreground=COLORS['text_primary'],
-                       bordercolor=COLORS['border'],
-                       lightcolor=COLORS['border'],
-                       darkcolor=COLORS['border'])
+                       background='#1e3147',
+                       foreground='#ffffff',  # White text
+                       bordercolor='#1e3147',
+                       lightcolor='#1e3147',
+                       darkcolor='#1e3147',
+                       relief='raised',
+                       font=('Segoe UI', 9))
         style.map('TButton',
-                 background=[('active', COLORS['border'])],
-                 foreground=[('active', COLORS['text_primary'])])
+                 background=[('active', '#315074'), ('pressed', '#0e1c2d')],
+                 foreground=[('active', '#ffffff'), ('pressed', '#ffffff')])
 
-        # Entry/Input styles
+        # Entry/Input styles - #315074 background with black text
         style.configure('TEntry',
-                       fieldbackground=COLORS['bg_elevated'],
-                       foreground=COLORS['text_primary'],
-                       bordercolor=COLORS['border'])
+                       fieldbackground='#315074',
+                       foreground='#000000',  # Black text
+                       insertcolor='#000000',  # Black cursor
+                       bordercolor='#ffc300',
+                       font=('Segoe UI', 9))
 
         # Radiobutton styles
         style.configure('TRadiobutton',
@@ -2164,14 +2187,15 @@ class GiljoSetupGUI:
                        lightcolor=COLORS['text_primary'],
                        darkcolor=COLORS['text_primary'])
 
-        # Scrollbar styles
+        # Scrollbar styles - #1e3147 bar with yellow indicators
         style.configure('Vertical.TScrollbar',
-                       background=COLORS['bg_elevated'],
+                       background='#1e3147',  # Bar color
                        troughcolor=COLORS['bg_primary'],
-                       bordercolor=COLORS['border'],
-                       arrowcolor=COLORS['text_primary'])
+                       bordercolor='#1e3147',
+                       arrowcolor='#ffc300')  # Yellow arrows
         style.map('Vertical.TScrollbar',
-                 background=[('active', COLORS['text_primary'])])
+                 background=[('active', '#ffc300')],  # Yellow when active
+                 arrowcolor=[('active', '#ffc300')])
 
         # Set window icon (if available)
         try:
@@ -2216,7 +2240,7 @@ class GiljoSetupGUI:
 
         # Create pages with correct parent (content_frame)
         self.pages = [
-            # WelcomePage removed - ProfileSelection now serves as welcome
+            WelcomePage(self.content_frame),  # New welcome page with logo
             ProfileSelectionPage(self.content_frame),
             DatabasePage(self.content_frame),
             PortsPage(self.content_frame),
@@ -2417,17 +2441,8 @@ def gui():
 def main():
     """Main entry point for GUI installer"""
     try:
-        # Create hidden root window for splash
+        # Create root window
         root = tk.Tk()
-        root.withdraw()  # Hide main window initially
-
-        # Show splash screen
-        splash = SplashScreen(root)
-        root.update()
-
-        # Wait 2.5 seconds to show splash
-        root.after(2500, splash.destroy)
-        root.after(2500, root.deiconify)  # Show main window after splash
 
         # Create and run the setup GUI
         app = GiljoSetupGUI(root)
