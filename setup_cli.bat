@@ -18,7 +18,7 @@ REM ============================================================
 REM This script launches the CLI installer directly
 REM Use this if you already have Python installed and want CLI mode
 REM
-REM For full installation with Python check, use: quickstart.bat
+REM For full installation with Python check, use: install.bat
 REM ============================================================
 
 title GiljoAI MCP CLI Installer
@@ -33,7 +33,7 @@ python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo %PINK%[X] Python not found!%RESET%
     echo.
-    echo Please install Python 3.10+ first, or use quickstart.bat
+    echo Please install Python 3.10+ first, or use install.bat
     echo for automatic Python installation.
     echo.
     pause
@@ -44,9 +44,9 @@ for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
 echo %GREEN%[OK] Found Python !PYTHON_VERSION!%RESET%
 echo.
 
-REM Check if setup_interactive.py exists
-if not exist "setup_interactive.py" (
-    echo %PINK%[X] setup_interactive.py not found in current directory%RESET%
+REM Check if setup_cli.py exists
+if not exist "setup_cli.py" (
+    echo %PINK%[X] setup_cli.py not found in current directory%RESET%
     echo %GRAY%    Make sure you're in the GiljoAI MCP directory%RESET%
     echo.
     pause
@@ -85,7 +85,7 @@ echo %YELLOW%============================================================%RESET%
 echo.
 
 REM Launch CLI installer
-python setup_interactive.py
+python setup_cli.py
 
 if %errorlevel% neq 0 (
     echo.

@@ -6,7 +6,7 @@ The installer system now implements a **hybrid dependency management approach** 
 ## Entry Points
 
 ### Primary Entry Point
-**`quickstart.bat`** - Main installer launcher
+**`install.bat`** - Main installer launcher
 - **Only requirement**: Python 3.10+
 - Auto-installs Python if missing
 - Launches bootstrap.py
@@ -52,7 +52,7 @@ The installer system now implements a **hybrid dependency management approach** 
 - Clear instructions for manual setup
 
 ### 2. Flexible Installation Paths ✓
-- **Path A**: `quickstart.bat` → prompt for deps → GUI/CLI
+- **Path A**: `install.bat` → prompt for deps → GUI/CLI
 - **Path B**: `setup_gui.bat` → optional deps → GUI
 - **Path C**: `setup_cli.bat` → optional deps → CLI
 - **Path D**: `python bootstrap.py` → smart handling
@@ -108,12 +108,12 @@ Fixed UnboundLocalError in PostgreSQL connection test:
 
 ```
 GiljoAI_MCP/
-├── quickstart.bat           # Main entry (Python checker + bootstrap)
+├── install.bat              # Main entry (Python checker + bootstrap)
 ├── bootstrap.py             # Installer orchestrator
 ├── setup_gui.py             # GUI wizard
-├── setup_interactive.py     # CLI wizard
-├── setup_gui.bat            # Direct GUI launcher (NEW)
-├── setup_cli.bat            # Direct CLI launcher (NEW)
+├── setup_cli.py             # CLI wizard
+├── setup_gui.bat            # Direct GUI launcher
+├── setup_cli.bat            # Direct CLI launcher
 └── setup.py                 # Base utilities
 ```
 
@@ -135,10 +135,9 @@ GiljoAI_MCP/
 
 ## Future Improvements
 
-1. Consider renaming `quickstart.bat` to `install.bat` for clarity
-2. Add progress indicators for dependency installation
-3. Add connection test logging for debugging
-4. Support for custom PostgreSQL installations
+1. Add progress indicators for dependency installation
+2. Add connection test logging for debugging
+3. Support for custom PostgreSQL installations
 
 ## Migration Notes
 

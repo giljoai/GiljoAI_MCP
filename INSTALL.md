@@ -29,10 +29,10 @@
 
 ### The Installation Flow
 
-**CRITICAL**: The quickstart scripts are the TRUE entry points. They handle Python installation FIRST, then launch the rest of the system.
+**CRITICAL**: The installation scripts are the TRUE entry points. They handle Python installation FIRST, then launch the rest of the system.
 
 ```
-quickstart.bat (Windows) / quickstart.sh (Mac/Linux)
+install.bat (Windows) / quickstart.sh (Mac/Linux)
     ↓ Checks for Python, installs if missing
 bootstrap.py
     ↓ Checks dependencies, detects GUI
@@ -46,8 +46,8 @@ System Ready!
 #### Windows Users
 
 ```batch
-# Run the quick start script
-quickstart.bat
+# Run the installation script
+install.bat
 ```
 
 #### Mac/Linux Users
