@@ -9,6 +9,8 @@ REM   Copies ONLY files that would be in a release archive
 REM
 REM USAGE:
 REM   giltest.bat           - Run interactive deployment
+REM   giltest.bat --quick   - Quick sync (files changed in last 2 min)
+REM   giltest.bat -q        - Quick sync (short option)
 REM
 REM WHAT IT DOES:
 REM   1. Reads .gitattributes export-ignore rules

@@ -1,34 +1,47 @@
-# GiljoAI MCP Orchestrator Configuration
+# GiljoAI MCP Orchestrator Configuration v2.0
 # Copy this file to config.yaml and adjust settings as needed
+# This configuration is production-ready with unified port architecture
+#
+# KEY CHANGES IN v2.0:
+# - Single unified port (7272) for API, MCP tools, and WebSocket
+# - PostgreSQL is now the recommended default database
+# - Simplified configuration structure
+# - Production-ready defaults for 15-day launch
+#
+# QUICK START:
+# 1. Copy this file to config.yaml
+# 2. Set your PostgreSQL password (or use SQLite for testing)
+# 3. Run: start_giljo.bat (Windows) or ./start_giljo.sh (Mac/Linux)
+# 4. Access dashboard at: http://localhost:7272
 
 # Database Configuration
 database:
-  # Database type: sqlite (default) or postgresql
-  database_type: sqlite
+  # Database type: postgresql (recommended) or sqlite
+  database_type: postgresql
 
-  # SQLite configuration
-  path: ./data/giljo.db
+  # PostgreSQL configuration (recommended for production)
+  host: localhost
+  port: 5432
+  name: giljo_mcp
+  user: postgres
+  password: ""  # Set your PostgreSQL password here
 
-  # PostgreSQL configuration (uncomment for production)
-  # database_type: postgresql
-  # host: localhost
-  # port: 5432
-  # name: giljo_mcp
-  # user: giljo_user
-  # password: your_secure_password
+  # SQLite configuration (uncomment for development/testing only)
+  # database_type: sqlite
+  # path: ./data/giljo.db
 
-# Server Configuration
+# Server Configuration - Unified v2.0 Architecture
 server:
   # Mode: local (single user), lan (network), or wan (internet)
   mode: local
   host: localhost
   debug: false
 
-  # Service ports
-  ports:
-    mcp: 6001      # MCP server port
-    api: 6002      # REST API port
-    frontend: 6000 # Vue frontend port
+  # Unified port for all services (API, MCP tools, WebSocket)
+  port: 7272
+
+  # Optional frontend development server port
+  frontend_port: 6000
 
 # Multi-Tenant Configuration
 tenant:
@@ -66,25 +79,26 @@ session:
 
 # MCP Server Configuration
 mcp:
-  # Transport mode: stdio (default) or tcp
+  # Transport mode: stdio (default, used by Claude Code)
   stdio_mode: true
   transport: stdio
 
-  # TCP configuration (if not using stdio)
-  # tcp_host: localhost
-  # tcp_port: 6001
+  # Note: v2.0 uses unified HTTP server at port 7272
+  # MCP tools are exposed via HTTP endpoints, stdio adapter connects to them
 
 # API Configuration
 api:
-  # CORS settings
+  # CORS settings - adjust for your deployment
   cors_origins:
-    - "http://localhost:6000"
-    - "http://localhost:5500"
+    - "http://localhost:6000"       # Frontend dev server
+    - "http://localhost:7272"       # Main server
+    - "http://127.0.0.1:6000"
+    - "http://127.0.0.1:7272"
 
-  # Rate limiting
-  rate_limit: 100  # Requests per minute
+  # Rate limiting (requests per minute)
+  rate_limit: 100
 
-  # Authentication
+  # Authentication (enable for network deployments)
   require_api_key: false
   # api_key_header: "X-API-Key"
 

@@ -5,6 +5,8 @@ Run the GiljoAI MCP REST API server
 
 import argparse
 import logging
+import os
+import socket
 import sys
 from pathlib import Path
 
@@ -15,11 +17,124 @@ import uvicorn
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
+def load_config_port() -> int:
+    """Load port from config.yaml if available
+
+    Returns:
+        Port number from config, or 7272 as default
+    """
+    try:
+        import yaml
+        config_path = Path(__file__).parent.parent / "config.yaml"
+        if config_path.exists():
+            with open(config_path, "r") as f:
+                config = yaml.safe_load(f)
+                # Try new unified structure first (server.port)
+                if config and "server" in config:
+                    port = config["server"].get("port")
+                    if port and isinstance(port, int):
+                        return port
+                    # Fallback to old structure (server.ports.api)
+                    if "ports" in config["server"]:
+                        port = config["server"]["ports"].get("api")
+                        if port and isinstance(port, int):
+                            return port
+    except Exception as e:
+        logging.debug(f"Could not load port from config: {e}")
+
+    return 7272  # Default unified port
+
+
+def check_port_available(port: int, host: str = "127.0.0.1") -> bool:
+    """Check if a port is available
+
+    Args:
+        port: Port number to check
+        host: Host to check on
+
+    Returns:
+        True if port is available, False if in use
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1)
+            result = sock.connect_ex((host, port))
+            return result != 0  # True if NOT in use (connection failed)
+    except Exception:
+        return False
+
+
+def find_available_port(preferred: int) -> int:
+    """Find an available port, starting with preferred
+
+    Args:
+        preferred: Preferred port number
+
+    Returns:
+        Available port number
+
+    Raises:
+        RuntimeError: If no available port can be found
+    """
+    # Try preferred port first
+    if check_port_available(preferred):
+        return preferred
+
+    # Try alternative ports
+    alternatives = [7273, 7274, 8747, 8823, 9456, 9789]
+    for port in alternatives:
+        if check_port_available(port):
+            logging.warning(f"Port {preferred} is occupied, using alternative port {port}")
+            return port
+
+    # Last resort: find random available port in safe range
+    import random
+    for _ in range(10):
+        port = random.randint(7200, 9999)
+        if check_port_available(port):
+            logging.warning(f"Using random available port {port}")
+            return port
+
+    raise RuntimeError(f"Could not find available port (preferred: {preferred})")
+
+
+def get_port_from_sources() -> int:
+    """Get port from multiple sources in priority order
+
+    Priority:
+    1. GILJO_PORT environment variable
+    2. config.yaml
+    3. Default 7272
+
+    Also checks if port is available and finds alternative if needed.
+
+    Returns:
+        Available port number
+    """
+    # Check environment variable first (highest priority)
+    env_port = os.environ.get("GILJO_PORT")
+    if env_port:
+        try:
+            port = int(env_port)
+            if 1024 <= port <= 65535:
+                return find_available_port(port)
+        except (ValueError, RuntimeError):
+            logging.warning(f"Invalid GILJO_PORT value: {env_port}")
+
+    # Check config file
+    config_port = load_config_port()
+    try:
+        return find_available_port(config_port)
+    except RuntimeError:
+        # If all else fails, return the config port and let uvicorn handle the error
+        return config_port
+
+
 def main():
     """Main entry point for running the API server"""
     parser = argparse.ArgumentParser(description="GiljoAI MCP REST API Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=8000, help="Port to bind to (default: 8000)")
+    parser.add_argument("--port", type=int, default=None, help="Port to bind to (default: auto-detect from config/env)")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     parser.add_argument(
@@ -33,6 +148,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Determine port with fallback logic
+    if args.port is None:
+        args.port = get_port_from_sources()
+    else:
+        # If port specified on command line, still check if available
+        try:
+            args.port = find_available_port(args.port)
+        except RuntimeError as e:
+            logging.error(f"Port error: {e}")
+            sys.exit(1)
+
     # Configure logging
     logging.basicConfig(
         level=getattr(logging, args.log_level.upper()), format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -42,9 +168,10 @@ def main():
 
     # Log startup information
     logger.info("=" * 60)
-    logger.info("GiljoAI MCP Orchestrator REST API")
+    logger.info("GiljoAI MCP Orchestrator REST API v2.0")
     logger.info("=" * 60)
     logger.info(f"Starting server on {args.host}:{args.port}")
+    logger.info(f"Port selection: {'Command line' if args.port else 'Auto-detected'}")
     logger.info(f"Workers: {args.workers}")
     logger.info(f"Auto-reload: {args.reload}")
     logger.info(f"Log level: {args.log_level}")
