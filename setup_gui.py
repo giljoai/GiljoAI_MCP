@@ -177,88 +177,38 @@ class WelcomePage(ttk.Frame):
         super().__init__(parent)
         self.title = "Welcome to GiljoAI MCP"
 
-        # Main container
-        main_frame = ttk.Frame(self)
-        main_frame.pack(fill="both", expand=True, padx=40, pady=40)
+        # Title
+        title_label = ttk.Label(self, text="GiljoAI", font=("Helvetica", 32, "bold"))
+        title_label.pack(pady=(30, 5))
 
-        # Try to load and display logo
-        logo_path = Path(__file__).parent / "frontend" / "public" / "giljologo_full.png"
-        if logo_path.exists():
-            try:
-                # Load PNG directly with tkinter
-                photo = tk.PhotoImage(file=str(logo_path))
-
-                # Resize to fit nicely (subsample to make smaller)
-                # Get original size and calculate appropriate subsample
-                width = photo.width()
-                height = photo.height()
-
-                # Target width ~600px for 800px window
-                target_width = 600
-                subsample_factor = max(1, width // target_width)
-
-                if subsample_factor > 1:
-                    photo = photo.subsample(subsample_factor, subsample_factor)
-
-                logo_label = tk.Label(main_frame, image=photo, bg=COLORS['bg_primary'])
-                logo_label.image = photo  # Keep reference
-                logo_label.pack(pady=(0, 10))
-
-                # Add version subtitle below logo
-                version_label = tk.Label(main_frame,
-                                        text="v0.2 Beta",
-                                        font=('Segoe UI', 14),
-                                        fg=COLORS['text_success'],
-                                        bg=COLORS['bg_primary'])
-                version_label.pack(pady=(0, 30))
-            except Exception as e:
-                # Fallback to text logo
-                logo_text = tk.Label(main_frame,
-                                    text="GiljoAI",
-                                    font=('Segoe UI', 48, 'bold'),
-                                    fg=COLORS['text_primary'],
-                                    bg=COLORS['bg_primary'])
-                logo_text.pack(pady=(0, 10))
-
-                subtitle = tk.Label(main_frame,
-                                   text="MCP Orchestrator v0.2 Beta",
-                                   font=('Segoe UI', 18),
-                                   fg=COLORS['text_success'],
-                                   bg=COLORS['bg_primary'])
-                subtitle.pack(pady=(0, 30))
-        else:
-            # Fallback if no logo file
-            logo_text = tk.Label(main_frame,
-                                text="GiljoAI",
-                                font=('Segoe UI', 48, 'bold'),
-                                fg=COLORS['text_primary'],
-                                bg=COLORS['bg_primary'])
-            logo_text.pack(pady=(0, 10))
-
-            subtitle = tk.Label(main_frame,
-                               text="MCP Orchestrator v0.2 Beta",
-                               font=('Segoe UI', 18),
-                               fg=COLORS['text_success'],
-                               bg=COLORS['bg_primary'])
-            subtitle.pack(pady=(0, 30))
+        subtitle_label = ttk.Label(self, text="MCP Orchestrator v0.2 Beta", font=("Helvetica", 14))
+        subtitle_label.pack(pady=(0, 20))
 
         # Welcome message
-        welcome_text = tk.Label(main_frame,
+        welcome_text = ttk.Label(self,
                                text="Welcome to the GiljoAI MCP Setup Wizard",
-                               font=('Segoe UI', 14, 'bold'),
-                               fg='#ffffff',
-                               bg=COLORS['bg_primary'])
-        welcome_text.pack(pady=(0, 20))
+                               font=("Helvetica", 12, "bold"))
+        welcome_text.pack(pady=(0, 15))
 
-        description = tk.Label(main_frame,
+        # Description
+        description = ttk.Label(self,
                              text="This wizard will guide you through the installation of GiljoAI MCP,\n"
                                   "a multi-agent orchestration system for AI-powered development.\n\n"
                                   "Click Next to begin the setup process.",
-                             font=('Segoe UI', 10),
-                             fg='#ffffff',
-                             bg=COLORS['bg_primary'],
                              justify='center')
-        description.pack(pady=(0, 30))
+        description.pack(pady=(0, 40))
+
+        # Footer
+        footer_frame = ttk.Frame(self)
+        footer_frame.pack(side="bottom", pady=20)
+
+        website_label = ttk.Label(footer_frame, text="www.giljo.ai © 2025 v0.2 Beta",
+                                 font=("Helvetica", 9))
+        website_label.pack()
+
+        email_label = ttk.Label(footer_frame, text="infoteam@giljo.ai",
+                               font=("Helvetica", 9), foreground="gray")
+        email_label.pack()
 
     def validate(self) -> bool:
         """Always valid - just a welcome screen"""
@@ -465,8 +415,8 @@ Select your server deployment mode:"""
         mode = self.mode_var.get()
 
         status_messages = {
-            "local": "✓ Ready for quick setup with minimal configuration",
-            "server": "✓ Will configure database and network settings",
+            "local": "[OK] Ready for quick setup with minimal configuration",
+            "server": "[OK] Will configure database and network settings",
         }
 
         self.status_label.config(text=status_messages.get(mode, ""))
@@ -566,7 +516,7 @@ class DatabasePage(WizardPage):
             webbrowser.open("https://www.postgresql.org/download/")
 
         self.install_btn = tk.Button(install_btn_frame,
-                                    text="📥 Download PostgreSQL Installer",
+                                    text="Download PostgreSQL Installer",
                                     command=open_postgres_download,
                                     bg=COLORS['bg_elevated'], fg='#ffffff',
                                     font=('Segoe UI', 9), relief='flat', borderwidth=0,
@@ -595,7 +545,7 @@ class DatabasePage(WizardPage):
 
         # Note about using same credentials
         note_label = tk.Label(step2_frame,
-                            text="💡 Use the same Username, Password, and Port from Step 1 (or your existing PostgreSQL)",
+                            text="NOTE: Use the same Username, Password, and Port from Step 1 (or your existing PostgreSQL)",
                             fg=COLORS['text_primary'], bg=COLORS['bg_primary'],
                             font=('Segoe UI', 9, 'bold'))
         note_label.pack(anchor="w", pady=(0, 10))
@@ -612,13 +562,13 @@ class DatabasePage(WizardPage):
             install_deps_frame.pack(fill="x", pady=(5, 5))
 
             warning_label = tk.Label(install_deps_frame,
-                                    text="⚠ Test dependencies not installed",
+                                    text="WARNING: Test dependencies not installed",
                                     fg=COLORS['warning'], bg=COLORS['bg_primary'],
                                     font=('Segoe UI', 9, 'bold'))
             warning_label.pack(pady=(0, 5))
 
             self.install_deps_btn = tk.Button(install_deps_frame,
-                                            text="📦 Install Test Dependencies (psycopg2-binary)",
+                                            text="Install Test Dependencies (psycopg2-binary)",
                                             command=self._install_test_deps,
                                             bg=COLORS['accent_purple'], fg='#ffffff',
                                             font=('Segoe UI', 9), relief='flat', borderwidth=0,
@@ -637,7 +587,7 @@ class DatabasePage(WizardPage):
         test_btn_frame.pack(fill="x", pady=(10, 5))
 
         self.test_btn = tk.Button(test_btn_frame,
-                                text="🔌 Test Connection",
+                                text="Test Connection",
                                 command=self._test_connection,
                                 bg=COLORS['bg_elevated'], fg='#ffffff',
                                 font=('Segoe UI', 9), relief='flat', borderwidth=0,
@@ -728,7 +678,7 @@ class DatabasePage(WizardPage):
 
                 if result.returncode == 0:
                     self.status_label.config(
-                        text="✓ Test dependencies installed successfully!",
+                        text="[OK] Test dependencies installed successfully!",
                         fg=COLORS['text_success']
                     )
                     self.psycopg2_available = True
@@ -736,16 +686,16 @@ class DatabasePage(WizardPage):
                     self.install_deps_btn.master.pack_forget()
                 else:
                     self.status_label.config(
-                        text=f"✗ Installation failed: {result.stderr[:100]}",
+                        text=f"[ERROR] Installation failed: {result.stderr[:100]}",
                         fg=COLORS['text_error']
                     )
-                    self.install_deps_btn.config(state='normal', text="📦 Install Test Dependencies (psycopg2-binary)")
+                    self.install_deps_btn.config(state='normal', text="Install Test Dependencies (psycopg2-binary)")
             except Exception as e:
                 self.status_label.config(
-                    text=f"✗ Error installing dependencies: {str(e)[:100]}",
+                    text=f"[ERROR] Error installing dependencies: {str(e)[:100]}",
                     fg=COLORS['text_error']
                 )
-                self.install_deps_btn.config(state='normal', text="📦 Install Test Dependencies (psycopg2-binary)")
+                self.install_deps_btn.config(state='normal', text="Install Test Dependencies (psycopg2-binary)")
 
         thread = threading.Thread(target=install, daemon=True)
         thread.start()
@@ -762,11 +712,11 @@ class DatabasePage(WizardPage):
             sock.close()
 
             if result == 0:
-                self.status_label.config(text=f"✓ Port {port} is open on {host}", foreground="green")
+                self.status_label.config(text=f"[OK] Port {port} is open on {host}", foreground="green")
             else:
-                self.status_label.config(text=f"✗ Port {port} is not accessible on {host}", foreground="red")
+                self.status_label.config(text=f"[ERROR] Port {port} is not accessible on {host}", foreground="red")
         except Exception as e:
-            self.status_label.config(text=f"✗ Error checking port: {e}", foreground="red")
+            self.status_label.config(text=f"[ERROR] Error checking port: {e}", foreground="red")
 
     def _test_connection(self):
         """Test PostgreSQL connection"""
@@ -779,7 +729,7 @@ class DatabasePage(WizardPage):
                 import psycopg2
             except ImportError:
                 self.status_label.config(
-                    text="✗ psycopg2 not installed. Run: pip install psycopg2-binary",
+                    text="[ERROR] psycopg2 not installed. Run: pip install psycopg2-binary",
                     foreground="red"
                 )
                 return
@@ -819,26 +769,26 @@ class DatabasePage(WizardPage):
                     )
                     conn2.close()
                     self.status_label.config(
-                        text=f"✓ Connected successfully! Database '{db_name}' exists.",
+                        text=f"[OK] Connected successfully! Database '{db_name}' exists.",
                         fg=COLORS['text_success']
                     )
                 else:
                     self.status_label.config(
-                        text=f"✓ Connection successful! Database '{db_name}' will be created.",
+                        text=f"[OK] Connection successful! Database '{db_name}' will be created.",
                         fg=COLORS['text_success']
                     )
 
             except psycopg2.OperationalError as e:
                 if "password authentication failed" in str(e):
-                    self.status_label.config(text="✗ Invalid credentials", foreground="red")
+                    self.status_label.config(text="[ERROR] Invalid credentials", foreground="red")
                 elif "could not connect to server" in str(e):
-                    self.status_label.config(text="✗ Cannot connect to server", foreground="red")
+                    self.status_label.config(text="[ERROR] Cannot connect to server", foreground="red")
                 elif "timeout expired" in str(e):
-                    self.status_label.config(text="✗ Connection timeout", foreground="red")
+                    self.status_label.config(text="[ERROR] Connection timeout", foreground="red")
                 else:
-                    self.status_label.config(text=f"✗ Connection failed: {e}", foreground="red")
+                    self.status_label.config(text=f"[ERROR] Connection failed: {e}", foreground="red")
             except Exception as e:
-                self.status_label.config(text=f"✗ Error: {e}", foreground="red")
+                self.status_label.config(text=f"[ERROR] Error: {e}", foreground="red")
 
         thread = threading.Thread(target=test)
         thread.daemon = True
@@ -966,15 +916,15 @@ class PortsPage(WizardPage):
         # Special handling for PostgreSQL - if port responds, it means PostgreSQL is running
         if service == "PostgreSQL":
             if check_port(port):
-                self.status_labels[service].config(text="✓ Detected", foreground="#90ee90")  # Lighter green
+                self.status_labels[service].config(text="[OK] Detected", foreground="#90ee90")  # Lighter green
             else:
-                self.status_labels[service].config(text="✗ Not detected", foreground="#c6298c")  # Pink/red
+                self.status_labels[service].config(text="[ERROR] Not detected", foreground="#c6298c")  # Pink/red
         else:
             # For other services, in use is bad, available is good
             if check_port(port):
-                self.status_labels[service].config(text="✗ In use", foreground="#c6298c")  # Pink/red
+                self.status_labels[service].config(text="[ERROR] In use", foreground="#c6298c")  # Pink/red
             else:
-                self.status_labels[service].config(text="✓ Available", foreground="#90ee90")  # Lighter green
+                self.status_labels[service].config(text="[OK] Available", foreground="#90ee90")  # Lighter green
 
     def _check_all_ports(self):
         """Check all ports"""
@@ -1058,7 +1008,7 @@ class SecurityPage(WizardPage):
         # API Key explanation
         api_help = ttk.Label(
             api_frame,
-            text="📔 For building your own applications and integrating with GiljoAI MCP.\n"
+            text="For building your own applications and integrating with GiljoAI MCP.\n"
             + "Examples: Custom tools, local LLM integrations, automation scripts.\n"
             + "Note: MCP clients (Claude, etc.) use MCP protocol, not this.",
             foreground=COLORS['text_primary'],  # Yellow
@@ -1091,7 +1041,7 @@ class SecurityPage(WizardPage):
         # JWT explanation
         jwt_help = ttk.Label(
             jwt_frame,
-            text="🔐 Signs session tokens for the web dashboard. Prevents token tampering.\n"
+            text="Signs session tokens for the web dashboard. Prevents token tampering.\n"
             + "Auto-generated for security. No need to copy unless integrating SSO.",
             foreground=COLORS['text_primary'],  # Yellow
             wraplength=500,
@@ -1527,9 +1477,9 @@ class ProgressPage(WizardPage):
 
         # Determine tag based on message content
         tag = "info"
-        if any(word in message.lower() for word in ["success", "✓", "completed"]):
+        if any(word in message.lower() for word in ["success", "[OK]", "completed"]):
             tag = "success"
-        elif any(word in message.lower() for word in ["error", "failed", "✗"]):
+        elif any(word in message.lower() for word in ["error", "failed", "[ERROR]"]):
             tag = "error"
         elif any(word in message.lower() for word in ["warning", "issue"]):
             tag = "warning"
@@ -1549,7 +1499,7 @@ class ProgressPage(WizardPage):
                 level = "DEBUG" if target == "system" else "INFO"
 
             # Write to log file (remove formatting characters for cleaner logs)
-            clean_message = message.replace("✓", "[OK]").replace("✗", "[FAIL]").replace("•", "-")
+            clean_message = message.replace("[OK]", "[OK]").replace("[ERROR]", "[FAIL]").replace("•", "-")
             self.install_logger.write(clean_message, level)
 
         # Display in GUI console
@@ -1597,7 +1547,7 @@ class ProgressPage(WizardPage):
         widget = self.component_widgets[comp_id]['status']
 
         # Color based on status
-        if any(word in status.lower() for word in ["✓", "success", "completed", "installed"]):
+        if any(word in status.lower() for word in ["[OK]", "success", "completed", "installed"]):
             widget.configure(foreground="green")
         elif any(word in status.lower() for word in ["failed", "error"]):
             widget.configure(foreground="red")
@@ -1774,13 +1724,13 @@ class ProgressPage(WizardPage):
         try:
             if not venv_path.exists():
                 subprocess.run([sys.executable, "-m", "venv", "venv"], check=True)
-                self.log("✓ Virtual environment created", "success")
+                self.log("[OK] Virtual environment created", "success")
             else:
-                self.log("✓ Virtual environment already exists", "info")
+                self.log("[OK] Virtual environment already exists", "info")
             self.set_progress(100, "venv")
-            self.set_status("Virtual environment ready ✓", "venv")
+            self.set_status("Virtual environment ready [OK]", "venv")
         except Exception as e:
-            self.log(f"✗ Failed to create virtual environment: {e}", "error")
+            self.log(f"[ERROR] Failed to create virtual environment: {e}", "error")
             self.set_status(f"Virtual environment failed: {e}", "venv")
             # Don't continue if venv creation failed
             return
@@ -2001,7 +1951,7 @@ class ProgressPage(WizardPage):
             if yaml_result:
                 self.log("SUCCESS: Generated config.yaml", "system")
                 self.set_progress(100, "config")
-                self.set_status("Configuration files created ✓", "config")
+                self.set_status("Configuration files created [OK]", "config")
 
             # Validate configuration
             is_valid, errors = config_mgr.validate_configuration(config_values)
@@ -2034,7 +1984,7 @@ class ProgressPage(WizardPage):
                 self.set_progress(min(100, 10 + (90 * directories.index(directory) // len(directories))), "directories")
 
             self.log("SUCCESS: Directory structure created", "system")
-            self.set_status("Directories created ✓", "directories")
+            self.set_status("Directories created [OK]", "directories")
             self.set_progress(100, "directories")
 
         except Exception as e:
@@ -2160,14 +2110,14 @@ class ProgressPage(WizardPage):
                 if process.returncode == 0:
                     self.log("SUCCESS: giljo-mcp package installed", "system")
                     self.set_progress(100, "packages")
-                    self.set_status("Python packages installed ✓", "packages")
+                    self.set_status("Python packages installed [OK]", "packages")
                 else:
                     self.log(f"Warning: giljo-mcp installation completed with return code {process.returncode}", "system")
                     self.set_status("Package installation completed with warnings", "packages")
             else:
                 self.log("Skipping editable install (GILJO_SKIP_EDITABLE_INSTALL set)", "system")
                 self.set_progress(100, "packages")
-                self.set_status("Python packages installed ✓", "packages")
+                self.set_status("Python packages installed [OK]", "packages")
 
         except Exception as e:
             self.log(f"Package installation error: {e}", "system")
@@ -2236,7 +2186,7 @@ class ProgressPage(WizardPage):
                         result = installer.install()
                         self.log(f"PostgreSQL installed: {result.connection_string}", "postgresql")
 
-                    self.set_status("PostgreSQL installed ✓", "database")
+                    self.set_status("PostgreSQL installed [OK]", "database")
                     self.set_progress(100, "database")
 
                 except Exception as e:
@@ -2251,7 +2201,7 @@ class ProgressPage(WizardPage):
             self.set_progress(50, "database")
             self.log("Configuring SQLite database...", "system")
             time.sleep(0.5)
-            self.set_status("SQLite database ready ✓", "database")
+            self.set_status("SQLite database ready [OK]", "database")
             self.set_progress(100, "database")
 
         # Redis removed - not needed for simplified installation
@@ -2319,7 +2269,7 @@ class ProgressPage(WizardPage):
                 self.set_status(f"Completed with warnings: {', '.join(issues)}", "validation")
             else:
                 self.log("SUCCESS: All components installed successfully", "system")
-                self.set_status("All validations passed ✓", "validation")
+                self.set_status("All validations passed [OK]", "validation")
 
             self.set_progress(100, "validation")
 
@@ -2371,7 +2321,7 @@ class ProgressPage(WizardPage):
                     from create_shortcuts import create_shortcuts, add_to_startup_windows
                     shortcuts = create_shortcuts()
                     if shortcuts:
-                        self.log(f"✓ Created {len(shortcuts)} desktop shortcuts", "success")
+                        self.log(f"[OK] Created {len(shortcuts)} desktop shortcuts", "success")
                         self.log("  • Start Server - Launch the MCP server", "info")
                         self.log("  • Stop Server - Shutdown the server", "info")
                         self.log("  • Connect Project - Connect projects to server", "info")
@@ -2400,7 +2350,7 @@ class ProgressPage(WizardPage):
                     self.log("No AI CLI tools detected - skipping MCP registration", "info")
                     self.log("You can register AI tools later using: python register_ai_tools.py", "info")
                     # Mark registration as complete (optional step)
-                    self.set_status("⚠ No AI tools detected - Optional", "registration")
+                    self.set_status("[WARNING] No AI tools detected - Optional", "registration")
                     self.set_progress(100, "registration")
                 else:
                     tool_display_names = {
@@ -2456,20 +2406,20 @@ class ProgressPage(WizardPage):
                         self.log(f"\nSuccessfully registered with {success_count} tool(s)!", "success")
                         self.log("Please restart your AI CLI tool(s) to activate the MCP server.", "info")
                         # Update registration component status
-                        self.set_status("✓ Completed", "registration")
+                        self.set_status("[OK] Completed", "registration")
                         self.set_progress(100, "registration")
                     else:
                         self.log("MCP registration failed for all tools", "warning")
                         self.log("You can register manually later: python register_ai_tools.py", "info")
                         # Update registration component status as optional failure
-                        self.set_status("⚠ Optional - Manual registration available", "registration")
+                        self.set_status("[WARNING] Optional - Manual registration available", "registration")
                         self.set_progress(100, "registration")
 
             except Exception as e:
                 self.log(f"MCP registration error: {e}", "warning")
                 self.log("You can register manually later: python register_ai_tools.py", "info")
                 # Update registration component status as optional failure
-                self.set_status("⚠ Optional - Manual registration available", "registration")
+                self.set_status("[WARNING] Optional - Manual registration available", "registration")
                 self.set_progress(100, "registration")
 
         except Exception as e:
