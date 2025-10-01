@@ -385,8 +385,9 @@ class GiljoSetup:
 
             tool_display_names = {
                 'claude': 'Claude Code',
-                'codex': 'Codex CLI (OpenAI)',
-                'gemini': 'Gemini CLI (Google)'
+                # TECHDEBT: Multi-tool support disabled - see TECHDEBT.md
+                # 'codex': 'Codex CLI (OpenAI)',
+                # 'gemini': 'Gemini CLI (Google)'
             }
 
             print(f"\n[OK] Detected {len(detected_tools)} AI CLI tool(s):")
