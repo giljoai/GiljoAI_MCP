@@ -335,13 +335,14 @@ def get_user_choice(has_existing):
     else:
         print("  1. Preserve data (databases, projects, logs) - N/A")
     print("  2. Clean install (delete everything)")
-    print("  3. Cancel operation")
+    print("  3. Quick sync (copy only files changed in last 2 minutes)")
+    print("  4. Cancel operation")
     print()
 
     while True:
-        choice = input("Enter choice (1/2/3): ").strip()
+        choice = input("Enter choice (1/2/3/4): ").strip()
 
-        if choice == "3":
+        if choice == "4":
             print("Operation cancelled.")
             return None
 
@@ -359,7 +360,14 @@ def get_user_choice(has_existing):
                 print("Cancelled.\n")
                 continue
 
-        print("Invalid choice. Please enter 1, 2, or 3.")
+        if choice == "3":
+            if not has_existing:
+                print("ERROR: Test directory does not exist!")
+                print("Run option 1 or 2 first to create the initial deployment.\n")
+                continue
+            return "quick"
+
+        print("Invalid choice. Please enter 1, 2, 3, or 4.")
 
 
 def backup_data():
@@ -719,13 +727,12 @@ def verify_deployment(preserved_items=None):
 def main():
     """Main execution"""
     try:
-        # Check for quick sync mode
-        quick_sync = "--quick" in sys.argv or "-q" in sys.argv
+        # Check for quick sync mode via command line
+        quick_sync_cmdline = "--quick" in sys.argv or "-q" in sys.argv
 
-        print_header(quick_sync=quick_sync)
+        if quick_sync_cmdline:
+            print_header(quick_sync=True)
 
-        # Quick sync mode - skip menu, just copy recent files
-        if quick_sync:
             if not TEST_DIR.exists():
                 print("ERROR: Test directory does not exist!")
                 print("Run giltest without --quick first to create the initial deployment.")
@@ -744,6 +751,9 @@ def main():
             print()
             return 0
 
+        # Normal interactive mode
+        print_header(quick_sync=False)
+
         # Check existing installation
         has_existing = check_existing_installation()
 
@@ -751,6 +761,21 @@ def main():
         choice = get_user_choice(has_existing)
         if choice is None:
             return 1
+
+        # Handle quick sync from menu
+        if choice == "quick":
+            if not copy_files_quick_sync():
+                return 1
+
+            print()
+            print("=" * 70)
+            print("Quick sync complete!")
+            print("=" * 70)
+            print()
+            print(f"Test directory: {TEST_DIR}")
+            print("Recent changes have been synced.")
+            print()
+            return 0
 
         preserve_mode = (choice == "preserve")
 
