@@ -9,35 +9,10 @@
 #   3. Launch bootstrap.py for full installation
 # ============================================================
 
-# GiljoAI Official Color Palette (ANSI RGB codes)
-# Primary Yellow: #ffc300 = RGB(255, 195, 0)
-# Success Green: #67bd6d = RGB(103, 189, 109)
-# Error Pink: #c6298c = RGB(198, 41, 140)
-# Light Gray: #e1e1e1 = RGB(225, 225, 225)
-
-# Disable colors in Git Bash or terminals that don't support RGB
-if [[ "$TERM" == xterm* ]] || [[ -n "$MSYSTEM" ]]; then
-    YELLOW=''
-    GREEN=''
-    RED=''
-    GRAY=''
-    BLUE=''
-    NC=''
-    BOLD=''
-else
-    YELLOW='\033[38;2;255;195;0m'
-    GREEN='\033[38;2;103;189;109m'
-    RED='\033[38;2;198;41;140m'
-    GRAY='\033[38;2;225;225;225m'
-    BLUE='\033[38;2;30;49;71m'
-    NC='\033[0m' # No Color
-    BOLD='\033[1m'
-fi
-
 # Print header
-echo -e "${YELLOW}============================================================${NC}"
-echo -e "${YELLOW}  GiljoAI MCP Orchestrator - Intelligent Quick Start${NC}"
-echo -e "${YELLOW}============================================================${NC}"
+echo "============================================================"
+echo "  GiljoAI MCP Orchestrator - Intelligent Quick Start"
+echo "============================================================"
 echo
 
 # Detect OS
@@ -47,14 +22,14 @@ PKG_MANAGER=""
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     OS="macos"
-    echo -e "${GREEN}[OK]${NC} Detected macOS"
+    echo "[OK] Detected macOS"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     OS="linux"
     # Detect Linux distribution
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         DISTRO=$ID
-        echo -e "${GREEN}[OK]${NC} Detected Linux ($NAME)"
+        echo "[OK] Detected Linux ($NAME)"
         
         # Determine package manager
         if command -v apt-get &> /dev/null; then
@@ -70,7 +45,7 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
         fi
     fi
 else
-    echo -e "${YELLOW}[!]${NC} Unknown operating system: $OSTYPE"
+    echo "[!] Unknown operating system: $OSTYPE"
 fi
 
 # ============================================================
@@ -87,7 +62,7 @@ PYTHON_OK=false
 if command -v python3 &> /dev/null; then
     PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
     PYTHON_CMD="python3"
-    echo -e "${GREEN}[OK]${NC} Found Python $PYTHON_VERSION"
+    echo "[OK] Found Python $PYTHON_VERSION"
     
     # Check version is 3.10+
     MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
@@ -96,13 +71,13 @@ if command -v python3 &> /dev/null; then
     if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 10 ]; then
         PYTHON_OK=true
     else
-        echo -e "${YELLOW}[!]${NC} Python version too old. Need 3.10+, found $PYTHON_VERSION"
+        echo "[!] Python version too old. Need 3.10+, found $PYTHON_VERSION"
     fi
 # Check python command
 elif command -v python &> /dev/null; then
     PYTHON_VERSION=$(python --version 2>&1 | cut -d' ' -f2)
     PYTHON_CMD="python"
-    echo -e "${GREEN}[OK]${NC} Found Python $PYTHON_VERSION"
+    echo "[OK] Found Python $PYTHON_VERSION"
     
     # Check version
     MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
@@ -111,10 +86,10 @@ elif command -v python &> /dev/null; then
     if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 8 ]; then
         PYTHON_OK=true
     else
-        echo -e "${YELLOW}[!]${NC} Python version too old. Need 3.10+, found $PYTHON_VERSION"
+        echo "[!] Python version too old. Need 3.10+, found $PYTHON_VERSION"
     fi
 else
-    echo -e "${RED}[X]${NC} Python not found on this system"
+    echo "[X] Python not found on this system"
 fi
 
 # ============================================================
@@ -143,11 +118,11 @@ if [ "$PYTHON_OK" = false ]; then
                     brew install python3
                     
                     if [ $? -eq 0 ]; then
-                        echo -e "${GREEN}[OK]${NC} Python installed successfully"
+                        echo "[OK] Python installed successfully"
                         PYTHON_CMD="python3"
                         PYTHON_OK=true
                     else
-                        echo -e "${RED}[X]${NC} Installation failed"
+                        echo "[X] Installation failed"
                         exit 1
                     fi
                 else
@@ -159,7 +134,7 @@ if [ "$PYTHON_OK" = false ]; then
                         PYTHON_CMD="python3"
                         PYTHON_OK=true
                     else
-                        echo -e "${RED}[X]${NC} Failed to install Homebrew"
+                        echo "[X] Failed to install Homebrew"
                         echo "Please install Python manually from: https://www.python.org/downloads/"
                         exit 1
                     fi
@@ -189,7 +164,7 @@ if [ "$PYTHON_OK" = false ]; then
                         sudo zypper install -y python3 python3-pip
                         ;;
                     *)
-                        echo -e "${RED}[X]${NC} Unknown package manager"
+                        echo "[X] Unknown package manager"
                         echo "Please install Python manually:"
                         echo "  sudo $PKG_MANAGER install python3 python3-pip python3-venv"
                         exit 1
@@ -197,15 +172,15 @@ if [ "$PYTHON_OK" = false ]; then
                 esac
                 
                 if [ $? -eq 0 ]; then
-                    echo -e "${GREEN}[OK]${NC} Python installed successfully"
+                    echo "[OK] Python installed successfully"
                     PYTHON_CMD="python3"
                     PYTHON_OK=true
                 else
-                    echo -e "${RED}[X]${NC} Installation failed"
+                    echo "[X] Installation failed"
                     exit 1
                 fi
             else
-                echo -e "${RED}[X]${NC} Automatic installation not supported for this OS"
+                echo "[X] Automatic installation not supported for this OS"
                 echo "Please install Python manually from: https://www.python.org/downloads/"
                 exit 1
             fi
@@ -249,7 +224,7 @@ if [ "$PYTHON_OK" = false ]; then
             ;;
             
         *)
-            echo -e "${RED}[X]${NC} Invalid option"
+            echo "[X] Invalid option"
             exit 1
             ;;
     esac
@@ -264,7 +239,7 @@ echo "[2/3] Checking Python installation..."
 # Check for pip (essential for Python packages)
 $PYTHON_CMD -m pip --version &> /dev/null
 if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}[!]${NC} pip not found, installing..."
+    echo "[!] pip not found, installing..."
 
     # Try to install pip
     if [ "$OS" = "macos" ]; then
@@ -286,7 +261,7 @@ if [ $? -ne 0 ]; then
                     sudo pacman -S --noconfirm python-pip
                     ;;
                 *)
-                    echo -e "${RED}[X]${NC} Failed to install pip"
+                    echo "[X] Failed to install pip"
                     echo "Please install pip manually"
                     exit 1
                     ;;
@@ -297,11 +272,11 @@ if [ $? -ne 0 ]; then
     # Verify pip is now available
     $PYTHON_CMD -m pip --version &> /dev/null
     if [ $? -ne 0 ]; then
-        echo -e "${RED}[X]${NC} Failed to install pip"
+        echo "[X] Failed to install pip"
         exit 1
     fi
 fi
-echo -e "${GREEN}[OK]${NC} Python and pip are ready"
+echo "[OK] Python and pip are ready"
 
 # ============================================================
 # STEP 4: Launch bootstrap.py
@@ -310,12 +285,12 @@ echo
 echo "[3/3] Checking for bootstrap.py..."
 
 if [ ! -f "bootstrap.py" ]; then
-    echo -e "${RED}[X]${NC} bootstrap.py not found in current directory"
+    echo "[X] bootstrap.py not found in current directory"
     echo "    Please make sure you're in the GiljoAI MCP directory"
     exit 1
 fi
 
-echo -e "${GREEN}[OK]${NC} bootstrap.py found"
+echo "[OK] bootstrap.py found"
 echo
 echo "Launching GiljoAI MCP installer..."
 echo
@@ -329,16 +304,16 @@ $PYTHON_CMD bootstrap.py
 
 if [ $? -ne 0 ]; then
     echo
-    echo -e "${RED}[X]${NC} Installation encountered an error"
+    echo "[X] Installation encountered an error"
     echo "    Please check the error messages above"
     exit $?
 fi
 
 echo
-echo -e "${GREEN}============================================================${NC}"
-echo -e "${GREEN}  Installation completed successfully!${NC}"
-echo -e "${GREEN}============================================================${NC}"
+echo "============================================================"
+echo "  Installation completed successfully!"
+echo "============================================================"
 echo
-echo -e "${GRAY}To start GiljoAI MCP, use the launcher created on your desktop${NC}"
-echo -e "${GRAY}or run: $PYTHON_CMD -m src.giljo_mcp.mcp_server${NC}"
+echo "To start GiljoAI MCP, use the launcher created on your desktop"
+echo "or run: $PYTHON_CMD -m src.giljo_mcp.mcp_server"
 echo

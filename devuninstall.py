@@ -117,18 +117,21 @@ class GiljoDevUninstaller:
 
         return removed
 
-    def remove_postgresql_completely(self):
-        """Remove PostgreSQL database AND server"""
-        self.log("Removing PostgreSQL completely...")
+    def drop_postgresql_database(self):
+        """Drop only the PostgreSQL database, keep server intact"""
+        self.log("Dropping PostgreSQL database...")
 
         pg_info = self.manifest.get('postgresql', {})
+        if not pg_info:
+            self.log("No PostgreSQL configuration found", "INFO")
+            return 0
+
         host = pg_info.get('host', 'localhost')
         port = pg_info.get('port', '5432')
         user = pg_info.get('user', 'postgres')
         password = pg_info.get('password', '')
         database = pg_info.get('database', 'giljo_mcp')
 
-        # First, drop the database
         try:
             if password:
                 env = os.environ.copy()
@@ -147,41 +150,14 @@ class GiljoDevUninstaller:
                     capture_output=True,
                     timeout=10
                 )
-            self.log(f"Database '{database}' dropped", "SUCCESS")
+            self.log(f"PostgreSQL database '{database}' dropped", "SUCCESS")
+            return 1
         except FileNotFoundError:
-            self.log("psql not in PATH", "WARNING")
+            self.log("psql not in PATH - cannot drop database", "WARNING")
+            return 0
         except Exception as e:
-            self.log(f"Could not drop database: {e}", "WARNING")
-
-        # Then, uninstall PostgreSQL server
-        pg_deps = self.manifest.get('dependencies', {}).get('postgresql', {})
-
-        if pg_deps.get('installed'):
-            self.log("Uninstalling PostgreSQL server...", "INFO")
-            try:
-                if self.platform == "win32":
-                    location = pg_deps.get('location', 'C:/PostgreSQL/18')
-                    uninstaller = Path(location) / "uninstall-postgresql.exe"
-                    if uninstaller.exists():
-                        subprocess.run([str(uninstaller), "--mode", "unattended"], timeout=120)
-                        self.log("PostgreSQL server uninstalled", "SUCCESS")
-                    else:
-                        self.log(f"PostgreSQL uninstaller not found at: {uninstaller}", "WARNING")
-                elif self.platform == "darwin":
-                    subprocess.run(["brew", "uninstall", "postgresql@18"], timeout=60)
-                    subprocess.run(["brew", "services", "stop", "postgresql@18"], timeout=30)
-                    self.log("PostgreSQL server uninstalled", "SUCCESS")
-                else:
-                    subprocess.run(["sudo", "apt", "remove", "postgresql", "postgresql-contrib", "-y"], timeout=120)
-                    self.log("PostgreSQL server uninstalled", "SUCCESS")
-            except Exception as e:
-                self.log(f"Failed to uninstall PostgreSQL: {e}", "ERROR")
-        else:
-            self.log("PostgreSQL was external - attempting manual uninstall instructions", "INFO")
-            self.log("To uninstall PostgreSQL manually:", "INFO")
-            self.log("  Windows: Control Panel > Programs > Uninstall PostgreSQL", "INFO")
-            self.log("  Mac: brew uninstall postgresql@18", "INFO")
-            self.log("  Linux: sudo apt remove postgresql postgresql-contrib", "INFO")
+            self.log(f"Could not drop PostgreSQL database: {e}", "WARNING")
+            return 0
 
     def remove_mcp_registrations(self):
         """Remove MCP server registrations from AI CLI tools"""
@@ -248,49 +224,163 @@ class GiljoDevUninstaller:
 
         return removed
 
+    def remove_all_databases(self):
+        """Remove all SQLite and PostgreSQL databases"""
+        self.log("Removing all GiljoAI MCP databases...")
+
+        removed = 0
+
+        # Remove SQLite database files
+        db_locations = [
+            self.root_path / "data" / "giljo.db",
+            self.root_path / "data" / "giljo_mcp.db",
+            self.root_path / "giljo.db",
+        ]
+
+        for db_path in db_locations:
+            if db_path.exists():
+                try:
+                    db_path.unlink()
+                    self.log(f"Removed SQLite database: {db_path.name}", "SUCCESS")
+                    removed += 1
+                except Exception as e:
+                    self.log(f"Failed to remove {db_path}: {e}", "ERROR")
+
+        # Drop PostgreSQL database
+        pg_dropped = self.drop_postgresql_database()
+        removed += pg_dropped
+
+        return removed
+
     def run(self):
         """Run the development uninstall"""
         print("\n" + "="*70)
         print("   GiljoAI MCP Development Uninstaller")
-        print("   Simulates Fresh Install Environment")
+        print("   Clean Slate for Testing and Development")
         print("="*70)
 
-        print("\n[INFO] This will remove:")
-        print("  - ALL files in this installation folder")
-        print("  - PostgreSQL database AND server")
-        print("  - User config files from APPDATA")
-        print("  - EVERYTHING related to this installation")
+        print("\n[INFO] Select reset mode:")
+        print("  1. Remove all files (keeps PostgreSQL server)")
+        print("  2. Remove all files + drop databases (fresh install state)")
+        print("  3. Drop databases only (clean data, keep everything else)")
+        print("  4. Cancel")
 
-        print("\n[INFO] This will preserve:")
-        print("  - Python packages (for other projects on this machine)")
-        print("  - Only this script and log file will remain")
+        choice = input("\nSelect option [1-4]: ").strip()
 
-        confirm = input("\nType 'RESET' to confirm: ")
-        if confirm != "RESET":
-            print("Uninstall cancelled.")
+        if choice == "1":
+            # Remove all files, keep PostgreSQL server
+            print("\n[INFO] This will remove:")
+            print("  - ALL files in this installation folder")
+            print("  - User config files from APPDATA")
+            print("  - MCP registrations")
+
+            print("\n[INFO] This will preserve:")
+            print("  - PostgreSQL server (if installed)")
+            print("  - Python packages")
+            print("  - Only this script and log file will remain")
+
+            confirm = input("\nType 'RESET' to confirm: ")
+            if confirm != "RESET":
+                print("Reset cancelled.")
+                return
+
+            print("\n" + "="*70)
+            print("REMOVING ALL FILES")
+            print("="*70)
+
+            # Execute cleanup steps
+            mcp_unregistered = self.remove_mcp_registrations()
+            appdata_removed = self.remove_appdata_configs()
+            files_removed = self.remove_all_installation_files()
+
+            print("\n" + "="*70)
+            print("FILE REMOVAL COMPLETE")
+            print("="*70)
+            print(f"\nMCP unregistrations: {mcp_unregistered}")
+            print(f"Files removed: {files_removed}")
+            print(f"APPDATA locations removed: {appdata_removed}")
+
+            print("\n[OK] Files removed - ready for fresh installation!")
+            print("[OK] PostgreSQL server preserved for reuse")
+            print("[OK] You can now reinstall: python bootstrap.py")
+
+        elif choice == "2":
+            # Remove all files AND drop databases (fresh install state)
+            print("\n[INFO] This will remove:")
+            print("  - ALL files in this installation folder")
+            print("  - SQLite database files")
+            print("  - PostgreSQL database (server kept intact)")
+            print("  - User config files from APPDATA")
+            print("  - MCP registrations")
+
+            print("\n[INFO] This will preserve:")
+            print("  - PostgreSQL server (ready for new database)")
+            print("  - Python packages")
+            print("  - Only this script and log file will remain")
+
+            confirm = input("\nType 'RESET' to confirm: ")
+            if confirm != "RESET":
+                print("Reset cancelled.")
+                return
+
+            print("\n" + "="*70)
+            print("REMOVING ALL FILES AND DATABASES")
+            print("="*70)
+
+            # Execute cleanup steps
+            db_removed = self.remove_all_databases()
+            mcp_unregistered = self.remove_mcp_registrations()
+            appdata_removed = self.remove_appdata_configs()
+            files_removed = self.remove_all_installation_files()
+
+            print("\n" + "="*70)
+            print("COMPLETE RESET FINISHED")
+            print("="*70)
+            print(f"\nDatabases dropped: {db_removed}")
+            print(f"MCP unregistrations: {mcp_unregistered}")
+            print(f"Files removed: {files_removed}")
+            print(f"APPDATA locations removed: {appdata_removed}")
+
+            print("\n[OK] Complete fresh install state achieved!")
+            print("[OK] PostgreSQL server ready for new database")
+            print("[OK] You can now reinstall: python bootstrap.py")
+
+        elif choice == "3":
+            # Drop databases only - preserve all files
+            print("\n[INFO] This will remove:")
+            print("  - SQLite database (data/giljo.db)")
+            print("  - PostgreSQL database (if configured)")
+            print("  - All agent data, messages, and history")
+
+            print("\n[INFO] This will preserve:")
+            print("  - All installation files")
+            print("  - Configuration files")
+            print("  - PostgreSQL server")
+            print("  - Python environment")
+
+            confirm = input("\nType 'DELETE' to confirm: ")
+            if confirm != "DELETE":
+                print("Database deletion cancelled.")
+                return
+
+            print("\n" + "="*70)
+            print("DROPPING DATABASES")
+            print("="*70)
+
+            db_removed = self.remove_all_databases()
+
+            print("\n" + "="*70)
+            print("DATABASE DROP COMPLETE")
+            print("="*70)
+            print(f"\nDatabases dropped: {db_removed}")
+
+            print("\n[OK] Databases removed - fresh data on next start!")
+            print("[OK] PostgreSQL server intact and ready")
+            print("[OK] Start the system: python -m giljo_mcp")
+
+        else:
+            print("Reset cancelled.")
             return
-
-        print("\n" + "="*70)
-        print("STARTING DEVELOPMENT RESET")
-        print("="*70)
-
-        # Execute uninstall steps
-        mcp_unregistered = self.remove_mcp_registrations()
-        self.remove_postgresql_completely()
-        appdata_removed = self.remove_appdata_configs()
-        files_removed = self.remove_all_installation_files()
-
-        print("\n" + "="*70)
-        print("DEVELOPMENT RESET COMPLETE")
-        print("="*70)
-        print(f"\nMCP unregistrations: {mcp_unregistered}")
-        print(f"Files removed: {files_removed}")
-        print(f"APPDATA locations removed: {appdata_removed}")
-        print("PostgreSQL: REMOVED")
-
-        print("\n[OK] Environment reset for fresh installation!")
-        print("[OK] You can now reinstall: python run_cli_install.py")
-        print("\n[NOTE] Python packages preserved for other projects.")
 
 
 if __name__ == "__main__":
