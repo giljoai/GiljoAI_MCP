@@ -16,7 +16,7 @@
 # Light Gray: #e1e1e1 = RGB(225, 225, 225)
 
 # Disable colors in Git Bash or terminals that don't support RGB
-if [[ "$TERM" == "xterm" ]] || [[ -n "$MSYSTEM" ]]; then
+if [[ "$TERM" == xterm* ]] || [[ -n "$MSYSTEM" ]]; then
     YELLOW=''
     GREEN=''
     RED=''
