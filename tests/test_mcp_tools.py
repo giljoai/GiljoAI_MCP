@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.server import create_server
 from src.giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class MCPToolsTester:
@@ -32,7 +34,7 @@ class MCPToolsTester:
     async def setup(self):
         """Initialize test environment"""
         # Initialize database with async in-memory SQLite for testing
-        db_url = "sqlite+aiosqlite:///:memory:"
+        db_url = PostgreSQLTestHelper.get_test_db_url()
         self.db_manager = DatabaseManager(database_url=db_url, is_async=True)
         await self.db_manager.create_tables_async()
         # Initialize tenant manager

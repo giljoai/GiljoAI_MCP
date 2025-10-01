@@ -18,7 +18,7 @@
 ### Prerequisites
 
 - Python 3.11 or higher
-- SQLite (included with Python)
+- PostgreSQL (included with Python)
 - Git
 - 4GB RAM minimum (8GB recommended)
 
@@ -172,7 +172,7 @@ GILJO_HOME=/path/to/giljo-mcp
 GILJO_ENV=development|staging|production
 
 # Optional
-GILJO_DB_URL=sqlite:///giljo.db
+GILJO_DB_URL=postgresql:///giljo.db
 GILJO_LOG_LEVEL=INFO
 GILJO_MAX_AGENTS=10
 GILJO_CONTEXT_BUDGET=150000
@@ -184,7 +184,7 @@ GILJO_CONTEXT_BUDGET=150000
 # config.yaml
 database:
   # Local development (default)
-  url: sqlite:///giljo.db
+  url: postgresql:///giljo.db
 
   # LAN deployment
   url: postgresql://user:pass@192.168.1.100/giljo
@@ -564,13 +564,13 @@ for agent in active_agents:
         )
 ```
 
-#### 3. Database Lock (SQLite)
+#### 3. Database Lock (PostgreSQL)
 
 **Problem**: Database locked error in local mode
 
 ```bash
 # Solution: Increase timeout and use WAL mode
-sqlite3 giljo.db "PRAGMA journal_mode=WAL;"
+postgresql3 giljo.db "PRAGMA journal_mode=WAL;"
 ```
 
 #### 4. Vision Document Too Large

@@ -71,7 +71,20 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     state.config = get_config()  # Use the singleton getter
 
     # Initialize database
-    db_url = getattr(state.config.database, "url", "sqlite:///giljo_mcp.db")
+    # Check for DATABASE_URL in environment first
+    db_url = os.getenv("DATABASE_URL")
+
+    if not db_url and state.config.database:
+        # Construct database URL from config
+        if state.config.database.type == "postgresql":
+            db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
+        else:
+            raise ValueError("Database configuration missing. PostgreSQL is required.")
+
+    if not db_url:
+        raise ValueError("Database URL not configured. PostgreSQL is required.")
+
+    logger.info(f"Using database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
     state.db_manager = DatabaseManager(db_url, is_async=True)
     await state.db_manager.create_tables_async()
 

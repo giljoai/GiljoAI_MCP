@@ -71,7 +71,7 @@
   - LOG_LEVEL=${LOG_LEVEL:-INFO}
 - **Volumes**:
   - ./logs:/app/logs
-  - ./data:/app/data (for SQLite in dev mode)
+  - ./data:/app/data (for PostgreSQL in dev mode)
   - ./docs/vision:/app/docs/vision (read-only)
 - **Depends On**: postgres (with health check)
 - **Health Check**:

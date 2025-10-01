@@ -18,7 +18,7 @@ Successfully validated and enhanced the Tool-API Integration Bridge via ToolAcce
 
 ### Issues Fixed (100% Resolution)
 1. ✅ Unicode encoding errors - ALL replaced with ASCII
-2. ✅ Database URL format - sqlite+aiosqlite
+2. ✅ Database URL format - postgresql+aiopostgresql
 3. ✅ Async session management - Fixed
 4. ✅ Agent role constraints - Resolved
 5. ✅ NoneType returns - Proper error dicts

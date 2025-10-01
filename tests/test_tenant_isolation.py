@@ -20,6 +20,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Message, Project
 from src.giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestTenantManager:
@@ -141,7 +143,7 @@ class TestDatabaseTenantIsolation:
     @pytest.fixture
     def db_manager(self):
         """Create an in-memory database manager for testing."""
-        manager = DatabaseManager("sqlite:///:memory:")
+        manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         manager.create_tables()
         yield manager
         manager.close()
@@ -372,7 +374,7 @@ class TestAsyncTenantIsolation:
     @pytest.fixture
     async def async_db_manager(self):
         """Create an async in-memory database manager."""
-        manager = DatabaseManager("sqlite+aiosqlite:///:memory:", is_async=True)
+        manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(), is_async=True)
         await manager.create_tables_async()
         yield manager
         await manager.close_async()
@@ -465,7 +467,7 @@ class TestTenantPerformance:
     @pytest.fixture
     def db_manager(self):
         """Create an in-memory database for performance testing."""
-        manager = DatabaseManager("sqlite:///:memory:")
+        manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         manager.create_tables()
         yield manager
         manager.close()

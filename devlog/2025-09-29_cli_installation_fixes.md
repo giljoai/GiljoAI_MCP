@@ -15,9 +15,9 @@ Discovered and fixed critical installation failures in CLI installer, implemente
 
 ## Problems Found
 
-### P1: GUI Text Still Referenced SQLite (Minor)
+### P1: GUI Text Still Referenced PostgreSQL (Minor)
 - "Single Developer Mode" text outdated
-- SQLite mentioned in description
+- PostgreSQL mentioned in description
 - Fixed with text updates in setup_gui.py
 
 ### P2: CLI Installation Failed with Multiple Errors (Critical)

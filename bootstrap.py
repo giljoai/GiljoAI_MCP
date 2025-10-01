@@ -296,7 +296,7 @@ class Bootstrap:
                 # Generate developer profile by default for bootstrap
                 profile_data = {
                     "profile_type": "developer",
-                    "database_type": "sqlite",
+                    "database_type": "postgresql",
                     "host": "localhost",
                     "port": 8000,
                     "enable_redis": False,
@@ -615,7 +615,7 @@ For detailed instructions, see INSTALL.md
         print(f"\n{self.colors['BOLD']}Checking Python environment...{self.colors['ENDC']}")
 
         # Check core Python modules (these should always be available)
-        required_modules = ["pathlib", "json", "sqlite3", "subprocess"]
+        required_modules = ["pathlib", "json", "subprocess"]
         missing_required = []
 
         for module in required_modules:

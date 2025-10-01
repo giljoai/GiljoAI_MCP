@@ -22,6 +22,8 @@ from src.giljo_mcp.models import AgentTemplate, TemplateArchive, TemplateAugment
 from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2 as MissionTemplateGenerator
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.template import register_template_tools
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 def _apply_augmentation(template: str, replacements: dict) -> str:
@@ -39,7 +41,7 @@ class TestTemplateModels:
     @pytest_asyncio.fixture
     async def db_manager(self):
         """Create test database manager"""
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         await db_manager.initialize()
         yield db_manager
         await db_manager.close()
@@ -162,7 +164,7 @@ class TestTemplateTools:
     @pytest.fixture
     async def setup_tools(self, mock_mcp):
         """Setup template tools with mocks"""
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         await db_manager.initialize()
         tenant_manager = TenantManager()
         tenant_manager.current_tenant = "test-tenant"
@@ -264,7 +266,7 @@ class TestProductIsolation:
     @pytest_asyncio.fixture
     async def multi_tenant_db(self):
         """Setup database with multiple tenants/products"""
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         await db_manager.initialize()
 
         async with db_manager.get_session() as session:
@@ -405,7 +407,7 @@ class TestArchiveSystem:
     @pytest.fixture
     async def db_with_template(self):
         """Create database with template"""
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         await db_manager.initialize()
 
         async with db_manager.get_session() as session:
@@ -477,7 +479,7 @@ class TestMigrationFromLegacy:
     async def test_migrate_existing_templates(self):
         """Test migrating templates from Python code to database"""
 
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         await db_manager.initialize()
 
         # Get legacy templates
@@ -534,7 +536,7 @@ class TestMCPTemplateToolsIntegration:
         mcp.tool = lambda: lambda f: f  # Simple decorator mock
 
         # Create database and tenant managers
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         await db_manager.initialize()
 
         tenant_manager = TenantManager()

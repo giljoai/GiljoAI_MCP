@@ -17,12 +17,15 @@ from typing import Optional
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
 # Import our benchmark utilities
 from tests.benchmark_tools import PerformanceBenchmark
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class ToolAPIIntegrationTester:
@@ -47,12 +50,11 @@ class ToolAPIIntegrationTester:
     async def setup(self):
         """Setup test environment"""
 
-        # Create temporary database for testing
-        self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.temp_db.close()
+        # PostgreSQL test database used instead of temp file
+        # PostgreSQL test database managed by fixtures
 
-        # Initialize database with SQLite for testing
-        db_url = f"sqlite+aiosqlite:///{self.temp_db.name}"
+        # Initialize database with PostgreSQL for testing
+        db_url = PostgreSQLTestHelper.get_test_db_url()
         self.db_manager = DatabaseManager(db_url, is_async=True)
 
         # Create tables

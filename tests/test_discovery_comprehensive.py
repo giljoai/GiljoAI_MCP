@@ -14,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.discovery import DiscoveryManager, PathResolver, SerenaHooks
 from src.giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestResults:
@@ -40,7 +42,7 @@ async def test_criterion_1_priority_discovery(results):
     """Test Priority-based discovery order"""
 
     try:
-        db_manager = DatabaseManager("sqlite:///test_discovery.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
         tenant_manager = TenantManager()
         path_resolver = PathResolver(db_manager, tenant_manager)
@@ -69,7 +71,7 @@ async def test_criterion_2_dynamic_paths(results):
     """Test Dynamic path resolution"""
 
     try:
-        db_manager = DatabaseManager("sqlite:///test_discovery.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
         tenant_manager = TenantManager()
         path_resolver = PathResolver(db_manager, tenant_manager)
@@ -115,7 +117,7 @@ async def test_criterion_3_role_based_loading(results):
     """Test Role-based context loading"""
 
     try:
-        db_manager = DatabaseManager("sqlite:///test_discovery.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
         tenant_manager = TenantManager()
         path_resolver = PathResolver(db_manager, tenant_manager)
@@ -147,7 +149,7 @@ async def test_criterion_4_no_static_indexes(results):
 
     try:
         # Check that no indexes are created on startup
-        db_manager = DatabaseManager("sqlite:///test_static.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
 
         # Check if any indexes exist immediately
@@ -173,7 +175,7 @@ async def test_criterion_5_fresh_context(results):
     """Test Fresh context guaranteed"""
 
     try:
-        db_manager = DatabaseManager("sqlite:///test_discovery.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
         tenant_manager = TenantManager()
         path_resolver = PathResolver(db_manager, tenant_manager)
@@ -212,7 +214,7 @@ async def test_criterion_6_serena_integration(results):
     """Test Serena MCP integration"""
 
     try:
-        db_manager = DatabaseManager("sqlite:///test_discovery.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
         tenant_manager = TenantManager()
         serena_hooks = SerenaHooks(db_manager, tenant_manager)
@@ -241,7 +243,7 @@ async def test_criterion_7_token_optimization(results):
     """Test Token usage optimization"""
 
     try:
-        db_manager = DatabaseManager("sqlite:///test_discovery.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
         tenant_manager = TenantManager()
         path_resolver = PathResolver(db_manager, tenant_manager)

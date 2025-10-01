@@ -15,6 +15,8 @@ import pytest_asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.server import GiljoMCPServer, create_server, main
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestGiljoMCPServer:
@@ -137,7 +139,7 @@ class TestGiljoMCPServer:
         with patch("src.giljo_mcp.server.DatabaseManager") as mock_db_class:
             mock_db_instance = AsyncMock()
             mock_db_class.return_value = mock_db_instance
-            mock_db_class.build_sqlite_url.return_value = "sqlite+aiosqlite:///test.db"
+            mock_db_class.build_sqlite_url.return_value = PostgreSQLTestHelper.get_test_db_url()
 
             await server._initialize_database()
 
@@ -145,7 +147,7 @@ class TestGiljoMCPServer:
             mock_db_class.build_sqlite_url.assert_called_once_with(str(mock_config.database.sqlite_path))
 
             # Verify DatabaseManager was created
-            mock_db_class.assert_called_once_with("sqlite+aiosqlite:///test.db", is_async=True)
+            mock_db_class.assert_called_once_with(PostgreSQLTestHelper.get_test_db_url(), is_async=True)
 
             # Verify schema creation
             mock_db_instance.create_tables_async.assert_called_once()

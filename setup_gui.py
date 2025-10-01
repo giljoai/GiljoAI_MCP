@@ -1248,15 +1248,11 @@ class ReviewPage(WizardPage):
         # Database
         self.text.insert(tk.END, "DATABASE CONFIGURATION\n")
         self.text.insert(tk.END, "-" * 30 + "\n")
-        if config.get("db_type") == "sqlite":
-            self.text.insert(tk.END, "Type: SQLite (Local Development)\n")
-            self.text.insert(tk.END, f"Path: {config.get('db_path', 'data/giljo_mcp.db')}\n")
-        else:
-            self.text.insert(tk.END, "Type: PostgreSQL (Network/High Performance)\n")
-            self.text.insert(tk.END, f"Host: {config.get('pg_host', 'localhost')}\n")
-            self.text.insert(tk.END, f"Port: {config.get('pg_port', '5432')}\n")
-            self.text.insert(tk.END, f"Database: {config.get('pg_database', 'giljo_mcp')}\n")
-            self.text.insert(tk.END, f"User: {config.get('pg_user', 'postgres')}\n")
+        self.text.insert(tk.END, "Type: PostgreSQL\n")
+        self.text.insert(tk.END, f"Host: {config.get('pg_host', 'localhost')}\n")
+        self.text.insert(tk.END, f"Port: {config.get('pg_port', '5432')}\n")
+        self.text.insert(tk.END, f"Database: {config.get('pg_database', 'giljo_mcp')}\n")
+        self.text.insert(tk.END, f"User: {config.get('pg_user', 'postgres')}\n")
 
         # Ports
         self.text.insert(tk.END, "\nSERVER PORTS\n")
@@ -2202,14 +2198,6 @@ class ProgressPage(WizardPage):
 
             pg_thread = threading.Thread(target=install_postgresql)
             threads.append(pg_thread)
-        else:
-            # SQLite setup
-            self.set_status("Setting up SQLite database...", "database")
-            self.set_progress(50, "database")
-            self.log("Configuring SQLite database...", "system")
-            time.sleep(0.5)
-            self.set_status("SQLite database ready [OK]", "database")
-            self.set_progress(100, "database")
 
         # Redis removed - not needed for simplified installation
 
@@ -2797,7 +2785,7 @@ infoteam@giljo.ai"""
             # Size and center the dialog on screen
             dialog.update_idletasks()
             w = 840  # Narrowed by 10% from 820
-            h = 1300  # Increased by 50% from 720 to show full message
+            h = 1240  # Increased by 50% from 720 to show full message
             x = (dialog.winfo_screenwidth() // 2) - (w // 2)
             y = (dialog.winfo_screenheight() // 2) - (h // 2)
             dialog.geometry(f"{w}x{h}+{x}+{y}")
@@ -2821,7 +2809,14 @@ infoteam@giljo.ai"""
             label.pack(fill="both", expand=True)
 
             # OK button to close the dialog
-            ok_btn = ttk.Button(dialog, text="OK", command=dialog.destroy)
+            # Ensure the button text is readable on dark backgrounds by forcing
+            # a black foreground for this specific button via a dedicated style.
+            s = ttk.Style(dialog)
+            s.configure('InstallOK.TButton', foreground='#000000')
+            # Also map active/pressed states to keep text readable
+            s.map('InstallOK.TButton', foreground=[('active', '#000000'), ('pressed', '#000000')])
+
+            ok_btn = ttk.Button(dialog, text="OK", command=dialog.destroy, style='InstallOK.TButton')
             ok_btn.pack(pady=(0, 18))
 
             # Make modal

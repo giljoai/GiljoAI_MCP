@@ -19,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Message, Project, Task, Vision
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestDatabaseManager:
@@ -30,7 +32,7 @@ class TestDatabaseManager:
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             db_path = tmp.name
 
-        db_url = f"sqlite:///{db_path}"
+        db_url = fPostgreSQLTestHelper.get_test_db_url(async_driver=False)
         db_manager = DatabaseManager(db_url)
         db_manager.create_tables()
 
@@ -63,7 +65,7 @@ class TestMultiTenantModels:
     @pytest.fixture
     def db_session(self):
         """Create an in-memory SQLite database session for testing."""
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
 
         with db_manager.get_session() as session:
@@ -255,7 +257,7 @@ class TestDatabaseOperations:
     @pytest.fixture
     def db_manager(self):
         """Create an in-memory database manager for testing."""
-        manager = DatabaseManager("sqlite:///:memory:")
+        manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         manager.create_tables()
         yield manager
         manager.close()

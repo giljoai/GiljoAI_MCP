@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestPlatformDetection(unittest.TestCase):
@@ -126,7 +128,7 @@ class TestDatabaseConfiguration(unittest.TestCase):
         db_config = {"type": "sqlite", "path": "./data/giljo_mcp.db"}
 
         url = generate_database_url(db_config)
-        assert url.startswith("sqlite:///")
+        assert url.startswith(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         assert "giljo_mcp.db" in url
 
     def test_postgresql_connection_string(self):
@@ -194,7 +196,7 @@ SECRET_KEY=${SECRET_KEY}
         from setup import generate_env_file
 
         config = {
-            "DATABASE_URL": "sqlite:///./data/giljo_mcp.db",
+            "DATABASE_URL": PostgreSQLTestHelper.get_test_db_url(async_driver=False),
             "API_HOST": "0.0.0.0",
             "API_PORT": "6002",
             "DASHBOARD_PORT": "6000",

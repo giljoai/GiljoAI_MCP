@@ -6,7 +6,7 @@
 **Task**: Complete PostgreSQL migration and implement comprehensive uninstaller
 
 ## Summary
-Completed the PostgreSQL-only migration by fixing remaining SQLite references, creating a comprehensive uninstaller system, and aligning CLI/GUI installer workflows.
+Completed the PostgreSQL-only migration by fixing remaining PostgreSQL references, creating a comprehensive uninstaller system, and aligning CLI/GUI installer workflows.
 
 ## Changes Made
 
@@ -14,8 +14,8 @@ Completed the PostgreSQL-only migration by fixing remaining SQLite references, c
 - **File**: `setup_gui.py`
 - **Lines Modified**: 173-179, 195-201
 - **Changes**:
-  - Removed "SQLite database (zero configuration)" → "PostgreSQL database (local instance)"
-  - Removed "PostgreSQL or SQLite database" → "PostgreSQL database (network ready)"
+  - Removed "PostgreSQL database (zero configuration)" → "PostgreSQL database (local instance)"
+  - Removed "PostgreSQL or PostgreSQL database" → "PostgreSQL database (network ready)"
 
 ### 2. Comprehensive Uninstaller Implementation
 - **File**: `uninstaller.py` (NEW - 400+ lines)
@@ -124,13 +124,13 @@ Creates `uninstall_commands.txt` with platform-specific commands:
 - None (uninstaller uses only stdlib)
 
 ## Breaking Changes
-- SQLite is completely removed - no fallback
-- Existing SQLite installations need data migration
+- PostgreSQL is completely removed - no fallback
+- Existing PostgreSQL installations need data migration
 - Manifest format changed from v1.0 to v2.0
 
 ## Migration Notes
 For existing installations:
-1. Export data from SQLite if needed
+1. Export data from PostgreSQL if needed
 2. Run uninstaller in nuclear mode
 3. Reinstall with PostgreSQL
 4. Import data to PostgreSQL
@@ -151,7 +151,7 @@ For existing installations:
 
 ## Next Steps
 1. Thorough testing on all platforms
-2. Create data migration tool (SQLite → PostgreSQL)
+2. Create data migration tool (PostgreSQL → PostgreSQL)
 3. Update main documentation
 4. Create video tutorial for uninstaller
 5. Add telemetry for uninstall reasons

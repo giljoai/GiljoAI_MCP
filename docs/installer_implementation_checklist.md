@@ -163,7 +163,7 @@ _Target: Smart configuration based on profiles and environment_
 
 ### Migration Support
 
-- [ ] SQLite to PostgreSQL data migration
+- [ ] PostgreSQL to PostgreSQL data migration
 - [ ] Configuration upgrade tool
 - [ ] Backup before migration
 - [ ] Rollback capability

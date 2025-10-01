@@ -18,6 +18,8 @@ from fastapi.testclient import TestClient
 from api.app import create_app
 
 from src.giljo_mcp.database import DatabaseManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class Colors:
@@ -78,7 +80,7 @@ class APITestSuite:
         """Initialize test environment"""
 
         # Initialize test database
-        self.db_manager = DatabaseManager("sqlite:///test_api.db", is_async=True)
+        self.db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
         await self.db_manager.create_tables_async()
 
         # Store in app state

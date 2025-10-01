@@ -10,7 +10,7 @@ Successfully added a comprehensive profile selection page to the existing GUI wi
 
 - **Location**: Inserted between WelcomePage and DatabasePage in setup_gui.py
 - **Four Profiles**:
-  - **Individual Developer**: Personal coding assistant with SQLite
+  - **Individual Developer**: Personal coding assistant with PostgreSQL
   - **Development Team**: Shared PostgreSQL for collaboration
   - **Enterprise Deployment**: Production-grade with advanced security
   - **AI Research & Education**: Flexible configuration for experimentation
@@ -19,10 +19,10 @@ Successfully added a comprehensive profile selection page to the existing GUI wi
 
 #### DatabasePage
 
-- **Developer Profile**: Defaults to SQLite with local path
+- **Developer Profile**: Defaults to PostgreSQL with local path
 - **Team Profile**: Defaults to PostgreSQL with team-oriented database name
 - **Enterprise Profile**: PostgreSQL with production settings
-- **Research Profile**: SQLite with research-specific naming
+- **Research Profile**: PostgreSQL with research-specific naming
 
 #### PortsPage
 

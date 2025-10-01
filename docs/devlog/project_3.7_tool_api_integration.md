@@ -96,11 +96,11 @@ Created comprehensive test suite:
 ### 3. Async Pattern Fix
 ```python
 # Before (broken)
-db_url = "sqlite:///:memory:"
+db_url = "postgresql:///:memory:"
 self.db_manager = DatabaseManager(db_url, is_async=True)
 
 # After (working)
-db_url = "sqlite+aiosqlite:///:memory:"
+db_url = "postgresql+aiopostgresql:///:memory:"
 self.db_manager = DatabaseManager(database_url=db_url, is_async=True)
 ```
 

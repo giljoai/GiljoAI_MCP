@@ -20,7 +20,7 @@ GiljoAI MCP Coding Orchestrator - A complete rewrite of AKE-MCP with multi-tenan
 
 #### 3. System Architecture
 ```
-Multi-tenant orchestration system with database-first design. Core layers: API (FastAPI/WebSocket), Orchestration (ProjectManager, AgentSpawner, MessageRouter), Data (SQLAlchemy ORM supporting SQLite/PostgreSQL). Uses tenant keys for project isolation enabling unlimited concurrent products. Message queue in database for ACID compliance. Dynamic discovery eliminates static indexing. Vision chunking handles 50K+ documents. Progressive deployment: Local (SQLite, localhost) → LAN (API keys, network) → WAN (TLS, OAuth) → Cloud (managed service). Single codebase scales without rewrites.
+Multi-tenant orchestration system with database-first design. Core layers: API (FastAPI/WebSocket), Orchestration (ProjectManager, AgentSpawner, MessageRouter), Data (SQLAlchemy ORM supporting PostgreSQL/PostgreSQL). Uses tenant keys for project isolation enabling unlimited concurrent products. Message queue in database for ACID compliance. Dynamic discovery eliminates static indexing. Vision chunking handles 50K+ documents. Progressive deployment: Local (PostgreSQL, localhost) → LAN (API keys, network) → WAN (TLS, OAuth) → Cloud (managed service). Single codebase scales without rewrites.
 ```
 
 #### 4. Tech Stack (Enhanced for UI Flexibility)
@@ -34,7 +34,7 @@ Frontend Options (for maximum flexibility):
   - Chart.js for live data visualization
   - WebSocket for real-time updates
 
-Database: SQLite (local default), PostgreSQL (production)
+Database: PostgreSQL (local default), PostgreSQL (production)
 Message Queue: Database-backed (built-in), Redis (optional scale)
 Deployment: Docker, docker-compose, pip installable
 Testing: pytest, pytest-asyncio, coverage

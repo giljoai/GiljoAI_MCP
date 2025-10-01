@@ -37,8 +37,8 @@ config.app_name  # AttributeError: missing property
 class DatabaseConfig:
     @property
     def database_type(self) -> str:
-        """Database type (sqlite/postgresql) with backward compatibility."""
-        return self._data.get('type', 'sqlite')
+        """Database type (postgresql/postgresql) with backward compatibility."""
+        return self._data.get('type', 'postgresql')
 
     # Backward compatibility alias
     @property
@@ -118,7 +118,7 @@ sys.path.insert(0, str(project_root / 'src'))
 MCP Server: localhost:6001 ✅
 REST API: localhost:6002 ✅
 Vue Frontend: localhost:6000 ✅
-Database: SQLite connections working ✅
+Database: PostgreSQL connections working ✅
 ```
 
 ### Phase 3: Unification Integration Testing
@@ -259,7 +259,7 @@ from giljo_mcp.exceptions import ConfigurationError, ValidationError
 
 raise ConfigurationError(
     "Invalid database configuration",
-    details={"expected": "sqlite|postgresql", "received": config_type}
+    details={"expected": "postgresql|postgresql", "received": config_type}
 )
 ```
 
@@ -294,7 +294,7 @@ def get_tenant_session(tenant_key: str):
 - **Method**: Connection pooling + query optimization
 
 ### Memory Usage Optimization
-- **SQLite Mode**: <50MB baseline memory usage
+- **PostgreSQL Mode**: <50MB baseline memory usage
 - **PostgreSQL Mode**: <150MB with connection pooling
 - **Agent Coordination**: Efficient context management
 
@@ -375,7 +375,7 @@ async def websocket_auth_middleware(websocket: WebSocket, client_id: str):
 # ConfigManager test coverage: 94.7% (18/19 tests)
 def test_database_type_property():
     config = ConfigManager()
-    assert config.database.database_type == "sqlite"  # Default
+    assert config.database.database_type == "postgresql"  # Default
 
 def test_multi_tenant_configuration():
     config = ConfigManager()
@@ -445,11 +445,11 @@ async def test_concurrent_agent_load():
 
 ## Deployment Readiness Validation
 
-### Local Development Mode (SQLite)
+### Local Development Mode (PostgreSQL)
 ```yaml
 # config.yaml - Local mode
 database:
-  database_type: sqlite
+  database_type: postgresql
   path: ./data/giljo.db
 
 server:

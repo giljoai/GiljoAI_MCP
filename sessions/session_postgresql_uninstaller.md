@@ -9,7 +9,7 @@ Following the PostgreSQL-only migration, implemented comprehensive uninstaller a
 ## Major Accomplishments
 
 ### 1. Fixed GUI Installer Text
-- Removed all SQLite references from deployment mode descriptions
+- Removed all PostgreSQL references from deployment mode descriptions
 - Updated to "PostgreSQL database (local instance)" for local mode
 - Updated to "PostgreSQL database (network ready)" for server mode
 
@@ -86,7 +86,7 @@ Both GUI and CLI now create detailed manifests including:
 - Export functionality before uninstall
 
 ## Files Modified
-1. `setup_gui.py` - Fixed SQLite text, enhanced manifest
+1. `setup_gui.py` - Fixed PostgreSQL text, enhanced manifest
 2. `setup_cli.py` - Added manifest creation, pg_mode tracking
 3. `uninstaller.py` - Created comprehensive uninstaller
 

@@ -82,7 +82,7 @@ pytest tests/test_mission_templates.py::TestEdgeCases::test_memory_performance_l
 
 ### Database Fixtures
 
-- `test_db`: In-memory SQLite database
+- `test_db`: In-memory PostgreSQL database
 - `db_session`: Async database session
 - `populated_db`: Database with sample data
 

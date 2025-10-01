@@ -10,6 +10,8 @@ from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -387,7 +389,7 @@ CORS_ORIGINS=["http://localhost:3000"]
         config = Configuration(profile_type="developer")
         config.add_value("API_PORT", 8000)
         config.add_value("FRONTEND_PORT", 3000)
-        config.add_value("DATABASE_URL", "sqlite:///test.db")
+        config.add_value("DATABASE_URL", PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         config.add_value("LOG_LEVEL", "INFO")
 
         is_valid, errors = manager.validate_configuration(config)

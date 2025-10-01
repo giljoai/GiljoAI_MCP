@@ -18,7 +18,7 @@ Initial setup and planning for GiljoAI MCP Coding Orchestrator - a complete mult
   - Vuetify 3 for components
   - Tailwind CSS for custom styling
   - Chart.js for visualizations
-- **Database**: SQLite (default) with PostgreSQL option
+- **Database**: PostgreSQL (default) with PostgreSQL option
 - **Deployment**: Docker, pip installable
 
 #### 3. Critical Features to Preserve

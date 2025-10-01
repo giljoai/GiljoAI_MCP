@@ -18,6 +18,8 @@ from unittest.mock import MagicMock
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.template import register_template_tools
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestTemplateIntegration:
@@ -28,7 +30,7 @@ class TestTemplateIntegration:
         """Setup with real database"""
         # Use test database
         db_path = Path.home() / ".giljo-mcp" / "data" / "giljo_mcp.db"
-        db_url = f"sqlite:///{db_path}"
+        db_url = fPostgreSQLTestHelper.get_test_db_url(async_driver=False)
 
         # Create managers
         db_manager = DatabaseManager(db_url, is_async=True)

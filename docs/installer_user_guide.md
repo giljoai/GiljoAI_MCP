@@ -40,7 +40,7 @@ The bootstrap will:
 
 ### Developer Profile
 
-- SQLite database (local development)
+- PostgreSQL database (local development)
 - Localhost only access
 - Minimal resource usage
 - Hot reload enabled
@@ -79,7 +79,7 @@ The bootstrap will:
 
 - **PostgreSQL**: Primary database for multi-user deployments
 - **Redis**: Caching and session management
-- **SQLite**: Local development database
+- **PostgreSQL**: Local development database
 
 ### Container Support
 
@@ -138,7 +138,7 @@ Main application configuration based on your profile:
 ```yaml
 profile: developer
 database:
-  type: sqlite
+  type: postgresql
   path: data/giljo.db
 server:
   host: localhost

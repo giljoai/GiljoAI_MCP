@@ -83,7 +83,7 @@ config_dir = "~/.giljo-mcp"  # Unix only
 
 ### 3. Database Design
 
-- Dual support: SQLite (local) AND PostgreSQL (production)
+- Dual support: PostgreSQL (local) AND PostgreSQL (production)
 - Use SQLAlchemy ORM for abstraction
 - Connection pooling required
 - Migration support with Alembic

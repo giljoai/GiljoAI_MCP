@@ -4,7 +4,7 @@ class DatabasePage(WizardPage):
     def __init__(self, parent):
         super().__init__(parent, "Database Configuration")
 
-        self.db_type_var = tk.StringVar(value="sqlite")
+        self.db_type_var = tk.StringVar(value="postgresql")
 
         # Database type selection
         type_frame = ttk.LabelFrame(self, text="Database Type", padding=10)
@@ -12,9 +12,9 @@ class DatabasePage(WizardPage):
 
         ttk.Radiobutton(
             type_frame,
-            text="SQLite (Recommended for Local Development)",
+            text="PostgreSQL (Recommended for Local Development)",
             variable=self.db_type_var,
-            value="sqlite",
+            value="postgresql",
             command=self._on_db_type_change,
         ).pack(anchor="w")
         ttk.Radiobutton(
@@ -25,12 +25,12 @@ class DatabasePage(WizardPage):
             command=self._on_db_type_change,
         ).pack(anchor="w")
 
-        # SQLite configuration
-        self.sqlite_frame = ttk.LabelFrame(self, text="SQLite Configuration", padding=10)
-        self.sqlite_frame.pack(padx=20, pady=10, fill="x")
+        # PostgreSQL configuration
+        self.postgresql_frame = ttk.LabelFrame(self, text="PostgreSQL Configuration", padding=10)
+        self.postgresql_frame.pack(padx=20, pady=10, fill="x")
 
         self.db_path_var = tk.StringVar(value="data/giljo_mcp.db")
-        path_frame = ttk.Frame(self.sqlite_frame)
+        path_frame = ttk.Frame(self.postgresql_frame)
         path_frame.pack(fill="x")
         ttk.Label(path_frame, text="Database Path:").pack(side="left", padx=5)
         ttk.Entry(path_frame, textvariable=self.db_path_var, width=40).pack(side="left", padx=5)
@@ -87,17 +87,17 @@ class DatabasePage(WizardPage):
 
     def _on_db_type_change(self):
         """Handle database type change"""
-        if self.db_type_var.get() == "sqlite":
-            self.sqlite_frame.pack(padx=20, pady=10, fill="x")
+        if self.db_type_var.get() == "postgresql":
+            self.postgresql_frame.pack(padx=20, pady=10, fill="x")
             self.pg_frame.pack_forget()
         else:
-            self.sqlite_frame.pack_forget()
+            self.postgresql_frame.pack_forget()
             self.pg_frame.pack(padx=20, pady=10, fill="x")
 
     def _browse_path(self):
         """Browse for database path"""
         filename = filedialog.asksaveasfilename(
-            defaultextension=".db", filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")]
+            defaultextension=".db", filetypes=[("PostgreSQL Database", "*.db"), ("All Files", "*.*")]
         )
         if filename:
             self.db_path_var.set(filename)
@@ -129,13 +129,13 @@ class DatabasePage(WizardPage):
 
     def validate(self) -> bool:
         """Validate database configuration"""
-        if self.db_type_var.get() == "sqlite":
+        if self.db_type_var.get() == "postgresql":
             return bool(self.db_path_var.get())
         return all([self.pg_host_var.get(), self.pg_port_var.get(), self.pg_database_var.get(), self.pg_user_var.get()])
 
     def get_data(self) -> dict:
-        if self.db_type_var.get() == "sqlite":
-            return {"db_type": "sqlite", "db_path": self.db_path_var.get()}
+        if self.db_type_var.get() == "postgresql":
+            return {"db_type": "postgresql", "db_path": self.db_path_var.get()}
         return {
             "db_type": "postgresql",
             "pg_host": self.pg_host_var.get(),
@@ -157,8 +157,8 @@ class DatabasePage(WizardPage):
 
             # Set defaults based on profile
             if profile == "developer":
-                # Default to SQLite for individual developers
-                self.db_type_var.set("sqlite")
+                # Default to PostgreSQL for individual developers
+                self.db_type_var.set("postgresql")
                 self.db_path_var.set("data/giljo_mcp.db")
                 self._on_db_type_change()
 
@@ -178,8 +178,8 @@ class DatabasePage(WizardPage):
                 self._on_db_type_change()
 
             elif profile == "research":
-                # Flexible setup, default to SQLite but show both options
-                self.db_type_var.set("sqlite")
+                # Flexible setup, default to PostgreSQL but show both options
+                self.db_type_var.set("postgresql")
                 self.db_path_var.set("data/research_giljo.db")
                 self._on_db_type_change()
 

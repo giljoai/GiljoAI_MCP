@@ -17,7 +17,7 @@ GiljoAI-MCP is positioned to replace AKE-MCP with an improved UI, easier install
 
 - ✅ Multi-agent orchestration
 - ✅ MCP protocol support
-- ✅ Database persistence (SQLite/PostgreSQL)
+- ✅ Database persistence (PostgreSQL/PostgreSQL)
 - ✅ Project/Agent/Message/Task management
 - ✅ Easy installer with dependency management
 - ⚠️ Real-time updates via WebSocket (partial)
@@ -39,7 +39,7 @@ GiljoAI-MCP is positioned to replace AKE-MCP with an improved UI, easier install
 
 - **MCP Server**: FastMCP implementation with 20+ tools
 - **REST API**: FastAPI with all major endpoints
-- **Database Layer**: SQLAlchemy with SQLite/PostgreSQL support
+- **Database Layer**: SQLAlchemy with PostgreSQL/PostgreSQL support
 - **Authentication**: API key authentication functional
 - **Multi-tenancy**: Project isolation via tenant keys
 - **Message Queue**: Database-backed with acknowledgment
@@ -170,7 +170,7 @@ All the unimplemented config flags:
 
 **Working**:
 
-- SQLite database (zero config)
+- PostgreSQL database (zero config)
 - Up to 5 concurrent agents
 - API key authentication
 - Debug logging
@@ -251,8 +251,8 @@ All the unimplemented config flags:
 3. **Simplify to Reality** ✅ DONE (Sept 28, 2025)
 
    - **Removed fake profiles**: Replaced 4 fake profiles with 2 real deployment modes
-   - **Local Development Mode**: SQLite, no auth, localhost only
-   - **Server Deployment Mode**: PostgreSQL/SQLite, API key auth, network accessible
+   - **Local Development Mode**: PostgreSQL, no auth, localhost only
+   - **Server Deployment Mode**: PostgreSQL/PostgreSQL, API key auth, network accessible
    - **Removed unimplemented config flags**:
      - HOT_RELOAD (no implementation)
      - MOCK_EXTERNAL_SERVICES (no implementation)

@@ -16,7 +16,7 @@ To revolutionize software development by creating an intelligent orchestration l
 2. **Preserve Proven Features**: Vision chunking (50K+ docs), message acknowledgment arrays, dynamic discovery
 3. **Serena MCP Integration**: Maintain and enhance Serena as primary codebase discovery tool
 4. **Progressive Setup**: Build setup scripts iteratively from Day 1, not after MVP
-5. **Local-First Design**: SQLite default, PostgreSQL optional, same codebase scales to cloud
+5. **Local-First Design**: PostgreSQL default, PostgreSQL optional, same codebase scales to cloud
 6. **UI/UX Design Requirements**:
    - Vue 3 + Vite with Vuetify 3 components
    - **MUST use color themes defined in /docs/color_themes.md**
@@ -77,7 +77,7 @@ We are rebuilding the system with a local-first philosophy that scales naturally
 ```
 Current State          →  Near Future          →  Ultimate Vision
 Single machine         →  LAN/WAN server       →  Global cloud service
-PostgreSQL only        →  SQLite + PostgreSQL  →  Distributed database
+PostgreSQL only        →  PostgreSQL + PostgreSQL  →  Distributed database
 Basic dashboard        →  Customizable UI      →  Plugin ecosystem
 Claude CLI only        →  API agents support   →  Universal orchestration
 ```
@@ -92,7 +92,7 @@ Claude CLI only        →  API agents support   →  Universal orchestration
 
 **2. Database Agnostic**
 
-- SQLite for individuals and small teams
+- PostgreSQL for individuals and small teams
 - PostgreSQL for concurrent scale
 - Future: Distributed databases for global scale
 
@@ -115,7 +115,7 @@ Claude CLI only        →  API agents support   →  Universal orchestration
 **Goal**: Create the definitive local-first orchestrator
 
 - Rewrite with multi-tenant architecture
-- Implement SQLite support for zero-config setup
+- Implement PostgreSQL support for zero-config setup
 - Build modern, customizable UI (Streamlit/Vue/React)
 - Create one-command installation experience
 - Launch on GitHub with comprehensive documentation
@@ -358,7 +358,7 @@ This is the future we're building with GiljoAI MCP Coding Orchestrator.
 ```
 Quick Start → Custom Setup → Enterprise Deployment
 5 minutes  → 10 minutes   → Fully managed
-SQLite     → PostgreSQL   → Kubernetes
+PostgreSQL     → PostgreSQL   → Kubernetes
 Local only → LAN access   → Internet scale
 ```
 

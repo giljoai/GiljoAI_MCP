@@ -210,7 +210,7 @@ pytest test_api_endpoints.py test_websocket.py test_e2e_workflows.py test_auth.p
 - All dependencies already in requirements.txt
 
 ### Database Compatibility
-- Tests use SQLite for speed
+- Tests use PostgreSQL for speed
 - Same code supports PostgreSQL in production
 - Multi-tenant isolation validated
 

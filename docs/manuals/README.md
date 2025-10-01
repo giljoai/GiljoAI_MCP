@@ -30,7 +30,7 @@ Step-by-step guide for setting up GiljoAI MCP:
 - Prerequisites and requirements
 - Installation procedures
 - Configuration options
-- Database setup (SQLite/PostgreSQL)
+- Database setup (PostgreSQL/PostgreSQL)
 
 ### 4. Architecture Reference (Coming Soon)
 

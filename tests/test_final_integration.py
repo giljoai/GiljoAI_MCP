@@ -13,6 +13,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.giljo_mcp.models import AgentInteraction, Base, Message, Project
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestFinalIntegration:
@@ -21,7 +23,7 @@ class TestFinalIntegration:
     @pytest.fixture
     def test_session(self):
         """Create in-memory test database session."""
-        engine = create_engine("sqlite:///:memory:")
+        engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         Base.metadata.create_all(engine)
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()

@@ -19,13 +19,15 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.discovery import DiscoveryManager, PathResolver, SerenaHooks
 from src.giljo_mcp.models import Project
 from src.giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 async def test_path_resolver():
     """Test PathResolver functionality"""
 
     # Initialize components
-    db_manager = DatabaseManager("sqlite:///test_discovery.db")
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
     db_manager.create_tables()
 
     tenant_manager = TenantManager()
@@ -52,7 +54,7 @@ async def test_discovery_manager():
     """Test DiscoveryManager functionality"""
 
     # Initialize components
-    db_manager = DatabaseManager("sqlite:///test_discovery.db")
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
     db_manager.create_tables()
 
     tenant_manager = TenantManager()

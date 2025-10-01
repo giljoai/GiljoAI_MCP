@@ -48,7 +48,7 @@ The original implementation used stdio (standard input/output) for MCP communica
                      ▼
         ┌────────────────────────────────────────┐
         │         Database Layer                 │
-        │    (SQLite / PostgreSQL)               │
+        │    (PostgreSQL / PostgreSQL)               │
         └────────────────────────────────────────┘
 ```
 
@@ -245,7 +245,7 @@ GILJO_API_URL=http://localhost:7272  # Full API server URL
 GILJO_API_KEY=your-api-key          # API key (if not LOCAL mode)
 
 # Database configuration
-DATABASE_URL=sqlite:///giljo_mcp.db  # or postgresql://...
+DATABASE_URL=postgresql:///giljo_mcp.db  # or postgresql://...
 ```
 
 ### Deployment Modes
@@ -253,12 +253,12 @@ DATABASE_URL=sqlite:///giljo_mcp.db  # or postgresql://...
 1. **LOCAL** (default)
    - No authentication
    - Localhost only
-   - SQLite database
+   - PostgreSQL database
 
 2. **LAN**
    - API key authentication
    - Network accessible
-   - SQLite or PostgreSQL
+   - PostgreSQL or PostgreSQL
 
 3. **WAN/SaaS**
    - JWT authentication

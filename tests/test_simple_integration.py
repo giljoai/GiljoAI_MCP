@@ -16,18 +16,20 @@ sys.path.insert(0, str(Path(__file__).parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 async def simple_test():
     """Simple test of the Tool-API integration"""
 
     # Create temporary database
-    temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    temp_db.close()
+    # PostgreSQL test database used instead of temp file
+    # PostgreSQL test database managed by fixtures
 
     try:
         # Initialize components
-        db_url = f"sqlite+aiosqlite:///{temp_db.name}"
+        db_url = fPostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(db_url, is_async=True)
 
         # Create tables
@@ -94,7 +96,7 @@ async def simple_test():
         # Clean up database
         try:
             await db_manager.close_async()
-            os.unlink(temp_db.name)
+            # PostgreSQL test database cleanup handled by fixtures
         except:
             pass
 

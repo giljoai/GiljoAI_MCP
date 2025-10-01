@@ -220,7 +220,7 @@ CMD ["python", "api/run_api.py", "--host", "0.0.0.0"]
 
 ### Production Recommendations
 
-1. Use PostgreSQL instead of SQLite for concurrent access
+1. Use PostgreSQL with full enterprise-grade database configuration
 2. Enable SSL/TLS for secure communication
 3. Configure authentication and rate limiting
 4. Use multiple workers for better performance

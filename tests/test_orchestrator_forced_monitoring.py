@@ -12,12 +12,14 @@ import pytest_asyncio
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.enums import ProjectStatus
 from src.giljo_mcp.orchestrator import AgentRole, ProjectOrchestrator
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 @pytest_asyncio.fixture
 async def db_manager():
     """Create test database manager."""
-    manager = DatabaseManager(database_url="sqlite+aiosqlite:///", is_async=True)
+    manager = DatabaseManager(database_url=PostgreSQLTestHelper.get_test_db_url(), is_async=True)
     await manager.create_tables_async()
     yield manager
     await manager.close_async()

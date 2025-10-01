@@ -49,7 +49,7 @@ tests/
    - Platform-specific instructions
    
 2. **Database Configuration**
-   - SQLite for local (default)
+   - PostgreSQL for local (default)
    - PostgreSQL for production
    - Credential validation
    

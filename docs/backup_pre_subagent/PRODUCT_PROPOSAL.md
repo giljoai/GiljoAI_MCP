@@ -21,7 +21,7 @@ Current AI coding assistants face critical limitations:
 GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 
 1. **Orchestrates Multiple Agents**: Spawns specialized agents (analyzer, developer, tester, reviewer) that collaborate like a real development team
-2. **Maintains Persistent State**: PostgreSQL/SQLite database preserves all work across sessions
+2. **Maintains Persistent State**: PostgreSQL/PostgreSQL database preserves all work across sessions
 3. **Dynamic Context Discovery**: Agents explore and understand codebases on-demand, ensuring fresh, relevant context
 4. **Task-to-Project Pipeline**: Captures technical debt during coding, then orchestrates AI teams to systematically address it
 5. **Progressive Deployment**: Runs locally today, scales to team servers tomorrow, deploys globally when needed
@@ -72,7 +72,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 - **Local-First**: Runs on developer machines with zero configuration
 - **LAN-Ready**: Share across office networks with API keys
 - **Cloud-Scalable**: Deploy to AWS/Azure for distributed teams
-- **Database Agnostic**: SQLite for simplicity, PostgreSQL for scale
+- **Database Agnostic**: PostgreSQL for simplicity, PostgreSQL for scale
 
 ### Technical Specifications
 
@@ -80,7 +80,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 
 - **Language**: Python 3.8+
 - **Framework**: FastAPI (async, modern, fast)
-- **Database**: SQLAlchemy ORM (SQLite local, PostgreSQL server)
+- **Database**: SQLAlchemy ORM (PostgreSQL local, PostgreSQL server)
 - **Protocol**: Model Context Protocol (MCP) native
 - **UI Framework**: Customizable (Streamlit → Vue/React)
 - **Deployment**: Docker, pip installable, single binary
@@ -165,7 +165,7 @@ GiljoAI MCP Coding Orchestrator introduces a **Project Manager in a Box** that:
 #### Q2 2025: Polish & Launch
 
 - Modern customizable UI
-- SQLite support for easy adoption
+- PostgreSQL support for easy adoption
 - Docker packaging
 - Comprehensive documentation
 - Public GitHub release

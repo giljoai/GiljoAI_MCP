@@ -20,7 +20,7 @@ Successfully validated and enhanced the Tool-API Integration Bridge via ToolAcce
 
 ### Issues Fixed
 1. ✅ Unicode encoding errors (replaced 96+ emojis with ASCII)
-2. ✅ Database URL format (sqlite+aiosqlite)
+2. ✅ Database URL format (postgresql+aiopostgresql)
 3. ✅ Async session management
 4. ✅ Agent role constraints
 5. ✅ Create_server await issue

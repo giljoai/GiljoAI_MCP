@@ -138,13 +138,13 @@ Need tests for all 20+ MCP tools:
 
 ### 3.2 Database Testing Gaps
 
-#### SQLite vs PostgreSQL
+#### PostgreSQL vs PostgreSQL
 
 - ❌ No dual-mode testing infrastructure
 - ❌ No migration tests between databases
 - ❌ No performance comparison tests
 - ❌ No transaction isolation tests
-- ⚠️ Only basic SQLite tests exist
+- ⚠️ Only basic PostgreSQL tests exist
 
 #### Multi-Tenant Isolation
 
@@ -259,7 +259,7 @@ Need tests for all 20+ MCP tools:
 2. **Database Mode Testing**
 
    ```python
-   @pytest.mark.parametrize("db_type", ["sqlite", "postgresql"])
+   @pytest.mark.parametrize("db_type", ["postgresql", "postgresql"])
    async def test_with_both_databases(db_type):
        # Test logic
    ```
@@ -390,7 +390,7 @@ Need tests for all 20+ MCP tools:
 
 - **Zero** import errors
 - **100%** test pass rate
-- **Full** SQLite/PostgreSQL coverage
+- **Full** PostgreSQL/PostgreSQL coverage
 - **Complete** multi-tenant isolation
 
 ---

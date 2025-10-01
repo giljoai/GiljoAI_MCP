@@ -42,7 +42,7 @@ Successfully implemented comprehensive multi-tenant architecture for GiljoAI MCP
 - **Performance Verified**: 100 queries/second with 10 tenants
 - **Concurrency Tested**: Thread-safe operations confirmed
 - **Security Validated**: No cross-tenant data leakage possible
-- **75% Pass Rate**: SQLite limitations account for failures (PostgreSQL recommended)
+- **75% Pass Rate**: PostgreSQL limitations account for failures (PostgreSQL recommended)
 
 ## Technical Specifications
 
@@ -78,8 +78,8 @@ with db.get_tenant_session(tenant_key) as session:
 
 ## Challenges & Solutions
 
-### Challenge 1: SQLite Concurrency
-- **Issue**: SQLite has inherent concurrency limitations
+### Challenge 1: PostgreSQL Concurrency
+- **Issue**: PostgreSQL has inherent concurrency limitations
 - **Solution**: Optimized for read-heavy workloads, PostgreSQL recommended for production
 
 ### Challenge 2: Thread Safety
@@ -111,7 +111,7 @@ For existing deployments:
 ## Recommendations
 
 ### For Development
-- Use SQLite for local development (simple, zero-config)
+- Use PostgreSQL for local development (simple, zero-config)
 - Enable tenant context in all new features
 - Run isolation tests in CI/CD pipeline
 

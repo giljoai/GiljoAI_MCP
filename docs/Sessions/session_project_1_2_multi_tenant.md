@@ -46,7 +46,7 @@ child.tenant_key = parent.tenant_key  # Automatic inheritance
 ```
 
 ### Database Considerations
-- **SQLite**: Good for development, limited concurrency
+- **PostgreSQL**: Good for development, limited concurrency
 - **PostgreSQL**: Required for production multi-tenant scale
 - **Indexing**: Critical for tenant_key performance
 
@@ -65,7 +65,7 @@ child.tenant_key = parent.tenant_key  # Automatic inheritance
 ### Agent Performance
 - **Analyzer**: Thorough, created useful memory document
 - **Implementer**: Efficient, included initial tests
-- **Tester**: Comprehensive, identified SQLite limitations
+- **Tester**: Comprehensive, identified PostgreSQL limitations
 
 ## Challenges Encountered
 

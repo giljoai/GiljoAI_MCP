@@ -15,6 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.app import create_app
 from src.giljo_mcp.database import DatabaseManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestAPIComprehensive:
@@ -29,7 +31,7 @@ class TestAPIComprehensive:
     @pytest.fixture(scope="class")
     async def setup_test_db(self):
         """Setup test database"""
-        db_manager = DatabaseManager("sqlite:///test_api_comprehensive.db", is_async=True)
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
         await db_manager.create_tables_async()
         yield db_manager
         await db_manager.close_async()
