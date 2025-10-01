@@ -177,37 +177,120 @@ class WelcomePage(ttk.Frame):
         super().__init__(parent)
         self.title = "Welcome to GiljoAI MCP"
 
-        # Title
-        title_label = ttk.Label(self, text="GiljoAI", font=("Helvetica", 32, "bold"))
-        title_label.pack(pady=(30, 5))
+        # Main container
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=40, pady=40)
 
-        subtitle_label = ttk.Label(self, text="MCP Orchestrator v0.2 Beta", font=("Helvetica", 14))
-        subtitle_label.pack(pady=(0, 20))
+        # Try to load and display logo
+        logo_path = Path(__file__).parent / "frontend" / "public" / "giljologo_full.png"
+        if logo_path.exists():
+            try:
+                # Load PNG directly with tkinter
+                photo = tk.PhotoImage(file=str(logo_path))
+
+                # Resize to fit nicely (subsample to make smaller)
+                # Get original size and calculate appropriate subsample
+                width = photo.width()
+                height = photo.height()
+
+                # Target width ~600px for 800px window
+                target_width = 600
+                subsample_factor = max(1, width // target_width)
+
+                if subsample_factor > 1:
+                    photo = photo.subsample(subsample_factor, subsample_factor)
+
+                logo_label = tk.Label(main_frame, image=photo, bg=COLORS['bg_primary'])
+                logo_label.image = photo  # Keep reference
+                logo_label.pack(pady=(0, 10))
+
+                # Add version subtitle below logo
+                version_label = tk.Label(main_frame,
+                                        text="v0.2 Beta",
+                                        font=('Segoe UI', 14),
+                                        fg=COLORS['text_success'],
+                                        bg=COLORS['bg_primary'])
+                version_label.pack(pady=(0, 30))
+            except Exception as e:
+                # Fallback to text logo
+                logo_text = tk.Label(main_frame,
+                                    text="GiljoAI",
+                                    font=('Segoe UI', 48, 'bold'),
+                                    fg=COLORS['text_primary'],
+                                    bg=COLORS['bg_primary'])
+                logo_text.pack(pady=(0, 10))
+
+                subtitle = tk.Label(main_frame,
+                                   text="MCP Orchestrator",
+                                   font=('Segoe UI', 20),
+                                   fg=COLORS['text_secondary'],
+                                   bg=COLORS['bg_primary'])
+                subtitle.pack(pady=(0, 5))
+
+                version = tk.Label(main_frame,
+                                  text="v0.2 Beta",
+                                  font=('Segoe UI', 14),
+                                  fg=COLORS['text_success'],
+                                  bg=COLORS['bg_primary'])
+                version.pack(pady=(0, 30))
+        else:
+            # Fallback if logo not found
+            logo_text = tk.Label(main_frame,
+                                text="GiljoAI",
+                                font=('Segoe UI', 48, 'bold'),
+                                fg=COLORS['text_primary'],
+                                bg=COLORS['bg_primary'])
+            logo_text.pack(pady=(0, 10))
+
+            subtitle = tk.Label(main_frame,
+                               text="MCP Orchestrator",
+                               font=('Segoe UI', 20),
+                               fg=COLORS['text_secondary'],
+                               bg=COLORS['bg_primary'])
+            subtitle.pack(pady=(0, 5))
+
+            version = tk.Label(main_frame,
+                              text="v0.2 Beta",
+                              font=('Segoe UI', 14),
+                              fg=COLORS['text_success'],
+                              bg=COLORS['bg_primary'])
+            version.pack(pady=(0, 30))
 
         # Welcome message
-        welcome_text = ttk.Label(self,
-                               text="Welcome to the GiljoAI MCP Setup Wizard",
-                               font=("Helvetica", 12, "bold"))
-        welcome_text.pack(pady=(0, 15))
+        welcome_label = tk.Label(main_frame,
+                                text="Welcome to the Setup Wizard",
+                                font=('Segoe UI', 16, 'bold'),
+                                fg=COLORS['text_light'],
+                                bg=COLORS['bg_primary'])
+        welcome_label.pack(pady=(0, 20))
 
         # Description
-        description = ttk.Label(self,
-                             text="This wizard will guide you through the installation of GiljoAI MCP,\n"
-                                  "a multi-agent orchestration system for AI-powered development.\n\n"
-                                  "Click Next to begin the setup process.",
+        desc_label = tk.Label(main_frame,
+                             text="This wizard will guide you through installing\n"
+                                  "the GiljoAI MCP Agent Orchestration System.\n\n"
+                                  "Click Next to begin.",
+                             font=('Segoe UI', 11),
+                             fg=COLORS['text_secondary'],
+                             bg=COLORS['bg_primary'],
                              justify='center')
-        description.pack(pady=(0, 40))
+        desc_label.pack(pady=(0, 30))
 
-        # Footer
-        footer_frame = ttk.Frame(self)
-        footer_frame.pack(side="bottom", pady=20)
+        # Footer with contact info
+        footer_frame = tk.Frame(main_frame, bg=COLORS['bg_primary'])
+        footer_frame.pack(side="bottom", pady=(30, 0))
 
-        website_label = ttk.Label(footer_frame, text="www.giljo.ai © 2025 v0.2 Beta",
-                                 font=("Helvetica", 9))
+        website_label = tk.Label(footer_frame,
+                                text="www.giljo.ai © 2025",
+                                font=('Segoe UI', 9),
+                                fg=COLORS['text_secondary'],
+                                bg=COLORS['bg_primary'])
         website_label.pack()
 
-        email_label = ttk.Label(footer_frame, text="infoteam@giljo.ai",
-                               font=("Helvetica", 9), foreground="gray")
+        email_label = tk.Label(footer_frame,
+                              text="infoteam@giljo.ai",
+                              font=('Segoe UI', 9),
+                              fg=COLORS['text_secondary'],
+                              bg=COLORS['bg_primary'])
         email_label.pack()
 
     def validate(self) -> bool:
@@ -2739,173 +2822,100 @@ class GiljoSetupGUI:
 
     def finish_setup(self):
         """Complete the setup process"""
-        # Get installation path
+        # Get installation path and port number
         install_path = Path.cwd()
+        server_port = self.config_data.get('server_port', 7272)
 
-        # Create a more informative completion message
-        # Create custom completion dialog with logo
-        completion_dialog = tk.Toplevel(self.root)
-        completion_dialog.title("Installation Complete")
-        completion_dialog.geometry("700x750")
-        completion_dialog.configure(bg=COLORS['bg_primary'])
-        completion_dialog.resizable(False, False)
+        # Create completion message with updated text
+        message = f"""GiljoAI Agent Orchestration MCP Server
+Installation Complete!
 
-        # Center the dialog
-        completion_dialog.transient(self.root)
-        completion_dialog.grab_set()
-
-        # Main container
-        main_container = ttk.Frame(completion_dialog)
-        main_container.pack(fill="both", expand=True, padx=20, pady=20)
-
-        # Try to load and display logo
-        try:
-            logo_path = Path("frontend/public/giljologo.png")
-            if logo_path.exists():
-                from PIL import Image, ImageTk
-                logo_img = Image.open(logo_path)
-                # Resize logo to reasonable size (e.g., 80x80)
-                logo_img = logo_img.resize((80, 80), Image.Resampling.LANCZOS)
-                logo_photo = ImageTk.PhotoImage(logo_img)
-                logo_label = tk.Label(main_container, image=logo_photo, bg=COLORS['bg_primary'])
-                logo_label.image = logo_photo  # Keep reference
-                logo_label.pack(pady=(0, 10))
-        except Exception:
-            pass  # If logo fails to load, continue without it
-
-        # Title
-        title_label = tk.Label(
-            main_container,
-            text="GiljoAI Agent Orchestration MCP Server",
-            font=("Segoe UI", 14, "bold"),
-            bg=COLORS['bg_primary'],
-            fg=COLORS['text_success']
-        )
-        title_label.pack(pady=(0, 5))
-
-        subtitle_label = tk.Label(
-            main_container,
-            text="Installation Complete!",
-            font=("Segoe UI", 12),
-            bg=COLORS['bg_primary'],
-            fg=COLORS['text_light']
-        )
-        subtitle_label.pack(pady=(0, 15))
-
-        # Message text
-        message_text = f"""SERVER INSTALLED AT: {install_path}
+SERVER INSTALLED AT: {install_path}
 
 This is a standalone MCP orchestration server that will coordinate multiple AI agents across all your development projects.
 
 NEXT STEPS:
-══════════════════════════════════════════════════════════
+                ════════════════════
 
 1. CONNECT YOUR AI CODING AGENT:
 
-   GiljoAI MCP currently supports Claude Code exclusively.
-   The installer should have auto-detected and registered
-   Claude Code.
+Only Claude Code is currently supported.
+The installer attempted auto configuration for you.
 
-   If registration failed, run:
-   • python {install_path}\\register_ai_tools.py
+If registration failed, please run:
+• python {install_path}\\register_ai_tools.py
 
-   Documentation: {install_path}\\docs\\AI_TOOL_INTEGRATION.md
+Note: Support for Codex CLI and Gemini CLI in 2026
 
-   Note: Support for other AI tools (Codex CLI and Gemini CLI)
-   is planned for 2026.
+Documentation:
+{install_path}\\docs
 
 2. START THE SERVER:
-   Run: {install_path}\\start_giljo.bat
-   Server will run at http://localhost:8000
+Run: {install_path}\\start_giljo.bat
+Server will run at http://localhost:{server_port}
 
 3. VERIFY INTEGRATION:
-   Open your AI tool and check for "giljo-mcp" tools
+Open your AI tool and check for "giljo-mcp" tools
 
 IMPORTANT:
 • This server can handle multiple projects simultaneously
 • Register once, use across all your projects
 • The server runs independently from your projects
 
-Documentation: {install_path}\\INSTALLATION.md"""
+                 ────────────────────
+Thank you for installing GiljoAI MCP!
+www.giljo.ai 2025, v0.2 beta
+infoteam@giljo.ai"""
 
-        # Scrolled text widget for message
-        text_frame = ttk.Frame(main_container)
-        text_frame.pack(fill="both", expand=True, pady=(0, 10))
+        # Show a custom, centered dialog so the message (including
+        # "Thank you for installing GiljoAI MCP!") can be centered.
+        try:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Installation Complete")
+            dialog.transient(self.root)
+            dialog.resizable(False, False)
 
-        scrollbar = ttk.Scrollbar(text_frame)
-        message_widget = tk.Text(
-            text_frame,
-            wrap="word",
-            height=25,
-            width=80,
-            font=("Consolas", 9),
-            bg=COLORS['bg_elevated'],
-            fg=COLORS['text_light'],
-            relief="flat",
-            padx=10,
-            pady=10,
-            yscrollcommand=scrollbar.set
-        )
-        scrollbar.config(command=message_widget.yview)
-        message_widget.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+            # Size and center the dialog on screen
+            dialog.update_idletasks()
+            w = 820
+            h = 480
+            x = (dialog.winfo_screenwidth() // 2) - (w // 2)
+            y = (dialog.winfo_screenheight() // 2) - (h // 2)
+            dialog.geometry(f"{w}x{h}+{x}+{y}")
 
-        message_widget.insert("1.0", message_text)
-        message_widget.config(state="disabled")
+            # Use a Label with centered justification and wrapping so the
+            # content appears centered. This reliably centers text inside
+            # the dialog (unlike the system messagebox which typically
+            # left-aligns multiline text).
+            body = ttk.Frame(dialog, padding=(20, 20))
+            body.pack(fill="both", expand=True)
 
-        # Footer with website and contact
-        footer_frame = tk.Frame(main_container, bg=COLORS['bg_primary'])
-        footer_frame.pack(pady=(10, 0))
+            label = tk.Label(body,
+                             text=message,
+                             justify="center",
+                             anchor="center",
+                             bg=COLORS.get('bg_primary', None),
+                             fg=COLORS.get('text_primary', None),
+                             font=('Segoe UI', 9),
+                             wraplength=w-80)
+            label.pack(fill="both", expand=True)
 
-        separator = tk.Label(
-            footer_frame,
-            text="─" * 60,
-            bg=COLORS['bg_primary'],
-            fg=COLORS['border']
-        )
-        separator.pack()
+            # OK button to close the dialog
+            ok_btn = ttk.Button(dialog, text="OK", command=dialog.destroy)
+            ok_btn.pack(pady=(0, 18))
 
-        website_label = tk.Label(
-            footer_frame,
-            text="www.giljo.ai 2025, v0.2 beta",
-            font=("Segoe UI", 9),
-            bg=COLORS['bg_primary'],
-            fg=COLORS['text_secondary']
-        )
-        website_label.pack(pady=(5, 2))
+            # Make modal
+            dialog.grab_set()
+            self.root.wait_window(dialog)
 
-        contact_label = tk.Label(
-            footer_frame,
-            text="infoteam@giljo.ai",
-            font=("Segoe UI", 9),
-            bg=COLORS['bg_primary'],
-            fg=COLORS['text_secondary']
-        )
-        contact_label.pack(pady=(0, 10))
+        except Exception:
+            # Fallback: if anything goes wrong creating the custom dialog,
+            # use the default messagebox as before.
+            messagebox.showinfo("Installation Complete", message)
 
-        # OK button
-        ok_button = tk.Button(
-            main_container,
-            text="OK",
-            command=lambda: [completion_dialog.destroy(), self.root.quit(), self.root.destroy()],
-            bg=COLORS['bg_elevated'],
-            fg='#ffffff',
-            font=('Segoe UI', 10, 'bold'),
-            relief='flat',
-            borderwidth=0,
-            padx=40,
-            pady=10,
-            cursor='hand2',
-            activebackground=COLORS['border'],
-            activeforeground='#ffffff'
-        )
-        ok_button.pack(pady=(10, 0))
-
-        # Wait for dialog to close
-        completion_dialog.wait_window()
+        # Close the main window and exit with success code
         self.root.quit()
         self.root.destroy()
-        # Exit with success code
         return 0
 
 
