@@ -2390,6 +2390,9 @@ class ProgressPage(WizardPage):
                 if not detected_tools:
                     self.log("No AI CLI tools detected - skipping MCP registration", "info")
                     self.log("You can register AI tools later using: python register_ai_tools.py", "info")
+                    # Mark registration as complete (optional step)
+                    self.set_status("⚠ No AI tools detected - Optional", "registration")
+                    self.set_progress(100, "registration")
                 else:
                     tool_display_names = {
                         'claude': 'Claude Code',
@@ -2402,12 +2405,20 @@ class ProgressPage(WizardPage):
                     for tool in detected_tools:
                         self.log(f"  * {tool_display_names.get(tool, tool)}", "info")
 
-                    # Prepare server configuration
-                    server_url = self.setup.config.get('server_url', 'http://localhost:8000')
-                    if hasattr(self.setup, 'deployment_mode') and self.setup.deployment_mode == 'SERVER':
-                        host = self.setup.config.get('host', 'localhost')
-                        port = self.setup.selected_port if hasattr(self.setup, 'selected_port') else self.setup.server_port
-                        server_url = f"http://{host}:{port}"
+                    # Prepare server configuration - access parent GiljoSetupGUI instance
+                    parent = self.parent
+                    while parent and not hasattr(parent, "config_data"):
+                        parent = parent.master
+
+                    server_url = 'http://localhost:8000'
+                    if parent and hasattr(parent, "config_data"):
+                        deployment_mode = parent.config_data.get('deployment_mode', 'LOCAL')
+                        if deployment_mode == 'SERVER':
+                            host = parent.config_data.get('host', 'localhost')
+                            port = parent.config_data.get('server_port', 8000)
+                            server_url = f"http://{host}:{port}"
+                    else:
+                        deployment_mode = 'LOCAL'
 
                     # Register with all detected tools
                     self.log("\nRegistering GiljoAI MCP server...", "system")
@@ -2417,7 +2428,7 @@ class ProgressPage(WizardPage):
                         args=["-m", "giljo_mcp"],
                         env={
                             "GILJO_SERVER_URL": server_url,
-                            "GILJO_MODE": getattr(self.setup, 'deployment_mode', 'LOCAL')
+                            "GILJO_MODE": deployment_mode
                         }
                     )
 
@@ -2435,13 +2446,22 @@ class ProgressPage(WizardPage):
                     if success_count > 0:
                         self.log(f"\nSuccessfully registered with {success_count} tool(s)!", "success")
                         self.log("Please restart your AI CLI tool(s) to activate the MCP server.", "info")
+                        # Update registration component status
+                        self.set_status("✓ Completed", "registration")
+                        self.set_progress(100, "registration")
                     else:
                         self.log("MCP registration failed for all tools", "warning")
                         self.log("You can register manually later: python register_ai_tools.py", "info")
+                        # Update registration component status as optional failure
+                        self.set_status("⚠ Optional - Manual registration available", "registration")
+                        self.set_progress(100, "registration")
 
             except Exception as e:
                 self.log(f"MCP registration error: {e}", "warning")
                 self.log("You can register manually later: python register_ai_tools.py", "info")
+                # Update registration component status as optional failure
+                self.set_status("⚠ Optional - Manual registration available", "registration")
+                self.set_progress(100, "registration")
 
         except Exception as e:
             self.log(f"Health check error: {e}", "system")
@@ -2764,28 +2784,76 @@ class GiljoSetupGUI:
         install_path = Path.cwd()
 
         # Create a more informative completion message
-        message = f"""GiljoAI MCP Server Installation Complete!
+        # Create custom completion dialog with logo
+        completion_dialog = tk.Toplevel(self.root)
+        completion_dialog.title("Installation Complete")
+        completion_dialog.geometry("700x750")
+        completion_dialog.configure(bg=COLORS['bg_primary'])
+        completion_dialog.resizable(False, False)
 
-SERVER INSTALLED AT: {install_path}
+        # Center the dialog
+        completion_dialog.transient(self.root)
+        completion_dialog.grab_set()
 
-This is a standalone MCP orchestration server that will coordinate
-multiple AI agents across all your development projects.
+        # Main container
+        main_container = ttk.Frame(completion_dialog)
+        main_container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Try to load and display logo
+        try:
+            logo_path = Path("frontend/public/giljologo.png")
+            if logo_path.exists():
+                from PIL import Image, ImageTk
+                logo_img = Image.open(logo_path)
+                # Resize logo to reasonable size (e.g., 80x80)
+                logo_img = logo_img.resize((80, 80), Image.Resampling.LANCZOS)
+                logo_photo = ImageTk.PhotoImage(logo_img)
+                logo_label = tk.Label(main_container, image=logo_photo, bg=COLORS['bg_primary'])
+                logo_label.image = logo_photo  # Keep reference
+                logo_label.pack(pady=(0, 10))
+        except Exception:
+            pass  # If logo fails to load, continue without it
+
+        # Title
+        title_label = tk.Label(
+            main_container,
+            text="GiljoAI Agent Orchestration MCP Server",
+            font=("Segoe UI", 14, "bold"),
+            bg=COLORS['bg_primary'],
+            fg=COLORS['text_success']
+        )
+        title_label.pack(pady=(0, 5))
+
+        subtitle_label = tk.Label(
+            main_container,
+            text="Installation Complete!",
+            font=("Segoe UI", 12),
+            bg=COLORS['bg_primary'],
+            fg=COLORS['text_light']
+        )
+        subtitle_label.pack(pady=(0, 15))
+
+        # Message text
+        message_text = f"""SERVER INSTALLED AT: {install_path}
+
+This is a standalone MCP orchestration server that will coordinate multiple AI agents across all your development projects.
 
 NEXT STEPS:
-═══════════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════
 
 1. CONNECT YOUR AI CODING AGENT:
 
    GiljoAI MCP currently supports Claude Code exclusively.
-   The installer should have auto-detected and registered Claude Code.
+   The installer should have auto-detected and registered
+   Claude Code.
 
    If registration failed, run:
    • python {install_path}\\register_ai_tools.py
 
-   📖 Documentation: {install_path}\\docs\\AI_TOOL_INTEGRATION.md
+   Documentation: {install_path}\\docs\\AI_TOOL_INTEGRATION.md
 
-   Note: Support for other AI tools (Cursor, Windsurf, Gemini, Codeium)
-   is planned for Q2 2025. See TECHDEBT.md for details.
+   Note: Support for other AI tools (Codex CLI and Gemini CLI)
+   is planned for 2026.
 
 2. START THE SERVER:
    Run: {install_path}\\start_giljo.bat
@@ -2801,7 +2869,81 @@ IMPORTANT:
 
 Documentation: {install_path}\\INSTALLATION.md"""
 
-        messagebox.showinfo("Installation Complete", message)
+        # Scrolled text widget for message
+        text_frame = ttk.Frame(main_container)
+        text_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        scrollbar = ttk.Scrollbar(text_frame)
+        message_widget = tk.Text(
+            text_frame,
+            wrap="word",
+            height=25,
+            width=80,
+            font=("Consolas", 9),
+            bg=COLORS['bg_elevated'],
+            fg=COLORS['text_light'],
+            relief="flat",
+            padx=10,
+            pady=10,
+            yscrollcommand=scrollbar.set
+        )
+        scrollbar.config(command=message_widget.yview)
+        message_widget.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        message_widget.insert("1.0", message_text)
+        message_widget.config(state="disabled")
+
+        # Footer with website and contact
+        footer_frame = tk.Frame(main_container, bg=COLORS['bg_primary'])
+        footer_frame.pack(pady=(10, 0))
+
+        separator = tk.Label(
+            footer_frame,
+            text="─" * 60,
+            bg=COLORS['bg_primary'],
+            fg=COLORS['border']
+        )
+        separator.pack()
+
+        website_label = tk.Label(
+            footer_frame,
+            text="www.giljo.ai 2025, v0.2 beta",
+            font=("Segoe UI", 9),
+            bg=COLORS['bg_primary'],
+            fg=COLORS['text_secondary']
+        )
+        website_label.pack(pady=(5, 2))
+
+        contact_label = tk.Label(
+            footer_frame,
+            text="infoteam@giljo.ai",
+            font=("Segoe UI", 9),
+            bg=COLORS['bg_primary'],
+            fg=COLORS['text_secondary']
+        )
+        contact_label.pack(pady=(0, 10))
+
+        # OK button
+        ok_button = tk.Button(
+            main_container,
+            text="OK",
+            command=lambda: [completion_dialog.destroy(), self.root.quit(), self.root.destroy()],
+            bg=COLORS['bg_elevated'],
+            fg='#ffffff',
+            font=('Segoe UI', 10, 'bold'),
+            relief='flat',
+            borderwidth=0,
+            padx=40,
+            pady=10,
+            cursor='hand2',
+            activebackground=COLORS['border'],
+            activeforeground='#ffffff'
+        )
+        ok_button.pack(pady=(10, 0))
+
+        # Wait for dialog to close
+        completion_dialog.wait_window()
         self.root.quit()
         self.root.destroy()
         # Exit with success code
