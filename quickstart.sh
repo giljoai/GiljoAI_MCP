@@ -14,13 +14,25 @@
 # Success Green: #67bd6d = RGB(103, 189, 109)
 # Error Pink: #c6298c = RGB(198, 41, 140)
 # Light Gray: #e1e1e1 = RGB(225, 225, 225)
-YELLOW='\033[38;2;255;195;0m'
-GREEN='\033[38;2;103;189;109m'
-RED='\033[38;2;198;41;140m'
-GRAY='\033[38;2;225;225;225m'
-BLUE='\033[38;2;30;49;71m'
-NC='\033[0m' # No Color
-BOLD='\033[1m'
+
+# Disable colors in Git Bash or terminals that don't support RGB
+if [[ "$TERM" == "xterm" ]] || [[ -n "$MSYSTEM" ]]; then
+    YELLOW=''
+    GREEN=''
+    RED=''
+    GRAY=''
+    BLUE=''
+    NC=''
+    BOLD=''
+else
+    YELLOW='\033[38;2;255;195;0m'
+    GREEN='\033[38;2;103;189;109m'
+    RED='\033[38;2;198;41;140m'
+    GRAY='\033[38;2;225;225;225m'
+    BLUE='\033[38;2;30;49;71m'
+    NC='\033[0m' # No Color
+    BOLD='\033[1m'
+fi
 
 # Print header
 echo -e "${YELLOW}============================================================${NC}"

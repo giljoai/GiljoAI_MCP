@@ -2796,7 +2796,7 @@ infoteam@giljo.ai"""
 
             # Size and center the dialog on screen
             dialog.update_idletasks()
-            w = 738  # Narrowed by 10% from 820
+            w = 840  # Narrowed by 10% from 820
             h = 1200  # Increased by 50% from 720 to show full message
             x = (dialog.winfo_screenwidth() // 2) - (w // 2)
             y = (dialog.winfo_screenheight() // 2) - (h // 2)

@@ -47,6 +47,9 @@ class Bootstrap:
 
     def supports_color(self) -> bool:
         """Check if terminal supports color output"""
+        # Disable colors in Git Bash and other terminals that don't support RGB codes
+        if os.environ.get("TERM") == "xterm" or "MSYSTEM" in os.environ:
+            return False
         if self.os_type == "windows":
             return os.environ.get("ANSICON") is not None or "WT_SESSION" in os.environ
         return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
