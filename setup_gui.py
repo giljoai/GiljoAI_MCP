@@ -962,10 +962,19 @@ class PortsPage(WizardPage):
     def _check_port(self, service: str):
         """Check if a port is available"""
         port = int(self.port_vars[service].get())
-        if check_port(port):
-            self.status_labels[service].config(text="✗ In use", foreground="#c6298c")  # Pink/red
+
+        # Special handling for PostgreSQL - if port responds, it means PostgreSQL is running
+        if service == "PostgreSQL":
+            if check_port(port):
+                self.status_labels[service].config(text="✓ Detected", foreground="#90ee90")  # Lighter green
+            else:
+                self.status_labels[service].config(text="✗ Not detected", foreground="#c6298c")  # Pink/red
         else:
-            self.status_labels[service].config(text="✓ Available", foreground="#90ee90")  # Lighter green
+            # For other services, in use is bad, available is good
+            if check_port(port):
+                self.status_labels[service].config(text="✗ In use", foreground="#c6298c")  # Pink/red
+            else:
+                self.status_labels[service].config(text="✓ Available", foreground="#90ee90")  # Lighter green
 
     def _check_all_ports(self):
         """Check all ports"""
