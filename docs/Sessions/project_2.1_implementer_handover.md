@@ -18,7 +18,7 @@
 
 ### Server Configuration:
 - **Port:** 6001 (avoiding AKE-MCP on 5001)
-- **Database:** Dual support (SQLite default, PostgreSQL ready)
+- **Database:** Dual support (PostgreSQL default, PostgreSQL ready)
 - **Authentication:** LOCAL/LAN/WAN modes implemented
 
 ## 🔧 ISSUES RESOLVED
@@ -52,7 +52,7 @@ self.mcp = FastMCP(name="...", lifespan=self._lifespan)
 ```yaml
 # config.yaml - CORRECT settings:
 database:
-  type: postgresql  # or sqlite
+  type: postgresql  # or postgresql
   postgresql:
     host: "localhost"  # Fallback to 10.1.0.164
     port: 5432
@@ -64,7 +64,7 @@ database:
 ## 🚀 CURRENT STATUS
 
 ### Working:
-- ✅ Server starts successfully with SQLite
+- ✅ Server starts successfully with PostgreSQL
 - ✅ All tool modules properly registered
 - ✅ Authentication system ready
 - ✅ Database retry logic implemented
@@ -74,7 +74,7 @@ database:
 ```bash
 cd src && python -m giljo_mcp
 # Output: ✅ GiljoAI MCP Server Ready!
-# Mode: local, Port: 6001, Database: sqlite
+# Mode: local, Port: 6001, Database: postgresql
 ```
 
 ## 📋 POTENTIAL NEXT STEPS
@@ -135,7 +135,7 @@ POSTGRESQL_CONFIG = {
 
 1. **Context is precious** - I'm at ~90% usage, fresh start needed
 2. **Config quirks** - ConfigManager attributes are nested (config.database.pg_*)
-3. **Test incrementally** - SQLite works, PostgreSQL needs live testing
+3. **Test incrementally** - PostgreSQL works, PostgreSQL needs live testing
 4. **Port conflicts** - Stay on 6001 to avoid AKE-MCP (5001)
 5. **Use Serena MCP** - The file tools are very efficient
 
@@ -145,7 +145,7 @@ POSTGRESQL_CONFIG = {
 ✓ Authentication middleware ready
 ✓ Health check endpoints functional
 ✓ Clean startup sequence
-✓ Database connections verified (SQLite)
+✓ Database connections verified (PostgreSQL)
 ✓ Can receive MCP protocol messages
 ✓ Ready for agent connections
 

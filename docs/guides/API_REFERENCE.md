@@ -991,7 +991,7 @@ Gets all product settings for analysis.
       "auto_decommission": true
     },
     "database": {
-      "type": "sqlite",
+      "type": "postgresql",
       "path": "giljo.db",
       "pool_size": 5,
       "journal_mode": "WAL"

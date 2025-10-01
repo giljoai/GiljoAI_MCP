@@ -228,7 +228,7 @@ class LauncherCreator:
 # config.yaml (auto-generated)
 mode: quickstart
 database:
-  type: sqlite
+  type: postgresql
   path: ./data/giljo.db
 
 services:

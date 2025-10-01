@@ -14,6 +14,8 @@ import time
 import unittest
 from datetime import datetime
 from pathlib import Path
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 # Add parent directory to path for imports
@@ -407,7 +409,7 @@ class TestBackwardCompatibility(unittest.TestCase):
     def test_existing_config_compatibility(self):
         """Test existing configuration files still work"""
         # Create old-style config
-        old_config = {"database_url": "sqlite:///giljo_mcp.db", "api_port": 6002, "websocket_port": 6003}
+        old_config = {"database_url": PostgreSQLTestHelper.get_test_db_url(async_driver=False), "api_port": 6002, "websocket_port": 6003}
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             import yaml

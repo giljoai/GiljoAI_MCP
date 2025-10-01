@@ -15,7 +15,7 @@
 
 ```python
 # Intelligent installer selection based on profile:
-- Developer Profile: SQLite (default) or PostgreSQL (if selected)
+- Developer Profile: PostgreSQL (default) or PostgreSQL (if selected)
 - Team Profile: PostgreSQL + Redis (both required)
 - Enterprise Profile: PostgreSQL + Redis (both required)
 - Research Profile: Flexible (PostgreSQL optional)

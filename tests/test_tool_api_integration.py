@@ -17,6 +17,8 @@ from src.giljo_mcp.tenant import TenantManager
 
 # Import the components we're testing
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestToolAPIIntegration:
@@ -34,7 +36,7 @@ class TestToolAPIIntegration:
         """Setup test environment"""
 
         # Initialize database with async in-memory SQLite for testing
-        db_url = "sqlite+aiosqlite:///:memory:"
+        db_url = PostgreSQLTestHelper.get_test_db_url()
         self.db_manager = DatabaseManager(database_url=db_url, is_async=True)
         await self.db_manager.create_tables_async()
 

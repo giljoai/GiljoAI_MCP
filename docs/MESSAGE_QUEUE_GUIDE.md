@@ -211,10 +211,10 @@ Run the migration to add queue fields:
 
 ```bash
 # Upgrade database
-python migrations/add_message_queue_fields.py sqlite:///giljo_mcp.db upgrade
+python migrations/add_message_queue_fields.py postgresql:///giljo_mcp.db upgrade
 
 # Rollback if needed
-python migrations/add_message_queue_fields.py sqlite:///giljo_mcp.db downgrade
+python migrations/add_message_queue_fields.py postgresql:///giljo_mcp.db downgrade
 ```
 
 ## Performance Targets

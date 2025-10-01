@@ -2,12 +2,15 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
+// Load frontend port from environment or use default
+const FRONTEND_PORT = parseInt(process.env.VITE_FRONTEND_PORT || process.env.GILJO_FRONTEND_PORT || '6000', 10)
+
 export default defineConfig({
   plugins: [vue()],
   server: {
-    port: 6000,
+    port: FRONTEND_PORT,
     host: true,
-    strictPort: true,
+    strictPort: false, // Allow fallback to alternative port if occupied
     cors: true
   },
   resolve: {

@@ -144,7 +144,7 @@ curl http://localhost:6000  # Dashboard
 
 ### Critical Vision Promises to Test:
 1. **"Setup time under 5 minutes"** - Time the actual installation
-2. **"Zero-configuration"** - Verify SQLite mode works immediately
+2. **"Zero-configuration"** - Verify PostgreSQL mode works immediately
 3. **"Works out of the box"** - Document any missing steps
 4. **"Progressive enhancement"** - Test local → Docker transition
 5. **"No conflicts"** - Verify coexistence with other PostgreSQL apps

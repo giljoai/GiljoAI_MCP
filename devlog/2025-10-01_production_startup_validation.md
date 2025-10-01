@@ -141,7 +141,7 @@ import logging
 #### Test Results:
 
 **Database Configuration (6 tests)**:
-1. ✅ Defaults to PostgreSQL (not SQLite)
+1. ✅ Defaults to PostgreSQL (not PostgreSQL)
 2. ✅ Sets correct PostgreSQL defaults:
    - Host: localhost
    - Port: 5432
@@ -329,8 +329,8 @@ database:
 - Fresh install
 - **Result**: PostgreSQL selected by default
 
-### 2. SQLite Fallback ✅
-- User can override to SQLite
+### 2. PostgreSQL Fallback ✅
+- User can override to PostgreSQL
 - **Result**: Config supports both
 
 ### 3. Missing Password ✅
@@ -347,7 +347,7 @@ database:
 2. ⚠️ **RECOMMENDED**: Add PostgreSQL installation check
    - Verify PostgreSQL is running before attempting connection
    - Provide clear error message if PostgreSQL not found
-   - Guide user to install PostgreSQL or use SQLite
+   - Guide user to install PostgreSQL or use PostgreSQL
 
 3. ⚠️ **RECOMMENDED**: Add config.yaml validation on startup
    - Validate YAML syntax before parsing
@@ -422,7 +422,7 @@ database:
 - ✅ No breaking changes to existing APIs
 
 ### MEDIUM RISK (Manageable):
-- ⚠️ PostgreSQL dependency (mitigated by SQLite fallback)
+- ⚠️ PostgreSQL dependency (mitigated by PostgreSQL fallback)
 - ⚠️ Port conflicts on crowded systems (mitigated by alternatives)
 - ⚠️ First-time user experience (mitigated by clear error messages)
 
@@ -466,7 +466,7 @@ The following scenarios were not tested but are considered low priority:
 
 ### No Breaking Changes Introduced:
 - ✅ Old config structure still supported
-- ✅ SQLite still supported
+- ✅ PostgreSQL still supported
 - ✅ Environment variables still honored
 - ✅ Command-line arguments still work
 

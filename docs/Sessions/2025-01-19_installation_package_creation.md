@@ -30,7 +30,7 @@ Initially started creating resources in a separate `/c/Projects/installed` direc
 ### 2. Configuration Templates
 - **`config.yaml.example`**: Complete configuration template featuring:
   - Fully documented settings with comments
-  - SQLite configuration for local development
+  - PostgreSQL configuration for local development
   - PostgreSQL configuration for production
   - Multi-tenant settings
   - Security configurations

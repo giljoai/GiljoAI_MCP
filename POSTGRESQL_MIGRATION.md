@@ -1,10 +1,10 @@
 # PostgreSQL Migration Summary
 
 ## Overview
-Successfully migrated GiljoAI MCP from dual SQLite/PostgreSQL support to PostgreSQL-only architecture.
+Successfully migrated GiljoAI MCP from dual PostgreSQL/PostgreSQL support to PostgreSQL-only architecture.
 
 ## Branch Information
-- Created `retired_SQLite` branch to preserve the original dual-database code
+- Created `retired_PostgreSQL` branch to preserve the original dual-database code
 - All changes are on the main/master branch
 
 ## Major Changes Implemented
@@ -35,26 +35,26 @@ Successfully migrated GiljoAI MCP from dual SQLite/PostgreSQL support to Postgre
   - Progress bars and animations
   - Box drawing for better UI
   - Color support with fallback for non-color terminals
-- **Updated `setup.py`** to remove SQLite and integrate with new CLI
+- **Updated `setup.py`** to remove PostgreSQL and integrate with new CLI
 - PostgreSQL-only configuration flow
 
 ### 4. Database Module (`src/giljo_mcp/database.py`)
-- Removed all SQLite support code
-- Removed `build_sqlite_url()` method
-- Removed SQLite-specific connection parameters
-- Removed SQLite pragma settings
+- Removed all PostgreSQL support code
+- Removed `build_postgresql_url()` method
+- Removed PostgreSQL-specific connection parameters
+- Removed PostgreSQL pragma settings
 - Now requires PostgreSQL database_url (no defaults)
 - Simplified to PostgreSQL-only optimizations
 
 ### 5. Configuration Management
 - **Updated `src/giljo_mcp/config_manager.py`**:
-  - Removed SQLite configuration options
+  - Removed PostgreSQL configuration options
   - Set PostgreSQL as the only database type
-  - Removed SQLite path configurations
+  - Removed PostgreSQL path configurations
   - Updated validation to require PostgreSQL
 - **Updated `setup_config.py`**:
-  - Removed SQLite environment variables
-  - Removed SQLite configuration generation
+  - Removed PostgreSQL environment variables
+  - Removed PostgreSQL configuration generation
   - PostgreSQL-only configuration
 
 ### 6. Port Configuration
@@ -108,15 +108,15 @@ Successfully migrated GiljoAI MCP from dual SQLite/PostgreSQL support to Postgre
 
 1. **Simplified Codebase**: Removed conditional database logic
 2. **Better Performance**: PostgreSQL optimizations throughout
-3. **Production Ready**: No need to migrate from SQLite to PostgreSQL
+3. **Production Ready**: No need to migrate from PostgreSQL to PostgreSQL
 4. **Multi-user Support**: Built-in concurrent access
 5. **Network Ready**: Designed for distributed deployment
 6. **Consistent Experience**: Same database for all deployment modes
 
 ## Migration Path for Existing Users
 
-Users with existing SQLite databases should:
-1. Export their data from SQLite
+Users with existing PostgreSQL databases should:
+1. Export their data from PostgreSQL
 2. Install PostgreSQL (using the new installer)
 3. Import data into PostgreSQL
 4. Update configuration files
@@ -133,7 +133,7 @@ Users with existing SQLite databases should:
 - `pyproject.toml` - Python 3.10+ requirement
 
 ### Backup Files Created
-- `setup_gui_original.py` - Original GUI with SQLite
+- `setup_gui_original.py` - Original GUI with PostgreSQL
 - `setup_gui_database_backup.txt` - Original DatabasePage
 - `setup_gui_postgresql.py` - PostgreSQL-only DatabasePage design
 
@@ -142,19 +142,19 @@ Users with existing SQLite databases should:
 1. Test fresh PostgreSQL installation on all platforms
 2. Test connection to existing PostgreSQL servers
 3. Verify network mode configurations
-4. Test upgrade path from SQLite installations
+4. Test upgrade path from PostgreSQL installations
 5. Validate all installer flows (GUI and CLI)
 
 ## Next Steps
 
-1. Update API endpoints to remove SQLite references
+1. Update API endpoints to remove PostgreSQL references
 2. Update test infrastructure for PostgreSQL-only
 3. Update documentation to reflect PostgreSQL requirement
-4. Create data migration tool for SQLite → PostgreSQL
+4. Create data migration tool for PostgreSQL → PostgreSQL
 5. Update Docker configurations for PostgreSQL
 
 ## Notes
 
-- The `retired_SQLite` branch preserves the original dual-database code
+- The `retired_PostgreSQL` branch preserves the original dual-database code
 - All new development should assume PostgreSQL-only
 - Python 3.10+ is now required for better type hints and modern features

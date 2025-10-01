@@ -20,6 +20,8 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import ContextIndex, LargeDocumentIndex, Project, Vision
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.tools.chunking import EnhancedChunker
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestEnhancedChunker:
@@ -239,7 +241,7 @@ class TestDatabaseIntegration:
     async def setup_method(self):
         """Set up test database."""
         # Use in-memory SQLite for tests
-        self.db_manager = DatabaseManager("sqlite:///:memory:", is_async=True)
+        self.db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=True)
         await self.db_manager.create_tables_async()
 
         self.tenant_manager = TenantManager()

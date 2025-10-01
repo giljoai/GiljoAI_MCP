@@ -1,0 +1,248 @@
+"""
+PostgreSQL Test Database Helper
+
+Provides utilities for managing PostgreSQL test databases with proper isolation.
+Each test gets a clean database state through transaction rollback.
+"""
+
+import asyncio
+import contextlib
+from typing import Optional
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Base
+
+
+
+class PostgreSQLTestHelper:
+    """
+    Helper for managing PostgreSQL test databases.
+
+    Features:
+    - Transaction-based test isolation (rollback after each test)
+    - Automatic database creation/cleanup
+    - Schema-based isolation for parallel tests when needed
+    - Performance optimized for test suites
+    """
+
+    # Default test database configuration
+    DEFAULT_CONFIG = {
+        "host": "localhost",
+        "port": 5432,
+        "database": "giljo_mcp_test",
+        "username": "postgres",
+        "password": "4010",
+    }
+
+    @staticmethod
+    def get_test_db_url(database: str = "giljo_mcp_test", async_driver: bool = True) -> str:
+        """
+        Build PostgreSQL test database URL.
+
+        Args:
+            database: Database name (default: giljo_mcp_test)
+            async_driver: Use async driver (asyncpg) vs sync (psycopg2)
+
+        Returns:
+            PostgreSQL connection URL
+        """
+        config = PostgreSQLTestHelper.DEFAULT_CONFIG.copy()
+        config["database"] = database
+
+        if async_driver:
+            return (
+                f"postgresql+asyncpg://{config['username']}:{config['password']}"
+                f"@{config['host']}:{config['port']}/{config['database']}"
+            )
+        else:
+            return (
+                f"postgresql://{config['username']}:{config['password']}"
+                f"@{config['host']}:{config['port']}/{config['database']}"
+            )
+
+    @staticmethod
+    async def ensure_test_database_exists():
+        """
+        Ensure the test database exists, create if it doesn't.
+
+        This connects to the default 'postgres' database to create
+        the test database if needed.
+        """
+        # Connect to default postgres database to create test database
+        admin_url = PostgreSQLTestHelper.get_test_db_url(database="postgres")
+        admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+
+        try:
+            async with admin_engine.connect() as conn:
+                # Check if test database exists
+                result = await conn.execute(
+                    text("SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp_test'")
+                )
+                exists = result.scalar()
+
+                if not exists:
+                    # Create test database
+                    await conn.execute(text("CREATE DATABASE giljo_mcp_test"))
+        finally:
+            await admin_engine.dispose()
+
+    @staticmethod
+    async def drop_test_database():
+        """
+        Drop the test database completely.
+
+        USE WITH CAUTION - This removes all test data.
+        Only use for cleanup after test runs.
+        """
+        admin_url = PostgreSQLTestHelper.get_test_db_url(database="postgres")
+        admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+
+        try:
+            async with admin_engine.connect() as conn:
+                # Terminate all connections to the test database
+                await conn.execute(
+                    text(
+                        """
+                        SELECT pg_terminate_backend(pg_stat_activity.pid)
+                        FROM pg_stat_activity
+                        WHERE pg_stat_activity.datname = 'giljo_mcp_test'
+                        AND pid <> pg_backend_pid()
+                        """
+                    )
+                )
+
+                # Drop the database
+                await conn.execute(text("DROP DATABASE IF EXISTS giljo_mcp_test"))
+        finally:
+            await admin_engine.dispose()
+
+    @staticmethod
+    async def create_test_tables(db_manager: DatabaseManager):
+        """
+        Create all tables in the test database.
+
+        Args:
+            db_manager: DatabaseManager instance for the test database
+        """
+        await db_manager.create_tables_async()
+
+    @staticmethod
+    async def drop_test_tables(db_manager: DatabaseManager):
+        """
+        Drop all tables in the test database.
+
+        Args:
+            db_manager: DatabaseManager instance for the test database
+        """
+        await db_manager.drop_tables_async()
+
+    @staticmethod
+    async def clean_all_tables(session: AsyncSession):
+        """
+        Clean all data from all tables (fast alternative to drop/recreate).
+
+        This is faster than dropping and recreating tables.
+        Uses TRUNCATE for speed.
+
+        Args:
+            session: Database session
+        """
+        # Get all table names
+        table_names = [table.name for table in Base.metadata.sorted_tables]
+
+        if table_names:
+            # Disable foreign key checks, truncate all tables, re-enable
+            await session.execute(text("SET session_replication_role = 'replica'"))
+
+            for table_name in table_names:
+                await session.execute(text(f"TRUNCATE TABLE {table_name} CASCADE"))
+
+            await session.execute(text("SET session_replication_role = 'origin'"))
+            await session.commit()
+
+
+class TransactionalTestContext:
+    """
+    Context manager for transactional test isolation.
+
+    Each test runs in a transaction that is rolled back at the end,
+    ensuring clean state for the next test.
+
+    Usage:
+        async with TransactionalTestContext(db_manager) as session:
+            # Run test with session
+            # Changes will be rolled back automatically
+    """
+
+    def __init__(self, db_manager: DatabaseManager):
+        """
+        Initialize transactional context.
+
+        Args:
+            db_manager: DatabaseManager for test database
+        """
+        self.db_manager = db_manager
+        self.connection = None
+        self.transaction = None
+        self.session: Optional[AsyncSession] = None
+
+    async def __aenter__(self) -> AsyncSession:
+        """Start connection, transaction and return session."""
+        # Get a connection from the engine
+        self.connection = await self.db_manager.async_engine.connect()
+
+        # Start a transaction on the connection
+        self.transaction = await self.connection.begin()
+
+        # Create session bound to this connection
+        self.session = AsyncSession(bind=self.connection, expire_on_commit=False)
+
+        return self.session
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Rollback transaction and close connection."""
+        try:
+            if self.session:
+                await self.session.close()
+        finally:
+            try:
+                if self.transaction:
+                    # Always rollback - this ensures clean state
+                    await self.transaction.rollback()
+            finally:
+                if self.connection:
+                    await self.connection.close()
+
+
+async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) -> bool:
+    """
+    Wait for PostgreSQL database to be ready.
+
+    Useful for CI/CD environments where database may be starting up.
+
+    Args:
+        max_attempts: Maximum number of connection attempts
+        delay: Delay between attempts in seconds
+
+    Returns:
+        True if database is ready, False if timeout
+    """
+    test_url = PostgreSQLTestHelper.get_test_db_url(database="postgres")
+
+    for attempt in range(max_attempts):
+        try:
+            engine = create_async_engine(test_url)
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            await engine.dispose()
+            return True
+        except Exception:
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(delay)
+            continue
+
+    return False

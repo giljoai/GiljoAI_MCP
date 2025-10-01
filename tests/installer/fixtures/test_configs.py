@@ -5,6 +5,8 @@ Test configuration fixtures for installer tests
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 @dataclass
@@ -39,7 +41,7 @@ SAMPLE_CONFIGS = {
         "APP_NAME": "GiljoAI_MCP",
         "APP_ENV": "development",
         "DEBUG": True,
-        "DATABASE_URL": "sqlite:///test.db",
+        "DATABASE_URL": PostgreSQLTestHelper.get_test_db_url(async_driver=False),
         "API_PORT": 8000,
         "REDIS_ENABLED": False,
         "AUTH_ENABLED": False,
@@ -84,7 +86,7 @@ MOCK_RESPONSES = {
 
 # Test database configurations
 TEST_DB_CONFIGS = {
-    "sqlite": {"url": "sqlite:///test_giljo.db", "type": "sqlite"},
+    "sqlite": {"url": PostgreSQLTestHelper.get_test_db_url(async_driver=False), "type": "sqlite"},
     "postgresql": {
         "url": "postgresql://giljo_test:test_password@localhost:5432/giljo_test",
         "type": "postgresql",

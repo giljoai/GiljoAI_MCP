@@ -19,6 +19,8 @@ from sqlalchemy.exc import IntegrityError
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Configuration, Job, Message, Project, Session, Task, Vision
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestEdgeCases:
@@ -27,7 +29,7 @@ class TestEdgeCases:
     @pytest.fixture
     def db_session(self):
         """Create an in-memory SQLite database session for testing."""
-        db_manager = DatabaseManager("sqlite:///:memory:")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         db_manager.create_tables()
 
         with db_manager.get_session() as session:
@@ -405,7 +407,7 @@ class TestPathHandling:
 
         # SQLite URL should use forward slashes even on Windows
         sqlite_url = config.get_database_url()
-        assert sqlite_url.startswith("sqlite:///")
+        assert sqlite_url.startswith(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         assert "\\" not in sqlite_url  # No backslashes in URL
 
         # PostgreSQL URL should not contain file paths

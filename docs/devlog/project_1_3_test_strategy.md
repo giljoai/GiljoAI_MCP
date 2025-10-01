@@ -26,9 +26,9 @@ This document outlines the comprehensive testing strategy for the GiljoAI MCP se
 
 ### 2. Database Setup Flow Tests
 
-#### SQLite Configuration
+#### PostgreSQL Configuration
 - **Test Cases:**
-  - Default SQLite selection flow
+  - Default PostgreSQL selection flow
   - Custom database path input
   - Path validation (exists, writable)
   - Database file creation
@@ -138,7 +138,7 @@ This document outlines the comprehensive testing strategy for the GiljoAI MCP se
 ### Phase 2: Integration Tests
 ```python
 # test_setup_integration.py
-- test_full_sqlite_setup()
+- test_full_postgresql_setup()
 - test_full_postgresql_setup()
 - test_migration_flow()
 - test_error_recovery()
@@ -169,7 +169,7 @@ This document outlines the comprehensive testing strategy for the GiljoAI MCP se
 ## Success Criteria
 
 1. **Platform Coverage**: Tests pass on Windows, macOS, and Linux
-2. **Database Support**: Both SQLite and PostgreSQL flows work correctly
+2. **Database Support**: Both PostgreSQL and PostgreSQL flows work correctly
 3. **Error Recovery**: All error scenarios handled gracefully
 4. **User Experience**: Clear feedback and guidance throughout
 5. **Migration Support**: Smooth transition from existing installations if present

@@ -14,7 +14,7 @@ Each card below is ready to be created as a project in the orchestrator. Copy th
 
 ```
 Name: GiljoAI Core Architecture
-Mission: Create the foundational structure for GiljoAI MCP with SQLAlchemy models supporting both SQLite and PostgreSQL. Set up project structure at F:/GiljoAI_MCP with /src/giljo_mcp/, /tests/, /docs/ directories. Implement DatabaseManager class with connection pooling, create all table models (projects, agents, messages, tasks, sessions), and set up Alembic migrations. Include tenant_key field in all models for multi-tenancy.
+Mission: Create the foundational structure for GiljoAI MCP with SQLAlchemy models supporting both PostgreSQL and PostgreSQL. Set up project structure at F:/GiljoAI_MCP with /src/giljo_mcp/, /tests/, /docs/ directories. Implement DatabaseManager class with connection pooling, create all table models (projects, agents, messages, tasks, sessions), and set up Alembic migrations. Include tenant_key field in all models for multi-tenancy.
 Agents: analyzer, architect, implementer, tester
 ```
 
@@ -54,7 +54,7 @@ Agents: analyzer, architect, implementer, tester
 
 ```
 Name: GiljoAI Setup Script
-Mission: Create interactive setup.py script that guides users through initial configuration. Prompt for database choice (SQLite for local, PostgreSQL for server), collect credentials if PostgreSQL, generate .env file with all settings, create necessary directories, and provide platform-specific instructions. Make it work on Windows, Mac, and Linux with appropriate path handling.
+Mission: Create interactive setup.py script that guides users through initial configuration. Prompt for database choice (PostgreSQL for local, PostgreSQL for server), collect credentials if PostgreSQL, generate .env file with all settings, create necessary directories, and provide platform-specific instructions. Make it work on Windows, Mac, and Linux with appropriate path handling.
 Agents: analyzer, implementer, documenter
 ```
 
@@ -268,7 +268,7 @@ Agents: orchestrator, analyzer, implementer, validator
 - [ ] All E2E workflow tests passing
 - [ ] Zero multi-tenant data leaks
 - [ ] Performance within target metrics
-- [ ] Both SQLite and PostgreSQL validated
+- [ ] Both PostgreSQL and PostgreSQL validated
 - [ ] CI/CD pipeline configured
 
 ---
@@ -300,7 +300,7 @@ Agents: analyzer, fixer, validator
 
 ```
 Name: GiljoAI Tool-API Integration Bridge
-Mission: Build the critical integration layer between MCP tools and API endpoints to enable full system functionality. This addresses the root cause of test failures where API endpoints cannot properly call MCP tool functions. Create adapter layer that bridges MCP-registered tools with FastAPI endpoints, ensure database manager and tenant context are properly passed, test integration with both SQLite and PostgreSQL.
+Mission: Build the critical integration layer between MCP tools and API endpoints to enable full system functionality. This addresses the root cause of test failures where API endpoints cannot properly call MCP tool functions. Create adapter layer that bridges MCP-registered tools with FastAPI endpoints, ensure database manager and tenant context are properly passed, test integration with both PostgreSQL and PostgreSQL.
 Agents: analyzer, architect, implementer, validator
 ```
 
@@ -321,7 +321,7 @@ Agents: analyzer, architect, implementer, validator
 
 ```
 Name: GiljoAI Final Integration Validation
-Mission: Complete integration testing and validation after addressing all gaps identified in Project 3.5 and fixed in Projects 3.6-3.7. This final validation ensures the system is production-ready before Phase 4 UI development begins. Re-run all 110+ tests, execute end-to-end workflow tests, validate database operations with both SQLite and PostgreSQL, test multi-tenant isolation under concurrent load, and create go/no-go recommendation for Phase 4.
+Mission: Complete integration testing and validation after addressing all gaps identified in Project 3.5 and fixed in Projects 3.6-3.7. This final validation ensures the system is production-ready before Phase 4 UI development begins. Re-run all 110+ tests, execute end-to-end workflow tests, validate database operations with both PostgreSQL and PostgreSQL, test multi-tenant isolation under concurrent load, and create go/no-go recommendation for Phase 4.
 Agents: orchestrator, executor, analyzer, reporter
 ```
 
@@ -330,7 +330,7 @@ Agents: orchestrator, executor, analyzer, reporter
 - [ ] 90%+ of all tests passing
 - [ ] Zero multi-tenant data leaks
 - [ ] All performance metrics within vision targets
-- [ ] Both SQLite and PostgreSQL fully validated
+- [ ] Both PostgreSQL and PostgreSQL fully validated
 - [ ] E2E workflows functioning correctly
 - [ ] Production readiness confirmed
 
@@ -669,7 +669,7 @@ Agents: analyzer, writer, reviewer
 
 ```
 Name: GiljoAI Test Suite
-Mission: Create comprehensive test suite ensuring reliability. Write unit tests achieving 80%+ code coverage, create integration tests for full workflows, add load tests simulating 100+ concurrent agents, test multi-tenant isolation thoroughly, verify 50K+ token vision handling, test both SQLite and PostgreSQL modes, and create performance benchmarks. All tests must be automated.
+Mission: Create comprehensive test suite ensuring reliability. Write unit tests achieving 80%+ code coverage, create integration tests for full workflows, add load tests simulating 100+ concurrent agents, test multi-tenant isolation thoroughly, verify 50K+ token vision handling, test both PostgreSQL and PostgreSQL modes, and create performance benchmarks. All tests must be automated.
 Agents: analyzer, tester, implementer
 ```
 

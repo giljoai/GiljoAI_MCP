@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestCompleteSetupFlow(unittest.TestCase):
@@ -277,7 +279,7 @@ class TestErrorRecovery(unittest.TestCase):
 
             with open(".env") as f:
                 content = f.read()
-                assert "sqlite:///" in content
+                assert PostgreSQLTestHelper.get_test_db_url(async_driver=False) in content
 
     @patch("builtins.input")
     @patch("pathlib.Path.mkdir")

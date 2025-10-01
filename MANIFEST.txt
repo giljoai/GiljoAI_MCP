@@ -51,8 +51,8 @@
 /.env                    # Local environment file (not .env.example)
 /config.yaml            # Local configuration (not config.yaml.example)
 /*.db                    # Database files
-/*.db-shm               # SQLite temp files
-/*.db-wal               # SQLite write-ahead log
+/*.db-shm               # PostgreSQL temp files
+/*.db-wal               # PostgreSQL write-ahead log
 /test_*.py              # Development test scripts in root
 /*_test_*.json          # Test result files
 /monitor*.py            # Development monitoring scripts

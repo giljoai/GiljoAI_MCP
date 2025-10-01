@@ -49,7 +49,7 @@ graph TB
     %% Data Layer
     subgraph DATA["💾 Data Layer"]
         ORM["SQLAlchemy ORM<br/>- Async Support<br/>- Migration Tools"]:::surface
-        SQLITE["SQLite<br/>Local Development<br/>Zero Config"]:::secondary
+        SQLITE["PostgreSQL<br/>Local Development<br/>Zero Config"]:::secondary
         POSTGRES["PostgreSQL<br/>Production Ready<br/>Multi-tenant"]:::success
         REDIS["Redis Cache<br/>Session Store<br/>Message Buffer"]:::secondary
     end
@@ -118,7 +118,7 @@ graph LR
     classDef wan fill:#ffc300,stroke:#0e1c2d,stroke-width:2px,color:#0e1c2d
     classDef cloud fill:#8b5cf6,stroke:#e1e1e1,stroke-width:2px,color:#e1e1e1
 
-    LOCAL["🏠 Local Mode<br/>SQLite Database<br/>No Auth Required<br/>localhost:8000"]:::local
+    LOCAL["🏠 Local Mode<br/>PostgreSQL Database<br/>No Auth Required<br/>localhost:8000"]:::local
     LAN["🏢 LAN Mode<br/>PostgreSQL<br/>API Key Auth<br/>Network Access"]:::lan
     WAN["🌍 WAN Mode<br/>PostgreSQL<br/>OAuth + TLS<br/>Internet Access"]:::wan
     CLOUD["☁️ Cloud Mode<br/>Managed Service<br/>Auto-scaling<br/>Global Deploy"]:::cloud
@@ -205,7 +205,7 @@ erDiagram
 
 ### 🚀 Progressive Architecture
 
-- **Local First**: Start with SQLite, zero configuration
+- **Local First**: Start with PostgreSQL, zero configuration
 - **Scale When Ready**: Seamlessly upgrade to PostgreSQL
 - **Cloud Native**: Container-ready with Docker support
 - **Multi-tenant**: Isolated projects via tenant keys

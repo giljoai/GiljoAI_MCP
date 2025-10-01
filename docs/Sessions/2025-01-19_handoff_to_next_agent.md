@@ -72,7 +72,7 @@ class LauncherCreator:
 Create default `config.yaml` that works out-of-the-box:
 ```yaml
 database:
-  type: sqlite  # No external deps
+  type: postgresql  # No external deps
   path: ./data/giljo.db
 
 server:

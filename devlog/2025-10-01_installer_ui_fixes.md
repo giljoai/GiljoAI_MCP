@@ -179,7 +179,7 @@ Version text uses existing color scheme:
 
 ## Side Discoveries
 
-During investigation, found extensive **SQLite references** still present in documentation despite Sept 29 PostgreSQL-only migration:
+During investigation, found extensive **PostgreSQL references** still present in documentation despite Sept 29 PostgreSQL-only migration:
 
 **Affected Files**:
 - `CLAUDE.md` (3 references)
@@ -242,7 +242,7 @@ During investigation, found extensive **SQLite references** still present in doc
 2. **Separation of Concerns**: Separate prompt display from input collection for better control
 3. **Consistency**: Version strings should be uniform across all interfaces
 4. **Git History**: Always check history before assuming recent changes
-5. **Scope Control**: Found SQLite references but correctly deferred to separate session
+5. **Scope Control**: Found PostgreSQL references but correctly deferred to separate session
 
 ---
 
@@ -253,7 +253,7 @@ During investigation, found extensive **SQLite references** still present in doc
 
 ### Long Term (Separate Sessions)
 1. Create single source of truth for version string
-2. Remove SQLite references from all documentation
+2. Remove PostgreSQL references from all documentation
 3. Add PostgreSQL 18 connection info to CLAUDE.md
 4. Consider version display in installation manifest
 

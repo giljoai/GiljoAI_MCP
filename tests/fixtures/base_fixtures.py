@@ -1,12 +1,11 @@
 """
 Base test fixtures for GiljoAI MCP test suite.
 Provides reusable fixtures for database, models, and common test data.
+
+All tests now use PostgreSQL for consistency with production.
+Test isolation is achieved through transaction rollback.
 """
 
-import builtins
-import contextlib
-import os
-import tempfile
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
@@ -19,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.enums import AgentRole, AgentStatus, ProjectStatus, ProjectType
 from src.giljo_mcp.models import Agent, Message, Project
+from tests.helpers.test_db_helper import PostgreSQLTestHelper, TransactionalTestContext
 
 
 class TestData:
@@ -38,7 +38,6 @@ class TestData:
             "mission": "Test mission for automated testing",
             "status": ProjectStatus.ACTIVE.value,
             "tenant_key": tenant_key,
-            "type": ProjectType.DEVELOPMENT.value,
             "metadata": {"test": True},
         }
 
@@ -48,7 +47,7 @@ class TestData:
         return {
             "id": str(uuid.uuid4()),
             "name": name or f"agent_{uuid.uuid4().hex[:8]}",
-            "type": AgentRole.WORKER.value,
+            "role": "worker",  # Agent uses 'role' not 'type'
             "status": AgentStatus.ACTIVE.value,
             "project_id": project_id,
             "created_at": datetime.now(timezone.utc),
@@ -70,60 +69,44 @@ class TestData:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def sqlite_db_manager():
-    """Create SQLite database manager for testing"""
-    # Create temporary database file
-    temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    temp_db.close()
+async def db_manager():
+    """
+    Function-scoped PostgreSQL database manager.
+    Creates a new connection for each test to avoid event loop issues.
+    """
+    # Ensure test database exists (idempotent)
+    await PostgreSQLTestHelper.ensure_test_database_exists()
 
-    # Create database manager with test database
-    connection_string = f"sqlite+aiosqlite:///{temp_db.name}"
-    db_manager = DatabaseManager(connection_string, is_async=True)
+    connection_string = PostgreSQLTestHelper.get_test_db_url()
+    db_mgr = DatabaseManager(connection_string, is_async=True)
 
-    # Initialize database
-    await db_manager.create_tables_async()
+    # Tables should already exist from setup script
+    # But create them if they don't (idempotent operation)
+    try:
+        await PostgreSQLTestHelper.create_test_tables(db_mgr)
+    except Exception:
+        pass  # Tables likely already exist
 
-    yield db_manager
+    yield db_mgr
 
     # Cleanup
-    await db_manager.close_async()
-    with contextlib.suppress(builtins.BaseException):
-        os.unlink(temp_db.name)
+    await db_mgr.close_async()
 
 
 @pytest_asyncio.fixture(scope="function")
-async def postgresql_db_manager():
-    """Create PostgreSQL database manager for testing"""
-    # Use test database configuration
-    connection_string = DatabaseManager.build_postgresql_url(
-        host="localhost", port=5432, database="giljo_mcp_test", username="postgres", password="4010"
-    )
+async def db_session(db_manager) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Get database session for testing with transaction isolation.
 
-    # Convert to async URL
-    connection_string = connection_string.replace("postgresql://", "postgresql+asyncpg://")
-
-    db_manager = DatabaseManager(connection_string, is_async=True)
-
-    # Drop and recreate tables for clean test
-    with contextlib.suppress(builtins.BaseException):
-        await db_manager.drop_tables_async()
-    await db_manager.create_tables_async()
-
-    yield db_manager
-
-    # Cleanup
-    await db_manager.close_async()
-
-
-@pytest_asyncio.fixture(scope="function")
-async def db_session(sqlite_db_manager) -> AsyncGenerator[AsyncSession, None]:
-    """Get database session for testing (defaults to SQLite)"""
-    async with sqlite_db_manager.get_session_async() as session:
+    Each test runs in a transaction that is rolled back at the end,
+    ensuring clean state between tests.
+    """
+    async with TransactionalTestContext(db_manager) as session:
         yield session
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_project(db_session, sqlite_db_manager) -> Project:
+async def test_project(db_session) -> Project:
     """Create a test project"""
     tenant_key = TestData.generate_tenant_key()
     project_data = TestData.generate_project_data(tenant_key)
@@ -176,31 +159,6 @@ async def test_messages(db_session, test_agents, test_project) -> list:
     return messages
 
 
-# Synchronous database fixtures for non-async tests
-@pytest.fixture
-def sync_db_manager():
-    """Create synchronous SQLite database manager for testing"""
-    # Create temporary database file
-    temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    temp_db.close()
-
-    # Create database manager with test database
-    connection_string = f"sqlite:///{temp_db.name}"
-    db_manager = DatabaseManager(connection_string, is_async=False)
-
-    # Initialize database
-    db_manager.create_tables()
-
-    yield db_manager
-
-    # Cleanup
-    db_manager.close()
-    with contextlib.suppress(builtins.BaseException):
-        os.unlink(temp_db.name)
-
-
-@pytest.fixture
-def sync_session(sync_db_manager):
-    """Get synchronous database session for testing"""
-    with sync_db_manager.get_session() as session:
-        yield session
+# Note: Synchronous database fixtures have been removed.
+# All tests should use async PostgreSQL fixtures for consistency with production.
+# If you have synchronous tests, they should be migrated to async.

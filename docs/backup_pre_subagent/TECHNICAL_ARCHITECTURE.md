@@ -9,7 +9,7 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system designed w
 ### Core Architecture Principles
 
 1. **Local-First Design**: Optimized for single-machine performance with network capabilities
-2. **Database Agnostic**: SQLite for local, PostgreSQL for scale
+2. **Database Agnostic**: PostgreSQL for local, PostgreSQL for scale
 3. **Multi-Tenant Ready**: Project isolation via unique keys from day one
 4. **Protocol Native**: Built on Model Context Protocol (MCP) standards
 5. **Progressive Enhancement**: Features activate based on deployment mode
@@ -80,7 +80,7 @@ config_file = "C:\\Users\\name\\.giljo-mcp"  # Windows only
 ├─────────────────────────────────────────────────────────────┤
 │                     Data Layer                               │
 │  ┌──────────────────────────────────────────────────┐      │
-│  │         SQLAlchemy ORM (SQLite/PostgreSQL)       │      │
+│  │         SQLAlchemy ORM (PostgreSQL/PostgreSQL)       │      │
 │  └──────────────────────────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -170,13 +170,13 @@ Project ←→ Vision (1:1)
 Configuration:
   host: 127.0.0.1
   port: 5001
-  database: sqlite:///~/.giljo-mcp/local.db
+  database: postgresql:///~/.giljo-mcp/local.db
   auth: none
 
 Characteristics:
   - Single user
   - No authentication
-  - SQLite database
+  - PostgreSQL database
   - Localhost only
   - Zero configuration
 ```
@@ -258,11 +258,11 @@ Characteristics:
 - **Language**: Python 3.8+
 - **Framework**: FastAPI (async, WebSockets, OpenAPI)
 - **ORM**: SQLAlchemy 2.0 (async support)
-- **Database**: SQLite (local), PostgreSQL (server)
+- **Database**: PostgreSQL (local), PostgreSQL (server)
 - **Database Drivers**:
   - psycopg2-binary (PostgreSQL sync operations)
   - asyncpg (PostgreSQL async operations - high performance)
-  - aiosqlite (SQLite async operations)
+  - aiopostgresql (PostgreSQL async operations)
 - **Queue**: Built-in (local), Redis (scale option)
 - **Process**: uvicorn (ASGI server)
 
@@ -326,7 +326,7 @@ Characteristics:
 
 #### Scaling Boundaries
 
-- **SQLite**: 1-10 concurrent users
+- **PostgreSQL**: 1-10 concurrent users
 - **PostgreSQL**: 10-1000 concurrent users
 - **PostgreSQL Cluster**: 1000+ concurrent users
 
@@ -489,12 +489,12 @@ giljo-mcp/
 #### Database Migration
 
 ```python
-# Alembic migrations for both SQLite and PostgreSQL
+# Alembic migrations for both PostgreSQL and PostgreSQL
 alembic upgrade head
 
 # Auto-detect database type and apply appropriate schema
-if config.database_type == "sqlite":
-    apply_sqlite_optimizations()
+if config.database_type == "postgresql":
+    apply_postgresql_optimizations()
 else:
     apply_postgresql_indexes()
 ```

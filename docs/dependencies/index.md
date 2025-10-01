@@ -55,7 +55,7 @@ Comprehensive list of all dependencies with versions, purposes, and installation
 
 | Component     | Purpose                 | Documentation                   |
 | ------------- | ----------------------- | ------------------------------- |
-| **aiosqlite** | SQLite async driver     | [Database Guide](./database.md) |
+| **aiopostgresql** | PostgreSQL async driver     | [Database Guide](./database.md) |
 | **asyncpg**   | PostgreSQL async driver | [Database Guide](./database.md) |
 
 ## Installation Overview

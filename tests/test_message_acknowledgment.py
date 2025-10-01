@@ -17,13 +17,15 @@ from sqlalchemy import select
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Message, Project
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 async def test_message_acknowledgment():
     """Test the message acknowledgment system"""
 
     # Initialize database
-    db_manager = DatabaseManager("sqlite+aiosqlite:///test_messages.db", is_async=True)
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(), is_async=True)
     await db_manager.create_tables_async()
 
     async with db_manager.get_session() as session:

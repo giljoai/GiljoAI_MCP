@@ -18,7 +18,7 @@ Transform the current configuration-only installer into a comprehensive, user-fr
 
 - **Description**: "Single machine setup for development and testing"
 - **Installs**:
-  - SQLite (built-in with Python)
+  - PostgreSQL (built-in with Python)
   - Redis (local instance)
   - Local-only configuration
 - **Use Case**: Individual developers, personal projects, prototyping
@@ -327,7 +327,7 @@ bootstrap.py
 
 ### Risk Mitigation
 
-- Always provide SQLite fallback
+- Always provide PostgreSQL fallback
 - Test all dependency URLs regularly
 - Maintain compatibility with manual installations
 - Provide uninstaller for clean removal

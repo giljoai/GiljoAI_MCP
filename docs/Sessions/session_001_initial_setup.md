@@ -9,7 +9,7 @@ Setting up GiljoAI MCP as a product in AKE-MCP to orchestrate its own developmen
 1. **Development Strategy**: Use existing AKE-MCP to build GiljoAI MCP systematically
 2. **Project Structure**: 20 focused projects across 5 phases over 4 weeks
 3. **Setup Approach**: Progressive enhancement from Day 1, not waiting for MVP
-4. **Database Strategy**: SQLite for local (default), PostgreSQL for server (optional)
+4. **Database Strategy**: PostgreSQL for local (default), PostgreSQL for server (optional)
 
 ### Critical Features to Preserve from AKE-MCP
 
@@ -51,7 +51,7 @@ Core → Multi-Tenant → MCP Server → Tools → Orchestration → API → Das
 ### Technical Stack Confirmed
 
 - **Backend**: Python 3.8+, FastAPI, SQLAlchemy
-- **Database**: SQLite (local) / PostgreSQL (server)
+- **Database**: PostgreSQL (local) / PostgreSQL (server)
 - **Frontend**: Streamlit (fast) or Vue (powerful) - decide in Project 4.2
 - **Deployment**: Docker, pip installable
 

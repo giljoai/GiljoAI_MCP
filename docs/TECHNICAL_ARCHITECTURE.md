@@ -443,10 +443,15 @@ Characteristics:
 - **Language**: Python 3.8+
 - **Framework**: FastAPI (async, WebSockets, OpenAPI)
 - **ORM**: SQLAlchemy 2.0 (async support)
-- **Database**: PostgreSQL (all modes)
+- **Database**: PostgreSQL (Mandatory in all modes)
 - **Database Drivers**:
-  - psycopg2-binary (PostgreSQL sync operations)
-  - asyncpg (PostgreSQL async operations - high performance)
+  - psycopg2-binary (PostgreSQL synchronous operations)
+  - asyncpg (PostgreSQL asynchronous operations - high-performance recommended)
+- **Database Requirements**:
+  - PostgreSQL 14.0+
+  - Minimum 8GB RAM
+  - At least 50GB storage
+  - Connection pooling enabled
 - **Queue**: Built-in (local), Redis (scale option)
 - **Process**: uvicorn (ASGI server)
 

@@ -14,6 +14,8 @@ from sqlalchemy.orm import sessionmaker
 
 from src.giljo_mcp.database import init_db
 from src.giljo_mcp.models import AgentInteraction
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 # TODO: AgentTools class doesn't exist yet - commenting out for test collection
 # from src.giljo_mcp.tools.agent import AgentTools
 
@@ -24,7 +26,7 @@ class TestSubAgentLifecycle:
     @pytest.fixture
     async def db_session(self):
         """Create test database session"""
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        engine = create_async_engine(PostgreSQLTestHelper.get_test_db_url())
         async with engine.begin() as conn:
             await conn.run_sync(init_db)
 

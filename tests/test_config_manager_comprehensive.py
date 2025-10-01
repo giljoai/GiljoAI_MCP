@@ -29,6 +29,7 @@ import yaml
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
 from giljo_mcp.config_manager import (
     AgentConfig,
     ConfigFileWatcher,
@@ -245,7 +246,7 @@ class TestDatabaseConnectionStrings:
         db = DatabaseConfig()
         conn_str = db.get_connection_string()
 
-        assert conn_str.startswith("sqlite:///")
+        assert conn_str.startswith(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         assert "giljo_mcp.db" in conn_str
 
     def test_sqlite_connection_string_custom_path(self):
@@ -1263,7 +1264,7 @@ class TestUtilityMethods:
         config = ConfigManager()
 
         url = config.get_database_url()
-        assert url.startswith("sqlite:///")
+        assert url.startswith(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
 
     def test_get_method_with_valid_keys(self):
         """Test get method with valid dotted keys."""
@@ -1382,7 +1383,7 @@ class TestDatabaseManagerIntegration:
 
             mock_db_manager.assert_called_once()
             _args, kwargs = mock_db_manager.call_args
-            assert kwargs["database_url"].startswith("sqlite:///")
+            assert kwargs["database_url"].startswith(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
             assert kwargs["is_async"] is False  # LOCAL mode
 
     def test_create_database_manager_with_tenant(self):

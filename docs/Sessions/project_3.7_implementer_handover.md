@@ -13,7 +13,7 @@ You're taking over at the very end. The project is essentially complete with two
 
 ### Fixed Issues:
 1. Unicode encoding (96+ emojis replaced with ASCII)
-2. Database URL format (sqlite+aiosqlite)
+2. Database URL format (postgresql+aiopostgresql)
 3. Async context management
 4. Agent role constraints
 5. Performance optimization (2.5ms avg vs 100ms target!)

@@ -21,6 +21,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Job, Message, Project, Task
 from src.giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestMultiTenantIsolation:
@@ -29,7 +31,7 @@ class TestMultiTenantIsolation:
     @pytest.fixture
     def db_manager(self):
         """Create an in-memory database manager for testing."""
-        manager = DatabaseManager("sqlite:///:memory:")
+        manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         manager.create_tables()
         yield manager
         manager.close()

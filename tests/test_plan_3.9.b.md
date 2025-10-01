@@ -10,7 +10,7 @@
 
   - Test single template retrieval from database
   - Test cached vs uncached performance
-  - Measure with both SQLite and PostgreSQL
+  - Measure with both PostgreSQL and PostgreSQL
   - Benchmark with varying template sizes
 
 - **Augmentation Performance**

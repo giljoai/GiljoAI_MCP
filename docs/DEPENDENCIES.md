@@ -46,7 +46,7 @@ GiljoAI MCP uses a carefully curated set of dependencies to provide robust multi
 
 | Package             | Version  | Purpose                              | Used By                     |
 | ------------------- | -------- | ------------------------------------ | --------------------------- |
-| **aiosqlite**       | >=0.19.0 | Async SQLite driver (default)        | Local development           |
+| **aiopostgresql**       | >=0.19.0 | Async PostgreSQL driver (default)        | Local development           |
 | **asyncpg**         | >=0.29.0 | PostgreSQL async driver (production) | Team/Enterprise deployments |
 | **psycopg2-binary** | >=2.9.0  | PostgreSQL sync driver (backup)      | Fallback connections        |
 
@@ -220,7 +220,7 @@ pip install -r requirements.txt --force-reinstall
 
 ### Database Versions
 
-- **SQLite:** 3.35+ (built into Python)
+- **PostgreSQL:** 3.35+ (built into Python)
 - **PostgreSQL:** 12+
 - **Redis:** 6.0+ (optional)
 

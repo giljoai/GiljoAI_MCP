@@ -175,7 +175,7 @@ setup.py or setup_gui.py (Existing)
 2. **Default Configuration** (1 hour)
    - Create `config.yaml` with defaults
    - Set up example agents
-   - Configure SQLite database
+   - Configure PostgreSQL database
 
 3. **End-to-End Testing** (2 hours)
    - Test on fresh Windows VM

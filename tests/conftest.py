@@ -4,9 +4,7 @@ Provides test fixtures and database setup
 """
 
 import asyncio
-import os
 import sys
-import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -16,9 +14,6 @@ import pytest_asyncio
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import builtins
-import contextlib
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +26,27 @@ from tests.helpers.mock_servers import ExternalServiceMocks
 # Import test helpers
 from tests.helpers.test_factories import AgentFactory, MessageFactory, ProjectFactory
 
+# Import PostgreSQL test fixtures from base_fixtures
+from tests.fixtures.base_fixtures import (
+    db_manager,
+    db_session,
+    test_agents,
+    test_messages,
+    test_project,
+)
+
+# Import pytest plugin for PostgreSQL database management
+pytest_plugins = ["tests.pytest_postgresql_plugin"]
+
+# Re-export fixtures so they're available to all tests
+__all__ = [
+    "db_manager",
+    "db_session",
+    "test_project",
+    "test_agents",
+    "test_messages",
+]
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -41,32 +57,18 @@ def event_loop():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_db():
-    """Create a test database for each test"""
-    # Create temporary database file
-    temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    temp_db.close()
+async def test_db(db_manager):
+    """
+    Create a test database for each test.
 
-    # Create database manager with test database
-    connection_string = f"sqlite+aiosqlite:///{temp_db.name}"
-    db_manager = DatabaseManager(connection_string, is_async=True)
-
-    # Initialize database
-    await db_manager.create_tables_async()
-
+    Note: This now returns the function-scoped PostgreSQL database manager.
+    Test isolation is achieved through transaction rollback in db_session fixture.
+    """
     yield db_manager
 
-    # Cleanup
-    await db_manager.close_async()
-    with contextlib.suppress(builtins.BaseException):
-        os.unlink(temp_db.name)
 
-
-@pytest_asyncio.fixture(scope="function")
-async def db_session(test_db) -> AsyncGenerator[AsyncSession, None]:
-    """Get database session for testing"""
-    async with test_db.get_session_async() as session:
-        yield session
+# Note: db_session fixture is imported from base_fixtures.py
+# and provides transaction-based test isolation
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -78,9 +80,11 @@ async def tenant_manager() -> TenantManager:
 @pytest.fixture
 def test_config():
     """Get test configuration"""
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
     config = get_config()
-    # Override with test settings
-    config.database.database_url = "sqlite+aiosqlite:///:memory:"
+    # Override with test settings - use PostgreSQL test database
+    config.database.database_url = PostgreSQLTestHelper.get_test_db_url()
     config.api.port = 7000  # Use different port for tests
     config.websocket.port = 7001
     return config

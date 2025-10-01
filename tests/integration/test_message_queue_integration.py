@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Message, Project
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class Colors:
@@ -611,7 +613,7 @@ def main():
     """Run all tests"""
 
     # Initialize database (synchronous)
-    db_manager = DatabaseManager("sqlite:///test_comprehensive.db", is_async=False)
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False), is_async=False)
     db_manager.create_tables()
 
     # Clean up any existing test data

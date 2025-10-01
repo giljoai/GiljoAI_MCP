@@ -20,7 +20,7 @@ Successfully created a comprehensive, interactive setup.py script for GiljoAI MC
 
 #### 2. Comprehensive Setup Features
 - Interactive prompts using Rich library for enhanced UX
-- Database choice between SQLite (local) and PostgreSQL (production)
+- Database choice between PostgreSQL (local) and PostgreSQL (production)
 - Automatic .env file generation from template
 - Cross-platform directory creation using pathlib
 - Port conflict detection via check_ports.py integration
@@ -51,7 +51,7 @@ def detect_platform():
 
 #### Key Features
 - Platform detection (Windows/Mac/Linux)
-- SQLite default path: `./data/giljo_mcp.db`
+- PostgreSQL default path: `./data/giljo_mcp.db`
 - Port assignments: Dashboard 6000, MCP 6001, API 6002, WebSocket 6003
 - Environment variable override support
 - Tenant key preservation for multi-tenant architecture

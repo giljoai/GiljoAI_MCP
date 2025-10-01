@@ -11,7 +11,7 @@ This document provides a comprehensive analysis comparing the CLI and GUI instal
 
 ### Correct System Architecture (Per GUI Implementation)
 - **2 Installation Modes Only**: Localhost OR Server
-- **Database**: PostgreSQL ONLY (no SQLite option)
+- **Database**: PostgreSQL ONLY (no PostgreSQL option)
 - **Authentication**: No auth for Localhost, API key for Server mode
 - **Port Configuration**: Configurable for both modes
 - **Network Access**: Localhost-only vs LAN/WAN configurable

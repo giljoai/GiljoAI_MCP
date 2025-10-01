@@ -40,7 +40,7 @@ The GiljoAI MCP codebase has **excellent test coverage (~85%)** for core functio
 
 | Vision Requirement | Test Coverage | Evidence |
 |-------------------|---------------|----------|
-| **Local-First Philosophy** | ✅ Tested | SQLite and PostgreSQL both tested |
+| **Local-First Philosophy** | ✅ Tested | PostgreSQL and PostgreSQL both tested |
 | **Multi-Tenant Architecture** | ✅ Comprehensive | Full isolation testing with concurrent projects |
 | **Progressive Enhancement** | ✅ Validated | Same code tested with different configs |
 | **OS-Neutral Code** | ✅ Verified | validate_hardcoded_paths.py checks compliance |
@@ -244,7 +244,7 @@ tests/
 3. **Message queue overflow and recovery**
 4. **Agent failure and automatic recovery**
 5. **Vision document processing for 100K+ tokens**
-6. **Database migration from SQLite to PostgreSQL**
+6. **Database migration from PostgreSQL to PostgreSQL**
 
 ---
 

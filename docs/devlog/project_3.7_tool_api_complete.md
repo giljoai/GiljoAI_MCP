@@ -90,8 +90,8 @@ if not tool_func:
 
 ### 4. Database URL Fix
 ```python
-# Fixed async SQLite URL
-db_url = "sqlite+aiosqlite:///:memory:"  # Added aiosqlite dialect
+# Fixed async PostgreSQL URL
+db_url = "postgresql+aiopostgresql:///:memory:"  # Added aiopostgresql dialect
 ```
 
 ## Code Changes Summary

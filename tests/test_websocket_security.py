@@ -24,6 +24,8 @@ from api.app import create_app
 from src.giljo_mcp.auth import AuthManager
 from src.giljo_mcp.config_manager import ConfigManager
 from src.giljo_mcp.database import DatabaseManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestWebSocketSecurity:
@@ -37,7 +39,7 @@ class TestWebSocketSecurity:
         self.client = TestClient(self.app)
 
         # Initialize test database
-        self.db_manager = DatabaseManager("sqlite+aiosqlite:///:memory:", is_async=True)
+        self.db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(), is_async=True)
         await self.db_manager.create_tables_async()
 
         # Initialize auth manager

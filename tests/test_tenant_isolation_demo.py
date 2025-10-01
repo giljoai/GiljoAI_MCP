@@ -14,13 +14,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Message, Project
 from src.giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 def test_multi_tenant_isolation_demo():
     """Demonstrate complete isolation between 10 tenants."""
 
     # Create database
-    db_manager = DatabaseManager("sqlite:///:memory:")
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
     db_manager.create_tables()
 
     # Create 10 tenants

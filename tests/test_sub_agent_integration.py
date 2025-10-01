@@ -23,6 +23,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.giljo_mcp.models import Agent, AgentInteraction, Base, Message, Project
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 # We'll mock these since they require MCP server context
@@ -398,7 +400,7 @@ class TestWebSocketEvents:
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
 
-            engine = create_engine("sqlite:///:memory:")
+            engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
             Base.metadata.create_all(engine)
             SessionLocal = sessionmaker(bind=engine)
 
@@ -438,7 +440,7 @@ class TestWebSocketEvents:
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
 
-            engine = create_engine("sqlite:///:memory:")
+            engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
             Base.metadata.create_all(engine)
             SessionLocal = sessionmaker(bind=engine)
 
@@ -480,7 +482,7 @@ class TestWebSocketEvents:
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
 
-            engine = create_engine("sqlite:///:memory:")
+            engine = create_engine(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
             Base.metadata.create_all(engine)
             SessionLocal = sessionmaker(bind=engine)
 

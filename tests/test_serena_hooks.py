@@ -16,6 +16,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.discovery import SerenaHooks
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestSerenaHooks:
@@ -113,7 +115,7 @@ class TestSerenaHooksIntegration:
             from src.giljo_mcp.database import DatabaseManager
 
             # Create real instances
-            db_manager = DatabaseManager("sqlite:///test.db")
+            db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
             tenant_manager = TenantManager(db_manager)
 
             # Create SerenaHooks with real managers

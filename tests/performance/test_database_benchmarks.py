@@ -20,6 +20,8 @@ import pytest_asyncio
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Agent, Message, Project, Task
 from tests.benchmark_tools import PerformanceBenchmark
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class DatabaseBenchmarkRunner:
@@ -84,10 +86,10 @@ class TestDatabaseBenchmarks:
         """Create SQLite database manager for testing"""
         import tempfile
 
-        temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        temp_db.close()
+        # PostgreSQL test database used instead of temp file
+        # PostgreSQL test database managed by fixtures
 
-        connection_string = f"sqlite+aiosqlite:///{temp_db.name}"
+        connection_string = fPostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(connection_string, is_async=True)
         await db_manager.create_tables_async()
 
@@ -96,7 +98,7 @@ class TestDatabaseBenchmarks:
         await db_manager.close_async()
         import os
 
-        os.unlink(temp_db.name)
+        # PostgreSQL test database cleanup handled by fixtures
 
     @pytest_asyncio.fixture
     async def benchmark_runner(self, sqlite_db_manager):

@@ -57,16 +57,13 @@ class ConfigGenerator:
             "# Production-ready with PostgreSQL (recommended for 15-day launch)": None,
             "": None,
             "database": {
-                "# PostgreSQL recommended for production (stable and scalable)": None,
+                "# PostgreSQL database configuration": None,
                 "database_type": "postgresql",
                 "host": "localhost",
                 "port": 5432,
                 "name": "giljo_mcp",
                 "user": "postgres",
                 "password": "",
-                "# SQLite fallback for development/testing (uncomment to use)": None,
-                "# database_type": "sqlite",
-                "# path": "./data/giljo.db",
             },
             "server": {
                 "# Unified v2.0 architecture - single HTTP server": None,
@@ -288,12 +285,9 @@ class ConfigGenerator:
 
             # Validate database configuration
             db_config = config.get("database", {})
-            db_type = db_config.get("database_type", "sqlite")
+            db_type = db_config.get("database_type", "postgresql")
 
-            if db_type == "sqlite":
-                if "path" not in db_config:
-                    return False, "SQLite configuration missing 'path'"
-            elif db_type == "postgresql":
+            if db_type == "postgresql":
                 required_pg = ["host", "port", "name", "user", "password"]
                 missing_pg = [k for k in required_pg if k not in db_config]
                 if missing_pg:

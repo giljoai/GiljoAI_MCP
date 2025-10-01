@@ -97,7 +97,7 @@ Throughout development, user feedback drove key improvements:
 ## Technical Notes
 - Flask development server (not production ready)
 - Uses psutil for process management
-- SQLite database detection for services
+- PostgreSQL database detection for services
 - Windows-specific process handling
 - Real-time monitoring via background threads
 

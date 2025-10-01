@@ -19,7 +19,7 @@
 #### 2. Profile-Aware Configuration ✅
 
 - **DatabasePage**: Auto-configures based on profile
-  - Developer: SQLite default
+  - Developer: PostgreSQL default
   - Team/Enterprise: PostgreSQL required
   - Research: Flexible options
 - **PortsPage**: Adapts port ranges per profile

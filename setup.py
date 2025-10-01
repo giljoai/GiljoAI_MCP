@@ -262,21 +262,49 @@ class GiljoSetup:
 
     def create_config_file(self) -> bool:
         """Create configuration file for v2.0 architecture - PostgreSQL default"""
+        # Use selected_port if available, otherwise fall back to server_port
+        actual_port = self.selected_port if self.selected_port else self.server_port
+
         config_data = {
             "version": "2.0.0",
             "server": {
                 "mode": self.deployment_mode,
                 "host": "0.0.0.0" if self.deployment_mode != "LOCAL" else "127.0.0.1",
-                "port": self.server_port,  # Unified port for all services
-                "frontend_port": 6000,  # Optional frontend dev server
+                "port": actual_port,  # Unified port for all services - USE SELECTED PORT
+                "frontend_port": self.config.get("frontend_port", 6000),  # Optional frontend dev server
+                # Nested structure for config_manager.py compatibility
+                "api": {
+                    "host": "0.0.0.0" if self.deployment_mode != "LOCAL" else "127.0.0.1",
+                    "port": actual_port,
+                    "cors_enabled": True,
+                },
+                "dashboard": {
+                    "enabled": True,
+                    "host": "127.0.0.1",
+                    "port": self.config.get("frontend_port", 6000),
+                    "dev_server_port": 5173,
+                },
+                "websocket": {
+                    "enabled": True,
+                    "port": actual_port,  # WebSocket on same port as API (v2.0)
+                },
             },
             "database": {
-                "database_type": "postgresql",  # PostgreSQL recommended for production
+                "type": "postgresql",  # PostgreSQL recommended for production
                 "host": self.config.get("pg_host", "localhost"),
                 "port": self.config.get("pg_port", 5432),
                 "name": self.config.get("pg_database", "giljo_mcp"),
                 "user": self.config.get("pg_user", "postgres"),
                 "password": self.config.get("pg_password", ""),
+                # PostgreSQL nested structure for config_manager.py
+                "postgresql": {
+                    "host": self.config.get("pg_host", "localhost"),
+                    "port": self.config.get("pg_port", 5432),
+                    "database": self.config.get("pg_database", "giljo_mcp"),
+                    "user": self.config.get("pg_user", "postgres"),
+                    "password": self.config.get("pg_password", ""),
+                    "pool_size": 10,
+                },
             },
             "security": {
                 "api_key": self.generate_api_key() if self.deployment_mode != "LOCAL" else None,

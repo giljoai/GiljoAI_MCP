@@ -42,7 +42,7 @@ profile = profile_mgr.create_profile(
     name="my-project",
     profile_type=ProfileType.DEVELOPER,
     settings={
-        'database_type': 'sqlite',
+        'database_type': 'postgresql',
         'enable_redis': False
     }
 )
@@ -95,7 +95,7 @@ success = config_mgr.generate_config(
     user_inputs={
         'host': 'localhost',
         'port': 8000,
-        'database_type': 'sqlite'
+        'database_type': 'postgresql'
     },
     output_dir=Path('.')
 )

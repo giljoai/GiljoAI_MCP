@@ -38,12 +38,12 @@ class DatabaseManager:
             is_async: Whether to use async engine and sessions.
         """
         if not database_url:
-            raise ValueError("PostgreSQL database_url is required")
+            raise ValueError("Database URL is required")
 
         self.database_url = database_url
         self.is_async = is_async
 
-        # Validate PostgreSQL URL
+        # Validate database URL - PostgreSQL only
         if "postgresql" not in self.database_url:
             raise ValueError("Only PostgreSQL databases are supported")
 

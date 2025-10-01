@@ -21,6 +21,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.config_manager import ConfigManager, DeploymentMode, get_config, set_config
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestConfigManager:
@@ -98,7 +100,7 @@ class TestConfigManager:
         config.database.database_type = "sqlite"
         config.database.database_name = "test.db"
         sqlite_url = config.get_database_url()
-        assert "sqlite:///" in sqlite_url
+        assert PostgreSQLTestHelper.get_test_db_url(async_driver=False) in sqlite_url
         assert "test.db" in sqlite_url
 
         # Test PostgreSQL URL construction

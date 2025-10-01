@@ -8,21 +8,22 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 
 ## Deployment Modes
 
-The system supports two deployment modes:
+The system supports two deployment configurations:
 
 1. **Local Development Mode**
-   - SQLite database (zero configuration)
-   - No authentication required
-   - Localhost only (secure by default)
+   - PostgreSQL database with local configuration
+   - Preconfigured development credentials
+   - Localhost access only
    - Up to 20 concurrent agents
-   - Perfect for single developers
+   - Ideal for individual developers and testing
 
-2. **Server Deployment Mode**
-   - PostgreSQL or SQLite database
-   - API key authentication
-   - Network accessible (LAN/WAN)
-   - Up to 20 concurrent agents
-   - For teams or network access
+2. **Enterprise Network Mode**
+   - PostgreSQL database with secure network configuration
+   - Configurable API key authentication
+   - Full network accessibility (LAN/WAN)
+   - Up to 20 concurrent agents per deployment
+   - Scalable multi-tenant architecture
+   - Designed for team and enterprise environments
 
 ## Development Commands
 
@@ -129,20 +130,6 @@ PGPASSWORD=4010 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -l | g
 PGPASSWORD=4010 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp;"
 ```
 
-#### SQLite Database
-
-```bash
-# Check if SQLite database exists
-ls data/giljo.db
-
-# Access SQLite database
-sqlite3 data/giljo.db
-
-# Common SQLite commands
-.tables           # List all tables
-.schema agents    # Show agent table schema
-SELECT * FROM agents;  # Query agents
-```
 
 ## High-Level Architecture
 
@@ -170,11 +157,11 @@ User Request → Orchestrator → Multiple Specialized Agents → Coordinated Re
 
 Multi-tenant system with complete isolation between projects:
 
-- **SQLAlchemy ORM** with async support
-- **SQLite** for local development (zero config)
-- **PostgreSQL** for production (scale)
+- **SQLAlchemy ORM with Async PostgreSQL Support**
+- **PostgreSQL Database**: Enterprise-grade, scalable persistence
 - **Tenant Isolation**: Each project has unique tenant_key
 - **Product Isolation**: Multiple products per tenant
+- **Performance-Optimized**: Supports concurrent transactions and complex queries
 
 ### API Layers
 

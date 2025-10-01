@@ -14,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Project
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
 
 
 class TestDynamicDiscovery:
@@ -23,7 +25,7 @@ class TestDynamicDiscovery:
     async def setup_test_env(self):
         """Set up test environment with database and configurations"""
         # Create temp database
-        db_manager = DatabaseManager("sqlite:///test_discovery.db")
+        db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
         await db_manager.initialize()
 
         # Create test project

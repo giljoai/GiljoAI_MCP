@@ -21,7 +21,7 @@ The GiljoAI MCP Orchestrator has achieved significant milestones and is function
 | **Dashboard UI** | ✅ Functional | Production Ready |
 | **Core Orchestration** | ✅ Implemented | Needs Testing |
 | **Backend API** | ✅ Runnable | Needs Integration |
-| **Database Layer** | ✅ SQLite + PostgreSQL | Production Ready |
+| **Database Layer** | ✅ PostgreSQL + PostgreSQL | Production Ready |
 | **Documentation** | ✅ Comprehensive | Production Ready |
 | **Multi-Tenant** | ✅ Implemented | Production Ready |
 | **Template System** | ✅ Unified | Production Ready |
@@ -138,7 +138,7 @@ src/giljo_mcp/
 
 ### Achieved Vision Goals ✅
 1. **Multi-Tenant Architecture** - Implemented via tenant keys
-2. **Local-First Philosophy** - SQLite default, PostgreSQL optional
+2. **Local-First Philosophy** - PostgreSQL default, PostgreSQL optional
 3. **Progressive Setup** - Advanced installer system complete
 4. **Professional UI** - Vue dashboard exceeds expectations
 5. **Zero-Config Start** - Bootstrap handles everything

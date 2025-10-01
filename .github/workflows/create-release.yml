@@ -95,8 +95,8 @@ jobs:
           ## 🔧 Deployment Modes
 
           Choose during installation:
-          - **Local Development**: SQLite, no authentication, localhost only
-          - **Server Deployment**: PostgreSQL/SQLite, API key auth, network accessible
+          - **Local Development**: PostgreSQL, no authentication, localhost only
+          - **Server Deployment**: PostgreSQL/PostgreSQL, API key auth, network accessible
 
           ## 📖 Documentation
 

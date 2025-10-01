@@ -1051,7 +1051,7 @@
 
   If you must build custom:
   1. Skip the singleton server - let each Claude instance run its own
-  2. Use SQLite instead of PostgreSQL (portable, no setup)
+  2. Use PostgreSQL instead of PostgreSQL (portable, no setup)
   3. Use file-based message passing or Redis
   4. Build the minimum viable orchestrator first
 
@@ -1070,7 +1070,7 @@
   4. If you want adoption: Make it 10x simpler - one binary, no database, file-based state
 
   The best tools are either:
-  - Dead simple (curl, grep, sqlite)
+  - Dead simple (curl, grep, postgresql)
   - Incredibly powerful (Kubernetes, PostgreSQL)
 
   Yours is currently neither. Pick a side.
@@ -1269,18 +1269,18 @@
 
   Database Strategy: Dual Approach
 
-  I recommend SQLite + PostgreSQL dual support:
+  I recommend PostgreSQL + PostgreSQL dual support:
 
   # config.yaml
   database:
-    type: sqlite  # or postgresql
-    sqlite:
+    type: postgresql  # or postgresql
+    postgresql:
       path: ./data/giljo_mcp.db  # Single file, easy
     postgresql:
       url: postgresql://user:pass@localhost/giljo_mcp
 
   Why dual?
-  - SQLite for local/small teams: Zero setup, single file, portable
+  - PostgreSQL for local/small teams: Zero setup, single file, portable
   - PostgreSQL for production/scale: When you need concurrent users, performance
   - Same schema, different engines: SQLAlchemy makes this easy
 
@@ -1316,7 +1316,7 @@
 
   Database:
   - SQLAlchemy ORM - Write once, deploy anywhere
-  - Alembic - Migrations for both SQLite and PostgreSQL
+  - Alembic - Migrations for both PostgreSQL and PostgreSQL
 
   The 5-Day Rewrite Plan
 
@@ -1400,7 +1400,7 @@
   - Tenant isolation
   - API key management
   - Modern reactive UI
-  - SQLite option
+  - PostgreSQL option
   - Docker deployment
   - One-binary distribution
 
@@ -1421,12 +1421,12 @@
   1. 7,500 lines is 2-3 days for core functionality
   2. Multi-tenant architecture requires fundamental changes anyway
   3. Name change will touch everything regardless
-  4. SQLite option dramatically improves adoption
+  4. PostgreSQL option dramatically improves adoption
   5. Modern UI will make it more appealing
 
   The Strategic Direction:
   - Build for both local and server deployment
-  - SQLite default, PostgreSQL optional
+  - PostgreSQL default, PostgreSQL optional
   - API-first with multiple UI options
   - Docker + pip installable
   - Zero to running in 2 minutes
@@ -1454,14 +1454,14 @@
   local:
     host: 127.0.0.1
     port: 5001
-    database: sqlite
+    database: postgresql
     auth: none
 
   # LAN mode (small team)
   lan:
     host: 0.0.0.0  # Bind to all interfaces
     port: 5001
-    database: sqlite  # or postgresql
+    database: postgresql  # or postgresql
     auth: api_key
 
   # WAN/Cloud mode (distributed team)
@@ -1480,18 +1480,18 @@
   class DatabaseManager:
       def __init__(self, config):
           if config.mode == "local":
-              # Local: SQLite in user's home directory
+              # Local: PostgreSQL in user's home directory
               db_path = Path.home() / ".giljo-mcp" / "local.db"
               db_path.parent.mkdir(exist_ok=True)
-              self.engine = create_engine(f"sqlite:///{db_path}")
+              self.engine = create_engine(f"postgresql:///{db_path}")
 
           elif config.mode in ["lan", "wan"]:
-              # Server: SQLite for small teams, PostgreSQL for scale
-              if config.database == "sqlite":
-                  # Shared SQLite (works for <10 concurrent users)
+              # Server: PostgreSQL for small teams, PostgreSQL for scale
+              if config.database == "postgresql":
+                  # Shared PostgreSQL (works for <10 concurrent users)
                   db_path = Path(config.data_dir) / "shared.db"
                   self.engine = create_engine(
-                      f"sqlite:///{db_path}",
+                      f"postgresql:///{db_path}",
                       connect_args={"check_same_thread": False}
                   )
               else:
@@ -1580,13 +1580,13 @@
   ├── Install: pip install giljo-mcp
   ├── Run: giljo-mcp start
   ├── Use: Works immediately on localhost
-  └── Database: SQLite in ~/.giljo-mcp/
+  └── Database: PostgreSQL in ~/.giljo-mcp/
 
   Day 30: LAN Mode (team grows)
   ├── Server: giljo-mcp start --mode=lan
   ├── Clients: Point to 192.168.1.x
   ├── Auth: Generate API keys
-  └── Database: Still SQLite (or upgrade to PostgreSQL)
+  └── Database: Still PostgreSQL (or upgrade to PostgreSQL)
 
   Day 90: WAN Mode (remote work)
   ├── Deploy: Docker on cloud VPS
@@ -1644,8 +1644,8 @@
   - Configuration determines behavior
   - No architectural changes needed to scale
 
-  2. SQLite First, PostgreSQL When Needed
-  - SQLite handles 99% of use cases
+  2. PostgreSQL First, PostgreSQL When Needed
+  - PostgreSQL handles 99% of use cases
   - PostgreSQL for true concurrent scale
   - Same ORM code for both
 
@@ -1671,7 +1671,7 @@
   Implementation Priority
 
   Week 1: Core Local Mode
-  - SQLite database
+  - PostgreSQL database
   - Basic orchestration
   - MCP protocol
   - Simple web UI

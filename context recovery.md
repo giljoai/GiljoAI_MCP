@@ -1064,7 +1064,7 @@ allready done.
        18 +
        19 +      # Optional services
        20 +      "Frontend Dev Server": 6000,  # Vite dev server (development only)
-       21 +      "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
+       21 +      "PostgreSQL": 5432,  # If using PostgreSQL instead of PostgreSQL
        22 +
        23 +      # Legacy ports (deprecated in v2.0)
        24 +      # These are checked for migration purposes only
@@ -1077,7 +1077,7 @@ allready done.
        31 +  DEFAULT_CONFIG = {
        32 +      "server_port": 8000,
        33 +      "enable_frontend_dev": False,
-       34 +      "database_type": "sqlite",
+       34 +      "database_type": "postgresql",
        35 +  }
        36
        37 +
@@ -1453,7 +1453,7 @@ install, it will set up the server fully?
   ✅ Installs all Python dependencies (requirements.txt)
   ✅ Creates configuration (config.yaml with port 8000)
   ✅ Sets up directories (data/, logs/, backups/)
-  ✅ Configures database (SQLite by default)
+  ✅ Configures database (PostgreSQL by default)
   ✅ Creates desktop shortcuts (Start/Stop Server)
   ✅ Generates API keys (if LAN/WAN mode)
 
@@ -1494,7 +1494,7 @@ install, it will set up the server fully?
   ✅ Everything Should Work: The installer will fully set up:
   - HTTP API server with all MCP tools
   - WebSocket support
-  - Database (SQLite or PostgreSQL)
+  - Database (PostgreSQL or PostgreSQL)
   - Authentication (if not LOCAL mode)
   - Claude compatibility via adapter
 
@@ -1670,7 +1670,7 @@ that first
        22
        23        # Optional development services
        24        "Frontend Dev Server": 6000,  # Vite dev server (optional)
-       25        "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
+       25        "PostgreSQL": 5432,  # If using PostgreSQL instead of PostgreSQL
        26
        27 +      # Alternative ports if 7272 is occupied
        28 +      "alternatives": [7273, 7274, 8747, 8823, 9456, 9789],
@@ -1793,7 +1793,7 @@ that first
        18
        19        # Optional services
        20        "Frontend Dev Server": 6000,  # Vite dev server (development only)
-       21        "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
+       21        "PostgreSQL": 5432,  # If using PostgreSQL instead of PostgreSQL
        22
        23 +      # Alternative ports if 7272 is occupied
        24 +      "alternatives": [7273, 7274, 8747, 8823, 9456, 9789],
@@ -1811,7 +1811,7 @@ that first
        36 -      "server_port": 8000,
        36 +      "server_port": 7272,  # Changed from 8000 to avoid conflicts
        37        "enable_frontend_dev": False,
-       38        "database_type": "sqlite",
+       38        "database_type": "postgresql",
        39    }
 
 ● Update(scripts\check_ports.py)

@@ -15,13 +15,13 @@ This session focused on fixing critical installation issues discovered during CL
 ## Problems Identified
 
 ### 1. GUI Installer Text Issues (Quick Fix)
-**Problem**: GUI installer still showed outdated SQLite references and incorrect mode naming.
+**Problem**: GUI installer still showed outdated PostgreSQL references and incorrect mode naming.
 
 **Location**: `setup_gui.py` - ProfileSelectionPage
 
 **Issues**:
 - "Single Developer Mode" should be "Local on Device Mode"
-- Description still mentioned SQLite instead of PostgreSQL
+- Description still mentioned PostgreSQL instead of PostgreSQL
 - Unnecessary emoji in recommendation text
 
 **Solution**: Updated text and descriptions to reflect PostgreSQL-only architecture.

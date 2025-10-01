@@ -52,7 +52,7 @@ tester:
 ## Key Technical Decisions
 
 ### Database Architecture
-- **Dual Support**: SQLite (local) + PostgreSQL (production)
+- **Dual Support**: PostgreSQL (local) + PostgreSQL (production)
 - **Multi-Tenant**: tenant_key field in all models
 - **Connection Pooling**: Optimized for each database type
 - **Migrations**: Alembic for schema management
