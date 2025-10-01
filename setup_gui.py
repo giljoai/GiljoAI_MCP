@@ -213,7 +213,7 @@ class WelcomePage(ttk.Frame):
                 logo_text.pack(pady=(0, 10))
 
                 subtitle = tk.Label(main_frame,
-                                   text="MCP Orchestrator",
+                                   text="MCP Orchestrator v0.2 Beta",
                                    font=('Segoe UI', 18),
                                    fg=COLORS['text_success'],
                                    bg=COLORS['bg_primary'])
@@ -228,7 +228,7 @@ class WelcomePage(ttk.Frame):
             logo_text.pack(pady=(0, 10))
 
             subtitle = tk.Label(main_frame,
-                               text="MCP Orchestrator",
+                               text="MCP Orchestrator v0.2 Beta",
                                font=('Segoe UI', 18),
                                fg=COLORS['text_success'],
                                bg=COLORS['bg_primary'])
@@ -2369,61 +2369,71 @@ class ProgressPage(WizardPage):
                 self.log(f"Warning: Could not create shortcuts: {shortcut_error}", "warning")
                 self.log("You can use the batch files in the installation folder instead", "info")
 
-            # Register with Claude if available
-            self.log("\nChecking Claude integration...", "system")
+            # Register with AI CLI tools using UniversalMCPInstaller
+            self.log("\nChecking AI tool integration...", "system")
             try:
-                import subprocess
-                import shutil
+                from installer.universal_mcp_installer import UniversalMCPInstaller
 
-                # Check if claude CLI is available
-                if shutil.which("claude"):
-                    self.log("Claude CLI found. Registering MCP server...", "system")
+                installer = UniversalMCPInstaller()
 
-                    # Get the installation directory
-                    install_dir = Path.cwd()
-                    python_path = install_dir / "venv" / "Scripts" / "python.exe"
+                # Detect installed AI CLI tools
+                detected_tools = installer.detect_installed_tools()
 
-                    # Register the MCP adapter (not the server directly)
-                    # The adapter translates stdio to HTTP calls to localhost:8000
-                    result = subprocess.run(
-                        ["claude", "mcp", "add", "giljo-mcp",
-                         f"{python_path} -m giljo_mcp.mcp_adapter",
-                         "--scope", "user"],
-                        capture_output=True,
-                        text=True,
-                        timeout=10
+                if not detected_tools:
+                    self.log("No AI CLI tools detected - skipping MCP registration", "info")
+                    self.log("You can register AI tools later using: python register_ai_tools.py", "info")
+                else:
+                    tool_display_names = {
+                        'claude': 'Claude Code',
+                        # TECHDEBT: Multi-tool support disabled - see TECHDEBT.md
+                        # 'codex': 'Codex CLI (OpenAI)',
+                        # 'gemini': 'Gemini CLI (Google)'
+                    }
+
+                    self.log(f"Detected {len(detected_tools)} AI CLI tool(s):", "system")
+                    for tool in detected_tools:
+                        self.log(f"  * {tool_display_names.get(tool, tool)}", "info")
+
+                    # Prepare server configuration
+                    server_url = self.setup.config.get('server_url', 'http://localhost:8000')
+                    if hasattr(self.setup, 'deployment_mode') and self.setup.deployment_mode == 'SERVER':
+                        host = self.setup.config.get('host', 'localhost')
+                        port = self.setup.selected_port if hasattr(self.setup, 'selected_port') else self.setup.server_port
+                        server_url = f"http://{host}:{port}"
+
+                    # Register with all detected tools
+                    self.log("\nRegistering GiljoAI MCP server...", "system")
+                    results = installer.register_all(
+                        server_name="giljo-mcp",
+                        command="python",
+                        args=["-m", "giljo_mcp"],
+                        env={
+                            "GILJO_SERVER_URL": server_url,
+                            "GILJO_MODE": getattr(self.setup, 'deployment_mode', 'LOCAL')
+                        }
                     )
 
-                    if result.returncode == 0:
-                        self.log("Successfully registered with Claude!", "success")
-                        self.log("Please restart Claude to activate the MCP server.", "info")
-                        self.log("The MCP adapter will bridge Claude to the HTTP server on port 8000", "info")
-                    else:
-                        error_msg = result.stderr.strip() if result.stderr else "Unknown error"
-                        self.log(f"Could not auto-register with Claude: {error_msg}", "warning")
-                        self.log("Manual registration instructions:", "info")
-                        self.log(f"  1. Open a terminal in: {install_dir}", "info")
-                        self.log(f"  2. Run: register_claude.bat", "info")
-                        self.log("  3. Restart Claude after registration", "info")
-                else:
-                    self.log("Claude CLI not found. This is optional.", "info")
-                    self.log("If you have Claude Code installed:", "info")
-                    self.log(f"  1. Open a terminal in: {install_dir}", "info")
-                    self.log(f"  2. Run: register_claude.bat", "info")
-                    self.log("  3. Restart Claude after registration", "info")
+                    # Report results
+                    success_count = 0
+                    self.log("\nRegistration results:", "system")
+                    for tool, success in results.items():
+                        tool_name = tool_display_names.get(tool, tool)
+                        if success:
+                            self.log(f"  [OK] {tool_name}: Successfully registered", "success")
+                            success_count += 1
+                        else:
+                            self.log(f"  [WARNING] {tool_name}: Registration failed", "warning")
 
-            except subprocess.TimeoutExpired:
-                self.log("Claude registration timed out", "warning")
-                self.log("You can complete registration manually:", "info")
-                self.log(f"  Run: register_claude.bat from the installation folder", "info")
-            except FileNotFoundError as e:
-                self.log(f"Could not find required file for Claude registration: {e}", "warning")
-                self.log("Manual registration available after installation:", "info")
-                self.log(f"  Run: register_claude.bat from the installation folder", "info")
-            except Exception as claude_error:
-                self.log(f"Claude registration encountered an issue: {claude_error}", "warning")
-                self.log("Manual registration is available:", "info")
-                self.log(f"  Run: register_claude.bat from the installation folder", "info")
+                    if success_count > 0:
+                        self.log(f"\nSuccessfully registered with {success_count} tool(s)!", "success")
+                        self.log("Please restart your AI CLI tool(s) to activate the MCP server.", "info")
+                    else:
+                        self.log("MCP registration failed for all tools", "warning")
+                        self.log("You can register manually later: python register_ai_tools.py", "info")
+
+            except Exception as e:
+                self.log(f"MCP registration error: {e}", "warning")
+                self.log("You can register manually later: python register_ai_tools.py", "info")
 
         except Exception as e:
             self.log(f"Health check error: {e}", "system")
@@ -2758,18 +2768,16 @@ NEXT STEPS:
 
 1. CONNECT YOUR AI CODING AGENT:
 
-   We've created integration helpers for all major AI tools.
-   Run the universal wizard to configure all detected tools:
+   GiljoAI MCP currently supports Claude Code exclusively.
+   The installer should have auto-detected and registered Claude Code.
 
-   Run: python {install_path}\\register_ai_tools.py
+   If registration failed, run:
+   • python {install_path}\\register_ai_tools.py
 
-   Or register individual tools:
-   • Claude Code:  {install_path}\\register_claude.bat
-   • Codex CLI:    python {install_path}\\register_codex.py
-   • Gemini CLI:   python {install_path}\\register_gemini.py
-   • Grok CLI:     python {install_path}\\register_grok.py
+   📖 Documentation: {install_path}\\docs\\AI_TOOL_INTEGRATION.md
 
-   📖 Detailed instructions: {install_path}\\docs\\AI_TOOL_INTEGRATION.md
+   Note: Support for other AI tools (Cursor, Windsurf, Gemini, Codeium)
+   is planned for Q2 2025. See TECHDEBT.md for details.
 
 2. START THE SERVER:
    Run: {install_path}\\start_giljo.bat
