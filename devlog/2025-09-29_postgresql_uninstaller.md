@@ -65,13 +65,13 @@ backup_dir = self.backup_user_data()
 ### Platform Detection
 ```python
 if sys.platform == "win32":
-    pg_location = "C:/PostgreSQL/16"
-    pg_service = "postgresql-x64-16"
+    pg_location = "C:/PostgreSQL/18"
+    pg_service = "postgresql-x64-18"
 elif sys.platform == "darwin":
-    pg_location = "/usr/local/opt/postgresql@16"
+    pg_location = "/usr/local/opt/postgresql@18"
     pg_service = "postgresql"
 else:
-    pg_location = "/usr/lib/postgresql/16"
+    pg_location = "/usr/lib/postgresql/18"
     pg_service = "postgresql"
 ```
 

@@ -235,7 +235,7 @@ class Bootstrap:
         print(f"\n{self.colors['HEADER']}Next Steps:{self.colors['ENDC']}")
         print(f"\n{self.colors['BLUE']}1. Global Registration (Optional):{self.colors['ENDC']}")
         print(f"   Run: python {install_path / 'register_ai_tools.py'}")
-        print(f"   Configure integration with Claude Code, Codex, Gemini, or Grok")
+        print(f"   Configure integration with Claude Code")
         print(f"   Or see: {install_path / 'docs' / 'AI_TOOL_INTEGRATION.md'}")
 
         print(f"\n{self.colors['BLUE']}2. Connect Your Projects:{self.colors['ENDC']}")

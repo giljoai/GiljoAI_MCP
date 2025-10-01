@@ -241,6 +241,11 @@ EXCLUDE_FILES = [
 
     # Specific exclusions
     "test_installation.py",  # Our test script
+    "test_mcp_registration.py",  # MCP test script
+    "cleanup_mcp_test.py",  # MCP cleanup script
+    "setup_gui_mcp_integration.py",  # Dev integration script
+    "setup_cli_mcp_integration.py",  # Dev integration script
+    "integrate_mcp.py",  # Dev integration script
     "giltest.py",  # This deployment script itself
     "giltest.bat",  # The batch wrapper
     ".mcp.json",  # MCP config
@@ -582,7 +587,13 @@ def verify_deployment(preserved_items=None):
         "requirements.txt",
         "README.md",
         "devuninstall.py",
-        "uninstall.py"
+        "uninstall.py",
+        "installer/universal_mcp_installer.py",  # MCP registration system
+        "installer/mcp_adapter_base.py",
+        "installer/claude_adapter.py",
+        "installer/codex_adapter.py",
+        "installer/gemini_adapter.py",
+        "register_ai_tools.py"  # Interactive MCP registration tool
     ]
 
     for file_name in key_files:

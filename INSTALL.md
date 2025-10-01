@@ -90,8 +90,10 @@ Edit `config.yaml` to match your needs. Key settings:
 
 ```yaml
 database:
-  database_type: sqlite
-  path: ./data/giljo.db
+  database_type: postgresql
+  host: localhost
+  port: 5432
+  database: giljo_mcp
 
 server:
   mode: local

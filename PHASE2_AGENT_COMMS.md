@@ -308,8 +308,8 @@
   - TST-01: Test patterns and mocking strategies available
   - INT-01: Progress callbacks and error handling implemented
 - Key capabilities:
-  - Windows silent installation (EDB PostgreSQL 15.4/15.5/16.0)
-  - Automatic service configuration (postgresql-x64-15)
+  - Windows silent installation (EDB PostgreSQL 15.4/15.5/16.0/18.0)
+  - Automatic service configuration (postgresql-x64-18)
   - Database creation with secure credentials
   - Full health check integration
 - Standing by for Phase 2 support or additional PostgreSQL tasks

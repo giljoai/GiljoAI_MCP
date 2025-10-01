@@ -149,15 +149,15 @@ class GiljoUninstaller:
                 stop_script = self.install_dir / "stop_giljo.bat"
                 if stop_script.exists():
                     # Don't wait for stop script to complete, just trigger it
-                    subprocess.Popen([str(stop_script)], shell=True)
+                    subprocess.Popen([str(stop_script)])
                     time.sleep(2)  # Give it a moment to start stopping services
 
                 # Force kill by port
                 ports = [6000, 6001, 6002]
                 for port in ports:
+                    cmd = ["cmd", "/c", f"for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{port}') do taskkill /F /PID %a"]
                     subprocess.run(
-                        f"for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{port}') do taskkill /F /PID %a",
-                        shell=True,
+                        cmd,
                         capture_output=True,
                         check=False,
                     )
@@ -325,7 +325,7 @@ class GiljoUninstaller:
 
         try:
             # Check for PostgreSQL service
-            pg_services = ["postgresql-x64-16", "postgresql-x64-15", "postgresql-x64-14", "postgresql"]
+            pg_services = ["postgresql-x64-18", "postgresql-x64-16", "postgresql-x64-15", "postgresql-x64-14", "postgresql"]
             found_service = False
 
             for service_name in pg_services:

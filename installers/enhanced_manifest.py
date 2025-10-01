@@ -232,7 +232,7 @@ class EnhancedInstallationManifest:
                 # if "Redis" in result.stdout:
                 #     self.track_service("Redis", "windows_service")
                 if "postgresql" in result.stdout:
-                    self.track_service("postgresql-x64-16", "windows_service")
+                    self.track_service("postgresql-x64-18", "windows_service")
             except:
                 pass
 

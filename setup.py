@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GiljoAI MCP Setup Base Module - v2.0 HTTP Architecture
+GiljoAI MCP Setup Base Module - v0.2 Beta
 Base classes and utilities for installation scripts
 """
 
@@ -14,6 +14,13 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+# Import for MCP registration support
+try:
+    from installer.universal_mcp_installer import UniversalMCPInstaller
+    MCP_SUPPORT_AVAILABLE = True
+except ImportError:
+    MCP_SUPPORT_AVAILABLE = False
 
 # Updated port assignments for v2.0 architecture
 PORT_ASSIGNMENTS = {
@@ -171,7 +178,7 @@ class GiljoSetup:
             is_used = check_port(6000)
             results.append(("Frontend Dev Server", 6000, is_used))
 
-        # PostgreSQL if not using SQLite
+        # PostgreSQL configuration (required)
         if self.config.get("database_type") == "postgresql":
             is_used = check_port(5432)
             results.append(("PostgreSQL", 5432, is_used))
@@ -323,7 +330,15 @@ class GiljoSetup:
     def display_summary(self):
         """Display installation summary for v2.0"""
         print("\n" + "="*60)
-        print("GiljoAI MCP v2.0 Installation Complete!")
+        print("GiljoAI MCP v0.2 Beta Installation Complete!")
+
+        # Show MCP status
+        print("\nAI Tool Integration:")
+        if hasattr(self, 'mcp_registered') and self.mcp_registered:
+            print("  [OK] AI CLI tools configured")
+        else:
+            print("  [INFO] Run 'python register_ai_tools.py' to configure AI tools")
+
         print("="*60)
         print("\nArchitecture: Unified HTTP Server")
         print(f"Server Port: {self.server_port}")
@@ -331,11 +346,11 @@ class GiljoSetup:
         print("Database: PostgreSQL")
 
         print("\nKey Features:")
-        print("✓ Multi-user support (multiple concurrent connections)")
-        print("✓ Persistent server (stays running between sessions)")
-        print("✓ HTTP/REST API for all operations")
-        print("✓ WebSocket for real-time updates")
-        print("✓ Claude compatibility via stdio adapter")
+        print("* Multi-user support (multiple concurrent connections)")
+        print("* Persistent server (stays running between sessions)")
+        print("* HTTP/REST API for all operations")
+        print("* WebSocket for real-time updates")
+        print("* Claude compatibility via stdio adapter")
 
         print("\nNext Steps:")
         print("1. Start the server: run start_giljo.bat")
@@ -347,7 +362,81 @@ class GiljoSetup:
             print(f"\nAPI Key: {self.config.get('api_key', 'Check config.yaml')}")
             print("Save this key - you'll need it for remote connections")
 
+    def setup_mcp_integration(self) -> bool:
+        """Set up MCP integration with detected AI CLI tools."""
+        if not MCP_SUPPORT_AVAILABLE:
+            print("\nMCP registration support not available - skipping")
+            return False
 
+        try:
+            print("\n" + "="*40)
+            print("AI Tool Integration")
+            print("="*40)
+
+            installer = UniversalMCPInstaller()
+
+            print("\nDetecting installed AI CLI tools...")
+            detected_tools = installer.detect_installed_tools()
+
+            if not detected_tools:
+                print("[INFO] No AI CLI tools detected - skipping MCP registration")
+                print("  You can register AI tools later using: python register_ai_tools.py")
+                return False
+
+            tool_display_names = {
+                'claude': 'Claude Code',
+                'codex': 'Codex CLI (OpenAI)',
+                'gemini': 'Gemini CLI (Google)'
+            }
+
+            print(f"\n[OK] Detected {len(detected_tools)} AI CLI tool(s):")
+            for tool in detected_tools:
+                print(f"  * {tool_display_names.get(tool, tool)}")
+
+            # Prepare server configuration
+            server_url = self.config.get('server_url', 'http://localhost:8000')
+            if hasattr(self, 'deployment_mode') and self.deployment_mode == 'SERVER':
+                host = self.config.get('host', 'localhost')
+                port = self.selected_port if hasattr(self, 'selected_port') else self.server_port
+                server_url = f"http://{host}:{port}"
+
+            # Ask user
+            print("\nWould you like to register GiljoAI MCP with these tools?")
+            response = input("Register now? (y/n) [y]: ").strip().lower()
+
+            if response == 'n':
+                print("[INFO] Skipping MCP registration")
+                return False
+
+            # Register
+            print("\nRegistering GiljoAI MCP server...")
+            results = installer.register_all(
+                server_name="giljo-mcp",
+                command="python",
+                args=["-m", "giljo_mcp"],
+                env={
+                    "GILJO_SERVER_URL": server_url,
+                    "GILJO_MODE": getattr(self, 'deployment_mode', 'LOCAL')
+                }
+            )
+
+            # Report results
+            success_count = 0
+            print("\nRegistration results:")
+            for tool, success in results.items():
+                tool_name = tool_display_names.get(tool, tool)
+                if success:
+                    print(f"  [OK] {tool_name}: Successfully registered")
+                    success_count += 1
+                else:
+                    print(f"  [WARNING] {tool_name}: Registration failed")
+
+            return success_count > 0
+
+        except Exception as e:
+            print(f"\n[WARNING] MCP registration error: {e}")
+            print("  You can register manually later: python register_ai_tools.py")
+            return False
 def main():
     """Main entry point for setup"""
     # Don't run during pip install
@@ -407,6 +496,9 @@ def main():
 
         if setup.install_requirements():
             print("✓ Dependencies installed")
+            # MCP Integration
+            mcp_registered = setup.setup_mcp_integration()
+            setup.mcp_registered = mcp_registered
 
         if setup.create_config_file():
             print("✓ Configuration created")

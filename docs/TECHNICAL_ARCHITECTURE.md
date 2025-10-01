@@ -13,12 +13,12 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system designed w
 ### Core Architecture Principles
 
 1. **Local-First Design**: Optimized for single-machine performance with network capabilities
-2. **Database Agnostic**: SQLite for local, PostgreSQL for scale
+2. **PostgreSQL Database**: PostgreSQL required for all deployment modes
 3. **Multi-Tenant Ready**: Project isolation via unique keys from day one
 4. **Protocol Native**: Built on Model Context Protocol (MCP) standards
 5. **Progressive Enhancement**: Features activate based on deployment mode
 6. **OS-Neutral Code**: All paths use pathlib.Path(), never hardcoded separators
-7. **Profile-Based Installation**: Four deployment profiles with automatic dependency management
+7. **Mode-Based Installation**: Two installation modes (localhost/server) with automatic dependency management
 8. **Service Lifecycle Management**: Cross-platform service creation and management
 
 ### Cross-Platform Development Requirements
@@ -86,7 +86,7 @@ config_file = "C:\\Users\\name\\.giljo-mcp"  # Windows only
 ├─────────────────────────────────────────────────────────────┤
 │                     Data Layer                               │
 │  ┌──────────────────────────────────────────────────┐      │
-│  │         SQLAlchemy ORM (SQLite/PostgreSQL)       │      │
+│  │         SQLAlchemy ORM (PostgreSQL)              │      │
 │  └──────────────────────────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -176,35 +176,23 @@ AgentTemplate ←→ TemplateArchive (1:many)
 
 The installer has been transformed from a simple configuration wizard into a comprehensive dependency management system with cross-platform service lifecycle management.
 
-#### Installation Profiles
+#### Installation Modes
 
-**Four distinct deployment profiles with automatic dependency resolution:**
+**Two distinct installation modes with automatic dependency resolution:**
 
 ```python
-# Profile-based installation paths
-Developer Profile:
-    ├── SQLite (default) or PostgreSQL (optional)
-    ├── Redis (local instance)
+# Mode-based installation paths
+Localhost Mode:
+    ├── PostgreSQL (required)
+    ├── No authentication
     ├── Local-only configuration
     └── Single-machine optimization
 
-Team Profile:
-    ├── PostgreSQL (multi-user)
-    ├── Redis (network accessible)
+Server Mode:
+    ├── PostgreSQL (required)
     ├── API authentication required
-    └── LAN-optimized networking
-
-Enterprise Profile:
-    ├── PostgreSQL (production-grade)
-    ├── Redis (clustering-ready)
-    ├── OAuth2/SAML integration ready
-    └── Audit logging and compliance
-
-Research Profile:
-    ├── Flexible database choice
-    ├── Extended agent templates
-    ├── Debug features enabled
-    └── Experimentation-optimized
+    ├── Network-accessible configuration
+    └── LAN/WAN optimized networking
 ```
 
 #### Dependency Installation System
@@ -253,45 +241,43 @@ Service Features:
 
 #### Configuration Management System
 
-**Profile-based dynamic configuration:**
+**Mode-based dynamic configuration:**
 
 ```python
 # installer/config/config_manager.py
 ConfigurationManager:
-    ├── Profile-specific .env templates
+    ├── Mode-specific .env templates
     ├── Dynamic config.yaml generation
     ├── Runtime value substitution
     ├── Configuration validation
-    └── Profile migration utilities
+    └── Mode migration utilities
 
 Template System:
-    ├── .env.developer (SQLite optimized)
-    ├── .env.team (PostgreSQL + networking)
-    ├── .env.enterprise (production features)
-    └── .env.research (flexible configuration)
+    ├── .env.localhost (localhost optimized)
+    └── .env.server (network-ready configuration)
 ```
 
 #### GUI Enhancement Architecture
 
-**Profile-aware installer wizard:**
+**Mode-aware installer wizard:**
 
 ```python
 # Enhanced setup_gui.py structure
 Wizard Pages:
     ├── Welcome (unchanged)
-    ├── ProfileSelectionPage (NEW - choose deployment type)
-    ├── DatabasePage (adapts to selected profile)
-    ├── PortsPage (profile-aware defaults)
-    ├── SecurityPage (profile-specific requirements)
-    ├── ServiceControlPage (NEW - manage services)
+    ├── ModeSelectionPage (choose localhost or server)
+    ├── DatabasePage (PostgreSQL configuration)
+    ├── PortsPage (mode-aware defaults)
+    ├── SecurityPage (mode-specific requirements)
+    ├── ServiceControlPage (manage services)
     ├── ReviewPage (comprehensive summary)
     └── ProgressPage (parallel installation tracking)
 
-Profile Adaptation:
-    ├── UI elements show/hide based on profile
-    ├── Default values change per profile
+Mode Adaptation:
+    ├── UI elements show/hide based on mode
+    ├── Default values change per mode
     ├── Help text adapts to use case
-    └── Service list varies by deployment type
+    └── Service configuration varies by deployment type
 ```
 
 #### Installation Flow Architecture
@@ -306,8 +292,8 @@ Entry Point (unchanged):
 Enhanced Flow:
 ├── OS Detection & Python validation
 ├── Phase 2 dependency pre-check (NEW)
-├── Profile Selection (NEW)
-├── Profile-aware configuration
+├── Mode Selection (localhost or server)
+├── Mode-aware configuration
 ├── Parallel Installation:
 │   ├── PostgreSQL installer (if needed)
 │   ├── Redis installer (always)
@@ -363,21 +349,21 @@ def log_sub_agent_completion(agent_type, results, duration_seconds):
 
 ### Deployment Modes
 
-#### Local Mode (Default)
+#### Localhost Mode (Default)
 
 ```yaml
 Configuration:
   host: 127.0.0.1
   port: 5001
-  database: sqlite:///~/.giljo-mcp/local.db
+  database: postgresql://localhost/giljo_mcp
   auth: none
 
 Characteristics:
   - Single user
   - No authentication
-  - SQLite database
+  - PostgreSQL database
   - Localhost only
-  - Zero configuration
+  - Minimal configuration
 ```
 
 #### LAN Mode (Team)
@@ -457,11 +443,10 @@ Characteristics:
 - **Language**: Python 3.8+
 - **Framework**: FastAPI (async, WebSockets, OpenAPI)
 - **ORM**: SQLAlchemy 2.0 (async support)
-- **Database**: SQLite (local), PostgreSQL (server)
+- **Database**: PostgreSQL (all modes)
 - **Database Drivers**:
   - psycopg2-binary (PostgreSQL sync operations)
   - asyncpg (PostgreSQL async operations - high performance)
-  - aiosqlite (SQLite async operations)
 - **Queue**: Built-in (local), Redis (scale option)
 - **Process**: uvicorn (ASGI server)
 
@@ -525,8 +510,8 @@ Characteristics:
 
 #### Scaling Boundaries
 
-- **SQLite**: 1-10 concurrent users
-- **PostgreSQL**: 10-1000 concurrent users
+- **PostgreSQL (Localhost)**: 1-10 concurrent users
+- **PostgreSQL (Server)**: 10-1000 concurrent users
 - **PostgreSQL Cluster**: 1000+ concurrent users
 
 ### Integration Architecture
@@ -688,14 +673,12 @@ giljo-mcp/
 #### Database Migration
 
 ```python
-# Alembic migrations for both SQLite and PostgreSQL
+# Alembic migrations for PostgreSQL
 alembic upgrade head
 
-# Auto-detect database type and apply appropriate schema
-if config.database_type == "sqlite":
-    apply_sqlite_optimizations()
-else:
-    apply_postgresql_indexes()
+# Apply PostgreSQL optimizations
+apply_postgresql_indexes()
+apply_postgresql_performance_tuning()
 ```
 
 ### Development Workflow

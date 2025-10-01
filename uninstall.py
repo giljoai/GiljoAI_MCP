@@ -107,7 +107,7 @@ class GiljoProductionUninstaller:
             self.log("Uninstalling PostgreSQL server...", "INFO")
             try:
                 if self.platform == "win32":
-                    location = pg_deps.get('location', 'C:/PostgreSQL/16')
+                    location = pg_deps.get('location', 'C:/PostgreSQL/18')
                     uninstaller = Path(location) / "uninstall-postgresql.exe"
                     if uninstaller.exists():
                         subprocess.run([str(uninstaller), "--mode", "unattended"], timeout=120)
@@ -115,8 +115,8 @@ class GiljoProductionUninstaller:
                     else:
                         self.log(f"PostgreSQL uninstaller not found at: {uninstaller}", "WARNING")
                 elif self.platform == "darwin":
-                    subprocess.run(["brew", "uninstall", "postgresql@16"], timeout=60)
-                    subprocess.run(["brew", "services", "stop", "postgresql@16"], timeout=30)
+                    subprocess.run(["brew", "uninstall", "postgresql@18"], timeout=60)
+                    subprocess.run(["brew", "services", "stop", "postgresql@18"], timeout=30)
                     self.log("PostgreSQL server uninstalled", "SUCCESS")
                 else:
                     subprocess.run(["sudo", "apt", "remove", "postgresql", "postgresql-contrib", "-y"], timeout=120)
@@ -150,6 +150,34 @@ class GiljoProductionUninstaller:
                 self.log(f"Failed to remove {item.name}: {e}", "ERROR")
 
         return removed
+
+    def remove_mcp_registrations(self):
+        """Remove MCP server registrations from AI CLI tools"""
+        self.log("Removing MCP registrations from AI CLI tools...")
+
+        try:
+            from installer.universal_mcp_installer import UniversalMCPInstaller
+
+            installer = UniversalMCPInstaller()
+            tools = installer.detect_installed_tools()
+
+            if not tools:
+                self.log("No AI CLI tools detected - skipping MCP unregistration", "INFO")
+                return 0
+
+            self.log(f"Detected: {', '.join(tools)}", "INFO")
+            results = installer.unregister_all("giljo-mcp")
+
+            success_count = sum(1 for v in results.values() if v)
+            self.log(f"Unregistered from {success_count}/{len(results)} AI CLI tools", "SUCCESS")
+            return success_count
+
+        except ImportError:
+            self.log("MCP unregistration unavailable (missing module)", "WARNING")
+            return 0
+        except Exception as e:
+            self.log(f"MCP unregistration failed: {e}", "WARNING")
+            return 0
 
     def remove_appdata_completely(self):
         """Remove ALL files from APPDATA and user directories"""
@@ -232,6 +260,7 @@ class GiljoProductionUninstaller:
         print("="*70)
 
         # Execute uninstall steps
+        mcp_unregistered = self.remove_mcp_registrations()
         self.remove_all_python_packages()
         self.remove_postgresql_completely()
         appdata_removed = self.remove_appdata_completely()
@@ -241,6 +270,7 @@ class GiljoProductionUninstaller:
         log_path = self.root_path / "uninstall_complete.log"
         with open(log_path, 'w') as f:
             f.write("GiljoAI MCP Nuclear Uninstall Complete\n")
+            f.write(f"MCP unregistrations: {mcp_unregistered}\n")
             f.write(f"Files removed: {files_removed}\n")
             f.write(f"APPDATA locations removed: {appdata_removed}\n")
             f.write("All Python packages uninstalled\n")
@@ -249,7 +279,8 @@ class GiljoProductionUninstaller:
         print("\n" + "="*70)
         print("NUCLEAR UNINSTALL COMPLETE")
         print("="*70)
-        print(f"\nFiles removed: {files_removed}")
+        print(f"\nMCP unregistrations: {mcp_unregistered}")
+        print(f"Files removed: {files_removed}")
         print(f"APPDATA locations removed: {appdata_removed}")
         print("Python packages: ALL UNINSTALLED")
         print("PostgreSQL: REMOVED")

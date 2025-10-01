@@ -23,6 +23,7 @@ python-multipart>=0.0.6          # Form data support
 # Utilities
 python-dotenv>=1.0.0        # Environment variables
 pyyaml>=6.0.0              # YAML configuration
+toml>=0.10.2               # TOML configuration (for Codex CLI)
 click>=8.1.0               # CLI interface
 rich>=13.0.0               # Beautiful terminal output
 httpx>=0.25.0              # HTTP client for API calls

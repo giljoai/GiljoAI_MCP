@@ -1,3 +1,10 @@
+# ============================================================================
+# DISABLED: Multi-tool support temporarily disabled
+# See docs/Techdebt.md and CLAUDE_CODE_EXCLUSIVITY_INVESTIGATION.md
+# This script will be re-enabled when Codex CLI gains subagent capabilities
+# or when hybrid orchestrator is implemented (Q2 2025)
+# ============================================================================
+
 #!/usr/bin/env python3
 """
 GiljoAI MCP - Gemini CLI Registration Script

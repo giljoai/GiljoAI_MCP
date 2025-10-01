@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Port Conflict Checker for GiljoAI MCP v2.0
+Port Conflict Checker for GiljoAI MCP v0.2 Beta
 Ensures no conflicts with the unified HTTP server architecture
 """
 
@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 
 
-# Port assignments for v2.0 architecture
+# Port assignments for v0.2 Beta architecture
 PORT_ASSIGNMENTS = {
     # Primary service - unified HTTP server
     "GiljoAI Orchestrator": 7272,  # Main server (API + MCP + WebSocket) - changed from 8000
@@ -23,15 +23,15 @@ PORT_ASSIGNMENTS = {
     # Alternative ports if 7272 is occupied
     "alternatives": [7273, 7274, 8747, 8823, 9456, 9789],
 
-    # Legacy ports (deprecated in v2.0)
+    # Legacy ports (deprecated in v0.2 Beta)
     # These are checked for migration purposes only
     "Legacy MCP Server": 6001,  # Old stdio server (deprecated)
     "Legacy REST API": 6002,  # Old separate API (deprecated)
     "Legacy WebSocket": 6003,  # Old separate WebSocket (deprecated)
-    "Legacy Port 8000": 8000,  # Old default port (v2.0 early versions)
+    "Legacy Port 8000": 8000,  # Old default port (early versions)
 }
 
-# New v2.0 default configuration
+# New default configuration
 DEFAULT_CONFIG = {
     "server_port": 7272,  # Changed from 8000 to avoid conflicts
     "enable_frontend_dev": False,
@@ -68,10 +68,10 @@ def load_config() -> dict:
 
 
 def get_configured_ports(config: dict) -> list[tuple[str, int]]:
-    """Extract all configured ports from config for v2.0."""
+    """Extract all configured ports from config."""
     ports = []
 
-    # Main orchestrator server (v2.0)
+    # Main orchestrator server
     server_port = config.get("server", {}).get("port", 7272)  # Changed default
     ports.append(("GiljoAI Orchestrator", server_port))
 
@@ -101,7 +101,7 @@ def check_legacy_ports() -> list[tuple[str, int, bool]]:
 def main():
     """Check for port conflicts."""
 
-    print("GiljoAI MCP v2.0 - Port Configuration Checker")
+    print("GiljoAI MCP v0.2 Beta - Port Configuration Checker")
     print("=" * 50)
 
     # Load configuration
@@ -133,7 +133,7 @@ def main():
         print("  ⚠️  Legacy services detected!")
         for service, port, _ in legacy_running:
             print(f"     - {service} on port {port}")
-        print("\n  These should be stopped before running v2.0")
+        print("\n  These should be stopped before running GiljoAI MCP")
         print("  Run: stop_giljo.bat to stop all services")
     else:
         print("  ✅ No legacy services running")
@@ -152,7 +152,7 @@ def main():
 
         if any(port == 7272 for _, port in conflicts):
             print("\nPort 7272 conflict detected!")
-            print("This is the main server port for GiljoAI MCP v2.0")
+            print("This is the main server port for GiljoAI MCP")
             print("Make sure no other GiljoAI instance is running")
             print("\nAlternative ports you can use:")
             for alt_port in PORT_ASSIGNMENTS.get("alternatives", []):

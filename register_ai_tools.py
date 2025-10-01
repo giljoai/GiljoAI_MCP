@@ -4,22 +4,23 @@ GiljoAI MCP - Universal AI Tool Registration Wizard
 Interactive menu for registering GiljoAI MCP with multiple AI coding agents
 """
 
-import os
 import sys
-import subprocess
-import shutil
 from pathlib import Path
 
-# ANSI colors for terminal output
+from installer.universal_mcp_installer import UniversalMCPInstaller
+
+
 class Colors:
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    CYAN = '\033[96m'
-    MAGENTA = '\033[95m'
-    GRAY = '\033[90m'
+    """ANSI colors for terminal output"""
+
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    CYAN = "\033[96m"
+    MAGENTA = "\033[95m"
+    GRAY = "\033[90m"
 
 
 def print_header():
@@ -33,22 +34,22 @@ def print_header():
 
 def print_success(message):
     """Print success message"""
-    print(f"{Colors.GREEN}✓ {message}{Colors.RESET}")
+    print(f"{Colors.GREEN}[OK] {message}{Colors.RESET}")
 
 
 def print_error(message):
     """Print error message"""
-    print(f"{Colors.RED}✗ {message}{Colors.RESET}")
+    print(f"{Colors.RED}[X] {message}{Colors.RESET}")
 
 
 def print_warning(message):
     """Print warning message"""
-    print(f"{Colors.YELLOW}⚠ {message}{Colors.RESET}")
+    print(f"{Colors.YELLOW}[!] {message}{Colors.RESET}")
 
 
 def print_info(message):
     """Print info message"""
-    print(f"{Colors.CYAN}ℹ {message}{Colors.RESET}")
+    print(f"{Colors.CYAN}[i] {message}{Colors.RESET}")
 
 
 def get_install_dir():
@@ -56,176 +57,101 @@ def get_install_dir():
     return Path(__file__).parent.resolve()
 
 
-def detect_ai_tools():
-    """Detect which AI CLI tools are installed"""
-    tools = {}
-
-    # Claude Code
-    if shutil.which("claude"):
-        tools['claude'] = {
-            'name': 'Claude Code',
-            'command': 'claude',
-            'script': 'register_claude.bat' if sys.platform == 'win32' else 'register_claude.sh',
-            'detected': True
-        }
-    else:
-        tools['claude'] = {
-            'name': 'Claude Code',
-            'command': 'claude',
-            'script': None,
-            'detected': False
-        }
-
-    # Codex CLI
-    if shutil.which("codex"):
-        tools['codex'] = {
-            'name': 'Codex CLI (OpenAI)',
-            'command': 'codex',
-            'script': 'register_codex.py',
-            'detected': True
-        }
-    else:
-        tools['codex'] = {
-            'name': 'Codex CLI (OpenAI)',
-            'command': 'codex',
-            'script': None,
-            'detected': False
-        }
-
-    # Gemini CLI
-    if shutil.which("gemini"):
-        tools['gemini'] = {
-            'name': 'Gemini CLI (Google)',
-            'command': 'gemini',
-            'script': 'register_gemini.py',
-            'detected': True
-        }
-    else:
-        tools['gemini'] = {
-            'name': 'Gemini CLI (Google)',
-            'command': 'gemini',
-            'script': None,
-            'detected': False
-        }
-
-    # Grok CLI
-    if shutil.which("grok"):
-        tools['grok'] = {
-            'name': 'Grok CLI (xAI)',
-            'command': 'grok',
-            'script': 'register_grok.py',
-            'detected': True
-        }
-    else:
-        tools['grok'] = {
-            'name': 'Grok CLI (xAI)',
-            'command': 'grok',
-            'script': None,
-            'detected': False
-        }
-
-    return tools
-
-
-def show_detection_results(tools):
+def show_detection_results(installer: UniversalMCPInstaller):
     """Show AI tool detection results"""
     print(f"{Colors.BOLD}Scanning for installed AI coding agents...{Colors.RESET}")
     print()
 
-    detected = [t for t in tools.values() if t['detected']]
-    not_detected = [t for t in tools.values() if not t['detected']]
+    status = installer.get_tool_status()
+    detected = [name for name, installed in status.items() if installed]
+    not_detected = [name for name, installed in status.items() if not installed]
 
     if detected:
-        print(f"{Colors.GREEN}{Colors.BOLD}✓ Detected AI Tools:{Colors.RESET}")
-        for tool in detected:
-            print(f"  {Colors.GREEN}●{Colors.RESET} {tool['name']}")
+        print(f"{Colors.GREEN}{Colors.BOLD}Detected AI Tools:{Colors.RESET}")
+        for tool_name in detected:
+            print(f"  {Colors.GREEN}+{Colors.RESET} {installer.tool_names[tool_name]}")
         print()
 
     if not_detected:
         print(f"{Colors.GRAY}Not Detected:{Colors.RESET}")
-        for tool in not_detected:
-            print(f"  {Colors.GRAY}○{Colors.RESET} {Colors.GRAY}{tool['name']}{Colors.RESET}")
+        for tool_name in not_detected:
+            print(f"  {Colors.GRAY}-{Colors.RESET} {Colors.GRAY}{installer.tool_names[tool_name]}{Colors.RESET}")
         print()
 
 
-def show_menu(tools):
+def show_menu(installer: UniversalMCPInstaller):
     """Show interactive menu"""
-    print("─" * 70)
+    print("-" * 70)
     print(f"{Colors.BOLD}What would you like to do?{Colors.RESET}")
-    print("─" * 70)
+    print("-" * 70)
     print()
 
-    # Show options for detected tools
+    status = installer.get_tool_status()
+    detected_tools = [name for name, installed in status.items() if installed]
+
     menu_items = {}
     item_num = 1
 
-    detected_tools = {k: v for k, v in tools.items() if v['detected']}
     if detected_tools:
         print(f"{Colors.CYAN}Configure detected tools:{Colors.RESET}")
-        for key, tool in detected_tools.items():
-            menu_items[str(item_num)] = ('register', key, tool)
-            print(f"  {item_num}) Register with {tool['name']}")
+        for tool_name in detected_tools:
+            menu_items[str(item_num)] = ("register", tool_name)
+            print(f"  {item_num}) Register with {installer.tool_names[tool_name]}")
             item_num += 1
         print()
 
     # Option to configure all at once
     if len(detected_tools) > 1:
-        menu_items['a'] = ('all', None, None)
+        menu_items["a"] = ("all", None)
         print(f"{Colors.GREEN}  a) Register with ALL detected tools{Colors.RESET}")
         print()
 
     # Additional options
     print(f"{Colors.CYAN}Other options:{Colors.RESET}")
-    menu_items['m'] = ('manual', None, None)
-    print(f"  m) Show manual registration instructions")
+    menu_items["v"] = ("verify", None)
+    print("  v) Verify registration status")
 
-    menu_items['d'] = ('docs', None, None)
-    print(f"  d) Open full documentation")
+    menu_items["u"] = ("unregister", None)
+    print("  u) Unregister from all tools")
 
-    menu_items['q'] = ('quit', None, None)
-    print(f"  q) Quit")
+    menu_items["d"] = ("docs", None)
+    print("  d) Show installation instructions")
+
+    menu_items["q"] = ("quit", None)
+    print("  q) Quit")
     print()
 
     return menu_items
 
 
-def run_registration_script(tool_key, tool_info, install_dir):
-    """Run registration script for a specific tool"""
-    script = tool_info['script']
-    if not script:
-        print_error(f"No registration script available for {tool_info['name']}")
-        return False
-
-    script_path = install_dir / script
-
-    if not script_path.exists():
-        print_error(f"Registration script not found: {script_path}")
-        return False
-
+def register_single_tool(installer: UniversalMCPInstaller, tool_name: str):
+    """Register with a single tool"""
     print()
     print("=" * 70)
-    print(f"{Colors.BOLD}Registering with {tool_info['name']}...{Colors.RESET}")
+    print(f"{Colors.BOLD}Registering with {installer.tool_names[tool_name]}...{Colors.RESET}")
     print("=" * 70)
     print()
 
-    try:
-        if script.endswith('.bat'):
-            # Windows batch file
-            result = subprocess.run([str(script_path)], cwd=str(install_dir))
+    success = installer.register_single(tool_name)
+
+    print()
+    if success:
+        print_success(f"Successfully registered with {installer.tool_names[tool_name]}")
+
+        # Verify registration
+        if installer.verify_single(tool_name):
+            print_success("Registration verified")
         else:
-            # Python script
-            result = subprocess.run([sys.executable, str(script_path)], cwd=str(install_dir))
+            print_warning("Registration completed but verification failed")
+    else:
+        print_error(f"Registration with {installer.tool_names[tool_name]} failed")
 
-        return result.returncode == 0
-
-    except Exception as e:
-        print_error(f"Failed to run registration script: {e}")
-        return False
+    return success
 
 
-def register_all_tools(tools, install_dir):
+def register_all_tools(installer: UniversalMCPInstaller):
     """Register with all detected tools"""
-    detected = {k: v for k, v in tools.items() if v['detected']}
+    detected = installer.detect_installed_tools()
 
     if not detected:
         print_warning("No AI tools detected to register")
@@ -235,96 +161,132 @@ def register_all_tools(tools, install_dir):
     print(f"{Colors.BOLD}Registering with all {len(detected)} detected tools...{Colors.RESET}")
     print()
 
-    results = {}
-    for key, tool in detected.items():
-        success = run_registration_script(key, tool, install_dir)
-        results[key] = success
+    results = installer.register_all()
 
-        # Pause between registrations
-        if key != list(detected.keys())[-1]:  # Not the last one
-            print()
-            input(f"{Colors.CYAN}Press Enter to continue to next tool...{Colors.RESET}")
-
-    # Summary
     print()
     print("=" * 70)
     print(f"{Colors.BOLD}Registration Summary{Colors.RESET}")
     print("=" * 70)
     print()
 
-    for key, success in results.items():
-        tool = tools[key]
+    for tool_name, success in results.items():
         if success:
-            print_success(f"{tool['name']} - Configured")
+            print_success(f"{installer.tool_names[tool_name]} - Registered")
         else:
-            print_error(f"{tool['name']} - Failed")
+            print_error(f"{installer.tool_names[tool_name]} - Failed")
+
+    # Verify all registrations
+    print()
+    print(f"{Colors.BOLD}Verifying registrations...{Colors.RESET}")
+    verify_results = installer.verify_all()
+
+    print()
+    for tool_name, verified in verify_results.items():
+        if verified:
+            print_success(f"{installer.tool_names[tool_name]} - Verified")
+        else:
+            print_warning(f"{installer.tool_names[tool_name]} - Not verified")
 
     print()
 
 
-def show_manual_instructions(tools, install_dir):
-    """Show manual registration instructions"""
+def verify_registrations(installer: UniversalMCPInstaller):
+    """Verify registration status for all tools"""
     print()
     print("=" * 70)
-    print(f"{Colors.BOLD}Manual Registration Instructions{Colors.RESET}")
+    print(f"{Colors.BOLD}Verification Results{Colors.RESET}")
     print("=" * 70)
     print()
 
-    print("To manually register GiljoAI MCP with each AI tool:")
+    detected = installer.detect_installed_tools()
+
+    if not detected:
+        print_warning("No AI tools detected")
+        return
+
+    results = installer.verify_all()
+
+    for tool_name in detected:
+        verified = results.get(tool_name, False)
+        if verified:
+            print_success(f"{installer.tool_names[tool_name]} - Registered")
+        else:
+            print_error(f"{installer.tool_names[tool_name]} - Not registered")
+
     print()
 
-    for key, tool in tools.items():
-        print(f"{Colors.CYAN}{Colors.BOLD}{tool['name']}:{Colors.RESET}")
 
-        if tool['script']:
-            script_path = install_dir / tool['script']
-            if sys.platform == 'win32':
-                if tool['script'].endswith('.bat'):
-                    cmd = str(script_path)
-                else:
-                    cmd = f"python {script_path}"
-            else:
-                if tool['script'].endswith('.sh'):
-                    cmd = f"./{tool['script']}"
-                else:
-                    cmd = f"python {script_path}"
+def unregister_all_tools(installer: UniversalMCPInstaller):
+    """Unregister from all tools"""
+    detected = installer.detect_installed_tools()
 
-            print(f"  Run: {Colors.GREEN}{cmd}{Colors.RESET}")
-        else:
-            print(f"  {Colors.GRAY}Not detected - install first{Colors.RESET}")
-
-        print()
-
-
-def open_documentation(install_dir):
-    """Open or show path to documentation"""
-    doc_path = install_dir / "docs" / "AI_TOOL_INTEGRATION.md"
-
-    if not doc_path.exists():
-        print_error(f"Documentation not found: {doc_path}")
+    if not detected:
+        print_warning("No AI tools detected")
         return
 
     print()
-    print(f"{Colors.CYAN}Documentation location:{Colors.RESET}")
-    print(f"  {doc_path}")
+    print(f"{Colors.YELLOW}This will remove GiljoAI MCP registration from all detected tools.{Colors.RESET}")
+    response = input(f"{Colors.BOLD}Are you sure? [y/N]: {Colors.RESET}").strip().lower()
+
+    if response != "y":
+        print("Cancelled")
+        return
+
+    print()
+    print(f"{Colors.BOLD}Unregistering from all tools...{Colors.RESET}")
     print()
 
-    # Try to open with default application
-    try:
-        if sys.platform == 'win32':
-            os.startfile(doc_path)
-            print_success("Opened documentation in default viewer")
-        elif sys.platform == 'darwin':
-            subprocess.run(['open', str(doc_path)])
-            print_success("Opened documentation in default viewer")
+    results = installer.unregister_all()
+
+    print()
+    print("=" * 70)
+    print(f"{Colors.BOLD}Unregistration Summary{Colors.RESET}")
+    print("=" * 70)
+    print()
+
+    for tool_name, success in results.items():
+        if success:
+            print_success(f"{installer.tool_names[tool_name]} - Unregistered")
         else:
-            subprocess.run(['xdg-open', str(doc_path)])
-            print_success("Opened documentation in default viewer")
-    except:
-        print_info("Could not open automatically. Please open manually:")
-        print(f"  {doc_path}")
+            print_error(f"{installer.tool_names[tool_name]} - Failed")
 
     print()
+
+
+def show_documentation(install_dir: Path):
+    """Show installation and usage documentation"""
+    print()
+    print("=" * 70)
+    print(f"{Colors.BOLD}Installation Instructions{Colors.RESET}")
+    print("=" * 70)
+    print()
+
+    print(f"{Colors.CYAN}Configuration Files:{Colors.RESET}")
+    print("  - Claude Code:  ~/.claude.json")
+    # TECHDEBT: Multi-tool support disabled
+    # print("  - Codex CLI:    ~/.codex/config.toml")
+    # print("  - Gemini CLI:   ~/.gemini/settings.json")
+    print()
+
+    print(f"{Colors.CYAN}Verification Commands:{Colors.RESET}")
+    print("  - Claude Code:  claude mcp list")
+    # TECHDEBT: Multi-tool support disabled
+    # print("  - Gemini CLI:   gemini mcp list")
+    # print("  - Codex CLI:    (check config file directly)")
+    print()
+
+    print(f"{Colors.CYAN}Installation Guides:{Colors.RESET}")
+    print("  - Claude Code:  https://claude.ai/download")
+    # TECHDEBT: Multi-tool support disabled
+    # print("  - Codex CLI:    https://github.com/openai/codex")
+    # print("  - Gemini CLI:   https://github.com/google-gemini/gemini-cli")
+    print()
+
+    doc_path = install_dir / "docs" / "AI_TOOL_INTEGRATION.md"
+    if doc_path.exists():
+        print(f"{Colors.CYAN}Detailed Documentation:{Colors.RESET}")
+        print(f"  {doc_path}")
+        print()
 
 
 def main():
@@ -335,27 +297,33 @@ def main():
     print_info(f"GiljoAI MCP Installation: {install_dir}")
     print()
 
+    # Initialize universal installer
+    try:
+        installer = UniversalMCPInstaller()
+    except Exception as e:
+        print_error(f"Failed to initialize installer: {e}")
+        return 1
+
     # Detect AI tools
-    tools = detect_ai_tools()
-    show_detection_results(tools)
+    show_detection_results(installer)
 
     # Check if any tools detected
-    detected_count = sum(1 for t in tools.values() if t['detected'])
-    if detected_count == 0:
+    detected = installer.detect_installed_tools()
+    if not detected:
         print_warning("No AI coding agents detected!")
         print()
-        print("Please install at least one AI coding agent:")
-        print("  • Claude Code: https://claude.ai/download")
-        print("  • Codex CLI: https://github.com/openai/codex")
-        print("  • Gemini CLI: https://github.com/google-gemini/gemini-cli")
-        print("  • Grok CLI: Multiple implementations available")
+        print("Please install Claude Code:")
+        print("  - Claude Code: https://claude.ai/download")
+        # TECHDEBT: Multi-tool support disabled
+        # print("  - Codex CLI: https://github.com/openai/codex")
+        # print("  - Gemini CLI: https://github.com/google-gemini/gemini-cli")
         print()
         print("After installation, run this wizard again.")
         return 1
 
     # Main menu loop
     while True:
-        menu_items = show_menu(tools)
+        menu_items = show_menu(installer)
 
         try:
             choice = input(f"{Colors.BOLD}Enter your choice: {Colors.RESET}").strip().lower()
@@ -366,35 +334,35 @@ def main():
                 print()
                 continue
 
-            action, tool_key, tool_info = menu_items[choice]
+            action, tool_name = menu_items[choice]
 
-            if action == 'quit':
+            if action == "quit":
                 print("Exiting wizard.")
                 break
 
-            elif action == 'register':
-                success = run_registration_script(tool_key, tool_info, install_dir)
-                print()
-                if success:
-                    print_success(f"✓ Successfully registered with {tool_info['name']}")
-                else:
-                    print_error(f"✗ Registration with {tool_info['name']} failed")
+            if action == "register":
+                success = register_single_tool(installer, tool_name)
                 print()
                 input(f"{Colors.CYAN}Press Enter to return to menu...{Colors.RESET}")
                 print()
 
-            elif action == 'all':
-                register_all_tools(tools, install_dir)
+            elif action == "all":
+                register_all_tools(installer)
                 input(f"{Colors.CYAN}Press Enter to return to menu...{Colors.RESET}")
                 print()
 
-            elif action == 'manual':
-                show_manual_instructions(tools, install_dir)
+            elif action == "verify":
+                verify_registrations(installer)
                 input(f"{Colors.CYAN}Press Enter to return to menu...{Colors.RESET}")
                 print()
 
-            elif action == 'docs':
-                open_documentation(install_dir)
+            elif action == "unregister":
+                unregister_all_tools(installer)
+                input(f"{Colors.CYAN}Press Enter to return to menu...{Colors.RESET}")
+                print()
+
+            elif action == "docs":
+                show_documentation(install_dir)
                 input(f"{Colors.CYAN}Press Enter to return to menu...{Colors.RESET}")
                 print()
 
@@ -419,4 +387,7 @@ if __name__ == "__main__":
     except Exception as e:
         print()
         print_error(f"Unexpected error: {e}")
+        import traceback
+
+        traceback.print_exc()
         sys.exit(1)

@@ -132,11 +132,11 @@ This creates a `.mcp.json` file in your project with:
 
 ## Deployment Modes
 
-### Local Development Mode (Default)
+### Localhost Mode (Default)
 - **Use case**: Single developer on local machine
 - **Installation**: `C:\GiljoAI_MCP` or `~/giljo-mcp`
 - **Access**: `localhost:8000`
-- **Database**: SQLite (zero configuration)
+- **Database**: PostgreSQL (automatically configured)
 - **Authentication**: None required
 
 ### Network Server Mode

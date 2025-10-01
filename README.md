@@ -43,8 +43,26 @@ Each agent maintains focused context within limits while the orchestrator manage
 - **🧠 Persistent Memory**: Never lose work between sessions with database-backed storage
 - **👥 Real Team Coordination**: Agents hand off work, share context, and collaborate
 - **📊 Complete Visibility**: Watch your AI team work in real-time via the dashboard
-- **🔧 Production Ready**: From SQLite on your laptop to PostgreSQL in the cloud
+- **🔧 Production Ready**: PostgreSQL database with localhost or network deployment
 - **🎨 Beautiful UI**: Professional Vue 3 dashboard with custom themes
+
+## ⚠️ Current Tool Support
+
+**Claude Code Only (v1.0)**
+
+GiljoAI MCP currently supports **Claude Code exclusively** due to its native subagent orchestration capabilities. Claude Code's subagent spawning enables:
+
+- ✅ Synchronous agent coordination and handoffs
+- ✅ Zero polling or manual message checking
+- ✅ Built-in task prioritization through Claude's reasoning
+- ✅ Seamless multi-agent workflows
+
+**Other Tools (Cursor, Windsurf, Gemini, Codeium):**
+- ⏳ Planned for Q2 2025 with hybrid orchestrator
+- See [TECHDEBT.md](TECHDEBT.md) for expansion roadmap
+
+**Why Claude Code First?**
+Other AI coding tools lack native subagent APIs, requiring additional orchestration infrastructure. We're launching with the best experience first, then expanding to other tools with a polling-based orchestrator.
 
 ## ⚡ 5-Minute Quick Start
 
@@ -73,8 +91,7 @@ GiljoAI MCP automatically installs all required dependencies. Here are the core 
 
 #### **Database Support**
 
-- **aiosqlite>=0.19.0** - Async SQLite driver (default)
-- **asyncpg>=0.29.0** - PostgreSQL async driver (production)
+- **asyncpg>=0.29.0** - PostgreSQL async driver (required)
 - **psycopg2-binary>=2.9.0** - PostgreSQL sync driver (backup)
 
 #### **Authentication & Security**
@@ -109,8 +126,8 @@ install.bat        # Windows
 python bootstrap.py   # Universal
 
 # The installer will:
-# ✅ Guide you through profile selection
-# ✅ Install PostgreSQL and Redis automatically (if needed)
+# ✅ Guide you through installation mode selection (localhost or server)
+# ✅ Install PostgreSQL automatically (if needed)
 # ✅ Create and configure all services
 # ✅ Validate everything is working
 
@@ -124,22 +141,20 @@ python bootstrap.py   # Universal
 
 ### What Just Happened?
 
-1. **Profile Selection**: You chose your deployment type (Developer/Team/Enterprise/Research)
-2. **Dependency Installation**: PostgreSQL and Redis were automatically installed and configured
+1. **Mode Selection**: You chose your installation mode (localhost or server)
+2. **Dependency Installation**: PostgreSQL was automatically installed and configured
 3. **Service Creation**: All services were registered with your OS and started
 4. **Health Validation**: The installer verified everything is working correctly
 5. **Ready to Use**: Your AI orchestration system is running and ready for tasks
 
-### Installation Profiles
+### Installation Modes
 
-Choose the profile that best fits your needs:
+Choose the mode that best fits your needs:
 
-| Profile        | Best For                        | Database                | Services           | Network            |
-| -------------- | ------------------------------- | ----------------------- | ------------------ | ------------------ |
-| **Developer**  | Individual development          | SQLite or PostgreSQL    | Local Redis        | Localhost only     |
-| **Team**       | Small teams, LAN deployment     | PostgreSQL              | PostgreSQL + Redis | Network accessible |
-| **Enterprise** | Production, large organizations | PostgreSQL + clustering | Full stack         | Internet-ready     |
-| **Research**   | AI research, experimentation    | Flexible                | Extended templates | Research-optimized |
+| Mode         | Best For                        | Database    | Auth      | Network            |
+| ------------ | ------------------------------- | ----------- | --------- | ------------------ |
+| **Localhost** | Individual development          | PostgreSQL  | None      | Localhost only     |
+| **Server**   | Teams, LAN/WAN deployment       | PostgreSQL  | API Keys  | Network accessible |
 
 ### Next Steps
 
@@ -225,7 +240,7 @@ new_way = agent.explore_as_needed()  # Fast, always fresh
 
 ```
 Local (You) → LAN (Your Team) → WAN (Your Company) → Cloud (The World)
-   SQLite        PostgreSQL         PostgreSQL+TLS      Managed Service
+  PostgreSQL     PostgreSQL         PostgreSQL+TLS      Managed Service
    1 user        10 users            100 users          10,000+ users
 ```
 
@@ -314,7 +329,7 @@ See [ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for details.
 ├─────────────────────────────────────┤
 │        Orchestration Engine         │ ← Brain of the system
 ├─────────────────────────────────────┤
-│  Database (SQLite/PostgreSQL)       │ ← Persistent storage
+│  Database (PostgreSQL)              │ ← Persistent storage
 └─────────────────────────────────────┘
 ```
 
@@ -322,7 +337,7 @@ See [ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for details.
 
 | Mode      | Use Case     | Database    | Auth      | Setup Time |
 | --------- | ------------ | ----------- | --------- | ---------- |
-| **Local** | Personal dev | SQLite      | None      | 5 minutes  |
+| **Local** | Personal dev | PostgreSQL  | None      | 5 minutes  |
 | **LAN**   | Small team   | PostgreSQL  | API Keys  | 15 minutes |
 | **WAN**   | Remote team  | PostgreSQL  | OAuth/TLS | 30 minutes |
 | **Cloud** | Enterprise   | Distributed | SSO       | Managed    |
@@ -475,7 +490,7 @@ This project is currently in active development. Contributions welcome after ini
 
 - **Backend**: Python, FastAPI, SQLAlchemy
 - **Frontend**: Vue 3, Vite, Vuetify 3, Tailwind CSS
-- **Database**: SQLite (local) / PostgreSQL (production)
+- **Database**: PostgreSQL (all modes)
 - **Protocol**: Model Context Protocol (MCP)
 - **Deployment**: Docker, pip installable
 
@@ -523,7 +538,7 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 | Phase               | Timeline | Status         | Features                    |
 | ------------------- | -------- | -------------- | --------------------------- |
-| **Foundation**      | Q1 2025  | ✅ Complete    | Multi-tenant, SQLite, Setup |
+| **Foundation**      | Q1 2025  | ✅ Complete    | Multi-tenant, PostgreSQL, Setup |
 | **MCP Integration** | Q1 2025  | ✅ Complete    | 20 tools, Serena MCP        |
 | **Orchestration**   | Q1 2025  | ✅ Complete    | Templates, Message Queue    |
 | **User Interface**  | Q2 2025  | 🚧 In Progress | Vue Dashboard, WebSocket    |

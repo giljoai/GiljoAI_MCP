@@ -72,11 +72,11 @@ class GiljoUninstaller:
             commands.append("# Complete PostgreSQL removal (WARNING: removes all databases!):")
 
             if self.platform == "win32":
-                pg_location = pg_info.get('location', 'C:/PostgreSQL/16')
+                pg_location = pg_info.get('location', 'C:/PostgreSQL/18')
                 commands.append(f'& "{pg_location}/uninstall-postgresql.exe" --mode unattended')
             elif self.platform == "darwin":
-                commands.append("brew uninstall postgresql@16")
-                commands.append("brew services stop postgresql@16")
+                commands.append("brew uninstall postgresql@18")
+                commands.append("brew services stop postgresql@18")
             else:
                 commands.append("sudo apt remove postgresql postgresql-contrib -y")
                 commands.append("# OR for RHEL/CentOS:")
@@ -196,12 +196,12 @@ class GiljoUninstaller:
             self.log("Removing complete PostgreSQL installation...")
             try:
                 if self.platform == "win32":
-                    pg_uninstaller = Path(pg_info.get('location', 'C:/PostgreSQL/16')) / "uninstall-postgresql.exe"
+                    pg_uninstaller = Path(pg_info.get('location', 'C:/PostgreSQL/18')) / "uninstall-postgresql.exe"
                     if pg_uninstaller.exists():
                         subprocess.run([str(pg_uninstaller), "--mode", "unattended"], check=True)
                 elif self.platform == "darwin":
-                    subprocess.run(["brew", "uninstall", "postgresql@16"], check=True)
-                    subprocess.run(["brew", "services", "stop", "postgresql@16"], check=True)
+                    subprocess.run(["brew", "uninstall", "postgresql@18"], check=True)
+                    subprocess.run(["brew", "services", "stop", "postgresql@18"], check=True)
                 else:
                     subprocess.run(["sudo", "apt", "remove", "postgresql", "postgresql-contrib", "-y"], check=True)
 
