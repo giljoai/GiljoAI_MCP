@@ -2857,11 +2857,6 @@ Server will run at http://localhost:{server_port}
 3. VERIFY INTEGRATION:
 Open your AI tool and check for "giljo-mcp" tools
 
-IMPORTANT:
-• This server can handle multiple projects simultaneously
-• Register once, use across all your projects
-• The server runs independently from your projects
-
                  ────────────────────
 Thank you for installing GiljoAI MCP!
 www.giljo.ai 2025, v0.2 beta
@@ -2877,8 +2872,8 @@ infoteam@giljo.ai"""
 
             # Size and center the dialog on screen
             dialog.update_idletasks()
-            w = 820
-            h = 720  # Increased by 50% to show full message
+            w = 738  # Narrowed by 10% from 820
+            h = 1080  # Increased by 50% from 720 to show full message
             x = (dialog.winfo_screenwidth() // 2) - (w // 2)
             y = (dialog.winfo_screenheight() // 2) - (h // 2)
             dialog.geometry(f"{w}x{h}+{x}+{y}")
