@@ -106,6 +106,44 @@ docker-compose -f docker-compose.prod.yml up -d
 docker-compose up -d
 ```
 
+### Database Access
+
+#### PostgreSQL Connection
+
+**Development Password**: `4010`
+
+```bash
+# Windows - Access PostgreSQL via psql
+PGPASSWORD=4010 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -l
+
+# List all databases
+PGPASSWORD=4010 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -c "\l"
+
+# Connect to giljo_mcp database
+PGPASSWORD=4010 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -d giljo_mcp
+
+# Check if giljo_mcp database exists
+PGPASSWORD=4010 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -l | grep giljo
+
+# Drop database (for testing)
+PGPASSWORD=4010 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp;"
+```
+
+#### SQLite Database
+
+```bash
+# Check if SQLite database exists
+ls data/giljo.db
+
+# Access SQLite database
+sqlite3 data/giljo.db
+
+# Common SQLite commands
+.tables           # List all tables
+.schema agents    # Show agent table schema
+SELECT * FROM agents;  # Query agents
+```
+
 ## High-Level Architecture
 
 ### Multi-Agent Orchestration System

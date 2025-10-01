@@ -5,6 +5,7 @@ Base classes and utilities for installation scripts
 """
 
 import json
+import logging
 import os
 import platform
 import secrets
@@ -200,6 +201,30 @@ class GiljoSetup:
         except subprocess.CalledProcessError:
             return False
 
+    def cleanup_egg_info(self) -> bool:
+        """Clean up old egg-info directories that may conflict with editable install
+
+        Returns:
+            True if cleanup successful or not needed
+        """
+        try:
+            egg_info_paths = [
+                self.root_path / "src" / "giljo_mcp.egg-info",
+                self.root_path / "giljo_mcp.egg-info",
+                self.root_path / "build",
+                self.root_path / "dist",
+            ]
+
+            for path in egg_info_paths:
+                if path.exists():
+                    logging.info(f"Cleaning up old build artifact: {path}")
+                    shutil.rmtree(path, ignore_errors=True)
+
+            return True
+        except Exception as e:
+            logging.warning(f"Could not clean up egg-info: {e}")
+            return True  # Non-fatal error
+
     def install_requirements(self) -> bool:
         """Install Python requirements"""
         req_file = self.root_path / "requirements.txt"
@@ -222,6 +247,9 @@ class GiljoSetup:
 
             # Install package in development mode (skip if during installation)
             if not os.environ.get('GILJO_SKIP_EDITABLE_INSTALL'):
+                # Clean up old egg-info before editable install
+                self.cleanup_egg_info()
+
                 subprocess.run([str(pip_path), "install", "-e", "."],
                              check=True, cwd=str(self.root_path))
             return True
@@ -233,24 +261,22 @@ class GiljoSetup:
         return secrets.token_urlsafe(32)
 
     def create_config_file(self) -> bool:
-        """Create configuration file for v2.0 architecture - PostgreSQL only"""
+        """Create configuration file for v2.0 architecture - PostgreSQL default"""
         config_data = {
             "version": "2.0.0",
             "server": {
                 "mode": self.deployment_mode,
                 "host": "0.0.0.0" if self.deployment_mode != "LOCAL" else "127.0.0.1",
-                "port": self.server_port,
-                "api_port": self.server_port,  # Same as main port in v2.0
+                "port": self.server_port,  # Unified port for all services
+                "frontend_port": 6000,  # Optional frontend dev server
             },
             "database": {
-                "type": "postgresql",  # Always PostgreSQL now
-                "postgresql": {
-                    "host": self.config.get("pg_host", "localhost"),
-                    "port": self.config.get("pg_port", 5432),
-                    "database": self.config.get("pg_database", "giljo_mcp"),
-                    "username": self.config.get("pg_user", "postgres"),
-                    "password": self.config.get("pg_password", ""),
-                }
+                "database_type": "postgresql",  # PostgreSQL recommended for production
+                "host": self.config.get("pg_host", "localhost"),
+                "port": self.config.get("pg_port", 5432),
+                "name": self.config.get("pg_database", "giljo_mcp"),
+                "user": self.config.get("pg_user", "postgres"),
+                "password": self.config.get("pg_password", ""),
             },
             "security": {
                 "api_key": self.generate_api_key() if self.deployment_mode != "LOCAL" else None,

@@ -36,7 +36,8 @@ import sys
 import shutil
 import subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 
 # Configuration
 SOURCE_DIR = Path(__file__).parent
@@ -265,20 +266,28 @@ EXCLUDE_FILES = [
 ]
 
 
-def print_header():
+def print_header(quick_sync=False):
     """Print script header"""
     print("=" * 70)
-    print("  GiljoAI MCP - Release Simulation & Test Deployment")
+    if quick_sync:
+        print("  GiljoAI MCP - Quick Sync (Recent Changes Only)")
+    else:
+        print("  GiljoAI MCP - Release Simulation & Test Deployment")
     print("=" * 70)
     print()
-    print("This script simulates downloading and extracting a GitHub release.")
-    print("It copies ONLY files that would be in a release archive (no dev files).")
+    if quick_sync:
+        print("This script copies ONLY files changed in the last 2 minutes.")
+        print("Perfect for rapid testing of recent code changes.")
+    else:
+        print("This script simulates downloading and extracting a GitHub release.")
+        print("It copies ONLY files that would be in a release archive (no dev files).")
     print()
     print(f"Source (Development): {SOURCE_DIR}")
     print(f"Target (Release Test): {TEST_DIR}")
     print()
-    print("Exclusions: Using .gitattributes export-ignore rules")
-    print("Expected: ~400 files (vs ~1,600 in development)")
+    if not quick_sync:
+        print("Exclusions: Using .gitattributes export-ignore rules")
+        print("Expected: ~400 files (vs ~1,600 in development)")
     print()
 
     # Verify source directory
@@ -415,6 +424,66 @@ def clean_directory(preserve_mode=False):
                 print("Make sure no programs are using files in that directory.")
                 return False
 
+    return True
+
+
+def copy_files_quick_sync():
+    """Copy only files changed in the last 2 minutes"""
+    print("[1/2] Scanning for recently changed files...")
+
+    # Ensure target exists
+    TEST_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Calculate cutoff time (2 minutes ago)
+    cutoff_time = time.time() - (2 * 60)
+
+    # Find recently modified files
+    recent_files = []
+    for root, dirs, files in os.walk(SOURCE_DIR):
+        # Skip excluded directories
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+
+        for file in files:
+            # Skip excluded files
+            if any(file == pattern or (pattern.startswith('*') and file.endswith(pattern[1:]))
+                   for pattern in EXCLUDE_FILES):
+                continue
+
+            src_path = Path(root) / file
+            try:
+                if src_path.stat().st_mtime > cutoff_time:
+                    recent_files.append(src_path)
+            except Exception:
+                continue
+
+    if not recent_files:
+        print("      No files changed in the last 2 minutes")
+        return True
+
+    print(f"      Found {len(recent_files)} recently changed file(s)")
+    print()
+
+    # Copy each recent file
+    print("[2/2] Copying recently changed files...")
+    copied_count = 0
+    for src_path in recent_files:
+        # Calculate relative path and destination
+        rel_path = src_path.relative_to(SOURCE_DIR)
+        dst_path = TEST_DIR / rel_path
+
+        # Create parent directory if needed
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Copy file
+        try:
+            shutil.copy2(src_path, dst_path)
+            copied_count += 1
+            print(f"      Copied: {rel_path}")
+        except Exception as e:
+            print(f"      Failed: {rel_path} - {e}")
+
+    print()
+    print(f"      Successfully copied {copied_count} file(s)")
     return True
 
 
@@ -650,7 +719,30 @@ def verify_deployment(preserved_items=None):
 def main():
     """Main execution"""
     try:
-        print_header()
+        # Check for quick sync mode
+        quick_sync = "--quick" in sys.argv or "-q" in sys.argv
+
+        print_header(quick_sync=quick_sync)
+
+        # Quick sync mode - skip menu, just copy recent files
+        if quick_sync:
+            if not TEST_DIR.exists():
+                print("ERROR: Test directory does not exist!")
+                print("Run giltest without --quick first to create the initial deployment.")
+                return 1
+
+            if not copy_files_quick_sync():
+                return 1
+
+            print()
+            print("=" * 70)
+            print("Quick sync complete!")
+            print("=" * 70)
+            print()
+            print(f"Test directory: {TEST_DIR}")
+            print("Recent changes have been synced.")
+            print()
+            return 0
 
         # Check existing installation
         has_existing = check_existing_installation()

@@ -54,31 +54,28 @@ class ConfigGenerator:
         config = {
             "# GiljoAI MCP Orchestrator Configuration": None,
             "# Auto-generated default configuration": None,
-            "# This configuration works out-of-the-box with no external dependencies": None,
+            "# Production-ready with PostgreSQL (recommended for 15-day launch)": None,
             "": None,
             "database": {
-                "# Using SQLite for zero-dependency local operation": None,
-                "database_type": "sqlite",
-                "path": "./data/giljo.db",
-                "# PostgreSQL configuration (uncomment for production)": None,
-                "# database_type": "postgresql",
-                "# host": "localhost",
-                "# port": 5432,
-                "# name": "giljo_mcp",
-                "# user": "giljo_user",
-                "# password": "your_secure_password",
+                "# PostgreSQL recommended for production (stable and scalable)": None,
+                "database_type": "postgresql",
+                "host": "localhost",
+                "port": 5432,
+                "name": "giljo_mcp",
+                "user": "postgres",
+                "password": "",
+                "# SQLite fallback for development/testing (uncomment to use)": None,
+                "# database_type": "sqlite",
+                "# path": "./data/giljo.db",
             },
             "server": {
-                "# Local mode for single-user desktop operation": None,
+                "# Unified v2.0 architecture - single HTTP server": None,
                 "mode": "local",
                 "host": "localhost",
+                "port": 7272,  # Unified port for API, MCP tools, and WebSocket
                 "debug": False,
-                "# Service ports": None,
-                "ports": {
-                    "mcp": 6001,  # MCP server port
-                    "api": 6002,  # REST API port
-                    "frontend": 6000,  # Vue frontend port
-                },
+                "# Optional frontend development server port": None,
+                "frontend_port": 6000,  # Vite dev server (optional)
             },
             "tenant": {
                 "# Single-tenant mode for desktop use": None,
@@ -104,7 +101,7 @@ class ConfigGenerator:
             "mcp": {"# Using stdio mode for simplicity": None, "stdio_mode": True, "transport": "stdio"},
             "api": {
                 "# CORS for local development": None,
-                "cors_origins": ["http://localhost:6000", "http://localhost:5500", "http://127.0.0.1:6000"],
+                "cors_origins": ["http://localhost:6000", "http://localhost:5500", "http://localhost:7272", "http://127.0.0.1:6000", "http://127.0.0.1:7272"],
                 "rate_limit": 100,
                 "require_api_key": False,
             },
