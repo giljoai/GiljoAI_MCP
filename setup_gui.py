@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GiljoAI MCP GUI Setup - Tkinter-based wizard interface
+GiljoAI Agent Orchestrator MCP ServerGUI Setup - Tkinter-based wizard interface
 Provides a graphical setup wizard as an alternative to CLI mode
 """
 
@@ -175,7 +175,7 @@ class WelcomePage(ttk.Frame):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.title = "Welcome to GiljoAI MCP"
+        self.title = "Welcome to GiljoAI Agent Orchestrator MCP Server"
 
         # Main container
         main_frame = ttk.Frame(self)
@@ -221,7 +221,7 @@ class WelcomePage(ttk.Frame):
                 logo_text.pack(pady=(0, 10))
 
                 subtitle = tk.Label(main_frame,
-                                   text="MCP Orchestrator",
+                                   text="Agent Orchestrator MCP Server",
                                    font=('Segoe UI', 20),
                                    fg=COLORS['text_secondary'],
                                    bg=COLORS['bg_primary'])
@@ -243,7 +243,7 @@ class WelcomePage(ttk.Frame):
             logo_text.pack(pady=(0, 10))
 
             subtitle = tk.Label(main_frame,
-                               text="MCP Orchestrator",
+                               text="Agent Orchestrator MCP Server",
                                font=('Segoe UI', 20),
                                fg=COLORS['text_secondary'],
                                bg=COLORS['bg_primary'])
@@ -267,7 +267,7 @@ class WelcomePage(ttk.Frame):
         # Description
         desc_label = tk.Label(main_frame,
                              text="This wizard will guide you through installing\n"
-                                  "the GiljoAI MCP Agent Orchestration System.\n\n"
+                                  "the GiljoAI Agent Orchestrator MCP Server.\n\n"
                                   "Click Next to begin.",
                              font=('Segoe UI', 11),
                              fg=COLORS['text_secondary'],
@@ -326,69 +326,6 @@ class WizardPage(ttk.Frame):
         return {}
 
 
-# REMOVED: WelcomePage was redundant with ProfileSelectionPage
-# The "mode" selection duplicated profile selection without affecting installation
-# Kept here for reference only
-
-# DEPRECATED - DO NOT USE
-# class WelcomePage(WizardPage):
-#     # Welcome page with overview - DEPRECATED
-#
-#     def __init__(self, parent):
-#         super().__init__(parent, "Welcome to GiljoAI MCP Setup")
-
-#         # Title
-#         title_label = ttk.Label(self, text="GiljoAI MCP Setup Wizard", font=("Helvetica", 16, "bold"))
-#         title_label.pack(pady=20)
-
-#         # Description
-#         desc_text = '''This wizard will guide you through the initial setup of GiljoAI MCP.
-
-# We'll configure:
-# • Database connection (SQLite or PostgreSQL)
-# • Server ports and network settings
-# • Security keys and API configuration
-# • Import settings from AKE-MCP (if detected)
-#
-# The setup process will:
-# 1. Check your system requirements
-# 2. Validate port availability
-# 3. Create configuration files
-# 4. Initialize the database
-# 5. Install dependencies
-#
-# Click 'Next' to begin.'''
-
-#         desc_label = ttk.Label(self, text=desc_text, justify=tk.LEFT)
-#         desc_label.pack(padx=20, pady=10)
-#
-#         # Mode selection
-#         self.mode_var = tk.StringVar(value="local")
-#         mode_frame = ttk.LabelFrame(self, text="Setup Mode", padding=10)
-#         mode_frame.pack(padx=20, pady=10, fill="x")
-#
-#         ttk.Radiobutton(
-#             mode_frame,
-#             text="Local Development (Single machine, SQLite, full features)",
-#             variable=self.mode_var,
-#             value="local",
-#         ).pack(anchor="w")
-#         ttk.Radiobutton(
-#             mode_frame,
-#             text="Network Shared (Multi-user, PostgreSQL, LAN accessible)",
-#             variable=self.mode_var,
-#             value="lan",
-#         ).pack(anchor="w")
-#         ttk.Radiobutton(
-#             mode_frame,
-#             text="High Performance (Production-ready, optimized for scale)",
-#             variable=self.mode_var,
-#             value="wan",
-#         ).pack(anchor="w")
-#
-#     def get_data(self) -> dict:
-#         return {"mode": self.mode_var.get()}
-# End of deprecated WelcomePage
 
 
 class ProfileSelectionPage(WizardPage):
@@ -398,11 +335,11 @@ class ProfileSelectionPage(WizardPage):
         super().__init__(parent, "GiljoAI MCP Server Installation")
 
         # Welcome Title
-        title_label = ttk.Label(self, text="GiljoAI MCP Orchestration Server", font=("Helvetica", 16, "bold"))
+        title_label = ttk.Label(self, text="GiljoAI Agent Orchestrator MCP Server", font=("Helvetica", 16, "bold"))
         title_label.pack(pady=10)
 
         # Installation recommendation
-        recommend_text = """It is recommended to install the GiljoMCP Server in a separate directory
+        recommend_text = """It is recommended to install the GiljoAI Agent Orchestrator MCP Server in a separate directory
 and not in the project folder."""
 
         recommend_label = ttk.Label(self, text=recommend_text, justify=tk.LEFT, foreground="orange")
@@ -1095,7 +1032,7 @@ class SecurityPage(WizardPage):
             + "Examples: Custom tools, local LLM integrations, automation scripts.\n"
             + "Note: MCP clients (Claude, etc.) use MCP protocol, not this.",
             foreground=COLORS['text_primary'],  # Yellow
-            wraplength=500,
+            wraplength=800,
         )
         api_help.pack(anchor="w", pady=(5, 10))
 
@@ -1127,7 +1064,7 @@ class SecurityPage(WizardPage):
             text="Signs session tokens for the web dashboard. Prevents token tampering.\n"
             + "Auto-generated for security. No need to copy unless integrating SSO.",
             foreground=COLORS['text_primary'],  # Yellow
-            wraplength=500,
+            wraplength=800,
         )
         jwt_help.pack(anchor="w", pady=(0, 10))
 
@@ -1157,7 +1094,7 @@ class SecurityPage(WizardPage):
             + "• LAN: http://YOUR-SERVER-IP:* (e.g., http://192.168.1.100:*)\n"
             + "• WAN: https://your-domain.com",
             foreground=COLORS['text_primary'],  # Yellow
-            wraplength=500,
+            wraplength=800,
         )
         cors_help.pack(anchor="w", pady=(0, 10))
 
@@ -1358,19 +1295,6 @@ class ReviewPage(WizardPage):
         )
 
         self.text.config(state="disabled")
-
-
-# ServiceControlPage removed - Installation now completes directly
-# The service management functionality has been moved to the main application dashboard
-# which provides better real-time monitoring and control capabilities.
-# To manage services after installation:
-# 1. Run 'start_giljo.bat' to start all services
-# 2. Use the dashboard at http://localhost:6000 for monitoring
-# 3. Run 'stop_giljo.bat' to stop all services
-#
-# The ServiceControlPage class has been removed from this file.
-# It was used to show service status and control after installation,
-# but this functionality is now in the main application dashboard.
 
 class ProgressPage(WizardPage):
     """Installation progress page with individual component progress bars"""
@@ -2835,7 +2759,7 @@ SERVER INSTALLED AT: {install_path}
 This is a standalone MCP orchestration server that will coordinate multiple AI agents across all your development projects.
 
 NEXT STEPS:
-                ════════════════════
+            ════════════════════
 
 1. CONNECT YOUR AI CODING AGENT:
 
@@ -2857,8 +2781,8 @@ Server will run at http://localhost:{server_port}
 3. VERIFY INTEGRATION:
 Open your AI tool and check for "giljo-mcp" tools
 
-                 ────────────────────
-Thank you for installing GiljoAI MCP!
+             ────────────────────
+Thank you for installing GiljoAI Agent Orchestrator MCP Server!
 www.giljo.ai 2025, v0.2 beta
 infoteam@giljo.ai"""
 
@@ -2873,7 +2797,7 @@ infoteam@giljo.ai"""
             # Size and center the dialog on screen
             dialog.update_idletasks()
             w = 738  # Narrowed by 10% from 820
-            h = 1080  # Increased by 50% from 720 to show full message
+            h = 1200  # Increased by 50% from 720 to show full message
             x = (dialog.winfo_screenwidth() // 2) - (w // 2)
             y = (dialog.winfo_screenheight() // 2) - (h // 2)
             dialog.geometry(f"{w}x{h}+{x}+{y}")
@@ -2885,6 +2809,7 @@ infoteam@giljo.ai"""
             body = ttk.Frame(dialog, padding=(20, 20))
             body.pack(fill="both", expand=True)
 
+            # Fallback to a single centered label for the full message
             label = tk.Label(body,
                              text=message,
                              justify="center",
