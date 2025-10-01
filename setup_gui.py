@@ -202,7 +202,15 @@ class WelcomePage(ttk.Frame):
 
                 logo_label = tk.Label(main_frame, image=photo, bg=COLORS['bg_primary'])
                 logo_label.image = photo  # Keep reference
-                logo_label.pack(pady=(0, 30))
+                logo_label.pack(pady=(0, 10))
+
+                # Add version subtitle below logo
+                version_label = tk.Label(main_frame,
+                                        text="v0.2 Beta",
+                                        font=('Segoe UI', 14),
+                                        fg=COLORS['text_success'],
+                                        bg=COLORS['bg_primary'])
+                version_label.pack(pady=(0, 30))
             except Exception as e:
                 # Fallback to text logo
                 logo_text = tk.Label(main_frame,
