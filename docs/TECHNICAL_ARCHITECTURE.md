@@ -6,9 +6,9 @@
 
 GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system designed with a local-first, progressively scalable architecture. The system can run on a single developer machine, scale to team LAN servers, and ultimately deploy as a global cloud service without architectural changes.
 
-**🚀 Sub-Agent Architecture Update (January 2025)**: The discovery of Claude Code's native sub-agent capabilities has fundamentally simplified our architecture. Instead of complex multi-terminal orchestration, we now use elegant single-session delegation where GiljoAI-MCP serves as the persistent brain (memory, state, coordination) while Claude Code acts as the execution engine through direct sub-agent spawning.
+**Sub-Agent Architecture Update (January 2025)**: The discovery of Claude Code's native sub-agent capabilities has fundamentally simplified our architecture. Instead of complex multi-terminal orchestration, we now use elegant single-session delegation where GiljoAI-MCP serves as the persistent brain (memory, state, coordination) while Claude Code acts as the execution engine through direct sub-agent spawning.
 
-**🎯 Phase 2 Installer Architecture (September 2025)**: Complete transformation from configuration wizard to full dependency installer with cross-platform service management. The installer now actually installs PostgreSQL, Redis, Docker, and creates OS services rather than just generating config files.
+**Phase 2 Installer Architecture (September 2025)**: Complete transformation to a CLI-driven dependency installer with cross-platform service management. The installer now provides CLI commands to install PostgreSQL, creates OS services, and manages system dependencies with minimal user interaction.
 
 ### Core Architecture Principles
 
@@ -257,27 +257,30 @@ Template System:
     └── .env.server (network-ready configuration)
 ```
 
-#### GUI Enhancement Architecture
+#### CLI Installation Architecture
 
-**Mode-aware installer wizard:**
+**Mode-aware command-line installer:**
 
 ```python
-# Enhanced setup_gui.py structure
-Wizard Pages:
-    ├── Welcome (unchanged)
-    ├── ModeSelectionPage (choose localhost or server)
-    ├── DatabasePage (PostgreSQL configuration)
-    ├── PortsPage (mode-aware defaults)
-    ├── SecurityPage (mode-specific requirements)
-    ├── ServiceControlPage (manage services)
-    ├── ReviewPage (comprehensive summary)
-    └── ProgressPage (parallel installation tracking)
+# Enhanced install.py structure
+Installation Modes:
+    ├── localhost: Single-user, local configuration
+    ├── server: Network-ready, configurable authentication
+    └── validate: Verify system compatibility
+
+CLI Installation Workflow:
+    ├── OS and Python compatibility check
+    ├── Mode selection via command-line argument
+    ├── PostgreSQL installation and configuration
+    ├── Service management commands
+    ├── Network configuration
+    └── Validation and health checks
 
 Mode Adaptation:
-    ├── UI elements show/hide based on mode
-    ├── Default values change per mode
-    ├── Help text adapts to use case
-    └── Service configuration varies by deployment type
+    ├── CLI flags for mode selection
+    ├── Dynamic configuration generation
+    ├── Mode-specific default settings
+    └── Contextual help and guidance
 ```
 
 #### Installation Flow Architecture
@@ -356,49 +359,32 @@ Configuration:
   host: 127.0.0.1
   port: 5001
   database: postgresql://localhost/giljo_mcp
-  auth: none
 
 Characteristics:
-  - Single user
-  - No authentication
-  - PostgreSQL database
-  - Localhost only
+  - Single developer
+  - No network authentication
+  - PostgreSQL local database
+  - Localhost access only
   - Minimal configuration
+  - Developer tooling and rapid prototyping
 ```
 
-#### LAN Mode (Team)
+#### Server Mode (Team/Network)
 
 ```yaml
 Configuration:
   host: 0.0.0.0
   port: 5001
   database: postgresql://server/giljo_mcp
-  auth: api_key
+  remote_access: true
 
 Characteristics:
-  - Multiple users
-  - API key authentication
-  - PostgreSQL recommended
+  - Multiple concurrent users
+  - Network authentication
+  - Centralized PostgreSQL database
   - Network accessible
-  - Simple configuration
-```
-
-#### WAN Mode (Internet)
-
-```yaml
-Configuration:
-  host: 0.0.0.0
-  port: 443
-  database: postgresql://rds/giljo_mcp
-  auth: oauth
-  tls: required
-
-Characteristics:
-  - Global access
-  - OAuth/JWT authentication
-  - PostgreSQL required
-  - TLS encryption
-  - Full configuration
+  - Configurable access controls
+  - Team collaboration support
 ```
 
 ### Data Flow Architecture
@@ -455,20 +441,19 @@ Characteristics:
 - **Queue**: Built-in (local), Redis (scale option)
 - **Process**: uvicorn (ASGI server)
 
-#### Frontend
+#### CLI Frontend
 
-- **Framework**: Vue 3 + Vite (required for UI flexibility)
-- **Components**: Vuetify 3 (Material Design)
-- **Styling**: Tailwind CSS + Custom theme system
-- **Color Themes**: See `/docs/color_themes.md` for mandatory palette
+- **Framework**: Click for Python CLI
+- **Input Handling**: Robust interactive prompts
+- **Progress Tracking**: Rich progress bars and status updates
+- **Color Themes**: ANSI color support for readability
 - **Provided Assets**:
-  - Icons: `/frontend/public/icons/` (ready to use)
-  - Mascot: `/frontend/public/mascot/` (animated logo)
-  - Favicon: `/frontend/public/favicon.ico` (app icon)
-- **Real-time**: WebSocket client
-- **Charts**: Chart.js with theme integration
-- **Animations**: Vue transitions API
-- **Accessibility**: WCAG 2.1 AA compliant
+  - Terminal Icons: Minimal, ASCII-based
+  - Logo: Command-line friendly ASCII art
+- **Real-time**: WebSocket client integration
+- **Interactivity**: Dynamic, context-aware CLI
+- **Accessibility**: Screen reader compatibility
+- **Error Handling**: Comprehensive, human-readable messages
 
 #### Infrastructure
 
@@ -480,27 +465,21 @@ Characteristics:
 
 ### Security Architecture
 
-#### Local Mode
+#### Localhost Mode
 
-- No network exposure
-- File system permissions only
-- No authentication required
+- Local file system access control
+- No network authentication
+- Process-level isolation
+- Environment variable management
 
-#### LAN Mode
+#### Server Mode
 
 - API key authentication
-- Network firewall recommended
-- Optional TLS with self-signed certs
-- Rate limiting per API key
-
-#### WAN Mode
-
-- Mandatory TLS encryption
-- OAuth 2.0 / JWT tokens
-- Rate limiting per user/project
-- IP allowlisting available
-- Audit logging enabled
 - Encrypted database connections
+- Network firewall integration
+- Rate limiting on CLI commands
+- Audit logging of management actions
+- Project-level access controls
 
 ### Performance Specifications
 
@@ -556,13 +535,12 @@ client = OpenAIAgent(
 )
 ```
 
-#### Desktop Application (Future)
+#### CLI Extensibility
 
-- Electron or Tauri framework
-- Local file system access
-- Built-in text editor
-- Integrated terminal
-- Direct orchestrator connection
+- Python script-driven interfaces
+- Plugin architecture for custom commands
+- Programmatic extension support
+- Seamless integration with IDE environments
 
 ### Database Schema
 
