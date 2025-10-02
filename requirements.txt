@@ -13,7 +13,6 @@ sqlalchemy>=2.0.0           # ORM with async support
 alembic>=1.12.0             # Database migrations
 psycopg2-binary>=2.9.0      # PostgreSQL driver (sync)
 asyncpg>=0.29.0             # PostgreSQL driver (async)
-aiopostgresql>=0.19.0           # Async PostgreSQL driver
 
 # Authentication & Security
 python-jose[cryptography]>=3.3.0  # JWT tokens
