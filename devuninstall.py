@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-GiljoAI MCP Development Uninstaller
-Nuclear reset for testing - removes ALL files and PostgreSQL
+GiljoAI MCP Uninstaller
+Cleanup utility for failed installations and development testing
 
-Use this for development/testing - it removes:
-- ALL files in the installation folder
-- PostgreSQL database AND server
-- User config files from APPDATA
-- Everything related to this installation
+This tool provides three modes:
+1. Remove all files (keeps PostgreSQL server for reuse)
+2. Remove all files + drop databases (complete reset)
+3. Drop databases only (clean data, keep installation)
 
 Preserves:
-- Python packages (for other projects on this machine)
+- PostgreSQL server installation (never uninstalls PostgreSQL itself)
+- Python system packages (only removes project files)
 """
 
 import json
@@ -119,13 +119,13 @@ class GiljoDevUninstaller:
 
     def drop_postgresql_database(self):
         """Drop PostgreSQL databases (main and test), keep server intact"""
-        self.log("Dropping PostgreSQL databases...")
+        self.log("Dropping PostgreSQL databases (server will remain installed)...")
 
         # Default PostgreSQL configuration
         host = 'localhost'
         port = '5432'
         user = 'postgres'
-        password = '4010'  # Default password for PostgreSQL
+        password = '4010'  # Default development password
 
         # Check manifest for configuration
         pg_info = self.manifest.get('postgresql', {})
@@ -305,10 +305,10 @@ class GiljoDevUninstaller:
         return removed
 
     def run(self):
-        """Run the development uninstall"""
+        """Run the uninstaller"""
         print("\n" + "="*70)
-        print("   GiljoAI MCP Development Uninstaller")
-        print("   Clean Slate for Testing and Development")
+        print("   GiljoAI MCP Uninstaller")
+        print("   Cleanup Utility for Failed Installations")
         print("="*70)
 
         print("\n[INFO] Select reset mode:")
