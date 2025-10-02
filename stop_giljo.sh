@@ -1,41 +1,34 @@
 #!/bin/bash
+# GiljoAI MCP Service Stopper (Linux/macOS)
 
-echo "Stopping GiljoAI MCP Orchestrator..."
+set -e
 
-# Try to read PIDs from file first (if started with start_giljo.sh)
-if [ -f .giljo_pids ]; then
-    echo "Reading PIDs from .giljo_pids file..."
-    while read pid; do
-        if [ ! -z "$pid" ]; then
-            kill $pid 2>/dev/null && echo "Stopped process $pid"
-        fi
-    done < .giljo_pids
-    rm -f .giljo_pids
-fi
+echo "==============================================="
+echo "   GiljoAI MCP - Stopping Services"
+echo "==============================================="
+echo
 
-# Also try to find and kill processes by port (fallback method)
-echo "Checking for processes on service ports..."
+# Get script directory and change to it
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
 
-# Function to kill process on port
-kill_port() {
-    local port=$1
-    local pid=$(lsof -ti:$port 2>/dev/null)
-    if [ ! -z "$pid" ]; then
-        kill $pid 2>/dev/null && echo "Stopped process on port $port (PID: $pid)"
-    fi
-}
+echo "Stopping all GiljoAI MCP services..."
+echo
 
-# Kill processes on known ports
-kill_port 6000  # Frontend
-kill_port 6001  # MCP Server
-kill_port 6002  # API Server
-kill_port 6003  # WebSocket
+# Find and kill processes gracefully
+pkill -f "python.*start_giljo" 2>/dev/null || true
+pkill -f "python.*giljo_mcp" 2>/dev/null || true
+pkill -f "uvicorn.*giljo" 2>/dev/null || true
 
-# Also try to kill Python processes running our services
-pkill -f "giljo_mcp.server" 2>/dev/null && echo "Stopped MCP server"
-pkill -f "giljo_mcp.api_server" 2>/dev/null && echo "Stopped API server"
+# Wait a bit for graceful shutdown
+sleep 2
 
-# Kill node processes running frontend
-pkill -f "npm run dev" 2>/dev/null && echo "Stopped frontend dev server"
+# Force kill if still running
+pkill -9 -f "python.*start_giljo" 2>/dev/null || true
+pkill -9 -f "python.*giljo_mcp" 2>/dev/null || true
 
-echo "All services stopped."
+echo
+echo "==============================================="
+echo "   All GiljoAI MCP services stopped"
+echo "==============================================="
+echo

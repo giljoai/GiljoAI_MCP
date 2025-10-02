@@ -135,6 +135,18 @@ class GiljoDevUninstaller:
             user = pg_info.get('user', user)
             password = pg_info.get('password', password)
 
+        # Also check .env file for password if manifest doesn't have it
+        env_file = self.root_path / '.env'
+        if env_file.exists() and not pg_info:
+            try:
+                with open(env_file, 'r') as f:
+                    for line in f:
+                        if line.startswith('DB_PASSWORD='):
+                            password = line.split('=', 1)[1].strip().strip('"\'')
+                            break
+            except:
+                pass
+
         # Databases to drop
         databases = ['giljo_mcp', 'giljo_mcp_test']
 
@@ -208,6 +220,32 @@ class GiljoDevUninstaller:
                 self.log(f"Timeout dropping '{database}'", "WARNING")
             except Exception as e:
                 self.log(f"Could not drop '{database}': {e}", "WARNING")
+
+        # Also drop the roles if they exist
+        roles_to_drop = ['giljo_owner', 'giljo_user']
+        for role in roles_to_drop:
+            try:
+                env = os.environ.copy()
+                env['PGPASSWORD'] = password
+
+                cmd = [psql_cmd, "-h", host, "-p", port, "-U", user,
+                       "-c", f"DROP ROLE IF EXISTS {role};"]
+
+                result = subprocess.run(
+                    cmd,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+
+                if result.returncode == 0 or "does not exist" in result.stderr:
+                    self.log(f"PostgreSQL role '{role}' dropped", "SUCCESS")
+                    dropped += 1
+                else:
+                    self.log(f"Could not drop role '{role}': {result.stderr}", "WARNING")
+            except Exception as e:
+                self.log(f"Could not drop role '{role}': {e}", "WARNING")
 
         return dropped
 

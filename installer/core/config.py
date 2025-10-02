@@ -283,13 +283,17 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
             api_port = self.settings.get('api_port', 7272)
             frontend_port = self.settings.get('dashboard_port', 6000)
 
+            # Get install directory
+            install_dir = self.settings.get('install_dir', str(Path.cwd()))
+
             config = {
                 'installation': {
                     'version': '2.0.0',
                     'mode': self.mode,
                     'timestamp': datetime.now().isoformat(),
                     'platform': platform.system(),
-                    'python_version': platform.python_version()
+                    'python_version': platform.python_version(),
+                    'install_dir': install_dir
                 },
                 'database': {
                     'type': 'postgresql',
@@ -325,13 +329,14 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                     'multi_user': self.mode == 'server'
                 },
                 'paths': {
-                    'data': './data',
-                    'logs': './logs',
-                    'uploads': './uploads',
-                    'temp': './temp',
-                    'static': './frontend/dist',
-                    'templates': './frontend/templates',
-                    'certs': './certs' if self.mode == 'server' else None
+                    'install_dir': install_dir,
+                    'data': str(Path(install_dir) / 'data'),
+                    'logs': str(Path(install_dir) / 'logs'),
+                    'uploads': str(Path(install_dir) / 'uploads'),
+                    'temp': str(Path(install_dir) / 'temp'),
+                    'static': str(Path(install_dir) / 'frontend' / 'dist'),
+                    'templates': str(Path(install_dir) / 'frontend' / 'templates'),
+                    'certs': str(Path(install_dir) / 'certs') if self.mode == 'server' else None
                 },
                 'logging': {
                     'level': 'DEBUG' if self.mode == 'localhost' else 'INFO',

@@ -336,6 +336,31 @@ class ServiceLauncher:
         return 0
 
 
+def start_services(settings: dict = None):
+    """
+    Start services after installation (called from installer)
+
+    Args:
+        settings: Optional settings dict from installer with config overrides
+    """
+    launcher = ServiceLauncher()
+
+    # Override config with installation settings if provided
+    if settings:
+        # Update SERVICES dict with installation settings
+        if 'api_port' in settings:
+            SERVICES['backend']['port'] = settings['api_port']
+
+        if 'ws_port' in settings:
+            SERVICES['websocket']['port'] = settings['ws_port']
+
+        if 'dashboard_port' in settings:
+            SERVICES['dashboard']['port'] = settings['dashboard_port']
+
+    # Run the launcher
+    return launcher.run()
+
+
 def main():
     """Main entry point"""
     launcher = ServiceLauncher()

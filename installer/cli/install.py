@@ -199,6 +199,11 @@ def display_header(mode: str):
     click.echo(f"Platform: {platform.system()} {platform.machine()}")
     click.echo(f"Python: {sys.version.split()[0]}")
     click.echo()
+    click.echo("IMPORTANT NOTICE:")
+    click.echo("  Currently supports Claude Code only")
+    click.echo("  Support for Codex and Gemini coming in 2026")
+    click.echo("  See CLAUDE_CODE_EXCLUSIVITY_INVESTIGATION.md for details")
+    click.echo()
 
 
 def interactive_setup(mode: str, pg_host: str, pg_port: int,
@@ -508,26 +513,54 @@ def display_success(settings: Dict[str, Any], result: Dict[str, Any]):
         click.echo("  Keep this file secure!")
         click.echo()
 
+    if result.get('mcp_registered'):
+        click.echo("MCP Registration:")
+        click.echo("  Successfully registered with Claude Code")
+        click.echo()
+
     click.echo("Services:")
     click.echo(f"  API: http://localhost:{settings.get('api_port', 7272)}")
-    click.echo(f"  WebSocket: ws://localhost:{settings.get('ws_port', 8001)}")
-    click.echo(f"  Dashboard: http://localhost:{settings.get('dashboard_port', 3000)}")
+    click.echo(f"  WebSocket: ws://localhost:{settings.get('api_port', 7272)}")
+    click.echo(f"  Dashboard: http://localhost:{settings.get('dashboard_port', 6000)}")
+    click.echo()
+
+    click.echo("IMPORTANT NOTICE:")
+    click.echo("  This installation currently supports Claude Code only")
+    click.echo("  Support for Codex and Gemini coming in 2026")
     click.echo()
 
     click.echo("To start GiljoAI MCP:")
     if platform.system() == "Windows":
-        click.echo("  .\\launchers\\start_giljo.bat")
+        click.echo("  .\\start_giljo.bat")
     else:
-        click.echo("  ./launchers/start_giljo.sh")
+        click.echo("  ./start_giljo.sh")
 
     click.echo("\nOr use the Python launcher:")
-    click.echo("  python launchers/start_giljo.py")
+    click.echo("  python start_giljo.py")
+    click.echo()
+
+    # Ask about desktop shortcuts
+    create_shortcuts = click.confirm("Create desktop shortcuts?", default=True)
+    if create_shortcuts:
+        click.echo("\nCreating desktop shortcuts...")
+        from installer.core.shortcuts import create_desktop_shortcuts
+        shortcut_result = create_desktop_shortcuts(settings)
+
+        if shortcut_result['success']:
+            for shortcut in shortcut_result['created']:
+                click.echo(f"  ✓ Created: {shortcut}")
+
+        if shortcut_result['errors']:
+            click.echo("\nWarnings:", err=True)
+            for error in shortcut_result['errors']:
+                click.echo(f"  - {error}", err=True)
+
     click.echo()
 
     if settings.get('auto_start'):
         click.echo("Starting services...")
-        # Import and run launcher
-        from launchers.start_giljo import start_services
+        # Import and run launcher from root
+        from start_giljo import start_services
         start_services(settings)
 
 
