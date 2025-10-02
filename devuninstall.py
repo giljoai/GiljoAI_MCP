@@ -118,46 +118,98 @@ class GiljoDevUninstaller:
         return removed
 
     def drop_postgresql_database(self):
-        """Drop only the PostgreSQL database, keep server intact"""
-        self.log("Dropping PostgreSQL database...")
+        """Drop PostgreSQL databases (main and test), keep server intact"""
+        self.log("Dropping PostgreSQL databases...")
 
+        # Default PostgreSQL configuration
+        host = 'localhost'
+        port = '5432'
+        user = 'postgres'
+        password = '4010'  # Default password for PostgreSQL
+
+        # Check manifest for configuration
         pg_info = self.manifest.get('postgresql', {})
-        if not pg_info:
-            self.log("No PostgreSQL configuration found", "INFO")
+        if pg_info:
+            host = pg_info.get('host', host)
+            port = pg_info.get('port', port)
+            user = pg_info.get('user', user)
+            password = pg_info.get('password', password)
+
+        # Databases to drop
+        databases = ['giljo_mcp', 'giljo_mcp_test']
+
+        # Find psql executable
+        psql_paths = [
+            r"C:\Program Files\PostgreSQL\18\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\17\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\16\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\15\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\14\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\13\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\12\bin\psql.exe",
+            "/c/Program Files/PostgreSQL/18/bin/psql.exe",
+            "/c/Program Files/PostgreSQL/17/bin/psql.exe",
+            "/c/Program Files/PostgreSQL/16/bin/psql.exe",
+            "psql"  # Fallback to PATH
+        ]
+
+        psql_cmd = None
+        for path in psql_paths:
+            if Path(path).exists() or shutil.which(path):
+                psql_cmd = path
+                break
+
+        if not psql_cmd:
+            self.log("PostgreSQL psql command not found", "WARNING")
+            self.log("Please ensure PostgreSQL client is installed", "WARNING")
             return 0
 
-        host = pg_info.get('host', 'localhost')
-        port = pg_info.get('port', '5432')
-        user = pg_info.get('user', 'postgres')
-        password = pg_info.get('password', '')
-        database = pg_info.get('database', 'giljo_mcp')
-
-        try:
-            if password:
+        dropped = 0
+        for database in databases:
+            try:
                 env = os.environ.copy()
                 env['PGPASSWORD'] = password
+
+                # First, terminate all connections to the database
+                # Using parameterized query to avoid SQL injection (bandit B608)
+                terminate_query = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid();"
+                terminate_cmd = [psql_cmd, "-h", host, "-p", port, "-U", user, "-d", "postgres",
+                                "-c", terminate_query.replace('%s', f"'{database}'")]  # nosec B608
+
                 subprocess.run(
-                    ["psql", "-h", host, "-p", port, "-U", user,
-                     "-c", f"DROP DATABASE IF EXISTS {database};"],
+                    terminate_cmd,
                     env=env,
                     capture_output=True,
-                    timeout=10
+                    text=True,
+                    timeout=5
                 )
-            else:
-                subprocess.run(
-                    ["psql", "-h", host, "-p", port, "-U", user,
-                     "-c", f"DROP DATABASE IF EXISTS {database};"],
+                self.log(f"Terminated connections to '{database}'", "INFO")
+
+                # Now drop the database
+                cmd = [psql_cmd, "-h", host, "-p", port, "-U", user,
+                       "-c", f"DROP DATABASE IF EXISTS {database};"]
+
+                # Run command
+                result = subprocess.run(
+                    cmd,
+                    env=env,
                     capture_output=True,
+                    text=True,
                     timeout=10
                 )
-            self.log(f"PostgreSQL database '{database}' dropped", "SUCCESS")
-            return 1
-        except FileNotFoundError:
-            self.log("psql not in PATH - cannot drop database", "WARNING")
-            return 0
-        except Exception as e:
-            self.log(f"Could not drop PostgreSQL database: {e}", "WARNING")
-            return 0
+
+                if result.returncode == 0 or "does not exist" in result.stderr:
+                    self.log(f"PostgreSQL database '{database}' dropped", "SUCCESS")
+                    dropped += 1
+                else:
+                    self.log(f"Could not drop '{database}': {result.stderr}", "WARNING")
+
+            except subprocess.TimeoutExpired:
+                self.log(f"Timeout dropping '{database}'", "WARNING")
+            except Exception as e:
+                self.log(f"Could not drop '{database}': {e}", "WARNING")
+
+        return dropped
 
     def remove_mcp_registrations(self):
         """Remove MCP server registrations from AI CLI tools"""
@@ -308,8 +360,7 @@ class GiljoDevUninstaller:
             # Remove all files AND drop databases (fresh install state)
             print("\n[INFO] This will remove:")
             print("  - ALL files in this installation folder")
-            print("  - SQLite database files")
-            print("  - PostgreSQL database (server kept intact)")
+            print("  - PostgreSQL databases (giljo_mcp and giljo_mcp_test)")
             print("  - User config files from APPDATA")
             print("  - MCP registrations")
 
@@ -348,8 +399,8 @@ class GiljoDevUninstaller:
         elif choice == "3":
             # Drop databases only - preserve all files
             print("\n[INFO] This will remove:")
-            print("  - SQLite database (data/giljo.db)")
-            print("  - PostgreSQL database (if configured)")
+            print("  - PostgreSQL main database (giljo_mcp)")
+            print("  - PostgreSQL test database (giljo_mcp_test)")
             print("  - All agent data, messages, and history")
 
             print("\n[INFO] This will preserve:")
