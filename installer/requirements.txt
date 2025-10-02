@@ -1,0 +1,20 @@
+# GiljoAI MCP Installer Dependencies
+# Core installation tools
+
+# CLI framework
+click>=8.1.0
+
+# Configuration handling
+pyyaml>=6.0
+
+# Environment file handling
+python-dotenv>=1.0.0
+
+# PostgreSQL database driver
+psycopg2-binary>=2.9.9
+
+# Password generation (part of stdlib, but included for clarity)
+# secrets - built-in
+
+# Optional: For better terminal output
+colorama>=0.4.6; platform_system=="Windows"

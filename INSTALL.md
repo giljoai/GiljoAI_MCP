@@ -19,43 +19,35 @@
   - Windows: PowerShell, Command Prompt, or Git Bash
   - Mac/Linux: Terminal
 
-### Optional Software
+### PostgreSQL 18 Requirement
 
-- **PostgreSQL 14+** - For production deployments
-- **Redis** - For advanced caching (production)
-- **Docker** - For containerized deployment
+- **PostgreSQL 18** is the ONLY supported database for GiljoAI MCP
+- **Recommended**: Install PostgreSQL 18 before running the installer
+- **Auto-Install Option**: The CLI installer can automatically install PostgreSQL 18 if not detected
 
 ## Quick Start
 
 ### The Installation Flow
 
-**CRITICAL**: The installation scripts are the TRUE entry points. They handle Python installation FIRST, then launch the rest of the system.
+**CRITICAL**: The CLI installer is the TRUE entry point. It handles all system configuration.
 
 ```
-install.bat (Windows) / quickstart.sh (Mac/Linux)
-    ↓ Checks for Python, installs if missing
-bootstrap.py
-    ↓ Checks dependencies, detects GUI
-setup.py or setup_gui.py
-    ↓ Configures application
+python install.py
+    ↓ Checks for dependencies
+    ↓ Configures PostgreSQL 18
+    ↓ Sets up application
 System Ready!
 ```
 
 ### Current Installation Process
 
-#### Windows Users
-
-```batch
-# Run the installation script
-install.bat
-```
-
-#### Mac/Linux Users
-
 ```bash
-# Make the script executable and run
-chmod +x quickstart.sh
-./quickstart.sh
+# Clone the repository
+git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
+cd GiljoAI_MCP
+
+# Run the CLI installer
+python install.py
 ```
 
 This will set up your environment and install Python dependencies.
@@ -90,13 +82,13 @@ Edit `config.yaml` to match your needs. Key settings:
 
 ```yaml
 database:
-  database_type: postgresql
+  type: postgresql  # Only option
   host: localhost
   port: 5432
   database: giljo_mcp
 
 server:
-  mode: local
+  mode: localhost   # localhost or server
   host: localhost
   ports:
     mcp: 6001
@@ -104,7 +96,7 @@ server:
     frontend: 6000
 
 tenant:
-  enable_multi_tenant: false
+  multi_tenant: false  # Future feature
 
 app:
   name: "GiljoAI MCP Orchestrator"
@@ -131,7 +123,7 @@ cd ..
 
 ### Step 5: Run the MCP Server
 
-The MCP server can be run in different modes:
+The MCP server can be run in two modes:
 
 #### Option A: Run as MCP Server (for use with Claude Desktop)
 
@@ -183,7 +175,7 @@ To use with Claude Desktop, add this to your Claude Desktop config:
 
 2. **Port already in use**: Change the port numbers in `config.yaml`
 
-3. **Database errors**: Ensure the data directory exists and has write permissions
+3. **Database errors**: Ensure PostgreSQL 18 is installed and configured correctly
 
 4. **Frontend build errors**: Make sure Node.js 18+ is installed
 
@@ -196,5 +188,4 @@ To use with Claude Desktop, add this to your Claude Desktop config:
 
 - Read the full documentation in README.md
 - Explore the examples directory for usage patterns
-- Configure multi-tenant mode for enterprise use
-- Set up PostgreSQL for production deployments
+- Configure your preferred installation mode (localhost or server)
