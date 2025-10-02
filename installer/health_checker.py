@@ -16,8 +16,8 @@ class HealthChecker:
 
     def check_postgresql(self, should_exist: bool = False) -> Tuple[bool, str]:
         """Check PostgreSQL availability"""
-        if not should_exist:
-            return True, "Not configured (using SQLite)"
+        # PostgreSQL is always required now - SQLite has been completely removed
+        # Always check PostgreSQL regardless of should_exist parameter
 
         try:
             import psycopg2
