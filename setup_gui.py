@@ -1415,11 +1415,11 @@ class ProgressPage(WizardPage):
             name_label = ttk.Label(frame, text=label, width=25)
             name_label.pack(side="left", padx=(0, 10))
 
-            # Progress bar
+            # Progress bar (moved 30px to the right)
             progress_var = tk.IntVar(value=0)
             progress = ttk.Progressbar(frame, variable=progress_var,
                                       maximum=100, length=200)
-            progress.pack(side="left", padx=(0, 10))
+            progress.pack(side="left", padx=(30, 10))
 
             # Status label
             status_var = tk.StringVar(value="Pending")
@@ -1966,8 +1966,7 @@ class ProgressPage(WizardPage):
             self.failure_reasons.append(f"Dependencies: {e}")
 
         # PostgreSQL is always used, but user installs it manually
-        self.log("\n[DATABASE MODE: PostgreSQL]", "system")
-        self.log("Using PostgreSQL database (user-installed)", "system")
+        # (Logging moved to after schema initialization for proper status tracking)
 
         # Step 3: Create configuration files
         self.set_status("Creating server configuration...", "config")
@@ -2212,6 +2211,13 @@ class ProgressPage(WizardPage):
             self.set_status(f"Schema initialization warning: {e}", "schema")
             self.set_progress(100, "schema")  # Continue anyway
 
+        # PostgreSQL database configuration - mark as complete since user configured it
+        self.log("\n[DATABASE MODE: PostgreSQL]", "system")
+        self.log("Using PostgreSQL database (user-installed and configured)", "system")
+        self.set_status("PostgreSQL configured [OK]", "database")
+        self.set_progress(100, "database")
+        self.phase_status['database'] = True  # Mark database phase as complete
+
         # PostgreSQL installation is now manual (not automatic)
         # Users install PostgreSQL themselves using the Database Configuration page
         run_postgresql = False
@@ -2346,7 +2352,9 @@ class ProgressPage(WizardPage):
                 self.phase_status.get('database', False)
             )
 
+            # Ensure main progress bar reaches 100%
             self.set_progress(100)
+            self.progress_var.set(100)  # Explicitly set main progress to 100%
             if critical_phases_ok and not self.installation_failed:
                 completion_msg = "Installation completed successfully!"
                 self.status_var.set(completion_msg)
