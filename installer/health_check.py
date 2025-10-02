@@ -41,8 +41,8 @@ class HealthCheckSystem:
 
     def check_postgresql_health(self) -> ServiceHealth:
         """Check PostgreSQL installation and connection"""
-        if self.config.get("db_type") != "postgresql":
-            return ServiceHealth(name="PostgreSQL", healthy=True, message="Not configured (using SQLite)")
+        # PostgreSQL is always required now - SQLite has been completely removed
+        # Always check PostgreSQL since it's the only supported database
 
         try:
             from installer.dependencies.postgresql import PostgreSQLInstaller, PostgreSQLConfig
@@ -105,8 +105,8 @@ class HealthCheckSystem:
             "MCP": int(self.config.get("mcp_port", 3001)),
         }
 
-        if self.config.get("db_type") == "postgresql":
-            required_ports["PostgreSQL"] = int(self.config.get("pg_port", 5432))
+        # PostgreSQL is always required now - no need to check db_type
+        required_ports["PostgreSQL"] = int(self.config.get("pg_port", 5432))
 
         if self.profile in ["team", "enterprise"]:
             required_ports["Redis"] = int(self.config.get("redis_port", 6379))
@@ -148,10 +148,8 @@ class HealthCheckSystem:
         # Check config files
         config_files = [Path(".env"), Path("config.yaml")]
 
-        # Check data directory for SQLite
-        if self.config.get("db_type") == "sqlite":
-            db_path = Path(self.config.get("db_path", "data/giljo_mcp.db"))
-            required_paths.append(db_path.parent)
+        # PostgreSQL is the only database now - no SQLite checks needed
+        # No additional path checks required for PostgreSQL as it manages its own data directory
 
         missing = []
         for path in config_files:
