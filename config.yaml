@@ -1,7 +1,7 @@
 installation:
   version: 2.0.0
-  mode: localhost
-  timestamp: "2025-10-02T00:13:25.644770"
+  mode: server
+  timestamp: "2025-10-02T05:22:24.868145"
   platform: Windows
   python_version: 3.13.7
 database:
@@ -11,17 +11,17 @@ database:
   port: 5432
   name: giljo_mcp
   user: giljo_user
-  pool_size: 5
+  pool_size: 20
 services:
-  bind: 127.0.0.1
+  bind: 0.0.0.0
   api_port: 8000
   websocket_port: 8001
   dashboard_port: 3000
 features:
   auto_start_browser: true
-  ssl_enabled: false
-  api_keys_required: false
-  multi_user: false
+  ssl_enabled: true
+  api_keys_required: true
+  multi_user: true
 paths:
   data: ./data
   logs: ./logs
@@ -30,7 +30,7 @@ paths:
   static: ./frontend/static
   templates: ./frontend/templates
 logging:
-  level: DEBUG
+  level: INFO
   file: ./logs/giljo.log
   max_size: 10MB
   backup_count: 5
@@ -39,3 +39,16 @@ status:
   database_created: true
   migrations_run: false
   ready_to_launch: true
+server:
+  admin_user: admin
+  allowed_ips: []
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+  session:
+    timeout_minutes: 30
+    remember_me_days: 30
+ssl:
+  cert_path: ./certs/server.crt
+  key_path: ./certs/server.key
+  self_signed: false
