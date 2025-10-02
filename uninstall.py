@@ -89,16 +89,87 @@ class GiljoProductionUninstaller:
         # First, drop the database
         pg_info = self.manifest.get('postgresql', {})
         database = pg_info.get('database', 'giljo_mcp')
+        host = pg_info.get('host', 'localhost')
+        port = pg_info.get('port', '5432')
+        user = pg_info.get('user', 'postgres')
+        password = pg_info.get('password', '4010')
 
-        try:
-            subprocess.run(
-                ["psql", "-U", "postgres", "-c", f"DROP DATABASE IF EXISTS {database};"],
-                capture_output=True,
-                timeout=10
-            )
-            self.log(f"Database '{database}' dropped", "SUCCESS")
-        except:
-            pass
+        # Also check .env file for password if manifest doesn't have it
+        env_file = self.root_path / '.env'
+        if env_file.exists() and not pg_info.get('password'):
+            try:
+                with open(env_file, 'r') as f:
+                    for line in f:
+                        if line.startswith('DB_PASSWORD='):
+                            password = line.split('=', 1)[1].strip().strip('"\'')
+                            break
+            except:
+                pass
+
+        # Find psql executable
+        psql_paths = [
+            r"C:\Program Files\PostgreSQL\18\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\17\bin\psql.exe",
+            r"C:\Program Files\PostgreSQL\16\bin\psql.exe",
+            "/c/Program Files/PostgreSQL/18/bin/psql.exe",
+            "psql"  # Fallback to PATH
+        ]
+
+        psql_cmd = None
+        for path in psql_paths:
+            if Path(path).exists() or shutil.which(path):
+                psql_cmd = path
+                break
+
+        if psql_cmd:
+            try:
+                env = os.environ.copy()
+                env['PGPASSWORD'] = password
+
+                # Terminate connections
+                subprocess.run(
+                    [psql_cmd, "-h", host, "-p", port, "-U", user, "-d", "postgres",
+                     "-c", f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{database}' AND pid <> pg_backend_pid();"],
+                    env=env,
+                    capture_output=True,
+                    timeout=5
+                )
+
+                # Drop database
+                result = subprocess.run(
+                    [psql_cmd, "-h", host, "-p", port, "-U", user,
+                     "-c", f"DROP DATABASE IF EXISTS {database};"],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+
+                if result.returncode == 0 or "does not exist" in result.stderr:
+                    self.log(f"Database '{database}' dropped", "SUCCESS")
+
+                # Drop test database
+                subprocess.run(
+                    [psql_cmd, "-h", host, "-p", port, "-U", user,
+                     "-c", f"DROP DATABASE IF EXISTS {database}_test;"],
+                    env=env,
+                    capture_output=True,
+                    timeout=10
+                )
+
+                # Drop roles
+                for role in ['giljo_owner', 'giljo_user']:
+                    subprocess.run(
+                        [psql_cmd, "-h", host, "-p", port, "-U", user,
+                         "-c", f"DROP ROLE IF EXISTS {role};"],
+                        env=env,
+                        capture_output=True,
+                        timeout=5
+                    )
+                    self.log(f"Role '{role}' dropped", "SUCCESS")
+
+            except Exception as e:
+                self.log(f"Error dropping database: {e}", "WARNING")
 
         # Then remove PostgreSQL server
         pg_deps = self.manifest.get('dependencies', {}).get('postgresql', {})
@@ -288,6 +359,22 @@ class GiljoProductionUninstaller:
         print("\n[OK] Complete production uninstall successful!")
         print("[OK] All GiljoAI MCP components removed from system.")
         print(f"\n[INFO] Log saved to: {log_path}")
+
+        print("\n" + "="*70)
+        print("MANUAL CLEANUP REMINDER")
+        print("="*70)
+        print("\n[REMINDER] Please manually delete desktop shortcuts:")
+        if self.platform == "win32":
+            print("  - Start GiljoAI.lnk (on Desktop)")
+            print("  - Stop GiljoAI.lnk (on Desktop)")
+        elif self.platform == "Darwin":
+            print("  - Start GiljoAI.command (on Desktop)")
+            print("  - Stop GiljoAI.command (on Desktop)")
+        else:
+            print("  - Start-GiljoAI.desktop (on Desktop)")
+            print("  - Stop-GiljoAI.desktop (on Desktop)")
+        print("\n[INFO] These shortcuts were not automatically removed to prevent"
+              "\n       accidental deletion of user-created shortcuts.")
 
 
 if __name__ == "__main__":

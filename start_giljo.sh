@@ -1,58 +1,47 @@
 #!/bin/bash
-# GiljoAI MCP Launcher for Unix/Linux/Mac
-# Professional service launcher with error handling
+# GiljoAI MCP Unix/Linux/macOS Launcher
 
 set -e
 
-echo "========================================================"
-echo "   GiljoAI MCP Service Launcher"
-echo "========================================================"
+echo "==============================================="
+echo "   GiljoAI MCP Launcher"
+echo "==============================================="
 echo
+
+# Get script directory and change to it
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
+
+# Check if we have config
+if [ ! -f "config.yaml" ]; then
+    echo "Error: config.yaml not found"
+    echo "Please run installer first"
+    exit 1
+fi
 
 # Check Python installation
 if ! command -v python3 &> /dev/null; then
-    echo "ERROR: Python 3 is not installed"
-    echo "Please install Python 3.9+ from https://www.python.org/"
+    echo "Error: Python 3 not found"
+    echo "Please install Python 3.8+ first"
     exit 1
 fi
 
-# Check Python version
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-REQUIRED_VERSION="3.9"
-
-if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
-    echo "ERROR: Python $PYTHON_VERSION is installed, but $REQUIRED_VERSION+ is required"
-    exit 1
-fi
-
-# Check if config exists
-if [ ! -f "config.yaml" ] && [ ! -f ".env" ]; then
-    echo "ERROR: No configuration found."
-    echo "Please run the installer first:"
-    echo "  python3 installer/cli/install.py"
-    exit 1
-fi
-
-# Check PostgreSQL (optional)
-if command -v psql &> /dev/null; then
-    echo "PostgreSQL client found: $(psql --version | head -n1)"
-else
-    echo "WARNING: PostgreSQL client not found"
-    echo "Some features may not work properly"
-fi
-
-# Launch Python launcher
-echo "Starting GiljoAI MCP services..."
+echo "Starting GiljoAI MCP..."
 echo
 
-python3 start_giljo.py
+# Launch the Python launcher from root
+python3 start_giljo.py "$@"
 
-EXIT_CODE=$?
-if [ $EXIT_CODE -ne 0 ]; then
+# Check exit code
+if [ $? -ne 0 ]; then
     echo
-    echo "ERROR: Failed to start services (exit code: $EXIT_CODE)"
-    echo "Check the logs in: logs/launcher/"
-    exit $EXIT_CODE
+    echo "Launch failed. Please check the error messages above."
+    echo
+    echo "Troubleshooting:"
+    echo "  1. Ensure PostgreSQL is running"
+    echo "  2. Check that all required ports are available"
+    echo "  3. Review logs in the logs/ directory"
+    echo "  4. Verify .env and config.yaml are present"
+    echo
+    exit 1
 fi
-
-exit 0

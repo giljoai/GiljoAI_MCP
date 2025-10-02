@@ -63,8 +63,17 @@ class BaseInstaller(ABC):
         }
 
         try:
-            # Step 1: Setup database
-            self.logger.info("Step 1: Setting up database")
+            # Step 1: Create virtual environment
+            self.logger.info("Step 1: Creating virtual environment")
+            venv_result = self.create_venv()
+
+            if not venv_result['success']:
+                result['error'] = "Virtual environment creation failed"
+                result['details'] = venv_result.get('errors', [])
+                return result
+
+            # Step 2: Setup database
+            self.logger.info("Step 2: Setting up database")
             db_result = self.db_installer.setup()
 
             if not db_result['success']:
@@ -77,8 +86,8 @@ class BaseInstaller(ABC):
                 self.settings.update(db_result['credentials'])
                 result['credentials_file'] = db_result.get('credentials_file')
 
-            # Step 2: Generate configuration files
-            self.logger.info("Step 2: Generating configuration files")
+            # Step 3: Generate configuration files
+            self.logger.info("Step 3: Generating configuration files")
             config_result = self.config_manager.generate_all()
 
             if not config_result['success']:
@@ -86,26 +95,8 @@ class BaseInstaller(ABC):
                 result['details'] = config_result.get('errors', [])
                 return result
 
-            # Step 3: Create launchers
-            self.logger.info("Step 3: Creating launcher scripts")
-            launcher_result = self.create_launchers()
-
-            if not launcher_result['success']:
-                result['error'] = "Launcher creation failed"
-                result['details'] = launcher_result.get('errors', [])
-                return result
-
-            # Step 4: Mode-specific setup
-            self.logger.info(f"Step 4: Performing {self.mode}-specific setup")
-            mode_result = self.mode_specific_setup()
-
-            if not mode_result['success']:
-                result['error'] = f"{self.mode.capitalize()} setup failed"
-                result['details'] = mode_result.get('errors', [])
-                return result
-
-            # Step 5: Install dependencies
-            self.logger.info("Step 5: Installing Python dependencies")
+            # Step 4: Install dependencies
+            self.logger.info("Step 4: Installing Python dependencies")
             deps_result = self.install_dependencies()
 
             if not deps_result['success']:
@@ -113,8 +104,39 @@ class BaseInstaller(ABC):
                 result['details'] = deps_result.get('errors', [])
                 return result
 
-            # Step 6: Post-installation validation
-            self.logger.info("Step 6: Validating installation")
+            # Step 5: Create launchers
+            self.logger.info("Step 5: Creating launcher scripts")
+            launcher_result = self.create_launchers()
+
+            if not launcher_result['success']:
+                result['error'] = "Launcher creation failed"
+                result['details'] = launcher_result.get('errors', [])
+                return result
+
+            # Step 6: Mode-specific setup
+            self.logger.info(f"Step 6: Performing {self.mode}-specific setup")
+            mode_result = self.mode_specific_setup()
+
+            if not mode_result['success']:
+                result['error'] = f"{self.mode.capitalize()} setup failed"
+                result['details'] = mode_result.get('errors', [])
+                return result
+
+            # Step 7: Register with Claude Code (MCP)
+            if self.settings.get('register_mcp', True):
+                self.logger.info("Step 7: Registering with Claude Code MCP")
+                mcp_result = self.register_with_claude()
+
+                if not mcp_result['success']:
+                    # Don't fail installation if MCP registration fails, just warn
+                    result['warnings'] = result.get('warnings', [])
+                    result['warnings'].append("Failed to register with Claude Code - you can do this manually later")
+                    self.logger.warning("MCP registration failed, but continuing installation")
+                else:
+                    result['mcp_registered'] = True
+
+            # Step 8: Post-installation validation
+            self.logger.info("Step 8: Validating installation")
             validation_result = self.post_validator.validate()
 
             if not validation_result['valid']:
@@ -125,12 +147,16 @@ class BaseInstaller(ABC):
             # Success!
             result['success'] = True
             result['details'] = [
+                "Virtual environment created",
                 "Database created and initialized",
                 "Configuration files generated",
-                "Launcher scripts created",
                 "Dependencies installed",
+                "Launcher scripts created",
                 "Installation validated"
             ]
+
+            if result.get('mcp_registered'):
+                result['details'].append("Registered with Claude Code")
 
             self.logger.info("Installation completed successfully")
             return result
@@ -401,38 +427,162 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 # Launch with Python
-python3 launchers/start_giljo.py "$@"
+python3 start_giljo.py "$@"
 '''
 
-    def install_dependencies(self) -> Dict[str, Any]:
-        """Install Python dependencies"""
+    def create_venv(self) -> Dict[str, Any]:
+        """Create virtual environment in installation directory"""
         result = {'success': False, 'errors': []}
 
         try:
+            install_dir = Path(self.settings.get('install_dir', Path.cwd()))
+            venv_path = install_dir / 'venv'
+
+            # Check if venv already exists
+            if venv_path.exists():
+                self.logger.info(f"Virtual environment already exists at {venv_path}")
+                result['success'] = True
+                result['venv_path'] = str(venv_path)
+                return result
+
+            # Create virtual environment
+            self.logger.info(f"Creating virtual environment at {venv_path}")
+            import venv
+
+            # Create venv with pip
+            venv.create(venv_path, with_pip=True, clear=False, symlinks=(platform.system() != "Windows"))
+
+            # Verify venv was created successfully
+            if platform.system() == "Windows":
+                venv_python = venv_path / 'Scripts' / 'python.exe'
+                venv_pip = venv_path / 'Scripts' / 'pip.exe'
+            else:
+                venv_python = venv_path / 'bin' / 'python'
+                venv_pip = venv_path / 'bin' / 'pip'
+
+            if not venv_python.exists():
+                result['errors'].append(f"Virtual environment creation failed - python not found at {venv_python}")
+                return result
+
+            # Upgrade pip in the venv
+            self.logger.info("Upgrading pip in virtual environment...")
+            upgrade_cmd = [str(venv_python), "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
+            subprocess.run(upgrade_cmd, check=True, capture_output=True)
+
+            result['success'] = True
+            result['venv_path'] = str(venv_path)
+            result['venv_python'] = str(venv_python)
+            result['venv_pip'] = str(venv_pip)
+            self.logger.info(f"Virtual environment created successfully at {venv_path}")
+            return result
+
+        except Exception as e:
+            result['errors'].append(str(e))
+            self.logger.error(f"Virtual environment creation failed: {e}", exc_info=True)
+            return result
+
+    def install_dependencies(self) -> Dict[str, Any]:
+        """Install Python dependencies in the virtual environment"""
+        result = {'success': False, 'errors': []}
+
+        try:
+            # Get venv paths
+            install_dir = Path(self.settings.get('install_dir', Path.cwd()))
+            venv_path = install_dir / 'venv'
+
+            if platform.system() == "Windows":
+                venv_pip = venv_path / 'Scripts' / 'pip.exe'
+            else:
+                venv_pip = venv_path / 'bin' / 'pip'
+
+            if not venv_pip.exists():
+                result['errors'].append(f"Virtual environment pip not found at {venv_pip}")
+                return result
+
             # Check if requirements.txt exists
-            req_file = Path("requirements.txt")
+            req_file = Path(__file__).parent.parent.parent / "requirements.txt"
             if not req_file.exists():
                 self.logger.warning("requirements.txt not found, skipping dependency installation")
                 result['success'] = True
                 return result
 
-            # Use pip to install dependencies
-            self.logger.info("Installing Python dependencies...")
-            cmd = [sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--quiet"]
+            # Copy requirements.txt to install directory only if they're different files
+            dest_req = install_dir / "requirements.txt"
+            import shutil
 
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            # Only copy if source and destination are different
+            if req_file.resolve() != dest_req.resolve():
+                self.logger.info(f"Copying requirements.txt from {req_file} to {dest_req}")
+                shutil.copy(req_file, dest_req)
+            else:
+                self.logger.info(f"Using existing requirements.txt at {dest_req}")
+
+            # Use venv pip to install dependencies with verbose output
+            self.logger.info("Installing Python dependencies in virtual environment...")
+            self.logger.info("This may take a few minutes - showing live progress below:")
+            print("\n" + "="*60)
+
+            cmd = [str(venv_pip), "install", "-r", str(dest_req), "--verbose"]
+
+            # Run with live output to terminal (no capture)
+            proc = subprocess.run(cmd)
+
+            print("="*60 + "\n")
 
             if proc.returncode != 0:
-                result['errors'].append(f"pip install failed: {proc.stderr}")
+                result['errors'].append(f"pip install failed with exit code {proc.returncode}")
                 return result
 
             result['success'] = True
-            self.logger.info("Dependencies installed successfully")
+            self.logger.info("Dependencies installed successfully in virtual environment")
             return result
 
         except Exception as e:
             result['errors'].append(str(e))
             self.logger.error(f"Dependency installation failed: {e}")
+            return result
+
+    def register_with_claude(self) -> Dict[str, Any]:
+        """Register MCP server with Claude Code"""
+        result = {'success': False, 'errors': []}
+
+        try:
+            # Import the universal MCP installer
+            from installer.universal_mcp_installer import UniversalMCPInstaller
+
+            # Get installation directory and venv paths
+            install_dir = Path(self.settings.get('install_dir', Path.cwd()))
+
+            if platform.system() == "Windows":
+                venv_python = install_dir / 'venv' / 'Scripts' / 'python.exe'
+            else:
+                venv_python = install_dir / 'venv' / 'bin' / 'python'
+
+            # Create MCP installer
+            mcp_installer = UniversalMCPInstaller()
+
+            # Register with all detected tools (currently only Claude Code)
+            registration_result = mcp_installer.register_all(
+                server_name='giljo-mcp',
+                command=str(venv_python),
+                args=['-m', 'src.mcp_adapter'],
+                env=None
+            )
+
+            # Check if Claude was registered
+            if registration_result.get('claude', False):
+                result['success'] = True
+                result['registered_tools'] = list(registration_result.keys())
+                self.logger.info("Successfully registered with Claude Code")
+            else:
+                result['errors'].append("Failed to register with Claude Code")
+                self.logger.warning("Claude Code registration failed")
+
+            return result
+
+        except Exception as e:
+            result['errors'].append(str(e))
+            self.logger.error(f"MCP registration failed: {e}", exc_info=True)
             return result
 
     @abstractmethod
