@@ -1,54 +1,74 @@
 installation:
   version: 2.0.0
-  mode: server
-  timestamp: "2025-10-02T05:22:24.868145"
+  mode: localhost
+  timestamp: "2025-10-02T13:04:52.035070"
   platform: Windows
   python_version: 3.13.7
 database:
   type: postgresql
-  version: "18"
+  version: "16"
   host: localhost
   port: 5432
   name: giljo_mcp
   user: giljo_user
-  pool_size: 20
+  owner: giljo_owner
+  pool_size: 5
 services:
-  bind: 0.0.0.0
-  api_port: 8000
-  websocket_port: 8001
-  dashboard_port: 3000
+  api:
+    host: 127.0.0.1
+    port: 7272
+    unified_port: true
+    description: Main API server (REST + WebSocket + MCP)
+  frontend:
+    port: 3000
+    dev_server: true
+    auto_open: true
 features:
-  auto_start_browser: true
-  ssl_enabled: true
-  api_keys_required: true
-  multi_user: true
+  vision_chunking: true
+  multi_tenant: true
+  websocket: true
+  auto_handoff: true
+  dynamic_discovery: true
+  ssl_enabled: false
+  api_keys_required: false
+  multi_user: false
 paths:
   data: ./data
   logs: ./logs
   uploads: ./uploads
   temp: ./temp
-  static: ./frontend/static
+  static: ./frontend/dist
   templates: ./frontend/templates
+  certs: null
 logging:
-  level: INFO
-  file: ./logs/giljo.log
+  level: DEBUG
+  file: ./logs/giljo_mcp.log
   max_size: 10MB
   backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+agent:
+  max_per_project: 20
+  context_limit: 150000
+  handoff_threshold: 140000
+  default_role: orchestrator
+session:
+  timeout_seconds: 3600
+  max_concurrent: 10
+  cleanup_interval: 300
+  cookie_secure: false
+message_queue:
+  max_size: 1000
+  batch_size: 10
+  retry_attempts: 3
+  retry_delay: 1.0
+  priority_levels:
+    - low
+    - normal
+    - high
+    - critical
 status:
   installation_complete: true
   database_created: true
   migrations_run: false
+  services_configured: true
   ready_to_launch: true
-server:
-  admin_user: admin
-  allowed_ips: []
-  rate_limiting:
-    enabled: true
-    requests_per_minute: 60
-  session:
-    timeout_minutes: 30
-    remember_me_days: 30
-ssl:
-  cert_path: ./certs/server.crt
-  key_path: ./certs/server.key
-  self_signed: false

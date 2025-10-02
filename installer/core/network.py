@@ -255,6 +255,45 @@ class NetworkManager:
 
             # Generate certificate
             self.logger.info("Generating self-signed certificate...")
+
+            # Build SAN list
+            san_list = [
+                x509.DNSName(hostname),
+                x509.DNSName('localhost'),
+                x509.DNSName('*.localhost'),
+            ]
+
+            # Always include localhost IP
+            san_list.append(x509.IPAddress(socket.inet_aton('127.0.0.1')))
+
+            # Add configured bind address if it's different from localhost
+            if self.bind_address and self.bind_address not in ['127.0.0.1', 'localhost']:
+                try:
+                    # Handle 0.0.0.0 (bind all interfaces)
+                    if self.bind_address == '0.0.0.0':
+                        # Add common private network IPs when binding to all
+                        try:
+                            import netifaces
+                            for iface in netifaces.interfaces():
+                                addrs = netifaces.ifaddresses(iface)
+                                if netifaces.AF_INET in addrs:
+                                    for addr in addrs[netifaces.AF_INET]:
+                                        ip = addr['addr']
+                                        if ip != '127.0.0.1':
+                                            san_list.append(x509.IPAddress(socket.inet_aton(ip)))
+                        except ImportError:
+                            # netifaces not available, just add the primary IP
+                            primary_ip = socket.gethostbyname(socket.gethostname())
+                            if primary_ip != '127.0.0.1':
+                                san_list.append(x509.IPAddress(socket.inet_aton(primary_ip)))
+                    else:
+                        # Add specific configured IP
+                        san_list.append(x509.IPAddress(socket.inet_aton(self.bind_address)))
+                except Exception as e:
+                    self.logger.warning(f"Could not add bind IP to certificate: {e}")
+                    # Continue without the extra IP - certificate will still work for localhost
+
+            # Create certificate with all extensions
             cert = x509.CertificateBuilder().subject_name(
                 subject
             ).issuer_name(
@@ -268,12 +307,7 @@ class NetworkManager:
             ).not_valid_after(
                 datetime.utcnow() + timedelta(days=365)
             ).add_extension(
-                x509.SubjectAlternativeName([
-                    x509.DNSName(hostname),
-                    x509.DNSName('localhost'),
-                    x509.DNSName('*.localhost'),
-                    x509.IPAddress(socket.inet_aton('127.0.0.1')),
-                ]),
+                x509.SubjectAlternativeName(san_list),
                 critical=False,
             ).sign(private_key, hashes.SHA256(), default_backend())
 
