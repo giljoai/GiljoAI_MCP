@@ -46,11 +46,12 @@ class GiljoLauncher:
                 print(f"Error: Missing {file} - installation incomplete")
                 return False
 
-        # Check ports
+        # Check ports - fixed to match actual config structure
+        services = self.config.get('services', {})
         ports = {
-            'API': self.config['services'].get('api_port', 8000),
-            'WebSocket': self.config['services'].get('websocket_port', 8001),
-            'Dashboard': self.config['services'].get('dashboard_port', 3000)
+            'API': services.get('api', {}).get('port', 7272),
+            'WebSocket': services.get('websocket', {}).get('port', 8001),
+            'Dashboard': services.get('frontend', {}).get('port', 6000)
         }
 
         for service, port in ports.items():
@@ -77,54 +78,29 @@ class GiljoLauncher:
 
     def start_all_services(self):
         """Start all services in order"""
-        mode = self.config['installation'].get('mode', 'localhost')
-        bind_address = self.config['services'].get('bind', '127.0.0.1')
-        ssl_enabled = self.config['features'].get('ssl_enabled', False)
-
         print("="*60)
-        print(f"   Starting GiljoAI MCP Services ({mode.upper()} mode)")
+        print("   Starting GiljoAI MCP Services")
         print("="*60)
         print()
 
-        # Display server mode warning
-        if mode == 'server' and bind_address not in ['127.0.0.1', 'localhost']:
-            print("SERVER MODE - Network accessible")
-            print(f"Binding to: {bind_address}")
-            if not ssl_enabled:
-                print("WARNING: SSL is DISABLED - traffic is not encrypted!")
-            print()
+        # Start API server - fixed to match actual config structure
+        services = self.config.get('services', {})
+        api_port = services.get('api', {}).get('port', 7272)
+        api_host = services.get('api', {}).get('host', '127.0.0.1')
 
-        # Build SSL arguments
-        ssl_args = []
-        if ssl_enabled and self.config.get('ssl'):
-            ssl_args = [
-                "--ssl-certfile", self.config['ssl'].get('cert_path', 'certs/server.crt'),
-                "--ssl-keyfile", self.config['ssl'].get('key_path', 'certs/server.key')
-            ]
-
-        # Start API server
-        api_port = self.config['services'].get('api_port', 8000)
-        api_cmd = [
+        self.start_service("API Server", [
             sys.executable, "-m", "uvicorn",
             "api.main:app",
-            "--host", bind_address,
+            "--host", api_host,
             "--port", str(api_port)
-        ]
-        api_cmd.extend(ssl_args)
-
-        self.start_service("API Server", api_cmd)
+        ])
         time.sleep(2)  # Wait for startup
 
-        # Start WebSocket server
-        ws_port = self.config['services'].get('websocket_port', 8001)
-        self.start_service("WebSocket Server", [
-            sys.executable, "-m", "giljo_mcp.websocket",
-            "--port", str(ws_port)
-        ])
-        time.sleep(1)
+        # Note: In v2.0 architecture, WebSocket is unified with API on same port
+        # No separate WebSocket server needed
 
         # Start Dashboard
-        dashboard_port = self.config['services'].get('dashboard_port', 3000)
+        dashboard_port = services.get('frontend', {}).get('port', 6000)
         self.start_service("Dashboard", [
             sys.executable, "-m", "http.server",
             str(dashboard_port),
@@ -134,30 +110,16 @@ class GiljoLauncher:
         print()
         print("All services started successfully!")
         print()
-
-        # Determine protocol based on SSL and mode
-        protocol = "https" if ssl_enabled else "http"
-        ws_protocol = "wss" if ssl_enabled else "ws"
-        display_host = bind_address if mode == 'server' else 'localhost'
-
         print("Access points:")
-        print(f"  Dashboard: {protocol}://{display_host}:{dashboard_port}")
-        print(f"  API Docs: {protocol}://{display_host}:{api_port}/docs")
-        print(f"  WebSocket: {ws_protocol}://{display_host}:{ws_port}")
-
-        if mode == 'server':
-            print()
-            print("IMPORTANT: Configure your firewall to allow these ports!")
-            if self.config.get('firewall_instructions'):
-                print(f"  See: {self.config.get('firewall_instructions')}")
-
+        print(f"  Dashboard: http://localhost:{dashboard_port}")
+        print(f"  API Docs: http://localhost:{api_port}/docs")
+        print(f"  WebSocket: ws://localhost:{api_port}")  # Unified with API in v2.0
         print()
 
         # Open browser if configured
         if self.config.get('features', {}).get('auto_start_browser', True):
             time.sleep(2)
-            url = f"{protocol}://{display_host}:{dashboard_port}"
-            webbrowser.open(url)
+            webbrowser.open(f"http://localhost:{dashboard_port}")
 
     def shutdown(self, signum=None, frame=None):
         """Gracefully shut down all services"""

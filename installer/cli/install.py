@@ -45,7 +45,7 @@ from installer.core.config import ConfigManager
               is_flag=True,
               help='Generate a configuration template and exit')
 @click.option('--api-port',
-              default=8000,
+              default=7272,
               type=int,
               help='API service port')
 @click.option('--ws-port',
@@ -56,6 +56,10 @@ from installer.core.config import ConfigManager
               default=3000,
               type=int,
               help='Dashboard service port')
+@click.option('--install-dir',
+              type=click.Path(),
+              default=None,
+              help='Installation directory (defaults to current directory)')
 @click.option('--bind',
               default='127.0.0.1',
               help='Bind address for server mode (0.0.0.0 for network access)')
@@ -77,7 +81,7 @@ from installer.core.config import ConfigManager
               help='Generate API key for programmatic access')
 @click.version_option(version='2.0.0')
 def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
-            api_port, ws_port, dashboard_port, bind, enable_ssl, ssl_cert, ssl_key,
+            api_port, ws_port, dashboard_port, install_dir, bind, enable_ssl, ssl_cert, ssl_key,
             admin_username, admin_password, generate_api_key):
     """
     GiljoAI MCP CLI Installer
@@ -114,6 +118,7 @@ def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
                 'api_port': api_port,
                 'ws_port': ws_port,
                 'dashboard_port': dashboard_port,
+                'install_dir': install_dir or str(Path.cwd()),
                 'bind': bind if mode == 'server' else '127.0.0.1',
                 'enable_ssl': enable_ssl,
                 'ssl_cert': ssl_cert,
@@ -126,7 +131,7 @@ def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
         else:
             # Interactive mode
             settings = interactive_setup(mode, pg_host, pg_port,
-                                       api_port, ws_port, dashboard_port)
+                                       api_port, ws_port, dashboard_port, install_dir)
 
         # Pre-installation validation
         click.echo("\n" + "="*60)
@@ -197,8 +202,29 @@ def display_header(mode: str):
 
 
 def interactive_setup(mode: str, pg_host: str, pg_port: int,
-                      api_port: int, ws_port: int, dashboard_port: int) -> Dict[str, Any]:
+                      api_port: int, ws_port: int, dashboard_port: int, install_dir: str) -> Dict[str, Any]:
     """Interactive configuration collection"""
+
+    click.echo("\n" + "="*60)
+    click.echo("Installation Location")
+    click.echo("="*60)
+
+    # Ask for installation directory
+    if install_dir is None:
+        install_dir = click.prompt("  Installation directory",
+                                  default=str(Path.cwd()),
+                                  type=click.Path())
+    else:
+        click.echo(f"  Using installation directory: {install_dir}")
+
+    # Create directory if it doesn't exist
+    install_path = Path(install_dir)
+    if not install_path.exists():
+        if click.confirm(f"  Directory '{install_dir}' doesn't exist. Create it?"):
+            install_path.mkdir(parents=True, exist_ok=True)
+        else:
+            click.echo("Installation cancelled.")
+            sys.exit(1)
 
     click.echo("\n" + "="*60)
     click.echo("PostgreSQL Configuration")
@@ -274,6 +300,7 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
         'api_port': api_port,
         'ws_port': ws_port,
         'dashboard_port': dashboard_port,
+        'install_dir': install_dir,
         'auto_start': auto_start,
         'open_browser': open_browser,
         'batch': False
@@ -404,7 +431,7 @@ def generate_config_template():
         'pg_host': 'localhost',
         'pg_port': 5432,
         'pg_password': 'your_postgres_password',
-        'api_port': 8000,
+        'api_port': 7272,
         'ws_port': 8001,
         'dashboard_port': 3000,
         'auto_start': True,
@@ -429,7 +456,7 @@ pg_port: 5432
 pg_password: your_postgres_password  # postgres user password
 
 # Service Ports
-api_port: 8000
+api_port: 7272
 ws_port: 8001
 dashboard_port: 3000
 
@@ -482,7 +509,7 @@ def display_success(settings: Dict[str, Any], result: Dict[str, Any]):
         click.echo()
 
     click.echo("Services:")
-    click.echo(f"  API: http://localhost:{settings.get('api_port', 8000)}")
+    click.echo(f"  API: http://localhost:{settings.get('api_port', 7272)}")
     click.echo(f"  WebSocket: ws://localhost:{settings.get('ws_port', 8001)}")
     click.echo(f"  Dashboard: http://localhost:{settings.get('dashboard_port', 3000)}")
     click.echo()

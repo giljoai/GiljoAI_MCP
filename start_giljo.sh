@@ -1,80 +1,58 @@
 #!/bin/bash
+# GiljoAI MCP Launcher for Unix/Linux/Mac
+# Professional service launcher with error handling
 
-echo "Starting GiljoAI MCP Orchestrator..."
-echo "====================================="
+set -e
 
-# Check if Python is available
+echo "========================================================"
+echo "   GiljoAI MCP Service Launcher"
+echo "========================================================"
+echo
+
+# Check Python installation
 if ! command -v python3 &> /dev/null; then
-    echo "Error: Python 3 is not installed or not in PATH"
-    echo "Please install Python 3.9 or later"
+    echo "ERROR: Python 3 is not installed"
+    echo "Please install Python 3.9+ from https://www.python.org/"
     exit 1
 fi
 
-# Check if virtual environment exists
-if [ ! -f "venv/bin/activate" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+# Check Python version
+PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+REQUIRED_VERSION="3.9"
+
+if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+    echo "ERROR: Python $PYTHON_VERSION is installed, but $REQUIRED_VERSION+ is required"
+    exit 1
+fi
+
+# Check if config exists
+if [ ! -f "config.yaml" ] && [ ! -f ".env" ]; then
+    echo "ERROR: No configuration found."
+    echo "Please run the installer first:"
+    echo "  python3 installer/cli/install.py"
+    exit 1
+fi
+
+# Check PostgreSQL (optional)
+if command -v psql &> /dev/null; then
+    echo "PostgreSQL client found: $(psql --version | head -n1)"
 else
-    source venv/bin/activate
+    echo "WARNING: PostgreSQL client not found"
+    echo "Some features may not work properly"
 fi
 
-# Start the MCP server in the background
-echo "Starting MCP server on port 6001..."
-python -m giljo_mcp.server &
-MCP_PID=$!
+# Launch Python launcher
+echo "Starting GiljoAI MCP services..."
+echo
 
-# Wait a moment for server to start
-sleep 2
+python3 start_giljo.py
 
-# Start the API server
-echo "Starting API server on port 6002..."
-python -m giljo_mcp.api_server &
-API_PID=$!
-
-# Wait for API to be ready
-sleep 2
-
-# Start the frontend development server
-if [ -f "frontend/package.json" ]; then
-    echo "Starting frontend on port 6000..."
-    cd frontend
-    npm run dev &
-    FRONTEND_PID=$!
-    cd ..
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+    echo
+    echo "ERROR: Failed to start services (exit code: $EXIT_CODE)"
+    echo "Check the logs in: logs/launcher/"
+    exit $EXIT_CODE
 fi
 
-# Open browser to dashboard (platform-specific)
-sleep 3
-echo "Opening dashboard in browser..."
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    open http://localhost:6000
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # Linux
-    xdg-open http://localhost:6000 2>/dev/null || echo "Please open http://localhost:6000 in your browser"
-fi
-
-echo ""
-echo "GiljoAI MCP Orchestrator is running!"
-echo "====================================="
-echo "Dashboard: http://localhost:6000"
-echo "API: http://localhost:6002"
-echo "MCP Server: localhost:6001"
-echo ""
-echo "Press Ctrl+C to stop all services"
-echo ""
-
-# Save PIDs to file for stop script
-echo "$MCP_PID" > .giljo_pids
-echo "$API_PID" >> .giljo_pids
-echo "$FRONTEND_PID" >> .giljo_pids
-
-# Wait and handle Ctrl+C
-trap 'echo "Stopping services..."; kill $MCP_PID $API_PID $FRONTEND_PID 2>/dev/null; rm -f .giljo_pids; exit' INT
-
-# Keep the script running
-while true; do
-    sleep 60
-done
+exit 0
