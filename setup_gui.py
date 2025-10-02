@@ -1569,6 +1569,46 @@ class ProgressPage(WizardPage):
             overall = total // len(applicable)
             self.progress_var.set(overall)
 
+    def finalize_installation(self):
+        """Finalize installation when a critical failure occurs"""
+        # Log failure summary
+        self.log("\n" + "="*60, "system")
+        self.log("INSTALLATION FAILED", "error")
+        self.log("="*60, "system")
+
+        self.log("\nFailed Phases:", "error")
+        for phase, status in self.phase_status.items():
+            if not status and phase != 'registration':  # Registration is optional
+                self.log(f"  - {phase.upper()}: FAILED", "error")
+
+        if self.failure_reasons:
+            self.log("\nFailure Details:", "error")
+            for reason in self.failure_reasons:
+                self.log(f"  - {reason}", "error")
+
+        self.log("\nRecovery Instructions:", "info")
+        self.log("1. Exit this installer", "info")
+        self.log("2. Navigate to the project folder", "info")
+        self.log("3. Run: python devuninstall.py", "info")
+        self.log("4. Select option 2 to remove all files and databases", "info")
+        self.log("5. Run the installer again: python bootstrap.py", "info")
+
+        # Set final status
+        self.set_progress(100)
+        self.status_var.set("Installation FAILED - See log for details")
+
+        # Close the installation logger
+        if hasattr(self, 'install_logger') and self.install_logger:
+            self.install_logger.close()
+            self.log(f"\nFull log saved to: {self.install_logger.log_file}", "info")
+
+        self.completed = True
+        self.installation_failed = True
+
+        # Re-enable navigation
+        if hasattr(self.master, 'master') and hasattr(self.master.master, 'update_navigation'):
+            self.master.master.after(100, self.master.master.update_navigation)
+
     def create_installation_manifest(self, config: dict, postgresql_installed: bool, redis_installed: bool=False):
         """Create installation manifest for uninstaller to track what was installed"""
         try:
@@ -1715,6 +1755,17 @@ class ProgressPage(WizardPage):
         # Update component applicability again with actual config
         self.update_component_applicability(profile, config)
 
+        # Track installation success for all 5 required phases
+        self.phase_status = {
+            'venv': False,           # Phase 1: Virtual Environment
+            'dependencies': False,   # Phase 2: Dependencies
+            'config': False,         # Phase 3: Configuration
+            'database': False,       # Phase 4: Database Setup
+            'registration': False    # Phase 5: MCP Registration (optional but tracked)
+        }
+        self.installation_failed = False
+        self.failure_reasons = []
+
         # Step 1: Create Python Virtual Environment
         self.set_status("Creating Python virtual environment...", "venv")
         self.set_progress(10, "venv")
@@ -1732,10 +1783,14 @@ class ProgressPage(WizardPage):
                 self.log("[OK] Virtual environment already exists", "info")
             self.set_progress(100, "venv")
             self.set_status("Virtual environment ready [OK]", "venv")
+            self.phase_status['venv'] = True
         except Exception as e:
             self.log(f"[ERROR] Failed to create virtual environment: {e}", "error")
             self.set_status(f"Virtual environment failed: {e}", "venv")
+            self.installation_failed = True
+            self.failure_reasons.append(f"Virtual Environment: {e}")
             # Don't continue if venv creation failed
+            self.finalize_installation()
             return
 
         # Step 2: Install Dependencies
@@ -1903,9 +1958,12 @@ class ProgressPage(WizardPage):
 
             self.log("All dependencies installed successfully", "success")
             self.set_status("Dependencies installed", "dependencies")
+            self.phase_status['dependencies'] = True
         except Exception as e:
             self.log(f"Failed to install dependencies: {e}", "error")
             self.set_status(f"Dependencies failed: {e}", "dependencies")
+            self.installation_failed = True
+            self.failure_reasons.append(f"Dependencies: {e}")
 
         # PostgreSQL is always used, but user installs it manually
         self.log("\n[DATABASE MODE: PostgreSQL]", "system")
@@ -1960,13 +2018,18 @@ class ProgressPage(WizardPage):
             is_valid, errors = config_mgr.validate_configuration(config_values)
             if is_valid:
                 self.log("SUCCESS: Configuration validated", "system")
+                self.phase_status['config'] = True
             else:
                 for error in errors:
                     self.log(f"Configuration error: {error}", "system")
+                self.installation_failed = True
+                self.failure_reasons.append(f"Configuration validation: {', '.join(errors)}")
 
         except Exception as e:
             self.log(f"Configuration error: {e}", "system")
             self.set_status(f"Configuration failed: {e}", "config")
+            self.installation_failed = True
+            self.failure_reasons.append(f"Configuration: {e}")
 
         # Setup directories
         self.set_status("Setting up directories...", "directories")
@@ -2259,6 +2322,13 @@ class ProgressPage(WizardPage):
                     all_success = False
                     issues.append(component)
 
+                # Track PostgreSQL status for phase 4
+                if component == "PostgreSQL":
+                    self.phase_status['database'] = status
+                    if not status:
+                        self.installation_failed = True
+                        self.failure_reasons.append(f"Database: {message}")
+
             if issues:
                 self.log(f"WARNING: Issues detected: {', '.join(issues)}", "system")
                 self.set_status(f"Completed with warnings: {', '.join(issues)}", "validation")
@@ -2268,15 +2338,31 @@ class ProgressPage(WizardPage):
 
             self.set_progress(100, "validation")
 
-            # Update overall status
+            # Update overall status - check all critical phases
+            critical_phases_ok = (
+                self.phase_status.get('venv', False) and
+                self.phase_status.get('dependencies', False) and
+                self.phase_status.get('config', False) and
+                self.phase_status.get('database', False)
+            )
+
             self.set_progress(100)
-            completion_msg = "Installation completed successfully!" if not issues else "Installation completed with warnings"
-            self.status_var.set(completion_msg)
+            if critical_phases_ok and not self.installation_failed:
+                completion_msg = "Installation completed successfully!"
+                self.status_var.set(completion_msg)
+            else:
+                completion_msg = "Installation FAILED - See log for details"
+                self.status_var.set(completion_msg)
+                self.installation_failed = True
 
             # Log final message
             self.log("\n" + "="*60, "system")
-            self.log(completion_msg, "success" if not issues else "warning")
-            self.log("Click 'Finish' to complete the setup.", "info")
+            if self.installation_failed:
+                self.log(completion_msg, "error")
+                self.log("Click 'Finish' to see failure details and recovery instructions.", "error")
+            else:
+                self.log(completion_msg, "success" if not issues else "warning")
+                self.log("Click 'Finish' to complete the setup.", "info")
             self.log("="*60, "system")
 
             # Close the installation logger
@@ -2732,8 +2818,118 @@ class GiljoSetupGUI:
             self.root.destroy()
             sys.exit(1)
 
+    def show_failure_window(self, progress_page):
+        """Show failure window with recovery instructions"""
+        install_path = Path.cwd()
+
+        # Build failure message
+        message = "GiljoAI MCP Installation Failed\n"
+        message += "="*50 + "\n\n"
+        message += "The installation could not be completed due to the following errors:\n\n"
+
+        # Show which phases failed
+        message += "FAILED PHASES:\n"
+        for phase, status in progress_page.phase_status.items():
+            if not status and phase != 'registration':  # Registration is optional
+                phase_name = phase.replace('_', ' ').title()
+                message += f"  [X] {phase_name}\n"
+
+        message += "\nFAILURE DETAILS:\n"
+        if progress_page.failure_reasons:
+            for reason in progress_page.failure_reasons[:5]:  # Show first 5 reasons
+                message += f"  - {reason}\n"
+        else:
+            message += "  - Check the installation log for details\n"
+
+        message += "\n" + "="*50 + "\n"
+        message += "RECOVERY INSTRUCTIONS:\n\n"
+        message += "1. Close this installer\n\n"
+        message += "2. Open a terminal/command prompt\n\n"
+        message += f"3. Navigate to: {install_path}\n\n"
+        message += "4. Run the uninstaller:\n"
+        message += "   python devuninstall.py\n\n"
+        message += "5. Select option 2 to remove all files and databases\n\n"
+        message += "6. Run the installer again:\n"
+        message += "   python bootstrap.py\n\n"
+        message += "="*50 + "\n"
+        message += f"Installation log: {install_path}\\install.log\n"
+        message += "\nContact support: infoteam@giljo.ai"
+
+        # Show failure dialog
+        try:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Installation Failed")
+            dialog.transient(self.root)
+            dialog.resizable(False, False)
+
+            # Size and center the dialog
+            dialog.update_idletasks()
+            w = 700
+            h = 750
+            x = (dialog.winfo_screenwidth() // 2) - (w // 2)
+            y = (dialog.winfo_screenheight() // 2) - (h // 2)
+            dialog.geometry(f"{w}x{h}+{x}+{y}")
+
+            # Create scrollable text widget for the message
+            body = ttk.Frame(dialog, padding=(20, 20))
+            body.pack(fill="both", expand=True)
+
+            # Use Text widget for better formatting and scrolling
+            text_widget = tk.Text(body,
+                                 wrap=tk.WORD,
+                                 width=80,
+                                 height=35,
+                                 bg=COLORS.get('bg_secondary', '#182739'),
+                                 fg=COLORS.get('text_error', '#c6298c'),
+                                 font=('Consolas', 10))
+            text_widget.pack(fill="both", expand=True)
+
+            # Insert the message
+            text_widget.insert("1.0", message)
+            text_widget.config(state="disabled")  # Make read-only
+
+            # Add scrollbar
+            scrollbar = ttk.Scrollbar(text_widget, command=text_widget.yview)
+            scrollbar.pack(side="right", fill="y")
+            text_widget.config(yscrollcommand=scrollbar.set)
+
+            # Exit button
+            s = ttk.Style(dialog)
+            s.configure('FailureExit.TButton', foreground='#000000')
+            s.map('FailureExit.TButton', foreground=[('active', '#000000'), ('pressed', '#000000')])
+
+            exit_btn = ttk.Button(dialog,
+                                text="Exit Installer",
+                                command=lambda: [dialog.destroy(), self.root.quit()],
+                                style='FailureExit.TButton')
+            exit_btn.pack(pady=(10, 20))
+
+            # Make modal
+            dialog.grab_set()
+            self.root.wait_window(dialog)
+
+        except Exception as e:
+            # Fallback to messagebox
+            messagebox.showerror("Installation Failed", message)
+            self.root.quit()
+
+        # Exit with error code
+        self.root.destroy()
+        sys.exit(1)
+
     def finish_setup(self):
         """Complete the setup process"""
+        # Check if installation failed
+        progress_page = None
+        for page in self.pages:
+            if isinstance(page, ProgressPage):
+                progress_page = page
+                break
+
+        if progress_page and hasattr(progress_page, 'installation_failed') and progress_page.installation_failed:
+            self.show_failure_window(progress_page)
+            return
+
         # Get installation path and port number
         install_path = Path.cwd()
         server_port = self.config_data.get('server_port', 7272)
