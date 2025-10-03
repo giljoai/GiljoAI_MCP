@@ -161,7 +161,7 @@ EXCLUDE_FILES = [
     ".eslintrc*", ".prettierrc*",
     "tsconfig.json", "jest.config.*",
     "ruff.toml", ".ruff.toml",  # Python linter/formatter configs
-    "pyproject.toml",  # Often contains dev dependencies
+    # NOTE: pyproject.toml is NEEDED for package installation - DO NOT EXCLUDE
 
     # Environment and config files
     ".env", ".env.*", "*.key", "*.pem", "*.p12",
