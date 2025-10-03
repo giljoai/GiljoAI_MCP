@@ -460,15 +460,23 @@ function resetForm() {
 }
 
 async function saveProject() {
-  if (!formValid.value) return
+  if (!formValid.value) {
+    console.warn('Form is not valid')
+    return
+  }
+
+  console.log('Saving project with data:', projectData.value)
 
   try {
     if (editingProject.value) {
       // Update existing project
+      console.log('Updating project:', editingProject.value.id)
       await projectStore.updateProject(editingProject.value.id, projectData.value)
     } else {
       // Create new project
-      await projectStore.createProject(projectData.value)
+      console.log('Creating new project')
+      const result = await projectStore.createProject(projectData.value)
+      console.log('Project created successfully:', result)
     }
 
     showCreateDialog.value = false
@@ -476,6 +484,9 @@ async function saveProject() {
     resetForm()
   } catch (error) {
     console.error('Failed to save project:', error)
+    console.error('Error details:', error.response?.data || error.message)
+    // Show error to user
+    alert(`Failed to save project: ${error.response?.data?.error || error.message}`)
   }
 }
 

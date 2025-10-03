@@ -74,19 +74,39 @@ class ShortcutCreator:
         icon_dir = self.install_dir / "frontend" / "public"
         start_icon = icon_dir / "Start.ico" if (icon_dir / "Start.ico").exists() else icon_dir / "start.ico"
         stop_icon = icon_dir / "Stop.ico" if (icon_dir / "Stop.ico").exists() else icon_dir / "stop.ico"
+        frontend_icon = icon_dir / "Fontend.ico" if (icon_dir / "Fontend.ico").exists() else icon_dir / "fontend.ico"
+        giljo_icon = self.install_dir / "giljo.ico"  # Main icon is in root directory
 
         shortcuts = [
             {
-                'name': 'Start GiljoAI.lnk',
-                'target': str(self.install_dir / 'start_giljo.bat'),
+                'name': 'Start GiljoAI Backend.lnk',
+                'target': str(self.install_dir / 'start_backend.bat'),
                 'icon': str(start_icon) if start_icon.exists() else None,
                 'admin': False
             },
             {
-                'name': 'Stop GiljoAI.lnk',
-                'target': str(self.install_dir / 'stop_giljo.bat'),
+                'name': 'Start GiljoAI Frontend.lnk',
+                'target': str(self.install_dir / 'start_frontend.bat'),
+                'icon': str(frontend_icon) if frontend_icon.exists() else None,
+                'admin': False
+            },
+            {
+                'name': 'Stop GiljoAI Backend.lnk',
+                'target': str(self.install_dir / 'stop_backend.bat'),
                 'icon': str(stop_icon) if stop_icon.exists() else None,
                 'admin': True  # Stop should run as admin
+            },
+            {
+                'name': 'Stop GiljoAI Frontend.lnk',
+                'target': str(self.install_dir / 'stop_frontend.bat'),
+                'icon': str(stop_icon) if stop_icon.exists() else None,
+                'admin': True  # Stop should run as admin
+            },
+            {
+                'name': 'Start GiljoAI (All Services).lnk',
+                'target': str(self.install_dir / 'start_giljo.bat'),
+                'icon': str(giljo_icon) if giljo_icon.exists() else None,
+                'admin': False
             }
         ]
 
@@ -133,20 +153,43 @@ $Shortcut.WorkingDirectory = "{self.install_dir}"
         # Icon paths
         start_icon = self.install_dir / "frontend" / "public" / "start.png"
         stop_icon = self.install_dir / "frontend" / "public" / "stop.png"
+        frontend_icon = self.install_dir / "frontend" / "public" / "fontend.png"
+        giljo_icon = self.install_dir / "giljo.png"
 
         shortcuts = [
             {
-                'name': 'Start-GiljoAI.desktop',
-                'exec': str(self.install_dir / 'start_giljo.sh'),
+                'name': 'Start-GiljoAI-Backend.desktop',
+                'exec': str(self.install_dir / 'start_backend.sh'),
                 'icon': str(start_icon) if start_icon.exists() else 'system-run',
-                'comment': 'Start GiljoAI MCP Services',
+                'comment': 'Start GiljoAI Backend API Server',
                 'terminal': True
             },
             {
-                'name': 'Stop-GiljoAI.desktop',
-                'exec': str(self.install_dir / 'stop_giljo.sh'),
+                'name': 'Start-GiljoAI-Frontend.desktop',
+                'exec': str(self.install_dir / 'start_frontend.sh'),
+                'icon': str(frontend_icon) if frontend_icon.exists() else 'applications-internet',
+                'comment': 'Start GiljoAI Frontend Dashboard',
+                'terminal': True
+            },
+            {
+                'name': 'Stop-GiljoAI-Backend.desktop',
+                'exec': str(self.install_dir / 'stop_backend.sh'),
                 'icon': str(stop_icon) if stop_icon.exists() else 'process-stop',
-                'comment': 'Stop GiljoAI MCP Services',
+                'comment': 'Stop GiljoAI Backend API Server',
+                'terminal': True
+            },
+            {
+                'name': 'Stop-GiljoAI-Frontend.desktop',
+                'exec': str(self.install_dir / 'stop_frontend.sh'),
+                'icon': str(stop_icon) if stop_icon.exists() else 'process-stop',
+                'comment': 'Stop GiljoAI Frontend Dashboard',
+                'terminal': True
+            },
+            {
+                'name': 'Start-GiljoAI-All-Services.desktop',
+                'exec': str(self.install_dir / 'start_giljo.sh'),
+                'icon': str(giljo_icon) if giljo_icon.exists() else 'system-run',
+                'comment': 'Start All GiljoAI Services (Backend Only)',
                 'terminal': True
             }
         ]

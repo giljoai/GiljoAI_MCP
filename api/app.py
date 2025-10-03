@@ -204,12 +204,22 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     logger.info("Shutting down GiljoAI MCP API...")
 
     # Close all WebSocket connections
-    for ws in state.connections.values():
-        await ws.close()
+    try:
+        logger.info("Closing WebSocket connections...")
+        for ws in state.connections.values():
+            await ws.close()
+        logger.info("WebSocket connections closed")
+    except Exception as e:
+        logger.error(f"Error closing WebSocket connections: {e}", exc_info=True)
 
     # Close database
     if state.db_manager:
-        await state.db_manager.close()
+        try:
+            logger.info("Closing database connection...")
+            await state.db_manager.close_async()  # Use close_async() for async engine
+            logger.info("Database connection closed")
+        except Exception as e:
+            logger.error(f"Error closing database: {e}", exc_info=True)
 
     logger.info("API shutdown complete")
 

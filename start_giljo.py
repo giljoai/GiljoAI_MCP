@@ -49,7 +49,7 @@ SERVICES = {
 class ServiceLauncher:
     """Professional service launcher with monitoring"""
 
-    def __init__(self, dev_mode=False):
+    def __init__(self, dev_mode=False, services_filter=None):
         self.base_dir = Path(__file__).parent
         self.processes = {}
         self.config = self.load_config()
@@ -57,6 +57,7 @@ class ServiceLauncher:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"launcher_{datetime.now():%Y%m%d_%H%M%S}.log"
         self.dev_mode = dev_mode  # Development mode: disable auto-restart
+        self.services_filter = services_filter  # List of services to start (None = all)
 
         # Set the backend command based on the installation
         api_script = self.base_dir / "api" / "run_api.py"
@@ -330,9 +331,13 @@ class ServiceLauncher:
             self.log("No configuration found. Please run installer first.", "ERROR")
             return 1
 
-        # Start services in order
+        # Start services in order (filtered if specified)
         failed = []
         for name, config in SERVICES.items():
+            # Skip if service filtering is enabled and this service isn't in the list
+            if self.services_filter and name not in self.services_filter:
+                continue
+
             process = self.start_service(name, config)
             if not process and config.get("required", True):
                 failed.append(name)
@@ -450,12 +455,35 @@ def main():
         action="store_true",
         help="Disable auto-restart on failures (alias for --dev)"
     )
+    parser.add_argument(
+        "--backend-only",
+        action="store_true",
+        help="Start only the backend API server"
+    )
+    parser.add_argument(
+        "--frontend-only",
+        action="store_true",
+        help="Start only the frontend dashboard"
+    )
     args = parser.parse_args()
 
     # Check for dev mode from args or environment
     dev_mode = args.dev or args.no_restart or os.getenv("GILJO_DEV_MODE", "").lower() in ("1", "true", "yes")
 
-    launcher = ServiceLauncher(dev_mode=dev_mode)
+    # Determine which services to start
+    services_to_start = None
+    if args.backend_only:
+        services_to_start = ["backend"]
+        print("\n" + "="*60)
+        print("   BACKEND ONLY MODE")
+        print("="*60 + "\n")
+    elif args.frontend_only:
+        services_to_start = ["dashboard"]
+        print("\n" + "="*60)
+        print("   FRONTEND ONLY MODE")
+        print("="*60 + "\n")
+
+    launcher = ServiceLauncher(dev_mode=dev_mode, services_filter=services_to_start)
 
     if dev_mode:
         print("\n" + "="*60)
