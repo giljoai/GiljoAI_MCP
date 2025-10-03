@@ -1,29 +1,35 @@
 @echo off
 REM GiljoAI MCP Service Stopper (Windows)
+REM Stops backend only (start_giljo.bat now starts backend only)
 
 echo ===============================================
-echo    GiljoAI MCP - Stopping Services
+echo    GiljoAI MCP - Stopping Backend
 echo ===============================================
 echo.
 
 REM Set working directory to script location
 cd /d "%~dp0"
 
-echo Stopping all GiljoAI MCP services...
+echo Stopping backend API server on port 7272...
 echo.
 
-REM Kill Python processes running GiljoAI
-taskkill /F /FI "WINDOWTITLE eq GiljoAI*" 2>nul
-taskkill /F /FI "IMAGENAME eq python.exe" /FI "COMMANDLINE eq *start_giljo*" 2>nul
-taskkill /F /FI "IMAGENAME eq python.exe" /FI "COMMANDLINE eq *giljo_mcp*" 2>nul
-taskkill /F /FI "IMAGENAME eq python.exe" /FI "COMMANDLINE eq *uvicorn*" 2>nul
+REM Find and kill process using port 7272
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":7272" ^| findstr "LISTENING"') do (
+    echo Killing process %%a on port 7272...
+    taskkill /F /PID %%a 2>nul
+    if errorlevel 1 (
+        echo Failed to kill process %%a
+    ) else (
+        echo Backend server stopped (PID: %%a^)
+    )
+)
 
-REM Also try graceful shutdown via Python
-python -c "import psutil; [p.terminate() for p in psutil.process_iter() if 'giljo' in ' '.join(p.cmdline()).lower()]" 2>nul
+REM Also try to kill any python.exe running run_api.py as fallback
+taskkill /F /IM python.exe /FI "COMMANDLINE eq *run_api.py*" 2>nul
 
 echo.
 echo ===============================================
-echo    All GiljoAI MCP services stopped
+echo    Backend stopped
 echo ===============================================
 echo.
 pause
