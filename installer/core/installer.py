@@ -471,35 +471,52 @@ venv/bin/python start_giljo.py "$@"
             # Verify venv was created successfully
             if platform.system() == "Windows":
                 venv_python = venv_path / 'Scripts' / 'python.exe'
-                venv_pip = venv_path / 'Scripts' / 'pip.exe'
             else:
                 venv_python = venv_path / 'bin' / 'python'
-                venv_pip = venv_path / 'bin' / 'pip'
 
             if not venv_python.exists():
                 result['errors'].append(f"Virtual environment creation failed - python not found at {venv_python}")
                 return result
 
-            # Upgrade pip in the venv
-            self.logger.info("Upgrading pip in virtual environment...")
+            # Bootstrap pip using ensurepip (more reliable for Python 3.13+)
+            self.logger.info("Bootstrapping pip in virtual environment...")
             try:
+                ensurepip_cmd = [str(venv_python), "-m", "ensurepip", "--upgrade"]
+                ensurepip_result = subprocess.run(ensurepip_cmd, capture_output=True, text=True, timeout=120)
+
+                if ensurepip_result.returncode != 0:
+                    self.logger.warning(f"ensurepip failed: {ensurepip_result.stderr}")
+                    self.logger.info("Trying to install pip directly...")
+
+                    # Fallback: try to upgrade pip directly
+                    pip_install_cmd = [str(venv_python), "-m", "pip", "install", "--upgrade", "pip"]
+                    pip_result = subprocess.run(pip_install_cmd, capture_output=True, text=True, timeout=120)
+
+                    if pip_result.returncode != 0:
+                        result['errors'].append(f"Failed to install pip: {pip_result.stderr}")
+                        return result
+                else:
+                    self.logger.info("pip bootstrapped successfully")
+
+                # Now upgrade pip to latest version
+                self.logger.info("Upgrading pip to latest version...")
                 upgrade_cmd = [str(venv_python), "-m", "pip", "install", "--upgrade", "pip"]
                 upgrade_result = subprocess.run(upgrade_cmd, capture_output=True, text=True, timeout=120)
 
                 if upgrade_result.returncode != 0:
                     self.logger.warning(f"pip upgrade failed: {upgrade_result.stderr}")
-                    self.logger.warning("Continuing with existing pip version")
+                    self.logger.warning("Continuing with bootstrapped pip version")
                 else:
                     self.logger.info("pip upgraded successfully")
+
             except subprocess.TimeoutExpired:
-                self.logger.warning("pip upgrade timed out, continuing with existing pip version")
+                self.logger.warning("pip setup timed out, continuing with existing pip version")
             except Exception as e:
-                self.logger.warning(f"pip upgrade error: {e}, continuing with existing pip version")
+                self.logger.warning(f"pip setup error: {e}, will attempt to use existing pip")
 
             result['success'] = True
             result['venv_path'] = str(venv_path)
             result['venv_python'] = str(venv_python)
-            result['venv_pip'] = str(venv_pip)
             self.logger.info(f"Virtual environment created successfully at {venv_path}")
             return result
 
