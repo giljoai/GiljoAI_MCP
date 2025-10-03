@@ -4,7 +4,8 @@ GiljoAI MCP Universal Bootstrap Installer
 ==========================================
 
 This is the single entry point for installing GiljoAI MCP on any platform.
-It detects the operating system and launches the CLI installer.
+It detects the operating system, checks for GUI capability, and launches
+the appropriate installer (GUI or CLI).
 
 Requirements: Python 3.8+ (uses only standard library)
 """
@@ -509,18 +510,18 @@ class Bootstrap:
             return self.launch_cli_installer()
 
     def launch_cli_installer(self) -> int:
-        """Launch the CLI installer (installer/cli/install.py)"""
+        """Launch the CLI installer (setup_cli.py)"""
         self.print_status("Launching CLI installer...", "info")
 
-        # Check if installer/cli/install.py exists
-        if not Path("installer/cli/install.py").exists():
-            self.print_status("installer/cli/install.py not found!", "error")
+        # Check if setup_cli.py exists
+        if not Path("setup_cli.py").exists():
+            self.print_status("setup_cli.py not found!", "error")
             self.print_manual_instructions()
             return 1
 
         try:
-            # Run installer/cli/install.py in interactive CLI mode (without --non-interactive flag)
-            result = subprocess.run([sys.executable, "installer/cli/install.py"], capture_output=False, text=True, check=False)
+            # Run setup_cli.py in interactive CLI mode (without --non-interactive flag)
+            result = subprocess.run([sys.executable, "setup_cli.py"], capture_output=False, text=True, check=False)
 
             # If installation succeeded, run post-installation setup
             if result.returncode == 0:
@@ -694,8 +695,20 @@ For detailed instructions, see INSTALL.md
             self.print_status("Installation cancelled due to dependency issues", "info")
             return 1
 
-        # GiljoAI MCP is now CLI-only (GUI installer deprecated)
-        self.print_status("Running CLI installer", "info")
+        # Check GUI capability
+        self.has_gui = self.check_gui_capability()
+
+        # Determine installer to use
+        if self.has_gui:
+            choice = self.prompt_installer_choice()
+
+            if choice == "1":
+                return self.launch_gui_installer()
+            if choice == "2":
+                return self.launch_cli_installer()
+            self.print_status("Installation cancelled", "info")
+            return 0
+        self.print_status("Running in CLI mode", "info")
         return self.launch_cli_installer()
 
 

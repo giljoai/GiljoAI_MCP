@@ -41,7 +41,7 @@ server:
   port: 7272
 
   # Optional frontend development server port
-  frontend_port: 6000
+  frontend_port: 7274
 
 # Multi-Tenant Configuration
 tenant:
@@ -90,9 +90,9 @@ mcp:
 api:
   # CORS settings - adjust for your deployment
   cors_origins:
-    - "http://localhost:6000"       # Frontend dev server
+    - "http://localhost:7274"       # Frontend dev server
     - "http://localhost:7272"       # Main server
-    - "http://127.0.0.1:6000"
+    - "http://127.0.0.1:7274"
     - "http://127.0.0.1:7272"
 
   # Rate limiting (requests per minute)

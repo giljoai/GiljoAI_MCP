@@ -208,7 +208,7 @@ class ConfigurationManager:
         config.add_value(
             "FRONTEND_HOST", user_inputs.get("frontend_host", "localhost"), description="Frontend server host"
         )
-        config.add_value("FRONTEND_PORT", user_inputs.get("frontend_port", 3000), description="Frontend server port")
+        config.add_value("FRONTEND_PORT", user_inputs.get("frontend_port", 7274), description="Frontend server port")
         config.add_value(
             "FRONTEND_URL",
             f"http://{user_inputs.get('frontend_host', 'localhost')}:{user_inputs.get('frontend_port', 3000)}",
@@ -216,7 +216,7 @@ class ConfigurationManager:
         )
 
         # WebSocket Configuration
-        config.add_value("WEBSOCKET_PORT", user_inputs.get("websocket_port", 8001), description="WebSocket server port")
+        config.add_value("WEBSOCKET_PORT", user_inputs.get("websocket_port", 7273), description="WebSocket server port")
         config.add_value("WEBSOCKET_ENABLED", True, description="Enable WebSocket support")
 
         # Database Configuration

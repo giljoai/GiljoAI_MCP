@@ -237,7 +237,7 @@ class TestConfigurationGeneration(unittest.TestCase):
             'pg_host': 'localhost',
             'pg_port': 5432,
             'api_port': 8000,
-            'ws_port': 8001,
+            'ws_port': 7273,
             'dashboard_port': 3000
         }
 
@@ -265,7 +265,7 @@ class TestConfigurationGeneration(unittest.TestCase):
             'owner_password': 'test_owner_pass',
             'user_password': 'test_user_pass',
             'api_port': 8000,
-            'ws_port': 8001,
+            'ws_port': 7273,
             'dashboard_port': 3000
         }
 

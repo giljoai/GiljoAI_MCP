@@ -100,8 +100,8 @@ class HealthCheckSystem:
         """Check for port conflicts across all services"""
         required_ports = {
             "API": int(self.config.get("api_port", 8000)),
-            "WebSocket": int(self.config.get("websocket_port", 8001)),
-            "Dashboard": int(self.config.get("dashboard_port", 3000)),
+            "WebSocket": int(self.config.get("websocket_port", 7273)),
+            "Dashboard": int(self.config.get("dashboard_port", 7274)),
             "MCP": int(self.config.get("mcp_port", 3001)),
         }
 

@@ -117,8 +117,8 @@ class PreInstallValidator:
 
         ports_to_check = [
             ('API', self.settings.get('api_port', 8000)),
-            ('WebSocket', self.settings.get('ws_port', 8001)),
-            ('Dashboard', self.settings.get('dashboard_port', 3000))
+            ('WebSocket', self.settings.get('ws_port', 7273)),
+            ('Dashboard', self.settings.get('dashboard_port', 7274))
         ]
 
         for service, port in ports_to_check:

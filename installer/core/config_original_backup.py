@@ -98,8 +98,8 @@ LOG_LEVEL={'DEBUG' if self.mode == 'localhost' else 'INFO'}
 
 # Service Ports
 API_PORT={self.settings.get('api_port', 8000)}
-WEBSOCKET_PORT={self.settings.get('ws_port', 8001)}
-DASHBOARD_PORT={self.settings.get('dashboard_port', 3000)}
+WEBSOCKET_PORT={self.settings.get('ws_port', 7273)}
+DASHBOARD_PORT={self.settings.get('dashboard_port', 7274)}
 
 # Service Binding
 SERVICE_BIND={self.settings.get('bind', '127.0.0.1' if self.mode == 'localhost' else '0.0.0.0')}
@@ -183,8 +183,8 @@ SSL_KEY_PATH={self.settings.get('ssl_key_path', '')}
                 'services': {
                     'bind': self.settings.get('bind', '127.0.0.1' if self.mode == 'localhost' else '0.0.0.0'),
                     'api_port': self.settings.get('api_port', 8000),
-                    'websocket_port': self.settings.get('ws_port', 8001),
-                    'dashboard_port': self.settings.get('dashboard_port', 3000)
+                    'websocket_port': self.settings.get('ws_port', 7273),
+                    'dashboard_port': self.settings.get('dashboard_port', 7274)
                 },
                 'features': {
                     'auto_start_browser': self.settings.get('open_browser', True),
@@ -282,7 +282,7 @@ upstream giljo_api {{
 }}
 
 upstream giljo_websocket {{
-    server 127.0.0.1:{self.settings.get('ws_port', 8001)};
+    server 127.0.0.1:{self.settings.get('ws_port', 7273)};
 }}
 
 server {{
@@ -291,7 +291,7 @@ server {{
 
     # Dashboard
     location / {{
-        proxy_pass http://127.0.0.1:{self.settings.get('dashboard_port', 3000)};
+        proxy_pass http://127.0.0.1:{self.settings.get('dashboard_port', 7274)};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

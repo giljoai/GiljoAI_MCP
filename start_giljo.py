@@ -35,9 +35,9 @@ SERVICES = {
     },
     "dashboard": {
         "name": "Dashboard (Frontend)",
-        "command": ["npm", "run", "dev"],  # Use dev for development
+        "command": ["npm.cmd" if sys.platform == "win32" else "npm", "run", "dev"],  # Use dev for development
         "cwd": "frontend",
-        "port": 3000,  # Default, will be updated from config
+        "port": 7274,  # Default, will be updated from config
         "health_check": "tcp",
         "startup_time": 15,
         "required": False  # Optional - may not have npm installed
@@ -194,15 +194,26 @@ class ServiceLauncher:
                 return None
 
         try:
-            # Start process
-            process = subprocess.Popen(
-                command,
-                cwd=cwd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
-            )
+            # For backend, show live output for debugging
+            if name == "backend":
+                self.log(f"Starting {config['name']} with VERBOSE output...", "INFO")
+                process = subprocess.Popen(
+                    command,
+                    cwd=cwd,
+                    stdout=None,  # Show in console
+                    stderr=None,  # Show in console
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+                )
+            else:
+                # Other services can be quiet
+                process = subprocess.Popen(
+                    command,
+                    cwd=cwd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+                )
 
             self.processes[name] = process
             self.log(f"{config['name']} started with PID {process.pid}")

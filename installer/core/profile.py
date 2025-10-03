@@ -148,7 +148,7 @@ class ProfileManager:
                 network_settings={
                     "host": "localhost",
                     "api_port": 8000,
-                    "websocket_port": 8001,
+                    "websocket_port": 7273,
                     "allow_external": False,
                 },
                 storage_settings={
@@ -194,7 +194,7 @@ class ProfileManager:
                 network_settings={
                     "host": "0.0.0.0",
                     "api_port": 8000,
-                    "websocket_port": 8001,
+                    "websocket_port": 7273,
                     "allow_external": True,
                     "cors_origins": ["*"],
                 },
@@ -243,7 +243,7 @@ class ProfileManager:
             post_install_steps=[
                 "Configure PostgreSQL database",
                 "Generate and distribute API keys",
-                "Configure firewall rules for ports 8000-8001",
+                "Configure firewall rules for ports 8000-7273",
                 "Set up shared storage permissions",
                 "Test connectivity from client machines",
             ],
@@ -366,7 +366,7 @@ class ProfileManager:
                 network_settings={
                     "host": "0.0.0.0",
                     "api_port": 8000,
-                    "websocket_port": 8001,
+                    "websocket_port": 7273,
                     "allow_external": True,
                     "cors_origins": ["*"],
                     "service_mesh": "istio",

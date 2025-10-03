@@ -160,7 +160,7 @@ class TestPhase2ServerMode:
         settings = {
             'mode': 'server',
             'api_port': 8000,
-            'ws_port': 8001,
+            'ws_port': 7273,
             'dashboard_port': 3000
         }
 
@@ -182,7 +182,7 @@ class TestPhase2ServerMode:
         if rules_txt.exists():
             content = rules_txt.read_text()
             assert '8000' in content, "API port not in firewall rules"
-            assert '8001' in content, "WebSocket port not in firewall rules"
+            assert '7273' in content, "WebSocket port not in firewall rules"
             assert '3000' in content, "Dashboard port not in firewall rules"
             print(f"PASS: Firewall rules generated - {len(result['files'])} files created")
         else:
@@ -229,7 +229,7 @@ class TestPhase2ServerMode:
         settings = {
             'mode': 'server',
             'api_port': 8000,
-            'ws_port': 8001,
+            'ws_port': 7273,
             'dashboard_port': 3000
         }
 
@@ -292,7 +292,7 @@ class TestPhase2ServerMode:
             'mode': 'server',
             'bind': '0.0.0.0',
             'api_port': 8000,
-            'ws_port': 8001,
+            'ws_port': 7273,
             'dashboard_port': 3000,
             'features': {
                 'ssl': True,

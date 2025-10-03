@@ -21,8 +21,8 @@ class FirewallManager:
         # Port configuration
         self.ports = {
             'API': settings.get('api_port', 8000),
-            'WebSocket': settings.get('ws_port', 8001),
-            'Dashboard': settings.get('dashboard_port', 3000),
+            'WebSocket': settings.get('ws_port', 7273),
+            'Dashboard': settings.get('dashboard_port', 7274),
             'PostgreSQL': settings.get('pg_port', 5432)
         }
 

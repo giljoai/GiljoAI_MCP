@@ -277,9 +277,14 @@ class DatabaseInstaller:
                 # Grant schema permissions
                 cur.execute("""
                     GRANT USAGE, CREATE ON SCHEMA public TO giljo_owner;
-                    GRANT USAGE ON SCHEMA public TO giljo_user;
+                    GRANT ALL ON SCHEMA public TO giljo_user;
                 """)
 
+                # Grant privileges on existing tables and sequences
+                cur.execute("""
+                    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO giljo_user;
+                    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO giljo_user;
+                """)
                 # Grant default privileges for tables
                 cur.execute("""
                     ALTER DEFAULT PRIVILEGES FOR ROLE giljo_owner IN SCHEMA public

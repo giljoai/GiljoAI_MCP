@@ -46,7 +46,7 @@ class HealthChecker:
         ports_to_check = [
             ("API", config.get("api_port", 6002)),
             ("WebSocket", config.get("websocket_port", 6003)),
-            ("Dashboard", config.get("dashboard_port", 6000)),
+            ("Dashboard", config.get("dashboard_port", 7274)),
             ("Server", config.get("server_port", 6001))
         ]
 
@@ -163,7 +163,7 @@ class HealthChecker:
         config = {
             "api_port": 6002,
             "websocket_port": 6003,
-            "dashboard_port": 6000,
+            "dashboard_port": 7274,
             "server_port": 6001
         }
         results["Ports"] = self.check_ports(config)

@@ -247,8 +247,8 @@ class ErrorRecovery:
                 'services': {
                     'bind': '127.0.0.1',
                     'api_port': 8000,
-                    'websocket_port': 8001,
-                    'dashboard_port': 3000
+                    'websocket_port': 7273,
+                    'dashboard_port': 7274
                 },
                 'features': {
                     'ssl_enabled': False,

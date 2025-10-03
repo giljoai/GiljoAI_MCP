@@ -212,8 +212,8 @@ class GiljoLauncher:
         services = self.config.get('services', {{}})
         ports = {{
             'API': services.get('api', {{}}).get('port', 7272),
-            'WebSocket': services.get('websocket', {{}}).get('port', 8001),
-            'Dashboard': services.get('frontend', {{}}).get('port', 6000)
+            'WebSocket': services.get('websocket', {{}}).get('port', 7273),
+            'Dashboard': services.get('frontend', {{}}).get('port', 7274)
         }}
 
         for service, port in ports.items():
@@ -266,7 +266,7 @@ class GiljoLauncher:
         time.sleep(2)  # Wait for startup
 
         # Start WebSocket server
-        ws_port = services.get('websocket', {{}}).get('port', 8001)
+        ws_port = services.get('websocket', {{}}).get('port', 7273)
         self.start_service("WebSocket Server", [
             python_exe, "-m", "giljo_mcp.websocket",
             "--port", str(ws_port)
@@ -274,7 +274,7 @@ class GiljoLauncher:
         time.sleep(1)
 
         # Start Dashboard
-        dashboard_port = services.get('frontend', {{}}).get('port', 6000)
+        dashboard_port = services.get('frontend', {{}}).get('port', 7274)
         self.start_service("Dashboard", [
             python_exe, "-m", "http.server",
             str(dashboard_port),
@@ -356,8 +356,8 @@ def start_services(settings: Dict[str, Any]):
         launcher.config = {{
             'services': {{
                 'api': {{'port': settings.get('api_port', 7272), 'host': '127.0.0.1'}},
-                'websocket': {{'port': settings.get('ws_port', 8001)}},
-                'frontend': {{'port': settings.get('dashboard_port', 6000)}}
+                'websocket': {{'port': settings.get('ws_port', 7273)}},
+                'frontend': {{'port': settings.get('dashboard_port', 7274)}}
             }},
             'features': {{
                 'auto_start_browser': settings.get('open_browser', True)

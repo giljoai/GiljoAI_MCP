@@ -32,8 +32,8 @@ def example_server_installation():
         'mode': 'server',
         'bind': '0.0.0.0',  # Network exposure
         'api_port': 8000,
-        'ws_port': 8001,
-        'dashboard_port': 3000,
+        'ws_port': 7273,
+        'dashboard_port': 7274,
         'pg_host': 'localhost',
         'pg_port': 5432,
 
@@ -146,8 +146,8 @@ def example_network_check():
         'mode': 'server',
         'bind': '0.0.0.0',
         'api_port': 8000,
-        'ws_port': 8001,
-        'dashboard_port': 3000,
+        'ws_port': 7273,
+        'dashboard_port': 7274,
         'features': {'ssl': True},
         'ssl': {'type': 'self-signed'}
     }
@@ -255,8 +255,8 @@ def example_firewall_generation():
         'mode': 'server',
         'bind': '0.0.0.0',
         'api_port': 8000,
-        'ws_port': 8001,
-        'dashboard_port': 3000,
+        'ws_port': 7273,
+        'dashboard_port': 7274,
         'pg_port': 5432
     }
 
