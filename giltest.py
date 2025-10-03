@@ -82,9 +82,10 @@ EXCLUDE_DIRS = [
     "venv", ".venv", "env", "ENV",
 
     # Python caches and build
-    "__pycache__", "*.egg-info", "build", "dist",
+    "__pycache__", ".eggs", "*.egg-info",
+    "build", "dist",
     ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    "htmlcov", "coverage", ".eggs",
+    "htmlcov", "coverage",
 
     # Node/frontend build
     "node_modules",
