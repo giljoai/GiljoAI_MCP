@@ -18,9 +18,29 @@ class ShortcutCreator:
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
         self.install_dir = Path(settings.get('install_dir', Path.cwd()))
-        self.desktop = Path.home() / "Desktop"
+        self.desktop = self._get_desktop_path()
         self.system = platform.system()
         self.logger = logging.getLogger(__name__)
+
+    def _get_desktop_path(self) -> Path:
+        """Get the correct Desktop path, checking for OneDrive Desktop on Windows"""
+        if platform.system() == "Windows":
+            # Check for OneDrive Desktop first
+            onedrive_desktop = os.environ.get('OneDrive')
+            if onedrive_desktop:
+                onedrive_desktop_path = Path(onedrive_desktop) / "Desktop"
+                if onedrive_desktop_path.exists():
+                    return onedrive_desktop_path
+
+            # Check OneDriveCommercial (for business accounts)
+            onedrive_commercial = os.environ.get('OneDriveCommercial')
+            if onedrive_commercial:
+                onedrive_commercial_path = Path(onedrive_commercial) / "Desktop"
+                if onedrive_commercial_path.exists():
+                    return onedrive_commercial_path
+
+        # Fall back to standard Desktop location
+        return Path.home() / "Desktop"
 
     def create_shortcuts(self) -> Dict[str, Any]:
         """Create desktop shortcuts based on OS"""
