@@ -28,7 +28,7 @@ from api.run_api import (
     find_available_port,
     get_port_from_sources,
 )
-from installers.config_generator import ConfigGenerator
+from installer.core.config_generator import ConfigGenerator
 from setup import GiljoSetup, check_port
 
 

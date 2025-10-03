@@ -245,8 +245,7 @@ EXCLUDE_FILES = [
     "test_installation.py",  # Our test script
     "test_mcp_registration.py",  # MCP test script
     "cleanup_mcp_test.py",  # MCP cleanup script
-    "setup_gui_mcp_integration.py",  # Dev integration script
-    "setup_cli_mcp_integration.py",  # Dev integration script
+    # setup_*.py files removed - use installer/cli/install.py instead
     "integrate_mcp.py",  # Dev integration script
     "giltest.py",  # This deployment script itself
     "giltest.bat",  # The batch wrapper
@@ -716,10 +715,7 @@ def verify_deployment(preserved_items=None):
         "install.bat",
         "quickstart.sh",
         "setup.py",
-        "setup_gui.py",  # GUI installer with PostgreSQL 18 guide
-        "setup_cli.py",  # CLI installer (PostgreSQL-focused, 663 lines)
-        "setup_config.py",  # Configuration management
-        "setup_platform.py",  # Platform-specific setup
+        # Note: setup_*.py files removed - use installer/cli/install.py instead
         "requirements.txt",
         "README.md",
         "devuninstall.py",

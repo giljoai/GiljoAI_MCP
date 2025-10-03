@@ -322,7 +322,7 @@ class Bootstrap:
             self.print_status("New config manager not available, using fallback", "warning")
             # Keep existing fallback code
             try:
-                from installers.config_generator import ConfigGenerator
+                from installer.core.config_generator import ConfigGenerator
 
                 config_gen = ConfigGenerator(self.install_dir)
                 config_success, config_msg = config_gen.create_config_file()
@@ -379,7 +379,7 @@ class Bootstrap:
 
             except:
                 # Fall back to original launcher system
-                from installers.launcher_creator import LauncherCreator
+                from installer.core.launcher_creator import LauncherCreator
 
                 launcher = LauncherCreator(self.install_dir)
 
