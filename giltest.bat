@@ -20,7 +20,7 @@ REM   4. Target: C:\install_test\Giljo_MCP
 REM
 REM ============================================================
 
-python "%~dp0giltest.py" %*
+python "%~dp0scripts\giltest.py" %*
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
