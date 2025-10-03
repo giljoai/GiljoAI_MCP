@@ -12,7 +12,7 @@ echo Stopping backend API server on port 7272...
 REM Get PID of process using port 7272
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":7272" ^| findstr "LISTENING"') do (
     echo Killing process %%a on port 7272...
-    taskkill /F /PID %%a 2>nul
+    powershell -Command "Stop-Process -Id %%a -Force -ErrorAction SilentlyContinue"
     if errorlevel 1 (
         echo Failed to kill process %%a
     ) else (
@@ -21,7 +21,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":7272" ^| findstr "LISTENING
 )
 
 REM Also try to kill any python.exe running run_api.py as fallback
-taskkill /F /IM python.exe /FI "COMMANDLINE eq *run_api.py*" 2>nul
+powershell -Command "Get-Process python -ErrorAction SilentlyContinue | Where-Object {$_.CommandLine -like '*run_api.py*'} | Stop-Process -Force -ErrorAction SilentlyContinue"
 
 echo.
 echo Done.
