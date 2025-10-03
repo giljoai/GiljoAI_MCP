@@ -609,6 +609,64 @@ def restore_data():
     return restored
 
 
+def setup_symlinks():
+    """Create symlinks for shared development folders"""
+    print("\n[Symlinks] Setting up shared development folders...")
+
+    # Folders to symlink from test -> dev
+    SYMLINK_FOLDERS = {
+        "docs": SOURCE_DIR / "docs",
+        "scripts": SOURCE_DIR / "scripts",
+        "examples": SOURCE_DIR / "examples",
+        "devlog": SOURCE_DIR / "docs" / "devlog",  # devlog -> docs/devlog
+    }
+
+    created = []
+    failed = []
+
+    for folder_name, target_path in SYMLINK_FOLDERS.items():
+        link_path = TEST_DIR / folder_name
+
+        # Check if target exists in dev repo
+        if not target_path.exists():
+            print(f"      [SKIP] {folder_name} (target not found in dev repo)")
+            continue
+
+        # Remove existing folder/link if it exists
+        if link_path.exists():
+            if link_path.is_symlink():
+                link_path.unlink()
+                print(f"      [REMOVE] Removed old symlink: {folder_name}")
+            else:
+                shutil.rmtree(link_path) if link_path.is_dir() else link_path.unlink()
+                print(f"      [REMOVE] Removed real folder: {folder_name}")
+
+        # Create symlink using PowerShell (Windows)
+        try:
+            cmd = [
+                "powershell",
+                "-Command",
+                f"New-Item -ItemType SymbolicLink -Path '{link_path}' -Target '{target_path}'"
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            created.append(folder_name)
+            print(f"      [OK] Created symlink: {folder_name} -> {target_path.relative_to(SOURCE_DIR)}")
+        except subprocess.CalledProcessError as e:
+            failed.append(folder_name)
+            print(f"      [FAIL] Could not create symlink for {folder_name}: {e.stderr}")
+
+    if created:
+        print(f"\n      Successfully created {len(created)} symlink(s)")
+        print("      These folders are now shared with the dev repo:")
+        for name in created:
+            print(f"        - {name}/")
+
+    if failed:
+        print(f"\n      Failed to create {len(failed)} symlink(s): {', '.join(failed)}")
+
+    return created
+
+
 def verify_deployment(preserved_items=None):
     """Verify the deployment and show summary"""
     print("\n" + "=" * 70)
@@ -796,6 +854,9 @@ def main():
 
             restored = restore_data()
 
+            # Setup symlinks to dev repo
+            setup_symlinks()
+
             print("[5/5] Verification...")
             if not verify_deployment(preserved_items=restored):
                 return 1
@@ -810,6 +871,9 @@ def main():
 
             if not copy_files(preserve_mode=False):
                 return 1
+
+            # Setup symlinks to dev repo
+            setup_symlinks()
 
             print("[3/3] Verification...")
             if not verify_deployment():
