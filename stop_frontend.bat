@@ -12,7 +12,7 @@ echo Stopping frontend dashboard on port 7274...
 REM Get PID of process using port 7274
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":7274" ^| findstr "LISTENING"') do (
     echo Killing process %%a on port 7274...
-    taskkill /F /PID %%a 2>nul
+    powershell -Command "Stop-Process -Id %%a -Force -ErrorAction SilentlyContinue"
     if errorlevel 1 (
         echo Failed to kill process %%a
     ) else (
@@ -21,7 +21,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":7274" ^| findstr "LISTENING
 )
 
 REM Also try to kill any node.exe running npm as fallback
-taskkill /F /IM node.exe 2>nul
+powershell -Command "Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue"
 
 echo.
 echo Done.
