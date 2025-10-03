@@ -228,12 +228,24 @@ Categories=Development;Utility;
 
         shortcuts = [
             {
-                'name': 'Start GiljoAI.command',
-                'script': str(self.install_dir / 'start_giljo.sh')
+                'name': 'Start GiljoAI Backend.command',
+                'script': str(self.install_dir / 'start_backend.sh')
             },
             {
-                'name': 'Stop GiljoAI.command',
-                'script': str(self.install_dir / 'stop_giljo.sh')
+                'name': 'Start GiljoAI Frontend.command',
+                'script': str(self.install_dir / 'start_frontend.sh')
+            },
+            {
+                'name': 'Stop GiljoAI Backend.command',
+                'script': str(self.install_dir / 'stop_backend.sh')
+            },
+            {
+                'name': 'Stop GiljoAI Frontend.command',
+                'script': str(self.install_dir / 'stop_frontend.sh')
+            },
+            {
+                'name': 'Start GiljoAI (All Services).command',
+                'script': str(self.install_dir / 'start_giljo.sh')
             }
         ]
 
