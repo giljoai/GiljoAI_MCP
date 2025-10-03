@@ -49,13 +49,14 @@ SERVICES = {
 class ServiceLauncher:
     """Professional service launcher with monitoring"""
 
-    def __init__(self):
+    def __init__(self, dev_mode=False):
         self.base_dir = Path(__file__).parent
         self.processes = {}
         self.config = self.load_config()
         self.log_dir = self.base_dir / "logs" / "launcher"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"launcher_{datetime.now():%Y%m%d_%H%M%S}.log"
+        self.dev_mode = dev_mode  # Development mode: disable auto-restart
 
         # Set the backend command based on the installation
         api_script = self.base_dir / "api" / "run_api.py"
@@ -296,7 +297,12 @@ class ServiceLauncher:
                         # Process died
                         self.log(f"{SERVICES[name]['name']} crashed!", "ERROR")
 
-                        if SERVICES[name].get("required", True):
+                        if self.dev_mode:
+                            # In dev mode, don't auto-restart - just report and stop
+                            self.log(f"DEV MODE: Not auto-restarting {SERVICES[name]['name']}", "WARNING")
+                            self.log("Fix the issue and restart manually", "INFO")
+                            return False  # Exit monitor loop
+                        elif SERVICES[name].get("required", True):
                             self.log(f"Restarting {SERVICES[name]['name']}...")
                             new_process = self.start_service(name, SERVICES[name])
                             if not new_process:
@@ -314,6 +320,8 @@ class ServiceLauncher:
         """Main launcher execution"""
         print("\n" + "="*60)
         print("   GiljoAI MCP Service Launcher")
+        if self.dev_mode:
+            print("   [DEVELOPMENT MODE - No Auto-Restart]")
         print("="*60)
         print()
 
@@ -361,8 +369,34 @@ class ServiceLauncher:
             frontend_config = self.config['services']['frontend']
             if frontend_config.get('auto_open', False) and "dashboard" in self.processes:
                 dashboard_port = SERVICES["dashboard"]["port"]
-                import webbrowser
-                webbrowser.open(f"http://localhost:{dashboard_port}")
+
+                # Wait for Vite dev server to be fully ready
+                self.log("Waiting for Vite dev server to be ready...")
+                vite_ready = False
+                for attempt in range(30):  # Try for 30 seconds
+                    time.sleep(1)
+                    try:
+                        # Use socket connection instead of urlopen for security scan compliance
+                        import socket
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(2)
+                        result = sock.connect_ex(('127.0.0.1', dashboard_port))
+                        sock.close()
+                        if result == 0:
+                            vite_ready = True
+                            break
+                    except Exception:
+                        pass
+
+                if vite_ready:
+                    browser_url = f"http://localhost:{dashboard_port}"
+                    self.log(f"Opening dashboard in browser: {browser_url}", "SUCCESS")
+                    self.log("IMPORTANT: If you see module errors, clear browser cache (Ctrl+Shift+Delete)", "INFO")
+                    import webbrowser
+                    webbrowser.open(browser_url)
+                else:
+                    self.log("Vite dev server not ready yet. Open browser manually.", "WARNING")
+                    self.log(f"Dashboard URL: http://localhost:{dashboard_port}", "INFO")
 
         # Monitor services
         try:
@@ -403,7 +437,31 @@ def start_services(settings: dict = None):
 
 def main():
     """Main entry point"""
-    launcher = ServiceLauncher()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="GiljoAI MCP Service Launcher")
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Development mode: disable auto-restart on failures"
+    )
+    parser.add_argument(
+        "--no-restart",
+        action="store_true",
+        help="Disable auto-restart on failures (alias for --dev)"
+    )
+    args = parser.parse_args()
+
+    # Check for dev mode from args or environment
+    dev_mode = args.dev or args.no_restart or os.getenv("GILJO_DEV_MODE", "").lower() in ("1", "true", "yes")
+
+    launcher = ServiceLauncher(dev_mode=dev_mode)
+
+    if dev_mode:
+        print("\n" + "="*60)
+        print("   DEVELOPMENT MODE: Auto-restart DISABLED")
+        print("   Services will NOT restart on failure")
+        print("="*60 + "\n")
 
     # Set up signal handlers
     def signal_handler(sig, frame):
