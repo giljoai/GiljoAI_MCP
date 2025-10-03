@@ -10,39 +10,39 @@ import os
 import time
 import json
 import signal
-import psutil
 import socket
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-# Service configuration
+# Try to import psutil, but don't fail if not available
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+
+# Service configuration - will be updated from config.yaml
 SERVICES = {
     "backend": {
-        "name": "GiljoAI Backend",
-        "command": [sys.executable, "-m", "giljo_mcp"],
-        "port": 8000,
+        "name": "GiljoAI Backend (HTTP + WebSocket + MCP)",
+        "command": None,  # Will be set dynamically
+        "port": 7272,  # Default, will be updated from config
         "health_endpoint": "/health",
+        "health_check": "http",
         "startup_time": 10,
         "required": True
     },
-    "websocket": {
-        "name": "WebSocket Service",
-        "command": [sys.executable, "-m", "giljo_mcp.websocket"],
-        "port": 8001,
-        "health_check": "tcp",
-        "startup_time": 5,
-        "required": True
-    },
     "dashboard": {
-        "name": "Dashboard",
-        "command": ["npm", "run", "start"],
+        "name": "Dashboard (Frontend)",
+        "command": ["npm", "run", "dev"],  # Use dev for development
         "cwd": "frontend",
-        "port": 3000,
+        "port": 3000,  # Default, will be updated from config
         "health_check": "tcp",
         "startup_time": 15,
-        "required": False
+        "required": False  # Optional - may not have npm installed
     }
+    # Note: WebSocket service removed - it's unified in the backend (v2.0 architecture)
 }
 
 
@@ -56,6 +56,34 @@ class ServiceLauncher:
         self.log_dir = self.base_dir / "logs" / "launcher"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"launcher_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+        # Set the backend command based on the installation
+        api_script = self.base_dir / "api" / "run_api.py"
+        if api_script.exists():
+            SERVICES["backend"]["command"] = [sys.executable, str(api_script)]
+        else:
+            # Fallback for different directory structures
+            SERVICES["backend"]["command"] = [sys.executable, "api/run_api.py"]
+
+        # Update ports from config.yaml if available
+        self._update_ports_from_config()
+
+    def _update_ports_from_config(self):
+        """Update service ports from config.yaml"""
+        if not self.config:
+            return
+
+        # Update backend port from config
+        if 'services' in self.config:
+            services = self.config['services']
+
+            # Backend/API port
+            if 'api' in services and 'port' in services['api']:
+                SERVICES['backend']['port'] = services['api']['port']
+
+            # Frontend port
+            if 'frontend' in services and 'port' in services['frontend']:
+                SERVICES['dashboard']['port'] = services['frontend']['port']
 
     def load_config(self) -> Dict:
         """Load configuration from config.yaml or .env"""
@@ -301,16 +329,15 @@ class ServiceLauncher:
         print("="*60)
 
         if "backend" in self.processes:
-            port = self.config.get("API_PORT", 8000)
-            print(f"  API:       http://localhost:{port}")
-            print(f"            http://localhost:{port}/docs (Swagger UI)")
-
-        if "websocket" in self.processes:
-            port = self.config.get("WS_PORT", 8001)
-            print(f"  WebSocket: ws://localhost:{port}")
+            # Get the actual port from SERVICES (which was updated from config)
+            port = SERVICES["backend"]["port"]
+            print(f"  Backend:   http://localhost:{port}")
+            print(f"             - REST API: http://localhost:{port}/docs")
+            print(f"             - WebSocket: ws://localhost:{port}/ws/{{client_id}}")
+            print(f"             - Health: http://localhost:{port}/health")
 
         if "dashboard" in self.processes:
-            port = self.config.get("DASHBOARD_PORT", 3000)
+            port = SERVICES["dashboard"]["port"]
             print(f"  Dashboard: http://localhost:{port}")
 
         print()
@@ -318,11 +345,13 @@ class ServiceLauncher:
         print("="*60)
         print()
 
-        # Open browser if configured
-        if self.config.get("OPEN_BROWSER", "true").lower() == "true":
-            dashboard_port = self.config.get("DASHBOARD_PORT", 3000)
-            import webbrowser
-            webbrowser.open(f"http://localhost:{dashboard_port}")
+        # Open browser if configured (check frontend config)
+        if 'services' in self.config and 'frontend' in self.config['services']:
+            frontend_config = self.config['services']['frontend']
+            if frontend_config.get('auto_open', False) and "dashboard" in self.processes:
+                dashboard_port = SERVICES["dashboard"]["port"]
+                import webbrowser
+                webbrowser.open(f"http://localhost:{dashboard_port}")
 
         # Monitor services
         try:

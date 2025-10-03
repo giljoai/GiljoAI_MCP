@@ -24,6 +24,46 @@ except ImportError:
     logging.warning("PortManager not available, using fallback port detection")
 
 
+def find_available_port(preferred_port: int) -> int:
+    """Find an available port, starting with the preferred one.
+
+    Args:
+        preferred_port: The preferred port number
+
+    Returns:
+        Available port number
+
+    Raises:
+        RuntimeError: If no available port can be found
+    """
+    import socket
+
+    # Check if preferred port is available
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1)
+            result = sock.connect_ex(('127.0.0.1', preferred_port))
+            if result != 0:  # Port is available
+                return preferred_port
+    except Exception:
+        pass
+
+    # Try some alternative ports
+    alternatives = [7273, 7274, 8747, 8823, 9456, 9789]
+    for port in alternatives:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(1)
+                result = sock.connect_ex(('127.0.0.1', port))
+                if result != 0:  # Port is available
+                    logging.warning(f"Port {preferred_port} is occupied, using alternative port {port}")
+                    return port
+        except Exception:
+            continue
+
+    raise RuntimeError(f"Could not find available port (preferred: {preferred_port})")
+
+
 def get_port_from_sources() -> int:
     """Get port from multiple sources in priority order
 
