@@ -49,14 +49,14 @@ SERVICES = {
 class ServiceLauncher:
     """Professional service launcher with monitoring"""
 
-    def __init__(self, dev_mode=False, services_filter=None):
+    def __init__(self, dev_mode=True, services_filter=None):  # Changed default to True (no auto-restart)
         self.base_dir = Path(__file__).parent
         self.processes = {}
         self.config = self.load_config()
         self.log_dir = self.base_dir / "logs" / "launcher"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"launcher_{datetime.now():%Y%m%d_%H%M%S}.log"
-        self.dev_mode = dev_mode  # Development mode: disable auto-restart
+        self.dev_mode = dev_mode  # Development mode: disable auto-restart (now default)
         self.services_filter = services_filter  # List of services to start (None = all)
 
         # Set the backend command based on the installation
