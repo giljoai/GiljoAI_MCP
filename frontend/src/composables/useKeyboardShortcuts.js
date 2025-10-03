@@ -155,6 +155,7 @@ export function useKeyboardShortcuts() {
         }
       }
 
+    }
     // Escape key
     if (event.key === 'Escape') {
       // First try to close help modal

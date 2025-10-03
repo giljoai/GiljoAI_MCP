@@ -223,8 +223,8 @@ class LaunchValidator:
         # Get ports from config
         if 'services' in self.config:
             ports_to_check.append(('API', self.config['services'].get('api_port', 8000)))
-            ports_to_check.append(('WebSocket', self.config['services'].get('websocket_port', 8001)))
-            ports_to_check.append(('Dashboard', self.config['services'].get('dashboard_port', 3000)))
+            ports_to_check.append(('WebSocket', self.config['services'].get('websocket_port', 7273)))
+            ports_to_check.append(('Dashboard', self.config['services'].get('dashboard_port', 7274)))
 
         blocked_ports = []
         for name, port in ports_to_check:

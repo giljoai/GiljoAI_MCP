@@ -555,7 +555,7 @@ class HealthChecker:
 
         # Default ports to check
         ports_to_check = self.config.get(
-            "ports", {"api": 8000, "frontend": 3000, "postgresql": 5432, "redis": 6379, "websocket": 8001}
+            "ports", {"api": 8000, "frontend": 7274, "postgresql": 5432, "redis": 6379, "websocket": 7273}
         )
 
         details = {}

@@ -250,8 +250,8 @@ class GiljoLauncher:
         # Check ports
         ports = {
             'API': self.config['services'].get('api_port', 8000),
-            'WebSocket': self.config['services'].get('websocket_port', 8001),
-            'Dashboard': self.config['services'].get('dashboard_port', 3000)
+            'WebSocket': self.config['services'].get('websocket_port', 7273),
+            'Dashboard': self.config['services'].get('dashboard_port', 7274)
         }
 
         for service, port in ports.items():
@@ -294,7 +294,7 @@ class GiljoLauncher:
         time.sleep(2)  # Wait for startup
 
         # Start WebSocket server
-        ws_port = self.config['services'].get('websocket_port', 8001)
+        ws_port = self.config['services'].get('websocket_port', 7273)
         self.start_service("WebSocket Server", [
             sys.executable, "-m", "giljo_mcp.websocket",
             "--port", str(ws_port)
@@ -302,7 +302,7 @@ class GiljoLauncher:
         time.sleep(1)
 
         # Start Dashboard
-        dashboard_port = self.config['services'].get('dashboard_port', 3000)
+        dashboard_port = self.config['services'].get('dashboard_port', 7274)
         self.start_service("Dashboard", [
             sys.executable, "-m", "http.server",
             str(dashboard_port),

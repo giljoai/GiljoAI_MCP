@@ -142,7 +142,7 @@ class ServiceManager:
 
         cmd = [
             sys.executable, '-m', 'uvicorn',
-            'api.main:app',
+            'api.app:app',
             '--host', bind_address,
             '--port', str(api_port)
         ]
@@ -188,7 +188,7 @@ class ServiceManager:
 
     def start_websocket_service(self) -> bool:
         """Start the WebSocket service"""
-        ws_port = self.config['services'].get('websocket_port', 8001)
+        ws_port = self.config['services'].get('websocket_port', 7273)
         bind_address = self.config['services'].get('bind', '127.0.0.1')
 
         cmd = [
@@ -226,33 +226,68 @@ class ServiceManager:
 
     def start_dashboard_service(self) -> bool:
         """Start the Dashboard service"""
-        dashboard_port = self.config['services'].get('dashboard_port', 3000)
+        dashboard_port = self.config['services'].get('dashboard_port', 7274)
         bind_address = self.config['services'].get('bind', '127.0.0.1')
 
         # Check if frontend directory exists
         frontend_path = Path('frontend')
         if not frontend_path.exists():
             if self.verbose:
-                click.echo("\n⚠️  Frontend directory not found, using placeholder")
-            frontend_path = Path('.')
+                click.echo("\n⚠️  Frontend directory not found, skipping dashboard")
+            return False
 
-        cmd = [
-            sys.executable, '-m', 'http.server',
-            str(dashboard_port),
-            '--bind', bind_address,
-            '--directory', str(frontend_path)
-        ]
+        # Check if built frontend exists
+        dist_path = frontend_path / 'dist'
+        if dist_path.exists():
+            # Serve pre-built frontend with Python's http.server
+            if self.verbose:
+                click.echo(f"\n📦 Serving built frontend from {dist_path}")
+
+            cmd = [
+                sys.executable, '-m', 'http.server',
+                str(dashboard_port),
+                '--bind', bind_address,
+                '--directory', str(dist_path)
+            ]
+            cwd = None
+        else:
+            # Try to use npm run dev (development server)
+            if self.verbose:
+                click.echo("\n⚠️  Built frontend not found. Starting development server...")
+
+            # Check if npm is available
+            npm_cmd = 'npm.cmd' if os.name == 'nt' else 'npm'
+            try:
+                subprocess.run([npm_cmd, '--version'], capture_output=True, check=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                if self.verbose:
+                    click.echo("\n❌ npm not found. Please install Node.js to run frontend")
+                return False
+
+            # Check if node_modules exists
+            if not (frontend_path / 'node_modules').exists():
+                if self.verbose:
+                    click.echo("\n📦 Installing frontend dependencies...")
+                install_result = subprocess.run([npm_cmd, 'install'], cwd=str(frontend_path), capture_output=True)
+                if install_result.returncode != 0:
+                    if self.verbose:
+                        click.echo("\n❌ Failed to install frontend dependencies")
+                    return False
+
+            cmd = [npm_cmd, 'run', 'dev', '--', '--port', str(dashboard_port), '--host', bind_address]
+            cwd = str(frontend_path)
 
         try:
             proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
+                cwd=cwd
             )
             self.processes['dashboard'] = proc
 
             # Wait and check
-            time.sleep(1)
+            time.sleep(2)
             if proc.poll() is not None:
                 stderr = proc.stderr.read().decode() if proc.stderr else ""
                 if self.verbose:

@@ -80,7 +80,7 @@ class ConfigManager:
             pg_host = self.settings.get('pg_host', 'localhost')
             pg_port = self.settings.get('pg_port', 5432)
             api_port = self.settings.get('api_port', 7272)  # FIXED: Correct default
-            frontend_port = self.settings.get('dashboard_port', 6000)  # FIXED: Correct default
+            frontend_port = self.settings.get('dashboard_port', 7274)  # FIXED: Correct default
 
             # Determine bind address
             if self.mode == 'localhost':
@@ -136,7 +136,7 @@ DATABASE_URL=postgresql://giljo_user:{user_password}@{pg_host}:{pg_port}/giljo_m
 # SERVER CONFIGURATION
 # =============================================================================
 # Deployment mode: LOCAL, LAN, or WAN
-GILJO_MCP_MODE={'LOCAL' if self.mode == 'localhost' else 'LAN'}
+GILJO_MCP_MODE={'local' if self.mode == 'localhost' else 'lan'}
 
 # API Host (0.0.0.0 for network access, 127.0.0.1 for localhost only)
 GILJO_API_HOST={bind_address}
@@ -281,7 +281,7 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
         try:
             # Get correct port values
             api_port = self.settings.get('api_port', 7272)
-            frontend_port = self.settings.get('dashboard_port', 6000)
+            frontend_port = self.settings.get('dashboard_port', 7274)
 
             # Get install directory
             install_dir = self.settings.get('install_dir', str(Path.cwd()))
@@ -444,7 +444,7 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
     def generate_nginx_config(self):
         """Generate example nginx configuration for v2.0 unified architecture"""
         api_port = self.settings.get('api_port', 7272)
-        frontend_port = self.settings.get('dashboard_port', 6000)
+        frontend_port = self.settings.get('dashboard_port', 7274)
 
         nginx_config = f"""# GiljoAI MCP Nginx Configuration (v2.0)
 # Place this in /etc/nginx/sites-available/giljo-mcp

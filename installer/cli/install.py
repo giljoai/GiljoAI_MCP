@@ -105,11 +105,11 @@ def c_bold_gold(text):
               type=int,
               help='API service port')
 @click.option('--ws-port',
-              default=8001,
+              default=7273,
               type=int,
               help='WebSocket service port')
 @click.option('--dashboard-port',
-              default=3000,
+              default=7274,
               type=int,
               help='Dashboard service port')
 @click.option('--install-dir',
@@ -492,8 +492,8 @@ def generate_config_template():
         'pg_port': 5432,
         'pg_password': 'your_postgres_password',
         'api_port': 7272,
-        'ws_port': 8001,
-        'dashboard_port': 3000,
+        'ws_port': 7273,
+        'dashboard_port': 7274,
         'auto_start': True,
         'open_browser': True,
         'features': {
@@ -517,8 +517,8 @@ pg_password: your_postgres_password  # postgres user password
 
 # Service Ports
 api_port: 7272
-ws_port: 8001
-dashboard_port: 3000
+ws_port: 7273
+dashboard_port: 7274
 
 # Post-installation Options
 auto_start: true
@@ -576,7 +576,7 @@ def display_success(settings: Dict[str, Any], result: Dict[str, Any]):
     click.echo(c_gold("Services:"))
     click.echo(c_white("  API: ") + c_gold(f"http://localhost:{settings.get('api_port', 7272)}"))
     click.echo(c_white("  WebSocket: ") + c_gold(f"ws://localhost:{settings.get('api_port', 7272)}"))
-    click.echo(c_white("  Dashboard: ") + c_gold(f"http://localhost:{settings.get('dashboard_port', 6000)}"))
+    click.echo(c_white("  Dashboard: ") + c_gold(f"http://localhost:{settings.get('dashboard_port', 7274)}"))
     click.echo()
 
     click.echo(c_purple("IMPORTANT NOTICE:"))

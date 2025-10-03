@@ -24,8 +24,8 @@ class NetworkManager:
         self.bind_address = settings.get('bind', '127.0.0.1' if self.mode == 'localhost' else '0.0.0.0')
         self.ports = {
             'api': settings.get('api_port', 8000),
-            'websocket': settings.get('ws_port', 8001),
-            'dashboard': settings.get('dashboard_port', 3000)
+            'websocket': settings.get('ws_port', 7273),
+            'dashboard': settings.get('dashboard_port', 7274)
         }
 
         # SSL settings
@@ -459,7 +459,7 @@ def detect_network_conflicts() -> Dict[str, Any]:
     # Check common port conflicts
     common_ports = {
         8000: ['Django dev server', 'Alternative HTTP'],
-        8001: ['Alternative HTTP', 'WebSocket servers'],
+        7273: ['Alternative HTTP', 'WebSocket servers'],
         3000: ['React dev server', 'Node.js apps'],
         5432: ['PostgreSQL']
     }
