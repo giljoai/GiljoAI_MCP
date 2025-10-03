@@ -43,11 +43,15 @@ class ProjectResponse(BaseModel):
 async def create_project(project: ProjectCreate):
     """Create a new project"""
     from api.app import state
+    from giljo_mcp.tenant import TenantManager
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
+        # Set default tenant for localhost mode
+        TenantManager.set_current_tenant("default")
+
         # Create project in database
         str(uuid.uuid4())
 
@@ -100,11 +104,15 @@ async def list_projects(
 ):
     """List all projects"""
     from api.app import state
+    from giljo_mcp.tenant import TenantManager
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
+        # Set default tenant for localhost mode
+        TenantManager.set_current_tenant("default")
+
         result = await state.tool_accessor.list_projects(status=status)
 
         if not result.get("success"):
