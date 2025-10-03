@@ -539,8 +539,34 @@ venv/bin/python start_giljo.py "$@"
                 result['errors'].append(f"pip install failed with exit code {proc.returncode}")
                 return result
 
+            # Install the giljo_mcp package itself in editable mode
+            self.logger.info("Installing giljo_mcp package in development mode...")
+            print("\n" + "="*60)
+            print("Installing GiljoAI MCP package...")
+
+            # Get the source directory (where setup.py is)
+            source_dir = Path(__file__).parent.parent.parent
+
+            # Install in editable mode
+            install_cmd = [str(venv_pip), "install", "-e", str(source_dir)]
+
+            proc2 = subprocess.run(install_cmd, capture_output=True, text=True)
+
+            if proc2.returncode != 0:
+                self.logger.warning(f"Editable install failed, trying regular install: {proc2.stderr}")
+                # Try regular install as fallback
+                install_cmd = [str(venv_pip), "install", str(source_dir)]
+                proc2 = subprocess.run(install_cmd)
+
+                if proc2.returncode != 0:
+                    result['errors'].append(f"giljo_mcp package installation failed")
+                    return result
+
+            print("✓ GiljoAI MCP package installed successfully")
+            print("="*60 + "\n")
+
             result['success'] = True
-            self.logger.info("Dependencies installed successfully in virtual environment")
+            self.logger.info("Dependencies and package installed successfully in virtual environment")
             return result
 
         except Exception as e:
