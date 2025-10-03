@@ -104,6 +104,16 @@ class BaseInstaller(ABC):
                 result['details'] = deps_result.get('errors', [])
                 return result
 
+            # Step 4.5: Install frontend dependencies
+            self.logger.info("Step 4.5: Installing frontend dependencies")
+            frontend_result = self.install_frontend_dependencies()
+
+            if not frontend_result['success']:
+                # Don't fail installation if frontend deps fail, just warn
+                result['warnings'] = result.get('warnings', [])
+                result['warnings'].append("Failed to install frontend dependencies - frontend may not work")
+                self.logger.warning("Frontend dependency installation failed, but continuing installation")
+
             # Step 5: Create launchers
             self.logger.info("Step 5: Creating launcher scripts")
             launcher_result = self.create_launchers()
@@ -472,8 +482,19 @@ venv/bin/python start_giljo.py "$@"
 
             # Upgrade pip in the venv
             self.logger.info("Upgrading pip in virtual environment...")
-            upgrade_cmd = [str(venv_python), "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
-            subprocess.run(upgrade_cmd, check=True, capture_output=True)
+            try:
+                upgrade_cmd = [str(venv_python), "-m", "pip", "install", "--upgrade", "pip"]
+                upgrade_result = subprocess.run(upgrade_cmd, capture_output=True, text=True, timeout=120)
+
+                if upgrade_result.returncode != 0:
+                    self.logger.warning(f"pip upgrade failed: {upgrade_result.stderr}")
+                    self.logger.warning("Continuing with existing pip version")
+                else:
+                    self.logger.info("pip upgraded successfully")
+            except subprocess.TimeoutExpired:
+                self.logger.warning("pip upgrade timed out, continuing with existing pip version")
+            except Exception as e:
+                self.logger.warning(f"pip upgrade error: {e}, continuing with existing pip version")
 
             result['success'] = True
             result['venv_path'] = str(venv_path)
@@ -497,12 +518,12 @@ venv/bin/python start_giljo.py "$@"
             venv_path = install_dir / 'venv'
 
             if platform.system() == "Windows":
-                venv_pip = venv_path / 'Scripts' / 'pip.exe'
+                venv_python = venv_path / 'Scripts' / 'python.exe'
             else:
-                venv_pip = venv_path / 'bin' / 'pip'
+                venv_python = venv_path / 'bin' / 'python'
 
-            if not venv_pip.exists():
-                result['errors'].append(f"Virtual environment pip not found at {venv_pip}")
+            if not venv_python.exists():
+                result['errors'].append(f"Virtual environment python not found at {venv_python}")
                 return result
 
             # Check if requirements.txt exists
@@ -523,12 +544,12 @@ venv/bin/python start_giljo.py "$@"
             else:
                 self.logger.info(f"Using existing requirements.txt at {dest_req}")
 
-            # Use venv pip to install dependencies with verbose output
+            # Use venv python -m pip to install dependencies (more reliable than pip.exe)
             self.logger.info("Installing Python dependencies in virtual environment...")
             self.logger.info("This may take a few minutes - showing live progress below:")
             print("\n" + "="*60)
 
-            cmd = [str(venv_pip), "install", "-r", str(dest_req), "--verbose"]
+            cmd = [str(venv_python), "-m", "pip", "install", "-r", str(dest_req), "--verbose"]
 
             # Run with live output to terminal (no capture)
             proc = subprocess.run(cmd)
@@ -547,15 +568,15 @@ venv/bin/python start_giljo.py "$@"
             # Get the source directory (where setup.py is)
             source_dir = Path(__file__).parent.parent.parent
 
-            # Install in editable mode
-            install_cmd = [str(venv_pip), "install", "-e", str(source_dir)]
+            # Install in editable mode using python -m pip
+            install_cmd = [str(venv_python), "-m", "pip", "install", "-e", str(source_dir)]
 
             proc2 = subprocess.run(install_cmd, capture_output=True, text=True)
 
             if proc2.returncode != 0:
                 self.logger.warning(f"Editable install failed, trying regular install: {proc2.stderr}")
                 # Try regular install as fallback
-                install_cmd = [str(venv_pip), "install", str(source_dir)]
+                install_cmd = [str(venv_python), "-m", "pip", "install", str(source_dir)]
                 proc2 = subprocess.run(install_cmd)
 
                 if proc2.returncode != 0:
@@ -572,6 +593,73 @@ venv/bin/python start_giljo.py "$@"
         except Exception as e:
             result['errors'].append(str(e))
             self.logger.error(f"Dependency installation failed: {e}")
+            return result
+
+    def install_frontend_dependencies(self) -> Dict[str, Any]:
+        """Install frontend npm dependencies"""
+        result = {'success': False, 'errors': []}
+
+        try:
+            install_dir = Path(self.settings.get('install_dir', Path.cwd()))
+            frontend_dir = install_dir / 'frontend'
+
+            # Check if frontend directory exists
+            if not frontend_dir.exists():
+                self.logger.info("Frontend directory not found, skipping frontend dependency installation")
+                result['success'] = True
+                return result
+
+            # Check if npm is available
+            npm_cmd = 'npm.cmd' if platform.system() == "Windows" else 'npm'
+            try:
+                npm_check = subprocess.run(
+                    [npm_cmd, '--version'],
+                    capture_output=True,
+                    check=True,
+                    timeout=10
+                )
+                npm_version = npm_check.stdout.decode().strip()
+                self.logger.info(f"Found npm version {npm_version}")
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                self.logger.warning("npm not found - skipping frontend dependency installation")
+                result['errors'].append("npm not installed - install Node.js to enable frontend")
+                return result
+
+            # Check if node_modules already exists
+            if (frontend_dir / 'node_modules').exists():
+                self.logger.info("Frontend dependencies already installed")
+                result['success'] = True
+                return result
+
+            # Install npm dependencies
+            self.logger.info("Installing frontend dependencies (this may take a few minutes)...")
+            print("\n" + "="*60)
+            print("Installing frontend dependencies...")
+            print("="*60 + "\n")
+
+            install_proc = subprocess.run(
+                [npm_cmd, 'install'],
+                cwd=str(frontend_dir),
+                timeout=300  # 5 minute timeout
+            )
+
+            print("\n" + "="*60 + "\n")
+
+            if install_proc.returncode != 0:
+                result['errors'].append(f"npm install failed with exit code {install_proc.returncode}")
+                return result
+
+            result['success'] = True
+            self.logger.info("Frontend dependencies installed successfully")
+            return result
+
+        except subprocess.TimeoutExpired:
+            result['errors'].append("npm install timed out after 5 minutes")
+            self.logger.error("Frontend dependency installation timed out")
+            return result
+        except Exception as e:
+            result['errors'].append(str(e))
+            self.logger.error(f"Frontend dependency installation failed: {e}")
             return result
 
     def register_with_claude(self) -> Dict[str, Any]:
