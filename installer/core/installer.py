@@ -390,17 +390,19 @@ echo    GiljoAI MCP Launcher
 echo ===============================================
 echo.
 
-REM Check Python installation
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo Error: Python not found in PATH
-    echo Please install Python 3.8+ from python.org
+REM Set working directory to script location
+cd /d "%~dp0"
+
+REM Check if venv exists
+if not exist "venv\\Scripts\\python.exe" (
+    echo Error: Virtual environment not found
+    echo Please run the installer first
     pause
     exit /b 1
 )
 
-REM Launch with Python
-python launchers\\start_giljo.py %*
+REM Launch with venv Python
+venv\\Scripts\\python.exe start_giljo.py %*
 
 if errorlevel 1 (
     echo.
@@ -419,15 +421,19 @@ echo "   GiljoAI MCP Launcher"
 echo "==============================================="
 echo
 
-# Check Python installation
-if ! command -v python3 &> /dev/null; then
-    echo "Error: Python 3 not found"
-    echo "Please install Python 3.8+ first"
+# Get script directory and change to it
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
+
+# Check if venv exists
+if [ ! -f "venv/bin/python" ]; then
+    echo "Error: Virtual environment not found"
+    echo "Please run the installer first"
     exit 1
 fi
 
-# Launch with Python
-python3 start_giljo.py "$@"
+# Launch with venv Python
+venv/bin/python start_giljo.py "$@"
 '''
 
     def create_venv(self) -> Dict[str, Any]:

@@ -13,12 +13,68 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+# Enable ANSI color support on Windows
+if platform.system() == 'Windows':
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from installer.core.installer import LocalhostInstaller, ServerInstaller
 from installer.core.validator import PreInstallValidator
 from installer.core.config import ConfigManager
+
+
+# Color constants using standard ANSI escape codes (compatible with all terminals)
+GOLD = '\033[93m'       # Bright yellow - GiljoAI, headers, URLs
+GREEN = '\033[92m'      # Bright green - Success
+RED = '\033[91m'        # Bright red - Errors
+PURPLE = '\033[95m'     # Bright magenta - Info
+WHITE = '\033[97m'      # Bright white - Regular text
+CYAN = '\033[96m'       # Bright cyan - Claude Code (closest to orange in standard ANSI)
+GRAY = '\033[90m'       # Dark gray - Codex
+MAGENTA = '\033[95m'    # Bright magenta/pink - Gemini
+BOLD = '\033[1m'
+BG_BLUE = '\033[44m'    # Blue background
+RESET = '\033[0m'
+
+def c_gold(text):
+    """Colorize text in gold (brand color)"""
+    return f"{GOLD}{text}{RESET}"
+
+def c_green(text):
+    """Colorize text in green (success)"""
+    return f"{GREEN}{text}{RESET}"
+
+def c_red(text):
+    """Colorize text in red (error)"""
+    return f"{RED}{text}{RESET}"
+
+def c_purple(text):
+    """Colorize text in purple (info)"""
+    return f"{PURPLE}{text}{RESET}"
+
+def c_white(text):
+    """Colorize text in white (regular)"""
+    return f"{WHITE}{text}{RESET}"
+
+def c_orange(text):
+    """Colorize text in cyan (Claude Code - closest to orange in ANSI)"""
+    return f"{CYAN}{text}{RESET}"
+
+def c_gray(text):
+    """Colorize text in gray (Codex)"""
+    return f"{GRAY}{text}{RESET}"
+
+def c_pink(text):
+    """Colorize text in magenta/pink (Gemini)"""
+    return f"{MAGENTA}{text}{RESET}"
+
+def c_bold_gold(text):
+    """Colorize text in bold gold"""
+    return f"{BOLD}{GOLD}{text}{RESET}"
 
 
 @click.command()
@@ -134,31 +190,31 @@ def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
                                        api_port, ws_port, dashboard_port, install_dir)
 
         # Pre-installation validation
-        click.echo("\n" + "="*60)
-        click.echo("Pre-Installation Validation")
-        click.echo("="*60)
+        click.echo("\n" + c_gold("="*60))
+        click.echo(c_bold_gold("Pre-Installation Validation"))
+        click.echo(c_gold("="*60))
 
         validator = PreInstallValidator(settings)
         validation_result = validator.validate()
 
         if not validation_result['valid']:
-            click.echo("\nValidation failed:", err=True)
+            click.echo(c_red("\n✗ Validation failed:"), err=True)
             for error in validation_result['errors']:
-                click.echo(f"  - {error}", err=True)
+                click.echo(c_red(f"  - {error}"), err=True)
 
             if not batch and click.confirm("\nAttempt to fix issues and continue?"):
                 # Attempt automatic fixes
                 for fix in validation_result.get('fixes', []):
-                    click.echo(f"Applying fix: {fix}")
+                    click.echo(c_purple(f"Applying fix: {fix}"))
                 # Retry validation
                 validation_result = validator.validate()
                 if not validation_result['valid']:
-                    click.echo("Cannot proceed with installation.", err=True)
+                    click.echo(c_red("Cannot proceed with installation."), err=True)
                     sys.exit(1)
             else:
                 sys.exit(1)
 
-        click.echo("Validation successful!")
+        click.echo(c_green("✓ Validation successful!"))
 
         # Select installer based on mode
         if settings['mode'] == 'localhost':
@@ -167,9 +223,9 @@ def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
             installer = ServerInstaller(settings)
 
         # Run installation
-        click.echo("\n" + "="*60)
-        click.echo(f"Starting {settings['mode'].capitalize()} Installation")
-        click.echo("="*60)
+        click.echo("\n" + c_gold("="*60))
+        click.echo(c_bold_gold(f"Starting {settings['mode'].capitalize()} Installation"))
+        click.echo(c_gold("="*60))
 
         result = installer.install()
 
@@ -180,29 +236,28 @@ def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
             sys.exit(1)
 
     except KeyboardInterrupt:
-        click.echo("\n\nInstallation cancelled by user.", err=True)
+        click.echo(c_red("\n\n✗ Installation cancelled by user."), err=True)
         sys.exit(1)
     except Exception as e:
-        click.echo(f"\n\nUnexpected error: {e}", err=True)
+        click.echo(c_red(f"\n\n✗ Unexpected error: {e}"), err=True)
         if not batch:
-            click.echo("\nPlease report this issue to support.", err=True)
+            click.echo(c_white("\nPlease report this issue to support."), err=True)
         sys.exit(1)
 
 
 def display_header(mode: str):
     """Display installation header"""
-    click.echo("\n" + "="*60)
-    click.echo("   GiljoAI MCP Installation System v2.0")
-    click.echo("   Professional CLI Installer")
-    click.echo("="*60)
-    click.echo(f"\nMode: {mode.upper()}")
-    click.echo(f"Platform: {platform.system()} {platform.machine()}")
-    click.echo(f"Python: {sys.version.split()[0]}")
+    click.echo("\n" + c_gold("="*60))
+    click.echo(c_bold_gold("   GiljoAI MCP Installation System v2.0"))
+    click.echo(c_gold("   Professional CLI Installer"))
+    click.echo(c_gold("="*60))
+    click.echo(c_white(f"\nMode: {c_gold(mode.upper())}"))
+    click.echo(c_white(f"Platform: {platform.system()} {platform.machine()}"))
+    click.echo(c_white(f"Python: {sys.version.split()[0]}"))
     click.echo()
-    click.echo("IMPORTANT NOTICE:")
-    click.echo("  Currently supports Claude Code only")
-    click.echo("  Support for Codex and Gemini coming in 2026")
-    click.echo("  See CLAUDE_CODE_EXCLUSIVITY_INVESTIGATION.md for details")
+    click.echo(c_purple("IMPORTANT NOTICE:"))
+    click.echo(c_white("  Currently supports ") + c_white("Claude Code") + c_white(" only"))
+    click.echo(c_white("  Support for ") + c_white("Codex") + c_white(" and ") + c_white("Gemini") + c_white(" coming in 2026"))
     click.echo()
 
 
@@ -210,9 +265,9 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
                       api_port: int, ws_port: int, dashboard_port: int, install_dir: str) -> Dict[str, Any]:
     """Interactive configuration collection"""
 
-    click.echo("\n" + "="*60)
-    click.echo("Installation Location")
-    click.echo("="*60)
+    click.echo("\n" + c_gold("="*60))
+    click.echo(c_bold_gold("Installation Location"))
+    click.echo(c_gold("="*60))
 
     # Ask for installation directory
     if install_dir is None:
@@ -231,28 +286,28 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
             click.echo("Installation cancelled.")
             sys.exit(1)
 
-    click.echo("\n" + "="*60)
-    click.echo("PostgreSQL Configuration")
-    click.echo("="*60)
+    click.echo("\n" + c_gold("="*60))
+    click.echo(c_bold_gold("PostgreSQL Configuration"))
+    click.echo(c_gold("="*60))
 
     # PostgreSQL settings
-    pg_host = click.prompt("  Host", default=pg_host)
-    pg_port = click.prompt("  Port", default=pg_port, type=int)
+    pg_host = click.prompt(c_white("  Host"), default=pg_host)
+    pg_port = click.prompt(c_white("  Port"), default=pg_port, type=int)
 
     # Check PostgreSQL accessibility
     from installer.core.database import check_postgresql_connection
 
-    click.echo(f"\nChecking PostgreSQL at {pg_host}:{pg_port}...")
+    click.echo(c_purple(f"\nChecking PostgreSQL at {pg_host}:{pg_port}..."))
 
     if not check_postgresql_connection(pg_host, pg_port):
-        click.echo("\nWarning: Cannot connect to PostgreSQL", err=True)
-        click.echo("Please ensure PostgreSQL 18 is installed and running.")
-        click.echo("Download from: https://www.postgresql.org/download/")
+        click.echo(c_red("\n⚠ Warning: Cannot connect to PostgreSQL"), err=True)
+        click.echo(c_white("Please ensure ") + c_gold("PostgreSQL 18") + c_white(" is installed and running."))
+        click.echo(c_white("Download from: ") + c_gold("https://www.postgresql.org/download/"))
 
         if not click.confirm("\nDo you want to continue anyway?"):
             sys.exit(1)
     else:
-        click.echo("PostgreSQL connection successful!")
+        click.echo(c_green("✓ PostgreSQL connection successful!"))
 
     # Admin credentials
     pg_password = click.prompt("  Admin password (postgres user)",
@@ -260,12 +315,12 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
                               confirmation_prompt=True)
 
     # Service configuration
-    click.echo("\nService Configuration")
-    click.echo("-" * 30)
+    click.echo(c_gold("\nService Configuration"))
+    click.echo(c_gold("-" * 30))
 
-    api_port = click.prompt("  API Port", default=api_port, type=int)
-    ws_port = click.prompt("  WebSocket Port", default=ws_port, type=int)
-    dashboard_port = click.prompt("  Dashboard Port", default=dashboard_port, type=int)
+    api_port = click.prompt(c_white("  API Port"), default=api_port, type=int)
+    ws_port = click.prompt(c_white("  WebSocket Port"), default=ws_port, type=int)
+    dashboard_port = click.prompt(c_white("  Dashboard Port"), default=dashboard_port, type=int)
 
     # Server mode configuration
     server_config = {}
@@ -273,25 +328,25 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
         server_config = interactive_server_setup()
 
     # Additional options
-    click.echo("\n" + "="*60)
-    click.echo("Additional Options")
-    click.echo("="*60)
+    click.echo("\n" + c_gold("="*60))
+    click.echo(c_bold_gold("Additional Options"))
+    click.echo(c_gold("="*60))
 
-    auto_start = click.confirm("  Auto-start services after installation?", default=True)
-    open_browser = click.confirm("  Open dashboard in browser after start?", default=True)
+    auto_start = click.confirm(c_white("  Auto-start services after installation?"), default=True)
+    open_browser = click.confirm(c_white("  Open dashboard in browser after start?"), default=True)
 
     # Summary
-    click.echo("\n" + "="*60)
-    click.echo("Installation Summary")
-    click.echo("="*60)
-    click.echo(f"  Mode: {mode}")
-    click.echo(f"  PostgreSQL: {pg_host}:{pg_port}")
-    click.echo(f"  API Port: {api_port}")
-    click.echo(f"  WebSocket Port: {ws_port}")
-    click.echo(f"  Dashboard Port: {dashboard_port}")
-    click.echo(f"  Auto-start: {'Yes' if auto_start else 'No'}")
-    click.echo(f"  Open browser: {'Yes' if open_browser else 'No'}")
-    click.echo("="*60)
+    click.echo("\n" + c_gold("="*60))
+    click.echo(c_bold_gold("Installation Summary"))
+    click.echo(c_gold("="*60))
+    click.echo(c_white(f"  Mode: {c_gold(mode)}"))
+    click.echo(c_white(f"  PostgreSQL: {pg_host}:{pg_port}"))
+    click.echo(c_white(f"  API Port: {api_port}"))
+    click.echo(c_white(f"  WebSocket Port: {ws_port}"))
+    click.echo(c_white(f"  Dashboard Port: {dashboard_port}"))
+    click.echo(c_white(f"  Auto-start: {'Yes' if auto_start else 'No'}"))
+    click.echo(c_white(f"  Open browser: {'Yes' if open_browser else 'No'}"))
+    click.echo(c_gold("="*60))
 
     if not click.confirm("\nProceed with installation?"):
         click.echo("Installation cancelled.")
@@ -321,24 +376,24 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
 def interactive_server_setup() -> Dict[str, Any]:
     """Interactive server mode configuration"""
 
-    click.echo("\n" + "="*60)
-    click.echo("SERVER MODE CONFIGURATION")
-    click.echo("="*60)
+    click.echo("\n" + c_gold("="*60))
+    click.echo(c_bold_gold("SERVER MODE CONFIGURATION"))
+    click.echo(c_gold("="*60))
 
     # Network binding
-    click.echo("\nNetwork Configuration:")
-    bind = click.prompt("  Bind address (0.0.0.0 for all interfaces)", default="0.0.0.0")
+    click.echo(c_gold("\nNetwork Configuration:"))
+    bind = click.prompt(c_white("  Bind address (0.0.0.0 for all interfaces)"), default="0.0.0.0")
 
     # Security warning for network exposure
     if bind != "127.0.0.1":
-        click.echo("\n" + "!"*60)
-        click.echo("  WARNING: Server will be accessible over network!")
-        click.echo("  Security recommendations:")
-        click.echo("  - Enable SSL/TLS for encrypted connections")
-        click.echo("  - Configure firewall rules")
-        click.echo("  - Use strong admin passwords")
-        click.echo("  - Enable API key authentication")
-        click.echo("!"*60)
+        click.echo("\n" + c_red("!"*60))
+        click.echo(c_red("  ⚠ WARNING: Server will be accessible over network!"))
+        click.echo(c_white("  Security recommendations:"))
+        click.echo(c_white("  - Enable SSL/TLS for encrypted connections"))
+        click.echo(c_white("  - Configure firewall rules"))
+        click.echo(c_white("  - Use strong admin passwords"))
+        click.echo(c_white("  - Enable API key authentication"))
+        click.echo(c_red("!"*60))
 
         if not click.confirm("\n  Continue with network exposure?"):
             raise click.Abort()
@@ -371,22 +426,22 @@ def interactive_server_setup() -> Dict[str, Any]:
             click.echo("\n  WARNING: SSL disabled - NOT recommended for production!")
 
     # Admin user setup
-    click.echo("\nAdmin User Configuration:")
-    admin_username = click.prompt("  Username", default="admin")
-    admin_password = click.prompt("  Password",
+    click.echo(c_gold("\nAdmin User Configuration:"))
+    admin_username = click.prompt(c_white("  Username"), default="admin")
+    admin_password = click.prompt(c_white("  Password"),
                                   hide_input=True,
                                   confirmation_prompt=True)
 
     # API key generation
-    generate_api_key = click.confirm("\nGenerate API key for programmatic access?", default=True)
+    generate_api_key = click.confirm(c_white("\nGenerate API key for programmatic access?"), default=True)
     api_key_info = None
 
     if generate_api_key:
         import secrets
         api_key = f"gai_{secrets.token_urlsafe(32)}"
         api_key_info = api_key
-        click.echo(f"\n  Generated API key: {api_key}")
-        click.echo("  IMPORTANT: Save this key - it won't be shown again!")
+        click.echo(c_purple(f"\n  Generated API key: ") + c_gold(api_key))
+        click.echo(c_red("  ⚠ IMPORTANT: Save this key - it won't be shown again!"))
 
     return {
         'bind': bind,
@@ -496,98 +551,107 @@ features:
 def display_success(settings: Dict[str, Any], result: Dict[str, Any]):
     """Display successful installation message"""
 
-    click.echo("\n" + "="*60)
-    click.echo("   Installation Completed Successfully!")
-    click.echo("="*60)
+    click.echo("\n" + c_gold("="*60))
+    click.echo(c_bold_gold("   ✓ Installation Completed Successfully!"))
+    click.echo(c_gold("="*60))
     click.echo()
-    click.echo("Installation Details:")
-    click.echo(f"  Mode: {settings['mode']}")
-    click.echo(f"  Database: giljo_mcp")
-    click.echo(f"  Configuration: config.yaml")
-    click.echo(f"  Environment: .env")
+    click.echo(c_gold("Installation Details:"))
+    click.echo(c_white(f"  Mode: {c_gold(settings['mode'])}"))
+    click.echo(c_white(f"  Database: {c_gold('giljo_mcp')}"))
+    click.echo(c_white(f"  Configuration: {c_gold('config.yaml')}"))
+    click.echo(c_white(f"  Environment: {c_gold('.env')}"))
     click.echo()
 
     if result.get('credentials_file'):
-        click.echo("Important: Database credentials saved to:")
-        click.echo(f"  {result['credentials_file']}")
-        click.echo("  Keep this file secure!")
+        click.echo(c_purple("Important: Database credentials saved to:"))
+        click.echo(c_gold(f"  {result['credentials_file']}"))
+        click.echo(c_red("  ⚠ Keep this file secure!"))
         click.echo()
 
     if result.get('mcp_registered'):
-        click.echo("MCP Registration:")
-        click.echo("  Successfully registered with Claude Code")
+        click.echo(c_purple("MCP Registration:"))
+        click.echo(c_green("  ✓ Successfully registered with ") + c_white("Claude Code"))
         click.echo()
 
-    click.echo("Services:")
-    click.echo(f"  API: http://localhost:{settings.get('api_port', 7272)}")
-    click.echo(f"  WebSocket: ws://localhost:{settings.get('api_port', 7272)}")
-    click.echo(f"  Dashboard: http://localhost:{settings.get('dashboard_port', 6000)}")
+    click.echo(c_gold("Services:"))
+    click.echo(c_white("  API: ") + c_gold(f"http://localhost:{settings.get('api_port', 7272)}"))
+    click.echo(c_white("  WebSocket: ") + c_gold(f"ws://localhost:{settings.get('api_port', 7272)}"))
+    click.echo(c_white("  Dashboard: ") + c_gold(f"http://localhost:{settings.get('dashboard_port', 6000)}"))
     click.echo()
 
-    click.echo("IMPORTANT NOTICE:")
-    click.echo("  This installation currently supports Claude Code only")
-    click.echo("  Support for Codex and Gemini coming in 2026")
+    click.echo(c_purple("IMPORTANT NOTICE:"))
+    click.echo(c_white("  This installation currently supports ") + c_white("Claude Code") + c_white(" only"))
+    click.echo(c_white("  Support for ") + c_white("Codex") + c_white(" and ") + c_white("Gemini") + c_white(" coming in 2026"))
     click.echo()
 
-    click.echo("To start GiljoAI MCP:")
+    click.echo(c_gold("To start GiljoAI MCP:"))
     if platform.system() == "Windows":
-        click.echo("  .\\start_giljo.bat")
+        click.echo(c_white("  ") + c_gold(".\\start_giljo.bat"))
     else:
-        click.echo("  ./start_giljo.sh")
+        click.echo(c_white("  ") + c_gold("./start_giljo.sh"))
 
-    click.echo("\nOr use the Python launcher:")
-    click.echo("  python start_giljo.py")
+    click.echo(c_white("\nOr use the Python launcher:"))
+    click.echo(c_white("  ") + c_gold("python start_giljo.py"))
     click.echo()
 
     # Ask about desktop shortcuts
-    create_shortcuts = click.confirm("Create desktop shortcuts?", default=True)
+    create_shortcuts = click.confirm(c_white("Create desktop shortcuts?"), default=True)
     if create_shortcuts:
-        click.echo("\nCreating desktop shortcuts...")
+        click.echo(c_purple("\nCreating desktop shortcuts..."))
         from installer.core.shortcuts import create_desktop_shortcuts
         shortcut_result = create_desktop_shortcuts(settings)
 
         if shortcut_result['success']:
             for shortcut in shortcut_result['created']:
-                click.echo(f"  ✓ Created: {shortcut}")
+                click.echo(c_green(f"  ✓ Created: {shortcut}"))
 
         if shortcut_result['errors']:
-            click.echo("\nWarnings:", err=True)
+            click.echo(c_red("\n⚠ Warnings:"), err=True)
             for error in shortcut_result['errors']:
-                click.echo(f"  - {error}", err=True)
+                click.echo(c_red(f"  - {error}"), err=True)
 
     click.echo()
 
     if settings.get('auto_start'):
-        click.echo("Starting services...")
-        # Import and run launcher from root
-        from start_giljo import start_services
-        start_services(settings)
+        click.echo(c_purple("Starting services..."))
+        # Import and run launcher from installation directory
+        import sys
+        from pathlib import Path
+        install_dir = Path(settings.get('install_dir', Path.cwd()))
+        sys.path.insert(0, str(install_dir))
+
+        try:
+            from start_giljo import start_services
+            start_services(settings)
+        except Exception as e:
+            click.echo(f"\nWarning: Could not auto-start services: {e}", err=True)
+            click.echo("You can start services manually using the commands above.", err=True)
 
 
 def display_failure(result: Dict[str, Any]):
     """Display installation failure message"""
 
-    click.echo("\n" + "="*60, err=True)
-    click.echo("   Installation Failed", err=True)
-    click.echo("="*60, err=True)
+    click.echo("\n" + c_red("="*60), err=True)
+    click.echo(c_bold_gold("   ✗ Installation Failed"), err=True)
+    click.echo(c_red("="*60), err=True)
     click.echo(err=True)
 
     if result.get('error'):
-        click.echo(f"Error: {result['error']}", err=True)
+        click.echo(c_red(f"Error: {result['error']}"), err=True)
 
     if result.get('details'):
-        click.echo("\nDetails:", err=True)
+        click.echo(c_red("\nDetails:"), err=True)
         for detail in result['details']:
-            click.echo(f"  - {detail}", err=True)
+            click.echo(c_white(f"  - {detail}"), err=True)
 
     if result.get('log_file'):
-        click.echo(f"\nFull log available at: {result['log_file']}", err=True)
+        click.echo(c_white(f"\nFull log available at: ") + c_gold(result['log_file']), err=True)
 
-    click.echo("\nTroubleshooting:", err=True)
-    click.echo("  1. Check PostgreSQL is installed and running", err=True)
-    click.echo("  2. Verify admin credentials are correct", err=True)
-    click.echo("  3. Ensure ports are not in use", err=True)
-    click.echo("  4. Review the installation log", err=True)
+    click.echo(c_purple("\nTroubleshooting:"), err=True)
+    click.echo(c_white("  1. Check ") + c_gold("PostgreSQL") + c_white(" is installed and running"), err=True)
+    click.echo(c_white("  2. Verify admin credentials are correct"), err=True)
+    click.echo(c_white("  3. Ensure ports are not in use"), err=True)
+    click.echo(c_white("  4. Review the installation log"), err=True)
 
 
 if __name__ == "__main__":
