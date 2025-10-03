@@ -11,37 +11,59 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
+# Set up logging early to catch import issues
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+)
+logger = logging.getLogger(__name__)
+logger.info("Loading FastAPI application...")
+
 from dotenv import load_dotenv
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from sqlalchemy import select, text
-
+try:
+    from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
+    from sqlalchemy import select, text
+    logger.info("FastAPI and core dependencies loaded successfully")
+except ImportError as e:
+    logger.error(f"Failed to import FastAPI dependencies: {e}", exc_info=True)
+    raise
 
 # Load environment variables from .env file
 load_dotenv()
+logger.info(f"Environment variables loaded from .env file")
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+logger.debug(f"Added to Python path: {Path(__file__).parent.parent / 'src'}")
 
-from giljo_mcp.auth import AuthManager
-from giljo_mcp.config_manager import get_config
-from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Project
-from giljo_mcp.tenant import TenantManager
-from giljo_mcp.tools.tool_accessor import ToolAccessor
+try:
+    from giljo_mcp.auth import AuthManager
+    from giljo_mcp.config_manager import get_config
+    from giljo_mcp.database import DatabaseManager
+    from giljo_mcp.models import Project
+    from giljo_mcp.tenant import TenantManager
+    from giljo_mcp.tools.tool_accessor import ToolAccessor
+    logger.info("GiljoAI MCP core modules loaded successfully")
+except ImportError as e:
+    logger.error(f"Failed to import GiljoAI MCP modules: {e}", exc_info=True)
+    logger.error("Make sure the src/giljo_mcp package is properly installed")
+    raise
 
-from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
-from .endpoints import agents, configuration, context, messages, mcp_tools, projects, statistics, tasks, templates
-from .middleware import AuthMiddleware
-from .websocket import WebSocketManager
-
+try:
+    from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
+    from .endpoints import agents, configuration, context, messages, mcp_tools, projects, statistics, tasks, templates
+    from .middleware import AuthMiddleware
+    from .websocket import WebSocketManager
+    logger.info("API endpoint modules loaded successfully")
+except ImportError as e:
+    logger.error(f"Failed to import API modules: {e}", exc_info=True)
+    raise
 
 if TYPE_CHECKING:
     from src.giljo_mcp.config_manager import ConfigManager
-
-logger = logging.getLogger(__name__)
 
 
 class APIState:
@@ -65,37 +87,80 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     """Application lifespan manager"""
     # app parameter is required by FastAPI even if unused
     # Startup
+    logger.info("=" * 70)
     logger.info("Starting GiljoAI MCP API...")
+    logger.info("=" * 70)
 
-    # Initialize configuration
-    state.config = get_config()  # Use the singleton getter
+    try:
+        # Initialize configuration
+        logger.info("Initializing configuration...")
+        state.config = get_config()  # Use the singleton getter
+        logger.info(f"Configuration loaded successfully")
+        logger.debug(f"Config mode: {state.config.mode if hasattr(state.config, 'mode') else 'unknown'}")
+    except Exception as e:
+        logger.error(f"Failed to load configuration: {e}", exc_info=True)
+        raise
 
     # Initialize database
     # Check for DATABASE_URL in environment first
+    logger.info("Initializing database connection...")
     db_url = os.getenv("DATABASE_URL")
 
-    if not db_url and state.config.database:
+    if db_url:
+        logger.info("Using DATABASE_URL from environment")
+    elif state.config.database:
         # Construct database URL from config
+        logger.info("Constructing database URL from configuration")
         if state.config.database.type == "postgresql":
             db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
+            logger.debug(f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}")
         else:
+            logger.error(f"Invalid database type: {state.config.database.type}")
             raise ValueError("Database configuration missing. PostgreSQL is required.")
 
     if not db_url:
+        logger.error("No database configuration found")
         raise ValueError("Database URL not configured. PostgreSQL is required.")
 
-    logger.info(f"Using database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
-    state.db_manager = DatabaseManager(db_url, is_async=True)
-    await state.db_manager.create_tables_async()
+    logger.info(f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
+
+    try:
+        state.db_manager = DatabaseManager(db_url, is_async=True)
+        logger.info("Database manager created successfully")
+
+        logger.info("Creating database tables...")
+        await state.db_manager.create_tables_async()
+        logger.info("Database tables created/verified successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}", exc_info=True)
+        raise
 
     # Initialize tenant manager
-    state.tenant_manager = TenantManager()  # TenantManager uses static methods
+    try:
+        logger.info("Initializing tenant manager...")
+        state.tenant_manager = TenantManager()  # TenantManager uses static methods
+        logger.info("Tenant manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
+        raise
 
     # Initialize tool accessor
-    state.tool_accessor = ToolAccessor(state.db_manager, state.tenant_manager)
+    try:
+        logger.info("Initializing tool accessor...")
+        state.tool_accessor = ToolAccessor(state.db_manager, state.tenant_manager)
+        logger.info("Tool accessor initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize tool accessor: {e}", exc_info=True)
+        raise
 
     # Initialize auth with environment variables
-    state.auth = AuthManager(state.config)
+    try:
+        logger.info("Initializing authentication manager...")
+        state.auth = AuthManager(state.config)
+        logger.info(f"Auth manager initialized with mode: {state.auth.mode}")
+    except Exception as e:
+        logger.error(f"Failed to initialize auth manager: {e}", exc_info=True)
+        raise
 
     # Load API key from environment if available
     api_key = os.getenv("API_KEY") or os.getenv("GILJO_MCP_API_KEY")
@@ -107,16 +172,31 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             "permissions": ["*"],
             "active": True,
         }
-        logger.info("Loaded API key from environment")
+        logger.info(f"Loaded API key from environment (key ending in: ...{api_key[-4:] if len(api_key) > 4 else 'XXXX'})")
+    else:
+        logger.info(f"No API key configured (auth mode: {state.auth.mode if state.auth else 'N/A'})")
 
     # Initialize WebSocket manager
-    state.websocket_manager = WebSocketManager()
+    try:
+        logger.info("Initializing WebSocket manager...")
+        state.websocket_manager = WebSocketManager()
+        logger.info("WebSocket manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize WebSocket manager: {e}", exc_info=True)
+        raise
 
     # Start heartbeat task
-    heartbeat_task = asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
-    state.heartbeat_task = heartbeat_task  # Store reference to prevent garbage collection
+    try:
+        logger.info("Starting WebSocket heartbeat task...")
+        heartbeat_task = asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
+        state.heartbeat_task = heartbeat_task  # Store reference to prevent garbage collection
+        logger.info("WebSocket heartbeat started (interval: 30s)")
+    except Exception as e:
+        logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)
 
-    logger.info("API startup complete")
+    logger.info("=" * 70)
+    logger.info("API startup complete - All systems initialized")
+    logger.info("=" * 70)
 
     yield
 
@@ -372,17 +452,20 @@ def create_app() -> FastAPI:
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):  # noqa: ARG001
         """Custom HTTP exception handler"""
+        logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
         return JSONResponse(status_code=exc.status_code, content={"error": exc.detail, "status_code": exc.status_code})
 
     @app.exception_handler(Exception)
     async def general_exception_handler(request, exc):  # noqa: ARG001
         """General exception handler"""
         logger.error(f"Unhandled exception: {exc}", exc_info=True)
+        logger.error(f"Request path: {request.url.path if hasattr(request, 'url') else 'unknown'}")
         return JSONResponse(
             status_code=500,
             content={
                 "error": "Internal server error",
-                "detail": str(exc) if state.config and state.config.get("debug", False) else None,
+                "detail": str(exc),  # Always show details in verbose mode
+                "type": type(exc).__name__
             },
         )
 

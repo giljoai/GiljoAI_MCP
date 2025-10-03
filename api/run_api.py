@@ -107,6 +107,14 @@ def get_port_from_sources() -> int:
 
 def main():
     """Main entry point for running the API server"""
+    # Set up basic logging immediately to catch early errors
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+    )
+    early_logger = logging.getLogger(__name__)
+    early_logger.info("Starting API server initialization...")
+
     parser = argparse.ArgumentParser(description="GiljoAI MCP REST API Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=None, help="Port to bind to (default: auto-detect from config/env)")
@@ -114,14 +122,23 @@ def main():
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     parser.add_argument(
         "--log-level",
-        default="info",
+        default="debug",  # Changed to debug for verbose output
         choices=["debug", "info", "warning", "error", "critical"],
-        help="Logging level (default: info)",
+        help="Logging level (default: debug)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug logging (equivalent to --log-level debug)",
     )
     parser.add_argument("--ssl-keyfile", help="SSL key file for HTTPS")
     parser.add_argument("--ssl-certfile", help="SSL certificate file for HTTPS")
 
     args = parser.parse_args()
+
+    # Override log level if verbose flag is set
+    if args.verbose:
+        args.log_level = "debug"
 
     # Determine port with fallback logic
     if args.port is None:
@@ -134,10 +151,18 @@ def main():
             logging.error(f"Port error: {e}")
             sys.exit(1)
 
-    # Configure logging
+    # Configure logging with verbose output
     logging.basicConfig(
-        level=getattr(logging, args.log_level.upper()), format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        level=getattr(logging, args.log_level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+        force=True  # Force reconfiguration
     )
+
+    # Set uvicorn and fastapi loggers to same level for consistency
+    logging.getLogger("uvicorn").setLevel(getattr(logging, args.log_level.upper()))
+    logging.getLogger("uvicorn.access").setLevel(getattr(logging, args.log_level.upper()))
+    logging.getLogger("uvicorn.error").setLevel(getattr(logging, args.log_level.upper()))
+    logging.getLogger("fastapi").setLevel(getattr(logging, args.log_level.upper()))
 
     logger = logging.getLogger(__name__)
 

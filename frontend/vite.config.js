@@ -11,7 +11,13 @@ export default defineConfig({
     port: FRONTEND_PORT,
     host: true,
     strictPort: false, // Allow fallback to alternative port if occupied
-    cors: true
+    cors: true,
+    fs: {
+      // Allow serving files outside root - needed for symlinked development setup
+      // NOTE: This only affects dev server, NOT production builds
+      strict: false,
+      allow: ['..']
+    }
   },
   resolve: {
     alias: {
