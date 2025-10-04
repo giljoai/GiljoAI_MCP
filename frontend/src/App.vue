@@ -4,22 +4,26 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <a href="#navigation" class="skip-link">Skip to navigation</a>
     <!-- Navigation Drawer -->
-    <v-navigation-drawer id="navigation" v-model="drawer" :rail="rail" permanent color="surface">
+    <v-navigation-drawer id="navigation" v-model="drawer" :rail="rail" permanent color="surface" width="180">
       <!-- Logo/Mascot -->
-      <v-list-item class="px-2">
-        <template v-slot:prepend>
+      <v-list-item class="px-2" style="min-height: 64px;">
+        <div class="d-flex justify-center align-center w-100">
           <!-- Full logo when expanded, small face when collapsed -->
           <v-img
             v-if="!rail"
-            src="/Giljo_YW.svg"
+            :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
             alt="GiljoAI"
-            max-height="40"
-            contain
+            height="40"
+            width="auto"
+            max-width="160"
           ></v-img>
           <v-avatar v-else size="40">
-            <v-img src="/icons/Giljo_YW_Face.svg" alt="GiljoAI"></v-img>
+            <v-img
+              :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+              alt="GiljoAI"
+            ></v-img>
           </v-avatar>
-        </template>
+        </div>
       </v-list-item>
 
       <v-divider></v-divider>
