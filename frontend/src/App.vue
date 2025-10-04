@@ -34,11 +34,21 @@
           v-for="item in navigationItems"
           :key="item.name"
           :to="item.path"
-          :prepend-icon="item.icon"
           :title="item.title"
           :value="item.name"
           color="primary"
-        ></v-list-item>
+        >
+          <template v-slot:prepend>
+            <v-img
+              v-if="item.customIcon"
+              :src="item.customIcon"
+              width="28"
+              height="28"
+              style="margin-left: -2px; margin-right: 30px;"
+            ></v-img>
+            <v-icon v-else>{{ item.icon }}</v-icon>
+          </template>
+        </v-list-item>
       </v-list>
 
       <!-- Bottom Section -->
@@ -73,7 +83,7 @@
 
       <v-spacer></v-spacer>
 
-      <v-toolbar-title style="color: #ffc300; font-weight: 600;">Agent Orchestration MCP Server</v-toolbar-title>
+      <v-toolbar-title :style="{ color: theme.global.current.value.dark ? '#ffc300' : '#1e3147', fontWeight: 600 }">Agent Orchestration MCP Server</v-toolbar-title>
 
       <v-spacer></v-spacer>
 
@@ -175,7 +185,7 @@ const rail = ref(false)
 const navigationItems = [
   { name: 'Dashboard', path: '/', title: 'Dashboard', icon: 'mdi-view-dashboard' },
   { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-  { name: 'Agents', path: '/agents', title: 'Agents', icon: 'mdi-robot' },
+  { name: 'Agents', path: '/agents', title: 'Agents', customIcon: '/Giljo_gray_Face.svg?v=2' },
   { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },
   { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   { name: 'Settings', path: '/settings', title: 'Settings', icon: 'mdi-cog' },
