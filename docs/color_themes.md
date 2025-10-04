@@ -22,6 +22,7 @@
 #### Neutral
 
 - **Light Gray**: `#e1e1e1` - Text on dark backgrounds, borders on dark
+- **Icon Gray**: `#A5AAAF` - Navigation icons, secondary UI elements
 
 ### Light Theme (Secondary)
 

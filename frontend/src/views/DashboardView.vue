@@ -21,7 +21,13 @@
       <v-col cols="12" sm="6" md="3">
         <v-card elevation="2">
           <v-card-text class="text-center">
-            <v-icon size="48" color="success">mdi-robot</v-icon>
+            <v-img
+              :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+              alt="Active Agents"
+              width="48"
+              height="48"
+              class="mx-auto"
+            ></v-img>
             <div class="text-h6 mt-2">Active Agents</div>
             <div class="text-h4">{{ stats.activeAgents }}</div>
           </v-card-text>
@@ -152,6 +158,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useTheme } from 'vuetify'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectStore } from '@/stores/projects'
 import { useMessageStore } from '@/stores/messages'
@@ -161,6 +168,8 @@ import SubAgentTree from '@/components/SubAgentTree.vue'
 import AgentMetrics from '@/components/AgentMetrics.vue'
 import { formatDistanceToNow } from 'date-fns'
 import websocketService from '@/services/websocket'
+
+const theme = useTheme()
 
 // Stores
 const agentStore = useAgentStore()
