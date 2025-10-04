@@ -49,8 +49,6 @@ async def create_project(project: ProjectCreate):
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        # Set default tenant for localhost mode
-        TenantManager.set_current_tenant("default")
 
         # Create project in database
         str(uuid.uuid4())
@@ -110,11 +108,8 @@ async def list_projects(
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        # Set default tenant for localhost mode
-        TenantManager.set_current_tenant("default")
 
         result = await state.tool_accessor.list_projects(status=status)
-
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to list projects"))  # noqa: TRY301
 

@@ -8,7 +8,7 @@ const apiClient = axios.create({
   headers: API_CONFIG.REST_API.headers,
 })
 
-// Request interceptor for auth token
+// Request interceptor for auth token and tenant key
 apiClient.interceptors.request.use(
   (config) => {
     // Add auth token if available
@@ -16,6 +16,12 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    // Ensure tenant key is always present
+    if (!config.headers['X-Tenant-Key']) {
+      config.headers['X-Tenant-Key'] = import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'
+    }
+
     return config
   },
   (error) => Promise.reject(error),

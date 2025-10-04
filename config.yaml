@@ -20,7 +20,7 @@ services:
     unified_port: true
     description: Main API server (REST + WebSocket + MCP)
   frontend:
-    port: 3000
+    port: 7274
     dev_server: true
     auto_open: true
 features:

@@ -11,6 +11,7 @@ export const API_CONFIG = {
     timeout: 30000,
     headers: {
       'Content-Type': 'application/json',
+      'X-Tenant-Key': import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd',
     },
   },
   WEBSOCKET: {

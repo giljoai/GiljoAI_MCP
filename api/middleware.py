@@ -3,6 +3,7 @@ Middleware for FastAPI application
 """
 
 import logging
+import os
 import time
 from typing import Callable
 
@@ -23,11 +24,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Process requests and check authentication"""
+        from giljo_mcp.tenant import TenantManager
 
         # Skip auth for public endpoints
         public_paths = ["/", "/health", "/docs", "/openapi.json", "/ws"]
         if any(request.url.path.startswith(path) for path in public_paths):
             return await call_next(request)
+
+        # Extract and set tenant key from header
+        tenant_key = request.headers.get("X-Tenant-Key")
+        if tenant_key:
+            logger.debug(f"Extracted tenant key from header: {tenant_key[:8]}...")
+            TenantManager.set_current_tenant(tenant_key)
+        else:
+            # Use default tenant key from environment if header is missing
+            default_tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+            logger.debug(f"No tenant key in header, using default: {default_tenant_key[:8]}...")
+            TenantManager.set_current_tenant(default_tenant_key)
 
         # Get auth manager
         auth_manager = self.get_auth_manager()
