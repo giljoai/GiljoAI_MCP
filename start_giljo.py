@@ -35,12 +35,13 @@ SERVICES = {
     },
     "dashboard": {
         "name": "Dashboard (Frontend)",
-        "command": ["npm.cmd" if sys.platform == "win32" else "npm", "run", "dev"],  # Use dev for development
+        "command": ["cmd.exe", "/c", "npm", "run", "dev"] if sys.platform == "win32" else ["npm", "run", "dev"],
         "cwd": "frontend",
         "port": 7274,  # Default, will be updated from config
         "health_check": "tcp",
         "startup_time": 15,
-        "required": False  # Optional - may not have npm installed
+        "required": False,  # Optional - may not have npm installed
+        "shell": False  # Don't use shell to avoid process tree issues
     }
     # Note: WebSocket service removed - it's unified in the backend (v2.0 architecture)
 }
@@ -258,23 +259,88 @@ class ServiceLauncher:
             return
 
         process = self.processes[name]
+        service_config = SERVICES.get(name, {})
+        port = service_config.get("port")
+
         if process.poll() is None:
-            self.log(f"Stopping {SERVICES[name]['name']}...")
+            self.log(f"Stopping {service_config.get('name', name)}...")
 
             if sys.platform == "win32":
-                # Windows: send CTRL_BREAK_EVENT
-                process.send_signal(signal.CTRL_BREAK_EVENT)
+                # Windows: Kill process tree to prevent restart loops
+                try:
+                    if PSUTIL_AVAILABLE:
+                        # Use psutil for clean termination of process tree
+                        parent = psutil.Process(process.pid)
+                        children = parent.children(recursive=True)
+
+                        # Log what we're killing
+                        self.log(f"Terminating process tree: parent PID {parent.pid} + {len(children)} children")
+
+                        for child in children:
+                            try:
+                                self.log(f"  Terminating child PID {child.pid}")
+                                child.terminate()
+                            except psutil.NoSuchProcess:
+                                pass
+                        parent.terminate()
+
+                        # Wait for processes to terminate
+                        gone, alive = psutil.wait_procs([parent] + children, timeout=3)
+
+                        # Force kill any remaining
+                        if alive:
+                            self.log(f"Force killing {len(alive)} remaining processes")
+                            for p in alive:
+                                try:
+                                    self.log(f"  Force killing PID {p.pid}")
+                                    p.kill()
+                                except psutil.NoSuchProcess:
+                                    pass
+                    else:
+                        # Fallback: direct process termination
+                        process.terminate()
+                        try:
+                            process.wait(timeout=3)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait()
+                except Exception as e:
+                    self.log(f"Error during termination: {e}", "WARNING")
+
+                # Additional fallback: kill by port if service has one
+                if port:
+                    self.log(f"Ensuring port {port} is freed...")
+                    try:
+                        import subprocess as sp
+                        # Find and kill process on port
+                        netstat_output = sp.run(
+                            ['netstat', '-ano'],
+                            capture_output=True,
+                            text=True,
+                            timeout=5
+                        ).stdout
+
+                        for line in netstat_output.split('\n'):
+                            if f':{port} ' in line and 'LISTENING' in line:
+                                parts = line.split()
+                                if len(parts) >= 5:
+                                    pid = parts[-1]
+                                    self.log(f"  Killing process on port {port}: PID {pid}")
+                                    sp.run(['taskkill', '/PID', pid, '/F'],
+                                          capture_output=True,
+                                          timeout=5)
+                    except Exception as e:
+                        self.log(f"Port-based cleanup failed: {e}", "WARNING")
             else:
                 # Unix: send SIGTERM
                 process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
 
-            try:
-                process.wait(timeout=5)
-                self.log(f"{SERVICES[name]['name']} stopped")
-            except subprocess.TimeoutExpired:
-                self.log(f"Force killing {SERVICES[name]['name']}", "WARNING")
-                process.kill()
-                process.wait()
+            self.log(f"{service_config.get('name', name)} stopped")
 
         del self.processes[name]
 
@@ -493,6 +559,7 @@ def main():
 
     # Set up signal handlers
     def signal_handler(sig, frame):
+        print("\n\nReceived interrupt signal, shutting down...")
         launcher.stop_all_services()
         sys.exit(0)
 

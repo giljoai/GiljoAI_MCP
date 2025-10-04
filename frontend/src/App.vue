@@ -6,19 +6,19 @@
     <!-- Navigation Drawer -->
     <v-navigation-drawer id="navigation" v-model="drawer" :rail="rail" permanent color="surface">
       <!-- Logo/Mascot -->
-      <v-list-item
-        prepend-avatar="/icons/Giljo_YW_Face.svg"
-        title="GiljoAI MCP"
-        subtitle="Orchestrator"
-        class="px-2"
-      >
-        <template v-slot:append>
-          <v-btn
-            variant="text"
-            icon="mdi-chevron-left"
-            @click="rail = !rail"
-            :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
-          ></v-btn>
+      <v-list-item class="px-2">
+        <template v-slot:prepend>
+          <!-- Full logo when expanded, small face when collapsed -->
+          <v-img
+            v-if="!rail"
+            src="/Giljo_YW.svg"
+            alt="GiljoAI"
+            max-height="40"
+            contain
+          ></v-img>
+          <v-avatar v-else size="40">
+            <v-img src="/icons/Giljo_YW_Face.svg" alt="GiljoAI"></v-img>
+          </v-avatar>
         </template>
       </v-list-item>
 
@@ -51,13 +51,25 @@
 
     <!-- App Bar -->
     <v-app-bar color="surface" elevation="0" border>
+      <!-- Sidebar Toggle -->
+      <v-btn
+        v-if="!mobile"
+        variant="text"
+        :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
+        @click="rail = !rail"
+        :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
+        class="mr-2"
+      ></v-btn>
+
       <v-app-bar-nav-icon
         @click="drawer = !drawer"
         v-if="mobile"
         aria-label="Toggle navigation drawer"
       ></v-app-bar-nav-icon>
 
-      <v-toolbar-title>{{ currentPageTitle }}</v-toolbar-title>
+      <v-spacer></v-spacer>
+
+      <v-toolbar-title style="color: #ffc300; font-weight: 600;">Agent Orchestration MCP Server</v-toolbar-title>
 
       <v-spacer></v-spacer>
 

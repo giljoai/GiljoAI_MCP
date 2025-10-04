@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class WebSocketEventClient:
     """Client for sending WebSocket events from MCP tools to the FastAPI server"""
 
-    def __init__(self, ws_url: str = "ws://localhost:6000/ws/mcp_tool_client"):
+    def __init__(self, ws_url: str = "ws://localhost:7272/ws/mcp_tool_client"):
         self.ws_url = ws_url
         self.session: Optional[aiohttp.ClientSession] = None
         self.ws: Optional[aiohttp.ClientWebSocketResponse] = None

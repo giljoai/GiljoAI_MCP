@@ -53,7 +53,7 @@ class ServerConfig:
 
     # REST API
     api_host: str = "127.0.0.1"
-    api_port: int = 8000  # Production default from tests
+    api_port: int = 7272  # Production default (PortManager managed)
     api_cors_enabled: bool = True
     api_key: Optional[str] = None
 
@@ -64,7 +64,7 @@ class ServerConfig:
     # Dashboard
     dashboard_enabled: bool = True
     dashboard_host: str = "127.0.0.1"
-    dashboard_port: int = 6000
+    dashboard_port: int = 7274
     dashboard_dev_port: int = 5173
 
 
@@ -990,7 +990,7 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
             "dashboard": {
                 "enabled": True,
                 "host": "127.0.0.1",
-                "port": 6000,
+                "port": 7274,
                 "dev_server_port": 5173,
             },
         },

@@ -375,7 +375,7 @@ class MockWebSocketManager:
         }
 
 
-async def run_mock_server(host: str = "localhost", port: int = 8001):
+async def run_mock_server(host: str = "localhost", port: int = 7272):
     """Run the mock WebSocket server"""
     manager = MockWebSocketManager()
 

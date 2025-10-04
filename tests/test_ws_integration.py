@@ -16,7 +16,7 @@ async def test_websocket():
     """Test WebSocket connection and features"""
 
     # Test configuration
-    ws_url = "ws://localhost:8000/ws/test_client_001"
+    ws_url = "ws://localhost:7272/ws/test_client_001"
     test_results = {
         "connection": False,
         "ping_pong": False,

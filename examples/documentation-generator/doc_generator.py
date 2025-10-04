@@ -621,7 +621,7 @@ Get started with {self.source_path.name} in minutes:
         print("\n✅ Next steps:")
         print(f"   1. cd {self.output_path}")
         print("   2. mkdocs serve")
-        print("   3. Open http://localhost:8000")
+        print("   3. Open http://localhost:7272")
 
     async def _wait_for_response(self, agent: str, timeout: int = 30) -> dict:
         """Wait for agent response (mock implementation)"""

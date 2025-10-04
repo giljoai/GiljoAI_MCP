@@ -22,7 +22,7 @@ services:
   frontend:
     port: 7274
     dev_server: true
-    auto_open: true
+    auto_open: false
 features:
   vision_chunking: true
   multi_tenant: true

@@ -70,7 +70,7 @@ class TestWebSocketSecurity:
 
         # Attempt connection without any auth
         with pytest.raises(WebSocketException) as exc_info:
-            create_connection("ws://localhost:8000/ws/test_client", timeout=5)
+            create_connection("ws://localhost:7272/ws/test_client", timeout=5)
 
         # Should be rejected with policy violation
         assert "1008" in str(exc_info.value) or "unauthorized" in str(exc_info.value).lower()
@@ -80,7 +80,7 @@ class TestWebSocketSecurity:
 
         # Attempt connection with invalid API key
         with pytest.raises(WebSocketException) as exc_info:
-            create_connection(f"ws://localhost:8000/ws/test_client?api_key={self.invalid_api_key}", timeout=5)
+            create_connection(f"ws://localhost:7272/ws/test_client?api_key={self.invalid_api_key}", timeout=5)
 
         # Should be rejected
         assert "1008" in str(exc_info.value) or "invalid" in str(exc_info.value).lower()
@@ -90,7 +90,7 @@ class TestWebSocketSecurity:
 
         # Attempt connection with expired JWT
         with pytest.raises(WebSocketException) as exc_info:
-            create_connection(f"ws://localhost:8000/ws/test_client?token={self.expired_jwt}", timeout=5)
+            create_connection(f"ws://localhost:7272/ws/test_client?token={self.expired_jwt}", timeout=5)
 
         # Should be rejected
         assert "1008" in str(exc_info.value) or "expired" in str(exc_info.value).lower()
@@ -100,7 +100,7 @@ class TestWebSocketSecurity:
 
         try:
             # Connect with valid API key
-            ws = create_connection(f"ws://localhost:8000/ws/test_client?api_key={self.valid_api_key}", timeout=5)
+            ws = create_connection(f"ws://localhost:7272/ws/test_client?api_key={self.valid_api_key}", timeout=5)
 
             # Should be connected
             assert ws.connected
@@ -120,7 +120,7 @@ class TestWebSocketSecurity:
 
         try:
             # Connect with valid JWT
-            ws = create_connection(f"ws://localhost:8000/ws/test_client?token={self.valid_jwt}", timeout=5)
+            ws = create_connection(f"ws://localhost:7272/ws/test_client?token={self.valid_jwt}", timeout=5)
 
             # Should be connected
             assert ws.connected
@@ -146,7 +146,7 @@ class TestWebSocketSecurity:
                 permissions=["read:messages"],  # No project permission
             )
 
-            ws = create_connection(f"ws://localhost:8000/ws/test_client?token={limited_jwt}", timeout=5)
+            ws = create_connection(f"ws://localhost:7272/ws/test_client?token={limited_jwt}", timeout=5)
 
             # Try to subscribe to project (should be denied)
             ws.send(json.dumps({"type": "subscribe", "entity_type": "project", "entity_id": "test_project_id"}))
@@ -171,7 +171,7 @@ class TestWebSocketSecurity:
                 user_id="user_a", tenant_key="tenant_a", permissions=["read:*"]
             )
 
-            ws = create_connection(f"ws://localhost:8000/ws/test_client?token={tenant_a_jwt}", timeout=5)
+            ws = create_connection(f"ws://localhost:7272/ws/test_client?token={tenant_a_jwt}", timeout=5)
 
             # Try to subscribe to tenant_b project (should be denied)
             ws.send(json.dumps({"type": "subscribe", "entity_type": "project", "entity_id": "tenant_b_project"}))
@@ -194,7 +194,7 @@ class TestWebSocketSecurity:
             # Create WebSocket with headers
             headers = {"X-API-Key": self.valid_api_key}
 
-            ws = websocket.create_connection("ws://localhost:8000/ws/test_client", header=headers, timeout=5)
+            ws = websocket.create_connection("ws://localhost:7272/ws/test_client", header=headers, timeout=5)
 
             # Should be connected
             assert ws.connected
@@ -210,9 +210,9 @@ class TestWebSocketSecurity:
 
         try:
             # Create two connections with different tenants
-            ws1 = create_connection(f"ws://localhost:8000/ws/client1?api_key={self.valid_api_key}", timeout=5)
+            ws1 = create_connection(f"ws://localhost:7272/ws/client1?api_key={self.valid_api_key}", timeout=5)
 
-            ws2 = create_connection(f"ws://localhost:8000/ws/client2?token={self.valid_jwt}", timeout=5)
+            ws2 = create_connection(f"ws://localhost:7272/ws/client2?token={self.valid_jwt}", timeout=5)
 
             # Both should be connected
             assert ws1.connected
@@ -238,7 +238,7 @@ class TestWebSocketSecurity:
 
         try:
             # Connect with valid credentials
-            ws = create_connection(f"ws://localhost:8000/ws/test_client?api_key={self.valid_api_key}", timeout=5)
+            ws = create_connection(f"ws://localhost:7272/ws/test_client?api_key={self.valid_api_key}", timeout=5)
 
             # Perform multiple operations
             for i in range(5):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Frontend WebSocket Testing with Mock Server
-Tests frontend functionality using mock WebSocket server on port 8001
+Tests frontend functionality using mock WebSocket server on port 7272
 """
 
 import asyncio
@@ -16,7 +16,7 @@ class FrontendMockTester:
     """Tests frontend WebSocket features with mock server"""
 
     def __init__(self):
-        self.mock_ws_url = "ws://localhost:8001"
+        self.mock_ws_url = "ws://localhost:7272"
         self.results = {
             "connection": False,
             "heartbeat": False,

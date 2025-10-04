@@ -58,7 +58,7 @@ echo Registering GiljoAI MCP adapter with Claude...
 echo.
 
 REM Register the MCP adapter (not the server directly)
-REM The adapter translates stdio to HTTP calls to localhost:8000
+REM The adapter translates stdio to HTTP calls to localhost:7272
 claude mcp add giljo-mcp "%SCRIPT_DIR%\venv\Scripts\python.exe -m giljo_mcp.mcp_adapter" --scope user
 
 if %errorlevel% equ 0 (

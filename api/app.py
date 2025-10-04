@@ -277,8 +277,8 @@ def create_app() -> FastAPI:
             },
         ],
         servers=[
-            {"url": "http://localhost:8000", "description": "Local development server"},
-            {"url": "http://0.0.0.0:8000", "description": "LAN accessible server"},
+            {"url": "http://localhost:7272", "description": "Local development server"},
+            {"url": "http://0.0.0.0:7272", "description": "LAN accessible server"},
             {"url": "https://api.giljoai.com", "description": "Production server (future)"},
         ],
         contact={

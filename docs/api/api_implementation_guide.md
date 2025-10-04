@@ -16,7 +16,7 @@ python api/run_api.py
 python api/run_api.py --reload --log-level debug
 
 # Production mode with multiple workers
-python api/run_api.py --workers 4 --host 0.0.0.0 --port 8000
+python api/run_api.py --workers 4 --host 0.0.0.0 --port 7272
 
 # With SSL/TLS
 python api/run_api.py --ssl-keyfile key.pem --ssl-certfile cert.pem
@@ -26,9 +26,9 @@ python api/run_api.py --ssl-keyfile key.pem --ssl-certfile cert.pem
 
 Once running, access the interactive API documentation at:
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
+- **Swagger UI**: http://localhost:7272/docs
+- **ReDoc**: http://localhost:7272/redoc
+- **OpenAPI JSON**: http://localhost:7272/openapi.json
 
 ## API Endpoints
 
@@ -93,7 +93,7 @@ Once running, access the interactive API documentation at:
 Connect to WebSocket for real-time updates:
 
 ```javascript
-const ws = new WebSocket("ws://localhost:8000/ws/client123");
+const ws = new WebSocket("ws://localhost:7272/ws/client123");
 
 // Subscribe to project updates
 ws.send(
@@ -124,7 +124,7 @@ security:
 When enabled, include API key in headers:
 
 ```bash
-curl -H "X-API-Key: your-api-key" http://localhost:8000/api/v1/projects
+curl -H "X-API-Key: your-api-key" http://localhost:7272/api/v1/projects
 ```
 
 ## Rate Limiting
@@ -154,7 +154,7 @@ All errors follow a consistent format:
 ### Create a Project
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/projects \
+curl -X POST http://localhost:7272/api/v1/projects \
   -H "Content-Type: application/json" \
   -d '{
     "name": "My AI Project",
@@ -166,7 +166,7 @@ curl -X POST http://localhost:8000/api/v1/projects \
 ### Send Message to Agent
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/messages \
+curl -X POST http://localhost:7272/api/v1/messages \
   -H "Content-Type: application/json" \
   -d '{
     "to_agents": ["implementer"],
@@ -179,7 +179,7 @@ curl -X POST http://localhost:8000/api/v1/messages \
 ### Get System Statistics
 
 ```bash
-curl http://localhost:8000/api/v1/stats/system
+curl http://localhost:7272/api/v1/stats/system
 ```
 
 ## Testing
@@ -241,5 +241,5 @@ CMD ["python", "api/run_api.py", "--host", "0.0.0.0"]
 For issues, questions, or contributions:
 
 - GitHub: https://github.com/giljoai/mcp-orchestrator
-- Documentation: http://localhost:8000/docs
+- Documentation: http://localhost:7272/docs
 - Email: support@giljoai.com

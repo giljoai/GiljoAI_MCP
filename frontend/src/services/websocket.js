@@ -68,7 +68,7 @@ class WebSocketService {
     return new Promise((resolve, reject) => {
       try {
         // Build WebSocket URL with authentication
-        const baseUrl = API_CONFIG.WEBSOCKET.url || 'ws://localhost:8000'
+        const baseUrl = API_CONFIG.WEBSOCKET.url || 'ws://localhost:7272'
         const wsUrl = new URL(`${baseUrl}/ws/${this.clientId}`)
 
         // Add auth parameters if provided

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import websocketService from '@/services/websocket'
 
 export const useMessageStore = defineStore('messages', () => {
   // State
@@ -247,6 +248,24 @@ export const useMessageStore = defineStore('messages', () => {
       fetchMessages({ project_id })
     }
   }
+
+  // Initialize WebSocket listeners for real-time message updates
+  function initializeWebSocketListeners() {
+    // Listen for message updates
+    websocketService.onMessage('message', (data) => {
+      handleRealtimeUpdate(data.data)
+    })
+
+    // Listen for entity updates (messages)
+    websocketService.onMessage('entity_update', (data) => {
+      if (data.entity_type === 'message') {
+        handleRealtimeUpdate(data.data)
+      }
+    })
+  }
+
+  // Auto-initialize WebSocket listeners when store is created
+  initializeWebSocketListeners()
 
   return {
     // State

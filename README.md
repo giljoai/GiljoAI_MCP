@@ -38,8 +38,8 @@ python install.py
 
 # 3. Start using your AI orchestration team (30 seconds)
 # Services are automatically started by the installer
-# ✨ Dashboard available at http://localhost:6000
-# ✨ API available at http://localhost:8000
+# ✨ Dashboard available at http://localhost:7274
+# ✨ API available at http://localhost:7272
 ```
 
 ### What Just Happened?
@@ -63,7 +63,7 @@ Choose the mode that best fits your needs:
 
 ```bash
 # Watch your agents work
-open http://localhost:6000
+open http://localhost:7274
 
 # Try a complex task
 "Refactor my authentication system to use JWT tokens"

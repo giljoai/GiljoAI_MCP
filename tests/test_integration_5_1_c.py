@@ -15,9 +15,9 @@ import websockets
 
 class IntegrationTester:
     def __init__(self):
-        self.api_base = "http://localhost:8000"
-        self.ws_url = "ws://localhost:8000/ws/tester"
-        self.frontend_url = "http://localhost:6000"
+        self.api_base = "http://localhost:7272"
+        self.ws_url = "ws://localhost:7272/ws/tester"
+        self.frontend_url = "http://localhost:7274"
         self.test_results = {
             "timestamp": datetime.now().isoformat(),
             "project": "5.1.c Dashboard Sub-Agent Visualization",

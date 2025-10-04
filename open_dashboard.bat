@@ -1,2 +1,2 @@
 @echo off
-start http://localhost:6000
+start http://localhost:7274

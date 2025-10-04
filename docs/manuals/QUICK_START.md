@@ -6,7 +6,7 @@
 - Python 3.8 or higher
 - PostgreSQL 18 (or 14-18)
 - 500MB free disk space
-- Available ports: 8000, 8001, 3000
+- Available ports: 7272, 7274
 
 ### Step 1: Install Dependencies
 
@@ -59,12 +59,12 @@ python launchers/start_giljo.py
 
 Open your browser to:
 ```
-http://localhost:3000
+http://localhost:7274
 ```
 
 API Documentation available at:
 ```
-http://localhost:8000/docs
+http://localhost:7272/docs
 ```
 
 ---
@@ -90,7 +90,7 @@ python installer/cli/install.py --mode server
 python installer/cli/install.py --batch --pg-password secret
 
 # Custom ports
-python installer/cli/install.py --api-port 9000 --ws-port 9001 --dashboard-port 4000
+python installer/cli/install.py --api-port 9000 --dashboard-port 4000
 ```
 
 ### Launcher Options
@@ -136,12 +136,12 @@ Check which process is using the port:
 
 **Windows:**
 ```cmd
-netstat -ano | findstr :8000
+netstat -ano | findstr :7272
 ```
 
 **Linux/macOS:**
 ```bash
-lsof -i :8000
+lsof -i :7272
 ```
 
 Stop the conflicting service or choose different ports during installation.
@@ -225,7 +225,7 @@ bash installer/scripts/create_db.sh
 
 2. **Read Documentation**
    - Integration guide: `docs/AI_TOOL_INTEGRATION.md`
-   - API reference: `http://localhost:8000/docs`
+   - API reference: `http://localhost:7272/docs`
 
 3. **Connect Projects**
    ```bash
@@ -270,7 +270,7 @@ python installer/cli/install.py
 python launchers/start_giljo.py
 
 # Check status
-curl http://localhost:8000/health
+curl http://localhost:7272/health
 
 # View logs
 tail -f logs/api_server_stdout.log

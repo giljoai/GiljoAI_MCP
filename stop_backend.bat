@@ -6,22 +6,20 @@ echo    Stopping GiljoAI MCP Backend...
 echo ===============================================
 echo.
 
-REM Find and kill process using port 7272
+REM Kill port 7272 (Backend API)
 echo Stopping backend API server on port 7272...
-
-REM Get PID of process using port 7272
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":7272" ^| findstr "LISTENING"') do (
-    echo Killing process %%a on port 7272...
-    powershell -Command "Stop-Process -Id %%a -Force -ErrorAction SilentlyContinue"
+    echo   Killing process %%a...
+    taskkill /PID %%a /F >nul 2>&1
     if errorlevel 1 (
-        echo Failed to kill process %%a
+        echo   Failed to kill PID %%a
     ) else (
-        echo Backend server stopped (PID: %%a^)
+        echo   Backend stopped (PID: %%a^)
     )
 )
 
-REM Also try to kill any python.exe running run_api.py as fallback
-powershell -Command "Get-Process python -ErrorAction SilentlyContinue | Where-Object {$_.CommandLine -like '*run_api.py*'} | Stop-Process -Force -ErrorAction SilentlyContinue"
+REM Fallback: Kill any python.exe running run_api.py
+powershell -Command "Get-Process python -ErrorAction SilentlyContinue | Where-Object {$_.CommandLine -like '*run_api.py*'} | Stop-Process -Force -ErrorAction SilentlyContinue" >nul 2>&1
 
 echo.
 echo Done.

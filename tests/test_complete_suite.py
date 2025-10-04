@@ -17,8 +17,8 @@ class CompleteTestSuite:
     """Complete test suite with 40+ tests for WebSocket implementation"""
 
     def __init__(self):
-        self.ws_url = "ws://localhost:8000/ws"
-        self.api_url = "http://localhost:8000"
+        self.ws_url = "ws://localhost:7272/ws"
+        self.api_url = "http://localhost:7272"
         self.test_results = {"total": 0, "passed": 0, "failed": 0, "categories": {}}
         self.metrics = {
             "latencies": [],
@@ -318,7 +318,7 @@ class CompleteTestSuite:
         """Test 40: Frontend can connect"""
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get("http://localhost:6000")
+                response = await client.get("http://localhost:7274")
                 return response.status_code == 200
         except:
             return False

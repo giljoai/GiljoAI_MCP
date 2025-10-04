@@ -164,7 +164,7 @@ python api/run_api.py            # Start REST API (auto-detects port from config
 python api/run_api.py --reload --log-level debug
 
 # Specify custom port
-python api/run_api.py --port 8000
+python api/run_api.py --port 7272
 ```
 
 ### Docker Commands
@@ -418,7 +418,7 @@ python start_giljo.py        # Start all services
 ### Port Conflicts
 
 - Check `config.yaml` for port settings
-- Use `--port` flag to override: `python api/run_api.py --port 8000`
+- Use `--port` flag to override: `python api/run_api.py --port 7272`
 - PortManager will auto-select alternative ports
 
 ### Frontend Build Issues

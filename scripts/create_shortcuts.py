@@ -217,7 +217,7 @@ echo.
 echo Checking if server is running...
 echo.
 
-netstat -an | findstr :8000 >nul
+netstat -an | findstr :7272 >nul
 if %errorlevel% == 0 (
     echo [OK] Server is RUNNING on port 8000
     echo.

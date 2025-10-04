@@ -233,7 +233,7 @@ class Bootstrap:
 
         print(f"{self.colors['GREEN']}✓ Server Location:{self.colors['ENDC']} {install_path}")
         print(f"{self.colors['GREEN']}✓ Server Type:{self.colors['ENDC']} Standalone orchestration server")
-        print(f"{self.colors['GREEN']}✓ Access:{self.colors['ENDC']} localhost:8000 (or network if configured)")
+        print(f"{self.colors['GREEN']}✓ Access:{self.colors['ENDC']} localhost:7272 (or network if configured)")
 
         print(f"\n{self.colors['HEADER']}Next Steps:{self.colors['ENDC']}")
         print(f"\n{self.colors['BLUE']}1. Global Registration (Optional):{self.colors['ENDC']}")
@@ -259,7 +259,7 @@ class Bootstrap:
         with open(env_file, "w") as f:
             f.write(f"GILJO_MCP_HOME={install_path}\n")
             f.write(f"GILJO_MCP_MODE=server\n")
-            f.write(f"GILJO_MCP_PORT=8000\n")
+            f.write(f"GILJO_MCP_PORT=7272\n")
 
         print(
             f"\n{self.colors['GREEN']}Server configuration saved to .env.server{self.colors['ENDC']}"
@@ -297,7 +297,7 @@ class Bootstrap:
                     "profile_type": "developer",
                     "database_type": "postgresql",
                     "host": "localhost",
-                    "port": 8000,
+                    "port": 7272,
                     "enable_redis": False,
                     "enable_docker": False,
                     "deployment_mode": "local",

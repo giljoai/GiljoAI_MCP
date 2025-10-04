@@ -17,8 +17,8 @@ class FinalValidationTester:
     """Final validation test suite for WebSocket implementation"""
 
     def __init__(self):
-        self.api_url = "http://localhost:8000"
-        self.ws_url = "ws://localhost:8000/ws"
+        self.api_url = "http://localhost:7272"
+        self.ws_url = "ws://localhost:7272/ws"
         self.results = {
             "connection": False,
             "ping_pong": False,

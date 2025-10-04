@@ -16,9 +16,9 @@ class E2EWebSocketTester:
     """End-to-end WebSocket integration tester"""
 
     def __init__(self):
-        self.api_url = "http://localhost:8000"
-        self.ws_url = "ws://localhost:8000/ws"
-        self.frontend_url = "http://localhost:6000"
+        self.api_url = "http://localhost:7272"
+        self.ws_url = "ws://localhost:7272/ws"
+        self.frontend_url = "http://localhost:7274"
         self.results = {}
 
     async def test_backend_connection(self) -> bool:

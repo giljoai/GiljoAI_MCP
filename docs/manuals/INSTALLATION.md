@@ -11,7 +11,7 @@ GiljoAI MCP is a **standalone orchestration server** that coordinates multiple A
 │         GiljoAI MCP Server              │
 │   (Installed once, system-wide)         │
 │                                         │
-│  • Runs at localhost:8000 or network   │
+│  • Runs at localhost:7272 or network   │
 │  • Has its own Python environment       │
 │  • Registered globally with Claude     │
 └────────────┬────────────────────────────┘
@@ -135,14 +135,14 @@ This creates a `.mcp.json` file in your project with:
 ### Localhost Mode (Default)
 - **Use case**: Single developer on local machine
 - **Installation**: `C:\GiljoAI_MCP` or `~/giljo-mcp`
-- **Access**: `localhost:8000`
+- **Access**: `localhost:7272`
 - **Database**: PostgreSQL (automatically configured)
 - **Authentication**: None required
 
 ### Network Server Mode
 - **Use case**: Team collaboration or remote access
 - **Installation**: Dedicated server or VM
-- **Access**: `http://server-ip:8000`
+- **Access**: `http://server-ip:7272`
 - **Database**: PostgreSQL recommended
 - **Authentication**: API keys
 
@@ -158,8 +158,8 @@ start_giljo.bat         # Windows
 
 # The server runs:
 # - MCP protocol on stdio (for Claude)
-# - REST API on port 8000
-# - WebSocket on port 8000/ws
+# - REST API on port 7272
+# - WebSocket on port 7272/ws
 ```
 
 ### In Your Project Directory
@@ -216,7 +216,7 @@ ls -la .mcp.json    # Mac/Linux
 
 ### Connection Failed
 - Ensure MCP server is running
-- Check firewall settings for port 8000
+- Check firewall settings for port 7272
 - Verify API key if using network mode
 
 ### Claude Doesn't See MCP Tools
@@ -241,7 +241,7 @@ The system respects these environment variables:
 GILJO_MCP_HOME=C:\GiljoAI_MCP
 
 # For network mode
-GILJO_MCP_URL=http://server:8000
+GILJO_MCP_URL=http://server:7272
 GILJO_MCP_API_KEY=your-api-key
 ```
 

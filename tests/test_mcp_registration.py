@@ -28,7 +28,7 @@ def main():
         "command": "python",
         "args": ["-m", "giljo_mcp"],
         "env": {
-            "GILJO_SERVER_URL": "http://localhost:8000",
+            "GILJO_SERVER_URL": "http://localhost:7272",
             "GILJO_MODE": "test"
         }
     }

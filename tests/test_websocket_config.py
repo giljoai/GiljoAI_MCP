@@ -14,22 +14,22 @@ ENV = os.getenv("TEST_ENV", "local")
 # Base URLs
 BASE_CONFIGS = {
     "local": {
-        "ws_url": "ws://localhost:8000/ws",
-        "api_url": "http://localhost:8000",
-        "frontend_url": "http://localhost:6000",
-        "mock_ws_port": 8001,
+        "ws_url": "ws://localhost:7272/ws",
+        "api_url": "http://localhost:7272",
+        "frontend_url": "http://localhost:7274",
+        "mock_ws_port": 7272,
     },
     "ci": {
-        "ws_url": "ws://localhost:8000/ws",
-        "api_url": "http://localhost:8000",
-        "frontend_url": "http://localhost:6000",
-        "mock_ws_port": 8001,
+        "ws_url": "ws://localhost:7272/ws",
+        "api_url": "http://localhost:7272",
+        "frontend_url": "http://localhost:7274",
+        "mock_ws_port": 7272,
     },
     "staging": {
-        "ws_url": "ws://staging.giljoai.local:8000/ws",
-        "api_url": "http://staging.giljoai.local:8000",
-        "frontend_url": "http://staging.giljoai.local:6000",
-        "mock_ws_port": 8001,
+        "ws_url": "ws://staging.giljoai.local:7272/ws",
+        "api_url": "http://staging.giljoai.local:7272",
+        "frontend_url": "http://staging.giljoai.local:7274",
+        "mock_ws_port": 7272,
     },
 }
 

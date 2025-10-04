@@ -115,14 +115,14 @@ Or use platform-specific launchers:
 ## Accessing the Server
 
 ### Local Access
-- Dashboard: `https://localhost:3000` (or `http://` if SSL disabled)
-- API: `https://localhost:8000/docs`
-- WebSocket: `wss://localhost:8001`
+- Dashboard: `https://localhost:7274` (or `http://` if SSL disabled)
+- API: `https://localhost:7272/docs`
+- WebSocket: `wss://localhost:7272/ws`
 
 ### Remote Access
-- Dashboard: `https://SERVER_IP:3000`
-- API: `https://SERVER_IP:8000/docs`
-- WebSocket: `wss://SERVER_IP:8001`
+- Dashboard: `https://SERVER_IP:7274`
+- API: `https://SERVER_IP:7272/docs`
+- WebSocket: `wss://SERVER_IP:7272/ws`
 
 Replace `SERVER_IP` with your server's IP address or hostname.
 
@@ -167,9 +167,9 @@ firewall_rules.txt         # Firewall summary
 
 | Service | Default Port | Protocol | Purpose |
 |---------|-------------|----------|---------|
-| API | 8000 | TCP | REST API endpoints |
-| WebSocket | 8001 | TCP | Real-time connections |
-| Dashboard | 3000 | TCP | Web UI |
+| API | 7272 | TCP | REST API endpoints |
+| WebSocket | 7272 | TCP | Real-time connections (same as API) |
+| Dashboard | 7274 | TCP | Web UI |
 | PostgreSQL | 5432 | TCP | Database (optional network access) |
 
 ## Troubleshooting
@@ -193,9 +193,9 @@ firewall_rules.txt         # Firewall summary
 
 4. **Test port connectivity:**
    ```bash
-   telnet SERVER_IP 8000
+   telnet SERVER_IP 7272
    # or
-   nc -zv SERVER_IP 8000
+   nc -zv SERVER_IP 7272
    ```
 
 ### SSL Certificate Issues
@@ -246,9 +246,8 @@ Edit `config.yaml` after installation and restart services:
 ```yaml
 services:
   bind: 0.0.0.0
-  api_port: 9000      # Change from 8000
-  websocket_port: 9001  # Change from 8001
-  dashboard_port: 4000  # Change from 3000
+  api_port: 9000      # Change from 7272
+  dashboard_port: 4000  # Change from 7274
 ```
 
 ### IP Whitelisting (Future)
@@ -258,14 +257,14 @@ Currently, firewall rules allow all IPs. To restrict:
 **Windows (PowerShell):**
 ```powershell
 New-NetFirewallRule -DisplayName "GiljoAI API Restricted" `
-  -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow `
+  -Direction Inbound -LocalPort 7272 -Protocol TCP -Action Allow `
   -RemoteAddress 192.168.1.0/24
 ```
 
 **Linux (iptables):**
 ```bash
-iptables -A INPUT -p tcp --dport 8000 -s 192.168.1.0/24 -j ACCEPT
-iptables -A INPUT -p tcp --dport 8000 -j DROP
+iptables -A INPUT -p tcp --dport 7272 -s 192.168.1.0/24 -j ACCEPT
+iptables -A INPUT -p tcp --dport 7272 -j DROP
 ```
 
 ### Using a Reverse Proxy

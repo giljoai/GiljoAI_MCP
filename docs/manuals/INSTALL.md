@@ -91,9 +91,8 @@ server:
   mode: localhost   # localhost or server
   host: localhost
   ports:
-    mcp: 6001
-    api: 6002
-    frontend: 6000
+    api: 7272
+    frontend: 7274
 
 tenant:
   multi_tenant: false  # Future feature
@@ -144,9 +143,8 @@ npm run dev
 
 ### Step 6: Verify Installation
 
-1. MCP Server: Check that it's running on `localhost:6001`
-2. API Server: Visit `http://localhost:6002/health`
-3. Frontend: Open `http://localhost:6000` in your browser
+1. API Server: Visit `http://localhost:7272/health`
+2. Frontend: Open `http://localhost:7274` in your browser
 
 ## Configuration for Claude Desktop
 
