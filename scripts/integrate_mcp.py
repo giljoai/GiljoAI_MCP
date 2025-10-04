@@ -87,7 +87,7 @@ except ImportError:
             self.log(f"Detected AI CLI tools: {', '.join(detected_names)}", "success")
 
             # Prepare MCP server configuration
-            server_url = config.get('server_url', 'http://localhost:8000')
+            server_url = config.get('server_url', 'http://localhost:7272')
             if config.get('deployment_mode') == 'SERVER':
                 host = config.get('host', 'localhost')
                 port = config.get('port', 8000)
@@ -254,7 +254,7 @@ except ImportError:
                 print(f"  * {tool_display_names.get(tool, tool)}")
 
             # Prepare server configuration
-            server_url = self.config.get('server_url', 'http://localhost:8000')
+            server_url = self.config.get('server_url', 'http://localhost:7272')
             if hasattr(self, 'deployment_mode') and self.deployment_mode == 'SERVER':
                 host = self.config.get('host', 'localhost')
                 port = self.selected_port if hasattr(self, 'selected_port') else self.server_port

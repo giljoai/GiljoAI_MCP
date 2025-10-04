@@ -301,7 +301,7 @@ class FullStackOrchestrator:
             to_agent="frontend",
             content={
                 "event": "api_ready",
-                "base_url": "http://localhost:8000",
+                "base_url": "http://localhost:7272",
                 "openapi_spec": await self._wait_for_response("backend", timeout=15),
             },
         )
@@ -481,7 +481,7 @@ class FullStackOrchestrator:
                 "frontend": {
                     "build": "./frontend",
                     "depends_on": ["backend"],
-                    "environment": {"REACT_APP_API_URL": "http://localhost:8000"},
+                    "environment": {"REACT_APP_API_URL": "http://localhost:7272"},
                     "ports": ["3000:3000"],
                 },
             },

@@ -82,6 +82,47 @@ async def send_message(message: MessageSend):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/", response_model=list[MessageResponse])
+async def list_messages(
+    project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    agent_name: Optional[str] = Query(None, description="Filter by agent name (to or from)"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+):
+    """List all messages with optional filters"""
+    from api.app import state
+
+    try:
+        # Use the existing get_messages tool but adapt for listing
+        if agent_name:
+            result = await state.tool_accessor.get_messages(agent_name=agent_name, project_id=project_id)
+        else:
+            # For now, return empty if no agent specified - can be enhanced later
+            result = {"success": True, "messages": []}
+
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to get messages"))  # noqa: TRY301
+
+        messages = []
+        for msg in result.get("messages", []):
+            messages.append(
+                MessageResponse(
+                    id=msg["id"],
+                    from_agent=msg.get("from", "orchestrator"),
+                    to_agents=[msg.get("to", agent_name)] if agent_name else [],
+                    content=msg["content"],
+                    message_type=msg.get("type", "direct"),
+                    priority=msg.get("priority", "normal"),
+                    status=msg.get("status", "pending"),
+                    created_at=datetime.fromisoformat(msg["created"]),
+                )
+            )
+
+        return messages  # noqa: TRY300
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/agent/{agent_name}", response_model=list[MessageResponse])
 async def get_messages(agent_name: str, project_id: Optional[str] = Query(None, description="Project ID filter")):
     """Get pending messages for an agent"""

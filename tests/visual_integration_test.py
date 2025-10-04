@@ -13,8 +13,8 @@ import httpx
 
 class VisualIntegrationTester:
     def __init__(self):
-        self.frontend_url = "http://localhost:6000"
-        self.api_url = "http://localhost:8000"
+        self.frontend_url = "http://localhost:7274"
+        self.api_url = "http://localhost:7272"
         self.test_report = {
             "timestamp": datetime.now().isoformat(),
             "project": "5.1.c Dashboard Sub-Agent Visualization",
@@ -87,7 +87,7 @@ class VisualIntegrationTester:
             # Test WebSocket connection
             import websockets
 
-            async with websockets.connect("ws://localhost:8000/ws/test") as ws:
+            async with websockets.connect("ws://localhost:7272/ws/test") as ws:
                 # Send test message
                 await ws.send(json.dumps({"type": "ping"}))
 

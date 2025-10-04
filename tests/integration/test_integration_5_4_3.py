@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Test configuration
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:7272"
 API_V1_PREFIX = "/api/v1"
 
 

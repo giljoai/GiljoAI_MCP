@@ -26,21 +26,35 @@ class AuthMiddleware(BaseHTTPMiddleware):
         """Process requests and check authentication"""
         from giljo_mcp.tenant import TenantManager
 
-        # Skip auth for public endpoints
-        public_paths = ["/", "/health", "/docs", "/openapi.json", "/ws"]
-        if any(request.url.path.startswith(path) for path in public_paths):
-            return await call_next(request)
-
-        # Extract and set tenant key from header
+        # Always set tenant context for all requests (including public endpoints)
         tenant_key = request.headers.get("X-Tenant-Key")
         if tenant_key:
             logger.debug(f"Extracted tenant key from header: {tenant_key[:8]}...")
-            TenantManager.set_current_tenant(tenant_key)
         else:
             # Use default tenant key from environment if header is missing
-            default_tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
-            logger.debug(f"No tenant key in header, using default: {default_tenant_key[:8]}...")
-            TenantManager.set_current_tenant(default_tenant_key)
+            tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+            logger.debug(f"No tenant key in header, using default: {tenant_key[:8]}...")
+
+        # Set tenant context AND store in request state (for persistence across async boundaries)
+        try:
+            TenantManager.set_current_tenant(tenant_key)
+        except ValueError:
+            # If tenant key is invalid, use the default
+            logger.warning(f"Invalid tenant key format, using default")
+            tenant_key = "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd"
+            TenantManager.set_current_tenant(tenant_key)
+
+        request.state.tenant_key = tenant_key
+
+        # Skip auth for public endpoints
+        public_paths = ["/", "/health", "/docs", "/openapi.json", "/ws", "/redoc"]
+        if any(request.url.path.startswith(path) for path in public_paths):
+            return await call_next(request)
+
+        # OPTIONS requests should always pass through (CORS preflight)
+        # They are handled by CORS middleware before reaching endpoints
+        if request.method == "OPTIONS":
+            return await call_next(request)
 
         # Get auth manager
         auth_manager = self.get_auth_manager()

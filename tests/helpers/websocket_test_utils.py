@@ -38,7 +38,7 @@ class MockMessage:
 class MockWebSocketServer:
     """Mock WebSocket server for testing"""
 
-    def __init__(self, host: str = "localhost", port: int = 8001):
+    def __init__(self, host: str = "localhost", port: int = 7272):
         self.host = host
         self.port = port
         self.clients: dict[str, WebSocketServerProtocol] = {}

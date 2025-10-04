@@ -69,7 +69,7 @@ async def get_system_configuration():
                     "api.host",
                     "0.0.0.0",  # noqa: S104
                 ),  # Binding to all interfaces needed for Docker
-                "port": state.config.get("api.port", 8000),
+                "port": state.config.get("api.port", 7272),
                 "workers": state.config.get("api.workers", 1),
                 "cors_origins": state.config.get("api.cors_origins", ["*"]),
                 "max_request_size": state.config.get("api.max_request_size", 10485760),

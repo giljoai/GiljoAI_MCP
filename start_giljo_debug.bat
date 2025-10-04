@@ -138,8 +138,8 @@ echo.
 echo Services should be running in separate windows.
 echo Check each window for errors.
 echo.
-echo Dashboard: http://localhost:6000
-echo API: http://localhost:6002
-echo MCP Server: localhost:6001
+echo Dashboard: http://localhost:7274
+echo API: http://localhost:7272
+echo MCP Server: stdio (via API)
 echo.
 pause

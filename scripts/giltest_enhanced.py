@@ -426,9 +426,9 @@ class TestWorkflowOrchestrator:
                 self.log("\n" + "="*60)
                 self.log("Application is now running!")
                 self.log("="*60)
-                self.log(f"API: http://localhost:8000")
-                self.log(f"WebSocket: ws://localhost:8001")
-                self.log(f"Dashboard: http://localhost:3000")
+                self.log(f"API: http://localhost:7272")
+                self.log(f"WebSocket: ws://localhost:7272")
+                self.log(f"Dashboard: http://localhost:7274")
 
                 return True
             else:
@@ -474,9 +474,9 @@ def start_services():
     print(f"Backend started with PID: {backend_process.pid}")
     print()
     print("Services are running:")
-    print("  API: http://localhost:8000")
-    print("  WebSocket: ws://localhost:8001")
-    print("  Dashboard: http://localhost:3000")
+    print("  API: http://localhost:7272")
+    print("  WebSocket: ws://localhost:7272")
+    print("  Dashboard: http://localhost:7274")
     print()
     print("Press Ctrl+C to stop")
 

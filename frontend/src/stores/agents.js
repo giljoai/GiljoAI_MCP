@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import websocketService from '@/services/websocket'
 
 export const useAgentStore = defineStore('agents', () => {
   // State
@@ -257,6 +258,34 @@ export const useAgentStore = defineStore('agents', () => {
 
     handleRealtimeUpdate({ ...data, status: 'completed' })
   }
+
+  // Initialize WebSocket listeners for real-time updates
+  function initializeWebSocketListeners() {
+    // Listen for agent updates
+    websocketService.onMessage('agent:update', (data) => {
+      handleRealtimeUpdate(data.data)
+    })
+
+    // Listen for agent spawns
+    websocketService.onMessage('agent:spawn', (data) => {
+      handleAgentSpawn(data.data)
+    })
+
+    // Listen for agent completions
+    websocketService.onMessage('agent:complete', (data) => {
+      handleAgentComplete(data.data)
+    })
+
+    // Listen for entity updates (legacy format)
+    websocketService.onMessage('entity_update', (data) => {
+      if (data.entity_type === 'agent') {
+        handleRealtimeUpdate(data.data)
+      }
+    })
+  }
+
+  // Auto-initialize WebSocket listeners when store is created
+  initializeWebSocketListeners()
 
   return {
     // State

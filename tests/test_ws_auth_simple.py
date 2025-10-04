@@ -15,7 +15,7 @@ async def test_websocket_auth():
 
     # Test 1: Connection without auth (should fail)
     try:
-        async with websockets.connect("ws://localhost:8000/ws/test"):
+        async with websockets.connect("ws://localhost:7272/ws/test"):
             results.append("FAIL - Unauthenticated connection accepted!")
     except websockets.exceptions.ConnectionClosedError as e:
         if e.code == 1008:  # Policy violation
@@ -27,7 +27,7 @@ async def test_websocket_auth():
 
     # Test 2: Connection with invalid API key (should fail)
     try:
-        async with websockets.connect("ws://localhost:8000/ws/test?api_key=invalid123"):
+        async with websockets.connect("ws://localhost:7272/ws/test?api_key=invalid123"):
             results.append("FAIL - Invalid API key accepted!")
     except websockets.exceptions.ConnectionClosedError as e:
         if e.code == 1008:

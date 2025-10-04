@@ -261,7 +261,7 @@
               v-model="settings.api.baseUrl"
               label="API Base URL"
               variant="outlined"
-              hint="e.g., http://localhost:8000"
+              hint="e.g., http://localhost:7272"
               persistent-hint
             />
 
@@ -269,7 +269,7 @@
               v-model="settings.api.wsUrl"
               label="WebSocket URL"
               variant="outlined"
-              hint="e.g., ws://localhost:8000/ws"
+              hint="e.g., ws://localhost:7272/ws"
               persistent-hint
               class="mt-4"
             />
@@ -456,8 +456,8 @@ const settings = ref({
     duration: 5,
   },
   api: {
-    baseUrl: 'http://localhost:8000',
-    wsUrl: 'ws://localhost:8000/ws',
+    baseUrl: 'http://localhost:7272',
+    wsUrl: 'ws://localhost:7272/ws',
     apiKey: '',
     timeout: 30000,
     retryAttempts: 3,
@@ -564,8 +564,8 @@ function resetNotificationSettings() {
 
 function resetApiSettings() {
   settings.value.api = {
-    baseUrl: 'http://localhost:8000',
-    wsUrl: 'ws://localhost:8000/ws',
+    baseUrl: 'http://localhost:7272',
+    wsUrl: 'ws://localhost:7272/ws',
     apiKey: '',
     timeout: 30000,
     retryAttempts: 3,

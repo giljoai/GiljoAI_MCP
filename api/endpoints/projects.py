@@ -6,9 +6,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from api.dependencies import get_tenant_key
 
 router = APIRouter()
 
@@ -40,10 +41,9 @@ class ProjectResponse(BaseModel):
 
 
 @router.post("/", response_model=ProjectResponse)
-async def create_project(project: ProjectCreate):
+async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_tenant_key)):
     """Create a new project"""
     from api.app import state
-    from giljo_mcp.tenant import TenantManager
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -99,10 +99,10 @@ async def list_projects(
     status: Optional[str] = Query(None, description="Filter by status"),
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
+    tenant_key: str = Depends(get_tenant_key),
 ):
     """List all projects"""
     from api.app import state
-    from giljo_mcp.tenant import TenantManager
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")

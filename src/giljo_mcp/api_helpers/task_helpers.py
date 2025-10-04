@@ -17,9 +17,21 @@ from giljo_mcp.tenant import TenantManager
 
 logger = logging.getLogger(__name__)
 
-# Initialize managers
-db_manager = DatabaseManager(is_async=True)
+# Initialize managers lazily
+_db_manager = None
 tenant_manager = TenantManager()
+
+
+def get_db_manager():
+    """Get or initialize database manager with URL from environment"""
+    global _db_manager
+    if _db_manager is None:
+        import os
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise ValueError("DATABASE_URL environment variable is required")
+        _db_manager = DatabaseManager(database_url=db_url, is_async=True)
+    return _db_manager
 
 
 async def create_task_for_api(
@@ -54,7 +66,7 @@ async def create_task_for_api(
                 # For API calls, generate a default tenant if none exists
                 tenant_key = str(uuid.uuid4())
 
-        async with db_manager.get_session_async() as session:
+        async with get_db_manager().get_session_async() as session:
             # If project_id is provided, get project and use its product_id
             if project_id:
                 project_query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
@@ -133,7 +145,7 @@ async def list_tasks_for_api(
         if not tenant_key:
             tenant_key = tenant_manager.get_current_tenant()
 
-        async with db_manager.get_session_async() as session:
+        async with get_db_manager().get_session_async() as session:
             # Build query with filters
             query = select(Task)
 
@@ -224,7 +236,7 @@ async def update_task_for_api(
         if not tenant_key:
             tenant_key = tenant_manager.get_current_tenant()
 
-        async with db_manager.get_session_async() as session:
+        async with get_db_manager().get_session_async() as session:
             # Query task
             task_query = select(Task).where(Task.id == task_id)
 
@@ -294,7 +306,7 @@ async def get_product_task_summary_for_api(
         if not tenant_key:
             tenant_key = tenant_manager.get_current_tenant()
 
-        async with db_manager.get_session_async() as session:
+        async with get_db_manager().get_session_async() as session:
             # Build base query
             query = select(Task)
 

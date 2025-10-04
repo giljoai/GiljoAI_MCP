@@ -32,6 +32,20 @@ class AgentResponse(BaseModel):
     health: dict
 
 
+async def get_db_session():
+    """Get database session dependency"""
+    import os
+    from src.giljo_mcp.database import DatabaseManager
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError("DATABASE_URL environment variable is required")
+
+    db_manager = DatabaseManager(database_url=db_url, is_async=True)
+    async with db_manager.get_session_async() as session:
+        yield session
+
+
 @router.post("/", response_model=AgentResponse)
 async def create_agent(agent: AgentCreate):
     """Create or ensure an agent exists"""
@@ -70,6 +84,45 @@ async def create_agent(agent: AgentCreate):
                 )
 
         return response  # noqa: TRY300
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/", response_model=list[AgentResponse])
+async def list_agents(
+    project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
+):
+    """List all agents with optional project filter"""
+    try:
+        from src.giljo_mcp.models import Agent
+
+        stmt = select(Agent)
+
+        if project_id:
+            stmt = stmt.where(Agent.project_id == project_id)
+
+        stmt = stmt.order_by(Agent.created_at.desc())
+
+        result = await session.execute(stmt)
+        agents = result.scalars().all()
+
+        return [
+            AgentResponse(
+                id=agent.id,
+                name=agent.name,
+                project_id=agent.project_id,
+                status=agent.status,
+                mission=agent.mission,
+                created_at=agent.created_at,
+                health={
+                    "status": agent.status,
+                    "context_used": agent.context_used or 0,
+                },
+            )
+            for agent in agents
+        ]
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -171,13 +224,6 @@ class AgentMetrics(BaseModel):
     response_time_ms: float
 
 
-async def get_db_session():
-    """Get database session dependency"""
-    from src.giljo_mcp.database import DatabaseManager
-
-    db_manager = DatabaseManager(is_async=True)
-    async with db_manager.get_session_async() as session:
-        yield session
 
 
 @router.get("/tree", response_model=AgentTreeResponse)

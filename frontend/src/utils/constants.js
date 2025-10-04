@@ -50,11 +50,11 @@ export const JOB_TYPES = {
 }
 
 export const REFRESH_INTERVALS = {
-  AGENT_HEALTH: 5000, // 5 seconds
-  MESSAGES: 2000, // 2 seconds
-  PROJECTS: 10000, // 10 seconds
-  TASKS: 3000, // 3 seconds
-  CONTEXT: 30000, // 30 seconds
+  AGENT_HEALTH: 30000, // 30 seconds (reduced from 5s - 83% less traffic)
+  MESSAGES: 60000, // 60 seconds (reduced from 2s - 97% less traffic) - use WebSocket instead!
+  PROJECTS: 60000, // 60 seconds (reduced from 10s - 83% less traffic)
+  TASKS: 30000, // 30 seconds (reduced from 3s - 90% less traffic)
+  CONTEXT: 60000, // 60 seconds (increased from 30s)
 }
 
 export const CHART_COLORS = {

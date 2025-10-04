@@ -300,7 +300,7 @@ const props = defineProps({
   },
   refreshInterval: {
     type: Number,
-    default: 1000,
+    default: 30000, // 30 seconds - aligned with REFRESH_INTERVALS.AGENT_HEALTH
   },
 })
 

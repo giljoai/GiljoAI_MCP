@@ -432,7 +432,7 @@ Example configuration:
 
 2. Check server status:
    ```bash
-   curl http://localhost:8000/health
+   curl http://localhost:7272/health
    ```
 
 3. Check server logs:
@@ -514,7 +514,7 @@ For team access or remote servers:
   "mcpServers": {
     "giljo-mcp-remote": {
       "type": "http",
-      "url": "http://server-ip:8000",
+      "url": "http://server-ip:7272",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY"
       }
@@ -539,7 +539,7 @@ All registration methods support environment variables:
 After configuration, verify your setup:
 
 - [ ] Server starts without errors: `start_giljo.bat`
-- [ ] Health check responds: `curl http://localhost:8000/health`
+- [ ] Health check responds: `curl http://localhost:7272/health`
 - [ ] AI tool lists giljo-mcp: `claude mcp list` or `/mcp`
 - [ ] MCP shows "connected" status: `/mcp` command in AI tool
 - [ ] Can list GiljoAI tools: Ask AI tool "What MCP tools are available?"
@@ -605,7 +605,7 @@ Or edit configuration file and remove the giljo-mcp entry.
 If you encounter issues:
 
 1. **Check server logs:** `%INSTALL_DIR%/logs/giljo_mcp.log`
-2. **Test server manually:** `curl http://localhost:8000/health`
+2. **Test server manually:** `curl http://localhost:7272/health`
 3. **Verify paths:** Ensure all paths are absolute and correct
 4. **Consult AI tool docs:** Each AI tool may have specific MCP requirements
 5. **GitHub Issues:** https://github.com/your-repo/issues
@@ -650,7 +650,7 @@ claude mcp list
 /mcp tools
 
 # Test server
-curl http://localhost:8000/health
+curl http://localhost:7272/health
 ```
 
 ---

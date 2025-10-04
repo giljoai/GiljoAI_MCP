@@ -13,7 +13,7 @@ import websockets
 async def test_websocket():
     """Test WebSocket connection and real-time updates"""
     client_id = str(uuid.uuid4())
-    uri = f"ws://localhost:8000/ws/{client_id}"
+    uri = f"ws://localhost:7272/ws/{client_id}"
 
     try:
         async with websockets.connect(uri) as websocket:
@@ -77,7 +77,7 @@ async def test_broadcast_triggers():
     """Test that API calls trigger WebSocket broadcasts"""
     import httpx
 
-    async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
+    async with httpx.AsyncClient(base_url="http://localhost:7272") as client:
         # Test project creation broadcast
         project_data = {
             "name": f"Test Project {datetime.now().isoformat()}",

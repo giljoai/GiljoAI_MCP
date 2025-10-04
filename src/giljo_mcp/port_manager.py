@@ -29,7 +29,7 @@ class PortConfiguration:
     api_port: int = 7272  # Unified HTTP server (API + WebSocket + MCP tools)
 
     # Frontend development server
-    frontend_port: int = 6000
+    frontend_port: int = 7274
 
     # Database
     postgres_port: int = 5432
@@ -142,32 +142,60 @@ class PortManager:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
 
-            if "server" not in data:
+            # Support both old 'server' structure and new 'services' structure
+            if "services" in data:
+                services = data["services"]
+
+                # API port from services.api.port
+                if "api" in services and isinstance(services["api"], dict):
+                    if "port" in services["api"]:
+                        self.config.api_port = services["api"]["port"]
+                        logger.debug(f"Loaded API port from services config: {self.config.api_port}")
+
+                # Frontend port from services.frontend.port
+                if "frontend" in services and isinstance(services["frontend"], dict):
+                    if "port" in services["frontend"]:
+                        self.config.frontend_port = services["frontend"]["port"]
+                        logger.debug(f"Loaded frontend port from services config: {self.config.frontend_port}")
+
+                # PostgreSQL port from database.port (if in services section)
+                if "database" in data and isinstance(data["database"], dict):
+                    if "port" in data["database"]:
+                        self.config.postgres_port = data["database"]["port"]
+                        logger.debug(f"Loaded PostgreSQL port from database config: {self.config.postgres_port}")
+
+                logger.info(f"Loaded port configuration from {self.config_path}")
+                return True
+
+            # Fallback: old 'server' structure
+            elif "server" in data:
+                server = data["server"]
+
+                # Handle both flat and nested structures
+                # Flat structure (v2.0): server.port
+                if "port" in server and isinstance(server["port"], int):
+                    self.config.api_port = server["port"]
+                    logger.debug(f"Loaded unified server port from config: {self.config.api_port}")
+
+                # Nested structure: server.api.port
+                if "api" in server and isinstance(server["api"], dict):
+                    if "port" in server["api"]:
+                        self.config.api_port = server["api"]["port"]
+                        logger.debug(f"Loaded API port from config: {self.config.api_port}")
+
+                # Frontend port
+                if "frontend_port" in server:
+                    self.config.frontend_port = server["frontend_port"]
+                elif "dashboard" in server and isinstance(server["dashboard"], dict):
+                    if "port" in server["dashboard"]:
+                        self.config.frontend_port = server["dashboard"]["port"]
+
+                logger.info(f"Loaded port configuration from {self.config_path}")
+                return True
+
+            else:
+                logger.debug("No 'services' or 'server' section found in config")
                 return False
-
-            server = data["server"]
-
-            # Handle both flat and nested structures
-            # Flat structure (v2.0): server.port
-            if "port" in server and isinstance(server["port"], int):
-                self.config.api_port = server["port"]
-                logger.debug(f"Loaded unified server port from config: {self.config.api_port}")
-
-            # Nested structure: server.api.port
-            if "api" in server and isinstance(server["api"], dict):
-                if "port" in server["api"]:
-                    self.config.api_port = server["api"]["port"]
-                    logger.debug(f"Loaded API port from config: {self.config.api_port}")
-
-            # Frontend port
-            if "frontend_port" in server:
-                self.config.frontend_port = server["frontend_port"]
-            elif "dashboard" in server and isinstance(server["dashboard"], dict):
-                if "port" in server["dashboard"]:
-                    self.config.frontend_port = server["dashboard"]["port"]
-
-            logger.info(f"Loaded port configuration from {self.config_path}")
-            return True
 
         except Exception as e:
             logger.error(f"Error loading port configuration from {self.config_path}: {e}")

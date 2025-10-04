@@ -6,22 +6,20 @@ echo    Stopping GiljoAI MCP Frontend...
 echo ===============================================
 echo.
 
-REM Find and kill process using port 7274
+REM Kill port 7274 (Frontend)
 echo Stopping frontend dashboard on port 7274...
-
-REM Get PID of process using port 7274
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":7274" ^| findstr "LISTENING"') do (
-    echo Killing process %%a on port 7274...
-    powershell -Command "Stop-Process -Id %%a -Force -ErrorAction SilentlyContinue"
+    echo   Killing process %%a...
+    taskkill /PID %%a /F >nul 2>&1
     if errorlevel 1 (
-        echo Failed to kill process %%a
+        echo   Failed to kill PID %%a
     ) else (
-        echo Frontend dashboard stopped (PID: %%a^)
+        echo   Frontend stopped (PID: %%a^)
     )
 )
 
-REM Also try to kill any node.exe running npm as fallback
-powershell -Command "Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue"
+REM Fallback: Kill only frontend node processes (not Claude Code!)
+REM This is already handled by the port-based killing above, so we skip the blanket node kill
 
 echo.
 echo Done.
