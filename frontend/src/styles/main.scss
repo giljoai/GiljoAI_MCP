@@ -1,4 +1,4 @@
-@import "./variables.scss";
+@use "./variables.scss" as *;
 
 // CSS Variables for theme switching with smooth transitions
 :root {
