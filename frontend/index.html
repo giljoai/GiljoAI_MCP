@@ -26,55 +26,81 @@
       }
       .loader-content {
         text-align: center;
+        opacity: 0;
+        animation: fadeIn 1.5s ease-in forwards;
       }
       .loader-mascot {
-        width: 120px;
-        height: 120px;
-        margin: 0 auto 20px;
+        margin: 0 auto;
       }
-      .loader-text {
-        color: #e1e1e1;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 18px;
-        margin-bottom: 10px;
+      .loader-mascot img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
       }
-      .loader-subtext {
-        color: #8f97b7;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 14px;
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+      #app-loader.fade-out {
+        animation: fadeOut 0.75s ease-out forwards;
       }
     </style>
   </head>
   <body>
-    <div id="app">
-      <!-- Loading screen -->
-      <div id="app-loader">
-        <div class="loader-content">
-          <div class="loader-mascot">
-            <iframe 
-              src="/mascot/giljo_mascot_loader_blue.html" 
-              width="120" 
-              height="120" 
-              frameborder="0"
-              scrolling="no">
-            </iframe>
-          </div>
-          <div class="loader-text">GiljoAI MCP Orchestrator</div>
-          <div class="loader-subtext">Initializing dashboard...</div>
+    <!-- Loading screen (outside #app so Vue doesn't replace it) -->
+    <div id="app-loader">
+      <div class="loader-content">
+        <div class="loader-mascot">
+          <img
+            src="/giljo_logo.png"
+            alt="GiljoAI Logo">
         </div>
       </div>
     </div>
+
+    <!-- Vue app container -->
+    <div id="app"></div>
+
     <script type="module" src="/src/main.js"></script>
     <script>
-      // Hide loader when app is ready
-      window.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-          const loader = document.getElementById('app-loader');
-          if (loader) {
-            loader.classList.add('hidden');
-          }
-        }, 1000);
+      console.log('[SPLASH] Script initialized');
+
+      // Fade in (1.5s) + hold (2s) + fade out (1.5s) = 5 seconds total
+      window.addEventListener('load', () => {
+        console.log('[SPLASH] Window load event fired');
+        const loader = document.getElementById('app-loader');
+        console.log('[SPLASH] Loader element:', loader);
+
+        if (loader) {
+          console.log('[SPLASH] Starting timer - will hold for 3.5s');
+          setTimeout(() => {
+            console.log('[SPLASH] Starting fade out');
+            loader.classList.add('fade-out');
+            setTimeout(() => {
+              console.log('[SPLASH] Hiding loader');
+              loader.classList.add('hidden');
+              console.log('[SPLASH] Splash screen complete');
+            }, 750); // Wait for fade-out animation to complete
+          }, 2500); // Hold for 2.5s after fade-in completes (1.5s fade in + 1s hold)
+        } else {
+          console.error('[SPLASH] Loader element not found!');
+        }
       });
+
+      console.log('[SPLASH] Event listener registered');
     </script>
   </body>
 </html>
