@@ -42,6 +42,37 @@ apiClient.interceptors.response.use(
 
 // API Service Methods
 export const api = {
+  // Products
+  products: {
+    list: (params) => apiClient.get('/api/v1/products/', { params }),
+    get: (id) => apiClient.get(`/api/v1/products/${id}/`),
+    create: (data) => {
+      // Handle file upload with FormData
+      if (data instanceof FormData) {
+        return apiClient.post('/api/v1/products/', data, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+      }
+      // Regular JSON creation without file
+      const formData = new FormData()
+      formData.append('name', data.name)
+      if (data.description) formData.append('description', data.description)
+      return apiClient.post('/api/v1/products/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    },
+    update: (id, data) => apiClient.put(`/api/v1/products/${id}/`, data),
+    delete: (id) => apiClient.delete(`/api/v1/products/${id}/`),
+    uploadVision: (id, file) => {
+      const formData = new FormData()
+      formData.append('vision_file', file)
+      return apiClient.post(`/api/v1/products/${id}/upload-vision/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    },
+    getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks/`),
+  },
+
   // Projects
   projects: {
     list: (params) => apiClient.get('/api/v1/projects/', { params }),
