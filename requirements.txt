@@ -58,4 +58,4 @@ celery>=5.3.0              # Optional task queue
 
 # Documentation
 mkdocs>=1.5.0              # Documentation site generator
-mkdocs-material>=9.4.0     # Material theme for docs
+mkdocs-material>=9.4.0     # Material theme for docsaiofiles==24.1.0

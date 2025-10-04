@@ -154,13 +154,66 @@
             rows="3"
           ></v-textarea>
 
-          <v-text-field
-            v-model="newProduct.visionPath"
-            label="Vision Document Path (Optional)"
-            variant="outlined"
-            density="comfortable"
-            hint="Path to the product's vision documents"
-          ></v-text-field>
+          <!-- Vision Document Upload -->
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">Vision Document (Optional)</div>
+
+            <!-- File Drop Zone -->
+            <div
+              @dragover.prevent="handleDragOver"
+              @dragleave.prevent="handleDragLeave"
+              @drop.prevent="handleDrop"
+              :class="['vision-drop-zone', { 'drag-over': isDragging }]"
+            >
+              <v-file-input
+                v-model="visionFile"
+                @update:model-value="handleFileSelect"
+                accept=".txt,.md,.markdown"
+                label="Choose file or drag & drop"
+                variant="outlined"
+                density="comfortable"
+                prepend-icon="mdi-file-document-outline"
+                show-size
+                clearable
+              >
+                <template v-slot:append>
+                  <v-btn
+                    icon
+                    variant="text"
+                    size="small"
+                    @click="triggerFileInput"
+                  >
+                    <v-icon>mdi-folder-open</v-icon>
+                  </v-btn>
+                </template>
+              </v-file-input>
+
+              <div v-if="!visionFile" class="drop-hint text-center pa-4">
+                <v-icon size="48" color="grey-lighten-1">mdi-cloud-upload-outline</v-icon>
+                <div class="text-caption text-medium-emphasis mt-2">
+                  Drag & drop your vision document here
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  Supported: .txt, .md, .markdown
+                </div>
+              </div>
+
+              <!-- File Preview -->
+              <div v-if="visionFile" class="file-preview mt-2 pa-3">
+                <v-chip
+                  closable
+                  @click:close="clearVisionFile"
+                  prepend-icon="mdi-file-document"
+                  color="primary"
+                  variant="tonal"
+                >
+                  {{ visionFile[0]?.name || visionFile.name }}
+                  <span class="ml-2 text-caption">({{ formatFileSize(visionFile[0]?.size || visionFile.size) }})</span>
+                </v-chip>
+              </div>
+            </div>
+
+          </div>
         </v-form>
       </v-card-text>
 
@@ -198,8 +251,10 @@ const formValid = ref(false)
 const newProduct = ref({
   name: '',
   description: '',
-  visionPath: '',
 })
+
+const visionFile = ref(null)
+const isDragging = ref(false)
 
 const productInitial = computed(() => {
   if (!productStore.currentProduct?.name) return '?'
@@ -234,20 +289,26 @@ async function refreshProducts() {
 async function createProduct() {
   creating.value = true
   try {
-    const product = await productStore.createProduct({
-      name: newProduct.value.name,
-      description: newProduct.value.description,
-      vision_path: newProduct.value.visionPath || null,
-    })
+    // Create FormData for file upload
+    const formData = new FormData()
+    formData.append('name', newProduct.value.name)
+    if (newProduct.value.description) {
+      formData.append('description', newProduct.value.description)
+    }
+
+    // If a file was uploaded, add it to FormData
+    if (visionFile.value) {
+      const file = visionFile.value[0] || visionFile.value
+      formData.append('vision_file', file)
+      console.log('Uploading vision file:', file.name)
+    }
+
+    const product = await productStore.createProduct(formData)
 
     if (product) {
       showCreateDialog.value = false
       // Reset form
-      newProduct.value = {
-        name: '',
-        description: '',
-        visionPath: '',
-      }
+      resetProductForm()
       // Product store automatically switches to new product
     }
   } catch (error) {
@@ -255,6 +316,66 @@ async function createProduct() {
   } finally {
     creating.value = false
   }
+}
+
+function resetProductForm() {
+  newProduct.value = {
+    name: '',
+    description: '',
+  }
+  visionFile.value = null
+  isDragging.value = false
+}
+
+// File handling methods
+function handleDragOver(event) {
+  event.preventDefault()
+  isDragging.value = true
+}
+
+function handleDragLeave(event) {
+  event.preventDefault()
+  isDragging.value = false
+}
+
+function handleDrop(event) {
+  event.preventDefault()
+  isDragging.value = false
+
+  const files = event.dataTransfer.files
+  if (files.length > 0) {
+    const file = files[0]
+    // Check if file type is acceptable
+    const validExtensions = ['.txt', '.md', '.markdown']
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase()
+
+    if (validExtensions.includes(fileExtension)) {
+      visionFile.value = [file]
+    } else {
+      console.warn('Invalid file type:', fileExtension)
+      alert('Please upload a valid document file (.txt, .md, .markdown)')
+    }
+  }
+}
+
+function handleFileSelect(files) {
+  // Files are already handled by v-file-input
+}
+
+function clearVisionFile() {
+  visionFile.value = null
+}
+
+function triggerFileInput() {
+  // The v-file-input handles this automatically
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
 // Load products on mount
@@ -268,5 +389,28 @@ onMounted(async () => {
 .product-switcher-btn {
   min-width: 120px;
   max-width: 300px;
+}
+
+.vision-drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.3s ease;
+  background-color: rgba(var(--v-theme-surface), 0.5);
+}
+
+.vision-drop-zone.drag-over {
+  border-color: rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), 0.05);
+  transform: scale(1.01);
+}
+
+.drop-hint {
+  pointer-events: none;
+}
+
+.file-preview {
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 4px;
 }
 </style>

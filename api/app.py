@@ -54,7 +54,7 @@ except ImportError as e:
 
 try:
     from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
-    from .endpoints import agents, configuration, context, messages, mcp_tools, projects, statistics, tasks, templates
+    from .endpoints import agents, configuration, context, messages, mcp_tools, products, projects, statistics, tasks, templates
     from .middleware import AuthMiddleware
     from .websocket import WebSocketManager
     logger.info("API endpoint modules loaded successfully")
@@ -321,6 +321,7 @@ def create_app() -> FastAPI:
     app.add_middleware(AuthMiddleware, auth_manager=lambda: state.auth)
 
     # Include routers
+    app.include_router(products.router, prefix="/api/v1/products", tags=["products"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])

@@ -33,16 +33,44 @@ def generate_uuid():
     return str(uuid4())
 
 
+class Product(Base):
+    """
+    Product model - TOP-level organizational unit.
+    All projects, tasks, and agents belong to a product.
+    """
+
+    __tablename__ = "products"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    vision_path = Column(String(500), nullable=True)  # Localhost: local path, Server: uploaded file path
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    meta_data = Column(JSON, default=dict)
+
+    # Relationships
+    projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_product_tenant", "tenant_key"),
+        Index("idx_product_name", "name"),
+    )
+
+
 class Project(Base):
     """
-    Project model - root entity for multi-tenant isolation.
-    Multiple projects can share the same tenant_key for logical grouping.
+    Project model - work initiatives with vision documents.
+    Projects belong to a Product and can be created from Tasks.
     """
 
     __tablename__ = "projects"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, default=generate_uuid)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)  # Projects belong to Products
     name = Column(String(255), nullable=False)
     mission = Column(Text, nullable=False)
     status = Column(String(50), default="active")  # active, paused, completed, archived
@@ -54,6 +82,7 @@ class Project(Base):
     meta_data = Column(JSON, default=dict)
 
     # Relationships
+    product = relationship("Product", back_populates="projects")
     agents = relationship("Agent", back_populates="project", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
@@ -165,7 +194,7 @@ class Task(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
-    product_id = Column(String(36), nullable=True)  # Product-level scope for task isolation
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)  # Product-level scope for task isolation
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
     assigned_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
@@ -183,6 +212,7 @@ class Task(Base):
     meta_data = Column(JSON, default=dict)
 
     # Relationships
+    product = relationship("Product", back_populates="tasks", foreign_keys=[product_id])
     project = relationship("Project", back_populates="tasks")
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])

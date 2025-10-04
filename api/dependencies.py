@@ -4,6 +4,7 @@ FastAPI dependencies for request handling
 
 import os
 from fastapi import Request
+from sqlalchemy.orm import Session
 from giljo_mcp.tenant import TenantManager
 
 
@@ -37,3 +38,21 @@ async def get_tenant_key(request: Request) -> str:
     default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
     TenantManager.set_current_tenant(default_tenant)
     return default_tenant
+
+
+def get_db() -> Session:
+    """
+    Get database session dependency.
+    Creates a new database session for the request and ensures it's closed after use.
+    """
+    from api.app import state
+
+    if not state.db_manager:
+        raise RuntimeError("Database manager not initialized")
+
+    # Get a synchronous session for the request
+    db = state.db_manager.get_session()
+    try:
+        yield db
+    finally:
+        db.close()
