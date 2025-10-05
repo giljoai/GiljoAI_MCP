@@ -394,6 +394,51 @@
                   readonly
                 />
               </v-col>
+
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="settings.database.password"
+                  label="Password"
+                  :type="showPassword ? 'text' : 'password'"
+                  variant="outlined"
+                  hint="Min 12 chars: uppercase, lowercase, number, special char (@$!%*?&)"
+                  persistent-hint
+                  @input="passwordChanged = true"
+                  :rules="passwordChanged ? passwordRules : []"
+                >
+                  <template v-slot:append>
+                    <v-btn
+                      :icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                      size="small"
+                      variant="text"
+                      @click="showPassword = !showPassword"
+                      title="Toggle password visibility"
+                    />
+                  </template>
+                </v-text-field>
+                <v-progress-linear
+                  v-if="passwordChanged && settings.database.password"
+                  :model-value="passwordStrength.score"
+                  :color="passwordStrength.color"
+                  height="4"
+                  class="mt-1"
+                />
+                <div v-if="passwordChanged && settings.database.password" class="text-caption mt-1" :style="{ color: passwordStrength.color }">
+                  Password Strength: {{ passwordStrength.label }}
+                </div>
+              </v-col>
+
+              <v-col cols="12" md="6" v-if="passwordChanged">
+                <v-btn
+                  color="warning"
+                  variant="outlined"
+                  @click="updateDatabasePassword"
+                  :loading="updatingPassword"
+                >
+                  <v-icon start>mdi-lock-reset</v-icon>
+                  Update Password in Config
+                </v-btn>
+              </v-col>
             </v-row>
 
             <v-divider class="my-6" />
@@ -429,10 +474,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import TemplateManager from '@/components/TemplateManager.vue'
+import { API_CONFIG } from '@/config/api'
 
 // Stores
 const settingsStore = useSettingsStore()
@@ -444,6 +490,19 @@ const generalForm = ref(null)
 const testingConnection = ref(false)
 const validatingPort = ref(false)
 const connectionTestResult = ref(null)
+const showPassword = ref(false)
+const passwordChanged = ref(false)
+const updatingPassword = ref(false)
+
+// Password validation rules
+const passwordRules = [
+  (v) => !!v || 'Password is required',
+  (v) => v.length >= 12 || 'Minimum 12 characters required',
+  (v) => /[A-Z]/.test(v) || 'Must contain uppercase letter',
+  (v) => /[a-z]/.test(v) || 'Must contain lowercase letter',
+  (v) => /\d/.test(v) || 'Must contain number',
+  (v) => /[@$!%*?&]/.test(v) || 'Must contain special character (@$!%*?&)',
+]
 
 // Settings object
 const settings = ref({
@@ -591,7 +650,7 @@ function resetApiSettings() {
 async function loadDatabaseSettings() {
   try {
     // Fetch database config from API
-    const response = await fetch(`${settings.value.api.baseUrl}/api/v1/config/database`)
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/database`)
     const config = await response.json()
 
     settings.value.database = {
@@ -600,12 +659,52 @@ async function loadDatabaseSettings() {
       port: config.port || 5432,
       name: config.name || 'giljo_mcp',
       user: config.user || 'postgres',
+      password: config.password_masked || '****', // Masked password from backend
     }
 
+    passwordChanged.value = false
+    showPassword.value = false
     connectionTestResult.value = { success: true, message: 'Settings loaded from config' }
   } catch (error) {
     console.error('Failed to load database settings:', error)
     connectionTestResult.value = { success: false, message: 'Failed to load settings from config' }
+  }
+}
+
+async function updateDatabasePassword() {
+  updatingPassword.value = true
+  connectionTestResult.value = null
+
+  try {
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/database/password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: settings.value.database.password })
+    })
+
+    const result = await response.json()
+
+    if (result.success) {
+      connectionTestResult.value = {
+        success: true,
+        message: 'Database password updated successfully in configuration'
+      }
+      passwordChanged.value = false
+      // Reload to show masked password
+      await loadDatabaseSettings()
+    } else {
+      connectionTestResult.value = {
+        success: false,
+        message: result.error || 'Failed to update password'
+      }
+    }
+  } catch (error) {
+    connectionTestResult.value = {
+      success: false,
+      message: `Failed to update password: ${error.message}`
+    }
+  } finally {
+    updatingPassword.value = false
   }
 }
 
@@ -643,7 +742,7 @@ async function testDatabaseConnection() {
   connectionTestResult.value = null
 
   try {
-    const response = await fetch(`${settings.value.api.baseUrl}/api/v1/health/database`)
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/health/database`)
     const result = await response.json()
 
     if (result.success) {
@@ -666,6 +765,24 @@ async function testDatabaseConnection() {
     testingConnection.value = false
   }
 }
+
+// Computed password strength
+const passwordStrength = computed(() => {
+  const pwd = settings.value.database.password
+  if (!pwd || !passwordChanged.value) return { score: 0, label: '', color: '' }
+
+  let score = 0
+  if (pwd.length >= 12) score += 20
+  if (pwd.length >= 16) score += 10
+  if (/[A-Z]/.test(pwd)) score += 20
+  if (/[a-z]/.test(pwd)) score += 20
+  if (/\d/.test(pwd)) score += 15
+  if (/[@$!%*?&]/.test(pwd)) score += 15
+
+  if (score < 60) return { score, label: 'Weak', color: '#f44336' }
+  if (score < 85) return { score, label: 'Medium', color: '#ff9800' }
+  return { score: 100, label: 'Strong', color: '#4caf50' }
+})
 
 // Lifecycle
 onMounted(async () => {
