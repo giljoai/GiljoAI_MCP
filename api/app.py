@@ -55,7 +55,7 @@ except ImportError as e:
 try:
     from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
     from .endpoints import agents, configuration, context, messages, mcp_tools, products, projects, statistics, tasks, templates
-    from .middleware import AuthMiddleware
+    from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
     from .websocket import WebSocketManager
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
@@ -289,23 +289,53 @@ def create_app() -> FastAPI:
         license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
     )
 
-    # Configure CORS from environment
-    cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:*")
-    # Parse CORS origins (handle both comma-separated and JSON array formats)
-    if cors_origins_str.startswith("["):
-        # JSON array format from installer
-        import json
-        try:
-            cors_origins = json.loads(cors_origins_str)
-        except json.JSONDecodeError:
-            cors_origins = ["http://localhost:*"]
-    else:
-        # Comma-separated format
-        cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+    # Configure CORS - use explicit origins from config.yaml security section
+    import yaml
+    cors_origins = []
 
-    # If no valid origins, default to localhost
+    # Try to load from config.yaml security section
+    try:
+        config_path = Path(__file__).parent.parent / "config.yaml"
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                security_config = config.get('security', {})
+                cors_config = security_config.get('cors', {})
+                cors_origins = cors_config.get('allowed_origins', [])
+
+                if cors_origins:
+                    logger.info(f"Loaded CORS origins from config.yaml security section: {cors_origins}")
+    except Exception as e:
+        logger.warning(f"Could not load CORS config from config.yaml: {e}")
+
+    # Fallback to environment variable (for backwards compatibility)
     if not cors_origins:
-        cors_origins = ["http://localhost:*"]
+        cors_origins_str = os.getenv("CORS_ORIGINS", "")
+        if cors_origins_str:
+            # Parse CORS origins (handle both comma-separated and JSON array formats)
+            if cors_origins_str.startswith("["):
+                # JSON array format from installer
+                import json
+                try:
+                    cors_origins = json.loads(cors_origins_str)
+                except json.JSONDecodeError:
+                    pass
+            else:
+                # Comma-separated format
+                cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+
+    # Safe default: explicit localhost origins only (no wildcards)
+    if not cors_origins:
+        cors_origins = [
+            "http://127.0.0.1:7274",
+            "http://localhost:7274",
+        ]
+        logger.info(f"Using default CORS origins (no wildcards): {cors_origins}")
+    else:
+        # Validate no wildcard patterns for security
+        has_wildcards = any('*' in origin for origin in cors_origins)
+        if has_wildcards:
+            logger.warning(f"CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
 
     logger.info(f"Configuring CORS with origins: {cors_origins}")
 
@@ -316,6 +346,12 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add security headers middleware (always enabled for defense in depth)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # Add rate limiting middleware (60 requests/minute for LAN security)
+    app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
 
     # Add authentication middleware
     app.add_middleware(AuthMiddleware, auth_manager=lambda: state.auth)
