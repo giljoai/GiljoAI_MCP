@@ -76,10 +76,30 @@ class MinimalInstaller:
         self.create_minimal_config()
 
         # Step 6: Start services
+        print()
+        print("=" * 60)
+        print("STARTING SERVICES")
+        print("=" * 60)
+        print()
         print("Starting backend service...")
         self.start_backend()
 
-        # Step 7: Open setup wizard
+        print()
+        print("Starting frontend service...")
+        self.start_frontend()
+
+        # Step 7: Wait for services to be ready
+        print()
+        print("Waiting for services to start...")
+        if self.wait_for_services():
+            print("[OK] Services are ready!")
+        else:
+            print()
+            print("WARNING: Services may still be starting.")
+            print("Check the console windows for any errors.")
+            print()
+
+        # Step 8: Open setup wizard
         print()
         print("=" * 60)
         print("Installation Complete!")
@@ -87,6 +107,9 @@ class MinimalInstaller:
         print()
         print("Opening setup wizard in your browser...")
         print("URL: http://localhost:7274/setup")
+        print()
+        print("Backend console: http://localhost:7272")
+        print("Frontend console: http://localhost:7274")
         print()
         self.open_setup_wizard()
 
@@ -299,18 +322,115 @@ class MinimalInstaller:
 
     def start_backend(self) -> None:
         """
-        Start backend service in background.
+        Start backend service with visible output in new window.
         """
         python_exe = self._get_python_path()
 
-        # Start backend in background
-        subprocess.Popen(
-            [str(python_exe), "-m", "uvicorn", "api.app:app", "--host", "127.0.0.1", "--port", "7272"],
-            cwd=self.install_dir,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        print("[OK] Backend started on http://localhost:7272")
+        print()
+        print("Starting backend in new console window...")
+        print("The backend console will show startup logs and errors.")
+        print()
+
+        import platform
+        if platform.system() == "Windows":
+            # Start backend in new visible console window
+            subprocess.Popen(
+                ["cmd", "/c", "start", "cmd", "/k",
+                 str(python_exe), "-m", "uvicorn", "api.main:app",
+                 "--host", "127.0.0.1", "--port", "7272", "--reload"],
+                cwd=self.install_dir,
+                shell=True
+            )
+        else:
+            # For Linux/Mac, start in background with output visible
+            subprocess.Popen(
+                [str(python_exe), "-m", "uvicorn", "api.main:app",
+                 "--host", "127.0.0.1", "--port", "7272", "--reload"],
+                cwd=self.install_dir
+            )
+
+        print("[OK] Backend starting on http://localhost:7272")
+        print("    Check the backend console window for status")
+
+    def start_frontend(self) -> None:
+        """
+        Start frontend service with visible output in new window.
+        """
+        print()
+        print("Starting frontend in new console window...")
+        print("The frontend console will show Vite dev server logs.")
+        print()
+
+        import platform
+        if platform.system() == "Windows":
+            # Start frontend in new visible console window
+            subprocess.Popen(
+                ["cmd", "/c", "start", "cmd", "/k", "npm", "run", "dev"],
+                cwd=self.install_dir / "frontend",
+                shell=True
+            )
+        else:
+            # For Linux/Mac
+            subprocess.Popen(
+                ["npm", "run", "dev"],
+                cwd=self.install_dir / "frontend"
+            )
+
+        print("[OK] Frontend starting on http://localhost:7274")
+        print("    Check the frontend console window for status")
+
+    def wait_for_services(self, timeout: int = 30) -> bool:
+        """
+        Wait for backend and frontend to be ready.
+
+        Args:
+            timeout: Maximum seconds to wait
+
+        Returns:
+            True if both services are ready, False if timeout
+        """
+        import time
+        import socket
+
+        def check_port(port: int) -> bool:
+            """Check if a port is open."""
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=1):
+                    return True
+            except (socket.timeout, ConnectionRefusedError, OSError):
+                return False
+
+        backend_ready = False
+        frontend_ready = False
+        start_time = time.time()
+
+        print("Waiting for backend (port 7272)...", end="", flush=True)
+        while time.time() - start_time < timeout:
+            if check_port(7272):
+                backend_ready = True
+                print(" Ready!")
+                break
+            print(".", end="", flush=True)
+            time.sleep(1)
+
+        if not backend_ready:
+            print(" Timeout!")
+            return False
+
+        print("Waiting for frontend (port 7274)...", end="", flush=True)
+        while time.time() - start_time < timeout:
+            if check_port(7274):
+                frontend_ready = True
+                print(" Ready!")
+                break
+            print(".", end="", flush=True)
+            time.sleep(1)
+
+        if not frontend_ready:
+            print(" Timeout!")
+            return False
+
+        return True
 
     def open_setup_wizard(self) -> None:
         """
