@@ -1,12 +1,12 @@
 installation:
   version: 2.0.0
-  mode: localhost
-  timestamp: "2025-10-02T13:04:52.035070"
+  mode: server
+  timestamp: '2025-10-02T13:04:52.035070'
   platform: Windows
   python_version: 3.13.7
 database:
   type: postgresql
-  version: "16"
+  version: '16'
   host: localhost
   port: 5432
   name: giljo_mcp
@@ -15,7 +15,7 @@ database:
   pool_size: 5
 services:
   api:
-    host: 127.0.0.1
+    host: 0.0.0.0
     port: 7272
     unified_port: true
     description: Main API server (REST + WebSocket + MCP)
@@ -30,24 +30,20 @@ features:
   auto_handoff: true
   dynamic_discovery: true
   ssl_enabled: false
-  api_keys_required: false  # Auto-enabled for server/lan/wan modes
+  api_keys_required: false
   multi_user: false
 security:
   cors:
     allowed_origins:
-      - http://127.0.0.1:7274
-      - http://localhost:7274
-      # Add specific LAN IPs when deploying to server mode
-      # Example: - http://192.168.1.100:7274
+    - http://127.0.0.1:7274
+    - http://localhost:7274
+    - http://10.1.0.118:7274
+    - http://10.1.0.*:7274
   api_keys:
-    # API keys required based on deployment mode:
-    # - localhost: false (no authentication)
-    # - server/lan/wan: true (API key required)
     require_for_modes:
-      - server
-      - lan
-      - wan
-    # Generate keys using: python -c "import secrets; print(f'giljo_lan_{secrets.token_urlsafe(32)}')"
+    - server
+    - lan
+    - wan
   rate_limiting:
     enabled: true
     requests_per_minute: 60
@@ -64,7 +60,7 @@ logging:
   file: ./logs/giljo_mcp.log
   max_size: 10MB
   backup_count: 5
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 agent:
   max_per_project: 20
   context_limit: 150000
@@ -81,13 +77,21 @@ message_queue:
   retry_attempts: 3
   retry_delay: 1.0
   priority_levels:
-    - low
-    - normal
-    - high
-    - critical
+  - low
+  - normal
+  - high
+  - critical
 status:
   installation_complete: true
   database_created: true
   migrations_run: false
   services_configured: true
   ready_to_launch: true
+network:
+  bind_all_interfaces: true
+  server_ip: 10.1.0.118
+  subnet: 10.1.0.0/24
+  ports:
+    api: 7272
+    frontend: 7274
+    database: 5432
