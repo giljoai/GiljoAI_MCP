@@ -27,6 +27,7 @@ class TemplateCreate(BaseModel):
     success_criteria: Optional[list[str]] = Field(default_factory=list, description="Success criteria")
     tags: Optional[list[str]] = Field(default_factory=list, description="Tags for categorization")
     is_default: bool = Field(False, description="Set as default for this role")
+    preferred_tool: str = Field("claude", description="Preferred AI tool (claude, codex, gemini)")
 
 
 class TemplateUpdate(BaseModel):
@@ -38,6 +39,7 @@ class TemplateUpdate(BaseModel):
     tags: Optional[list[str]] = None
     is_active: Optional[bool] = None
     is_default: Optional[bool] = None
+    preferred_tool: Optional[str] = None
 
 
 class TemplateResponse(BaseModel):
@@ -62,6 +64,7 @@ class TemplateResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
     created_by: Optional[str]
+    preferred_tool: str
 
 
 class TemplateHistoryResponse(BaseModel):
@@ -227,6 +230,7 @@ async def create_template(template: TemplateCreate, session: AsyncSession = Depe
             is_active=True,
             is_default=template.is_default,
             tags=template.tags or [],
+            preferred_tool=template.preferred_tool,
             created_by="api",
         )
 
