@@ -1,7 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import setupService from '@/services/setupService'
 
 // Route definitions - views will be implemented after analyzer results
 const routes = [
+  {
+    path: '/setup',
+    name: 'Setup',
+    component: () => import('@/views/SetupWizard.vue'),
+    meta: {
+      title: 'Setup Wizard',
+      showInNav: false,
+      requiresSetup: false, // Skip setup check for this route
+    },
+  },
   {
     path: '/',
     name: 'Dashboard',
@@ -106,10 +117,38 @@ const router = createRouter({
   routes,
 })
 
-// Navigation guard for page titles
-router.beforeEach((to, from, next) => {
+// Navigation guard for page titles and setup check
+router.beforeEach(async (to, from, next) => {
+  // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
-  next()
+
+  // Skip setup check for the setup route itself
+  if (to.meta.requiresSetup === false) {
+    next()
+    return
+  }
+
+  // Check if setup is complete
+  try {
+    const status = await setupService.checkStatus()
+
+    if (!status.completed && to.path !== '/setup') {
+      // Setup not complete, redirect to wizard
+      console.log('Setup not completed, redirecting to setup wizard')
+      next('/setup')
+    } else if (status.completed && to.path === '/setup') {
+      // Setup already done, redirect to dashboard
+      console.log('Setup already completed, redirecting to dashboard')
+      next('/')
+    } else {
+      next()
+    }
+  } catch (error) {
+    // If setup status check fails (endpoint doesn't exist yet),
+    // continue anyway to avoid blocking navigation
+    console.log('Setup status check unavailable, continuing with navigation')
+    next()
+  }
 })
 
 export default router
