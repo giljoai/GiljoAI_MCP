@@ -166,6 +166,9 @@ def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
                 click.echo("Error: --pg-password is required in batch mode", err=True)
                 sys.exit(1)
 
+            # Ensure install_dir is an absolute path
+            install_dir_resolved = str(Path(install_dir or Path.cwd()).resolve())
+
             settings = {
                 'mode': mode,
                 'pg_host': pg_host,
@@ -174,7 +177,7 @@ def install(mode, batch, pg_host, pg_port, pg_password, config, generate_config,
                 'api_port': api_port,
                 'ws_port': ws_port,
                 'dashboard_port': dashboard_port,
-                'install_dir': install_dir or str(Path.cwd()),
+                'install_dir': install_dir_resolved,
                 'bind': bind if mode == 'server' else '127.0.0.1',
                 'enable_ssl': enable_ssl,
                 'ssl_cert': ssl_cert,
@@ -352,6 +355,9 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
         click.echo("Installation cancelled.")
         sys.exit(0)
 
+    # Ensure install_dir is an absolute path
+    install_dir_resolved = str(Path(install_dir).resolve())
+
     settings = {
         'mode': mode,
         'pg_host': pg_host,
@@ -360,7 +366,7 @@ def interactive_setup(mode: str, pg_host: str, pg_port: int,
         'api_port': api_port,
         'ws_port': ws_port,
         'dashboard_port': dashboard_port,
-        'install_dir': install_dir,
+        'install_dir': install_dir_resolved,
         'auto_start': auto_start,
         'open_browser': open_browser,
         'batch': False

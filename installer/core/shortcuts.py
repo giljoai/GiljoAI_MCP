@@ -17,30 +17,54 @@ class ShortcutCreator:
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.install_dir = Path(settings.get('install_dir', Path.cwd()))
+        # Ensure install_dir is always an absolute path
+        install_dir_raw = settings.get('install_dir', Path.cwd())
+        self.install_dir = Path(install_dir_raw).resolve()
         self.desktop = self._get_desktop_path()
         self.system = platform.system()
         self.logger = logging.getLogger(__name__)
 
+        # Log paths for debugging
+        self.logger.info(f"Install directory: {self.install_dir}")
+        self.logger.info(f"Desktop directory: {self.desktop}")
+
     def _get_desktop_path(self) -> Path:
         """Get the correct Desktop path, checking for OneDrive Desktop on Windows"""
+        desktop_path = None
+
         if platform.system() == "Windows":
             # Check for OneDrive Desktop first
             onedrive_desktop = os.environ.get('OneDrive')
             if onedrive_desktop:
                 onedrive_desktop_path = Path(onedrive_desktop) / "Desktop"
                 if onedrive_desktop_path.exists():
-                    return onedrive_desktop_path
+                    self.logger.info(f"Using OneDrive Desktop: {onedrive_desktop_path}")
+                    desktop_path = onedrive_desktop_path
 
             # Check OneDriveCommercial (for business accounts)
-            onedrive_commercial = os.environ.get('OneDriveCommercial')
-            if onedrive_commercial:
-                onedrive_commercial_path = Path(onedrive_commercial) / "Desktop"
-                if onedrive_commercial_path.exists():
-                    return onedrive_commercial_path
+            if not desktop_path:
+                onedrive_commercial = os.environ.get('OneDriveCommercial')
+                if onedrive_commercial:
+                    onedrive_commercial_path = Path(onedrive_commercial) / "Desktop"
+                    if onedrive_commercial_path.exists():
+                        self.logger.info(f"Using OneDrive Commercial Desktop: {onedrive_commercial_path}")
+                        desktop_path = onedrive_commercial_path
 
         # Fall back to standard Desktop location
-        return Path.home() / "Desktop"
+        if not desktop_path:
+            desktop_path = Path.home() / "Desktop"
+            self.logger.info(f"Using standard Desktop: {desktop_path}")
+
+        # Ensure desktop path exists
+        if not desktop_path.exists():
+            self.logger.warning(f"Desktop path does not exist: {desktop_path}")
+            self.logger.info("Attempting to create Desktop directory...")
+            try:
+                desktop_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                self.logger.error(f"Failed to create Desktop directory: {e}")
+
+        return desktop_path
 
     def create_shortcuts(self) -> Dict[str, Any]:
         """Create desktop shortcuts based on OS"""
@@ -69,6 +93,12 @@ class ShortcutCreator:
     def _create_windows_shortcuts(self) -> Dict[str, Any]:
         """Create Windows .lnk shortcuts using PowerShell"""
         result = {'success': False, 'created': [], 'errors': []}
+
+        # Verify install directory exists
+        if not self.install_dir.exists():
+            result['errors'].append(f"Install directory does not exist: {self.install_dir}")
+            self.logger.error(f"Install directory not found: {self.install_dir}")
+            return result
 
         # Icon paths (try both lowercase and capitalized)
         icon_dir = self.install_dir / "frontend" / "public"
@@ -112,6 +142,13 @@ class ShortcutCreator:
 
         for shortcut in shortcuts:
             try:
+                # Verify target file exists
+                target_path = Path(shortcut['target'])
+                if not target_path.exists():
+                    warning_msg = f"Target file not found: {target_path} - shortcut may not work"
+                    self.logger.warning(warning_msg)
+                    # Continue creating shortcut anyway - file might be created later
+
                 shortcut_path = self.desktop / shortcut['name']
 
                 # PowerShell script to create shortcut
@@ -126,6 +163,12 @@ $Shortcut.WorkingDirectory = "{self.install_dir}"
 
                 ps_script += '$Shortcut.Save()'
 
+                # Log what we're creating
+                self.logger.debug(f"Creating shortcut: {shortcut['name']}")
+                self.logger.debug(f"  Target: {shortcut['target']}")
+                self.logger.debug(f"  Desktop: {shortcut_path}")
+                self.logger.debug(f"  Working Dir: {self.install_dir}")
+
                 # Execute PowerShell
                 proc = subprocess.run(
                     ['powershell', '-Command', ps_script],
@@ -136,12 +179,16 @@ $Shortcut.WorkingDirectory = "{self.install_dir}"
 
                 if proc.returncode == 0:
                     result['created'].append(str(shortcut_path))
-                    self.logger.info(f"Created shortcut: {shortcut['name']}")
+                    self.logger.info(f"Created shortcut: {shortcut['name']} -> {target_path}")
                 else:
-                    result['errors'].append(f"Failed to create {shortcut['name']}: {proc.stderr}")
+                    error_msg = f"Failed to create {shortcut['name']}: {proc.stderr}"
+                    result['errors'].append(error_msg)
+                    self.logger.error(error_msg)
 
             except Exception as e:
-                result['errors'].append(f"Error creating {shortcut['name']}: {e}")
+                error_msg = f"Error creating {shortcut['name']}: {e}"
+                result['errors'].append(error_msg)
+                self.logger.error(error_msg)
 
         result['success'] = len(result['created']) > 0
         return result
@@ -149,6 +196,12 @@ $Shortcut.WorkingDirectory = "{self.install_dir}"
     def _create_linux_shortcuts(self) -> Dict[str, Any]:
         """Create Linux .desktop files"""
         result = {'success': False, 'created': [], 'errors': []}
+
+        # Verify install directory exists
+        if not self.install_dir.exists():
+            result['errors'].append(f"Install directory does not exist: {self.install_dir}")
+            self.logger.error(f"Install directory not found: {self.install_dir}")
+            return result
 
         # Icon paths
         start_icon = self.install_dir / "frontend" / "public" / "start.png"
@@ -196,6 +249,12 @@ $Shortcut.WorkingDirectory = "{self.install_dir}"
 
         for shortcut in shortcuts:
             try:
+                # Verify target script exists
+                exec_path = Path(shortcut['exec'])
+                if not exec_path.exists():
+                    warning_msg = f"Target script not found: {exec_path} - shortcut may not work"
+                    self.logger.warning(warning_msg)
+
                 desktop_file = self.desktop / shortcut['name']
 
                 content = f'''[Desktop Entry]
@@ -210,14 +269,21 @@ Terminal={str(shortcut['terminal']).lower()}
 Categories=Development;Utility;
 '''
 
+                # Log what we're creating
+                self.logger.debug(f"Creating desktop file: {shortcut['name']}")
+                self.logger.debug(f"  Exec: {shortcut['exec']}")
+                self.logger.debug(f"  Path: {self.install_dir}")
+
                 desktop_file.write_text(content)
                 desktop_file.chmod(0o755)  # Make executable
 
                 result['created'].append(str(desktop_file))
-                self.logger.info(f"Created desktop file: {shortcut['name']}")
+                self.logger.info(f"Created desktop file: {shortcut['name']} -> {exec_path}")
 
             except Exception as e:
-                result['errors'].append(f"Error creating {shortcut['name']}: {e}")
+                error_msg = f"Error creating {shortcut['name']}: {e}"
+                result['errors'].append(error_msg)
+                self.logger.error(error_msg)
 
         result['success'] = len(result['created']) > 0
         return result
@@ -225,6 +291,12 @@ Categories=Development;Utility;
     def _create_macos_shortcuts(self) -> Dict[str, Any]:
         """Create macOS .command files"""
         result = {'success': False, 'created': [], 'errors': []}
+
+        # Verify install directory exists
+        if not self.install_dir.exists():
+            result['errors'].append(f"Install directory does not exist: {self.install_dir}")
+            self.logger.error(f"Install directory not found: {self.install_dir}")
+            return result
 
         shortcuts = [
             {
@@ -251,6 +323,12 @@ Categories=Development;Utility;
 
         for shortcut in shortcuts:
             try:
+                # Verify target script exists
+                script_path = Path(shortcut['script'])
+                if not script_path.exists():
+                    warning_msg = f"Target script not found: {script_path} - shortcut may not work"
+                    self.logger.warning(warning_msg)
+
                 command_file = self.desktop / shortcut['name']
 
                 content = f'''#!/bin/bash
@@ -258,14 +336,21 @@ cd "{self.install_dir}"
 {shortcut['script']}
 '''
 
+                # Log what we're creating
+                self.logger.debug(f"Creating command file: {shortcut['name']}")
+                self.logger.debug(f"  Script: {shortcut['script']}")
+                self.logger.debug(f"  Working Dir: {self.install_dir}")
+
                 command_file.write_text(content)
                 command_file.chmod(0o755)  # Make executable
 
                 result['created'].append(str(command_file))
-                self.logger.info(f"Created command file: {shortcut['name']}")
+                self.logger.info(f"Created command file: {shortcut['name']} -> {script_path}")
 
             except Exception as e:
-                result['errors'].append(f"Error creating {shortcut['name']}: {e}")
+                error_msg = f"Error creating {shortcut['name']}: {e}"
+                result['errors'].append(error_msg)
+                self.logger.error(error_msg)
 
         result['success'] = len(result['created']) > 0
         return result
