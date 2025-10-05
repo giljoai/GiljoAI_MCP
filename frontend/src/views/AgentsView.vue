@@ -15,10 +15,12 @@
         </v-btn-toggle>
         <v-btn
           color="primary"
-          prepend-icon="mdi-robot-happy"
           @click="refreshAgents"
           :loading="loading"
         >
+          <template v-slot:prepend>
+            <img src="/icons/Giljo_gray_Face_sleeping.svg?v=4" alt="Refresh" style="width: 20px; height: 20px; margin-right: 8px;" />
+          </template>
           Refresh Status
         </v-btn>
       </v-col>
@@ -266,7 +268,7 @@
       <v-col>
         <v-card>
           <v-card-text class="text-center py-8">
-            <v-icon size="64" color="grey">mdi-robot-off</v-icon>
+            <img src="/icons/Giljo_gray_Face_sleeping.svg?v=4" alt="Sleeping agent" style="width: 64px; height: 64px;" />
             <p class="text-h6 mt-4">No agents found</p>
             <p class="text-body-2 text-medium-emphasis">
               {{
