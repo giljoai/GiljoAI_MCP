@@ -67,7 +67,7 @@ async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_t
             id=result["project_id"],
             name=project.name,
             mission=project.mission,
-            status="active",
+            status="inactive",
             product_id=project.product_id,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
@@ -85,7 +85,7 @@ async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_t
                 project_data={
                     "name": project.name,
                     "mission": project.mission,
-                    "status": "active",
+                    "status": "inactive",
                     "context_budget": 150000,
                     "context_used": 0,
                 },
@@ -177,22 +177,70 @@ async def get_project(project_id: str):
 async def update_project(project_id: str, update: ProjectUpdate):
     """Update project details"""
     from api.app import state
+    from sqlalchemy import select
+    from giljo_mcp.models import Project
+    import logging
+
+    logger = logging.getLogger(__name__)
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        # Update mission if provided
-        if update.mission:
-            result = await state.tool_accessor.update_project_mission(project_id=project_id, mission=update.mission)
+        logger.info(f"PATCH /projects/{project_id} - Received update: name={update.name}, mission={update.mission}, status={update.status}")
 
-            if not result.get("success"):
-                raise HTTPException(status_code=400, detail=result.get("error", "Failed to update project"))
+        # Use a single session for all updates
+        async with state.db_manager.get_session_async() as session:
+            query = select(Project).where(Project.id == project_id)
+            result = await session.execute(query)
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            logger.info(f"Project before update: name={project.name}, status={project.status}")
+
+            # Update fields if provided
+            if update.name is not None:
+                project.name = update.name
+                logger.info(f"Updated name to: {project.name}")
+
+            if update.mission is not None:
+                project.mission = update.mission
+                logger.info(f"Updated mission")
+
+            if update.status is not None:
+                logger.info(f"Updating status from '{project.status}' to '{update.status}'")
+                project.status = update.status
+                logger.info(f"Project status after assignment: {project.status}")
+
+            # Commit all changes at once
+            await session.commit()
+            logger.info(f"Database commit completed. Project status in object: {project.status}")
+
+            # Broadcast updates
+            if state.websocket_manager:
+                update_data = {}
+                if update.name is not None:
+                    update_data["name"] = update.name
+                if update.mission is not None:
+                    update_data["mission"] = update.mission
+                if update.status is not None:
+                    update_data["status"] = update.status
+
+                await state.websocket_manager.broadcast_project_update(
+                    project_id=project_id,
+                    update_type="updated",
+                    project_data=update_data
+                )
 
         # Get updated project
-        return await get_project(project_id)
+        updated_project = await get_project(project_id)
+        logger.info(f"Project after retrieval: name={updated_project.name}, status={updated_project.status}")
+        return updated_project
 
     except Exception as e:
+        logger.error(f"Failed to update project: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

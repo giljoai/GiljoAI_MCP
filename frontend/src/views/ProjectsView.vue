@@ -113,6 +113,16 @@
         :items-per-page="10"
         class="elevation-0"
       >
+        <!-- Name Column with UUID -->
+        <template v-slot:item.name="{ item }">
+          <div>
+            <div class="text-body-1">{{ item.name }}</div>
+            <div class="text-caption text-medium-emphasis" style="font-family: monospace; font-size: 0.7rem;">
+              Project ID: {{ item.id }}
+            </div>
+          </div>
+        </template>
+
         <!-- Status Column -->
         <template v-slot:item.status="{ item }">
           <v-chip :color="getStatusColor(item.status)" variant="tonal" size="small">
@@ -216,6 +226,35 @@
           {{ editingProject ? 'Edit Project' : 'Create New Project' }}
         </v-card-title>
         <v-card-text>
+          <!-- Show UUID for newly created project -->
+          <v-alert
+            v-if="createdProjectId"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            <div class="text-body-2 mb-1">Project created successfully!</div>
+            <div class="text-caption">
+              <strong>Project ID:</strong>
+              <span class="ml-2" style="font-family: monospace;">{{ createdProjectId }}</span>
+            </div>
+          </v-alert>
+
+          <!-- Show Project ID when editing -->
+          <v-alert
+            v-if="editingProject"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            <div class="text-caption">
+              <strong>Project ID:</strong>
+              <span class="ml-2" style="font-family: monospace;">{{ editingProject.id }}</span>
+            </div>
+          </v-alert>
+
           <v-form ref="projectForm" v-model="formValid">
             <v-text-field
               v-model="projectData.name"
@@ -337,13 +376,14 @@ const editingProject = ref(null)
 const projectToDelete = ref(null)
 const projectToClose = ref(null)
 const closeSummary = ref('')
+const createdProjectId = ref(null)
 
 // Form data
 const projectData = ref({
   name: '',
   mission: '',
   context_budget: 150000,
-  status: 'active',
+  status: 'inactive',
   agents: [],
 })
 
@@ -408,6 +448,7 @@ function viewProject(project) {
 
 function editProject(project) {
   editingProject.value = project
+  createdProjectId.value = null
   projectData.value = {
     name: project.name,
     mission: project.mission,
@@ -464,6 +505,7 @@ async function deleteProject() {
 function cancelEdit() {
   showCreateDialog.value = false
   editingProject.value = null
+  createdProjectId.value = null
   resetForm()
 }
 
@@ -472,7 +514,7 @@ function resetForm() {
     name: '',
     mission: '',
     context_budget: 150000,
-    status: 'active',
+    status: 'inactive',
     agents: [],
   }
 }
@@ -489,17 +531,35 @@ async function saveProject() {
     if (editingProject.value) {
       // Update existing project
       console.log('Updating project:', editingProject.value.id)
-      await projectStore.updateProject(editingProject.value.id, projectData.value)
+
+      // Only send fields that the API supports for updates
+      const updateData = {
+        name: projectData.value.name,
+        mission: projectData.value.mission,
+        status: projectData.value.status,
+      }
+
+      await projectStore.updateProject(editingProject.value.id, updateData)
+
+      // Refresh the project list to show updated data
+      await projectStore.fetchProjects()
+
+      showCreateDialog.value = false
+      editingProject.value = null
+      createdProjectId.value = null
+      resetForm()
     } else {
-      // Create new project
+      // Create new project - send all fields
       console.log('Creating new project')
       const result = await projectStore.createProject(projectData.value)
       console.log('Project created successfully:', result)
-    }
 
-    showCreateDialog.value = false
-    editingProject.value = null
-    resetForm()
+      // Show the UUID in the dialog
+      createdProjectId.value = result.id
+
+      // Keep the dialog open to show the UUID
+      // User can close it manually after noting the UUID
+    }
   } catch (error) {
     console.error('Failed to save project:', error)
     console.error('Error details:', error.response?.data || error.message)
