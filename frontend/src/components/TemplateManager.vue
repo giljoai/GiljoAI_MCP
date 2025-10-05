@@ -4,7 +4,7 @@
       <v-icon class="mr-2" color="primary">
         <img src="/icons/document.svg" width="24" height="24" alt="Templates" />
       </v-icon>
-      <span>Template Manager</span>
+      <span>Agent Template Manager</span>
       <v-spacer />
       <v-btn
         color="primary"
@@ -69,6 +69,16 @@
         <template v-slot:item.category="{ item }">
           <v-chip size="small" :color="getCategoryColor(item.category)">
             {{ item.category }}
+          </v-chip>
+        </template>
+
+        <template v-slot:item.preferred_tool="{ item }">
+          <v-chip
+            size="small"
+            :color="getToolColor(item.preferred_tool || 'claude')"
+            :prepend-icon="getToolIcon(item.preferred_tool || 'claude')"
+          >
+            {{ getToolName(item.preferred_tool || 'claude') }}
           </v-chip>
         </template>
 
@@ -165,7 +175,28 @@
                   density="compact"
                 />
               </v-col>
-              <v-col cols="12">
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="editingTemplate.preferred_tool"
+                  :items="toolOptions"
+                  label="Preferred Tool*"
+                  :rules="[(v) => !!v || 'Tool is required']"
+                  density="compact"
+                >
+                  <template v-slot:item="{ item, props }">
+                    <v-list-item v-bind="props">
+                      <template v-slot:prepend>
+                        <v-icon :icon="item.raw.icon" :color="item.raw.color" />
+                      </template>
+                    </v-list-item>
+                  </template>
+                  <template v-slot:selection="{ item }">
+                    <v-icon :icon="item.raw.icon" :color="item.raw.color" class="mr-2" size="small" />
+                    {{ item.raw.title }}
+                  </template>
+                </v-select>
+              </v-col>
+              <v-col cols="12" md="6">
                 <v-text-field
                   v-model="editingTemplate.description"
                   label="Description"
@@ -341,6 +372,7 @@ const editingTemplate = ref({
   template: '',
   variables: [],
   augmentation_slots: '',
+  preferred_tool: 'claude',
 })
 
 // Template being previewed
@@ -357,9 +389,9 @@ const historyTemplate = ref(null)
 
 // Table configuration
 const headers = [
-  { title: 'Name', key: 'name', align: 'start' },
-  { title: 'Category', key: 'category', align: 'start' },
-  { title: 'Description', key: 'description', align: 'start' },
+  { title: 'Agent Name', key: 'name', align: 'start' },
+  { title: 'Type', key: 'category', align: 'start' },
+  { title: 'Tool', key: 'preferred_tool', align: 'start' },
   { title: 'Variables', key: 'variables', align: 'center' },
   { title: 'Updated', key: 'updated_at', align: 'start' },
   { title: 'Actions', key: 'actions', align: 'center', sortable: false },
@@ -383,6 +415,27 @@ const statusOptions = [
   { title: 'Active', value: 'active' },
   { title: 'Archived', value: 'archived' },
   { title: 'Draft', value: 'draft' },
+]
+
+const toolOptions = [
+  {
+    title: 'Claude',
+    value: 'claude',
+    icon: 'mdi-robot',
+    color: '#1976D2'
+  },
+  {
+    title: 'Codex',
+    value: 'codex',
+    icon: 'mdi-code-braces',
+    color: '#4CAF50'
+  },
+  {
+    title: 'Gemini',
+    value: 'gemini',
+    icon: 'mdi-star-four-points',
+    color: '#9C27B0'
+  },
 ]
 
 // Computed
@@ -436,6 +489,7 @@ const openCreateDialog = () => {
     template: '',
     variables: [],
     augmentation_slots: '',
+    preferred_tool: 'claude',
   }
   editDialog.value = true
 }
@@ -464,6 +518,7 @@ const closeEditDialog = () => {
     template: '',
     variables: [],
     augmentation_slots: '',
+    preferred_tool: 'claude',
   }
 }
 
@@ -572,6 +627,33 @@ const getCategoryColor = (category) => {
     custom: 'grey',
   }
   return colors[category] || 'grey'
+}
+
+const getToolColor = (tool) => {
+  const colors = {
+    claude: '#1976D2',
+    codex: '#4CAF50',
+    gemini: '#9C27B0',
+  }
+  return colors[tool] || colors.claude
+}
+
+const getToolIcon = (tool) => {
+  const icons = {
+    claude: 'mdi-robot',
+    codex: 'mdi-code-braces',
+    gemini: 'mdi-star-four-points',
+  }
+  return icons[tool] || icons.claude
+}
+
+const getToolName = (tool) => {
+  const names = {
+    claude: 'Claude',
+    codex: 'Codex',
+    gemini: 'Gemini',
+  }
+  return names[tool] || 'Claude'
 }
 
 const formatDate = (date) => {

@@ -17,8 +17,8 @@
         Notifications
       </v-tab>
       <v-tab value="templates">
-        <v-icon start>mdi-file-document-multiple</v-icon>
-        Templates
+        <v-icon start>mdi-robot</v-icon>
+        Agent Templates
       </v-tab>
       <v-tab value="api">
         <v-icon start>mdi-api</v-icon>
@@ -323,89 +323,104 @@
       <!-- Database Settings -->
       <v-window-item value="database">
         <v-card>
-          <v-card-title>Database Configuration</v-card-title>
+          <v-card-title>PostgreSQL Database Configuration</v-card-title>
           <v-card-text>
-            <v-alert type="warning" variant="tonal" class="mb-4">
-              Changing database settings requires a server restart
+            <v-alert type="info" variant="tonal" class="mb-4">
+              GiljoAI MCP requires PostgreSQL 18. Settings are auto-detected from config.yaml.
             </v-alert>
 
-            <v-select
-              v-model="settings.database.type"
-              :items="['sqlite', 'postgresql']"
-              label="Database Type"
-              variant="outlined"
-            />
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="settings.database.host"
+                  label="Host"
+                  variant="outlined"
+                  hint="Auto-detected from config"
+                  persistent-hint
+                  readonly
+                >
+                  <template v-slot:append>
+                    <v-btn
+                      icon="mdi-refresh"
+                      size="small"
+                      variant="text"
+                      @click="loadDatabaseSettings"
+                      title="Reload from config"
+                    />
+                  </template>
+                </v-text-field>
+              </v-col>
 
-            <template v-if="settings.database.type === 'postgresql'">
-              <v-text-field
-                v-model="settings.database.host"
-                label="Host"
-                variant="outlined"
-                class="mt-4"
-              />
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="settings.database.port"
+                  label="Port"
+                  type="number"
+                  variant="outlined"
+                  hint="Default: 5432"
+                  persistent-hint
+                >
+                  <template v-slot:append>
+                    <v-btn
+                      icon="mdi-check-circle"
+                      size="small"
+                      variant="text"
+                      @click="validatePort"
+                      title="Validate port"
+                      :loading="validatingPort"
+                    />
+                  </template>
+                </v-text-field>
+              </v-col>
 
-              <v-text-field
-                v-model="settings.database.port"
-                label="Port"
-                type="number"
-                variant="outlined"
-                class="mt-4"
-              />
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="settings.database.name"
+                  label="Database Name"
+                  variant="outlined"
+                  hint="Auto-detected from config"
+                  persistent-hint
+                  readonly
+                />
+              </v-col>
 
-              <v-text-field
-                v-model="settings.database.name"
-                label="Database Name"
-                variant="outlined"
-                class="mt-4"
-              />
-
-              <v-text-field
-                v-model="settings.database.user"
-                label="Username"
-                variant="outlined"
-                class="mt-4"
-              />
-
-              <v-text-field
-                v-model="settings.database.password"
-                label="Password"
-                type="password"
-                variant="outlined"
-                class="mt-4"
-              />
-            </template>
-
-            <template v-else>
-              <v-text-field
-                v-model="settings.database.path"
-                label="Database File Path"
-                variant="outlined"
-                hint="Path to SQLite database file"
-                persistent-hint
-                class="mt-4"
-              />
-            </template>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="settings.database.user"
+                  label="Username"
+                  variant="outlined"
+                  hint="Database user"
+                  persistent-hint
+                  readonly
+                />
+              </v-col>
+            </v-row>
 
             <v-divider class="my-6" />
 
-            <h3 class="text-h6 mb-4">Connection Pool</h3>
-            <v-text-field
-              v-model="settings.database.maxConnections"
-              label="Max Connections"
-              type="number"
-              variant="outlined"
-              hint="Maximum number of database connections"
-              persistent-hint
-            />
+            <v-alert
+              v-if="connectionTestResult"
+              :type="connectionTestResult.success ? 'success' : 'error'"
+              variant="tonal"
+              class="mb-4"
+            >
+              {{ connectionTestResult.message }}
+            </v-alert>
           </v-card-text>
           <v-card-actions>
-            <v-btn variant="outlined" @click="testDatabaseConnection">
+            <v-btn
+              variant="outlined"
+              @click="testDatabaseConnection"
+              :loading="testingConnection"
+            >
               <v-icon start>mdi-database-check</v-icon>
               Test Connection
             </v-btn>
             <v-spacer />
-            <v-btn variant="text" @click="resetDatabaseSettings">Reset</v-btn>
-            <v-btn color="primary" variant="flat" @click="saveDatabaseSettings">Save Changes</v-btn>
+            <v-btn variant="text" @click="loadDatabaseSettings">
+              <v-icon start>mdi-refresh</v-icon>
+              Reload from Config
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-window-item>
@@ -426,6 +441,9 @@ const theme = useTheme()
 // State
 const activeTab = ref('general')
 const generalForm = ref(null)
+const testingConnection = ref(false)
+const validatingPort = ref(false)
+const connectionTestResult = ref(null)
 
 // Settings object
 const settings = ref({
@@ -463,14 +481,12 @@ const settings = ref({
     retryAttempts: 3,
   },
   database: {
-    type: 'sqlite',
-    path: './data/giljo.db',
+    type: 'postgresql',
     host: 'localhost',
     port: 5432,
     name: 'giljo_mcp',
-    user: '',
+    user: 'postgres',
     password: '',
-    maxConnections: 10,
   },
 })
 
@@ -572,16 +588,48 @@ function resetApiSettings() {
   }
 }
 
-function resetDatabaseSettings() {
-  settings.value.database = {
-    type: 'sqlite',
-    path: './data/giljo.db',
-    host: 'localhost',
-    port: 5432,
-    name: 'giljo_mcp',
-    user: '',
-    password: '',
-    maxConnections: 10,
+async function loadDatabaseSettings() {
+  try {
+    // Fetch database config from API
+    const response = await fetch(`${settings.value.api.baseUrl}/api/v1/config/database`)
+    const config = await response.json()
+
+    settings.value.database = {
+      type: 'postgresql',
+      host: config.host || 'localhost',
+      port: config.port || 5432,
+      name: config.name || 'giljo_mcp',
+      user: config.user || 'postgres',
+    }
+
+    connectionTestResult.value = { success: true, message: 'Settings loaded from config' }
+  } catch (error) {
+    console.error('Failed to load database settings:', error)
+    connectionTestResult.value = { success: false, message: 'Failed to load settings from config' }
+  }
+}
+
+async function validatePort() {
+  validatingPort.value = true
+  connectionTestResult.value = null
+
+  try {
+    const port = settings.value.database.port
+    if (port < 1024 || port > 65535) {
+      connectionTestResult.value = { success: false, message: 'Invalid port number (must be 1024-65535)' }
+      return
+    }
+
+    // Simple validation - check if port is the standard PostgreSQL port
+    if (port !== 5432) {
+      connectionTestResult.value = { success: true, message: `Custom port ${port} - ensure PostgreSQL is configured for this port` }
+    } else {
+      connectionTestResult.value = { success: true, message: 'Standard PostgreSQL port (5432)' }
+    }
+  } catch (error) {
+    connectionTestResult.value = { success: false, message: 'Port validation failed' }
+  } finally {
+    validatingPort.value = false
   }
 }
 
@@ -591,12 +639,38 @@ async function testApiConnection() {
 }
 
 async function testDatabaseConnection() {
-  console.log('Testing database connection...')
-  // Implementation would test the database connection
+  testingConnection.value = true
+  connectionTestResult.value = null
+
+  try {
+    const response = await fetch(`${settings.value.api.baseUrl}/api/v1/health/database`)
+    const result = await response.json()
+
+    if (result.success) {
+      connectionTestResult.value = {
+        success: true,
+        message: `Connected to PostgreSQL database '${settings.value.database.name}' on ${settings.value.database.host}:${settings.value.database.port}`
+      }
+    } else {
+      connectionTestResult.value = {
+        success: false,
+        message: result.error || 'Database connection failed'
+      }
+    }
+  } catch (error) {
+    connectionTestResult.value = {
+      success: false,
+      message: `Connection test failed: ${error.message}`
+    }
+  } finally {
+    testingConnection.value = false
+  }
 }
 
 // Lifecycle
 onMounted(async () => {
+  // Load database settings from config on mount
+  await loadDatabaseSettings()
   // Load settings from store
   const storedSettings = await settingsStore.loadSettings()
   if (storedSettings) {

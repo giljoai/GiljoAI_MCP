@@ -511,6 +511,7 @@ class AgentTemplate(Base):
     variables = Column(JSON, default=list)  # List of required variables
     behavioral_rules = Column(JSON, default=list)  # Role-specific rules
     success_criteria = Column(JSON, default=list)  # Success metrics
+    preferred_tool = Column(String(50), default="claude")  # Preferred AI tool: claude, codex, gemini
 
     # Usage tracking
     usage_count = Column(Integer, default=0)
