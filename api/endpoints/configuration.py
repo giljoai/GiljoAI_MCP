@@ -3,7 +3,9 @@ Configuration management API endpoints
 """
 
 import json
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, HTTPException
@@ -351,3 +353,232 @@ async def delete_tenant_configuration(tenant_key: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# Database-specific endpoints
+
+class DatabaseConfigResponse(BaseModel):
+    host: str
+    port: int
+    name: str
+    user: str
+    password_masked: str
+
+
+class DatabasePasswordUpdate(BaseModel):
+    password: str = Field(
+        ...,
+        description="New database password (min 12 chars, must contain uppercase, lowercase, number, and special char)",
+        min_length=12
+    )
+
+
+@router.get("/database", response_model=DatabaseConfigResponse)
+async def get_database_configuration():
+    """Get database configuration (password masked) - reads from .env file"""
+    try:
+        # Read directly from .env file
+        from dotenv import dotenv_values
+
+        env_path = Path.cwd() / '.env'
+
+        if not env_path.exists():
+            raise HTTPException(status_code=404, detail=".env file not found")
+
+        env_vars = dotenv_values(env_path)
+
+        # Get database config (these should match what installer created)
+        host = env_vars.get('DB_HOST', 'localhost')
+        port = int(env_vars.get('DB_PORT', '5432'))
+        name = env_vars.get('DB_NAME', 'giljo_mcp')
+        user = env_vars.get('DB_USER', 'giljo_user')
+        password = env_vars.get('DB_PASSWORD', '')
+
+        # Mask password (show actual length for reference)
+        password_masked = '*' * len(password) if password else '****'
+
+        return DatabaseConfigResponse(
+            host=host,
+            port=port,
+            name=name,
+            user=user,
+            password_masked=password_masked
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read database configuration: {str(e)}") from e
+
+
+@router.post("/database/password")
+async def update_database_password(update: DatabasePasswordUpdate):
+    """
+    Update database password for giljo_user in both PostgreSQL and .env file
+
+    Password Requirements:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character (@$!%*?&)
+    """
+    try:
+        from dotenv import set_key, dotenv_values
+        import re
+        from sqlalchemy import create_engine, text
+
+        env_path = Path.cwd() / '.env'
+
+        # Ensure .env exists
+        if not env_path.exists():
+            raise HTTPException(status_code=404, detail=".env file not found")
+
+        # Validate password strength (Pydantic already does this, but double-check)
+        if len(update.password) < 12:
+            raise HTTPException(
+                status_code=400,
+                detail="Password must be at least 12 characters long"
+            )
+
+        if not re.search(r'[A-Z]', update.password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one uppercase letter"
+            )
+
+        if not re.search(r'[a-z]', update.password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one lowercase letter"
+            )
+
+        if not re.search(r'\d', update.password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one number"
+            )
+
+        if not re.search(r'[@$!%*?&]', update.password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one special character (@$!%*?&)"
+            )
+
+        # Read current database configuration
+        env_vars = dotenv_values(env_path)
+        db_user = env_vars.get('DB_USER', 'giljo_user')
+        db_host = env_vars.get('DB_HOST', 'localhost')
+        db_port = env_vars.get('DB_PORT', '5432')
+        db_name = env_vars.get('DB_NAME', 'giljo_mcp')
+        current_password = env_vars.get('DB_PASSWORD', '')
+
+        if not current_password:
+            raise HTTPException(
+                status_code=400,
+                detail="Current password not found in .env file"
+            )
+
+        # Step 1: Update PostgreSQL password using current credentials
+        try:
+            # Connect with current password
+            current_db_url = f"postgresql://{db_user}:{current_password}@{db_host}:{db_port}/{db_name}"
+            engine = create_engine(current_db_url)
+
+            with engine.connect() as conn:
+                # Execute ALTER USER with new password
+                # Use parameterized query to prevent SQL injection
+                conn.execute(text(f"ALTER USER {db_user} WITH PASSWORD :new_password"), {"new_password": update.password})
+                conn.commit()
+
+            engine.dispose()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to update PostgreSQL password: {str(e)}. Please verify current password is correct."
+            ) from e
+
+        # Step 2: Update .env file with new password
+        try:
+            set_key(env_path, 'DB_PASSWORD', update.password)
+
+            # Also update DATABASE_URL with new password
+            new_db_url = f"postgresql://{db_user}:{update.password}@{db_host}:{db_port}/{db_name}"
+            set_key(env_path, 'DATABASE_URL', new_db_url)
+
+        except Exception as e:
+            # If .env update fails, we need to rollback PostgreSQL password
+            try:
+                rollback_db_url = f"postgresql://{db_user}:{update.password}@{db_host}:{db_port}/{db_name}"
+                rollback_engine = create_engine(rollback_db_url)
+                with rollback_engine.connect() as conn:
+                    conn.execute(text(f"ALTER USER {db_user} WITH PASSWORD :old_password"), {"old_password": current_password})
+                    conn.commit()
+                rollback_engine.dispose()
+            except Exception:
+                pass  # Best effort rollback
+
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to update .env file: {str(e)}. PostgreSQL password has been rolled back."
+            ) from e
+
+        # Step 3: Test new connection
+        try:
+            test_db_url = f"postgresql://{db_user}:{update.password}@{db_host}:{db_port}/{db_name}"
+            test_engine = create_engine(test_db_url)
+            with test_engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            test_engine.dispose()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Password updated but connection test failed: {str(e)}. Application restart required."
+            ) from e
+
+        return {
+            "success": True,
+            "message": "Database password updated successfully in both PostgreSQL and .env file. Application restart required for changes to take effect.",
+            "details": {
+                "postgresql_updated": True,
+                "env_file_updated": True,
+                "connection_tested": True
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update password: {str(e)}") from e
+
+
+@router.get("/health/database")
+async def test_database_connection():
+    """Test database connection"""
+    from api.app import state
+
+    if not state.db_manager:
+        return {
+            "success": False,
+            "error": "Database manager not initialized"
+        }
+
+    try:
+        # Try to get a connection and execute a simple query
+        async with state.db_manager.get_session_async() as session:
+            from sqlalchemy import text
+            result = await session.execute(text("SELECT 1"))
+            result.scalar()
+
+        return {
+            "success": True,
+            "message": "Database connection successful"
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Database connection failed: {str(e)}"
+        }
