@@ -373,6 +373,9 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                 }
             }
 
+            # Add security configuration (ALWAYS included, mode-dependent settings)
+            config['security'] = self._generate_security_config()
+
             # Add server-specific configuration
             if self.mode == 'server':
                 config['server'] = {
@@ -417,6 +420,57 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
             result['errors'].append(str(e))
             self.logger.error(f"Failed to generate config.yaml: {e}")
             return result
+
+
+    def _generate_security_config(self) -> Dict[str, Any]:
+        """Generate security configuration based on deployment mode
+
+        Returns:
+            Security configuration dictionary with CORS, API keys, and rate limiting
+        """
+        # Get API and frontend ports
+        api_port = self.settings.get('api_port', 7272)
+        frontend_port = self.settings.get('dashboard_port', 7274)
+
+        # Build CORS allowed origins based on mode
+        cors_origins = [
+            f'http://127.0.0.1:{frontend_port}',
+            f'http://localhost:{frontend_port}'
+        ]
+
+        # Add server-specific CORS origins
+        if self.mode == 'server':
+            # Get server IP if provided
+            server_ip = self.settings.get('server_ip')
+            if server_ip:
+                cors_origins.append(f'http://{server_ip}:{frontend_port}')
+
+            # Add custom origins if provided
+            custom_origins = self.settings.get('cors_origins', [])
+            cors_origins.extend(custom_origins)
+
+            # Add comment for users to add more IPs
+            # (Will be added as a YAML comment in future enhancement)
+
+        security_config = {
+            'cors': {
+                'allowed_origins': cors_origins
+                # Note: Do NOT use wildcards like 'http://10.1.0.*:7274' - they don't work
+                # Add specific IPs instead: 'http://192.168.1.100:7274'
+            },
+            'api_keys': {
+                # API keys required based on deployment mode
+                'require_for_modes': ['server', 'lan', 'wan']
+                # Generate keys using: python -c "import secrets; print(f'giljo_lan_{secrets.token_urlsafe(32)}')"
+            },
+            'rate_limiting': {
+                'enabled': True,
+                'requests_per_minute': 60 if self.mode == 'localhost' else 60
+                # Adjust per-endpoint limits in api/middleware.py if needed
+            }
+        }
+
+        return security_config
 
     def generate_server_configs(self) -> Dict[str, Any]:
         """Generate additional configuration files for server mode"""
