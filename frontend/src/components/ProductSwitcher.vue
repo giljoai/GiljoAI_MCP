@@ -278,6 +278,10 @@
           :rules="[(v) => !!v || 'Name is required']"
         ></v-text-field>
 
+        <div class="text-caption text-medium-emphasis mb-4" :title="editProductData.id">
+          ID: {{ editProductData.id }}
+        </div>
+
         <v-textarea
           v-model="editProductData.description"
           label="Description"
