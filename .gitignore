@@ -135,4 +135,11 @@ credentials.json
 config.yaml
 install_config.yaml
 .mcp.json
+
+# Claude Code configuration (system-specific)
 CLAUDE.md
+.claude.json
+.claude/
+
+# Serena MCP configuration (system-specific)
+.serena/
