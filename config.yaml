@@ -68,6 +68,22 @@ message_queue:
   - normal
   - high
   - critical
+security:
+  cors:
+    allowed_origins:
+      - http://127.0.0.1:7274
+      - http://localhost:7274
+      # Add specific LAN IPs when deploying to server mode
+      # Example: - http://192.168.1.100:7274
+  api_keys:
+    require_for_modes:
+      - server
+      - lan
+      - wan
+    # Generate keys using: python -c "import secrets; print(f'giljo_lan_{secrets.token_urlsafe(32)}')"
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
 status:
   installation_complete: true
   database_created: true
