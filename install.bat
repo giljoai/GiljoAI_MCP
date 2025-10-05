@@ -1,13 +1,13 @@
 @echo off
 REM ============================================================
-REM GiljoAI MCP Installation Script for Windows
-REM Version 2.0 - CLI-Only Installer
+REM GiljoAI MCP Minimal Installation Script for Windows
+REM Version 3.0 - Minimal Setup (Configuration via Web Wizard)
 REM ============================================================
 
 echo.
 echo ============================================================
-echo     GiljoAI MCP Installation System v2.0
-echo     Professional CLI Installer
+echo     GiljoAI MCP Minimal Installer v3.0
+echo     Simplified Setup - Configuration via Web Wizard
 echo ============================================================
 echo.
 
@@ -15,7 +15,7 @@ REM Check if Python is installed
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8 or higher from https://www.python.org
+    echo Please install Python 3.11 or higher from https://www.python.org
     echo.
     echo IMPORTANT: During installation, check "Add Python to PATH"
     pause
@@ -23,42 +23,36 @@ if %errorlevel% neq 0 (
 )
 
 REM Check if we're in the right directory
-if not exist "installer\cli\install.py" (
+if not exist "installer\cli\minimal_installer.py" (
     echo ERROR: Installation files not found!
     echo Please run this script from the GiljoAI MCP root directory
     pause
     exit /b 1
 )
 
-REM Check for PostgreSQL
-echo Checking PostgreSQL installation...
-psql --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo WARNING: PostgreSQL command-line tools not found in PATH
-    echo The installer will check for PostgreSQL during setup
-    echo.
-)
-
-REM Launch the installer
-echo Starting GiljoAI MCP Installer...
+REM Launch the minimal installer
+echo Starting GiljoAI MCP Minimal Installer...
 echo.
-echo This will guide you through the installation process.
-echo You can choose between localhost (development) or server (production) mode.
+echo This installer will:
+echo   1. Detect Python and PostgreSQL
+echo   2. Create virtual environment
+echo   3. Install dependencies
+echo   4. Create minimal configuration
+echo   5. Start backend service
+echo   6. Open browser to setup wizard
 echo.
-python installer\cli\install.py
+echo All configuration is handled via the web wizard.
+echo.
+python installer\cli\minimal_installer.py
 
 REM Check if installation was successful
 if %errorlevel% equ 0 (
     echo.
     echo ============================================================
-    echo Installation completed successfully!
+    echo Minimal installation completed!
     echo.
-    echo To start GiljoAI MCP, run:
-    echo   launchers\start_giljo.bat
-    echo.
-    echo Or use the Python launcher:
-    echo   python launchers\start_giljo.py
+    echo Next step: Complete setup wizard in your browser
+    echo URL: http://localhost:7274/setup
     echo ============================================================
 ) else (
     echo.
@@ -66,10 +60,9 @@ if %errorlevel% equ 0 (
     echo Please check the error messages above.
     echo.
     echo Common issues:
-    echo - PostgreSQL not installed or not running
-    echo - Incorrect PostgreSQL password
-    echo - Port 7272 already in use
-    echo - Missing Python dependencies
+    echo - Python 3.11+ not installed
+    echo - PostgreSQL 18 not installed or not running
+    echo - Missing installation files
 )
 
 pause
