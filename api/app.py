@@ -54,7 +54,7 @@ except ImportError as e:
 
 try:
     from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
-    from .endpoints import agents, configuration, context, messages, mcp_tools, products, projects, statistics, tasks, templates
+    from .endpoints import agents, configuration, context, messages, mcp_tools, products, projects, setup, statistics, tasks, templates
     from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
     from .websocket import WebSocketManager
     logger.info("API endpoint modules loaded successfully")
@@ -275,6 +275,10 @@ def create_app() -> FastAPI:
                 "name": "statistics",
                 "description": "Statistics and monitoring - system metrics, performance, and health checks",
             },
+            {
+                "name": "setup",
+                "description": "Setup wizard - first-time configuration, tool detection, and MCP registration",
+            },
         ],
         servers=[
             {"url": "http://localhost:7272", "description": "Local development server"},
@@ -366,6 +370,7 @@ def create_app() -> FastAPI:
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
     app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
+    app.include_router(setup.router, prefix="/api/setup", tags=["setup"])
 
     # MCP tool endpoints for stdio-to-HTTP bridge
     app.include_router(mcp_tools.router, prefix="/mcp/tools", tags=["mcp_tools"])

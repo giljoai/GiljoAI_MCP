@@ -27,28 +27,50 @@
 git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
 cd GiljoAI_MCP
 
-# 2. Run the CLI installer (3 minutes)
+# 2. Run the CLI installer (3-5 minutes)
 python install.py
+# or on Windows:
+install.bat
 
-# The installer will:
-# ✅ Guide you through installation mode selection (localhost or server)
-# ✅ Install PostgreSQL automatically (if needed)
-# ✅ Create and configure all services
-# ✅ Validate everything is working
+# The CLI installer will:
+# ✅ Detect your system and requirements
+# ✅ Install PostgreSQL 18 automatically (if needed)
+# ✅ Create Python virtual environment
+# ✅ Install all dependencies
+# ✅ Configure database and services
+# ✅ Start backend and frontend
+# ✅ Open dashboard in browser
 
-# 3. Start using your AI orchestration team (30 seconds)
-# Services are automatically started by the installer
-# ✨ Dashboard available at http://localhost:7274
-# ✨ API available at http://localhost:7272
+# 3. Complete setup wizard (3-5 minutes)
+# After installer finishes, setup wizard opens automatically
+# http://localhost:7274/setup
+#
+# The Setup Wizard guides you through:
+# ✅ Database connection verification
+# ✅ Deployment mode selection (Localhost/LAN/WAN)
+# ✅ Admin account creation (if LAN/WAN)
+# ✅ AI tool integration (Claude Code, Cline, Cursor)
+# ✅ Firewall configuration (if LAN/WAN)
+# ✅ Final system verification
+
+# 4. Start using your AI orchestration team!
+# ✨ Dashboard: http://localhost:7274
+# ✨ API: http://localhost:7272
 ```
 
 ### What Just Happened?
 
-1. **Mode Selection**: You chose your installation mode (localhost or server)
-2. **Dependency Installation**: PostgreSQL was automatically installed and configured
-3. **Service Creation**: All services were registered with your OS and started
-4. **Health Validation**: The installer verified everything is working correctly
-5. **Ready to Use**: Your AI orchestration system is running and ready for tasks
+**Phase 1 - CLI Installer**:
+1. **System Detection**: Identified your OS and existing software
+2. **PostgreSQL Setup**: Installed and configured PostgreSQL 18
+3. **Environment Setup**: Created isolated Python environment with all dependencies
+4. **Service Startup**: Started backend API and frontend dashboard
+
+**Phase 2 - Setup Wizard**:
+5. **Database Verified**: Tested and confirmed database connection
+6. **Mode Configured**: Selected deployment mode for your use case
+7. **Tools Integrated**: Connected your AI coding tools (Claude Code, etc.)
+8. **System Ready**: All services verified and ready for use
 
 ### Installation Modes
 
