@@ -2,44 +2,109 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## CRITICAL: Test Environment Workflow
+## CRITICAL: Multi-Environment Development Setup
 
-**THIS IS A TEST INSTALLATION FOLDER, NOT THE DEV REPOSITORY**
+**IMPORTANT**: This project is developed across multiple systems with different paths and configurations:
 
-You are currently working in: `C:\install_test\Giljo_MCP`
+- **System 1 (Dev/Localhost)**: `C:\Projects\GiljoAI_MCP` - Primary development, localhost mode
+- **System 2 (Test/Server)**: `F:\GiljoAI_MCP` - LAN/server mode testing
+- **Both systems**: Use same GitHub repo, different environment configs
 
-This is an isolated test environment that simulates a real product installation (release variant). While we develop and fix issues here, all code changes must be synchronized back to the main development repository.
+### Environment-Specific Files (NEVER COMMIT)
 
-### Development Workflow (MANDATORY)
+The following files are **machine-specific** and ignored by git:
+- `.env` - Database credentials, API keys, environment variables
+- `config.yaml` - Installation paths, ports, mode (localhost vs server)
+- `install_config.yaml` - User installation preferences
+- `data/` - Runtime database files
+- `logs/` - Application logs
+- `uploads/` - User-uploaded files
 
-1. **Work in Test Folder** (`C:\install_test\Giljo_MCP`)
-   - Make code changes to core files (src/, api/, installer/, frontend/, tests/, etc.)
-   - Test in real deployment environment
-   - Verify everything works
-   - Do NOT modify environment-specific files (.env, config.yaml) in the dev repo
+**Template files** (committed to git):
+- `.env.example` - Used by installer as template
+- `config.yaml.example` - Used by installer as template
+- These are referenced during installation, not for development
 
-2. **Push Changes to Dev Repo** (After testing)
-   ```bash
-   cd C:\install_test\Giljo_MCP
+### Cross-Platform & Path Flexibility Rules
 
-   # Preview changes before copying
-   python push_to_dev.py --dry-run
+**ALWAYS follow these coding standards:**
 
-   # Copy all code changes (excludes .env, config.yaml, data/, logs/, etc.)
-   python push_to_dev.py
+1. **Use `pathlib.Path()` for ALL file paths** - Never hardcode separators
+   ```python
+   # ✅ CORRECT
+   config_path = Path.cwd() / "config.yaml"
+   install_dir = Path(settings.get('install_dir', Path.cwd()))
 
-   # Copy specific file if needed
-   python push_to_dev.py --file api/app.py
+   # ❌ WRONG
+   config_path = "C:\\Projects\\config.yaml"
+   config_path = install_dir + "/config.yaml"
    ```
 
-3. **Commit from Dev Repo**
+2. **Auto-detect paths dynamically** - Never hardcode absolute paths
+   ```python
+   # ✅ CORRECT
+   install_dir = Path.cwd()  # Current working directory
+   install_dir = Path(__file__).parent  # Relative to script
+
+   # ❌ WRONG
+   install_dir = "C:\\Projects\\GiljoAI_MCP"
+   ```
+
+3. **Read from config.yaml or .env** - Let installer handle paths
+   ```python
+   # ✅ CORRECT
+   with open("config.yaml") as f:
+       config = yaml.safe_load(f)
+       db_path = Path(config['database']['path'])
+
+   # ❌ WRONG
+   db_path = "C:\\Projects\\data\\giljo_mcp.db"
+   ```
+
+4. **OS-specific logic using platform.system()**
+   ```python
+   # ✅ CORRECT
+   if platform.system() == "Windows":
+       launcher = "start_giljo.bat"
+   else:
+       launcher = "start_giljo.sh"
+   ```
+
+### Development Workflow Across Multiple Systems
+
+1. **On System 1 (C:\Projects\GiljoAI_MCP)**
+   - Make code changes to core files (src/, api/, installer/, frontend/, tests/)
+   - Test in localhost mode
+   - Commit and push to GitHub
    ```bash
-   cd C:\Projects\GiljoAI_MCP
-   git status
    git add .
-   git commit -m "Fix: [description]"
+   git commit -m "Feature: description"
    git push
    ```
+
+2. **On System 2 (F:\GiljoAI_MCP)**
+   - Pull latest changes from GitHub
+   - Test in server/LAN mode
+   - Make additional fixes if needed
+   - Commit and push back
+   ```bash
+   git pull
+   # Test and make changes
+   git add .
+   git commit -m "Fix: description"
+   git push
+   ```
+
+3. **What Gets Synced vs What Doesn't**
+   - ✅ **Code files**: All Python, JS, batch/shell scripts sync via git
+   - ✅ **Templates**: `.example` files sync (installer uses them)
+   - ❌ **Environment configs**: `.env` and `config.yaml` stay local (gitignored)
+   - ❌ **Runtime data**: `data/`, `logs/`, `uploads/` stay local
+
+4. **After Each Pull**
+   - Your local `.env` and `config.yaml` remain unchanged
+   - No need to reconfigure - paths stay machine-specific
+   - Just test that new code works with your local config
 
 ### Backup & Maintenance
 
