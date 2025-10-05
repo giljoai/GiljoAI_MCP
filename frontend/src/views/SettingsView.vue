@@ -322,105 +322,24 @@
 
       <!-- Database Settings -->
       <v-window-item value="database">
-        <v-card>
-          <v-card-title>PostgreSQL Database Configuration</v-card-title>
-          <v-card-text>
-            <v-alert type="info" variant="tonal" class="mb-4">
-              <strong>Database settings are configured during installation</strong>
-              <div class="text-caption mt-1">Future - Configurable settings</div>
-            </v-alert>
-
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="settings.database.host"
-                  label="Host"
-                  variant="outlined"
-                  hint="Host configuration is locked for Frontend and Backend communications"
-                  persistent-hint
-                  readonly
-                  prepend-inner-icon="mdi-lock"
-                />
-              </v-col>
-
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="settings.database.port"
-                  label="Port"
-                  type="number"
-                  variant="outlined"
-                  hint="Port is set during setup"
-                  persistent-hint
-                  readonly
-                  prepend-inner-icon="mdi-lock"
-                />
-              </v-col>
-
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="settings.database.name"
-                  label="Database Name"
-                  variant="outlined"
-                  hint="Database name is set during installation"
-                  persistent-hint
-                  readonly
-                  prepend-inner-icon="mdi-lock"
-                />
-              </v-col>
-
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="settings.database.user"
-                  label="Username"
-                  variant="outlined"
-                  hint="Username is set during installation"
-                  persistent-hint
-                  readonly
-                  prepend-inner-icon="mdi-lock"
-                />
-              </v-col>
-
-              <v-col cols="12">
-                <v-text-field
-                  v-model="settings.database.password"
-                  label="Password"
-                  type="password"
-                  variant="outlined"
-                  hint="Password is set during installation (masked for security)"
-                  persistent-hint
-                  readonly
-                  prepend-inner-icon="mdi-lock"
-                />
-              </v-col>
-            </v-row>
-
-            <v-divider class="my-6" />
-
-            <v-alert
-              v-if="connectionTestResult"
-              :type="connectionTestResult.success ? 'success' : 'error'"
-              variant="tonal"
-              class="mb-4"
-            >
-              {{ connectionTestResult.message }}
-            </v-alert>
-          </v-card-text>
-          <v-card-actions>
-            <v-btn
-              variant="outlined"
-              @click="testDatabaseConnection"
-              :loading="testingConnection"
-            >
-              <v-icon start>mdi-database-check</v-icon>
-              Test Connection
-            </v-btn>
-            <v-spacer />
+        <DatabaseConnection
+          :readonly="true"
+          :show-title="true"
+          title="PostgreSQL Database Configuration"
+          :show-info-banner="true"
+          info-banner-text="Database settings are configured during installation"
+          :show-test-button="true"
+          test-button-text="Test Connection"
+          @connection-success="handleDatabaseSuccess"
+          @connection-error="handleDatabaseError"
+        >
+          <template #actions>
             <v-btn variant="text" @click="loadDatabaseSettings">
               <v-icon start>mdi-refresh</v-icon>
               Reload from Config
             </v-btn>
-          </v-card-actions>
-        </v-card>
+          </template>
+        </DatabaseConnection>
       </v-window-item>
     </v-window>
   </v-container>
@@ -431,6 +350,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import TemplateManager from '@/components/TemplateManager.vue'
+import DatabaseConnection from '@/components/DatabaseConnection.vue'
 import { API_CONFIG } from '@/config/api'
 
 // Stores
@@ -440,8 +360,6 @@ const theme = useTheme()
 // State
 const activeTab = ref('general')
 const generalForm = ref(null)
-const testingConnection = ref(false)
-const connectionTestResult = ref(null)
 
 // Settings object
 const settings = ref({
@@ -601,10 +519,9 @@ async function loadDatabaseSettings() {
       password: '********', // Always masked for security
     }
 
-    connectionTestResult.value = { success: true, message: 'Settings loaded from config' }
+    console.log('Database settings reloaded from config')
   } catch (error) {
     console.error('Failed to load database settings:', error)
-    connectionTestResult.value = { success: false, message: 'Failed to load settings from config' }
   }
 }
 
@@ -613,33 +530,13 @@ async function testApiConnection() {
   // Implementation would test the API connection
 }
 
-async function testDatabaseConnection() {
-  testingConnection.value = true
-  connectionTestResult.value = null
+// Database connection event handlers
+function handleDatabaseSuccess(result) {
+  console.log('Database connection successful:', result)
+}
 
-  try {
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/health/database`)
-    const result = await response.json()
-
-    if (result.success) {
-      connectionTestResult.value = {
-        success: true,
-        message: `Connected to PostgreSQL database '${settings.value.database.name}' on ${settings.value.database.host}:${settings.value.database.port}`
-      }
-    } else {
-      connectionTestResult.value = {
-        success: false,
-        message: result.error || 'Database connection failed'
-      }
-    }
-  } catch (error) {
-    connectionTestResult.value = {
-      success: false,
-      message: `Connection test failed: ${error.message}`
-    }
-  } finally {
-    testingConnection.value = false
-  }
+function handleDatabaseError(error) {
+  console.error('Database connection failed:', error)
 }
 
 // Lifecycle
