@@ -111,45 +111,148 @@ class MinimalInstaller:
             print("Python 3.11 or higher required")
             return False
 
-        print(f"✓ Python {self.python_version[0]}.{self.python_version[1]} detected")
+        print(f"[OK] Python {self.python_version[0]}.{self.python_version[1]} detected")
         return True
 
     def detect_postgresql(self) -> bool:
         """
-        Detect PostgreSQL 18+.
+        Detect PostgreSQL 17+ using OS-appropriate methods.
 
         Returns:
             True if PostgreSQL detected, False otherwise
         """
-        try:
-            result = subprocess.run(["psql", "--version"], capture_output=True, text=True, check=True)
+        import os
+        import platform
+        from pathlib import Path
 
-            # Parse version from output (e.g., "psql (PostgreSQL) 18.0")
-            version_str = result.stdout.split()[2]
-            self.postgres_version = int(version_str.split(".")[0])
+        system = platform.system()
+        psql_paths = []
 
-            if self.postgres_version < 18:
-                print(f"WARNING: PostgreSQL {self.postgres_version} detected")
-                print("PostgreSQL 18 recommended")
-            else:
-                print(f"✓ PostgreSQL {self.postgres_version} detected")
+        # 1. Check if psql is in PATH (works on all platforms)
+        psql_paths.append("psql")
 
-            return True
+        # 2. Platform-specific detection
+        if system == "Windows":
+            # Check Windows Registry for PostgreSQL installations
+            try:
+                import winreg
 
-        except (subprocess.CalledProcessError, FileNotFoundError, IndexError, ValueError):
-            print("✗ PostgreSQL not found")
-            return False
+                # Check both 64-bit and 32-bit registry
+                registry_paths = [
+                    (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\PostgreSQL\Installations"),
+                    (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\PostgreSQL\Installations"),
+                ]
+
+                for hkey, subkey_path in registry_paths:
+                    try:
+                        with winreg.OpenKey(hkey, subkey_path) as key:
+                            i = 0
+                            while True:
+                                try:
+                                    install_name = winreg.EnumKey(key, i)
+                                    with winreg.OpenKey(key, install_name) as install_key:
+                                        base_dir, _ = winreg.QueryValueEx(install_key, "Base Directory")
+                                        psql_path = Path(base_dir) / "bin" / "psql.exe"
+                                        if psql_path.exists():
+                                            psql_paths.append(str(psql_path))
+                                    i += 1
+                                except OSError:
+                                    break
+                    except FileNotFoundError:
+                        continue
+            except ImportError:
+                pass  # winreg not available (not on Windows)
+
+            # Fallback: Check common installation directories on all drives
+            for drive in ["C:", "D:", "E:", "F:", "G:"]:
+                # Standard EDB installer locations
+                for version in range(20, 14, -1):  # Check versions 20 down to 15
+                    path = Path(f"{drive}\\Program Files\\PostgreSQL\\{version}\\bin\\psql.exe")
+                    if path.exists():
+                        psql_paths.append(str(path))
+
+                # Custom installation at root
+                path = Path(f"{drive}\\PostgreSQL\\bin\\psql.exe")
+                if path.exists():
+                    psql_paths.append(str(path))
+
+        elif system == "Linux":
+            # Check common Linux PostgreSQL locations
+            linux_paths = [
+                "/usr/bin/psql",
+                "/usr/local/bin/psql",
+                "/usr/pgsql-17/bin/psql",
+                "/usr/pgsql-18/bin/psql",
+                "/opt/postgresql/bin/psql",
+            ]
+            psql_paths.extend([p for p in linux_paths if Path(p).exists()])
+
+        elif system == "Darwin":  # macOS
+            # Check common macOS PostgreSQL locations
+            macos_paths = [
+                "/usr/local/bin/psql",
+                "/opt/homebrew/bin/psql",
+                "/Library/PostgreSQL/17/bin/psql",
+                "/Library/PostgreSQL/18/bin/psql",
+                "/Applications/Postgres.app/Contents/Versions/latest/bin/psql",
+            ]
+            psql_paths.extend([p for p in macos_paths if Path(p).exists()])
+
+        # 3. Try each discovered path
+        for psql_path in psql_paths:
+            try:
+                result = subprocess.run(
+                    [str(psql_path), "--version"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=5
+                )
+
+                # Parse version from output (e.g., "psql (PostgreSQL) 17.5")
+                version_str = result.stdout.split()[2]
+                self.postgres_version = int(version_str.split(".")[0])
+
+                if self.postgres_version < 17:
+                    print(f"WARNING: PostgreSQL {self.postgres_version} detected")
+                    print("PostgreSQL 17+ required")
+                    return False
+                elif self.postgres_version < 18:
+                    print(f"[OK] PostgreSQL {self.postgres_version} detected (version {version_str})")
+                    print("  Note: PostgreSQL 18 is latest, but 17+ works fine")
+                else:
+                    print(f"[OK] PostgreSQL {self.postgres_version} detected (version {version_str})")
+
+                return True
+
+            except (subprocess.CalledProcessError, FileNotFoundError, IndexError, ValueError, subprocess.TimeoutExpired):
+                continue  # Try next path
+
+        # 4. Not found
+        print("[ERROR] PostgreSQL not found")
+        print(f"  Searched using {system} detection methods:")
+        if system == "Windows":
+            print("  - Windows Registry (SOFTWARE\\PostgreSQL\\Installations)")
+            print("  - Program Files\\PostgreSQL\\[version]\\bin")
+            print("  - Custom installations on C:, D:, E:, F:, G: drives")
+        elif system == "Linux":
+            print("  - /usr/bin, /usr/local/bin, /usr/pgsql-*/bin")
+        elif system == "Darwin":
+            print("  - Homebrew, Postgres.app, /Library/PostgreSQL")
+        print("  - System PATH")
+        return False
 
     def handle_missing_postgresql(self) -> None:
         """
         Open browser to PostgreSQL download page.
         """
         print()
-        print("PostgreSQL 18 is required but not installed.")
+        print("PostgreSQL 17+ is required but not installed.")
         print()
         print("Opening download page in browser...")
         print("After installing PostgreSQL, re-run this installer.")
         print()
+        print("NOTE: Install to F:\\PostgreSQL or add to system PATH")
 
         webbrowser.open("https://www.postgresql.org/download/")
         input("Press Enter after installing PostgreSQL...")
@@ -159,7 +262,7 @@ class MinimalInstaller:
         Create Python virtual environment.
         """
         subprocess.run([sys.executable, "-m", "venv", str(self.venv_dir)], check=True)
-        print(f"✓ Virtual environment created at {self.venv_dir}")
+        print(f"[OK] Virtual environment created at {self.venv_dir}")
 
     def install_dependencies(self) -> None:
         """
@@ -169,7 +272,7 @@ class MinimalInstaller:
         requirements = self.install_dir / "requirements.txt"
 
         subprocess.run([str(pip_exe), "install", "-r", str(requirements)], check=True)
-        print("✓ Dependencies installed")
+        print("[OK] Dependencies installed")
 
     def create_minimal_config(self) -> None:
         """
@@ -192,7 +295,7 @@ class MinimalInstaller:
         with open(self.config_path, "w") as f:
             yaml.dump(config, f, default_flow_style=False)
 
-        print(f"✓ Configuration created at {self.config_path}")
+        print(f"[OK] Configuration created at {self.config_path}")
 
     def start_backend(self) -> None:
         """
@@ -207,7 +310,7 @@ class MinimalInstaller:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        print("✓ Backend started on http://localhost:7272")
+        print("[OK] Backend started on http://localhost:7272")
 
     def open_setup_wizard(self) -> None:
         """
