@@ -1,13 +1,781 @@
 # GiljoAI MCP Implementation Plan
 **Created**: October 5, 2025
+**Updated**: October 5, 2025 (Added Phase 0: Frontend Setup Wizard)
 **Target**: Localhost Beta Ready
-**Timeline**: 2 Weeks (10 working days)
+**Timeline**: 2.5 Weeks (12 working days)
+
+---
+
+## 🆕 PRIORITY ADDITION: Phase 0 - Frontend Setup Wizard
+
+**Status**: NEW - Top Priority
+**Timeline**: 2 days (Added Oct 5, 2025)
+**Why Now**: Critical dependency - must complete BEFORE Phase 1 agent profiles
+
+### Problem Statement
+
+The current CLI-based installer attempts to register MCP servers with AI tools (Claude Code, Cline, etc.) but faces fundamental limitations:
+
+1. **User-Specific Configuration**: `~/.claude.json` is in user home directory, installer may run as different user
+2. **Tool Detection Impossible**: Can't reliably detect which AI tools are installed at CLI level
+3. **Timing Issues**: User may install AI tools AFTER running our installer
+4. **Multi-Tool Support**: Each tool has different config format/location
+5. **Validation Impossible**: CLI can't test if MCP connection actually works
+6. **Permission Issues**: Writing to user config files from installer raises security concerns
+
+### Strategic Decision
+
+**Move MCP registration from CLI installer → Frontend Setup Wizard**
+
+**Rationale**:
+- Frontend runs in user context (knows correct home directory)
+- Can detect installed tools via JavaScript/filesystem access
+- Can provide interactive guidance with real-time validation
+- Can test MCP connection immediately after registration
+- Supports all deployment modes (localhost/LAN/WAN) without code changes
+- Future-proofs for SaaS offering
+
+### Scope: Frontend Setup Wizard
+
+Create a post-installation setup wizard that runs on first launch:
+
+```
+http://localhost:7274/setup
+```
+
+**User Flow**:
+```
+┌─────────────────────────────────────────┐
+│  Step 1: Welcome                        │
+│  - Deployment mode selection            │
+│    ○ Localhost (single user)            │
+│    ○ LAN (team, local network)          │
+│    ○ WAN (internet, remote)             │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│  Step 2: Admin Account (if multi-user)  │
+│  - Username                             │
+│  - Password                             │
+│  - Email (optional)                     │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│  Step 3: AI Tool Integration            │
+│  - Auto-detect installed tools          │
+│    ✓ Claude Code detected               │
+│    ✓ Cline detected                     │
+│    ○ Cursor not found                   │
+│                                         │
+│  - Select tool(s) to configure          │
+│  - Show config preview                  │
+│  - One-click registration               │
+│  - Test connection                      │
+│    ✓ giljo-mcp connected!               │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│  Step 4: Verification & Complete        │
+│  ✓ Database: Connected                  │
+│  ✓ MCP Server: Healthy                  │
+│  ✓ Claude Code: Connected               │
+│  ✓ WebSocket: Active                    │
+│                                         │
+│  [🚀 Start Using GiljoAI]               │
+└─────────────────────────────────────────┘
+```
+
+---
+
+### Implementation Tasks
+
+#### Task 0.1: Setup Wizard Routes & Views
+**Priority**: 🔴 CRITICAL
+**Estimated Time**: 3 hours
+
+Create frontend setup wizard infrastructure:
+
+**Files to Create**:
+```
+frontend/src/views/Setup/
+├── SetupWizard.vue         # Main wizard container
+├── WelcomeStep.vue          # Step 1: Deployment mode
+├── AdminAccountStep.vue     # Step 2: Admin setup
+├── ToolIntegrationStep.vue  # Step 3: AI tool config
+└── VerificationStep.vue     # Step 4: Test & complete
+```
+
+**Router Configuration** (`frontend/src/router/index.js`):
+```javascript
+{
+  path: '/setup',
+  component: () => import('@/views/Setup/SetupWizard.vue'),
+  meta: { requiresSetup: true }
+}
+```
+
+**Deliverables**:
+- 5 Vue component files created
+- Router configuration
+- Step navigation logic
+- Progress indicator
+
+---
+
+#### Task 0.2: AI Tool Detection API
+**Priority**: 🔴 CRITICAL
+**Estimated Time**: 4 hours
+
+Create backend API endpoints for tool detection and registration:
+
+**File**: `api/endpoints/setup.py`
+
+```python
+"""
+Setup wizard API endpoints.
+
+Handles:
+- AI tool detection (Claude Code, Cline, Cursor)
+- MCP configuration generation
+- Config file writing with user permission
+- Connection testing
+"""
+
+from pathlib import Path
+import platform
+import json
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/setup", tags=["setup"])
+
+
+class ToolDetectionResult(BaseModel):
+    tool_name: str
+    installed: bool
+    version: Optional[str]
+    config_path: Optional[Path]
+
+
+@router.get("/detect-tools")
+async def detect_ai_tools() -> List[ToolDetectionResult]:
+    """
+    Detect installed AI coding tools.
+
+    Checks for:
+    - Claude Code (~/.claude.json)
+    - Cline (VS Code extension)
+    - Cursor (Cursor IDE)
+
+    Returns:
+        List of detected tools with installation status
+    """
+    tools = []
+
+    # Detect Claude Code
+    claude_config = Path.home() / ".claude.json"
+    tools.append({
+        "tool_name": "Claude Code",
+        "installed": claude_config.exists(),
+        "version": get_claude_version() if claude_config.exists() else None,
+        "config_path": str(claude_config) if claude_config.exists() else None
+    })
+
+    # Detect Cline
+    cline_detected = check_vscode_extension("saoudrizwan.claude-dev")
+    tools.append({
+        "tool_name": "Cline",
+        "installed": cline_detected,
+        "version": get_cline_version() if cline_detected else None,
+        "config_path": get_cline_config_path() if cline_detected else None
+    })
+
+    # Detect Cursor
+    cursor_detected = check_cursor_installation()
+    tools.append({
+        "tool_name": "Cursor",
+        "installed": cursor_detected,
+        "version": None,
+        "config_path": get_cursor_config_path() if cursor_detected else None
+    })
+
+    return tools
+
+
+@router.post("/generate-mcp-config")
+async def generate_mcp_config(tool: str, mode: str) -> dict:
+    """
+    Generate MCP configuration for selected tool.
+
+    Args:
+        tool: AI tool name ("Claude Code", "Cline", "Cursor")
+        mode: Deployment mode ("localhost", "lan", "wan")
+
+    Returns:
+        Tool-specific MCP configuration JSON
+    """
+    config = get_config()
+
+    if tool == "Claude Code":
+        return generate_claude_code_config(config, mode)
+    elif tool == "Cline":
+        return generate_cline_config(config, mode)
+    elif tool == "Cursor":
+        return generate_cursor_config(config, mode)
+    else:
+        raise HTTPException(400, f"Unknown tool: {tool}")
+
+
+@router.post("/register-mcp")
+async def register_mcp(tool: str, config: dict) -> dict:
+    """
+    Register MCP server with AI tool.
+
+    Writes config to tool-specific location.
+    Requires user permission (frontend confirms).
+
+    Args:
+        tool: Tool name
+        config: MCP configuration to write
+
+    Returns:
+        {
+            "success": true,
+            "config_path": "~/.claude.json",
+            "backup_path": "~/.claude.json.backup_20251005"
+        }
+    """
+    if tool == "Claude Code":
+        return write_claude_config(config)
+    elif tool == "Cline":
+        return write_cline_config(config)
+    elif tool == "Cursor":
+        return write_cursor_config(config)
+
+
+@router.post("/test-mcp-connection")
+async def test_mcp_connection(tool: str) -> dict:
+    """
+    Test MCP connection for given tool.
+
+    Attempts to:
+    1. Read tool's config
+    2. Verify giljo-mcp is registered
+    3. Simulate MCP tool call
+    4. Verify response
+
+    Returns:
+        {
+            "success": true,
+            "status": "connected",
+            "message": "giljo-mcp is responding correctly"
+        }
+    """
+    # Implementation depends on tool
+    # For Claude Code: Check if config exists and valid
+    # For Cline: Test via VS Code API
+    # For Cursor: Test via Cursor API
+    pass
+
+
+def generate_claude_code_config(config: Config, mode: str) -> dict:
+    """
+    Generate Claude Code .claude.json MCP config.
+
+    Args:
+        config: Current GiljoAI config
+        mode: Deployment mode
+
+    Returns:
+        MCP configuration object
+    """
+    venv_python = str(Path(config.paths.install_dir) / "venv" / "Scripts" / "python.exe")
+
+    # Base config
+    mcp_config = {
+        "command": venv_python,
+        "args": ["-m", "giljo_mcp"],
+        "env": {}
+    }
+
+    # Mode-specific environment
+    if mode == "localhost":
+        mcp_config["env"]["GILJO_API_URL"] = f"http://localhost:{config.services.api.port}"
+    elif mode == "lan":
+        lan_ip = get_lan_ip()
+        mcp_config["env"]["GILJO_API_URL"] = f"http://{lan_ip}:{config.services.api.port}"
+        mcp_config["env"]["GILJO_API_KEY"] = config.security.api_key
+    elif mode == "wan":
+        mcp_config["env"]["GILJO_API_URL"] = config.services.api.public_url
+        mcp_config["env"]["GILJO_API_KEY"] = config.security.api_key
+
+    return {
+        "mcpServers": {
+            "giljo-mcp": mcp_config
+        }
+    }
+
+
+def write_claude_config(config: dict) -> dict:
+    """
+    Write Claude Code configuration.
+
+    Creates backup of existing config.
+    Merges with existing mcpServers if present.
+
+    Returns:
+        Success status with paths
+    """
+    config_path = Path.home() / ".claude.json"
+
+    # Backup existing
+    if config_path.exists():
+        backup_path = config_path.with_suffix(f".json.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        shutil.copy(config_path, backup_path)
+
+        # Load and merge
+        with open(config_path) as f:
+            existing = json.load(f)
+
+        # Merge mcpServers
+        if "mcpServers" not in existing:
+            existing["mcpServers"] = {}
+
+        existing["mcpServers"].update(config["mcpServers"])
+        final_config = existing
+    else:
+        final_config = config
+        backup_path = None
+
+    # Write updated config
+    with open(config_path, "w") as f:
+        json.dump(final_config, f, indent=2)
+
+    return {
+        "success": True,
+        "config_path": str(config_path),
+        "backup_path": str(backup_path) if backup_path else None
+    }
+```
+
+**Deliverables**:
+- Tool detection logic
+- Config generation for 3 tools
+- Config writing with backup
+- Connection testing
+
+---
+
+#### Task 0.3: Frontend Wizard Components
+**Priority**: 🔴 CRITICAL
+**Estimated Time**: 5 hours
+
+**WelcomeStep.vue**:
+```vue
+<template>
+  <v-card>
+    <v-card-title>Welcome to GiljoAI MCP</v-card-title>
+    <v-card-text>
+      <p class="text-h6 mb-4">How will you deploy GiljoAI?</p>
+
+      <v-radio-group v-model="deploymentMode">
+        <v-radio value="localhost" label="Localhost">
+          <template v-slot:label>
+            <div>
+              <div class="font-weight-bold">Localhost</div>
+              <div class="text-caption">Single user, this PC only</div>
+            </div>
+          </template>
+        </v-radio>
+
+        <v-radio value="lan" label="LAN">
+          <template v-slot:label>
+            <div>
+              <div class="font-weight-bold">LAN</div>
+              <div class="text-caption">Team access, local network</div>
+            </div>
+          </template>
+        </v-radio>
+
+        <v-radio value="wan" label="WAN">
+          <template v-slot:label>
+            <div>
+              <div class="font-weight-bold">WAN</div>
+              <div class="text-caption">Internet access, remote teams</div>
+            </div>
+          </template>
+        </v-radio>
+      </v-radio-group>
+    </v-card-text>
+
+    <v-card-actions>
+      <v-spacer />
+      <v-btn color="primary" @click="$emit('next', deploymentMode)">
+        Continue
+      </v-btn>
+    </v-card-actions>
+  </v-card>
+</template>
+```
+
+**ToolIntegrationStep.vue** (most complex):
+```vue
+<template>
+  <v-card>
+    <v-card-title>Configure AI Tool Integration</v-card-title>
+
+    <v-card-text>
+      <!-- Tool Detection -->
+      <v-alert v-if="detecting" type="info">
+        Detecting installed AI tools...
+      </v-alert>
+
+      <v-list v-else>
+        <v-list-item
+          v-for="tool in detectedTools"
+          :key="tool.tool_name"
+          :class="{ 'bg-grey-lighten-4': !tool.installed }"
+        >
+          <template v-slot:prepend>
+            <v-icon
+              :color="tool.installed ? 'success' : 'grey'"
+              :icon="tool.installed ? 'mdi-check-circle' : 'mdi-close-circle'"
+            />
+          </template>
+
+          <v-list-item-title>{{ tool.tool_name }}</v-list-item-title>
+          <v-list-item-subtitle>
+            {{ tool.installed ? `Version: ${tool.version}` : 'Not installed' }}
+          </v-list-item-subtitle>
+
+          <template v-slot:append>
+            <v-btn
+              v-if="tool.installed"
+              color="primary"
+              :loading="configuringTool === tool.tool_name"
+              @click="configureTool(tool)"
+            >
+              Configure
+            </v-btn>
+          </template>
+        </v-list-item>
+      </v-list>
+
+      <!-- Configuration Preview -->
+      <v-dialog v-model="showConfigPreview" max-width="800">
+        <v-card>
+          <v-card-title>Configuration Preview: {{ selectedTool?.tool_name }}</v-card-title>
+
+          <v-card-text>
+            <v-alert type="info" class="mb-4">
+              This configuration will be written to:
+              <code>{{ selectedTool?.config_path }}</code>
+            </v-alert>
+
+            <v-textarea
+              :model-value="JSON.stringify(generatedConfig, null, 2)"
+              readonly
+              rows="15"
+              variant="outlined"
+              class="monospace-font"
+            />
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer />
+            <v-btn @click="showConfigPreview = false">Cancel</v-btn>
+            <v-btn color="primary" @click="applyConfig" :loading="applying">
+              Apply Configuration
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Connection Test Result -->
+      <v-alert
+        v-if="testResult"
+        :type="testResult.success ? 'success' : 'error'"
+        class="mt-4"
+      >
+        {{ testResult.message }}
+      </v-alert>
+    </v-card-text>
+
+    <v-card-actions>
+      <v-btn @click="$emit('back')">Back</v-btn>
+      <v-spacer />
+      <v-btn
+        color="primary"
+        @click="$emit('next')"
+        :disabled="!hasConfiguredTools"
+      >
+        Continue
+      </v-btn>
+    </v-card-actions>
+  </v-card>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      detecting: true,
+      detectedTools: [],
+      configuringTool: null,
+      showConfigPreview: false,
+      selectedTool: null,
+      generatedConfig: null,
+      applying: false,
+      testResult: null,
+      configuredTools: new Set()
+    }
+  },
+
+  async mounted() {
+    await this.detectTools()
+  },
+
+  computed: {
+    hasConfiguredTools() {
+      return this.configuredTools.size > 0
+    }
+  },
+
+  methods: {
+    async detectTools() {
+      this.detecting = true
+      try {
+        const response = await fetch('/api/setup/detect-tools')
+        this.detectedTools = await response.json()
+      } catch (error) {
+        this.$toast.error('Failed to detect AI tools')
+      } finally {
+        this.detecting = false
+      }
+    },
+
+    async configureTool(tool) {
+      this.configuringTool = tool.tool_name
+      this.selectedTool = tool
+
+      try {
+        // Generate config
+        const response = await fetch('/api/setup/generate-mcp-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tool: tool.tool_name,
+            mode: this.deploymentMode
+          })
+        })
+
+        this.generatedConfig = await response.json()
+        this.showConfigPreview = true
+
+      } catch (error) {
+        this.$toast.error(`Failed to generate config: ${error.message}`)
+      } finally {
+        this.configuringTool = null
+      }
+    },
+
+    async applyConfig() {
+      this.applying = true
+
+      try {
+        // Write config
+        const writeResponse = await fetch('/api/setup/register-mcp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tool: this.selectedTool.tool_name,
+            config: this.generatedConfig
+          })
+        })
+
+        const writeResult = await writeResponse.json()
+
+        if (!writeResult.success) {
+          throw new Error('Configuration write failed')
+        }
+
+        // Test connection
+        const testResponse = await fetch('/api/setup/test-mcp-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tool: this.selectedTool.tool_name
+          })
+        })
+
+        this.testResult = await testResponse.json()
+
+        if (this.testResult.success) {
+          this.configuredTools.add(this.selectedTool.tool_name)
+          this.$toast.success(`${this.selectedTool.tool_name} configured successfully!`)
+          this.showConfigPreview = false
+        }
+
+      } catch (error) {
+        this.testResult = {
+          success: false,
+          message: `Configuration failed: ${error.message}`
+        }
+      } finally {
+        this.applying = false
+      }
+    }
+  }
+}
+</script>
+```
+
+**Deliverables**:
+- 4 wizard step components
+- Tool detection UI
+- Config preview dialog
+- Connection testing feedback
+
+---
+
+#### Task 0.4: CLI Installer Updates
+**Priority**: 🟡 HIGH
+**Estimated Time**: 2 hours
+
+Update CLI installer to:
+1. **Remove** MCP registration code
+2. **Add** setup wizard redirect
+3. **Display** setup URL at end
+
+**File**: `installer/core/installer.py`
+
+```python
+def complete_installation(self):
+    """Complete installation and show next steps."""
+
+    # ... existing completion logic ...
+
+    print("\n" + "="*60)
+    print("✓ Installation Complete!")
+    print("="*60)
+    print()
+    print("Next Step: Complete setup in your browser")
+    print()
+    print(f"  → Open: http://localhost:{self.config.services.frontend.port}/setup")
+    print()
+    print("You'll configure:")
+    print("  • Deployment mode (localhost/LAN/WAN)")
+    print("  • Admin account (if multi-user)")
+    print("  • AI tool integration (Claude Code, Cline, etc.)")
+    print()
+    print("Starting backend server...")
+
+    # Start backend
+    self.start_backend()
+
+    print()
+    print(f"Backend running on port {self.config.services.api.port}")
+    print(f"Opening setup wizard in browser...")
+    print()
+
+    # Open browser
+    import webbrowser
+    webbrowser.open(f"http://localhost:{self.config.services.frontend.port}/setup")
+```
+
+**Remove from installer**:
+- `installer/claude_adapter.py` - Delete or deprecate
+- `installer/cline_adapter.py` - Delete or deprecate
+- `installer/mcp_adapter_base.py` - Delete or deprecate
+
+**Deliverables**:
+- Installer completion updated
+- MCP adapter code removed
+- Browser auto-opens to setup wizard
+
+---
+
+### Testing Plan
+
+**Manual Testing Checklist**:
+```
+□ Fresh install on clean system
+□ Setup wizard opens automatically
+□ Can select deployment mode
+□ Tool detection works for installed tools
+□ Config generation shows preview
+□ Config writing creates backup
+□ Connection test validates MCP
+□ Can configure multiple tools
+□ Wizard completion redirects to dashboard
+□ Backend remains running throughout
+```
+
+**Automated Tests**:
+```python
+# tests/integration/test_setup_wizard.py
+
+def test_tool_detection():
+    """Test AI tool detection endpoint."""
+    response = client.get("/api/setup/detect-tools")
+    assert response.status_code == 200
+    tools = response.json()
+    assert len(tools) >= 3  # Claude Code, Cline, Cursor
+
+
+def test_config_generation():
+    """Test MCP config generation."""
+    response = client.post("/api/setup/generate-mcp-config", json={
+        "tool": "Claude Code",
+        "mode": "localhost"
+    })
+    assert response.status_code == 200
+    config = response.json()
+    assert "mcpServers" in config
+    assert "giljo-mcp" in config["mcpServers"]
+    assert config["mcpServers"]["giljo-mcp"]["command"]
+    assert config["mcpServers"]["giljo-mcp"]["args"]
+```
+
+---
+
+### Success Criteria
+
+Phase 0 is complete when:
+
+```
+✅ Setup wizard accessible at /setup
+✅ Detects Claude Code if installed
+✅ Generates valid MCP configuration
+✅ Writes config with backup
+✅ Tests MCP connection successfully
+✅ Supports localhost/LAN/WAN modes
+✅ CLI installer removed MCP code
+✅ Installer auto-opens wizard
+✅ All integration tests pass
+✅ Documentation updated
+```
+
+---
+
+### Timeline Impact
+
+**Original Plan**: 10 days (2 weeks)
+**Updated Plan**: 12 days (2.5 weeks)
+
+**Phase 0** (NEW): Days 1-2
+**Phase 1**: Days 3-6 (was Days 1-4)
+**Phase 2**: Days 7-12 (was Days 5-10)
 
 ---
 
 ## Executive Summary
 
-Based on comprehensive analysis of recent documentation (Oct 3-5), the GiljoAI MCP project has a **solid foundation** with 80% of core functionality complete. The critical 20% needed for a working localhost beta focuses on **Claude Code sub-agent integration**.
+Based on comprehensive analysis of recent documentation (Oct 3-5), the GiljoAI MCP project has a **solid foundation** with 80% of core functionality complete. The critical path to a working localhost beta now includes:
+
+1. **Phase 0** (NEW): Frontend Setup Wizard - 2 days
+2. **Phase 1**: Claude Code sub-agent integration - 4 days
+3. **Phase 2**: Dashboard & testing - 6 days
 
 ### Current State ✅
 - ✅ Localhost installation working
