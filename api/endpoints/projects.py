@@ -19,6 +19,7 @@ class ProjectCreate(BaseModel):
     name: str = Field(..., description="Project name")
     mission: str = Field(..., description="Project mission statement")
     agents: Optional[list[str]] = Field(None, description="Initial agent list")
+    product_id: Optional[str] = Field(None, description="Product ID to associate with")
 
 
 class ProjectUpdate(BaseModel):
@@ -32,6 +33,7 @@ class ProjectResponse(BaseModel):
     name: str
     mission: str
     status: str
+    product_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     context_budget: int
@@ -55,7 +57,7 @@ async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_t
 
         # Use the tool accessor
         result = await state.tool_accessor.create_project(
-            name=project.name, mission=project.mission, agents=project.agents
+            name=project.name, mission=project.mission, agents=project.agents, product_id=project.product_id
         )
 
         if not result.get("success"):
@@ -66,6 +68,7 @@ async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_t
             name=project.name,
             mission=project.mission,
             status="active",
+            product_id=project.product_id,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             context_budget=150000,
@@ -121,6 +124,7 @@ async def list_projects(
                     name=proj["name"],
                     mission=proj["mission"],
                     status=proj["status"],
+                    product_id=proj.get("product_id"),
                     created_at=datetime.fromisoformat(proj["created_at"]),
                     updated_at=datetime.fromisoformat(proj.get("updated_at", proj["created_at"])),
                     context_budget=proj.get("context_budget", 150000),
@@ -156,6 +160,7 @@ async def get_project(project_id: str):
             name=proj["name"],
             mission=proj["mission"],
             status=proj["status"],
+            product_id=proj.get("product_id"),
             created_at=datetime.fromisoformat(proj["created_at"]),
             updated_at=datetime.fromisoformat(proj.get("updated_at", proj["created_at"])),
             context_budget=proj.get("context_budget", 150000),

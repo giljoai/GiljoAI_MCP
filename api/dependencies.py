@@ -40,7 +40,7 @@ async def get_tenant_key(request: Request) -> str:
     return default_tenant
 
 
-def get_db() -> Session:
+def get_db():
     """
     Get database session dependency.
     Creates a new database session for the request and ensures it's closed after use.
@@ -50,9 +50,10 @@ def get_db() -> Session:
     if not state.db_manager:
         raise RuntimeError("Database manager not initialized")
 
-    # Get a synchronous session for the request
-    db = state.db_manager.get_session()
+    # Get a synchronous session context manager
+    session_ctx = state.db_manager.get_session()
+    db = session_ctx.__enter__()
     try:
         yield db
     finally:
-        db.close()
+        session_ctx.__exit__(None, None, None)

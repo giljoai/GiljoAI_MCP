@@ -1,5 +1,5 @@
 <template>
-  <v-menu v-model="menu" :close-on-content-click="false" location="bottom" min-width="300">
+  <v-menu v-model="menu" :close-on-content-click="false" location="bottom" min-width="370" max-width="500">
     <template v-slot:activator="{ props }">
       <v-btn
         v-bind="props"
@@ -15,7 +15,7 @@
       </v-btn>
     </template>
 
-    <v-card min-width="350">
+    <v-card min-width="370" max-width="500" class="product-switcher-card">
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-package-variant</v-icon>
         Product Context
@@ -29,32 +29,42 @@
 
       <!-- Current Product Info -->
       <v-card-text v-if="productStore.currentProduct" class="pb-2">
-        <div class="text-caption text-medium-emphasis mb-1">Current Product</div>
+        <div class="d-flex align-center justify-space-between mb-1">
+          <div class="text-caption text-medium-emphasis">Current Product</div>
+          <v-btn icon size="x-small" variant="text" @click="editCurrentProduct" color="#FFD93D">
+            <v-icon size="18">mdi-pencil</v-icon>
+          </v-btn>
+        </div>
         <div class="d-flex align-center">
           <v-avatar color="primary" size="32" class="mr-3">
             <span class="text-h6">{{ productInitial }}</span>
           </v-avatar>
-          <div>
+          <div class="flex-grow-1">
             <div class="font-weight-medium">{{ productStore.currentProduct.name }}</div>
-            <div class="text-caption text-medium-emphasis">
-              ID: {{ productStore.currentProductId?.slice(0, 8) }}...
+            <div class="text-caption text-medium-emphasis" :title="productStore.currentProductId">
+              ID: {{ productStore.currentProductId }}
             </div>
           </div>
         </div>
 
         <!-- Product Metrics -->
-        <v-row v-if="productStore.currentProductMetrics" class="mt-2" dense>
-          <v-col cols="6">
-            <div class="text-caption text-medium-emphasis">Tasks</div>
+        <v-row v-if="productStore.currentProduct" class="mt-2" dense>
+          <v-col cols="4">
+            <div class="text-caption text-medium-emphasis">Projects</div>
             <div class="font-weight-medium">
-              {{ productStore.currentProductMetrics.completedTasks }} /
-              {{ productStore.currentProductMetrics.totalTasks }}
+              {{ productStore.currentProduct.project_count || 0 }}
             </div>
           </v-col>
-          <v-col cols="6">
+          <v-col cols="4">
+            <div class="text-caption text-medium-emphasis">Tasks</div>
+            <div class="font-weight-medium">
+              {{ productStore.currentProduct.task_count || 0 }}
+            </div>
+          </v-col>
+          <v-col cols="4">
             <div class="text-caption text-medium-emphasis">Active Agents</div>
             <div class="font-weight-medium">
-              {{ productStore.currentProductMetrics.activeAgents }}
+              {{ productStore.currentProductMetrics?.activeAgents || 0 }}
             </div>
           </v-col>
         </v-row>
@@ -65,34 +75,45 @@
       <!-- Product List -->
       <v-card-text class="pa-2">
         <div class="text-caption text-medium-emphasis mb-2 px-2">
-          Available Products ({{ productStore.productCount }})
+          Other Products ({{ otherProductsCount }})
         </div>
 
-        <v-list density="compact" class="py-0">
+        <v-list density="compact" class="py-0 product-list">
           <v-list-item
-            v-for="product in productStore.products"
+            v-for="product in otherProducts"
             :key="product.id"
-            :active="product.id === productStore.currentProductId"
             @click="selectProduct(product.id)"
             :prepend-avatar="null"
             rounded
+            class="product-list-item"
           >
             <template v-slot:prepend>
-              <v-avatar
-                size="28"
-                :color="product.id === productStore.currentProductId ? 'primary' : 'grey-lighten-2'"
-              >
+              <v-avatar size="28" color="grey-lighten-2">
                 <span class="text-caption">{{ getProductInitial(product) }}</span>
               </v-avatar>
             </template>
 
             <v-list-item-title>{{ product.name }}</v-list-item-title>
             <v-list-item-subtitle>
-              {{ product.description || 'No description' }}
+              <div class="d-flex align-center gap-2 text-caption">
+                <span>{{ product.task_count || 0 }} tasks</span>
+                <span class="metric-separator">•</span>
+                <span>{{ product.project_count || 0 }} projects</span>
+                <span class="metric-separator">•</span>
+                <span>{{ formatDate(product.created_at) }}</span>
+              </div>
             </v-list-item-subtitle>
 
-            <template v-slot:append v-if="product.id === productStore.currentProductId">
-              <v-icon color="primary" size="small">mdi-check</v-icon>
+            <template v-slot:append>
+              <v-btn
+                icon
+                size="x-small"
+                variant="text"
+                @click.stop="confirmDeleteProduct(product)"
+                color="#FFD93D"
+              >
+                <v-icon size="18">mdi-delete</v-icon>
+              </v-btn>
             </template>
           </v-list-item>
 
@@ -109,7 +130,7 @@
 
       <!-- Actions -->
       <v-card-actions>
-        <v-btn variant="text" size="small" prepend-icon="mdi-plus" @click="showCreateDialog = true">
+        <v-btn variant="text" size="small" prepend-icon="mdi-plus" @click="showCreateDialog = true" color="#FFD93D">
           New Product
         </v-btn>
         <v-spacer></v-spacer>
@@ -119,6 +140,7 @@
           prepend-icon="mdi-refresh"
           @click="refreshProducts"
           :loading="refreshing"
+          color="#FFD93D"
         >
           Refresh
         </v-btn>
@@ -232,18 +254,95 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Edit Product Dialog -->
+  <v-dialog v-model="showEditDialog" max-width="500">
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        <v-icon start color="#FFD93D">mdi-pencil</v-icon>
+        Edit Product
+        <v-spacer></v-spacer>
+        <v-btn icon variant="text" size="small" @click="showEditDialog = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+
+      <v-divider></v-divider>
+
+      <v-card-text class="py-4">
+        <v-text-field
+          v-model="editProductData.name"
+          label="Product Name"
+          variant="outlined"
+          density="comfortable"
+          :rules="[(v) => !!v || 'Name is required']"
+        ></v-text-field>
+
+        <v-textarea
+          v-model="editProductData.description"
+          label="Description"
+          variant="outlined"
+          density="comfortable"
+          rows="8"
+          auto-grow
+        ></v-textarea>
+      </v-card-text>
+
+      <v-divider></v-divider>
+
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="showEditDialog = false">Cancel</v-btn>
+        <v-btn variant="text" color="#FFD93D" @click="saveProductEdit" :disabled="!editProductData.name">
+          Save Changes
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Delete Product Confirmation Dialog -->
+  <v-dialog v-model="showDeleteDialog" max-width="400">
+    <v-card>
+      <v-card-title class="d-flex align-center">
+        <v-icon start color="error">mdi-alert</v-icon>
+        Confirm Delete
+      </v-card-title>
+
+      <v-divider></v-divider>
+
+      <v-card-text class="py-4">
+        <p>Are you sure you want to delete <strong>{{ productToDelete?.name }}</strong>?</p>
+        <p class="text-caption text-medium-emphasis mt-2">
+          This will permanently delete the product and all associated data.
+        </p>
+      </v-card-text>
+
+      <v-divider></v-divider>
+
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="showDeleteDialog = false">Cancel</v-btn>
+        <v-btn variant="text" color="error" @click="deleteProduct">Delete</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useRouter } from 'vue-router'
+import api from '@/services/api'
+
+const productsApi = api.products
 
 const productStore = useProductStore()
 const router = useRouter()
 
 const menu = ref(false)
 const showCreateDialog = ref(false)
+const showEditDialog = ref(false)
+const showDeleteDialog = ref(false)
 const refreshing = ref(false)
 const creating = ref(false)
 const formValid = ref(false)
@@ -253,6 +352,13 @@ const newProduct = ref({
   description: '',
 })
 
+const editProductData = ref({
+  id: '',
+  name: '',
+  description: ''
+})
+
+const productToDelete = ref(null)
 const visionFile = ref(null)
 const isDragging = ref(false)
 
@@ -261,8 +367,22 @@ const productInitial = computed(() => {
   return productStore.currentProduct.name.charAt(0).toUpperCase()
 })
 
+const otherProducts = computed(() => {
+  return productStore.products.filter(p => p.id !== productStore.currentProductId)
+})
+
+const otherProductsCount = computed(() => {
+  return otherProducts.value.length
+})
+
 function getProductInitial(product) {
   return product.name?.charAt(0).toUpperCase() || '?'
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 async function selectProduct(productId) {
@@ -283,6 +403,63 @@ async function refreshProducts() {
     await productStore.fetchProducts()
   } finally {
     refreshing.value = false
+  }
+}
+
+function editCurrentProduct() {
+  if (productStore.currentProduct) {
+    showEditDialog.value = true
+    editProductData.value = {
+      id: productStore.currentProduct.id,
+      name: productStore.currentProduct.name,
+      description: productStore.currentProduct.description || ''
+    }
+  }
+}
+
+function confirmDeleteProduct(product) {
+  productToDelete.value = product
+  showDeleteDialog.value = true
+}
+
+async function deleteProduct() {
+  if (!productToDelete.value) return
+
+  try {
+    await productsApi.delete(productToDelete.value.id)
+    await productStore.fetchProducts()
+
+    // If deleted current product, switch to first available
+    if (productToDelete.value.id === productStore.currentProductId && productStore.products.length > 0) {
+      await productStore.setCurrentProduct(productStore.products[0].id)
+      router.go(0)
+    }
+
+    showDeleteDialog.value = false
+    productToDelete.value = null
+  } catch (error) {
+    console.error('Failed to delete product:', error)
+  }
+}
+
+async function saveProductEdit() {
+  if (!editProductData.value.id || !editProductData.value.name) return
+
+  try {
+    await productsApi.update(editProductData.value.id, {
+      name: editProductData.value.name,
+      description: editProductData.value.description
+    })
+
+    await productStore.fetchProducts()
+    showEditDialog.value = false
+
+    // Refresh if editing current product
+    if (editProductData.value.id === productStore.currentProductId) {
+      router.go(0)
+    }
+  } catch (error) {
+    console.error('Failed to update product:', error)
   }
 }
 
@@ -389,6 +566,30 @@ onMounted(async () => {
 .product-switcher-btn {
   min-width: 120px;
   max-width: 300px;
+}
+
+.product-switcher-card {
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.product-list-item {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.product-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.metric-separator {
+  color: #FFFFFF;
+  opacity: 1;
+  font-size: 12px;
+  line-height: 1;
+  margin: 0 5px;
 }
 
 .vision-drop-zone {
