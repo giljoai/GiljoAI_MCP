@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 """
 GiljoAI MCP - Claude CLI Adapter
-Handles MCP registration for Claude Code CLI
+
+DEPRECATED: MCP registration moved to frontend setup wizard.
+
+This file is no longer used and will be removed in future versions.
+All MCP registration is now handled by the frontend setup wizard at /setup.
+
+See:
+- docs/IMPLEMENTATION_PLAN.md Phase 0
+- docs/architecture/installer_responsibilities.md
+- docs/guides/SETUP_WIZARD_GUIDE.md
+
+Migration Path:
+- CLI installer now only performs minimal setup
+- Use the web-based setup wizard at http://localhost:7274/setup
+- MCP registration happens in user context via wizard
 """
 
+import warnings
 import json
 import subprocess
 from pathlib import Path
@@ -12,8 +27,21 @@ from typing import Dict, List, Optional
 from installer.mcp_adapter_base import MCPAdapterBase
 
 
+# Issue deprecation warning when module is imported
+warnings.warn(
+    "ClaudeAdapter is deprecated. MCP registration is now handled by the "
+    "frontend setup wizard at /setup. This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
+
 class ClaudeAdapter(MCPAdapterBase):
-    """Adapter for Claude Code CLI MCP registration."""
+    """
+    Adapter for Claude Code CLI MCP registration.
+
+    DEPRECATED: Use the frontend setup wizard at /setup instead.
+    """
 
     @staticmethod
     def get_cli_name() -> str:
