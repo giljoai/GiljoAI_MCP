@@ -24,7 +24,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
     """Register project management tools with the MCP server"""
 
     @mcp.tool()
-    async def create_project(name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def create_project(name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         Create a new project with mission and optional agent sequence
 
@@ -33,14 +33,16 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             mission: Project mission statement
             agents: Optional list of agent names to initialize
             product_id: Optional product ID to associate the project with
+            tenant_key: Optional tenant key to use (generates new one if not provided)
 
         Returns:
             Project creation details including ID and tenant key
         """
         try:
             async with db_manager.get_session_async() as session:
-                # Generate unique tenant key
-                tenant_key = f"tk_{uuid4().hex}"
+                # Use provided tenant key or generate a new one
+                if not tenant_key:
+                    tenant_key = f"tk_{uuid4().hex}"
 
                 # Create project
                 project = Project(

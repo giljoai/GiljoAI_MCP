@@ -55,9 +55,9 @@ async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_t
         # Create project in database
         str(uuid.uuid4())
 
-        # Use the tool accessor
+        # Use the tool accessor, passing the tenant_key from the request header
         result = await state.tool_accessor.create_project(
-            name=project.name, mission=project.mission, agents=project.agents, product_id=project.product_id
+            name=project.name, mission=project.mission, agents=project.agents, product_id=project.product_id, tenant_key=tenant_key
         )
 
         if not result.get("success"):

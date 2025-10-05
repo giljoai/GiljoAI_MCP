@@ -1166,142 +1166,21 @@ Performance:
 
 ---
 
-## Phase 3: LAN/WAN Deployment
+## Phase 3: LAN/WAN Deployment (Future)
 
 ### Overview
 
-**Timeline**: 3-4 weeks (started Oct 5, 2025)
+**Status**: Documented but not implemented
+**Timeline**: 3-4 weeks (post-beta)
 
 **Key Documents**:
-- `docs/deployment/LAN_DEPLOYMENT_RUNBOOK.md` (34.6K)
-- `docs/deployment/LAN_QUICK_START.md` (12K)
 - `docs/deployment/LAN_DEPLOYMENT_GUIDE.md` (38K)
 - `docs/deployment/WAN_DEPLOYMENT_GUIDE.md` (33K)
 - `docs/deployment/LAN_UX_MISSION_PROMPT.md` (30K)
 - `docs/deployment/WAN_MISSION_PROMPT.md` (38K)
 
----
+### Phase 3.1: LAN UX Improvements (Week 3-4)
 
-### Phase 3.1: LAN Core Capability ✅ COMPLETE (95%)
-
-**Status**: Complete - Runtime validation pending
-**Completed**: October 5, 2025
-**Timeline**: 1 day (9 hours)
-**Production Readiness**: 95%
-
-#### Phase 1: Security Hardening ✅ COMPLETE
-
-**Commit**: \`8732935\` - feat: LAN Security Hardening - Phase 1 Complete (7 Critical Fixes)
-**Agent**: Network Security Engineer Agent
-**Duration**: 3 hours
-
-**Implemented Security Fixes**:
-- [x] Host Binding Configuration (mode-aware: 127.0.0.1 vs 0.0.0.0)
-- [x] Rate Limiting Middleware (60 req/min per IP)
-- [x] CORS Hardening (explicit whitelist, removed wildcards)
-- [x] API Key Authentication (mode-based enforcement)
-- [x] Security Headers Middleware (X-Frame-Options, CSP, etc.)
-- [x] Tenant Fallback Security (mode-aware validation)
-- [x] API Key Encryption at Rest (Fernet/AES-128)
-
-**Code Changes**: 274 lines added across 6 files
-
-**Documentation**:
-- [x] \`docs/deployment/SECURITY_FIXES_REPORT.md\` (13.9 KB)
-
----
-
-#### Phase 2: Network Configuration ✅ COMPLETE
-
-**Commit**: \`f160013\` - feat: Configure LAN network deployment for GiljoAI MCP server
-**Agent**: Network Configuration Specialist Agent
-**Duration**: 2 hours
-
-**Implemented Configuration**:
-- [x] config.yaml network section (LAN IP: 10.1.0.118, subnet: 10.1.0.0/24)
-- [x] API host binding to 0.0.0.0 (server mode)
-- [x] Windows Firewall rules (ports 7272, 7274)
-- [x] Frontend .env.production (LAN API URL)
-- [x] PostgreSQL localhost-only isolation (127.0.0.1)
-- [x] CORS origins configured for LAN
-
-**Documentation**:
-- [x] \`docs/deployment/NETWORK_DEPLOYMENT_CHECKLIST.md\` (5.0 KB)
-- [x] \`docs/deployment/LAN_ACCESS_URLS.md\` (6.3 KB)
-
----
-
-#### Phase 3: Testing & Validation ✅ COMPLETE (95%)
-
-**Agent**: Backend Integration Tester Agent
-**Duration**: 2 hours
-
-**Test Results**:
-- [x] Configuration Tests: 19/19 passed (100%)
-- [x] Security Tests: 3/3 passed (100%)
-- [x] Firewall Tests: 3/3 passed (100%)
-- [x] Documentation Tests: 3/3 passed (100%)
-- [x] Git Security Tests: 2/2 passed (100%)
-- [x] Database Tests: 1/1 passed (100%)
-- [x] Frontend Tests: 1/1 passed (100%)
-- [ ] Service-Dependent Tests: 0/2 pending (runtime validation)
-
-**Findings**:
-- Zero security issues detected
-- Zero misconfigurations found
-- All configuration validated successfully
-
-**Documentation**:
-- [x] \`docs/deployment/LAN_TEST_REPORT.md\` (13.0 KB)
-- [x] \`docs/deployment/LAN_TESTING_PROGRESS.md\` (10.8 KB)
-- [x] \`docs/deployment/PHASE_3_COMPLETION_SUMMARY.md\` (9.1 KB)
-
----
-
-#### Phase 4: Documentation & Runbook ✅ COMPLETE
-
-**Agent**: Documentation Manager Agent
-**Duration**: 2 hours
-
-**Documentation Created (90KB+ total)**:
-- [x] \`docs/deployment/LAN_DEPLOYMENT_RUNBOOK.md\` (34.6 KB)
-- [x] \`docs/deployment/LAN_QUICK_START.md\` (12.0 KB)
-- [x] \`docs/deployment/LAN_SECURITY_CHECKLIST.md\` (15.5 KB)
-- [x] \`docs/deployment/RUNTIME_TESTING_QUICKSTART.md\` (10.3 KB)
-- [x] \`docs/sessions/2025-10-05_LAN_Core_Deployment_Session.md\` (session memory)
-- [x] \`docs/devlog/2025-10-05_LAN_Core_Deployment_Complete.md\` (devlog)
-
----
-
-#### Production Readiness Assessment
-
-| Category | Status | Completion |
-|----------|--------|------------|
-| Configuration | ✅ Complete | 100% |
-| Security | ✅ Complete | 100% |
-| Testing | ⏭️ Runtime Pending | 95% |
-| Documentation | ✅ Complete | 100% |
-| **Overall** | **⏭️ Ready for Runtime** | **95%** |
-
-**Remaining Tasks**:
-- [ ] Start API server and frontend
-- [ ] Execute manual tests (2 service-dependent tests)
-- [ ] Validate from LAN client device
-- [ ] Generate production API key
-
-**Estimated Time to 100%**: 1-2 hours
-
-**Reference Documentation**:
-- [LAN Deployment Session Memory](/docs/sessions/2025-10-05_LAN_Core_Deployment_Session.md)
-- [LAN Core Deployment Devlog](/docs/devlog/2025-10-05_LAN_Core_Deployment_Complete.md)
-- [LAN Deployment Runbook](/docs/deployment/LAN_DEPLOYMENT_RUNBOOK.md)
-- [Runtime Testing Procedures](/docs/deployment/RUNTIME_TESTING_QUICKSTART.md)
-
----
-
-### Phase 3.2: LAN UX Improvements (Future - Week 3-4)
-
-**Status**: Planned
 **Goal**: Make LAN deployment user-friendly
 
 **Tasks**:
@@ -1309,48 +1188,68 @@ Performance:
 - [ ] Network configuration wizard
 - [ ] Client setup automation scripts
 - [ ] IP address auto-detection
-- [ ] Firewall rule automation (automated installer)
+- [ ] Firewall rule automation
+- [ ] LAN access URL guide
 - [ ] Client discovery (mDNS/broadcast)
-- [ ] Real-time connection status indicators
-- [ ] Network latency monitoring
-- [ ] Multi-client agent visibility
-- [ ] LAN-specific troubleshooting tools
 
-**Reference**: \`docs/deployment/LAN_UX_MISSION_PROMPT.md\`
+**Reference**: `docs/deployment/LAN_UX_MISSION_PROMPT.md`
 
-**Foundation Available**:
-- LAN core capability deployed (Phase 3.1)
-- Security framework in place
-- Testing infrastructure ready
-- Documentation template established
+### Phase 3.2: WAN Deployment (Week 5-7)
 
----
-
-### Phase 3.3: WAN Deployment (Future - Week 5-7)
-
-**Status**: Planned
 **Goal**: Production-ready internet deployment
 
 **Tasks**:
 - [ ] SSL/TLS certificate management (Let's Encrypt)
 - [ ] JWT authentication system
 - [ ] Redis session management
-- [ ] Advanced rate limiting (per-user, per-IP)
+- [ ] Rate limiting (per-user, per-IP)
 - [ ] WAF integration (ModSecurity)
 - [ ] Monitoring (Prometheus + Grafana)
 - [ ] Cloud deployment automation (AWS/Azure/GCP)
 - [ ] Backup and recovery
 - [ ] High availability setup
-- [ ] DDoS protection (CloudFlare/AWS Shield)
-- [ ] Reverse proxy (nginx/Caddy)
 
-**Reference**: \`docs/deployment/WAN_DEPLOYMENT_GUIDE.md\`
+**Reference**: `docs/deployment/WAN_DEPLOYMENT_GUIDE.md`
 
-**Foundation Available**:
-- LAN security architecture (extend to WAN)
-- Configuration patterns (add wan mode)
-- Testing framework (add WAN-specific tests)
-- Documentation structure established
+---
+
+## Testing Strategy
+
+### Unit Tests (Throughout Development)
+
+**Target Coverage**: 80%+
+
+**Priority Areas**:
+```python
+# High Priority
+tests/unit/test_prompt_generator.py
+tests/unit/test_project_activation.py
+tests/unit/test_agent_profiles.py
+
+# Medium Priority
+tests/unit/test_websocket_manager.py
+tests/unit/test_claude_code_integration.py
+
+# Low Priority
+tests/unit/test_dashboard_components.py
+```
+
+### Integration Tests
+
+**Critical Paths**:
+```python
+# Must Pass Before Beta
+tests/integration/test_e2e_orchestration.py
+tests/integration/test_project_activation_flow.py
+tests/integration/test_websocket_updates.py
+tests/integration/test_multi_agent_coordination.py
+```
+
+### Manual Testing
+
+**Daily Testing Protocol**:
+1. Fresh database reset
+2. Create test project
 3. Activate project
 4. Paste into Claude Code
 5. Monitor dashboard
