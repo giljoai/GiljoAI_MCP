@@ -27,12 +27,13 @@ class ToolAccessor:
 
     # Project Tools
 
-    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """Create a new project"""
         try:
             async with self.db_manager.get_session_async() as session:
-                # Generate unique tenant key
-                tenant_key = f"tk_{uuid4().hex}"
+                # Use provided tenant key or generate a new one
+                if not tenant_key:
+                    tenant_key = f"tk_{uuid4().hex}"
 
                 # Create project
                 project = Project(
