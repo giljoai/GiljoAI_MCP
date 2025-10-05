@@ -702,7 +702,7 @@ venv/bin/python start_giljo.py "$@"
             registration_result = mcp_installer.register_all(
                 server_name='giljo-mcp',
                 command=str(venv_python),
-                args=['-m', 'src.mcp_adapter'],
+                args=['-m', 'giljo_mcp'],
                 env=None
             )
 
