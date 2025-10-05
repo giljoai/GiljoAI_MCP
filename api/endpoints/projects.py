@@ -214,9 +214,9 @@ async def update_project(project_id: str, update: ProjectUpdate):
                 project.status = update.status
                 logger.info(f"Project status after assignment: {project.status}")
 
-            # Commit all changes at once
-            await session.commit()
-            logger.info(f"Database commit completed. Project status in object: {project.status}")
+            # Flush changes to database (commit happens automatically on context exit)
+            await session.flush()
+            logger.info(f"Project status after flush: {project.status}")
 
             # Broadcast updates
             if state.websocket_manager:
