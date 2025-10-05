@@ -2,78 +2,98 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## CRITICAL: Test Environment Workflow
+## CRITICAL: Multi-System Development Workflow
 
-**THIS IS A TEST INSTALLATION FOLDER, NOT THE DEV REPOSITORY**
+**GiljoAI MCP Development Environment Strategy**
 
-You are currently working in: `C:\install_test\Giljo_MCP`
+We use a **multi-system development workflow** to test different deployment modes simultaneously:
 
-This is an isolated test environment that simulates a real product installation (release variant). While we develop and fix issues here, all code changes must be synchronized back to the main development repository.
+### Development Systems
 
-### Development Workflow (MANDATORY)
+**System 1 - C: Drive (Windows - Localhost Mode)**
+- **Location**: `C:\Projects\GiljoAI_MCP`
+- **Purpose**: Development and localhost mode testing
+- **Mode**: `localhost` in config.yaml
+- **Database**: PostgreSQL on localhost
+- **Binding**: API binds to `127.0.0.1` (localhost only)
+- **Auth**: No API key required
+- **Use Case**: Individual developer, rapid iteration, testing
 
-1. **Work in Test Folder** (`C:\install_test\Giljo_MCP`)
-   - Make code changes to core files (src/, api/, installer/, frontend/, tests/, etc.)
-   - Test in real deployment environment
-   - Verify everything works
-   - Do NOT modify environment-specific files (.env, config.yaml) in the dev repo
+**System 2 - F: Drive (Windows - Server/LAN Mode)**
+- **Location**: `F:\GiljoAI_MCP`
+- **Purpose**: LAN/server mode testing and multi-client scenarios
+- **Mode**: `server` in config.yaml
+- **Database**: PostgreSQL on localhost (security: database always localhost-only)
+- **Binding**: API binds to `0.0.0.0` (network accessible)
+- **Auth**: API key required
+- **Use Case**: Team deployment testing, network access validation
 
-2. **Push Changes to Dev Repo** (After testing)
-   ```bash
-   cd C:\install_test\Giljo_MCP
+### Git Workflow (MANDATORY)
 
-   # Preview changes before copying
-   python push_to_dev.py --dry-run
+**Both systems use the SAME GitHub repository**
 
-   # Copy all code changes (excludes .env, config.yaml, data/, logs/, etc.)
-   python push_to_dev.py
-
-   # Copy specific file if needed
-   python push_to_dev.py --file api/app.py
-   ```
-
-3. **Commit from Dev Repo**
-   ```bash
-   cd C:\Projects\GiljoAI_MCP
-   git status
-   git add .
-   git commit -m "Fix: [description]"
-   git push
-   ```
-
-### Backup & Maintenance
-
-**Project Backup:**
 ```bash
-cd C:\Projects\GiljoAI_MCP
+# Always pull before starting work
+git pull
 
-# Create timestamped backup (excludes venv, node_modules, caches)
-python backup.py              # Interactive mode
-python backup.py --quick      # Exclude logs, data, temp files (smaller backup)
-python backup.py --no-git     # Exclude .git directory
-python backup.py --auto       # Skip confirmation prompts
+# Work on code (any system)
+# Make changes to src/, api/, installer/, frontend/, tests/
+
+# Commit from whichever system you're on
+git add .
+git commit -m "feat: [description]"
+git push
+
+# Other system pulls the changes
+git pull
 ```
 
-Backups are saved to: `C:\Projects\Backups\[YYYY-MM-DD_HH-MM-SS]_Backup\`
+### Environment-Specific Files (NEVER COMMIT)
 
-**Clear Python Cache:**
-```bash
-# Safe to run periodically - Python regenerates automatically
-find . -type d -name "__pycache__" -exec rm -rf {} +
+These files are **gitignored** and stay local to each system:
+
+- `.env` - Environment variables (database credentials, ports, API keys)
+- `config.yaml` - System-specific configuration (mode, paths, ports)
+- `install_config.yaml` - User-generated installer config (via --generate-config)
+- `data/` - Database data and uploads
+- `logs/` - Application logs
+- `temp/` - Temporary files
+- `venv/` - Python virtual environment
+- `node_modules/` - NPM dependencies
+
+### Code Syncs Automatically
+
+These files/folders **DO sync via git** to both systems:
+
+- `src/` - Core application code
+- `api/` - API endpoints and middleware
+- `installer/` - Installation scripts
+- `frontend/` - Vue.js dashboard
+- `tests/` - Test suites
+- `scripts/` - Utility scripts
+- `docs/` - Documentation
+- `examples/` - Example configurations
+
+### Cross-Platform Coding Standards
+
+**CRITICAL**: All code must work on both systems (and Linux/macOS):
+
+```python
+# ✅ CORRECT - Cross-platform
+from pathlib import Path
+data_dir = Path.cwd() / 'data'
+log_file = Path('logs') / 'app.log'
+
+# ❌ WRONG - Windows-specific
+data_dir = 'C:\\Projects\\data'
+log_file = 'C:/logs/app.log'
 ```
 
-### Important Notes
-
-- **Test folder**: `C:\install_test\Giljo_MCP` - Isolated test environment with its own .env and config.yaml
-- **Dev repo**: `C:\Projects\GiljoAI_MCP` - Git repository, contains project history and additional knowledge
-- **Symlinked folders**: The following folders are symlinked to the dev repo (DO NOT modify these - they are shared resources):
-  - `/docs/` → `C:\Projects\GiljoAI_MCP\docs` - Documentation, manuals, devlogs, session memories
-  - `/scripts/` → `C:\Projects\GiljoAI_MCP\scripts` - Utility scripts and automation tools
-  - `/examples/` → `C:\Projects\GiljoAI_MCP\examples` - Example configurations and use cases
-- **Files to sync**: All code directories (src/, api/, installer/, frontend/, tests/) and script files
-- **Files to exclude**: .env, config.yaml, data/, logs/, uploads/, temp/, venv/, node_modules/
-
-**ALWAYS use `push_to_dev.py` to sync changes before committing to git.**
+**Always use:**
+- `pathlib.Path()` for all file paths
+- `Path.cwd()` for current directory
+- Relative paths in config files (`./data`, not `C:/Projects/data`)
+- Config-driven differences (mode: localhost vs server)
 
 ## Project Overview
 
@@ -83,17 +103,19 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 
 The system supports two deployment configurations:
 
-1. **Localhost Mode**
+1. **Localhost Mode** (System 1 - C: Drive)
    - PostgreSQL 18 database with local configuration
    - Preconfigured development credentials
-   - Localhost access only
+   - Localhost access only (127.0.0.1)
+   - No API key authentication
    - Up to 20 concurrent agents
    - Ideal for individual developers and testing
 
-2. **Server Mode**
+2. **Server Mode** (System 2 - F: Drive, or production)
    - PostgreSQL 18 database with secure network configuration
-   - API key authentication
+   - API key authentication required
    - Full network accessibility (LAN/WAN)
+   - Binds to 0.0.0.0 (all interfaces)
    - Up to 20 concurrent agents per deployment
    - Scalable architecture
    - Designed for team environments
@@ -105,6 +127,10 @@ The system supports two deployment configurations:
 ```bash
 # CLI installer - single command
 python installer/cli/install.py       # Universal installer for all platforms
+
+# Generate config file for automated install
+python installer/cli/install.py --generate-config install_config.yaml
+python installer/cli/install.py --config install_config.yaml
 
 # Manual setup
 pip install -r requirements.txt  # Install Python dependencies
@@ -258,7 +284,7 @@ Configuration is stored in `config.yaml` at the project root:
 
 ```yaml
 installation:
-  mode: localhost  # or 'server'
+  mode: localhost  # or 'server' for LAN/network deployment
 
 database:
   type: postgresql
@@ -269,10 +295,25 @@ database:
 
 services:
   api:
-    host: 127.0.0.1
-    port: 7272  # Auto-detected by PortManager
+    host: 127.0.0.1  # localhost mode: 127.0.0.1, server mode: 0.0.0.0
+    port: 7272       # Auto-detected by PortManager
   frontend:
     port: 7274
+
+security:
+  cors:
+    allowed_origins:
+      - http://127.0.0.1:7274
+      - http://localhost:7274
+      # Add specific LAN IPs for server mode
+  api_keys:
+    require_for_modes:
+      - server
+      - lan
+      - wan
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
 ```
 
 ### Port Management
@@ -289,9 +330,11 @@ The system uses centralized port management via `PortManager` (`src/giljo_mcp/po
 - **Professional Code**: Keep all code clean, professional, and emoji-free
 - **File Creation**: Only create files when absolutely necessary; prefer editing existing files
 - **Documentation**: Only create documentation files when explicitly requested
-- **Cross-Platform**: All paths must use `pathlib.Path()`, never hardcoded separators
+- **Cross-Platform**: All paths must use `pathlib.Path()`, never hardcoded separators or drive letters
 - **Database**: PostgreSQL is required - no SQLite support
 - **Template System**: Use `template_manager.py` (new) not `mission_templates.py` (deprecated)
+- **Mode-Aware Code**: Use `config.yaml` mode setting for localhost vs server behavior
+- **Never Hardcode Paths**: Use `Path.cwd()`, `Path('relative/path')`, config-driven paths
 
 ## Testing Strategy
 
@@ -344,37 +387,32 @@ pytest tests/ --cov=giljo_mcp --cov-report=html
 
 ## Documentation Structure
 
-All documentation is symlinked from the dev repo at `C:\Projects\GiljoAI_MCP\docs`:
-
 - **`docs/README_FIRST.md`** - Project index and navigation
 - **`docs/TECHNICAL_ARCHITECTURE.md`** - System architecture
 - **`docs/manuals/`** - Reference manuals for MCP tools and testing
 - **`docs/devlog/`** - Development logs and completion reports
 - **`docs/sessions/`** - Agent session memories
+- **`docs/deployment/`** - LAN/WAN deployment guides and checklists
 
-## Available Resources (Symlinked from Dev Repo)
+## Available Resources
 
 ### Documentation (`docs/`)
-Complete documentation is available via symlink to the dev repo. Use these resources for reference:
 - Architecture documentation and technical specifications
 - MCP tools manual and API reference
-- Development logs (`docs/devlog/`) tracking project evolution
-- Session memories (`docs/sessions/`) from previous agent interactions
+- Development logs tracking project evolution
+- Session memories from previous agent interactions
+- LAN deployment guides and security checklists
 
 ### Scripts (`scripts/`)
-Utility scripts and automation tools available via symlink:
 - Database management scripts
 - Deployment automation
 - Testing utilities
 - Migration helpers
 
 ### Examples (`examples/`)
-Reference implementations and sample configurations:
 - Example project setups
 - Configuration templates
 - Use case demonstrations
-
-**Note**: These symlinked folders are shared with the dev repo. Changes made here will affect the dev repo directly.
 
 ## Sub-Agent Architecture (Claude Code Integration)
 
@@ -407,6 +445,44 @@ stop_giljo.bat               # Stop all
 python start_giljo.py        # Start all services
 ```
 
+## Multi-System Coordination
+
+### Before Starting Work on Either System
+
+```bash
+# ALWAYS pull first
+git pull
+```
+
+### After Making Changes
+
+```bash
+# Check what changed
+git status
+git diff
+
+# Commit and push
+git add .
+git commit -m "feat: [clear description]"
+git push
+```
+
+### Switching Between Systems
+
+1. Commit and push from current system
+2. Switch to other system
+3. `git pull` to get latest changes
+4. Your local .env and config.yaml stay intact (gitignored)
+5. Continue working
+
+### When Config Changes Are Needed
+
+If you need to update how config.yaml is generated:
+1. Edit `installer/core/config.py`
+2. Test the installer: `python installer/cli/install.py --dry-run`
+3. Commit the installer changes
+4. Both systems pull and regenerate configs as needed
+
 ## Troubleshooting
 
 ### Database Connection Issues
@@ -429,3 +505,39 @@ rm -rf node_modules/
 npm install
 npm run build
 ```
+
+### Git Conflicts with Environment Files
+
+If .env or config.yaml accidentally got committed:
+```bash
+# Remove from git but keep local file
+git rm --cached .env
+git rm --cached config.yaml
+
+# Verify .gitignore has these files
+cat .gitignore | grep -E "\.env|config\.yaml"
+
+# Commit the removal
+git commit -m "fix: Remove environment files from git tracking"
+git push
+```
+
+## System-Specific Notes
+
+### System 1 (C: Drive - Localhost Mode)
+
+- Uses default localhost configuration
+- No API key authentication
+- API binds to 127.0.0.1 only
+- Perfect for rapid development and testing
+- No network security concerns
+
+### System 2 (F: Drive - Server Mode)
+
+- Uses server configuration for LAN testing
+- Requires API key authentication
+- API binds to 0.0.0.0 (network accessible)
+- Tests multi-client scenarios
+- Validates security features
+
+Both systems share the same codebase via GitHub, but maintain their own deployment-specific configurations.
