@@ -2,32 +2,21 @@
 """
 GiljoAI MCP - Multi-Agent Orchestrator
 
-This module is for package identification only.
-To start the GiljoAI services, use one of the following methods:
-
-1. Windows: Run start_giljo.bat
-2. Cross-platform: python start_giljo.py
-3. Direct API: python api/run_api.py
-
-For more information, see the documentation at docs/
+Entry point for the MCP stdio adapter when invoked as 'python -m giljo_mcp'
+This allows Claude Code to communicate with the GiljoAI backend via MCP protocol.
 """
 
 import sys
-from pathlib import Path
+import asyncio
 
 
 def main():
-    """Display basic usage information"""
-    print("GiljoAI MCP Orchestrator v2.0")
-    print("=" * 50)
-    print("\nTo start GiljoAI services:")
-    print("  - Windows:  start_giljo.bat")
-    print("  - Python:   python start_giljo.py")
-    print("  - Direct:   python api/run_api.py")
-    print("\nFor configuration, edit config.yaml")
-    print("For documentation, see docs/")
-    print("=" * 50)
-    sys.exit(0)
+    """Main entry point for the MCP adapter"""
+    # Import here to avoid circular imports
+    from giljo_mcp.mcp_adapter import main as adapter_main
+
+    # Run the MCP adapter
+    asyncio.run(adapter_main())
 
 
 if __name__ == "__main__":

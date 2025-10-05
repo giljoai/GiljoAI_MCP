@@ -1,0 +1,309 @@
+# GiljoAI MCP - Caddy Production Configuration for WAN
+# Replace yourdomain.com with your actual domain
+#
+# Caddy automatically handles:
+# - HTTPS/TLS (Let's Encrypt automatic)
+# - HTTP to HTTPS redirect
+# - Certificate renewal
+# - HTTP/2 support
+
+# Global options
+{
+    # Email for Let's Encrypt notifications
+    email admin@yourdomain.com
+
+    # Production ACME server (default)
+    # For testing, use: acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+
+    # Admin API (disable for production or restrict)
+    admin off
+
+    # Log level
+    log {
+        level INFO
+    }
+
+    # Servers options
+    servers {
+        protocols h1 h2 h3
+    }
+}
+
+# Main site
+yourdomain.com www.yourdomain.com {
+    # Automatic HTTPS via Let's Encrypt (no config needed!)
+
+    # Encode responses (compression)
+    encode zstd gzip
+
+    # Security headers
+    header {
+        # HSTS
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
+        # Frame protection
+        X-Frame-Options "DENY"
+
+        # MIME sniffing protection
+        X-Content-Type-Options "nosniff"
+
+        # XSS protection (legacy browsers)
+        X-XSS-Protection "1; mode=block"
+
+        # Referrer policy
+        Referrer-Policy "no-referrer-when-downgrade"
+
+        # Content Security Policy
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss://yourdomain.com https://yourdomain.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+
+        # Permissions policy
+        Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+
+        # Remove server disclosure
+        -Server
+        -X-Powered-By
+    }
+
+    # Request limits
+    request_body {
+        max_size 100MB
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/giljo_access.log {
+            roll_size 100MB
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+        level INFO
+    }
+
+    # Health checks (no logging)
+    handle /health {
+        reverse_proxy localhost:7272 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        log {
+            output discard
+        }
+    }
+
+    handle /ready {
+        reverse_proxy localhost:7272 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        log {
+            output discard
+        }
+    }
+
+    # Metrics endpoint (restrict access)
+    handle /metrics {
+        @allowed {
+            remote_ip 127.0.0.1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+        }
+        @denied not remote_ip 127.0.0.1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+
+        handle @allowed {
+            reverse_proxy localhost:7272 {
+                header_up Host {host}
+                header_up X-Real-IP {remote_host}
+            }
+        }
+
+        handle @denied {
+            respond "Access denied" 403
+        }
+    }
+
+    # WebSocket endpoint (special handling)
+    handle /ws {
+        reverse_proxy localhost:7272 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up Connection {>Connection}
+            header_up Upgrade {>Upgrade}
+
+            # WebSocket-specific timeouts
+            transport http {
+                read_timeout 7d
+                write_timeout 7d
+            }
+        }
+    }
+
+    # Authentication endpoints (stricter handling)
+    handle_path /api/auth/* {
+        reverse_proxy localhost:7272 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+
+        # Log all auth attempts
+        log {
+            output file /var/log/caddy/giljo_auth.log {
+                roll_size 50MB
+                roll_keep 20
+            }
+            format json
+        }
+    }
+
+    # API endpoints
+    handle /api/* {
+        reverse_proxy localhost:7272 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Port {server_port}
+
+            # Load balancing (if multiple backends)
+            # lb_policy least_conn
+            # to localhost:7272
+            # to localhost:7273
+
+            # Health checks
+            health_uri /health
+            health_interval 30s
+            health_timeout 5s
+            health_status 200
+
+            # Timeouts
+            transport http {
+                read_timeout 60s
+                write_timeout 60s
+                dial_timeout 10s
+            }
+        }
+    }
+
+    # Frontend (Vue 3 SPA)
+    handle {
+        root * /var/www/giljo-mcp
+
+        # Try files, fallback to index.html for SPA routing
+        try_files {path} {path}/ /index.html
+
+        # Cache static assets
+        @static {
+            path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2 *.ttf *.eot *.otf *.webp *.avif
+        }
+        header @static {
+            Cache-Control "public, max-age=31536000, immutable"
+        }
+
+        # No cache for HTML
+        @html {
+            path *.html
+        }
+        header @html {
+            Cache-Control "no-cache, no-store, must-revalidate"
+            Pragma "no-cache"
+            Expires "0"
+        }
+
+        file_server {
+            precompressed zstd gzip
+        }
+    }
+
+    # Deny access to hidden files
+    handle /.* {
+        respond "Not found" 404
+    }
+
+    # Deny access to sensitive files
+    @sensitive {
+        path *.env *.yaml *.yml *.ini *.log *.bak *.sql *.git* *.htaccess *.htpasswd *~
+    }
+    handle @sensitive {
+        respond "Access denied" 403
+    }
+
+    # Custom error pages
+    handle_errors {
+        @404 {
+            expression {http.error.status_code} == 404
+        }
+        handle @404 {
+            rewrite * /404.html
+            file_server {
+                root /var/www/giljo-mcp
+            }
+        }
+
+        @5xx {
+            expression {http.error.status_code} >= 500
+        }
+        handle @5xx {
+            rewrite * /50x.html
+            file_server {
+                root /var/www/giljo-mcp
+            }
+        }
+
+        respond "{http.error.status_code} {http.error.status_text}"
+    }
+}
+
+# Optional: Separate API subdomain
+# api.yourdomain.com {
+#     encode zstd gzip
+#
+#     # Same security headers...
+#     header {
+#         Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+#         X-Frame-Options "DENY"
+#         X-Content-Type-Options "nosniff"
+#         -Server
+#     }
+#
+#     # All requests go to API
+#     reverse_proxy localhost:7272 {
+#         header_up Host {host}
+#         header_up X-Real-IP {remote_host}
+#         header_up X-Forwarded-For {remote_host}
+#         header_up X-Forwarded-Proto {scheme}
+#     }
+# }
+
+# Rate limiting configuration (requires caddy-ratelimit plugin)
+# Install plugin: caddy add-package github.com/mholt/caddy-ratelimit
+#
+# (rate_limit_config) {
+#     rate_limit {
+#         zone api {
+#             key {remote_host}
+#             events 100
+#             window 1m
+#         }
+#         zone auth {
+#             key {remote_host}
+#             events 5
+#             window 1m
+#         }
+#         zone ws {
+#             key {remote_host}
+#             events 50
+#             window 1m
+#         }
+#     }
+# }
+#
+# Then import in each handle block:
+# import rate_limit_config

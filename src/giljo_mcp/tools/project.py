@@ -24,7 +24,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
     """Register project management tools with the MCP server"""
 
     @mcp.tool()
-    async def create_project(name: str, mission: str, agents: Optional[list[str]] = None) -> dict[str, Any]:
+    async def create_project(name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None) -> dict[str, Any]:
         """
         Create a new project with mission and optional agent sequence
 
@@ -32,6 +32,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
             name: Project name
             mission: Project mission statement
             agents: Optional list of agent names to initialize
+            product_id: Optional product ID to associate the project with
 
         Returns:
             Project creation details including ID and tenant key
@@ -46,6 +47,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     name=name,
                     mission=mission,
                     tenant_key=tenant_key,
+                    product_id=product_id,
                     status="active",
                     context_budget=150000,
                     context_used=0,
@@ -76,13 +78,14 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 # Set as current project in tenant manager
                 tenant_manager.set_current_tenant(tenant_key)
 
-                logger.info(f"Created project '{name}' with ID {project.id}")
+                logger.info(f"Created project '{name}' with ID {project.id}" + (f" under product {product_id}" if product_id else ""))
 
                 return {
                     "success": True,
                     "project_id": str(project.id),
                     "name": name,
                     "tenant_key": tenant_key,
+                    "product_id": product_id,
                     "agents_created": agents or [],
                     "session_id": str(initial_session.id),
                 }

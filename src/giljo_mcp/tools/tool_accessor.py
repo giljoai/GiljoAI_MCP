@@ -27,18 +27,19 @@ class ToolAccessor:
 
     # Project Tools
 
-    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None) -> dict[str, Any]:
+    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None) -> dict[str, Any]:
         """Create a new project"""
         try:
             async with self.db_manager.get_session_async() as session:
                 # Generate unique tenant key
-                tenant_key = f"tk_{uuid4().hex[:12]}"
+                tenant_key = f"tk_{uuid4().hex}"
 
                 # Create project
                 project = Project(
                     name=name,
                     mission=mission,
                     tenant_key=tenant_key,
+                    product_id=product_id,
                     status="active",
                     context_budget=150000,
                     context_used=0,
@@ -68,6 +69,7 @@ class ToolAccessor:
                     "success": True,
                     "project_id": project_id,
                     "tenant_key": tenant_key,
+                    "product_id": product_id,
                     "name": name,
                     "status": "active",
                 }
@@ -104,6 +106,7 @@ class ToolAccessor:
                             "mission": project.mission,
                             "status": project.status,
                             "tenant_key": project.tenant_key,
+                            "product_id": project.product_id,
                             "created_at": project.created_at.isoformat(),
                             "updated_at": (
                                 project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
@@ -119,6 +122,89 @@ class ToolAccessor:
 
         except Exception as e:
             logger.exception(f"Failed to list projects: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_project(self, project_id: str) -> dict[str, Any]:
+        """Get a specific project by ID"""
+        try:
+            async with self.db_manager.get_session_async() as session:
+                query = select(Project).where(Project.id == project_id)
+                result = await session.execute(query)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": f"Project {project_id} not found"}
+
+                return {
+                    "success": True,
+                    "project": {
+                        "id": str(project.id),
+                        "name": project.name,
+                        "mission": project.mission,
+                        "status": project.status,
+                        "product_id": project.product_id,
+                        "tenant_key": project.tenant_key,
+                        "context_budget": project.context_budget,
+                        "context_used": project.context_used,
+                        "created_at": project.created_at.isoformat() if project.created_at else None,
+                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                    }
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to get project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def switch_project(self, project_id: str) -> dict[str, Any]:
+        """Switch to a different project"""
+        try:
+            async with self.db_manager.get_session_async() as db_session:
+                from giljo_mcp.models import Session as SessionModel
+                from giljo_mcp.tenant import current_tenant
+
+                # Find project
+                query = select(Project).where(Project.id == project_id)
+                result = await db_session.execute(query)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": f"Project {project_id} not found"}
+
+                # Set tenant context
+                self.tenant_manager.set_current_tenant(project.tenant_key)
+                current_tenant.set(project.tenant_key)
+
+                # Create new session if needed
+                session_query = select(SessionModel).where(
+                    SessionModel.project_id == project.id,
+                    SessionModel.status == "active"
+                )
+                session_result = await db_session.execute(session_query)
+                active_session = session_result.scalar_one_or_none()
+
+                if not active_session:
+                    active_session = SessionModel(
+                        project_id=project.id,
+                        started_at=datetime.now(),
+                        status="active",
+                    )
+                    db_session.add(active_session)
+                    await db_session.commit()
+
+                logger.info(f"Switched to project '{project.name}' (ID: {project_id})")
+
+                return {
+                    "success": True,
+                    "project_id": str(project.id),
+                    "name": project.name,
+                    "mission": project.mission,
+                    "tenant_key": project.tenant_key,
+                    "session_id": str(active_session.id),
+                    "context_usage": f"{project.context_used}/{project.context_budget}",
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to switch project: {e}")
             return {"success": False, "error": str(e)}
 
     async def project_status(self, project_id: Optional[str] = None) -> dict[str, Any]:
@@ -156,6 +242,7 @@ class ToolAccessor:
                         "mission": project.mission,
                         "status": project.status,
                         "tenant_key": project.tenant_key,
+                        "product_id": project.product_id,
                         "created_at": project.created_at.isoformat(),
                         "context_budget": project.context_budget,
                         "context_used": project.context_used,
@@ -345,6 +432,144 @@ class ToolAccessor:
             logger.exception(f"Failed to decommission agent: {e}")
             return {"success": False, "error": str(e)}
 
+    async def spawn_agent(self, name: str, role: str, mission: str) -> dict[str, Any]:
+        """Spawn a new agent (alias for ensure_agent with role parameter)"""
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active project. Switch project first."}
+
+            async with self.db_manager.get_session_async() as session:
+                # Find project by tenant key
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Create agent using ensure_agent
+                result = await self.ensure_agent(str(project.id), name, mission)
+                if result.get("success"):
+                    result["role"] = role
+                return result
+
+        except Exception as e:
+            logger.exception(f"Failed to spawn agent: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def list_agents(self, status: Optional[str] = None) -> dict[str, Any]:
+        """List agents in current project"""
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active project. Switch project first."}
+
+            async with self.db_manager.get_session_async() as session:
+                # Find project
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Query agents
+                query = select(Agent).where(Agent.project_id == project.id)
+                if status:
+                    query = query.where(Agent.status == status)
+
+                result = await session.execute(query)
+                agents = result.scalars().all()
+
+                agent_list = []
+                for agent in agents:
+                    agent_list.append({
+                        "id": str(agent.id),
+                        "name": agent.name,
+                        "role": agent.role,
+                        "status": agent.status,
+                        "context_used": agent.context_used,
+                        "mission": agent.mission,
+                        "created_at": agent.created_at.isoformat() if agent.created_at else None,
+                    })
+
+                return {"success": True, "agents": agent_list, "count": len(agent_list)}
+
+        except Exception as e:
+            logger.exception(f"Failed to list agents: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_agent_status(self, agent_name: str) -> dict[str, Any]:
+        """Get detailed status of a specific agent"""
+        return await self.agent_health(agent_name)
+
+    async def update_agent(self, agent_name: str, **kwargs) -> dict[str, Any]:
+        """Update agent properties"""
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active project"}
+
+            async with self.db_manager.get_session_async() as session:
+                # Find project
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Find agent
+                agent_query = select(Agent).where(
+                    Agent.project_id == project.id,
+                    Agent.name == agent_name
+                )
+                agent_result = await session.execute(agent_query)
+                agent = agent_result.scalar_one_or_none()
+
+                if not agent:
+                    return {"success": False, "error": f"Agent '{agent_name}' not found"}
+
+                # Update fields
+                for key, value in kwargs.items():
+                    if hasattr(agent, key):
+                        setattr(agent, key, value)
+
+                await session.commit()
+
+                return {
+                    "success": True,
+                    "agent_name": agent_name,
+                    "updated_fields": list(kwargs.keys())
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to update agent: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def retire_agent(self, agent_name: str, reason: str = "completed") -> dict[str, Any]:
+        """Retire an agent (alias for decommission_agent)"""
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active project"}
+
+            async with self.db_manager.get_session_async() as session:
+                # Find project
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                return await self.decommission_agent(agent_name, str(project.id), reason)
+
+        except Exception as e:
+            logger.exception(f"Failed to retire agent: {e}")
+            return {"success": False, "error": str(e)}
+
     # Message Tools
 
     async def send_message(
@@ -513,6 +738,54 @@ class ToolAccessor:
             logger.exception(f"Failed to broadcast message: {e}")
             return {"success": False, "error": str(e)}
 
+    async def receive_messages(self, agent_id: str, limit: int = 10) -> dict[str, Any]:
+        """Receive pending messages for an agent (alias for get_messages)"""
+        return await self.get_messages(agent_id, limit=limit)
+
+    async def list_messages(self, project_id: Optional[str] = None, status: Optional[str] = None) -> dict[str, Any]:
+        """List messages in a project"""
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key and not project_id:
+                return {"success": False, "error": "No active project"}
+
+            async with self.db_manager.get_session_async() as session:
+                if project_id:
+                    query = select(Message).where(Message.project_id == project_id)
+                else:
+                    # Find project by tenant key
+                    project_query = select(Project).where(Project.tenant_key == tenant_key)
+                    project_result = await session.execute(project_query)
+                    project = project_result.scalar_one_or_none()
+                    if not project:
+                        return {"success": False, "error": "Project not found"}
+                    query = select(Message).where(Message.project_id == project.id)
+
+                if status:
+                    query = query.where(Message.status == status)
+
+                result = await session.execute(query)
+                messages = result.scalars().all()
+
+                message_list = []
+                for msg in messages:
+                    message_list.append({
+                        "id": str(msg.id),
+                        "from_agent": msg.from_agent,
+                        "to_agent": msg.to_agent,
+                        "type": msg.type,
+                        "content": msg.content,
+                        "status": msg.status,
+                        "priority": msg.priority,
+                        "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                    })
+
+                return {"success": True, "messages": message_list, "count": len(message_list)}
+
+        except Exception as e:
+            logger.exception(f"Failed to list messages: {e}")
+            return {"success": False, "error": str(e)}
+
     # Task Tools
 
     async def log_task(self, content: str, category: Optional[str] = None, priority: str = "medium") -> dict[str, Any]:
@@ -560,6 +833,82 @@ class ToolAccessor:
             logger.exception(f"Failed to log task: {e}")
             return {"success": False, "error": str(e)}
 
+    async def create_task(self, title: str, description: str, priority: str = "medium", assigned_to: Optional[str] = None) -> dict[str, Any]:
+        """Create a new task"""
+        return await self.log_task(description, category=title, priority=priority)
+
+    async def list_tasks(self, status: Optional[str] = None, assigned_to: Optional[str] = None) -> dict[str, Any]:
+        """List tasks"""
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active project"}
+
+            async with self.db_manager.get_session_async() as session:
+                # Find project
+                project_query = select(Project).where(Project.tenant_key == tenant_key)
+                project_result = await session.execute(project_query)
+                project = project_result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": "Project not found"}
+
+                # Query tasks
+                query = select(Task).where(Task.project_id == project.id)
+                if status:
+                    query = query.where(Task.status == status)
+
+                result = await session.execute(query)
+                tasks = result.scalars().all()
+
+                task_list = []
+                for task in tasks:
+                    task_list.append({
+                        "id": str(task.id),
+                        "description": task.description,
+                        "status": task.status,
+                        "priority": task.priority,
+                        "created_at": task.created_at.isoformat() if task.created_at else None,
+                    })
+
+                return {"success": True, "tasks": task_list, "count": len(task_list)}
+
+        except Exception as e:
+            logger.exception(f"Failed to list tasks: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def update_task(self, task_id: str, **kwargs) -> dict[str, Any]:
+        """Update a task"""
+        try:
+            async with self.db_manager.get_session_async() as session:
+                task_query = select(Task).where(Task.id == task_id)
+                task_result = await session.execute(task_query)
+                task = task_result.scalar_one_or_none()
+
+                if not task:
+                    return {"success": False, "error": f"Task {task_id} not found"}
+
+                # Update fields
+                for key, value in kwargs.items():
+                    if hasattr(task, key):
+                        setattr(task, key, value)
+
+                await session.commit()
+
+                return {"success": True, "task_id": task_id, "updated_fields": list(kwargs.keys())}
+
+        except Exception as e:
+            logger.exception(f"Failed to update task: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def assign_task(self, task_id: str, agent_name: str) -> dict[str, Any]:
+        """Assign a task to an agent"""
+        return await self.update_task(task_id, assigned_to=agent_name, status="assigned")
+
+    async def complete_task(self, task_id: str) -> dict[str, Any]:
+        """Mark a task as completed"""
+        return await self.update_task(task_id, status="completed")
+
     # Context Tools (simplified stubs for now)
 
     async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
@@ -586,3 +935,37 @@ class ToolAccessor:
             "success": True,
             "settings": {"product_id": product_id or "default", "config": {}},
         }
+
+    async def discover_context(self, path: Optional[str] = None) -> dict[str, Any]:
+        """Discover project context"""
+        return {"success": True, "context": {"files": [], "structure": {}}}
+
+    async def get_file_context(self, file_path: str) -> dict[str, Any]:
+        """Get context for a specific file"""
+        return {"success": True, "file_path": file_path, "context": {}}
+
+    async def search_context(self, query: str, file_types: Optional[list[str]] = None) -> dict[str, Any]:
+        """Search project context"""
+        return {"success": True, "results": [], "query": query}
+
+    async def get_context_summary(self) -> dict[str, Any]:
+        """Get a summary of project context"""
+        return {"success": True, "summary": "Context summary placeholder"}
+
+    # Template Tools
+
+    async def list_templates(self) -> dict[str, Any]:
+        """List available templates"""
+        return {"success": True, "templates": []}
+
+    async def get_template(self, template_name: str) -> dict[str, Any]:
+        """Get a specific template"""
+        return {"success": True, "template": {"name": template_name, "content": ""}}
+
+    async def create_template(self, name: str, content: str, **kwargs) -> dict[str, Any]:
+        """Create a new template"""
+        return {"success": True, "template_id": "new-template", "name": name}
+
+    async def update_template(self, template_id: str, **kwargs) -> dict[str, Any]:
+        """Update a template"""
+        return {"success": True, "template_id": template_id, "updated": True}

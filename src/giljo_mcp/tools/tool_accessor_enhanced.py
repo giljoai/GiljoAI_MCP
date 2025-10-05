@@ -130,18 +130,19 @@ class EnhancedToolAccessor:
 
     @measure_performance("create_project")
     @with_retry(max_attempts=3)
-    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None) -> dict[str, Any]:
+    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None) -> dict[str, Any]:
         """Create a new project with transaction rollback on failure"""
         try:
             async with self._get_transactional_session() as session:
                 # Generate unique tenant key
-                tenant_key = f"tk_{uuid4().hex[:12]}"
+                tenant_key = f"tk_{uuid4().hex}"
 
                 # Create project
                 project = Project(
                     name=name,
                     mission=mission,
                     tenant_key=tenant_key,
+                    product_id=product_id,
                     status="active",
                     context_budget=150000,
                     context_used=0,
@@ -172,6 +173,7 @@ class EnhancedToolAccessor:
                     "success": True,
                     "project_id": project_id,
                     "tenant_key": tenant_key,
+                    "product_id": product_id,
                     "name": name,
                     "status": "active",
                 }
@@ -223,6 +225,40 @@ class EnhancedToolAccessor:
             return {"success": False, "error": f"Database error: {e!s}"}
         except Exception as e:
             logger.exception(f"Unexpected error listing projects: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_project(self, project_id: str) -> dict[str, Any]:
+        """Get a specific project by ID"""
+        try:
+            async with self.db_manager.get_session_async() as session:
+                query = select(Project).where(Project.id == project_id)
+                result = await session.execute(query)
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {"success": False, "error": f"Project {project_id} not found"}
+
+                return {
+                    "success": True,
+                    "project": {
+                        "id": str(project.id),
+                        "name": project.name,
+                        "mission": project.mission,
+                        "status": project.status,
+                        "product_id": project.product_id,
+                        "tenant_key": project.tenant_key,
+                        "context_budget": project.context_budget,
+                        "context_used": project.context_used,
+                        "created_at": project.created_at.isoformat() if project.created_at else None,
+                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+                    }
+                }
+
+        except SQLAlchemyError as e:
+            logger.exception(f"Database error getting project: {e}")
+            return {"success": False, "error": f"Database error: {e!s}"}
+        except Exception as e:
+            logger.exception(f"Failed to get project: {e}")
             return {"success": False, "error": str(e)}
 
     @measure_performance("project_status")

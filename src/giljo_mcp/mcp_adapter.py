@@ -169,7 +169,7 @@ class MCPAdapter:
 
     async def handle_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Handle an incoming MCP message
+        Handle an incoming MCP message (JSON-RPC 2.0 format)
 
         Args:
             message: MCP protocol message
@@ -177,33 +177,31 @@ class MCPAdapter:
         Returns:
             Response message
         """
-        msg_type = message.get("type")
+        # MCP uses JSON-RPC 2.0 format with "method" field
+        method = message.get("method")
         msg_id = message.get("id")
 
-        logger.debug(f"Handling message type: {msg_type}, id: {msg_id}")
+        logger.debug(f"Handling method: {method}, id: {msg_id}")
 
         try:
-            if msg_type == "initialize":
+            if method == "initialize":
                 # Initialize connection
                 return {
-                    "type": "initialize_response",
+                    "jsonrpc": "2.0",
                     "id": msg_id,
                     "result": {
-                        "protocol_version": "1.0",
-                        "server_info": {
+                        "protocolVersion": "2025-06-18",
+                        "serverInfo": {
                             "name": "GiljoAI MCP Adapter",
-                            "version": "2.0.0",
-                            "backend": self.server_url
+                            "version": "2.0.0"
                         },
                         "capabilities": {
-                            "tools": True,
-                            "resources": False,
-                            "prompts": False
+                            "tools": {}
                         }
                     }
                 }
 
-            elif msg_type == "tools/list":
+            elif method == "tools/list":
                 # List available tools
                 tools_data = await self.handle_list_tools()
                 tools_list = []
@@ -214,7 +212,7 @@ class MCPAdapter:
                         tools_list.append({
                             "name": tool["name"],
                             "description": tool["description"],
-                            "parameters": {
+                            "inputSchema": {
                                 "type": "object",
                                 "properties": {
                                     name: {"type": "string", "description": desc}
@@ -225,14 +223,14 @@ class MCPAdapter:
                         })
 
                 return {
-                    "type": "tools/list_response",
+                    "jsonrpc": "2.0",
                     "id": msg_id,
                     "result": {
                         "tools": tools_list
                     }
                 }
 
-            elif msg_type == "tools/call":
+            elif method == "tools/call":
                 # Execute a tool
                 tool_name = message.get("params", {}).get("name")
                 arguments = message.get("params", {}).get("arguments", {})
@@ -241,13 +239,20 @@ class MCPAdapter:
 
                 if result.get("success"):
                     return {
-                        "type": "tools/call_response",
+                        "jsonrpc": "2.0",
                         "id": msg_id,
-                        "result": result.get("result", {})
+                        "result": {
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": str(result.get("result", {}))
+                                }
+                            ]
+                        }
                     }
                 else:
                     return {
-                        "type": "error",
+                        "jsonrpc": "2.0",
                         "id": msg_id,
                         "error": {
                             "code": -32603,
@@ -255,30 +260,22 @@ class MCPAdapter:
                         }
                     }
 
-            elif msg_type == "close":
-                # Close connection
-                logger.info("Received close message")
-                return {
-                    "type": "close_response",
-                    "id": msg_id
-                }
-
             else:
-                # Unknown message type
-                logger.warning(f"Unknown message type: {msg_type}")
+                # Unknown method
+                logger.warning(f"Unknown method: {method}")
                 return {
-                    "type": "error",
+                    "jsonrpc": "2.0",
                     "id": msg_id,
                     "error": {
                         "code": -32601,
-                        "message": f"Unknown message type: {msg_type}"
+                        "message": f"Method not found: {method}"
                     }
                 }
 
         except Exception as e:
             logger.exception(f"Error handling message: {e}")
             return {
-                "type": "error",
+                "jsonrpc": "2.0",
                 "id": msg_id,
                 "error": {
                     "code": -32603,
@@ -300,7 +297,7 @@ class MCPAdapter:
         except Exception as e:
             logger.error(f"Failed to connect to server: {e}")
             error_msg = {
-                "type": "error",
+                "jsonrpc": "2.0",
                 "error": {
                     "code": -32603,
                     "message": f"Cannot connect to GiljoAI server at {self.server_url}. Is it running?"
@@ -335,15 +332,10 @@ class MCPAdapter:
                     print(response_json, flush=True)
                     logger.debug(f"Sent: {response}")
 
-                    # Check if we should exit
-                    if message.get("type") == "close":
-                        logger.info("Closing adapter")
-                        break
-
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON received: {e}")
                     error_response = {
-                        "type": "error",
+                        "jsonrpc": "2.0",
                         "error": {
                             "code": -32700,
                             "message": "Invalid JSON"
@@ -365,24 +357,29 @@ async def main():
     logger.info("GiljoAI MCP Stdio Adapter Starting")
     logger.info("=" * 60)
 
-    # Load configuration
-    config = get_config()
-
-    # Determine server URL
+    # Determine server URL - prioritize environment variables
     server_url = os.getenv("GILJO_API_URL")
-    if not server_url:
-        # Use configured API port or environment variable
-        api_port = os.getenv("GILJO_PORT")
-        if not api_port:
-            api_port = getattr(config.server, "port", None) or getattr(config.server, "api_port", 7272)
-        server_url = f"http://localhost:{api_port}"
+    api_key = os.getenv("GILJO_API_KEY") or os.getenv("API_KEY")
 
-    # Get API key if needed
-    api_key = None
-    if config.server.mode.value != "LOCAL":
-        api_key = os.getenv("GILJO_API_KEY") or os.getenv("API_KEY")
-        if not api_key:
-            logger.warning("No API key provided for non-LOCAL mode")
+    if not server_url:
+        # Try to get port from environment or config
+        api_port = os.getenv("GILJO_PORT", "7272")
+
+        # Try to load config if available (but don't fail if it's not valid)
+        try:
+            config = get_config()
+            if hasattr(config, 'server'):
+                api_port = getattr(config.server, "port", None) or getattr(config.server, "api_port", api_port)
+                # Get API key from config if not in environment
+                if not api_key and hasattr(config.server, 'mode'):
+                    mode = getattr(config.server.mode, 'value', 'LOCAL')
+                    if mode != "LOCAL":
+                        logger.warning("No API key provided for non-LOCAL mode")
+        except Exception as e:
+            logger.warning(f"Could not load config, using defaults: {e}")
+            api_port = os.getenv("GILJO_PORT", "7272")
+
+        server_url = f"http://localhost:{api_port}"
 
     # Create and run adapter
     adapter = MCPAdapter(server_url=server_url, api_key=api_key)
