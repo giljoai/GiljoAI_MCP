@@ -128,7 +128,7 @@ class MCPAdapterBase(ABC):
             dict: Environment variables
         """
         install_dir_str = str(self.install_dir).replace("\\", "/")
-        return {"GILJO_MCP_HOME": install_dir_str, "GILJO_SERVER_URL": "http://localhost:8000"}
+        return {"GILJO_MCP_HOME": install_dir_str, "GILJO_SERVER_URL": "http://localhost:7272"}
 
     def ensure_config_directory(self, config_path: Path) -> bool:
         """
