@@ -1,9 +1,10 @@
 installation:
   version: 2.0.0
-  mode: server
-  timestamp: '2025-10-02T13:04:52.035070'
+  mode: localhost
+  timestamp: '2025-10-05T11:11:31.939551'
   platform: Windows
-  python_version: 3.13.7
+  python_version: 3.11.9
+  install_dir: F:\GiljoAI_MCP
 database:
   type: postgresql
   version: '16'
@@ -15,7 +16,7 @@ database:
   pool_size: 5
 services:
   api:
-    host: 0.0.0.0
+    host: 127.0.0.1
     port: 7272
     unified_port: true
     description: Main API server (REST + WebSocket + MCP)
@@ -32,28 +33,14 @@ features:
   ssl_enabled: false
   api_keys_required: false
   multi_user: false
-security:
-  cors:
-    allowed_origins:
-    - http://127.0.0.1:7274
-    - http://localhost:7274
-    - http://10.1.0.118:7274
-    - http://10.1.0.*:7274
-  api_keys:
-    require_for_modes:
-    - server
-    - lan
-    - wan
-  rate_limiting:
-    enabled: true
-    requests_per_minute: 60
 paths:
-  data: ./data
-  logs: ./logs
-  uploads: ./uploads
-  temp: ./temp
-  static: ./frontend/dist
-  templates: ./frontend/templates
+  install_dir: F:\GiljoAI_MCP
+  data: F:\GiljoAI_MCP\data
+  logs: F:\GiljoAI_MCP\logs
+  uploads: F:\GiljoAI_MCP\uploads
+  temp: F:\GiljoAI_MCP\temp
+  static: F:\GiljoAI_MCP\frontend\dist
+  templates: F:\GiljoAI_MCP\frontend\templates
   certs: null
 logging:
   level: DEBUG
@@ -87,11 +74,3 @@ status:
   migrations_run: false
   services_configured: true
   ready_to_launch: true
-network:
-  bind_all_interfaces: true
-  server_ip: 10.1.0.118
-  subnet: 10.1.0.0/24
-  ports:
-    api: 7272
-    frontend: 7274
-    database: 5432
