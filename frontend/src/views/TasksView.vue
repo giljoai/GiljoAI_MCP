@@ -385,9 +385,16 @@
     <!-- Create/Edit Task Dialog -->
     <v-dialog v-model="showTaskDialog" max-width="600">
       <v-card>
-        <v-card-title>
+        <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          {{ editingTask ? 'Edit Task' : 'Create Task' }}
+          <span>{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="cancelTask"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>
@@ -474,11 +481,23 @@
 
     <!-- Conversion History Dialog -->
     <v-dialog v-model="showConversionHistory" max-width="900">
-      <ConversionHistory
-        :product-id="productStore.currentProductId"
-        @project-selected="handleProjectSelected"
-        @conversion-rolled-back="handleConversionRollback"
-      />
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <span>Conversion History</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showConversionHistory = false"
+            aria-label="Close"
+          />
+        </v-card-title>
+        <ConversionHistory
+          :product-id="productStore.currentProductId"
+          @project-selected="handleProjectSelected"
+          @conversion-rolled-back="handleConversionRollback"
+        />
+      </v-card>
     </v-dialog>
   </v-container>
 </template>
@@ -560,25 +579,23 @@ const agentOptions = computed(() => {
 
 const filteredTasks = computed(() => {
   // First filter by product if one is selected
-  let tasks = productStore.currentProductId
+  let filteredList = productStore.currentProductId
     ? taskStore.tasks.filter((t) => t.product_id === productStore.currentProductId)
     : taskStore.tasks
 
-  let filtered = [...tasks.value]
-
   if (statusFilter.value) {
-    filtered = filtered.filter((t) => t.status === statusFilter.value)
+    filteredList = filteredList.filter((t) => t.status === statusFilter.value)
   }
 
   if (priorityFilter.value) {
-    filtered = filtered.filter((t) => t.priority === priorityFilter.value)
+    filteredList = filteredList.filter((t) => t.priority === priorityFilter.value)
   }
 
   if (categoryFilter.value) {
-    filtered = filtered.filter((t) => t.category === categoryFilter.value)
+    filteredList = filteredList.filter((t) => t.category === categoryFilter.value)
   }
 
-  return filtered
+  return filteredList
 })
 
 const hierarchicalTasks = computed(() => {

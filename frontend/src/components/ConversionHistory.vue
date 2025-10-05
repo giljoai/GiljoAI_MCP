@@ -249,9 +249,16 @@
     <!-- Conversion Details Dialog -->
     <v-dialog v-model="showDetailsDialog" max-width="600">
       <v-card v-if="selectedConversion">
-        <v-card-title>
+        <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-information</v-icon>
-          Conversion Details
+          <span>Conversion Details</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showDetailsDialog = false"
+            aria-label="Close"
+          />
         </v-card-title>
         <v-divider />
         <v-card-text>

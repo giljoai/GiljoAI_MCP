@@ -260,9 +260,16 @@
     <!-- Compose Message Dialog -->
     <v-dialog v-model="showComposeDialog" max-width="600" persistent retain-focus>
       <v-card>
-        <v-card-title>
+        <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-message-plus</v-icon>
-          Compose Message
+          <span>Compose Message</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="cancelCompose"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>

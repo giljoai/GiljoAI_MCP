@@ -239,9 +239,16 @@
     <!-- Create/Edit Product Dialog -->
     <v-dialog v-model="showDialog" max-width="600" persistent retain-focus>
       <v-card>
-        <v-card-title>
-          <v-icon start>{{ editingProduct ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          {{ editingProduct ? 'Edit Product' : 'Create New Product' }}
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">{{ editingProduct ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <span>{{ editingProduct ? 'Edit Product' : 'Create New Product' }}</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="closeDialog"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>
@@ -295,9 +302,16 @@
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="400" persistent retain-focus>
       <v-card>
-        <v-card-title class="text-h6">
-          <v-icon start color="error">mdi-alert</v-icon>
-          Confirm Delete
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2" color="error">mdi-alert</v-icon>
+          <span>Confirm Delete</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showDeleteDialog = false"
+            aria-label="Close"
+          />
         </v-card-title>
         <v-card-text>
           Are you sure you want to delete the product "{{ deletingProduct?.name }}"? This action

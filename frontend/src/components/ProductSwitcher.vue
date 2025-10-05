@@ -151,9 +151,16 @@
   <!-- Create Product Dialog -->
   <v-dialog v-model="showCreateDialog" max-width="500">
     <v-card>
-      <v-card-title>
-        <v-icon start>mdi-package-variant-plus</v-icon>
-        Create New Product
+      <v-card-title class="d-flex align-center">
+        <v-icon class="mr-2">mdi-package-variant-plus</v-icon>
+        <span>Create New Product</span>
+        <v-spacer />
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          @click="showCreateDialog = false"
+          aria-label="Close"
+        />
       </v-card-title>
 
       <v-card-text>
@@ -308,8 +315,15 @@
   <v-dialog v-model="showDeleteDialog" max-width="400">
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon start color="error">mdi-alert</v-icon>
-        Confirm Delete
+        <v-icon class="mr-2" color="error">mdi-alert</v-icon>
+        <span>Confirm Delete</span>
+        <v-spacer />
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          @click="showDeleteDialog = false"
+          aria-label="Close"
+        />
       </v-card-title>
 
       <v-divider></v-divider>
