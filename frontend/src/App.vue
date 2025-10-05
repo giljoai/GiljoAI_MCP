@@ -65,36 +65,46 @@
 
     <!-- App Bar -->
     <v-app-bar color="surface" elevation="0" border>
-      <!-- Sidebar Toggle -->
-      <v-btn
-        v-if="!mobile"
-        variant="text"
-        :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
-        @click="rail = !rail"
-        :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
-        class="mr-2"
-      ></v-btn>
+      <div style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
+        <!-- Left: Sidebar Toggle -->
+        <div style="flex: 0 0 auto;">
+          <v-btn
+            v-if="!mobile"
+            variant="text"
+            :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
+            @click="rail = !rail"
+            :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
+            class="mr-2"
+          ></v-btn>
 
-      <v-app-bar-nav-icon
-        @click="drawer = !drawer"
-        v-if="mobile"
-        aria-label="Toggle navigation drawer"
-      ></v-app-bar-nav-icon>
+          <v-app-bar-nav-icon
+            @click="drawer = !drawer"
+            v-if="mobile"
+            aria-label="Toggle navigation drawer"
+          ></v-app-bar-nav-icon>
+        </div>
 
-      <v-spacer></v-spacer>
+        <!-- Center: Title -->
+        <div style="flex: 1 1 auto; display: flex; justify-content: center; min-width: 0;">
+          <v-toolbar-title
+            class="text-no-wrap"
+            :style="{
+              color: theme.global.current.value.dark ? '#ffc300' : '#1e3147',
+              fontWeight: 500,
+              fontSize: 'clamp(0.875rem, 2vw, 1.25rem)'
+            }"
+          >
+            Agent Orchestration MCP Server
+          </v-toolbar-title>
+        </div>
 
-      <v-toolbar-title :style="{ color: theme.global.current.value.dark ? '#ffc300' : '#1e3147', fontWeight: 600 }">Agent Orchestration MCP Server</v-toolbar-title>
-
-      <v-spacer></v-spacer>
-
-      <!-- Product Switcher -->
-      <ProductSwitcher class="mr-3" />
-
-      <!-- WebSocket Connection Status -->
-      <ConnectionStatus class="mr-2" />
-
-      <!-- Notifications -->
-      <v-btn icon="mdi-bell" variant="text" aria-label="View notifications"></v-btn>
+        <!-- Right: Product Switcher, Connection Status, Notifications -->
+        <div style="flex: 0 0 auto; display: flex; align-items: center;">
+          <ProductSwitcher class="mr-3" />
+          <ConnectionStatus class="mr-2" />
+          <v-btn icon="mdi-bell" variant="text" aria-label="View notifications"></v-btn>
+        </div>
+      </div>
     </v-app-bar>
 
     <!-- Main Content -->

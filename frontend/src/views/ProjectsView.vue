@@ -52,7 +52,14 @@
         <v-card>
           <v-card-text>
             <div class="d-flex align-center">
-              <v-icon size="32" color="info" class="mr-3">mdi-robot</v-icon>
+              <div style="width: 35px; height: 35px; margin-right: 12px;">
+                <v-img
+                  :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+                  alt="Total Agents"
+                  width="35"
+                  height="35"
+                ></v-img>
+              </div>
               <div>
                 <div class="text-caption">Total Agents</div>
                 <div class="text-h5">{{ totalAgents }}</div>
@@ -116,7 +123,15 @@
         <!-- Agents Column -->
         <template v-slot:item.agents="{ item }">
           <v-chip size="small" variant="outlined">
-            <v-icon start size="x-small">mdi-robot</v-icon>
+            <template v-slot:prepend>
+              <v-img
+                :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+                alt="Agents"
+                width="16"
+                height="16"
+                class="mr-1"
+              ></v-img>
+            </template>
             {{ item.agent_count || 0 }}
           </v-chip>
         </template>
@@ -296,10 +311,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTheme } from 'vuetify'
 import { useProjectStore } from '@/stores/projects'
 import { useAgentStore } from '@/stores/agents'
 import { useTaskStore } from '@/stores/tasks'
 import { formatDate, formatNumber, formatStatus } from '@/utils/formatters'
+
+const theme = useTheme()
 
 // Router
 const router = useRouter()

@@ -15,12 +15,10 @@
         </v-btn-toggle>
         <v-btn
           color="primary"
+          prepend-icon="mdi-refresh"
           @click="refreshAgents"
           :loading="loading"
         >
-          <template v-slot:prepend>
-            <img src="/icons/Giljo_gray_Face_sleeping.svg?v=4" alt="Refresh" style="width: 20px; height: 20px; margin-right: 8px;" />
-          </template>
           Refresh Status
         </v-btn>
       </v-col>

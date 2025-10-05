@@ -77,7 +77,7 @@
       >
         <!-- Loading State -->
         <template v-slot:loading>
-          <MascotLoader variant="loader" :size="60" text="Loading messages..." />
+          <v-progress-circular indeterminate color="primary" :size="60"></v-progress-circular>
         </template>
 
         <!-- Priority Column -->
@@ -157,7 +157,7 @@
         <!-- No Data -->
         <template v-slot:no-data>
           <div class="text-center py-8">
-            <MascotLoader type="image" variant="thinker" :size="80" :show-text="false" />
+            <v-icon size="80" color="grey-lighten-1">mdi-message-off-outline</v-icon>
             <p class="text-h6 mt-4">No messages found</p>
             <p class="text-body-2 text-medium-emphasis">
               {{
@@ -311,7 +311,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useMessageStore } from '@/stores/messages'
 import { useAgentStore } from '@/stores/agents'
 import { formatRelative } from 'date-fns'
-import MascotLoader from '@/components/MascotLoader.vue'
 
 // Stores
 const messageStore = useMessageStore()
