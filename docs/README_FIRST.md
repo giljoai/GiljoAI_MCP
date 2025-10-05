@@ -79,10 +79,10 @@ GiljoAI MCP now supports secure LAN deployment with comprehensive security measu
 ### Development Logs
 
 **Mission Completion Reports**:
-- **[devlog/2025-10-05_LAN_Core_Capability_Complete.md](devlog/2025-10-05_LAN_Core_Capability_Complete.md)** - LAN deployment mission completion
+- **[devlog/2025-10-05_LAN_Core_Deployment_Complete.md](devlog/2025-10-05_LAN_Core_Deployment_Complete.md)** - LAN deployment mission completion
 
 **Session Memories**:
-- **[sessions/2025-10-05_LAN_Deployment_Mission.md](sessions/2025-10-05_LAN_Deployment_Mission.md)** - LAN deployment session memory
+- **[sessions/2025-10-05_LAN_Core_Deployment_Session.md](sessions/2025-10-05_LAN_Core_Deployment_Session.md)** - LAN deployment session memory
 
 ### Quick Navigation
 

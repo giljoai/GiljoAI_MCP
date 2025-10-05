@@ -76,7 +76,7 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const url = API_CONFIG.ENDPOINTS.project.replace(':id', id)
-      const response = await axios.put(url, updates, { baseURL: API_CONFIG.REST_API.baseURL })
+      const response = await axios.patch(url, updates, { baseURL: API_CONFIG.REST_API.baseURL })
 
       const index = projects.value.findIndex((p) => p.id === id)
       if (index !== -1) {

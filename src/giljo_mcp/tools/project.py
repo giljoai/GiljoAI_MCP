@@ -50,7 +50,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     mission=mission,
                     tenant_key=tenant_key,
                     product_id=product_id,
-                    status="active",
+                    status="inactive",
                     context_budget=150000,
                     context_used=0,
                     created_at=datetime.now(timezone.utc),
