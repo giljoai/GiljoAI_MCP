@@ -15,6 +15,18 @@ import uvicorn
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Import colored logger and filter utilities
+try:
+    from src.giljo_mcp.colored_logger import (
+        setup_colored_logging, ColoredFormatter, LogFilter,
+        get_colored_logger, print_success, print_error, print_info, print_highlight
+    )
+    COLORED_LOGGING_AVAILABLE = True
+except ImportError:
+    COLORED_LOGGING_AVAILABLE = False
+    # Fallback
+    print_success = print_error = print_info = print_highlight = print
+
 # Import PortManager for centralized port management
 try:
     from src.giljo_mcp.port_manager import get_port_manager
@@ -137,14 +149,6 @@ def get_default_host() -> str:
 
 def main():
     """Main entry point for running the API server"""
-    # Set up basic logging immediately to catch early errors
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
-    )
-    early_logger = logging.getLogger(__name__)
-    early_logger.info("Starting API server initialization...")
-
     parser = argparse.ArgumentParser(description="GiljoAI MCP REST API Server")
     parser.add_argument("--host", default=None, help="Host to bind to (default: auto-detect from config)")
     parser.add_argument("--port", type=int, default=None, help="Port to bind to (default: auto-detect from config/env)")
@@ -152,9 +156,9 @@ def main():
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     parser.add_argument(
         "--log-level",
-        default="debug",  # Changed to debug for verbose output
+        default="info",  # Changed to info to reduce noise
         choices=["debug", "info", "warning", "error", "critical"],
-        help="Logging level (default: debug)",
+        help="Logging level (default: info)",
     )
     parser.add_argument(
         "--verbose",
@@ -182,58 +186,90 @@ def main():
         try:
             args.port = find_available_port(args.port)
         except RuntimeError as e:
-            logging.error(f"Port error: {e}")
+            print_error(f"Port error: {e}")
             sys.exit(1)
 
-    # Configure logging with verbose output
-    logging.basicConfig(
-        level=getattr(logging, args.log_level.upper()),
-        format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
-        force=True  # Force reconfiguration
-    )
+    # Configure colored logging if available
+    if COLORED_LOGGING_AVAILABLE:
+        setup_colored_logging(level=getattr(logging, args.log_level.upper()))
 
-    # Set uvicorn and fastapi loggers to same level for consistency
-    logging.getLogger("uvicorn").setLevel(getattr(logging, args.log_level.upper()))
-    logging.getLogger("uvicorn.access").setLevel(getattr(logging, args.log_level.upper()))
-    logging.getLogger("uvicorn.error").setLevel(getattr(logging, args.log_level.upper()))
-    logging.getLogger("fastapi").setLevel(getattr(logging, args.log_level.upper()))
+        # Create filter to exclude ping/keepalive/health check messages
+        exclude_patterns = [
+            "GET /health",
+            "GET /api/v1/health",
+            "WebSocket ping",
+            "WebSocket pong",
+            "keepalive",
+            "keep-alive",
+            "heartbeat",
+            "/ws/",
+            "ping-pong",
+        ]
+
+        # Apply filter to root logger
+        log_filter = LogFilter(exclude_patterns)
+        root_logger = logging.getLogger()
+        for handler in root_logger.handlers:
+            handler.addFilter(log_filter)
+
+        # Apply to uvicorn loggers
+        for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error", "fastapi"]:
+            uvicorn_logger = logging.getLogger(logger_name)
+            uvicorn_logger.setLevel(getattr(logging, args.log_level.upper()))
+            for handler in uvicorn_logger.handlers:
+                handler.addFilter(log_filter)
+    else:
+        # Fallback to basic logging
+        logging.basicConfig(
+            level=getattr(logging, args.log_level.upper()),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            force=True
+        )
+        logging.getLogger("uvicorn").setLevel(getattr(logging, args.log_level.upper()))
+        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Reduce access log noise
+        logging.getLogger("uvicorn.error").setLevel(getattr(logging, args.log_level.upper()))
+        logging.getLogger("fastapi").setLevel(getattr(logging, args.log_level.upper()))
 
     logger = logging.getLogger(__name__)
 
-    # Log startup information
-    logger.info("=" * 60)
-    logger.info("GiljoAI MCP Orchestrator REST API v2.0")
-    logger.info("=" * 60)
-    logger.info(f"Starting server on {args.host}:{args.port}")
-    logger.info(f"Port selection: {'Command line' if args.port else 'Auto-detected'}")
-    logger.info(f"Workers: {args.workers}")
-    logger.info(f"Auto-reload: {args.reload}")
-    logger.info(f"Log level: {args.log_level}")
+    # Log startup information with colored output
+    print_highlight("=" * 60)
+    print_highlight("  GiljoAI MCP Orchestrator REST API v2.0")
+    print_highlight("=" * 60)
+
+    print_success(f"Server binding to {args.host}:{args.port}")
+    print_info(f"Port selection: {'Command line' if args.port else 'Auto-detected'}")
+    print_info(f"Workers: {args.workers}")
+    print_info(f"Auto-reload: {'Enabled' if args.reload else 'Disabled'}")
+    print_info(f"Log level: {args.log_level.upper()}")
 
     if args.ssl_keyfile and args.ssl_certfile:
-        logger.info(f"SSL enabled with cert: {args.ssl_certfile}")
+        print_success(f"SSL enabled with cert: {args.ssl_certfile}")
         ssl_config = {"ssl_keyfile": args.ssl_keyfile, "ssl_certfile": args.ssl_certfile}
     else:
         ssl_config = {}
-        logger.info("Running in HTTP mode (no SSL)")
+        print_info("Running in HTTP mode (no SSL)")
 
-    logger.info("-" * 60)
-    logger.info("API Endpoints:")
-    logger.info(f"  Documentation: http://{args.host}:{args.port}/docs")
-    logger.info(f"  ReDoc: http://{args.host}:{args.port}/redoc")
-    logger.info(f"  OpenAPI JSON: http://{args.host}:{args.port}/openapi.json")
-    logger.info(f"  Health Check: http://{args.host}:{args.port}/health")
-    logger.info(f"  WebSocket: ws://{args.host}:{args.port}/ws/{{client_id}}")
-    logger.info("-" * 60)
-    logger.info("Available API Routes:")
-    logger.info("  /api/v1/projects - Project management")
-    logger.info("  /api/v1/agents - Agent control")
-    logger.info("  /api/v1/messages - Inter-agent messaging")
-    logger.info("  /api/v1/tasks - Task management")
-    logger.info("  /api/v1/context - Context and vision documents")
-    logger.info("  /api/v1/config - Configuration management")
-    logger.info("  /api/v1/stats - Statistics and monitoring")
-    logger.info("=" * 60)
+    print_info("-" * 60)
+    print_info("API Endpoints:")
+    print_info(f"  Documentation: http://{args.host}:{args.port}/docs")
+    print_info(f"  ReDoc: http://{args.host}:{args.port}/redoc")
+    print_info(f"  OpenAPI JSON: http://{args.host}:{args.port}/openapi.json")
+    print_success(f"  Health Check: http://{args.host}:{args.port}/health")
+    print_success(f"  WebSocket: ws://{args.host}:{args.port}/ws/{{client_id}}")
+    print_info("-" * 60)
+    print_info("Available API Routes:")
+    print_info("  /api/v1/projects - Project management")
+    print_info("  /api/v1/agents - Agent control")
+    print_info("  /api/v1/messages - Inter-agent messaging")
+    print_info("  /api/v1/tasks - Task management")
+    print_info("  /api/v1/context - Context and vision documents")
+    print_info("  /api/v1/config - Configuration management")
+    print_info("  /api/v1/stats - Statistics and monitoring")
+    print_highlight("=" * 60)
+    print_success("Server starting... Ready to accept connections!")
+    print_info("Ping/keepalive messages are filtered from output")
+    print_highlight("=" * 60)
 
     try:
         # Run the server

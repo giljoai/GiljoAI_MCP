@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## SYSTEM IDENTITY
+
+**This is System 1 (C: Drive - Localhost Mode Testing)**
+- **Location**: `C:\Projects\GiljoAI_MCP`
+- **Mode**: `localhost` (in config.yaml)
+- **Purpose**: Development and localhost mode testing
+- **Database**: PostgreSQL on localhost
+- **API Binding**: `127.0.0.1` (localhost only)
+- **Authentication**: No API key required
+- **Use Case**: Individual developer, rapid iteration, testing
+
+### Path Debugging Guide
+
+If you encounter hardcoded paths in code:
+- **`F:\` paths** → Came from System 2 (LAN/server PC) - **MUST FIX** to use `Path.cwd()`
+- **`C:\Projects\` paths** → May be from this system - verify if path-agnostic code needed
+- **Any absolute path** → Should be converted to `pathlib.Path()` with relative paths
+
+**Correct approach**: Always use `Path.cwd()`, `Path(__file__)`, or config-driven paths.
+
+---
+
 ## CRITICAL: Multi-System Development Workflow
 
 **GiljoAI MCP Development Environment Strategy**
@@ -55,6 +77,9 @@ These files are **gitignored** and stay local to each system:
 - `.env` - Environment variables (database credentials, ports, API keys)
 - `config.yaml` - System-specific configuration (mode, paths, ports)
 - `install_config.yaml` - User-generated installer config (via --generate-config)
+- `CLAUDE.md` - AI assistant instructions (system-specific)
+- `.claude.json` - Claude Code settings
+- `.serena/` - Serena MCP configuration
 - `data/` - Database data and uploads
 - `logs/` - Application logs
 - `temp/` - Temporary files
@@ -522,19 +547,39 @@ git commit -m "fix: Remove environment files from git tracking"
 git push
 ```
 
-## System-Specific Notes
+## System-Specific Notes for This PC (C: Drive)
 
-### System 1 (C: Drive - Localhost Mode)
+### Localhost Mode Focus
 
-- Uses default localhost configuration
-- No API key authentication
-- API binds to 127.0.0.1 only
+- This system tests **local development scenarios**
+- API binds to `127.0.0.1` for localhost-only access
+- No API key authentication required
 - Perfect for rapid development and testing
 - No network security concerns
 
-### System 2 (F: Drive - Server Mode)
+### Configuration Checklist
 
-- Uses server configuration for LAN testing
+Before testing on this system, verify:
+- [ ] `config.yaml` has `mode: localhost`
+- [ ] `services.api.host: 127.0.0.1`
+- [ ] PostgreSQL is running on localhost
+- [ ] Frontend can connect to API on localhost
+
+### Serena MCP Configuration
+
+This system uses Serena MCP for IDE assistant capabilities:
+```bash
+claude mcp list  # Verify serena is connected
+```
+
+If not configured:
+```bash
+claude mcp add serena -- uvx --from git+https://github.com/oraios/serena serena start-mcp-server --context ide-assistant --project $(pwd)
+```
+
+### Other System Reference (F: Drive - Server Mode)
+
+System 2 uses server configuration for LAN testing:
 - Requires API key authentication
 - API binds to 0.0.0.0 (network accessible)
 - Tests multi-client scenarios

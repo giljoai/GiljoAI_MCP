@@ -25,6 +25,7 @@ pyyaml>=6.0.0              # YAML configuration
 toml>=0.10.2               # TOML configuration
 click>=8.1.0               # CLI interface
 rich>=13.0.0               # Beautiful terminal output
+colorama>=0.4.6            # Cross-platform colored terminal output
 httpx>=0.25.0              # HTTP client for API calls
 websockets>=12.0           # WebSocket client support
 aiohttp>=3.8.0             # Async HTTP client and server

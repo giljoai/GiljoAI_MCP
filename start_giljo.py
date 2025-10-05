@@ -15,12 +15,27 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+# Add src to path for colored logger import
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
 # Try to import psutil, but don't fail if not available
 try:
     import psutil
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
+
+# Import colored logger
+try:
+    from giljo_mcp.colored_logger import (
+        print_error, print_warning, print_success,
+        print_info, print_debug, print_highlight
+    )
+    COLORED_OUTPUT = True
+except ImportError:
+    # Fallback to regular print
+    COLORED_OUTPUT = False
+    print_error = print_warning = print_success = print_info = print_debug = print_highlight = print
 
 # Service configuration - will be updated from config.yaml
 SERVICES = {
@@ -35,7 +50,7 @@ SERVICES = {
     },
     "dashboard": {
         "name": "Dashboard (Frontend)",
-        "command": ["cmd.exe", "/c", "npm", "run", "dev"] if sys.platform == "win32" else ["npm", "run", "dev"],
+        "command": ["node", "run_frontend.js"],
         "cwd": "frontend",
         "port": 7274,  # Default, will be updated from config
         "health_check": "tcp",
@@ -124,15 +139,19 @@ class ServiceLauncher:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}"
 
-        # Console output with color
-        if level == "ERROR":
-            print(f"\033[91m{log_entry}\033[0m")  # Red
+        # Console output with colored logger
+        if level == "ERROR" or level == "CRITICAL":
+            print_error(log_entry)
         elif level == "WARNING":
-            print(f"\033[93m{log_entry}\033[0m")  # Yellow
+            print_warning(log_entry)
         elif level == "SUCCESS":
-            print(f"\033[92m{log_entry}\033[0m")  # Green
+            print_success(log_entry)
+        elif level == "DEBUG":
+            print_debug(log_entry)
+        elif level == "HIGHLIGHT":
+            print_highlight(log_entry)
         else:
-            print(log_entry)
+            print_info(log_entry)
 
         # File output
         with open(self.log_file, 'a') as f:
