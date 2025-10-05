@@ -5,8 +5,8 @@
 Transform GiljoAI MCP from LAN-only operation to **production-ready internet-facing deployment** (WAN mode). Enable secure, scalable access from anywhere in the world with enterprise-grade security, monitoring, and reliability.
 
 **Target:** Linux production servers (primary), Windows Server, Cloud platforms (AWS, Azure, GCP)
-**Timeline:** 6-8 weeks (3-4 sprints)
-**Success Criteria:** Secure public access with SSL/TLS, DDoS protection, monitoring, and 99.9% uptime
+**Timeline:** 7-10 weeks (4-5 sprints) - includes UX/installation enhancements
+**Success Criteria:** Secure public access with SSL/TLS, DDoS protection, monitoring, 99.9% uptime, and seamless installation experience
 
 ---
 
@@ -19,9 +19,12 @@ Transform GiljoAI MCP from LAN-only operation to **production-ready internet-fac
 - ✅ **All LAN security checklist items completed (81/81)**
 - ✅ **LAN performance benchmarks established**
 - ✅ **Multi-client LAN access tested and working**
+- ✅ **LAN UX improvements complete** (installer wizard, first-launch setup, settings interface)
 - ✅ **User approval to proceed with WAN deployment**
 
 **Starting WAN before LAN is complete will result in failure.**
+
+**Related Mission:** See `LAN_UX_MISSION_PROMPT.md` for foundational UX patterns that will be adapted for WAN deployment. The LAN UX provides the base installer framework, setup wizard patterns, and settings interface that WAN will extend with cloud-specific features.
 
 ### Current State (After LAN Deployment)
 - ✅ **LAN deployment working** - Multiple clients accessing on internal network
@@ -38,6 +41,10 @@ Transform GiljoAI MCP from LAN-only operation to **production-ready internet-fac
 - **Monitoring:** Basic → Comprehensive (Prometheus, Grafana, Loki)
 - **Security:** Firewall → Firewall + WAF + DDoS protection + fail2ban
 - **Storage:** Local files → Object storage (S3/MinIO)
+- **Installation:** Simple LAN setup → Cloud deployment automation
+- **UX Complexity:** Network IP configuration → Domain + DNS + SSL + Reverse Proxy wizards
+- **Admin Interface:** Basic settings → Full WAN management (SSL, WAF, multi-tenant, monitoring)
+- **Client Setup:** LAN IP address → Internet URL with certificate validation
 
 ---
 
@@ -278,7 +285,227 @@ Transform GiljoAI MCP from LAN-only operation to **production-ready internet-fac
    - Redis: Sentinel cluster (already set up in Phase 2)
    - Test: Failover scenarios, zero-downtime deployments
 
-### Phase 6: Testing & Launch (Week 8)
+### Phase 6: Installation & User Experience (Week 7-8)
+
+**Production-Grade UX (Builds on LAN UX Foundation):**
+
+**Note:** This phase extends the LAN UX patterns for internet-facing deployment. The LAN installer provides the base framework; WAN adds cloud deployment automation, domain configuration, SSL setup, and advanced networking.
+
+1. **Enhanced Installer with WAN Mode**
+   - File: `installer/cli/install.py`
+   - Extend: Add WAN deployment mode option
+   - Features:
+     - Cloud platform selection (AWS, Azure, GCP, DigitalOcean, Self-hosted)
+     - Automated infrastructure provisioning
+     - Domain name configuration wizard
+     - SSL certificate automation (Let's Encrypt or custom)
+     - Reverse proxy selection and setup (nginx/Caddy)
+     - DNS configuration guidance
+     - Monitoring stack installation (Prometheus/Grafana)
+   - Integration: Detect LAN installer base, add WAN-specific modules
+   - Test: One-command WAN deployment on fresh server
+
+2. **Cloud Deployment Scripts**
+   - **AWS Deployment Automation**
+     - File: `installer/cloud/aws_deploy.py`
+     - Features: EC2 provisioning, RDS setup, ELB configuration, Route53 DNS
+     - CloudFormation/Terraform templates
+
+   - **Azure Deployment Automation**
+     - File: `installer/cloud/azure_deploy.py`
+     - Features: VM provisioning, Azure Database, Application Gateway, DNS zones
+     - ARM templates or Terraform
+
+   - **GCP Deployment Automation**
+     - File: `installer/cloud/gcp_deploy.py`
+     - Features: Compute Engine, Cloud SQL, Load Balancing, Cloud DNS
+     - Deployment Manager or Terraform
+
+   - **DigitalOcean (Cost-Effective)**
+     - File: `installer/cloud/digitalocean_deploy.py`
+     - Features: Droplets, Managed PostgreSQL/Redis, Load Balancer, DNS
+     - Simple API-based deployment
+
+   - Test: Each cloud platform deploys successfully with one command
+
+3. **Docker/Kubernetes Deployment**
+   - File: `docker-compose.wan.yml` (already exists, enhance)
+   - File: `kubernetes/wan-deployment.yaml` (create)
+   - Features:
+     - Multi-container orchestration
+     - Auto-scaling configuration
+     - Health checks and rolling updates
+     - Secrets management (Kubernetes secrets or Docker secrets)
+   - Helm charts for easy Kubernetes deployment
+   - Test: Container orchestration works, auto-scaling functional
+
+4. **First-Launch Setup Wizard (WAN)**
+   - File: `frontend/src/views/setup/WANSetupWizard.vue`
+   - Extends: LAN setup wizard with WAN-specific steps
+   - Steps:
+     1. Domain & SSL Configuration
+        - Domain name entry and verification
+        - DNS record validation (A, AAAA, CNAME)
+        - SSL certificate selection (Let's Encrypt auto or custom upload)
+        - Certificate auto-renewal setup
+     2. Network & Security
+        - Reverse proxy configuration (nginx/Caddy)
+        - Firewall rules verification
+        - WAF enablement and rule selection
+        - DDoS protection settings
+     3. Cloud Integration (if applicable)
+        - Cloud provider credentials
+        - Object storage configuration (S3/Azure Blob/GCS)
+        - CDN setup (optional)
+     4. Monitoring & Alerts
+        - Prometheus/Grafana configuration
+        - Alert destinations (email, Slack, PagerDuty)
+        - Uptime monitoring setup
+     5. Admin Account & Multi-Tenancy
+        - Master admin account creation
+        - Tenant management settings
+        - User invitation system
+   - UX: Progress indicator, validation, help tooltips
+   - Test: Complete wizard flow, all integrations configured
+
+5. **Admin Settings Interface (WAN Features)**
+   - File: `frontend/src/views/admin/WANSettings.vue`
+   - Sections:
+     - **Domain & SSL Management**
+       - View certificate status, expiration
+       - Renew/replace certificates
+       - Manage DNS records
+       - HTTPS enforcement settings
+
+     - **Security Configuration**
+       - WAF rule management
+       - DDoS protection tuning
+       - Rate limiting per-endpoint
+       - IP whitelist/blacklist
+       - API key rotation
+       - JWT token settings
+
+     - **Infrastructure Monitoring**
+       - Server health dashboard
+       - Resource usage (CPU, memory, disk)
+       - Database performance
+       - Redis cluster status
+       - Load balancer health
+
+     - **Backup & Recovery**
+       - Backup schedule configuration
+       - Restore point management
+       - Disaster recovery testing
+       - Backup storage location
+
+     - **Multi-Tenant Administration**
+       - Tenant creation/deletion
+       - Per-tenant resource limits
+       - Usage analytics per tenant
+       - Billing integration (optional)
+
+   - UX: Real-time updates, clear status indicators, one-click actions
+   - Test: All admin functions work, real-time updates via WebSocket
+
+6. **Client PC Setup for WAN Access**
+   - File: `installer/client/setup_wan_client.py`
+   - Features:
+     - One-command client setup
+     - Server URL configuration (e.g., https://giljo.example.com)
+     - API key entry and validation
+     - SSL certificate trust (if custom CA)
+     - Connection test and diagnostics
+   - Cross-platform: Windows, Linux, macOS clients
+   - CLI: `python setup_wan_client.py --server https://giljo.example.com --api-key <key>`
+   - Test: Client connects from internet, all features work
+
+7. **Certificate Management Automation**
+   - File: `scripts/ssl/manage_certificates.sh`
+   - Features:
+     - Automated Let's Encrypt certificate issuance
+     - Auto-renewal with cron/systemd timer
+     - Certificate expiration monitoring
+     - Alert before expiration (30, 14, 7 days)
+     - Automatic nginx/Caddy reload after renewal
+   - Integration: Works with manual certificates too
+   - Test: Certificate renewal succeeds, no downtime
+
+8. **Deployment Monitoring Dashboard**
+   - File: `frontend/src/views/monitoring/WANDashboard.vue`
+   - Real-time Metrics:
+     - API request rate (requests/sec)
+     - Response time distribution (p50, p95, p99)
+     - Error rate by endpoint
+     - Active connections (HTTP + WebSocket)
+     - Database query performance
+     - Cache hit ratio (Redis)
+     - SSL handshake performance
+   - Geographical Distribution:
+     - User locations on map
+     - Latency by region
+     - Traffic by country
+   - Alerts:
+     - Recent alerts timeline
+     - Alert configuration
+     - Incident history
+   - Test: Metrics update in real-time, alerts trigger correctly
+
+9. **Multi-Tenant Admin Interface**
+   - File: `frontend/src/views/admin/TenantManagement.vue`
+   - Features:
+     - **Tenant Dashboard**
+       - List all tenants with status
+       - Usage statistics per tenant
+       - Resource consumption (projects, agents, tasks)
+
+     - **Tenant Creation Wizard**
+       - Tenant name and metadata
+       - Initial admin user setup
+       - Resource limits configuration
+       - Custom domain support (optional)
+
+     - **Tenant Administration**
+       - Enable/disable tenant
+       - Reset tenant API keys
+       - View tenant activity logs
+       - Export tenant data
+       - Delete tenant (with confirmation)
+
+     - **Resource Quotas**
+       - Max concurrent agents per tenant
+       - Storage limits
+       - API rate limits per tenant
+       - Database connection limits
+
+   - UX: Searchable tenant list, inline editing, bulk actions
+   - Test: Multi-tenant isolation verified, quotas enforced
+
+10. **Installation Documentation**
+    - Update: `docs/deployment/WAN_DEPLOYMENT_GUIDE.md`
+    - Sections:
+      - One-command installation guide
+      - Cloud platform specific instructions
+      - Domain and DNS configuration
+      - SSL certificate setup walkthrough
+      - Troubleshooting common installation issues
+      - Migration from self-hosted to cloud
+
+    - Create: `docs/deployment/WAN_INSTALLER_GUIDE.md`
+    - Content:
+      - Installer architecture and design
+      - Customization options
+      - Advanced deployment scenarios
+      - Unattended/automated installation
+
+    - Create: `docs/deployment/WAN_ADMIN_GUIDE.md`
+    - Content:
+      - Admin interface user manual
+      - Day-to-day operations
+      - Security best practices
+      - Performance tuning
+      - Multi-tenant management
+
+### Phase 7: Testing & Launch (Week 9-10)
 
 **Production Validation:**
 
@@ -416,9 +643,9 @@ Transform GiljoAI MCP from LAN-only operation to **production-ready internet-fac
 ### Recommended Agents
 
 **Lead: orchestrator-coordinator**
-- Coordinate 6-8 week mission
+- Coordinate 7-10 week mission (extended for UX phase)
 - Track progress across phases
-- Manage dependencies between infrastructure components
+- Manage dependencies between infrastructure and UX components
 - Report status to user
 
 **Security: network-security-engineer**
@@ -436,6 +663,7 @@ Transform GiljoAI MCP from LAN-only operation to **production-ready internet-fac
 - Object storage integration
 - Database replication
 - Performance optimization
+- Cloud deployment architecture
 
 **Research: deep-researcher**
 - Cloud platform best practices
@@ -450,18 +678,38 @@ Transform GiljoAI MCP from LAN-only operation to **production-ready internet-fac
 - Production ASGI server setup
 - Code changes with tests
 
+**Frontend/UX: frontend-developer**
+- WAN setup wizard implementation (extends LAN wizard)
+- Admin settings interface for WAN features
+- Monitoring dashboard UI
+- Multi-tenant admin interface
+- Real-time metrics visualization
+- Responsive design for admin panels
+
+**Installer: installer-developer**
+- Enhanced installer with WAN mode
+- Cloud deployment automation (AWS, Azure, GCP, DigitalOcean)
+- Docker/Kubernetes deployment scripts
+- Certificate management automation
+- Client setup utilities
+- One-command installation experience
+- Builds on LAN installer foundation
+
 **Testing: backend-integration-tester**
 - Load testing
 - Penetration testing
 - End-to-end testing
 - Performance benchmarking
 - Security validation
+- Installation testing across platforms
 
 **Documentation: documentation-manager**
 - Production runbook
 - Disaster recovery plan
 - Monitoring playbook
 - Security incident response
+- WAN installer guide
+- WAN admin guide
 - Session summary and devlog
 
 ---
@@ -474,9 +722,11 @@ Transform GiljoAI MCP from LAN-only operation to **production-ready internet-fac
 - **Week 3:** Advanced security operational
 - **Week 4:** Monitoring and observability live
 - **Week 5:** Backup and DR tested
-- **Week 6:** Load testing and security testing complete
-- **Week 7:** Soft launch preparation
-- **Week 8:** Production launch
+- **Week 6:** Core functionality validated (checkpoint)
+- **Week 7:** Installation & UX development (installer, wizards)
+- **Week 8:** Installation & UX completion (admin interfaces, monitoring dashboards)
+- **Week 9:** Load testing, security testing, installation testing
+- **Week 10:** Soft launch and production launch
 
 ### Git Workflow
 ```bash
@@ -501,7 +751,8 @@ git merge feature/wan-deployment
 - Phase 3 → Phase 4: Security testing passed
 - Phase 4 → Phase 5: Monitoring operational
 - Phase 5 → Phase 6: Backups tested, DR validated
-- Phase 6 → Launch: All criteria met, user approval
+- Phase 6 → Phase 7: Core WAN functionality complete, ready for UX layer
+- Phase 7 → Launch: Installation tested, UX complete, all criteria met, user approval
 
 ---
 
@@ -532,6 +783,18 @@ git merge feature/wan-deployment
 **Risk 6: Security Breach**
 - Mitigation: Defense in depth, monitoring, alerts, incident response plan
 - Recovery: Documented incident response procedure, backups
+
+**Risk 7: Complex Installation Experience**
+- Mitigation: Thorough installer testing, clear error messages, rollback capability
+- Recovery: Manual installation documentation, support troubleshooting guide
+
+**Risk 8: Cloud Platform Incompatibility**
+- Mitigation: Test on all major cloud platforms, provide fallback options
+- Recovery: Platform-specific workarounds documented, manual setup guide
+
+**Risk 9: SSL/DNS Configuration Errors**
+- Mitigation: Automated validation, clear setup wizard, DNS check utilities
+- Recovery: Troubleshooting guide, manual certificate installation steps
 
 ---
 
@@ -661,21 +924,37 @@ git merge feature/wan-deployment
 - ✅ High availability tested (if implemented)
 
 ### Phase 6 Complete When:
+- ✅ Enhanced installer with WAN mode functional
+- ✅ Cloud deployment scripts working (at least 2 platforms)
+- ✅ WAN setup wizard complete and tested
+- ✅ Admin settings interface operational
+- ✅ Client setup utility working
+- ✅ Certificate management automated
+- ✅ Monitoring dashboard live
+- ✅ Multi-tenant admin interface complete
+- ✅ Installation documentation comprehensive
+
+### Phase 7 Complete When:
 - ✅ Load testing passed
 - ✅ Penetration testing clean
 - ✅ End-to-end testing passed
 - ✅ SSL validation A+
+- ✅ Installation testing on all target platforms successful
 - ✅ Soft launch successful
 
 ### Mission Complete When:
 - ✅ User accessing from internet successfully
 - ✅ Team members accessing from home/mobile
+- ✅ One-command installation working on fresh servers
+- ✅ Setup wizard provides smooth first-launch experience
+- ✅ Admin can manage all WAN features through UI
+- ✅ Client setup takes < 5 minutes
 - ✅ 99.9% uptime over 7 days
 - ✅ Zero security incidents
 - ✅ Monitoring and alerts operational
 - ✅ Backups running and tested
 - ✅ Performance meets targets
-- ✅ All documentation complete
+- ✅ All documentation complete (deployment + installation + admin guides)
 - ✅ User approval for production launch
 
 ---
@@ -684,20 +963,27 @@ git merge feature/wan-deployment
 
 ### What NOT to Do
 - ❌ Don't start before LAN deployment is validated
+- ❌ Don't start before LAN UX improvements are complete
 - ❌ Don't skip security checklist items
 - ❌ Don't deploy to production without penetration testing
 - ❌ Don't store secrets in plaintext
 - ❌ Don't skip backup testing
 - ❌ Don't launch without monitoring
 - ❌ Don't ignore performance benchmarks
+- ❌ Don't create complex installation requiring manual configuration
+- ❌ Don't skip installation testing on target platforms
 
 ### What TO Do
-- ✅ Build on proven LAN foundation
+- ✅ Build on proven LAN foundation (code + UX patterns)
+- ✅ Extend LAN installer for WAN capabilities
+- ✅ Reuse LAN setup wizard patterns
 - ✅ Test each phase before moving to next
-- ✅ Document everything
+- ✅ Document everything (technical + user-facing)
 - ✅ Monitor continuously
 - ✅ Validate security at every step
 - ✅ Test disaster recovery procedures
+- ✅ Test installation on fresh servers
+- ✅ Ensure one-command deployment works
 - ✅ Communicate with user before major changes
 - ✅ Have rollback plan for every deployment
 
@@ -716,10 +1002,11 @@ git merge feature/wan-deployment
 ### Step 2: Read Documentation (2-3 hours)
 ```bash
 # Read these in order:
-1. docs/deployment/WAN_DEPLOYMENT_GUIDE.md
-2. docs/deployment/WAN_SECURITY_CHECKLIST.md
-3. docs/deployment/WAN_ARCHITECTURE.md
-4. docs/deployment/LAN_TO_WAN_MIGRATION.md
+1. docs/deployment/LAN_UX_MISSION_PROMPT.md (understand UX foundation)
+2. docs/deployment/WAN_DEPLOYMENT_GUIDE.md
+3. docs/deployment/WAN_SECURITY_CHECKLIST.md
+4. docs/deployment/WAN_ARCHITECTURE.md
+5. docs/deployment/LAN_TO_WAN_MIGRATION.md
 ```
 
 ### Step 3: Plan Infrastructure (1 day)
@@ -754,24 +1041,37 @@ Start with HTTPS enforcement and SSL/TLS setup.
 ## Final Reminders
 
 **This is Phase 2 of 2:**
-- WAN builds on LAN foundation
-- LAN must be production-ready first
-- Focus on security, reliability, monitoring
+- WAN builds on LAN foundation (code + UX)
+- LAN must be production-ready first (including UX improvements)
+- Focus on security, reliability, monitoring, and seamless deployment
 
-**Success = Secure, scalable, internet-accessible system**
+**Success = Secure, scalable, internet-accessible system with production-grade UX**
 - Accessible from anywhere
+- One-command installation
+- Intuitive admin interface
 - Enterprise-grade security
 - 99.9%+ uptime
 - Comprehensive monitoring
 - Well-documented and maintainable
 
-**You've got this! LAN foundation is solid. Now add production polish.**
+**You've got this! LAN foundation is solid. Now add production polish and world-class installation experience.**
+
+---
+
+**WAN UX Complexity Notes:**
+- WAN installation is MORE complex than LAN (DNS, SSL, reverse proxy, cloud integration)
+- Must guide users through: domain setup, certificate management, firewall configuration
+- Automated installer should handle 90% of complexity
+- Admin interface must expose all WAN-specific controls
+- Client setup should be trivial: one command with server URL and API key
+- Monitoring dashboard critical for internet-facing deployment
 
 ---
 
 *Mission created: 2025-10-05*
-*Target start: After LAN deployment complete*
-*Duration: 6-8 weeks*
+*Updated: 2025-10-05 (added UX/installation phase)*
+*Target start: After LAN deployment + LAN UX complete*
+*Duration: 7-10 weeks (extended for UX enhancements)*
 *Priority: HIGH (after LAN)*
 *Complexity: HIGH*
-*Risk: MEDIUM (with proper planning and testing)*
+*Risk: MEDIUM (with proper planning, testing, and LAN UX foundation)*
