@@ -73,11 +73,12 @@
         </template>
 
         <template v-slot:item.preferred_tool="{ item }">
-          <v-chip
-            size="small"
-            :color="getToolColor(item.preferred_tool || 'claude')"
-            :prepend-icon="getToolIcon(item.preferred_tool || 'claude')"
-          >
+          <v-chip size="small" variant="outlined">
+            <template v-slot:prepend>
+              <v-avatar size="18" class="mr-1">
+                <v-img :src="getToolLogo(item.preferred_tool || 'claude')" :alt="getToolName(item.preferred_tool || 'claude')" />
+              </v-avatar>
+            </template>
             {{ getToolName(item.preferred_tool || 'claude') }}
           </v-chip>
         </template>
@@ -161,40 +162,68 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="editingTemplate.name"
-                  label="Template Name*"
+                  label="Template Name"
                   :rules="[(v) => !!v || 'Name is required']"
                   density="compact"
-                />
+                >
+                  <template v-slot:append-inner>
+                    <v-tooltip location="top">
+                      <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
+                      </template>
+                      <span>Required field - Enter a unique name for this agent template</span>
+                    </v-tooltip>
+                  </template>
+                </v-text-field>
               </v-col>
               <v-col cols="12" md="6">
                 <v-select
                   v-model="editingTemplate.category"
                   :items="categories"
-                  label="Category*"
+                  label="Category"
                   :rules="[(v) => !!v || 'Category is required']"
                   density="compact"
-                />
+                >
+                  <template v-slot:append-inner>
+                    <v-tooltip location="top">
+                      <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
+                      </template>
+                      <span>Required field - Select the agent type/category</span>
+                    </v-tooltip>
+                  </template>
+                </v-select>
               </v-col>
               <v-col cols="12" md="6">
                 <v-select
                   v-model="editingTemplate.preferred_tool"
                   :items="toolOptions"
-                  label="Preferred Tool*"
+                  label="Preferred Tool"
                   :rules="[(v) => !!v || 'Tool is required']"
                   density="compact"
                 >
                   <template v-slot:item="{ item, props }">
                     <v-list-item v-bind="props">
                       <template v-slot:prepend>
-                        <v-icon :icon="item.raw.icon" :color="item.raw.color" />
+                        <v-avatar size="24">
+                          <v-img :src="item.raw.logo" :alt="item.raw.title" />
+                        </v-avatar>
                       </template>
                     </v-list-item>
                   </template>
                   <template v-slot:selection="{ item }">
-                    <v-icon :icon="item.raw.icon" :color="item.raw.color" class="mr-2" size="small" />
+                    <v-avatar size="20" class="mr-2">
+                      <v-img :src="item.raw.logo" :alt="item.raw.title" />
+                    </v-avatar>
                     {{ item.raw.title }}
                   </template>
                 </v-select>
+                <v-tooltip location="top">
+                  <template v-slot:activator="{ props }">
+                    <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-help-circle</v-icon>
+                  </template>
+                  <span>Required field - Select the AI tool for this template (only Claude available now)</span>
+                </v-tooltip>
               </v-col>
               <v-col cols="12" md="6">
                 <v-text-field
@@ -204,7 +233,15 @@
                 />
               </v-col>
               <v-col cols="12">
-                <div class="text-subtitle-2 mb-2">Template Content*</div>
+                <div class="d-flex align-center mb-2">
+                  <span class="text-subtitle-2">Template Content</span>
+                  <v-tooltip location="top">
+                    <template v-slot:activator="{ props }">
+                      <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-help-circle</v-icon>
+                    </template>
+                    <span>Required field - Enter the template content with {variable} placeholders</span>
+                  </v-tooltip>
+                </div>
                 <v-textarea
                   v-model="editingTemplate.template"
                   label="Template (supports {variable} placeholders)"
@@ -421,20 +458,22 @@ const toolOptions = [
   {
     title: 'Claude',
     value: 'claude',
-    icon: 'mdi-robot',
+    logo: '/Claude_AI_symbol.svg',
     color: '#1976D2'
   },
   {
-    title: 'Codex',
+    title: 'Codex (future)',
     value: 'codex',
-    icon: 'mdi-code-braces',
-    color: '#4CAF50'
+    logo: '/codex_logo.svg',
+    color: '#4CAF50',
+    disabled: true
   },
   {
-    title: 'Gemini',
+    title: 'Gemini (future)',
     value: 'gemini',
-    icon: 'mdi-star-four-points',
-    color: '#9C27B0'
+    logo: '/gemini-icon.svg',
+    color: '#9C27B0',
+    disabled: true
   },
 ]
 
@@ -629,22 +668,13 @@ const getCategoryColor = (category) => {
   return colors[category] || 'grey'
 }
 
-const getToolColor = (tool) => {
-  const colors = {
-    claude: '#1976D2',
-    codex: '#4CAF50',
-    gemini: '#9C27B0',
+const getToolLogo = (tool) => {
+  const logos = {
+    claude: '/Claude_AI_symbol.svg',
+    codex: '/codex_logo.svg',
+    gemini: '/gemini-icon.svg',
   }
-  return colors[tool] || colors.claude
-}
-
-const getToolIcon = (tool) => {
-  const icons = {
-    claude: 'mdi-robot',
-    codex: 'mdi-code-braces',
-    gemini: 'mdi-star-four-points',
-  }
-  return icons[tool] || icons.claude
+  return logos[tool] || logos.claude
 }
 
 const getToolName = (tool) => {
