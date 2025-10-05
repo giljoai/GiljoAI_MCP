@@ -70,10 +70,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if auth_header and auth_header.startswith("Bearer "):
                 api_key = auth_header[7:]
 
-        # Validate API key if auth is enabled
+        # Validate API key if auth is enabled (mode-based: server/lan/wan require auth, localhost does not)
         if auth_manager.is_enabled():
             if not api_key:
-                return JSONResponse(status_code=401, content={"error": "Missing API key"})
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "error": "Missing API key",
+                        "detail": f"API key required for {auth_manager.mode.value} mode. Include X-API-Key header or Authorization: Bearer <key>"
+                    }
+                )
 
             # Validate API key - validate_api_key is synchronous
             if not auth_manager.validate_api_key(api_key):
@@ -138,4 +144,35 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Process request
         response = await call_next(request)
+        return response
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Security headers middleware - adds standard security headers to all responses"""
+
+    async def dispatch(self, request: Request, call_next):
+        """Add security headers to response"""
+        response = await call_next(request)
+
+        # Prevent clickjacking attacks
+        response.headers["X-Frame-Options"] = "DENY"
+
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # Enable XSS protection in older browsers
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        # Content Security Policy - restrict resource loading
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:"
+
+        # Strict Transport Security (only if HTTPS is enabled)
+        # response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+        # Referrer policy - control referrer information
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # Permissions policy - control browser features
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
         return response

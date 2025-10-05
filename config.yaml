@@ -30,8 +30,27 @@ features:
   auto_handoff: true
   dynamic_discovery: true
   ssl_enabled: false
-  api_keys_required: false
+  api_keys_required: false  # Auto-enabled for server/lan/wan modes
   multi_user: false
+security:
+  cors:
+    allowed_origins:
+      - http://127.0.0.1:7274
+      - http://localhost:7274
+      # Add specific LAN IPs when deploying to server mode
+      # Example: - http://192.168.1.100:7274
+  api_keys:
+    # API keys required based on deployment mode:
+    # - localhost: false (no authentication)
+    # - server/lan/wan: true (API key required)
+    require_for_modes:
+      - server
+      - lan
+      - wan
+    # Generate keys using: python -c "import secrets; print(f'giljo_lan_{secrets.token_urlsafe(32)}')"
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
 paths:
   data: ./data
   logs: ./logs

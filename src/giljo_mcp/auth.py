@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import jwt
+from cryptography.fernet import Fernet
 from fastmcp import FastMCP
 
 from .config_manager import DeploymentMode, get_config
@@ -31,6 +32,8 @@ class AuthManager:
         self.mode = self.config.server.mode
         self.jwt_secret = self._get_or_create_jwt_secret()
         self.api_keys: dict[str, dict[str, Any]] = {}
+        self.encryption_key = self._get_or_create_encryption_key()
+        self.cipher = Fernet(self.encryption_key)
 
     def is_enabled(self) -> bool:
         """Check if authentication is enabled based on deployment mode"""
@@ -55,6 +58,27 @@ class AuthManager:
         secret_file.write_text(secret)
         return secret
 
+    def _get_or_create_encryption_key(self) -> bytes:
+        """Get or create Fernet encryption key for API key storage"""
+        # Check environment variable first
+        env_key = os.getenv("GILJO_MCP_ENCRYPTION_KEY")
+        if env_key:
+            logger.info("Using encryption key from environment variable")
+            return env_key.encode()
+
+        # Fall back to file-based key
+        key_file = Path.home() / ".giljo-mcp" / "encryption_key"
+        key_file.parent.mkdir(parents=True, exist_ok=True)
+
+        if key_file.exists():
+            return key_file.read_bytes()
+
+        # Generate new Fernet key
+        key = Fernet.generate_key()
+        key_file.write_bytes(key)
+        logger.info(f"Generated new encryption key stored at: {key_file}")
+        return key
+
     def generate_api_key(self, name: str, permissions: Optional[list[str]] = None) -> str:
         """Generate a new API key for LAN mode"""
         api_key = f"gk_{secrets.token_urlsafe(32)}"
@@ -66,27 +90,56 @@ class AuthManager:
             "active": True,
         }
 
-        # Store API key in file for persistence
+        # Store API key in encrypted file for persistence
         api_keys_file = Path.home() / ".giljo-mcp" / "api_keys.json"
         api_keys_file.parent.mkdir(parents=True, exist_ok=True)
 
         existing_keys = {}
         if api_keys_file.exists():
-            existing_keys = json.loads(api_keys_file.read_text())
+            try:
+                # Decrypt existing keys
+                encrypted_data = api_keys_file.read_bytes()
+                decrypted_data = self.cipher.decrypt(encrypted_data)
+                existing_keys = json.loads(decrypted_data.decode())
+            except Exception as e:
+                logger.warning(f"Could not decrypt existing keys (might be unencrypted): {e}")
+                # Try reading as plaintext for migration
+                try:
+                    existing_keys = json.loads(api_keys_file.read_text())
+                    logger.info("Migrating plaintext API keys to encrypted storage")
+                except Exception:
+                    existing_keys = {}
 
         existing_keys[api_key] = self.api_keys[api_key]
-        api_keys_file.write_text(json.dumps(existing_keys, indent=2))
 
-        logger.info(f"Generated API key for '{name}'")
+        # Encrypt and save
+        plaintext_data = json.dumps(existing_keys, indent=2).encode()
+        encrypted_data = self.cipher.encrypt(plaintext_data)
+        api_keys_file.write_bytes(encrypted_data)
+
+        logger.info(f"Generated and encrypted API key for '{name}'")
         return api_key
 
     def validate_api_key(self, api_key: str) -> Optional[dict[str, Any]]:
         """Validate an API key for LAN mode"""
-        # Load API keys from file if not in memory
+        # Load API keys from encrypted file if not in memory
         if not self.api_keys:
             api_keys_file = Path.home() / ".giljo-mcp" / "api_keys.json"
             if api_keys_file.exists():
-                self.api_keys = json.loads(api_keys_file.read_text())
+                try:
+                    # Decrypt and load keys
+                    encrypted_data = api_keys_file.read_bytes()
+                    decrypted_data = self.cipher.decrypt(encrypted_data)
+                    self.api_keys = json.loads(decrypted_data.decode())
+                except Exception as e:
+                    logger.warning(f"Could not decrypt API keys (might be unencrypted): {e}")
+                    # Try reading as plaintext for migration
+                    try:
+                        self.api_keys = json.loads(api_keys_file.read_text())
+                        logger.info("Loaded plaintext API keys - will encrypt on next save")
+                    except Exception:
+                        logger.error("Could not load API keys from file")
+                        self.api_keys = {}
 
         if api_key in self.api_keys:
             key_info = self.api_keys[api_key]
@@ -282,7 +335,14 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
             if not api_keys_file.exists():
                 return {"success": False, "error": "No API keys found"}
 
-            api_keys = json.loads(api_keys_file.read_text())
+            # Decrypt existing keys
+            try:
+                encrypted_data = api_keys_file.read_bytes()
+                decrypted_data = auth_manager.cipher.decrypt(encrypted_data)
+                api_keys = json.loads(decrypted_data.decode())
+            except Exception:
+                # Try plaintext for migration
+                api_keys = json.loads(api_keys_file.read_text())
 
             if api_key not in api_keys:
                 return {"success": False, "error": "API key not found"}
@@ -291,8 +351,10 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
             api_keys[api_key]["active"] = False
             api_keys[api_key]["revoked_at"] = datetime.now(timezone.utc).isoformat()
 
-            # Save updated keys
-            api_keys_file.write_text(json.dumps(api_keys, indent=2))
+            # Encrypt and save updated keys
+            plaintext_data = json.dumps(api_keys, indent=2).encode()
+            encrypted_data = auth_manager.cipher.encrypt(plaintext_data)
+            api_keys_file.write_bytes(encrypted_data)
 
             # Update in memory
             auth_manager.api_keys = api_keys

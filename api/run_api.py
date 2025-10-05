@@ -105,6 +105,36 @@ def get_port_from_sources() -> int:
     return default_port
 
 
+def get_default_host() -> str:
+    """Get default host based on config mode
+
+    Returns:
+        Default host: 127.0.0.1 for localhost mode, 0.0.0.0 for server mode
+    """
+    try:
+        # Import here to avoid circular dependencies
+        import yaml
+        config_path = Path(__file__).parent.parent / "config.yaml"
+
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                mode = config.get('installation', {}).get('mode', 'localhost')
+
+                # Server mode (LAN/WAN) binds to all interfaces, localhost mode binds to loopback only
+                if mode in ('server', 'lan', 'wan'):
+                    logging.info(f"Detected {mode} mode - binding to 0.0.0.0 for network access")
+                    return "0.0.0.0"
+                else:
+                    logging.info(f"Detected {mode} mode - binding to 127.0.0.1 for localhost only")
+                    return "127.0.0.1"
+    except Exception as e:
+        logging.warning(f"Could not detect mode from config: {e}, defaulting to localhost")
+
+    # Safe default: localhost only
+    return "127.0.0.1"
+
+
 def main():
     """Main entry point for running the API server"""
     # Set up basic logging immediately to catch early errors
@@ -116,7 +146,7 @@ def main():
     early_logger.info("Starting API server initialization...")
 
     parser = argparse.ArgumentParser(description="GiljoAI MCP REST API Server")
-    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
+    parser.add_argument("--host", default=None, help="Host to bind to (default: auto-detect from config)")
     parser.add_argument("--port", type=int, default=None, help="Port to bind to (default: auto-detect from config/env)")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
@@ -139,6 +169,10 @@ def main():
     # Override log level if verbose flag is set
     if args.verbose:
         args.log_level = "debug"
+
+    # Determine host with mode-based default
+    if args.host is None:
+        args.host = get_default_host()
 
     # Determine port with fallback logic
     if args.port is None:

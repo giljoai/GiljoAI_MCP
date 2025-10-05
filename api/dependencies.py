@@ -14,7 +14,14 @@ async def get_tenant_key(request: Request) -> str:
 
     This dependency ensures tenant context is available in endpoints
     even if ContextVar propagation fails across async boundaries.
+
+    In server mode (LAN/WAN), missing tenant key returns 401.
+    In localhost mode, defaults to predefined tenant key.
     """
+    import yaml
+    from pathlib import Path
+    from fastapi import HTTPException
+
     # For OPTIONS requests (CORS preflight), return default tenant without validation
     # OPTIONS requests should not fail due to missing tenant context
     if request.method == "OPTIONS":
@@ -34,7 +41,26 @@ async def get_tenant_key(request: Request) -> str:
     if tenant_key:
         return tenant_key
 
-    # Fallback to default tenant instead of raising error
+    # Check deployment mode to determine fallback behavior
+    try:
+        config_path = Path(__file__).parent.parent / "config.yaml"
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                mode = config.get('installation', {}).get('mode', 'localhost')
+
+            # In server mode (LAN/WAN), missing tenant key is a security error
+            if mode in ('server', 'lan', 'wan'):
+                raise HTTPException(
+                    status_code=401,
+                    detail=f"Tenant key required for {mode} mode. Include X-Tenant-Key header."
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # If config read fails, allow fallback
+
+    # Fallback to default tenant (localhost mode only)
     default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
     TenantManager.set_current_tenant(default_tenant)
     return default_tenant
