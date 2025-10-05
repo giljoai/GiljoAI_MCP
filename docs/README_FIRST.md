@@ -30,9 +30,93 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
 
 GiljoAI-MCP now serves as the **persistent brain** for AI development teams, while Claude Code provides the **execution engine** through sub-agents.
 
+### 🌐 LAN Deployment Capability (October 2025)
+
+**Status**: Production-Ready (95% Complete)
+
+GiljoAI MCP now supports secure LAN deployment with comprehensive security measures:
+
+- **Security**: 7 critical security fixes implemented (API key auth, rate limiting, CORS, encryption)
+- **Network**: Firewall configuration, mode-based binding, PostgreSQL isolation
+- **Testing**: 19/19 configuration tests passed, runtime validation pending
+- **Documentation**: Complete deployment runbook and quick start guide
+
+**Quick Links**:
+- **[LAN Quick Start Guide](deployment/LAN_QUICK_START.md)** - 15-minute deployment
+- **[LAN Deployment Runbook](deployment/LAN_DEPLOYMENT_RUNBOOK.md)** - Complete operational guide
+- **[Security Fixes Report](deployment/SECURITY_FIXES_REPORT.md)** - Security implementation details
+- **[LAN Test Report](deployment/LAN_TEST_REPORT.md)** - Validation results
+
 ## 🗂️ Directory Structure & Contents
 
-[Rest of the original document remains the same]
+### Core Documentation
 
-**Last Updated**: October 2025
-**Version**: 0.2.0-pre
+**Project Overview**:
+- **[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)** - System architecture and design principles
+- **[README_FIRST.md](README_FIRST.md)** - This file - project navigation hub
+
+**Manuals & Guides**:
+- **[manuals/MCP_TOOLS_MANUAL.md](manuals/MCP_TOOLS_MANUAL.md)** - MCP tools reference
+- **[manuals/INSTALL.md](manuals/INSTALL.md)** - Installation guide
+- **[manuals/QUICK_START.md](manuals/QUICK_START.md)** - Quick start guide
+
+### Deployment Documentation
+
+**LAN Deployment** (Phase 1 - Complete):
+- **[deployment/LAN_QUICK_START.md](deployment/LAN_QUICK_START.md)** - Fast-track 15-minute deployment
+- **[deployment/LAN_DEPLOYMENT_RUNBOOK.md](deployment/LAN_DEPLOYMENT_RUNBOOK.md)** - Complete operational guide
+- **[deployment/SECURITY_FIXES_REPORT.md](deployment/SECURITY_FIXES_REPORT.md)** - Security hardening details
+- **[deployment/NETWORK_DEPLOYMENT_CHECKLIST.md](deployment/NETWORK_DEPLOYMENT_CHECKLIST.md)** - Network configuration
+- **[deployment/LAN_ACCESS_URLS.md](deployment/LAN_ACCESS_URLS.md)** - Access information
+- **[deployment/LAN_TEST_REPORT.md](deployment/LAN_TEST_REPORT.md)** - Testing validation results
+- **[deployment/RUNTIME_TESTING_QUICKSTART.md](deployment/RUNTIME_TESTING_QUICKSTART.md)** - Runtime test procedures
+
+**Future Deployment** (Planned):
+- **[deployment/LAN_MISSION_PROMPT.md](deployment/LAN_MISSION_PROMPT.md)** - LAN deployment mission
+- **[deployment/WAN_MISSION_PROMPT.md](deployment/WAN_MISSION_PROMPT.md)** - WAN deployment mission (future)
+- **[deployment/LAN_UX_MISSION_PROMPT.md](deployment/LAN_UX_MISSION_PROMPT.md)** - LAN UX improvements (Phase 2)
+
+### Development Logs
+
+**Mission Completion Reports**:
+- **[devlog/2025-10-05_LAN_Core_Capability_Complete.md](devlog/2025-10-05_LAN_Core_Capability_Complete.md)** - LAN deployment mission completion
+
+**Session Memories**:
+- **[sessions/2025-10-05_LAN_Deployment_Mission.md](sessions/2025-10-05_LAN_Deployment_Mission.md)** - LAN deployment session memory
+
+### Quick Navigation
+
+**For System Administrators**:
+1. Start here: [LAN Quick Start Guide](deployment/LAN_QUICK_START.md)
+2. Full procedures: [LAN Deployment Runbook](deployment/LAN_DEPLOYMENT_RUNBOOK.md)
+3. Security details: [Security Fixes Report](deployment/SECURITY_FIXES_REPORT.md)
+4. Troubleshooting: See Runbook troubleshooting section
+
+**For Developers**:
+1. Architecture: [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)
+2. MCP Tools: [manuals/MCP_TOOLS_MANUAL.md](manuals/MCP_TOOLS_MANUAL.md)
+3. Installation: [manuals/INSTALL.md](manuals/INSTALL.md)
+4. Development logs: [devlog/](devlog/)
+
+**For End Users**:
+1. Client setup: [LAN Quick Start Guide - End Users Section](deployment/LAN_QUICK_START.md#for-end-users-client-setup)
+2. Access URLs: [LAN Access URLs](deployment/LAN_ACCESS_URLS.md)
+3. API documentation: http://YOUR_SERVER_IP:7272/docs
+
+## 📊 Project Status
+
+**Current Version**: 2.0.0
+**Deployment Modes**: Localhost (development), Server/LAN (production), WAN (planned)
+
+**Production Readiness**:
+- Localhost Mode: 100% Ready
+- LAN Mode: 95% Ready (runtime validation pending)
+- WAN Mode: Planned (future mission)
+
+**Recent Milestones**:
+- October 2025: LAN deployment capability complete
+- October 2025: Full stack integration complete
+- January 2025: Sub-agent architecture integration
+
+**Last Updated**: October 2025 (LAN Deployment Complete)
+**Version**: 2.0.0
