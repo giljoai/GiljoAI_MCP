@@ -222,8 +222,15 @@
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="800" persistent retain-focus>
       <v-card>
-        <v-card-title>
-          {{ editingProject ? 'Edit Project' : 'Create New Project' }}
+        <v-card-title class="d-flex align-center">
+          <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="cancelEdit"
+            aria-label="Close"
+          />
         </v-card-title>
         <v-card-text>
           <!-- Show UUID for newly created project -->
@@ -312,7 +319,16 @@
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="400" persistent retain-focus>
       <v-card>
-        <v-card-title>Confirm Delete</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <span>Confirm Delete</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showDeleteDialog = false"
+            aria-label="Close"
+          />
+        </v-card-title>
         <v-card-text>
           Are you sure you want to delete project "{{ projectToDelete?.name }}"? This action cannot
           be undone.
@@ -328,7 +344,16 @@
     <!-- Close Project Dialog -->
     <v-dialog v-model="showCloseDialog" max-width="500" persistent retain-focus>
       <v-card>
-        <v-card-title>Close Project</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <span>Close Project</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showCloseDialog = false"
+            aria-label="Close"
+          />
+        </v-card-title>
         <v-card-text>
           <p class="mb-3">Closing project "{{ projectToClose?.name }}"</p>
           <v-textarea

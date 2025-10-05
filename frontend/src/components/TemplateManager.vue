@@ -152,8 +152,15 @@
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus>
       <v-card>
-        <v-card-title>
+        <v-card-title class="d-flex align-center">
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="closeEditDialog"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>
@@ -296,8 +303,15 @@
     <!-- Preview Dialog -->
     <v-dialog v-model="previewDialog" max-width="800px" persistent retain-focus>
       <v-card>
-        <v-card-title>
+        <v-card-title class="d-flex align-center">
           <span class="text-h5">Template Preview: {{ previewingTemplate.name }}</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="previewDialog = false"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>
@@ -349,7 +363,16 @@
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="500px" persistent retain-focus>
       <v-card>
-        <v-card-title class="text-h5">Confirm Delete</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <span class="text-h5">Confirm Delete</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="deleteDialog = false"
+            aria-label="Close"
+          />
+        </v-card-title>
         <v-card-text>
           Are you sure you want to delete the template "{{ deletingTemplate?.name }}"? This will
           archive the template and it can be restored from the version history.

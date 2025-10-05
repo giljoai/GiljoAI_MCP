@@ -283,15 +283,18 @@
     <!-- Agent Details Dialog -->
     <v-dialog v-model="showDetailsDialog" max-width="800">
       <v-card v-if="selectedAgent">
-        <v-card-title>
-          <v-row align="center">
-            <v-col> Agent Details: {{ selectedAgent.name }} </v-col>
-            <v-col cols="auto">
-              <v-chip :color="getStatusColor(selectedAgent.status)" size="small">
-                {{ formatStatus(selectedAgent.status) }}
-              </v-chip>
-            </v-col>
-          </v-row>
+        <v-card-title class="d-flex align-center">
+          <span>Agent Details: {{ selectedAgent.name }}</span>
+          <v-spacer />
+          <v-chip :color="getStatusColor(selectedAgent.status)" size="small" class="mr-2">
+            {{ formatStatus(selectedAgent.status) }}
+          </v-chip>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showDetailsDialog = false"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>

@@ -117,10 +117,15 @@
     <!-- Diff Dialog -->
     <v-dialog v-model="diffDialog" max-width="1200px" scrollable>
       <v-card>
-        <v-card-title>
+        <v-card-title class="d-flex align-center">
           <span class="text-h5">Compare Versions</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="diffDialog = false" />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="diffDialog = false"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>
@@ -180,7 +185,16 @@
     <!-- Restore Confirmation Dialog -->
     <v-dialog v-model="restoreDialog" max-width="500px">
       <v-card>
-        <v-card-title class="text-h5">Confirm Restore</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <span class="text-h5">Confirm Restore</span>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="cancelRestore"
+            aria-label="Close"
+          />
+        </v-card-title>
         <v-card-text>
           <div class="mb-4">
             Are you sure you want to restore Version {{ getVersionNumber(restoringVersion) }}? This

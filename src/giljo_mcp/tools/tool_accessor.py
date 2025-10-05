@@ -813,6 +813,7 @@ class ToolAccessor:
 
                 task = Task(
                     tenant_key=project.tenant_key,
+                    product_id=project.product_id,  # Inherit product_id from project
                     project_id=str(project.id),
                     title=content,  # Use content as title
                     description=content,  # Also store as description

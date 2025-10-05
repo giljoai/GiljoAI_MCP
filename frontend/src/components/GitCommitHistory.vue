@@ -200,7 +200,12 @@
         <v-card-title class="d-flex align-center">
           <span>Commit Details</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="showDetailsDialog = false" />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showDetailsDialog = false"
+            aria-label="Close"
+          />
         </v-card-title>
 
         <v-card-text>
