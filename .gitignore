@@ -143,3 +143,6 @@ CLAUDE.md
 
 # Serena MCP configuration (system-specific)
 .serena/
+cleanup_auto.ps1
+cleanup_for_fresh_install.ps1
+IMPORTANT.txt
