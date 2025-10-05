@@ -67,7 +67,7 @@
           {{
             hasFilters
               ? 'No conversions match your filters'
-              : 'No task conversions have been performed yet'
+              : 'Conversion history will be available when real API is implemented'
           }}
         </div>
       </div>
@@ -451,56 +451,8 @@ function canRollback(conversion) {
 async function refreshHistory() {
   loading.value = true
   try {
-    // Mock data for now - would fetch from API
-    conversions.value = [
-      {
-        id: 'conv_1',
-        created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-        status: 'completed',
-        strategy: 'single',
-        task_count: 3,
-        project_count: 1,
-        tasks: [
-          { id: 'task_1', title: 'Fix authentication bug', priority: 'high' },
-          { id: 'task_2', title: 'Update user interface', priority: 'medium' },
-          { id: 'task_3', title: 'Add error handling', priority: 'medium' },
-        ],
-        projects: [{ id: 'proj_1', name: 'Authentication System Improvements' }],
-        options: {
-          preserveTaskLinks: true,
-          markTasksConverted: true,
-          assignToCurrentAgent: false,
-          inheritTaskPriority: true,
-        },
-        has_dependencies: false,
-      },
-      {
-        id: 'conv_2',
-        created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-        status: 'completed',
-        strategy: 'grouped',
-        task_count: 5,
-        project_count: 2,
-        tasks: [
-          { id: 'task_4', title: 'API documentation', priority: 'low' },
-          { id: 'task_5', title: 'User guide update', priority: 'low' },
-          { id: 'task_6', title: 'Database optimization', priority: 'high' },
-          { id: 'task_7', title: 'Query performance', priority: 'high' },
-          { id: 'task_8', title: 'Index cleanup', priority: 'medium' },
-        ],
-        projects: [
-          { id: 'proj_2', name: 'Documentation Tasks Project' },
-          { id: 'proj_3', name: 'Database Tasks Project' },
-        ],
-        options: {
-          preserveTaskLinks: true,
-          markTasksConverted: true,
-          assignToCurrentAgent: true,
-          inheritTaskPriority: true,
-        },
-        has_dependencies: true,
-      },
-    ]
+    // TODO: Fetch from API when conversion history endpoint is implemented
+    conversions.value = []
   } catch (error) {
     console.error('Failed to fetch conversion history:', error)
   } finally {
