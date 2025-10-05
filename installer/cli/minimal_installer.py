@@ -336,7 +336,7 @@ class MinimalInstaller:
             # Start backend in new visible console window
             subprocess.Popen(
                 ["cmd", "/c", "start", "cmd", "/k",
-                 str(python_exe), "-m", "uvicorn", "api.main:app",
+                 str(python_exe), "-m", "uvicorn", "api.app:app",
                  "--host", "127.0.0.1", "--port", "7272", "--reload"],
                 cwd=self.install_dir,
                 shell=True
@@ -344,7 +344,7 @@ class MinimalInstaller:
         else:
             # For Linux/Mac, start in background with output visible
             subprocess.Popen(
-                [str(python_exe), "-m", "uvicorn", "api.main:app",
+                [str(python_exe), "-m", "uvicorn", "api.app:app",
                  "--host", "127.0.0.1", "--port", "7272", "--reload"],
                 cwd=self.install_dir
             )

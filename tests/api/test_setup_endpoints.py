@@ -12,7 +12,7 @@ import json
 from unittest.mock import patch, MagicMock
 
 # Import will fail initially - that's expected in TDD
-# from api.main import app
+# from api.app import app
 # client = TestClient(app)
 
 
@@ -380,9 +380,9 @@ class TestSetupCompletionEndpoint:
 # Pytest fixtures
 @pytest.fixture
 def client():
-    """Create test client - will be implemented after main.py exists."""
+    """Create test client - will be implemented after app.py exists."""
     # This will fail initially - expected in TDD
-    # from api.main import app
+    # from api.app import app
     # return TestClient(app)
     pytest.skip("API app not yet implemented - TDD placeholder")
 
