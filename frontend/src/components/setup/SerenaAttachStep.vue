@@ -21,8 +21,8 @@
           <div class="d-flex align-center">
             <v-icon start>mdi-information</v-icon>
             <div>
-              <strong>Installation Required:</strong> Serena must be installed
-              in Claude Code separately.
+              <strong>Installation Required:</strong> Serena must be installed in your coding tool
+              separately.
               <v-btn
                 variant="text"
                 size="small"
