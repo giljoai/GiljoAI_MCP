@@ -44,31 +44,34 @@
             alt-labels
             flat
           >
-            <!-- Step 1: Attach Tools -->
-            <v-stepper-window-item :value="1">
-              <AttachToolsStep
-                v-model="config.aiTools"
-                @next="handleToolsNext"
-              />
-            </v-stepper-window-item>
+            <template v-slot:item.1>
+              <v-card flat>
+                <AttachToolsStep
+                  v-model="config.aiTools"
+                  @next="handleToolsNext"
+                />
+              </v-card>
+            </template>
 
-            <!-- Step 2: Network Configuration -->
-            <v-stepper-window-item :value="2">
-              <NetworkConfigStep
-                v-model:mode="config.deploymentMode"
-                v-model:lan-settings="config.lanSettings"
-                @next="handleNetworkNext"
-                @back="handleBack"
-              />
-            </v-stepper-window-item>
+            <template v-slot:item.2>
+              <v-card flat>
+                <NetworkConfigStep
+                  v-model:mode="config.deploymentMode"
+                  v-model:lan-settings="config.lanSettings"
+                  @next="handleNetworkNext"
+                  @back="handleBack"
+                />
+              </v-card>
+            </template>
 
-            <!-- Step 3: Complete -->
-            <v-stepper-window-item :value="3">
-              <SetupCompleteStep
-                :config="config"
-                @finish="handleFinish"
-              />
-            </v-stepper-window-item>
+            <template v-slot:item.3>
+              <v-card flat>
+                <SetupCompleteStep
+                  :config="config"
+                  @finish="handleFinish"
+                />
+              </v-card>
+            </template>
           </v-stepper>
         </v-card>
       </v-col>
