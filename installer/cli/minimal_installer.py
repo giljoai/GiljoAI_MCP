@@ -70,11 +70,15 @@ class MinimalInstaller:
         print("Creating virtual environment...")
         self.create_venv()
 
-        # Step 4: Install dependencies
+        # Step 4: Install Python dependencies
         print("Installing Python dependencies...")
         self.install_dependencies()
 
-        # Step 5: Create minimal config
+        # Step 5: Install frontend dependencies
+        print("Installing frontend dependencies...")
+        self.install_frontend_dependencies()
+
+        # Step 6: Create minimal config
         print("Creating minimal configuration...")
         self.create_minimal_config()
 
@@ -292,20 +296,89 @@ class MinimalInstaller:
 
     def install_dependencies(self) -> None:
         """
-        Install Python dependencies via pip.
+        Install Python dependencies via pip with progress bar.
         """
         pip_exe = self._get_pip_path()
         requirements = self.install_dir / "requirements.txt"
 
-        subprocess.run([str(pip_exe), "install", "-r", str(requirements)], check=True)
+        print()
+        print("Installing dependencies (this may take a few minutes)...")
+        print()
+
+        # Run pip with progress output
+        process = subprocess.Popen(
+            [str(pip_exe), "install", "-r", str(requirements), "--progress-bar", "on"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+
+        # Stream output in real-time
+        if process.stdout:
+            for line in process.stdout:
+                print(line, end='', flush=True)
+
+        process.wait()
+
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, process.args)
+
+        print()
         print("[OK] Dependencies installed")
+
+    def install_frontend_dependencies(self) -> None:
+        """
+        Install frontend npm dependencies with progress output.
+        """
+        frontend_dir = self.install_dir / "frontend"
+
+        if not frontend_dir.exists():
+            print(f"[WARNING] Frontend directory not found at {frontend_dir}")
+            return
+
+        print()
+        print("Installing frontend dependencies (this may take a few minutes)...")
+        print()
+
+        # Run npm install with progress output
+        import platform
+        if platform.system() == "Windows":
+            npm_cmd = "npm.cmd"
+        else:
+            npm_cmd = "npm"
+
+        process = subprocess.Popen(
+            [npm_cmd, "install"],
+            cwd=frontend_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+
+        # Stream output in real-time
+        if process.stdout:
+            for line in process.stdout:
+                print(line, end='', flush=True)
+
+        process.wait()
+
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, process.args)
+
+        print()
+        print("[OK] Frontend dependencies installed")
 
     def create_minimal_config(self) -> None:
         """
-        Create minimal localhost configuration.
+        Create minimal localhost configuration with setup mode flag.
         """
         config = {
             "mode": "localhost",
+            "setup_mode": True,  # Flag to skip validation during initial setup
             "api": {"host": "127.0.0.1", "port": 7272},
             "frontend": {"host": "127.0.0.1", "port": 7274},
             "database": {
@@ -313,7 +386,7 @@ class MinimalInstaller:
                 "port": 5432,
                 "name": "giljo_mcp",
                 "user": "postgres",
-                # Password will be set by wizard
+                "password": "SETUP_REQUIRED",  # Placeholder to satisfy validation
             },
             "setup_complete": False,
         }

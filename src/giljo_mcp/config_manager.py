@@ -396,6 +396,9 @@ class ConfigManager:
         self.app_name = "GiljoAI MCP Coding Orchestrator"
         self.app_version = "0.1.0"
 
+        # Setup mode flag (allows placeholder passwords during wizard)
+        self.setup_mode = False
+
         # Load configuration
         self.load()
 
@@ -552,6 +555,10 @@ class ConfigManager:
                 self.tenant.key_header = tn.get("key_header", self.tenant.key_header)
                 self.tenant.isolation_strict = tn.get("isolation_strict", self.tenant.isolation_strict)
 
+            # Setup mode flag (allows placeholder password during initial wizard setup)
+            if "setup_mode" in data:
+                self.setup_mode = data.get("setup_mode", False)
+
             # Feature flags
             if "features" in data:
                 feat = data["features"]
@@ -624,8 +631,6 @@ class ConfigManager:
         if log_level := os.getenv("LOG_LEVEL"):
             self.logging.level = log_level
 
-        if log_file := os.getenv("LOG_FILE"):
-            self.logging.file = Path(log_file)
 
         # Feature flags from environment
         if val := os.getenv("ENABLE_VISION_CHUNKING"):
@@ -723,7 +728,9 @@ class ConfigManager:
         if self.database.type == "postgresql":
             # Only require password if no database URL is provided
             if not self.database.database_url and not self.database.pg_password and not os.getenv("DB_PASSWORD"):
-                errors.append("PostgreSQL password is required")
+                # Check if we're in setup mode (allows placeholder password during initial setup)
+                if not getattr(self, 'setup_mode', False):
+                    errors.append("PostgreSQL password is required")
 
         # Agent configuration validation
         if self.agent.handoff_threshold >= self.agent.context_limit:
