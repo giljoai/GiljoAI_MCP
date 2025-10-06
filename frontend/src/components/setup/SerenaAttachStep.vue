@@ -1,88 +1,56 @@
 <template>
   <v-card-text class="pa-8">
-    <h2 class="text-h5 mb-2">Advanced Code Analysis (Optional)</h2>
-    <p class="text-body-1 mb-6">Enhance your coding agents with Serena MCP's semantic code tools</p>
+    <h2 class="text-h5 mb-2">Serena MCP - Advanced Code Analysis (Optional)</h2>
+    <p class="text-body-1 mb-6">
+      Enhance your coding agents with semantic code tools
+    </p>
 
     <!-- Main Card -->
-    <v-card variant="outlined" class="serena-card" :class="{ 'serena-configured': isConfigured }">
-      <!-- State: Not Detected -->
-      <v-card-text v-if="state === 'not_detected'" class="d-flex flex-column align-center pa-6">
-        <v-icon size="64" color="warning" class="mb-4">mdi-code-braces-box</v-icon>
-        <h3 class="text-h6 mb-2">Serena MCP Not Detected</h3>
-        <p class="text-body-2 text-center text-medium-emphasis mb-4">
-          Serena MCP provides semantic code analysis, symbol search, and intelligent code
-          navigation.
+    <v-card variant="outlined" class="serena-card">
+      <v-card-text class="text-center">
+        <v-icon size="64" color="primary" class="mb-4">mdi-code-braces-box</v-icon>
+
+        <h3 class="text-h6 mb-3">Enable Serena Instructions?</h3>
+
+        <p class="text-body-2 mb-4">
+          When enabled, coding agents receive guidance on using Serena MCP tools
+          for semantic code analysis and intelligent refactoring.
         </p>
 
-        <div class="d-flex gap-2 mt-2">
-          <v-btn
-            color="primary"
-            variant="outlined"
-            @click="openInstallDialog"
-            aria-label="Open installation instructions"
-          >
-            <v-icon start>mdi-help-circle</v-icon>
-            How to Install
-          </v-btn>
-          <v-btn variant="text" @click="handleSkip" aria-label="Skip Serena MCP setup">
-            Skip
-          </v-btn>
-        </div>
-      </v-card-text>
-
-      <!-- State: Detected -->
-      <v-card-text v-if="state === 'detected'" class="d-flex flex-column align-center pa-6">
-        <v-icon size="64" color="success" class="mb-4">mdi-check-circle</v-icon>
-        <h3 class="text-h6 mb-2">Serena MCP Detected</h3>
-        <v-chip size="small" color="success" variant="tonal" class="mb-4"> Detected </v-chip>
-        <p class="text-body-2 text-center text-medium-emphasis mb-4">
-          Serena MCP is installed and ready to attach to Claude Code.
-        </p>
-
-        <v-btn
-          color="primary"
-          variant="flat"
-          :loading="attaching"
-          @click="attachSerena"
-          aria-label="Attach Serena MCP"
-        >
-          <v-icon start>mdi-link-variant-plus</v-icon>
-          Attach to Claude Code
-        </v-btn>
-      </v-card-text>
-
-      <!-- State: Configured -->
-      <v-card-text v-if="state === 'configured'" class="d-flex flex-column align-center pa-6">
-        <v-icon size="64" color="success" class="mb-4">mdi-check-decagram</v-icon>
-        <h3 class="text-h6 mb-2">Serena MCP Configured</h3>
-        <v-chip size="small" color="success" variant="flat" class="mb-4"> Configured </v-chip>
-
-        <v-alert type="success" variant="tonal" density="compact" class="mt-2">
-          <div class="text-caption">
-            <strong>Next:</strong> Relaunch Claude Code CLI and use semantic code tools
+        <v-alert type="info" variant="tonal" class="text-left mb-4">
+          <div class="d-flex align-center">
+            <v-icon start>mdi-information</v-icon>
+            <div>
+              <strong>Installation Required:</strong> Serena must be installed
+              in Claude Code separately.
+              <v-btn
+                variant="text"
+                size="small"
+                color="primary"
+                @click="showInstallGuide = true"
+                class="ml-2"
+              >
+                Installation Guide
+              </v-btn>
+            </div>
           </div>
         </v-alert>
+
+        <!-- Simple Choice -->
+        <v-radio-group v-model="choice" class="mt-4">
+          <v-radio
+            label="Yes, enable Serena instructions in agent prompts"
+            value="enabled"
+            color="primary"
+          />
+          <v-radio
+            label="No, skip Serena (can enable later in Settings)"
+            value="disabled"
+            color="primary"
+          />
+        </v-radio-group>
       </v-card-text>
     </v-card>
-
-    <!-- Error Alert -->
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mt-4"
-      closable
-      @click:close="errorMessage = ''"
-    >
-      {{ errorMessage }}
-    </v-alert>
-
-    <!-- Info Alert -->
-    <v-alert type="info" variant="tonal" class="mt-6">
-      <v-icon start>mdi-information</v-icon>
-      Serena MCP is optional but enhances agent capabilities with semantic code analysis, symbol
-      search, and intelligent navigation.
-    </v-alert>
 
     <!-- Progress Indicator -->
     <v-card variant="outlined" class="mt-6 mb-6">
@@ -97,209 +65,117 @@
 
     <!-- Navigation -->
     <div class="d-flex justify-space-between">
-      <v-btn variant="text" @click="handleBack" aria-label="Go back to previous step">
+      <v-btn variant="text" @click="$emit('back')">
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>
-      <v-btn color="primary" @click="handleNext" aria-label="Continue to next step">
+      <v-btn color="primary" @click="handleNext">
         Continue
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>
     </div>
 
-    <!-- Installation Dialog -->
-    <v-dialog v-model="showInstallDialog" max-width="600">
+    <!-- Installation Guide Dialog -->
+    <v-dialog v-model="showInstallGuide" max-width="700">
       <v-card>
-        <v-card-title class="d-flex justify-space-between align-center">
-          <span>Install Serena MCP</span>
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            size="small"
-            @click="showInstallDialog = false"
-            aria-label="Close installation dialog"
-          />
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="primary">mdi-book-open-variant</v-icon>
+          Install Serena MCP
         </v-card-title>
 
         <v-card-text>
-          <v-tabs v-model="installTab" class="mb-4">
+          <v-tabs v-model="installTab">
             <v-tab value="uvx">Using uvx (Recommended)</v-tab>
             <v-tab value="local">Local Installation</v-tab>
           </v-tabs>
 
-          <v-tabs-window v-model="installTab">
+          <v-tabs-window v-model="installTab" class="mt-4">
             <v-tabs-window-item value="uvx">
-              <div class="installation-instructions">
-                <p class="text-body-2 mb-4">
-                  Install Serena MCP using <code>uvx</code> (recommended for simplicity):
-                </p>
+              <h4 class="text-h6 mb-3">Install with uvx</h4>
 
-                <v-card variant="outlined" class="mb-4">
-                  <v-card-text>
-                    <code class="code-block">uvx mcp-server-serena</code>
-                  </v-card-text>
-                </v-card>
+              <p class="mb-3">
+                The simplest method - uvx automatically manages the installation:
+              </p>
 
-                <p class="text-body-2 text-medium-emphasis">
-                  This will install Serena MCP globally and make it available to Claude Code.
-                </p>
-              </div>
+              <v-code class="mb-3">
+uvx --from git+https://github.com/oraios/serena serena
+              </v-code>
+
+              <h4 class="text-h6 mt-4 mb-3">Configure in Claude Code</h4>
+
+              <p class="mb-2">Edit <code>~/.claude.json</code>:</p>
+
+              <v-code>
+{
+  "mcpServers": {
+    "serena": {
+      "command": "uvx",
+      "args": ["serena"]
+    }
+  }
+}
+              </v-code>
             </v-tabs-window-item>
 
             <v-tabs-window-item value="local">
-              <div class="installation-instructions">
-                <p class="text-body-2 mb-4">Clone and install Serena MCP from source:</p>
+              <h4 class="text-h6 mb-3">Local Installation</h4>
 
-                <v-card variant="outlined" class="mb-2">
-                  <v-card-text>
-                    <code class="code-block"
-                      >git clone https://github.com/apify/mcp-server-serena.git</code
-                    >
-                  </v-card-text>
-                </v-card>
+              <p class="mb-3">Clone and run locally:</p>
 
-                <v-card variant="outlined" class="mb-2">
-                  <v-card-text>
-                    <code class="code-block">cd mcp-server-serena</code>
-                  </v-card-text>
-                </v-card>
+              <v-code class="mb-3">
+git clone https://github.com/oraios/serena
+cd serena
+uv run serena start-mcp-server
+              </v-code>
 
-                <v-card variant="outlined" class="mb-4">
-                  <v-card-text>
-                    <code class="code-block">uv sync</code>
-                  </v-card-text>
-                </v-card>
+              <h4 class="text-h6 mt-4 mb-3">Configure in Claude Code</h4>
 
-                <p class="text-body-2 text-medium-emphasis">
-                  This creates a local installation that can be configured manually.
-                </p>
-              </div>
+              <p class="mb-2">Edit <code>~/.claude.json</code>:</p>
+
+              <v-code>
+{
+  "mcpServers": {
+    "serena": {
+      "command": "path/to/serena/venv/bin/python",
+      "args": ["-m", "serena"]
+    }
+  }
+}
+              </v-code>
             </v-tabs-window-item>
           </v-tabs-window>
 
-          <v-divider class="my-4" />
-
-          <v-btn
-            color="primary"
-            variant="text"
-            :loading="checking"
-            @click="checkAgain"
-            aria-label="Re-check Serena installation"
-          >
-            <v-icon start>mdi-refresh</v-icon>
-            Check Again
-          </v-btn>
+          <v-alert type="success" variant="tonal" class="mt-4">
+            <v-icon start>mdi-check-circle</v-icon>
+            After installation, restart Claude Code and verify with <code>/mcp</code>
+          </v-alert>
         </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="showInstallGuide = false">Close</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </v-card-text>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import setupService from '@/services/setupService'
+import { ref } from 'vue'
 
-/**
- * SerenaAttachStep - Serena MCP detection and attachment step (Step 2 of 4)
- *
- * Handles detection, installation guidance, and attachment of Serena MCP
- */
+const emit = defineEmits(['next', 'back'])
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false,
-  },
-})
-
-const emit = defineEmits(['update:modelValue', 'next', 'back', 'skip'])
-
-// State
-const state = ref('not_detected') // 'not_detected' | 'detected' | 'configured'
-const isConfigured = ref(false)
-const attaching = ref(false)
-const checking = ref(false)
-const errorMessage = ref('')
-const showInstallDialog = ref(false)
+// Simple state
+const choice = ref('disabled')
+const showInstallGuide = ref(false)
 const installTab = ref('uvx')
 
-// Methods
-const detectSerena = async () => {
-  checking.value = true
-  errorMessage.value = ''
-
-  try {
-    const result = await setupService.detectSerena()
-
-    if (result.installed) {
-      state.value = 'detected'
-      console.log('[SERENA_ATTACH] Serena detected')
-    } else {
-      state.value = 'not_detected'
-      console.log('[SERENA_ATTACH] Serena not detected')
-    }
-  } catch (error) {
-    console.error('[SERENA_ATTACH] Detection failed:', error)
-    errorMessage.value = `Detection failed: ${error.message}`
-  } finally {
-    checking.value = false
-  }
-}
-
-const attachSerena = async () => {
-  attaching.value = true
-  errorMessage.value = ''
-
-  try {
-    console.log('[SERENA_ATTACH] Attaching Serena MCP to Claude Code...')
-    const result = await setupService.attachSerena()
-
-    if (result.success) {
-      state.value = 'configured'
-      isConfigured.value = true
-      emit('update:modelValue', true)
-      console.log('[SERENA_ATTACH] Serena attached successfully')
-    } else {
-      errorMessage.value = result.error || 'Failed to attach Serena MCP'
-      console.error('[SERENA_ATTACH] Attachment failed:', result.error)
-    }
-  } catch (error) {
-    console.error('[SERENA_ATTACH] Attachment error:', error)
-    errorMessage.value = `Attachment failed: ${error.message}`
-  } finally {
-    attaching.value = false
-  }
-}
-
-const checkAgain = () => {
-  console.log('[SERENA_ATTACH] Re-checking Serena installation...')
-  detectSerena()
-}
-
+// Simple handler - just emit choice
 const handleNext = () => {
-  console.log('[SERENA_ATTACH] Moving to next step')
-  emit('next')
+  emit('next', {
+    serenaEnabled: choice.value === 'enabled'
+  })
 }
-
-const handleBack = () => {
-  console.log('[SERENA_ATTACH] Going back to previous step')
-  emit('back')
-}
-
-const handleSkip = () => {
-  console.log('[SERENA_ATTACH] Skipping Serena MCP setup')
-  emit('skip')
-}
-
-const openInstallDialog = () => {
-  showInstallDialog.value = true
-}
-
-// Lifecycle
-onMounted(() => {
-  console.log('[SERENA_ATTACH] Component mounted, detecting Serena...')
-  detectSerena()
-})
 </script>
 
 <style scoped>
@@ -317,9 +193,15 @@ h2 {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.serena-configured {
-  border-color: rgb(var(--v-theme-success));
-  background-color: rgba(var(--v-theme-success), 0.05);
+v-code {
+  display: block;
+  background-color: rgba(var(--v-theme-surface-variant), 0.5);
+  padding: 12px;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
 }
 
 code {
@@ -328,21 +210,5 @@ code {
   border-radius: 4px;
   font-family: 'Courier New', monospace;
   font-size: 0.875rem;
-}
-
-.code-block {
-  display: block;
-  font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
-  padding: 0;
-  background: none;
-}
-
-.installation-instructions {
-  padding: 0.5rem 0;
-}
-
-.gap-2 {
-  gap: 0.5rem;
 }
 </style>
