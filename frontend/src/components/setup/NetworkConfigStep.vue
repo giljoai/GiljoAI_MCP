@@ -5,105 +5,111 @@
 
     <!-- Mode Selection -->
     <v-radio-group v-model="selectedMode" class="mb-4">
-      <!-- Localhost Mode -->
-      <v-card
-        variant="outlined"
-        class="mb-4 mode-card"
-        :class="{ selected: selectedMode === 'localhost' }"
-        @click="selectedMode = 'localhost'"
-        role="button"
-        tabindex="0"
-        aria-label="Select localhost mode for single user"
-      >
-        <v-card-text>
-          <v-radio value="localhost">
-            <template #label>
-              <div class="ml-4">
-                <div class="text-h6 d-flex align-center">
-                  <v-icon class="mr-2">mdi-laptop</v-icon>
-                  Localhost (Recommended)
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  Single user on this computer only
-                </div>
-              </div>
-            </template>
-          </v-radio>
+      <v-row>
+        <!-- Localhost Mode -->
+        <v-col cols="12" md="6">
+          <v-card
+            variant="outlined"
+            class="h-100 mode-card"
+            :class="{ selected: selectedMode === 'localhost' }"
+            @click="selectedMode = 'localhost'"
+            role="button"
+            tabindex="0"
+            aria-label="Select localhost mode for single user"
+          >
+            <v-card-text>
+              <v-radio value="localhost">
+                <template #label>
+                  <div class="ml-4">
+                    <div class="text-h6 d-flex align-center">
+                      <v-icon class="mr-2">mdi-laptop</v-icon>
+                      Localhost
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      (Recommended)
+                    </div>
+                  </div>
+                </template>
+              </v-radio>
 
-          <v-list density="compact" class="mt-4 bg-transparent">
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="No network configuration needed"
-              class="text-caption"
-            />
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="No authentication required"
-              class="text-caption"
-            />
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="Fastest performance"
-              class="text-caption"
-            />
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="Most secure (localhost only)"
-              class="text-caption"
-            />
-          </v-list>
-        </v-card-text>
-      </v-card>
+              <v-list density="compact" class="mt-4 bg-transparent">
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="No network configuration needed"
+                  class="text-caption"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="No authentication required"
+                  class="text-caption"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Fastest performance"
+                  class="text-caption"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Most secure (localhost only)"
+                  class="text-caption"
+                />
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-col>
 
-      <!-- LAN Mode -->
-      <v-card
-        variant="outlined"
-        class="mb-4 mode-card"
-        :class="{ selected: selectedMode === 'lan' }"
-        @click="selectedMode = 'lan'"
-        role="button"
-        tabindex="0"
-        aria-label="Select LAN mode for team access"
-      >
-        <v-card-text>
-          <v-radio value="lan">
-            <template #label>
-              <div class="ml-4">
-                <div class="text-h6 d-flex align-center">
-                  <v-icon class="mr-2">mdi-network</v-icon>
-                  LAN (Local Network)
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  Team access on your local network
-                </div>
-              </div>
-            </template>
-          </v-radio>
+        <!-- LAN Mode -->
+        <v-col cols="12" md="6">
+          <v-card
+            variant="outlined"
+            class="h-100 mode-card"
+            :class="{ selected: selectedMode === 'lan' }"
+            @click="selectedMode = 'lan'"
+            role="button"
+            tabindex="0"
+            aria-label="Select LAN mode for team access"
+          >
+            <v-card-text>
+              <v-radio value="lan">
+                <template #label>
+                  <div class="ml-4">
+                    <div class="text-h6 d-flex align-center">
+                      <v-icon class="mr-2">mdi-network</v-icon>
+                      LAN
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      Team access on your network
+                    </div>
+                  </div>
+                </template>
+              </v-radio>
 
-          <v-list density="compact" class="mt-4 bg-transparent">
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="Multiple users can connect"
-              class="text-caption"
-            />
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="Network configuration required"
-              class="text-caption"
-            />
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="Authentication enabled"
-              class="text-caption"
-            />
-            <v-list-item
-              prepend-icon="mdi-check"
-              title="Recommended for small teams (2-10 users)"
-              class="text-caption"
-            />
-          </v-list>
-        </v-card-text>
-      </v-card>
+              <v-list density="compact" class="mt-4 bg-transparent">
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Multiple users can connect"
+                  class="text-caption"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Network configuration required"
+                  class="text-caption"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Authentication enabled"
+                  class="text-caption"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Recommended for small teams (2-10 users)"
+                  class="text-caption"
+                />
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
     </v-radio-group>
 
     <!-- LAN Configuration Panel (Expandable) -->
