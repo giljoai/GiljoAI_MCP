@@ -248,6 +248,29 @@ class SetupService {
     console.error('Backend did not come back online within timeout')
     return false
   }
+
+  /**
+   * Verify database setup from CLI installation
+   *
+   * Reads credentials from server-side .env (never sent to client).
+   * Tests connection to verify database exists and is accessible.
+   * Checks schema migration status.
+   *
+   * Security: Credentials are read server-side from .env and NEVER sent to frontend.
+   * Only non-sensitive metadata is returned (database name, host, port, version, table count).
+   *
+   * @returns {Promise<{success: boolean, status: string, message: string, database?: string, host?: string, port?: number, postgresql_version?: number, schema_migrated?: boolean, tables_count?: number, errors?: Array, error?: string}>}
+   */
+  async verifyDatabaseSetup() {
+    const response = await fetch(`${this.baseURL}/api/setup/database/verify`)
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
 }
 
 export default new SetupService()

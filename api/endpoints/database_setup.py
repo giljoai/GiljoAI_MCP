@@ -4,10 +4,12 @@ Database setup endpoints for setup wizard.
 Handles:
 - PostgreSQL connection testing
 - Database creation and schema migration
+- Database verification (reads from .env)
 - Config file updates with validated credentials
 """
 
 import logging
+import os
 import shutil
 import yaml
 from datetime import datetime
@@ -231,3 +233,141 @@ async def setup_database(request: DatabaseSetupRequest) -> Dict:
     except Exception as e:
         logger.error(f"Database setup failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database setup failed: {str(e)}") from e
+
+
+@router.get("/verify")
+async def verify_database_setup() -> Dict:
+    """
+    Verify database setup from CLI installation.
+
+    Reads credentials from .env file (server-side only, never sent to client).
+    Tests connection to verify database exists and is accessible.
+    Checks schema migration status.
+
+    This endpoint is called by the wizard DatabaseStep to verify what
+    the CLI installer already created. NO credential input from user.
+
+    Security: Credentials are read from environment variables (loaded from .env
+    at startup) and NEVER sent to the frontend. Only non-sensitive metadata
+    (database name, host, port, version, table count) is returned.
+
+    Returns:
+        Verification result with connection status and database info
+    """
+    try:
+        import psycopg2
+
+        # Read credentials from environment (loaded from .env at startup)
+        db_host = os.getenv("POSTGRES_HOST") or os.getenv("DB_HOST")
+        db_port = os.getenv("POSTGRES_PORT") or os.getenv("DB_PORT")
+        db_name = os.getenv("POSTGRES_DB") or os.getenv("DB_NAME")
+        db_user = os.getenv("POSTGRES_USER") or os.getenv("DB_USER")
+        db_password = os.getenv("POSTGRES_PASSWORD") or os.getenv("DB_PASSWORD")
+
+        # Validate credentials exist
+        if not all([db_host, db_port, db_name, db_user, db_password]):
+            missing_vars = []
+            if not db_host:
+                missing_vars.append("POSTGRES_HOST/DB_HOST")
+            if not db_port:
+                missing_vars.append("POSTGRES_PORT/DB_PORT")
+            if not db_name:
+                missing_vars.append("POSTGRES_DB/DB_NAME")
+            if not db_user:
+                missing_vars.append("POSTGRES_USER/DB_USER")
+            if not db_password:
+                missing_vars.append("POSTGRES_PASSWORD/DB_PASSWORD")
+
+            return {
+                "success": False,
+                "status": "missing_credentials",
+                "message": "Database credentials not found in .env file. Please run CLI installer first.",
+                "errors": [f"Missing environment variables: {', '.join(missing_vars)}"],
+            }
+
+        # Test connection using psycopg2 (raw connection test)
+        try:
+            conn = psycopg2.connect(
+                host=db_host,
+                port=int(db_port),
+                database=db_name,
+                user=db_user,
+                password=db_password,
+                connect_timeout=5,
+            )
+
+            # Get PostgreSQL version
+            with conn.cursor() as cur:
+                cur.execute("SELECT version();")
+                version_string = cur.fetchone()[0]
+
+                cur.execute("SHOW server_version_num;")
+                version_num = int(cur.fetchone()[0])
+                major_version = version_num // 10000
+
+                # Count tables to verify schema migration
+                cur.execute("""
+                    SELECT COUNT(*)
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                """)
+                tables_count = cur.fetchone()[0]
+
+            conn.close()
+
+            # Verify schema is migrated (expect at least 10 tables from models.py)
+            schema_migrated = tables_count >= 10
+
+            logger.info(f"Database verification successful: {db_name}@{db_host}:{db_port}, {tables_count} tables")
+
+            return {
+                "success": True,
+                "status": "verified",
+                "message": "Database connection verified successfully",
+                "database": db_name,
+                "host": db_host,
+                "port": int(db_port),
+                "postgresql_version": major_version,
+                "version_string": version_string,
+                "schema_migrated": schema_migrated,
+                "tables_count": tables_count,
+            }
+
+        except psycopg2.OperationalError as e:
+            error_msg = str(e).lower()
+
+            if "password authentication failed" in error_msg:
+                return {
+                    "success": False,
+                    "status": "auth_failed",
+                    "message": "Database authentication failed. Credentials in .env may be incorrect.",
+                    "error": str(e),
+                }
+            elif "database" in error_msg and "does not exist" in error_msg:
+                return {
+                    "success": False,
+                    "status": "database_missing",
+                    "message": f"Database '{db_name}' does not exist. Please run CLI installer first.",
+                    "error": str(e),
+                }
+            elif "could not connect" in error_msg or "connection refused" in error_msg:
+                return {
+                    "success": False,
+                    "status": "connection_refused",
+                    "message": "Cannot connect to PostgreSQL server. Is PostgreSQL running?",
+                    "error": str(e),
+                }
+            else:
+                return {
+                    "success": False,
+                    "status": "connection_error",
+                    "message": f"Database connection failed: {str(e)}",
+                    "error": str(e),
+                }
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
+
+    except Exception as e:
+        logger.error(f"Database verification failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Database verification failed: {str(e)}") from e
