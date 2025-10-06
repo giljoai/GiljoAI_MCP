@@ -1,12 +1,21 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
+import { resolve } from 'path'
 
 // Load frontend port from environment or use default
 const FRONTEND_PORT = parseInt(process.env.VITE_FRONTEND_PORT || process.env.GILJO_FRONTEND_PORT || '7274', 10)
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        wizard: resolve(__dirname, 'wizard.html')
+      }
+    }
+  },
   server: {
     port: FRONTEND_PORT,
     host: true,

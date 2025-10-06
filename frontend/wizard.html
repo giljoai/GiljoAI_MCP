@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GiljoAI MCP Setup Wizard - Configure your multi-agent coding orchestrator">
+    <meta name="theme-color" content="#0e1c2d">
+    <title>GiljoAI MCP Setup Wizard</title>
+    <style>
+      /* Loading screen styles */
+      body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #wizard-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0e1c2d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+
+      #wizard-loader.hidden {
+        display: none;
+      }
+
+      .loader-content {
+        text-align: center;
+        opacity: 0;
+        animation: fadeIn 1s ease-in forwards;
+      }
+
+      .loader-logo {
+        margin: 0 auto;
+      }
+
+      .loader-logo img {
+        max-width: 200px;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .loader-text {
+        color: #e1e1e1;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-size: 1.2rem;
+        margin-top: 2rem;
+        font-weight: 300;
+        letter-spacing: 0.05em;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+
+      #wizard-loader.fade-out {
+        animation: fadeOut 0.5s ease-out forwards;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading screen (outside #app so Vue doesn't replace it) -->
+    <div id="wizard-loader">
+      <div class="loader-content">
+        <div class="loader-logo">
+          <img
+            src="/giljo_logo.png"
+            alt="GiljoAI Logo">
+        </div>
+        <div class="loader-text">
+          Initializing Setup Wizard
+        </div>
+      </div>
+    </div>
+
+    <!-- Vue app container -->
+    <div id="app"></div>
+
+    <script type="module" src="/src/wizard.js"></script>
+    <script>
+      console.log('[WIZARD] Script initialized');
+
+      // Fade out loading screen once app is ready
+      window.addEventListener('load', () => {
+        console.log('[WIZARD] Window load event fired');
+        const loader = document.getElementById('wizard-loader');
+        console.log('[WIZARD] Loader element:', loader);
+
+        if (loader) {
+          console.log('[WIZARD] Starting timer - will hold for 1.5s');
+          setTimeout(() => {
+            console.log('[WIZARD] Starting fade out');
+            loader.classList.add('fade-out');
+            setTimeout(() => {
+              console.log('[WIZARD] Hiding loader');
+              loader.classList.add('hidden');
+              console.log('[WIZARD] Loading screen complete');
+            }, 500); // Wait for fade-out animation
+          }, 1500); // Hold for 1.5s
+        } else {
+          console.error('[WIZARD] Loader element not found!');
+        }
+      });
+
+      console.log('[WIZARD] Event listener registered');
+    </script>
+  </body>
+</html>
