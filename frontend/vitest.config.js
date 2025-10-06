@@ -6,20 +6,31 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     globals: true,
-    environment: 'happy-dom',
+    environment: 'jsdom',
     setupFiles: ['./vitest.setup.js'],
-    include: ['tests/**/*.spec.js'],
+    include: ['tests/**/*.spec.js', 'tests/**/*.spec.vue'],
     css: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      include: ['src/**/*.vue'],
+      include: [
+        'src/components/**',
+        'src/services/**',
+        'src/stores/**'
+      ],
       exclude: [
         '**/node_modules/**',
         '**/dist/**',
-        '**/tests/**',
-        '**/*.spec.js'
-      ]
+        '**/*.d.ts',
+        '**/__tests__/**',
+        '**/index.js'
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80
+      }
     }
   },
   resolve: {
