@@ -321,15 +321,83 @@ class GiljoDevControlPanel:
         # Schedule next update
         self.root.after(2000, self.update_status)
 
+    def _launch_in_terminal(
+        self, command: list[str], title: str = "", cwd: Optional[Path] = None
+    ) -> Optional[subprocess.Popen]:
+        """
+        Launch command in a new terminal window.
+
+        Detects operating system and uses the appropriate method to launch
+        a new terminal window with the given command. Terminal windows display
+        verbose output for debugging.
+
+        Args:
+            command: Command and arguments to execute
+            title: Terminal window title for identification
+            cwd: Working directory for command (defaults to project root)
+
+        Returns:
+            Process object for tracking (None on macOS - PID tracking limited)
+
+        Raises:
+            FileNotFoundError: If no suitable terminal emulator is found (Linux)
+            OSError: If terminal launch fails
+        """
+        import shutil
+
+        system = platform.system()
+        work_dir = str(cwd if cwd else self.project_root)
+
+        if system == "Windows":
+            # Windows: Use CREATE_NEW_CONSOLE flag
+            return subprocess.Popen(
+                command, cwd=work_dir, creationflags=subprocess.CREATE_NEW_CONSOLE
+            )
+
+        if system == "Linux":
+            # Linux: Try terminal emulators in order of preference
+            terminal_emulators = [
+                {
+                    "name": "gnome-terminal",
+                    "cmd": ["gnome-terminal", "--title", title, "--", *command],
+                },
+                {"name": "konsole", "cmd": ["konsole", "--title", title, "-e", *command]},
+                {"name": "xterm", "cmd": ["xterm", "-title", title, "-e", *command]},
+            ]
+
+            for emulator in terminal_emulators:
+                # Check if emulator is available
+                if shutil.which(emulator["name"]):
+                    try:
+                        return subprocess.Popen(emulator["cmd"], cwd=work_dir)
+                    except FileNotFoundError:
+                        continue
+
+            # No terminal emulator found
+            raise FileNotFoundError(
+                "No suitable terminal emulator found. Install gnome-terminal, konsole, or xterm."
+            )
+
+        if system == "Darwin":
+            # macOS: Use osascript with Terminal.app
+            cmd_str = " ".join(command)
+            script = f'tell application "Terminal" to do script "cd {work_dir} && {cmd_str}"'
+
+            subprocess.Popen(["osascript", "-e", script])
+            # Note: Cannot easily get PID on macOS with this approach
+            return None
+
+        raise OSError(f"Unsupported operating system: {system}")
+
     # Service Management Methods
 
     def start_backend(self):
-        """Start the backend API service."""
+        """Start the backend API service in a new terminal window."""
         if self.backend_process and self.backend_process.poll() is None:
             messagebox.showinfo("Already Running", "Backend service is already running.")
             return
 
-        self.update_status_message("Starting backend service...")
+        self.update_status_message("Starting backend service in terminal window...")
 
         try:
             # Get API port from config
@@ -337,31 +405,35 @@ class GiljoDevControlPanel:
             if self.config:
                 api_port = self.config.get("services", {}).get("api", {}).get("port", 7272)
 
-            # Start API server
-            env = os.environ.copy()
-            env["PYTHONPATH"] = str(self.project_root)
-
             # Check if api/run_api.py exists
             api_script = self.project_root / "api" / "run_api.py"
             if not api_script.exists():
                 raise FileNotFoundError(f"API script not found: {api_script}")
 
-            self.backend_process = subprocess.Popen(
-                [sys.executable, str(api_script)],
-                env=env,
-                cwd=str(self.project_root),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+            # Build command
+            command = [sys.executable, str(api_script), "--port", str(api_port)]
+
+            # Launch in terminal window with verbose output
+            self.backend_process = self._launch_in_terminal(
+                command=command, title="GiljoAI Backend API", cwd=self.project_root
             )
 
             time.sleep(2)  # Wait for startup
 
-            if self.backend_process.poll() is None:
-                self.update_status_message(f"Backend started on port {api_port}")
-                messagebox.showinfo("Success", f"Backend service started on port {api_port}")
+            # Check if process started (None on macOS is acceptable)
+            if self.backend_process is None or self.backend_process.poll() is None:
+                self.update_status_message(f"Backend started in terminal on port {api_port}")
+                messagebox.showinfo(
+                    "Success",
+                    f"Backend service started in terminal window on port {api_port}\n\n"
+                    "Check the terminal window for verbose output.",
+                )
             else:
                 self.update_status_message("Backend failed to start")
-                messagebox.showerror("Error", "Backend service failed to start")
+                messagebox.showerror(
+                    "Error",
+                    "Backend service failed to start\n\nCheck the terminal window for error details.",
+                )
 
         except Exception as e:
             self.update_status_message(f"Error starting backend: {e}")
@@ -398,12 +470,12 @@ class GiljoDevControlPanel:
         self.start_backend()
 
     def start_frontend(self):
-        """Start the frontend dev server."""
+        """Start the frontend dev server in a new terminal window."""
         if self.frontend_process and self.frontend_process.poll() is None:
             messagebox.showinfo("Already Running", "Frontend service is already running.")
             return
 
-        self.update_status_message("Starting frontend service...")
+        self.update_status_message("Starting frontend service in terminal window...")
 
         try:
             # Get frontend port from config
@@ -415,23 +487,31 @@ class GiljoDevControlPanel:
             if not frontend_dir.exists():
                 raise FileNotFoundError(f"Frontend directory not found: {frontend_dir}")
 
-            # Start npm dev server
+            # Build command
             npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
-            self.frontend_process = subprocess.Popen(
-                [npm_cmd, "run", "dev"],
-                cwd=str(frontend_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+            command = [npm_cmd, "run", "dev"]
+
+            # Launch in terminal window with verbose output
+            self.frontend_process = self._launch_in_terminal(
+                command=command, title="GiljoAI Frontend Dev Server", cwd=frontend_dir
             )
 
             time.sleep(2)  # Wait for startup
 
-            if self.frontend_process.poll() is None:
-                self.update_status_message(f"Frontend started on port {frontend_port}")
-                messagebox.showinfo("Success", f"Frontend dev server started on port {frontend_port}")
+            # Check if process started (None on macOS is acceptable)
+            if self.frontend_process is None or self.frontend_process.poll() is None:
+                self.update_status_message(f"Frontend started in terminal on port {frontend_port}")
+                messagebox.showinfo(
+                    "Success",
+                    f"Frontend dev server started in terminal window on port {frontend_port}\n\n"
+                    "Check the terminal window for verbose output.",
+                )
             else:
                 self.update_status_message("Frontend failed to start")
-                messagebox.showerror("Error", "Frontend service failed to start")
+                messagebox.showerror(
+                    "Error",
+                    "Frontend service failed to start\n\nCheck the terminal window for error details.",
+                )
 
         except Exception as e:
             self.update_status_message(f"Error starting frontend: {e}")
