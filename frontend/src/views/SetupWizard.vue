@@ -154,23 +154,11 @@ const handleFinish = async () => {
 
 // Lifecycle
 onMounted(async () => {
-  console.log('[WIZARD] Component mounted, checking setup status...')
+  console.log('[WIZARD] Component mounted')
 
-  // Check if setup already completed
-  try {
-    const status = await setupService.checkStatus()
-
-    if (status.completed) {
-      console.log('[WIZARD] Setup already complete, redirecting to dashboard...')
-      // Setup already done, redirect to dashboard
-      window.location.href = 'http://localhost:7274'
-    } else {
-      console.log('[WIZARD] Setup not complete, showing wizard')
-    }
-  } catch (error) {
-    // If endpoint doesn't exist yet, continue with wizard
-    console.log('[WIZARD] Setup status check unavailable, continuing with wizard')
-  }
+  // Allow wizard to run even if setup was previously completed
+  // (user clicked "Re-run Setup Wizard" button)
+  console.log('[WIZARD] Wizard ready for configuration')
 })
 </script>
 
