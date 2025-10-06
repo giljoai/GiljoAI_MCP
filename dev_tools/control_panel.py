@@ -389,6 +389,64 @@ class GiljoDevControlPanel:
 
         raise OSError(f"Unsupported operating system: {system}")
 
+    def _is_port_available(self, port: int) -> bool:
+        """
+        Check if a port is available for binding.
+
+        Args:
+            port: Port number to check
+
+        Returns:
+            True if port is available, False if already in use
+        """
+        import socket
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('127.0.0.1', port))
+                return True
+        except OSError:
+            return False
+
+    def _find_process_on_port(self, port: int) -> Optional[int]:
+        """
+        Find the PID of the process using the given port.
+
+        Args:
+            port: Port number to check
+
+        Returns:
+            PID of process using the port, or None if port is free or psutil unavailable
+        """
+        if psutil is None:
+            return None
+
+        try:
+            for conn in psutil.net_connections(kind='inet'):
+                if conn.laddr.port == port:
+                    return conn.pid
+        except (psutil.AccessDenied, AttributeError):
+            # May need admin privileges or psutil not fully functional
+            return None
+
+        return None
+
+    def _kill_process(self, pid: int):
+        """
+        Terminate a process by PID.
+
+        Args:
+            pid: Process ID to terminate
+        """
+        if psutil is None:
+            return
+
+        try:
+            proc = psutil.Process(pid)
+            proc.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
     # Service Management Methods
 
     def start_backend(self):
@@ -470,41 +528,93 @@ class GiljoDevControlPanel:
         self.start_backend()
 
     def start_frontend(self):
-        """Start the frontend dev server in a new terminal window."""
+        """Start the frontend dev server in a new terminal window on port 7274 (strict)."""
         if self.frontend_process and self.frontend_process.poll() is None:
             messagebox.showinfo("Already Running", "Frontend service is already running.")
             return
 
-        self.update_status_message("Starting frontend service in terminal window...")
+        self.update_status_message("Checking port 7274 availability...")
 
         try:
-            # Get frontend port from config
+            # Strict port enforcement - MUST use port 7274
             frontend_port = 7274
-            if self.config:
-                frontend_port = self.config.get("services", {}).get("frontend", {}).get("port", 7274)
+
+            # Check if port 7274 is available
+            if not self._is_port_available(frontend_port):
+                # Port is in use - check if we can find the process
+                existing_pid = self._find_process_on_port(frontend_port)
+
+                if existing_pid:
+                    # Found process using the port - offer to kill it
+                    response = messagebox.askyesno(
+                        "Port In Use",
+                        f"Port {frontend_port} is in use by process {existing_pid}.\n\n"
+                        "Kill the existing process and start frontend?",
+                        icon='warning'
+                    )
+
+                    if response:
+                        # User confirmed - kill process and wait for port release
+                        self._kill_process(existing_pid)
+                        time.sleep(1)  # Wait for port to be released
+
+                        # Re-check port availability
+                        if not self._is_port_available(frontend_port):
+                            messagebox.showerror(
+                                "Port Still In Use",
+                                f"Port {frontend_port} is still in use after killing process.\n\n"
+                                "Please manually stop the process before starting frontend."
+                            )
+                            self.update_status_message("Port 7274 still in use - cannot start frontend")
+                            return
+                    else:
+                        # User declined to kill process
+                        self.update_status_message("Frontend start cancelled by user")
+                        return
+                else:
+                    # Port in use but couldn't find process
+                    messagebox.showerror(
+                        "Port In Use",
+                        f"Port {frontend_port} is already in use.\n\n"
+                        "Please stop the existing process using port 7274 before starting the frontend.\n\n"
+                        "You can use 'Stop Frontend' button or manually kill the process."
+                    )
+                    self.update_status_message(f"Port {frontend_port} is in use - cannot start frontend")
+                    return
+
+            # Port is available - proceed with start
+            self.update_status_message("Starting frontend on port 7274 (strict mode)...")
 
             frontend_dir = self.project_root / "frontend"
             if not frontend_dir.exists():
                 raise FileNotFoundError(f"Frontend directory not found: {frontend_dir}")
 
-            # Build command
+            # Build command with strict port enforcement
             npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
-            command = [npm_cmd, "run", "dev"]
+            command = [
+                npm_cmd, "run", "dev",
+                "--",
+                "--port", str(frontend_port),
+                "--strictPort"  # Fail if port unavailable (no fallback)
+            ]
 
             # Launch in terminal window with verbose output
             self.frontend_process = self._launch_in_terminal(
-                command=command, title="GiljoAI Frontend Dev Server", cwd=frontend_dir
+                command=command,
+                title=f"GiljoAI Frontend Dev Server (Port {frontend_port})",
+                cwd=frontend_dir
             )
 
             time.sleep(2)  # Wait for startup
 
             # Check if process started (None on macOS is acceptable)
             if self.frontend_process is None or self.frontend_process.poll() is None:
-                self.update_status_message(f"Frontend started in terminal on port {frontend_port}")
+                self.update_status_message(f"Frontend started on port {frontend_port} (strict)")
                 messagebox.showinfo(
-                    "Success",
-                    f"Frontend dev server started in terminal window on port {frontend_port}\n\n"
-                    "Check the terminal window for verbose output.",
+                    "Frontend Starting",
+                    f"Frontend dev server starting in terminal window.\n"
+                    f"Port: {frontend_port} (strict - will not use alternative ports)\n\n"
+                    "Check the terminal window for verbose output."
                 )
             else:
                 self.update_status_message("Frontend failed to start")
