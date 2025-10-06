@@ -53,6 +53,9 @@ class MinimalInstaller:
         print("GiljoAI MCP Minimal Installer")
         print("=" * 60)
         print()
+        print("Press Enter to begin installation...")
+        input()
+        print()
 
         # Step 1: Detect Python
         if not self.detect_python():
