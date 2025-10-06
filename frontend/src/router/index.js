@@ -136,11 +136,8 @@ router.beforeEach(async (to, from, next) => {
       // Setup not complete, redirect to wizard
       console.log('Setup not completed, redirecting to setup wizard')
       next('/setup')
-    } else if (status.completed && to.path === '/setup') {
-      // Setup already done, redirect to dashboard
-      console.log('Setup already completed, redirecting to dashboard')
-      next('/')
     } else {
+      // Allow access to all routes (including /setup for re-running wizard)
       next()
     }
   } catch (error) {
