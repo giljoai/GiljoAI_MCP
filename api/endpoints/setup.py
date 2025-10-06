@@ -12,6 +12,9 @@ Handles:
 import json
 import shutil
 import subprocess
+import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -635,3 +638,66 @@ async def test_database() -> Dict:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database connection failed: {e}") from e
+
+
+@router.post("/restart-services")
+async def restart_services() -> Dict:
+    """
+    Restart GiljoAI services after setup completion.
+
+    This endpoint triggers a graceful restart of the backend and frontend services
+    to reload the updated configuration (setup_mode: false).
+
+    The restart process:
+    1. Returns immediate success response to client (202 Accepted)
+    2. Delays 2 seconds to allow response to send
+    3. Executes restart script to:
+       - Find running start_giljo.py processes
+       - Gracefully terminate them
+       - Restart services with new config
+
+    Returns:
+        Success status with restart information
+    """
+
+    def trigger_restart():
+        """Background thread to trigger restart after delay."""
+        # Wait 2 seconds to allow HTTP response to send
+        time.sleep(2)
+
+        try:
+            # Get restart script path
+            restart_script = Path.cwd() / "restart_services.py"
+
+            if not restart_script.exists():
+                # Log error but don't fail - manual restart required
+                print(f"Warning: Restart script not found at {restart_script}")
+                print("Please restart services manually")
+                return
+
+            # Execute restart script in background
+            # Use Popen to avoid blocking
+            subprocess.Popen(
+                [sys.executable, str(restart_script)],
+                cwd=Path.cwd(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
+            )
+
+        except Exception as e:
+            # Log error but don't crash
+            print(f"Error triggering restart: {e}")
+            print("Please restart services manually")
+
+    # Start background thread for delayed restart
+    restart_thread = threading.Thread(target=trigger_restart, daemon=True)
+    restart_thread.start()
+
+    # Return immediate success response
+    return {
+        "success": True,
+        "status": "restarting",
+        "message": "Services are restarting. Please wait 10-15 seconds for services to come back online.",
+        "restart_delay_seconds": 2,
+    }
