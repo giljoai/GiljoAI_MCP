@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./vitest.setup.js'],
     include: ['tests/**/*.spec.js'],
+    css: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

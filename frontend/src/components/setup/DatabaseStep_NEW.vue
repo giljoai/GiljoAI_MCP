@@ -42,11 +42,7 @@
 
     <!-- Navigation buttons -->
     <div class="d-flex justify-space-between">
-      <v-btn
-        variant="outlined"
-        @click="$emit('back')"
-        aria-label="Go back to welcome"
-      >
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to welcome">
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>

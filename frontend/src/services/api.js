@@ -19,7 +19,8 @@ apiClient.interceptors.request.use(
 
     // Ensure tenant key is always present
     if (!config.headers['X-Tenant-Key']) {
-      config.headers['X-Tenant-Key'] = import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'
+      config.headers['X-Tenant-Key'] =
+        import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'
     }
 
     return config
@@ -50,7 +51,7 @@ export const api = {
       // Handle file upload with FormData
       if (data instanceof FormData) {
         return apiClient.post('/api/v1/products/', data, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+          headers: { 'Content-Type': 'multipart/form-data' },
         })
       }
       // Regular JSON creation without file
@@ -58,7 +59,7 @@ export const api = {
       formData.append('name', data.name)
       if (data.description) formData.append('description', data.description)
       return apiClient.post('/api/v1/products/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
     update: (id, data) => apiClient.put(`/api/v1/products/${id}/`, data),
@@ -67,7 +68,7 @@ export const api = {
       const formData = new FormData()
       formData.append('vision_file', file)
       return apiClient.post(`/api/v1/products/${id}/upload-vision/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
     getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks/`),

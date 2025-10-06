@@ -1,26 +1,14 @@
 <template>
   <v-container class="setup-wizard" fluid>
     <!-- Restart Overlay -->
-    <v-overlay
-      v-model="isRestarting"
-      :persistent="true"
-      class="align-center justify-center"
-    >
+    <v-overlay v-model="isRestarting" :persistent="true" class="align-center justify-center">
       <v-card class="pa-8 text-center" min-width="400">
-        <v-progress-circular
-          indeterminate
-          size="64"
-          color="primary"
-          class="mb-4"
-        />
+        <v-progress-circular indeterminate size="64" color="primary" class="mb-4" />
         <h3 class="text-h5 mb-2">Completing Setup...</h3>
         <p class="text-body-1 text-medium-emphasis mb-4">
           {{ restartMessage }}
         </p>
-        <v-progress-linear
-          indeterminate
-          color="primary"
-        />
+        <v-progress-linear indeterminate color="primary" />
       </v-card>
     </v-overlay>
 
@@ -29,31 +17,29 @@
         <v-card class="wizard-card" elevation="4">
           <!-- Logo Header -->
           <v-card-title class="text-center pa-6">
-            <v-img
-              :src="logoSrc"
-              alt="GiljoAI Logo"
-              height="60"
-              contain
-            />
+            <v-img :src="logoSrc" alt="GiljoAI Logo" height="60" contain />
           </v-card-title>
 
           <!-- Vuetify Stepper -->
-          <v-stepper
-            v-model="currentStep"
-            :items="stepperItems"
-            alt-labels
-            flat
-          >
+          <v-stepper v-model="currentStep" :items="stepperItems" alt-labels flat>
             <template v-slot:item.1>
               <v-card flat>
-                <AttachToolsStep
-                  v-model="config.aiTools"
-                  @next="handleToolsNext"
-                />
+                <AttachToolsStep v-model="config.aiTools" @next="handleToolsNext" />
               </v-card>
             </template>
 
             <template v-slot:item.2>
+              <v-card flat>
+                <SerenaAttachStep
+                  v-model="config.serenaEnabled"
+                  @next="handleSerenaNext"
+                  @back="handleBack"
+                  @skip="handleSerenaSkip"
+                />
+              </v-card>
+            </template>
+
+            <template v-slot:item.3>
               <v-card flat>
                 <NetworkConfigStep
                   v-model:mode="config.deploymentMode"
@@ -64,12 +50,9 @@
               </v-card>
             </template>
 
-            <template v-slot:item.3>
+            <template v-slot:item.4>
               <v-card flat>
-                <SetupCompleteStep
-                  :config="config"
-                  @finish="handleFinish"
-                />
+                <SetupCompleteStep :config="config" @finish="handleFinish" />
               </v-card>
             </template>
           </v-stepper>
@@ -84,6 +67,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
 import AttachToolsStep from '@/components/setup/AttachToolsStep.vue'
+import SerenaAttachStep from '@/components/setup/SerenaAttachStep.vue'
 import NetworkConfigStep from '@/components/setup/NetworkConfigStep.vue'
 import SetupCompleteStep from '@/components/setup/SetupCompleteStep.vue'
 
@@ -92,22 +76,24 @@ const theme = useTheme()
 // State
 const currentStep = ref(1)
 const isRestarting = ref(false)
-const restartMessage = ref("Saving configuration...")
+const restartMessage = ref('Saving configuration...')
 const config = ref({
   deploymentMode: 'localhost', // 'localhost' | 'lan'
   aiTools: [],
-  lanSettings: null
+  serenaEnabled: false,
+  lanSettings: null,
 })
 
 // Computed
 const logoSrc = computed(() =>
-  theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'
+  theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg',
 )
 
 const stepperItems = computed(() => [
   { title: 'Attach Tools', value: 1 },
-  { title: 'Network', value: 2 },
-  { title: 'Complete', value: 3 }
+  { title: 'Serena MCP', value: 2 },
+  { title: 'Network', value: 3 },
+  { title: 'Complete', value: 4 },
 ])
 
 // Methods
@@ -115,8 +101,17 @@ const handleToolsNext = () => {
   currentStep.value = 2
 }
 
-const handleNetworkNext = () => {
+const handleSerenaNext = () => {
   currentStep.value = 3
+}
+
+const handleSerenaSkip = () => {
+  console.log('[WIZARD] Skipping Serena MCP setup')
+  currentStep.value = 3
+}
+
+const handleNetworkNext = () => {
+  currentStep.value = 4
 }
 
 const handleBack = () => {
@@ -138,7 +133,7 @@ const handleFinish = async () => {
     restartMessage.value = 'Setup complete! Redirecting to dashboard...'
 
     // Wait 1 second to show success message
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Redirect to main dashboard
     window.location.href = 'http://localhost:7274'
@@ -147,7 +142,7 @@ const handleFinish = async () => {
     restartMessage.value = 'Error during setup completion. Redirecting...'
 
     // Wait 2 seconds then redirect anyway
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
     window.location.href = 'http://localhost:7274'
   }
 }

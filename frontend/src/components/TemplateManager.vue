@@ -76,7 +76,10 @@
           <v-chip size="small" variant="outlined">
             <template v-slot:prepend>
               <v-avatar size="18" class="mr-1">
-                <v-img :src="getToolLogo(item.preferred_tool || 'claude')" :alt="getToolName(item.preferred_tool || 'claude')" />
+                <v-img
+                  :src="getToolLogo(item.preferred_tool || 'claude')"
+                  :alt="getToolName(item.preferred_tool || 'claude')"
+                />
               </v-avatar>
             </template>
             {{ getToolName(item.preferred_tool || 'claude') }}
@@ -155,12 +158,7 @@
         <v-card-title class="d-flex align-center">
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="closeEditDialog"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="closeEditDialog" aria-label="Close" />
         </v-card-title>
 
         <v-card-text>
@@ -227,9 +225,14 @@
                 </v-select>
                 <v-tooltip location="top">
                   <template v-slot:activator="{ props }">
-                    <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-help-circle</v-icon>
+                    <v-icon v-bind="props" size="small" color="primary" class="ml-2"
+                      >mdi-help-circle</v-icon
+                    >
                   </template>
-                  <span>Required field - Select the AI tool for this template (only Claude available now)</span>
+                  <span
+                    >Required field - Select the AI tool for this template (only Claude available
+                    now)</span
+                  >
                 </v-tooltip>
               </v-col>
               <v-col cols="12" md="6">
@@ -244,9 +247,14 @@
                   <span class="text-subtitle-2">Template Content</span>
                   <v-tooltip location="top">
                     <template v-slot:activator="{ props }">
-                      <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-help-circle</v-icon>
+                      <v-icon v-bind="props" size="small" color="primary" class="ml-2"
+                        >mdi-help-circle</v-icon
+                      >
                     </template>
-                    <span>Required field - Enter the template content with {variable} placeholders</span>
+                    <span
+                      >Required field - Enter the template content with {variable}
+                      placeholders</span
+                    >
                   </v-tooltip>
                 </div>
                 <v-textarea
@@ -366,12 +374,7 @@
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Confirm Delete</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="deleteDialog = false"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="deleteDialog = false" aria-label="Close" />
         </v-card-title>
         <v-card-text>
           Are you sure you want to delete the template "{{ deletingTemplate?.name }}"? This will
@@ -482,21 +485,21 @@ const toolOptions = [
     title: 'Claude',
     value: 'claude',
     logo: '/Claude_AI_symbol.svg',
-    color: '#1976D2'
+    color: '#1976D2',
   },
   {
     title: 'Codex (future)',
     value: 'codex',
     logo: '/codex_logo.svg',
     color: '#4CAF50',
-    disabled: true
+    disabled: true,
   },
   {
     title: 'Gemini (future)',
     value: 'gemini',
     logo: '/gemini-icon.svg',
     color: '#9C27B0',
-    disabled: true
+    disabled: true,
   },
 ]
 

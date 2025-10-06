@@ -243,12 +243,7 @@
           <v-icon class="mr-2">{{ editingProduct ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           <span>{{ editingProduct ? 'Edit Product' : 'Create New Product' }}</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="closeDialog"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="closeDialog" aria-label="Close" />
         </v-card-title>
 
         <v-card-text>

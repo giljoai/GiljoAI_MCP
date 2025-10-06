@@ -19,12 +19,7 @@
             <div class="text-center mb-4">
               <v-icon size="48" color="primary">mdi-code-braces</v-icon>
               <h3 class="text-h6 mt-2">Claude Code</h3>
-              <v-chip
-                v-if="claudeCodeConfigured"
-                size="small"
-                color="success"
-                class="mt-2"
-              >
+              <v-chip v-if="claudeCodeConfigured" size="small" color="success" class="mt-2">
                 Configured
               </v-chip>
             </div>
@@ -139,27 +134,24 @@
     <!-- Info Alert -->
     <v-alert type="info" variant="tonal" class="mt-6">
       <v-icon start>mdi-information</v-icon>
-      You can configure additional tools later in Settings. At least one tool is recommended but not required.
+      You can configure additional tools later in Settings. At least one tool is recommended but not
+      required.
     </v-alert>
 
     <!-- Progress -->
     <v-card variant="outlined" class="mt-6 mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 1 of 3</span>
-          <span class="text-caption">33%</span>
+          <span class="text-caption">Progress: Step 1 of 4</span>
+          <span class="text-caption">25%</span>
         </div>
-        <v-progress-linear :model-value="33" color="primary" />
+        <v-progress-linear :model-value="25" color="primary" />
       </v-card-text>
     </v-card>
 
     <!-- Navigation -->
     <div class="d-flex justify-end">
-      <v-btn
-        color="primary"
-        @click="handleNext"
-        aria-label="Continue to network configuration"
-      >
+      <v-btn color="primary" @click="handleNext" aria-label="Continue to network configuration">
         Continue
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>
@@ -180,8 +172,8 @@ import setupService from '@/services/setupService'
 const props = defineProps({
   modelValue: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'next'])
@@ -213,8 +205,8 @@ const attachClaudeCode = async () => {
       {
         id: 'claude-code',
         name: 'Claude Code',
-        configured: true
-      }
+        configured: true,
+      },
     ]
     emit('update:modelValue', tools)
 

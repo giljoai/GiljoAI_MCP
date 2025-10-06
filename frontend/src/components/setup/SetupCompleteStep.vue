@@ -32,9 +32,7 @@
           {{ hasTools ? 'mdi-check-circle' : 'mdi-information' }}
         </v-icon>
         <div class="flex-grow-1">
-          <div class="text-subtitle-1 font-weight-medium">
-            AI Tools: {{ toolCount }} configured
-          </div>
+          <div class="text-subtitle-1 font-weight-medium">AI Tools: {{ toolCount }} configured</div>
           <div v-if="toolNames.length > 0" class="text-caption text-medium-emphasis">
             {{ toolNames.join(', ') }}
           </div>
@@ -65,9 +63,7 @@
       <v-card-text class="d-flex align-center">
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
-          <div class="text-subtitle-1 font-weight-medium">
-            Network: Configured for LAN access
-          </div>
+          <div class="text-subtitle-1 font-weight-medium">Network: Configured for LAN access</div>
           <div class="text-caption text-medium-emphasis">
             Server: http://{{ config.lanSettings.serverIp }}:{{ config.lanSettings.port }}
           </div>
@@ -84,7 +80,9 @@
         <strong>Next Steps:</strong>
       </div>
       <ul class="pl-4 mb-0">
-        <li v-if="hasTools">Relaunch Claude Code CLI and type <code>/mcp</code> to verify attachment</li>
+        <li v-if="hasTools">
+          Relaunch Claude Code CLI and type <code>/mcp</code> to verify attachment
+        </li>
         <li>Create your first project from the dashboard</li>
         <li>Explore agent templates and customize missions</li>
         <li v-if="isLanMode">Share the server URL with your team members</li>
@@ -105,12 +103,7 @@
 
     <!-- Finish Button -->
     <div class="text-center">
-      <v-btn
-        color="primary"
-        size="large"
-        @click="$emit('finish')"
-        aria-label="Go to dashboard"
-      >
+      <v-btn color="primary" size="large" @click="$emit('finish')" aria-label="Go to dashboard">
         Go to Dashboard
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>
@@ -130,8 +123,8 @@ import { computed } from 'vue'
 const props = defineProps({
   config: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 defineEmits(['finish'])
@@ -142,7 +135,7 @@ const isLanMode = computed(() => props.config.deploymentMode === 'lan')
 const deploymentModeLabel = computed(() => {
   const modes = {
     localhost: 'Localhost',
-    lan: 'LAN (Local Network)'
+    lan: 'LAN (Local Network)',
   }
   return modes[props.config.deploymentMode] || 'Localhost'
 })
@@ -150,7 +143,7 @@ const deploymentModeLabel = computed(() => {
 const deploymentModeDescription = computed(() => {
   const descriptions = {
     localhost: 'Single-user mode on this computer (127.0.0.1)',
-    lan: 'Multi-user mode accessible on local network'
+    lan: 'Multi-user mode accessible on local network',
   }
   return descriptions[props.config.deploymentMode] || ''
 })
@@ -167,7 +160,7 @@ const toolNames = computed(() => {
   if (!props.config.aiTools || props.config.aiTools.length === 0) {
     return []
   }
-  return props.config.aiTools.map(tool => tool.name)
+  return props.config.aiTools.map((tool) => tool.name)
 })
 </script>
 

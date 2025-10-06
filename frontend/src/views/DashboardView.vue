@@ -16,12 +16,7 @@
       <div>
         The database is not configured. Please complete the setup process to use all features.
       </div>
-      <v-btn
-        color="white"
-        variant="outlined"
-        class="mt-3"
-        @click="navigateToSetup"
-      >
+      <v-btn color="white" variant="outlined" class="mt-3" @click="navigateToSetup">
         <v-icon left>mdi-cog</v-icon>
         Go to Setup Wizard
       </v-btn>
@@ -49,7 +44,11 @@
         <v-card elevation="2">
           <v-card-text class="text-center">
             <v-img
-              :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+              :src="
+                theme.global.current.value.dark
+                  ? '/icons/Giljo_YW_Face.svg'
+                  : '/icons/Giljo_BY_Face.svg'
+              "
               alt="Active Agents"
               width="48"
               height="48"

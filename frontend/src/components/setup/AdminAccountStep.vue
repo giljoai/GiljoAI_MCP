@@ -5,9 +5,7 @@
     <!-- Info Alert -->
     <v-alert type="info" variant="tonal" class="mb-6">
       <strong>This account will manage user access and system settings</strong>
-      <div class="text-caption mt-1">
-        Required for LAN deployment mode
-      </div>
+      <div class="text-caption mt-1">Required for LAN deployment mode</div>
     </v-alert>
 
     <v-form ref="form" v-model="formValid" @submit.prevent="handleNext">
@@ -70,12 +68,7 @@
             {{ strengthText }}
           </span>
         </div>
-        <v-progress-linear
-          :model-value="strengthValue"
-          :color="strengthColor"
-          height="6"
-          rounded
-        />
+        <v-progress-linear :model-value="strengthValue" :color="strengthColor" height="6" rounded />
       </div>
 
       <!-- Confirm Password -->
@@ -113,9 +106,7 @@
                   {{ hasMinLength ? 'mdi-check-circle' : 'mdi-circle-outline' }}
                 </v-icon>
               </template>
-              <v-list-item-title class="text-caption">
-                At least 8 characters
-              </v-list-item-title>
+              <v-list-item-title class="text-caption"> At least 8 characters </v-list-item-title>
             </v-list-item>
             <v-list-item>
               <template #prepend>
@@ -143,9 +134,7 @@
                   {{ hasNumber ? 'mdi-check-circle' : 'mdi-circle-outline' }}
                 </v-icon>
               </template>
-              <v-list-item-title class="text-caption">
-                Contains number
-              </v-list-item-title>
+              <v-list-item-title class="text-caption"> Contains number </v-list-item-title>
             </v-list-item>
             <v-list-item>
               <template #prepend>
@@ -175,11 +164,7 @@
 
     <!-- Navigation -->
     <div class="d-flex justify-space-between">
-      <v-btn
-        variant="outlined"
-        @click="$emit('back')"
-        aria-label="Go back to deployment mode"
-      >
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to deployment mode">
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>
@@ -208,8 +193,8 @@ import { ref, computed, watch } from 'vue'
 const props = defineProps({
   modelValue: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'next', 'back'])
@@ -224,31 +209,30 @@ const formData = ref({
   username: 'admin',
   email: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
 })
 
 // Validation rules
 const usernameRules = [
-  v => !!v || 'Username is required',
-  v => v.length >= 3 || 'Username must be at least 3 characters',
-  v => /^[a-zA-Z0-9_-]+$/.test(v) || 'Username must be alphanumeric with underscores or hyphens only'
+  (v) => !!v || 'Username is required',
+  (v) => v.length >= 3 || 'Username must be at least 3 characters',
+  (v) =>
+    /^[a-zA-Z0-9_-]+$/.test(v) || 'Username must be alphanumeric with underscores or hyphens only',
 ]
 
-const emailRules = [
-  v => !v || /.+@.+\..+/.test(v) || 'Email must be valid'
-]
+const emailRules = [(v) => !v || /.+@.+\..+/.test(v) || 'Email must be valid']
 
 const passwordRules = [
-  v => !!v || 'Password is required',
-  v => v.length >= 8 || 'Password must be at least 8 characters',
-  v => /[A-Z]/.test(v) || 'Password must contain an uppercase letter',
-  v => /[a-z]/.test(v) || 'Password must contain a lowercase letter',
-  v => /\d/.test(v) || 'Password must contain a number'
+  (v) => !!v || 'Password is required',
+  (v) => v.length >= 8 || 'Password must be at least 8 characters',
+  (v) => /[A-Z]/.test(v) || 'Password must contain an uppercase letter',
+  (v) => /[a-z]/.test(v) || 'Password must contain a lowercase letter',
+  (v) => /\d/.test(v) || 'Password must contain a number',
 ]
 
 const confirmPasswordRules = [
-  v => !!v || 'Please confirm your password',
-  v => v === formData.value.password || 'Passwords do not match'
+  (v) => !!v || 'Please confirm your password',
+  (v) => v === formData.value.password || 'Passwords do not match',
 ]
 
 // Password strength checks
@@ -263,7 +247,10 @@ const usernameAvailable = computed(() => {
 })
 
 const passwordsMatch = computed(() => {
-  return formData.value.password === formData.value.confirmPassword && formData.value.confirmPassword.length > 0
+  return (
+    formData.value.password === formData.value.confirmPassword &&
+    formData.value.confirmPassword.length > 0
+  )
 })
 
 // Password strength calculation
@@ -273,7 +260,7 @@ const passwordStrength = computed(() => {
     hasUppercase.value,
     hasLowercase.value,
     hasNumber.value,
-    hasSpecial.value
+    hasSpecial.value,
   ]
 
   const score = checks.filter(Boolean).length
@@ -300,15 +287,19 @@ const strengthText = computed(() => {
 })
 
 // Watch for changes and emit to parent
-watch(formData, (newVal) => {
-  if (formValid.value) {
-    emit('update:modelValue', {
-      username: newVal.username,
-      email: newVal.email,
-      password: newVal.password
-    })
-  }
-}, { deep: true })
+watch(
+  formData,
+  (newVal) => {
+    if (formValid.value) {
+      emit('update:modelValue', {
+        username: newVal.username,
+        email: newVal.email,
+        password: newVal.password,
+      })
+    }
+  },
+  { deep: true },
+)
 
 // Methods
 const handleNext = () => {
@@ -316,7 +307,7 @@ const handleNext = () => {
     emit('update:modelValue', {
       username: formData.value.username,
       email: formData.value.email,
-      password: formData.value.password
+      password: formData.value.password,
     })
     emit('next')
   }
