@@ -92,7 +92,6 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
 import WelcomeStep from '@/components/setup/WelcomeStep.vue'
@@ -103,7 +102,6 @@ import ToolIntegrationStep from '@/components/setup/ToolIntegrationStep.vue'
 import LanConfigStep from '@/components/setup/LanConfigStep.vue'
 import CompleteStep from '@/components/setup/CompleteStep.vue'
 
-const router = useRouter()
 const theme = useTheme()
 
 // State
@@ -189,29 +187,41 @@ const handleBack = () => {
 
 const handleFinish = async () => {
   try {
+    console.log('[WIZARD] Completing setup...')
+
     // Save setup completion flag
     await setupService.completeSetup(config.value)
 
-    // Navigate to dashboard
-    router.push('/')
+    console.log('[WIZARD] Setup complete, redirecting to dashboard...')
+
+    // Redirect to main dashboard using window.location
+    // This works in standalone mode without router
+    window.location.href = 'http://localhost:7274'
   } catch (error) {
-    console.error('Setup completion failed:', error)
+    console.error('[WIZARD] Setup completion failed:', error)
+    // Still redirect on error - let dashboard handle incomplete setup
+    window.location.href = 'http://localhost:7274'
   }
 }
 
 // Lifecycle
 onMounted(async () => {
+  console.log('[WIZARD] Component mounted, checking setup status...')
+
   // Check if setup already completed
   try {
     const status = await setupService.checkStatus()
 
     if (status.completed) {
+      console.log('[WIZARD] Setup already complete, redirecting to dashboard...')
       // Setup already done, redirect to dashboard
-      router.push('/')
+      window.location.href = 'http://localhost:7274'
+    } else {
+      console.log('[WIZARD] Setup not complete, showing wizard')
     }
   } catch (error) {
     // If endpoint doesn't exist yet, continue with wizard
-    console.log('Setup status check unavailable, continuing with wizard')
+    console.log('[WIZARD] Setup status check unavailable, continuing with wizard')
   }
 })
 </script>

@@ -156,6 +156,7 @@ class SetupModeMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, config_getter: Callable):
         super().__init__(app)
         self.get_config = config_getter
+        logger.info("[SetupModeMiddleware] Middleware initialized")
 
     async def dispatch(self, request: Request, call_next):
         """Check if system is in setup mode and restrict access accordingly"""
@@ -201,20 +202,35 @@ class SetupModeMiddleware(BaseHTTPMiddleware):
             )
 
         setup_mode = getattr(config, 'setup_mode', False)
+        logger.info(f"[SetupModeMiddleware] path={path}, setup_mode={setup_mode}")
 
         # If not in setup mode, check if database is actually configured
         if not setup_mode:
             database_configured = False
             if hasattr(config, 'database') and config.database:
+                # Log what we're checking
+                logger.debug(f"Database config: host={getattr(config.database, 'host', None)}, "
+                           f"port={getattr(config.database, 'port', None)}, "
+                           f"name={getattr(config.database, 'name', None)}, "
+                           f"database_name={getattr(config.database, 'database_name', None)}, "
+                           f"username={getattr(config.database, 'username', None)}, "
+                           f"user={getattr(config.database, 'user', None)}")
+
+                # Check for both 'name' and 'database_name' fields
+                db_name = getattr(config.database, 'database_name', None) or getattr(config.database, 'name', None)
+                db_user = getattr(config.database, 'username', None) or getattr(config.database, 'user', None)
+
                 database_configured = bool(
                     config.database.host and
                     config.database.port and
-                    config.database.database_name and
-                    config.database.username
+                    db_name and
+                    db_user
                 )
+                logger.debug(f"Database configured: {database_configured}")
 
             if database_configured:
                 # Database configured and not in setup mode - allow request
+                logger.debug(f"Allowing request - database configured and not in setup mode")
                 return await call_next(request)
             # Database not configured even though not in setup mode - block
             logger.warning(f"Blocking access to {path} - database not configured")
