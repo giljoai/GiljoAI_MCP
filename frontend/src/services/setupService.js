@@ -41,6 +41,56 @@ class SetupService {
   }
 
   /**
+   * Test PostgreSQL connection with setup credentials
+   * @param {Object} dbConfig - Database configuration
+   * @param {string} dbConfig.host - PostgreSQL host
+   * @param {number} dbConfig.port - PostgreSQL port
+   * @param {string} dbConfig.admin_user - PostgreSQL admin username
+   * @param {string} dbConfig.admin_password - PostgreSQL admin password
+   * @param {string} dbConfig.database_name - Database name
+   * @returns {Promise<{success: boolean, status: string, message: string, postgresql_version?: number, database_exists?: boolean}>}
+   */
+  async testPostgresConnection(dbConfig) {
+    const response = await fetch(`${this.baseURL}/api/setup/database/test-connection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dbConfig)
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Setup PostgreSQL database
+   * @param {Object} dbConfig - Database configuration
+   * @param {string} dbConfig.host - PostgreSQL host
+   * @param {number} dbConfig.port - PostgreSQL port
+   * @param {string} dbConfig.admin_user - PostgreSQL admin username
+   * @param {string} dbConfig.admin_password - PostgreSQL admin password
+   * @param {string} dbConfig.database_name - Database name
+   * @returns {Promise<{success: boolean, status: string, message: string, credentials_file?: string, warnings?: Array}>}
+   */
+  async setupPostgresDatabase(dbConfig) {
+    const response = await fetch(`${this.baseURL}/api/setup/database/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dbConfig)
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Detect installed AI coding tools
    * @returns {Promise<{tools: Array}>}
    */
