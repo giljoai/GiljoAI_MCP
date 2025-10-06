@@ -101,48 +101,55 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         logger.error(f"Failed to load configuration: {e}", exc_info=True)
         raise
 
-    # Initialize database
-    # Check for DATABASE_URL in environment first
-    logger.info("Initializing database connection...")
-    db_url = os.getenv("DATABASE_URL")
+    # Initialize database (skip if in setup mode)
+    if getattr(state.config, 'setup_mode', False):
+        logger.info("Setup mode detected - skipping database initialization")
+        logger.info("Database will be configured through the setup wizard")
+        state.db_manager = None
+        state.tenant_manager = None
+    else:
+        # Check for DATABASE_URL in environment first
+        logger.info("Initializing database connection...")
+        db_url = os.getenv("DATABASE_URL")
 
-    if db_url:
-        logger.info("Using DATABASE_URL from environment")
-    elif state.config.database:
-        # Construct database URL from config
-        logger.info("Constructing database URL from configuration")
-        if state.config.database.type == "postgresql":
-            db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
-            logger.debug(f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}")
-        else:
-            logger.error(f"Invalid database type: {state.config.database.type}")
-            raise ValueError("Database configuration missing. PostgreSQL is required.")
+        if db_url:
+            logger.info("Using DATABASE_URL from environment")
+        elif state.config.database:
+            # Construct database URL from config
+            logger.info("Constructing database URL from configuration")
+            if state.config.database.type == "postgresql":
+                db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
+                logger.debug(f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}")
+            else:
+                logger.error(f"Invalid database type: {state.config.database.type}")
+                raise ValueError("Database configuration missing. PostgreSQL is required.")
 
-    if not db_url:
-        logger.error("No database configuration found")
-        raise ValueError("Database URL not configured. PostgreSQL is required.")
+        if not db_url:
+            logger.error("No database configuration found")
+            raise ValueError("Database URL not configured. PostgreSQL is required.")
 
-    logger.info(f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
+        logger.info(f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else db_url}")
 
-    try:
-        state.db_manager = DatabaseManager(db_url, is_async=True)
-        logger.info("Database manager created successfully")
+        try:
+            state.db_manager = DatabaseManager(db_url, is_async=True)
+            logger.info("Database manager created successfully")
 
-        logger.info("Creating database tables...")
-        await state.db_manager.create_tables_async()
-        logger.info("Database tables created/verified successfully")
-    except Exception as e:
-        logger.error(f"Database initialization failed: {e}", exc_info=True)
-        raise
+            logger.info("Creating database tables...")
+            await state.db_manager.create_tables_async()
+            logger.info("Database tables created/verified successfully")
+        except Exception as e:
+            logger.error(f"Database initialization failed: {e}", exc_info=True)
+            raise
 
-    # Initialize tenant manager
-    try:
-        logger.info("Initializing tenant manager...")
-        state.tenant_manager = TenantManager()  # TenantManager uses static methods
-        logger.info("Tenant manager initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
-        raise
+    # Initialize tenant manager (skip if in setup mode)
+    if not getattr(state.config, 'setup_mode', False):
+        try:
+            logger.info("Initializing tenant manager...")
+            state.tenant_manager = TenantManager()  # TenantManager uses static methods
+            logger.info("Tenant manager initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
+            raise
 
     # Initialize tool accessor
     try:
