@@ -1,28 +1,60 @@
 # Handover Prompt - GiljoAI MCP Development Session
 
-## Current Status (October 6, 2025 - Afternoon)
+## Current Status (October 6, 2025 - Evening)
 
 **User**: Patrik (GiljoAI Team)
 **System**: F: Drive (Windows - Server/LAN Mode Testing)
 **Branch**: master
-**Last Commit**: `a17a57d` - "fixing wizard"
-**Time**: ~1:15 PM EST
-**Session**: Setup Wizard Emergency Fix - COMPLETE
+**Last Commit**: TBD - "feat: Simplified Serena MCP integration"
+**Time**: ~Evening EST
+**Session**: Serena MCP Simplification - IN PROGRESS
 
 ---
 
 ## What Just Happened (Critical Context)
 
 ### Session Summary
-Completed emergency fix session for broken setup wizard. Fixed 7 critical issues across frontend build, Vue components, routing, CORS, API communication, and backend endpoints.
+Simplified Serena MCP integration by rolling back overengineered implementation and rebuilding with production-ready simplicity. Changed from complex detection/automation system to simple config flag approach.
 
 **Timeline**:
-- **2:00 AM**: Setup wizard initially implemented
-- **9:50 AM**: Wizard completely broken, multiple failures
-- **1:00 PM - 1:15 PM**: Emergency fix session (7 commits)
-- **Result**: Setup wizard fully operational
+- **Previous Session**: Completed wizard fix (7 commits)
+- **This Session**: Serena MCP simplification
+  - Built complex Serena implementation (88 tests, 4 services, detection system)
+  - User identified architectural flaws: "How do we check serena if the backend is not an LLM itself?"
+  - Rolled back to commit `a17a57d` with backup branch
+  - Rebuilt with simple toggle: just controls prompt injection
+  - Updated wizard (4 steps), settings UI, API endpoint
+- **Result**: Simple, production-ready Serena integration (250 lines vs 5000+)
 
-### Issues Fixed (7 Commits)
+### Serena Integration Changes (Current Session)
+
+**Key Architectural Decision**: We only control what we actually control - prompt templates. User manages their own Serena installation.
+
+**What Changed**:
+1. **Rolled Back Complex Implementation**:
+   - Archived at `docs/archive/SerenaOverkill-deprecation/`
+   - Created backup branch `serena-complex-archive`
+   - Removed: Detection system, .claude.json manipulation, 88 tests, 4 backend services
+
+2. **Simple Frontend** (~150 lines):
+   - `frontend/src/components/setup/SerenaAttachStep.vue` - Radio button choice (Enable/Skip)
+   - `frontend/src/views/SetupWizard.vue` - Added step 2, now 4-step flow
+   - `frontend/src/views/SettingsView.vue` - Simple toggle with better visibility
+   - `frontend/src/services/setupService.js` - Simplified API methods
+
+3. **Simple Backend** (~100 lines):
+   - `api/endpoints/serena.py` - Toggle endpoint updates `features.serena_mcp.use_in_prompts`
+   - No detection, no .claude.json manipulation
+   - Just updates config.yaml boolean flag
+
+4. **Tests** (16 tests):
+   - `tests/unit/test_serena_endpoint.py` - Config operations only
+
+**Config Flag**: `features.serena_mcp.use_in_prompts` (boolean)
+**Effect**: Template manager injects/removes Serena guidance in agent prompts
+**User Control**: User installs Serena separately, we only control prompt inclusion
+
+### Previous Session: Wizard Fix (7 Commits)
 
 1. **SASS Compilation Error** (989e1da)
    - Reverted over-engineered vite.config.js

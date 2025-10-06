@@ -273,13 +273,16 @@ class SetupService {
   }
 
   /**
-   * Detect if Serena MCP is installed
-   * @returns {Promise<{installed: boolean, version?: string, path?: string}>}
+   * Toggle Serena MCP prompt injection on/off
+   * @param {boolean} enabled - Whether to enable Serena prompts
+   * @returns {Promise<{success: boolean, enabled: boolean, message?: string}>}
    */
-  async detectSerena() {
+  async toggleSerena(enabled) {
     try {
-      const response = await fetch(`${this.baseURL}/api/setup/detect-serena`, {
+      const response = await fetch(`${this.baseURL}/api/serena/toggle`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
       })
 
       if (!response.ok) {
@@ -288,60 +291,18 @@ class SetupService {
 
       return response.json()
     } catch (error) {
-      console.error('[SETUP_SERVICE] Serena detection failed:', error)
+      console.error('[SETUP_SERVICE] Serena toggle failed:', error)
       throw error
     }
   }
 
   /**
-   * Attach Serena MCP to Claude Code configuration
-   * @returns {Promise<{success: boolean, config_path?: string, error?: string}>}
-   */
-  async attachSerena() {
-    try {
-      const response = await fetch(`${this.baseURL}/api/setup/attach-serena`, {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      return response.json()
-    } catch (error) {
-      console.error('[SETUP_SERVICE] Serena attachment failed:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Detach Serena MCP from Claude Code configuration
-   * @returns {Promise<{success: boolean, config_path?: string, error?: string}>}
-   */
-  async detachSerena() {
-    try {
-      const response = await fetch(`${this.baseURL}/api/setup/detach-serena`, {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      return response.json()
-    } catch (error) {
-      console.error('[SETUP_SERVICE] Serena detachment failed:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Get current Serena MCP status
-   * @returns {Promise<{installed: boolean, configured: boolean, version?: string}>}
+   * Get current Serena MCP prompt injection status
+   * @returns {Promise<{enabled: boolean}>}
    */
   async getSerenaStatus() {
     try {
-      const response = await fetch(`${this.baseURL}/api/setup/serena-status`)
+      const response = await fetch(`${this.baseURL}/api/serena/status`)
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
