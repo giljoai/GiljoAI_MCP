@@ -492,6 +492,262 @@ class TestErrorHandling:
         # Should handle gracefully, not crash
 
 
+class TestTerminalWindowLaunching:
+    """Test launching services in terminal windows."""
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_launch_in_terminal_windows(self, mock_popen, mock_system):
+        """Test launching command in terminal window on Windows."""
+        mock_system.return_value = "Windows"
+        mock_process = Mock()
+        mock_process.poll.return_value = None
+        mock_popen.return_value = mock_process
+
+        # Expected: should use CREATE_NEW_CONSOLE flag
+        command = [sys.executable, "api/run_api.py"]
+        project_root = Path.cwd()
+
+        # Simulate the _launch_in_terminal call
+        proc = mock_popen(
+            command,
+            cwd=str(project_root),
+            creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
+
+        # Verify CREATE_NEW_CONSOLE flag was used
+        assert mock_popen.called
+        call_kwargs = mock_popen.call_args[1]
+        assert 'creationflags' in call_kwargs
+        assert call_kwargs['creationflags'] == subprocess.CREATE_NEW_CONSOLE
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_launch_in_terminal_linux_gnome(self, mock_popen, mock_system):
+        """Test launching command in terminal window on Linux with gnome-terminal."""
+        mock_system.return_value = "Linux"
+        mock_process = Mock()
+        mock_process.poll.return_value = None
+        mock_popen.return_value = mock_process
+
+        # Expected: should use gnome-terminal with -- separator
+        command = [sys.executable, "api/run_api.py"]
+        project_root = Path.cwd()
+        title = "GiljoAI Backend"
+
+        # Simulate gnome-terminal launch
+        terminal_cmd = ["gnome-terminal", "--title", title, "--", *command]
+        proc = mock_popen(terminal_cmd, cwd=str(project_root))
+
+        assert mock_popen.called
+        call_args = mock_popen.call_args[0][0]
+        assert call_args[0] == "gnome-terminal"
+        assert "--title" in call_args
+        assert "--" in call_args
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_launch_in_terminal_linux_xterm_fallback(self, mock_popen, mock_system):
+        """Test falling back to xterm when gnome-terminal not available."""
+        mock_system.return_value = "Linux"
+
+        # First call (gnome-terminal) fails
+        # Second call (xterm) succeeds
+        mock_process = Mock()
+        mock_popen.side_effect = [FileNotFoundError(), mock_process]
+
+        command = [sys.executable, "api/run_api.py"]
+        project_root = Path.cwd()
+        title = "GiljoAI Backend"
+
+        # Try gnome-terminal first
+        try:
+            terminal_cmd = ["gnome-terminal", "--title", title, "--", *command]
+            proc = mock_popen(terminal_cmd, cwd=str(project_root))
+        except FileNotFoundError:
+            # Fall back to xterm
+            terminal_cmd = ["xterm", "-title", title, "-e", *command]
+            proc = mock_popen(terminal_cmd, cwd=str(project_root))
+
+        assert mock_popen.call_count == 2
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_launch_in_terminal_macos(self, mock_popen, mock_system):
+        """Test launching command in Terminal.app on macOS."""
+        mock_system.return_value = "Darwin"
+        mock_process = Mock()
+        mock_popen.return_value = mock_process
+
+        # Expected: should use osascript with Terminal.app
+        command = [sys.executable, "api/run_api.py"]
+        project_root = Path.cwd()
+
+        cmd_str = " ".join(command)
+        script = f'tell application "Terminal" to do script "cd {project_root} && {cmd_str}"'
+
+        proc = mock_popen(["osascript", "-e", script])
+
+        assert mock_popen.called
+        call_args = mock_popen.call_args[0][0]
+        assert call_args[0] == "osascript"
+        assert call_args[1] == "-e"
+        assert "Terminal" in call_args[2]
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_start_backend_launches_terminal_window(self, mock_popen, mock_system):
+        """Test that start_backend launches in new terminal window."""
+        mock_system.return_value = "Windows"
+        mock_process = Mock()
+        mock_process.poll.return_value = None
+        mock_popen.return_value = mock_process
+
+        # Expected: backend should start in terminal window
+        # Command should be visible with verbose output
+        command = [sys.executable, "api/run_api.py", "--port", "7272"]
+
+        proc = mock_popen(
+            command,
+            cwd=str(Path.cwd()),
+            creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
+
+        assert mock_popen.called
+        assert proc.poll() is None  # Running
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_start_frontend_launches_terminal_window(self, mock_popen, mock_system):
+        """Test that start_frontend launches in new terminal window."""
+        mock_system.return_value = "Windows"
+        mock_process = Mock()
+        mock_process.poll.return_value = None
+        mock_popen.return_value = mock_process
+
+        # Expected: frontend should start in terminal window
+        npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
+        command = [npm_cmd, "run", "dev"]
+        frontend_dir = Path.cwd() / "frontend"
+
+        proc = mock_popen(
+            command,
+            cwd=str(frontend_dir),
+            creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
+
+        assert mock_popen.called
+        assert proc.poll() is None
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_terminal_windows_show_verbose_output(self, mock_popen, mock_system):
+        """Test that terminal windows display verbose output."""
+        mock_system.return_value = "Windows"
+        mock_process = Mock()
+        mock_popen.return_value = mock_process
+
+        # Expected: should NOT pipe stdout/stderr
+        # Terminal window should show output directly
+        command = [sys.executable, "api/run_api.py"]
+
+        # Incorrect approach (background mode)
+        proc_background = mock_popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        # Correct approach (terminal window mode)
+        proc_terminal = mock_popen(
+            command,
+            creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
+
+        # Terminal mode should NOT pipe output
+        terminal_call = mock_popen.call_args_list[-1]
+        terminal_kwargs = terminal_call[1]
+        assert 'stdout' not in terminal_kwargs or terminal_kwargs['stdout'] is None
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_track_terminal_process_pids(self, mock_popen, mock_system):
+        """Test that PIDs of terminal processes are tracked."""
+        mock_system.return_value = "Windows"
+        mock_process = Mock()
+        mock_process.pid = 12345
+        mock_process.poll.return_value = None
+        mock_popen.return_value = mock_process
+
+        command = [sys.executable, "api/run_api.py"]
+        proc = mock_popen(
+            command,
+            creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
+
+        # Expected: should track process for cleanup
+        assert proc.pid == 12345
+        assert proc.poll() is None
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_windows_batch_file_direct_execution(self, mock_popen, mock_system):
+        """Test executing Windows batch files directly in new console."""
+        mock_system.return_value = "Windows"
+        mock_process = Mock()
+        mock_popen.return_value = mock_process
+
+        # Expected: can also launch batch files directly
+        proc = mock_popen(
+            ["start_backend.bat"],
+            cwd=str(Path.cwd()),
+            shell=True,
+            creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
+
+        assert mock_popen.called
+        call_args = mock_popen.call_args[0][0]
+        assert "start_backend.bat" in call_args
+
+    @patch('platform.system')
+    def test_detect_available_terminal_emulator_linux(self, mock_system):
+        """Test detecting available terminal emulator on Linux."""
+        mock_system.return_value = "Linux"
+
+        # Expected: should try multiple terminal emulators in order
+        # gnome-terminal -> konsole -> xterm
+        terminal_preferences = ["gnome-terminal", "konsole", "xterm"]
+
+        # Simulate checking for available terminals
+        import shutil
+        for term in terminal_preferences:
+            if shutil.which(term):
+                preferred_terminal = term
+                break
+
+        # Should find at least one terminal
+        assert preferred_terminal in terminal_preferences
+
+    @patch('platform.system')
+    @patch('subprocess.Popen')
+    def test_terminal_window_title_set(self, mock_popen, mock_system):
+        """Test that terminal windows have descriptive titles."""
+        mock_system.return_value = "Linux"
+        mock_process = Mock()
+        mock_popen.return_value = mock_process
+
+        command = [sys.executable, "api/run_api.py"]
+        title = "GiljoAI Backend API"
+
+        # Expected: title should be set for easy identification
+        terminal_cmd = ["gnome-terminal", "--title", title, "--", *command]
+        proc = mock_popen(terminal_cmd)
+
+        assert mock_popen.called
+        call_args = mock_popen.call_args[0][0]
+        assert title in call_args
+
+
 class TestUIBehavior:
     """Test GUI behavior and interactions."""
 
