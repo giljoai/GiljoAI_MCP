@@ -1,5 +1,29 @@
 <template>
   <v-container class="setup-wizard" fluid>
+    <!-- Restart Overlay -->
+    <v-overlay
+      v-model="isRestarting"
+      :persistent="true"
+      class="align-center justify-center"
+    >
+      <v-card class="pa-8 text-center" min-width="400">
+        <v-progress-circular
+          indeterminate
+          size="64"
+          color="primary"
+          class="mb-4"
+        />
+        <h3 class="text-h5 mb-2">Restarting Services...</h3>
+        <p class="text-body-1 text-medium-emphasis mb-4">
+          {{ restartMessage }}
+        </p>
+        <v-progress-linear
+          indeterminate
+          color="primary"
+        />
+      </v-card>
+    </v-overlay>
+
     <v-row justify="center">
       <v-col cols="12" md="10" lg="8" xl="6">
         <v-card class="wizard-card" elevation="4">
@@ -106,6 +130,8 @@ const theme = useTheme()
 
 // State
 const currentStep = ref(1)
+const isRestarting = ref(false)
+const restartMessage = ref("Please wait while services restart...")
 const config = ref({
   deploymentMode: 'localhost', // 'localhost' | 'lan' | 'wan'
   adminAccount: null,
@@ -189,17 +215,46 @@ const handleFinish = async () => {
   try {
     console.log('[WIZARD] Completing setup...')
 
-    // Save setup completion flag
+    // Show restart overlay
+    isRestarting.value = true
+    restartMessage.value = 'Saving configuration...'
+
+    // Step 1: Save setup completion flag
     await setupService.completeSetup(config.value)
+    console.log('[WIZARD] Setup marked as complete')
 
-    console.log('[WIZARD] Setup complete, redirecting to dashboard...')
+    // Step 2: Trigger service restart
+    restartMessage.value = 'Restarting services...'
+    await setupService.restartServices()
+    console.log('[WIZARD] Restart triggered')
 
-    // Redirect to main dashboard using window.location
-    // This works in standalone mode without router
-    window.location.href = 'http://localhost:7274'
+    // Step 3: Wait for backend to come back online
+    restartMessage.value = 'Waiting for services to restart... (this may take 15 seconds)'
+    const backendOnline = await setupService.waitForBackend(30, 1000)
+
+    if (backendOnline) {
+      console.log('[WIZARD] Backend is back online!')
+      restartMessage.value = 'Services restarted successfully! Redirecting...'
+
+      // Wait 1 second to show success message
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Redirect to main dashboard
+      window.location.href = 'http://localhost:7274'
+    } else {
+      console.error('[WIZARD] Backend did not come back online within timeout')
+      restartMessage.value = 'Services are taking longer than expected. Please refresh manually.'
+
+      // Wait 3 seconds then try redirecting anyway
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      window.location.href = 'http://localhost:7274'
+    }
   } catch (error) {
-    console.error('[WIZARD] Setup completion failed:', error)
-    // Still redirect on error - let dashboard handle incomplete setup
+    console.error('[WIZARD] Setup completion/restart failed:', error)
+    restartMessage.value = 'Error during restart. Redirecting...'
+
+    // Wait 2 seconds then redirect anyway
+    await new Promise(resolve => setTimeout(resolve, 2000))
     window.location.href = 'http://localhost:7274'
   }
 }

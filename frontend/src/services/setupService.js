@@ -200,6 +200,54 @@ class SetupService {
 
     return response.json()
   }
+
+  /**
+   * Restart services after setup completion
+   * @returns {Promise<{success: boolean, status: string, message: string}>}
+   */
+  async restartServices() {
+    const response = await fetch(`${this.baseURL}/api/setup/restart-services`, {
+      method: 'POST'
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Wait for backend to come back online after restart
+   * Polls /health endpoint until it returns 200 OK
+   * @param {number} maxAttempts - Maximum number of polling attempts
+   * @param {number} intervalMs - Interval between polls in milliseconds
+   * @returns {Promise<boolean>} True if backend is online, false if timeout
+   */
+  async waitForBackend(maxAttempts = 30, intervalMs = 1000) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await fetch(`${this.baseURL}/health`, {
+          method: 'GET',
+          cache: 'no-cache'
+        })
+
+        if (response.ok) {
+          console.log(`Backend online after ${attempt} attempts`)
+          return true
+        }
+      } catch (error) {
+        // Backend not ready yet, continue polling
+        console.log(`Attempt ${attempt}/${maxAttempts}: Backend not ready`)
+      }
+
+      // Wait before next attempt
+      await new Promise(resolve => setTimeout(resolve, intervalMs))
+    }
+
+    console.error('Backend did not come back online within timeout')
+    return false
+  }
 }
 
 export default new SetupService()
