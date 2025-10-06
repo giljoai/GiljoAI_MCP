@@ -1,6 +1,18 @@
 <template>
   <v-container>
-    <h1 class="text-h4 mb-6">Settings</h1>
+    <!-- Header with Setup Wizard Button -->
+    <div class="d-flex justify-space-between align-center mb-6">
+      <h1 class="text-h4">Settings</h1>
+      <v-btn
+        :color="setupCompleted ? 'primary' : 'success'"
+        :variant="setupCompleted ? 'outlined' : 'flat'"
+        @click="navigateToSetupWizard"
+        aria-label="Open setup wizard"
+      >
+        <v-icon start>{{ setupCompleted ? 'mdi-cog-refresh' : 'mdi-rocket-launch' }}</v-icon>
+        {{ setupCompleted ? 'Re-run Setup Wizard' : 'Setup Wizard' }}
+      </v-btn>
+    </div>
 
     <!-- Settings Tabs -->
     <v-tabs v-model="activeTab" class="mb-6">
@@ -347,19 +359,23 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import TemplateManager from '@/components/TemplateManager.vue'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
 import { API_CONFIG } from '@/config/api'
+import setupService from '@/services/setupService'
 
-// Stores
+// Stores and Router
 const settingsStore = useSettingsStore()
 const theme = useTheme()
+const router = useRouter()
 
 // State
 const activeTab = ref('general')
 const generalForm = ref(null)
+const setupCompleted = ref(false)
 
 // Settings object
 const settings = ref({
@@ -539,8 +555,28 @@ function handleDatabaseError(error) {
   console.error('Database connection failed:', error)
 }
 
+// Setup Wizard Navigation
+const navigateToSetupWizard = () => {
+  router.push('/setup')
+}
+
+const checkSetupStatus = async () => {
+  try {
+    const status = await setupService.checkStatus()
+    setupCompleted.value = status.completed || false
+    console.log('[SETTINGS] Setup status:', setupCompleted.value ? 'completed' : 'not completed')
+  } catch (error) {
+    console.error('[SETTINGS] Failed to check setup status:', error)
+    // If check fails, assume not completed
+    setupCompleted.value = false
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Check setup status
+  await checkSetupStatus()
+
   // Load database settings from config on mount
   await loadDatabaseSettings()
   // Load settings from store
