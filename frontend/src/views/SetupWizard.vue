@@ -31,10 +31,8 @@
             <template v-slot:item.2>
               <v-card flat>
                 <SerenaAttachStep
-                  v-model="config.serenaEnabled"
                   @next="handleSerenaNext"
                   @back="handleBack"
-                  @skip="handleSerenaSkip"
                 />
               </v-card>
             </template>
@@ -101,12 +99,8 @@ const handleToolsNext = () => {
   currentStep.value = 2
 }
 
-const handleSerenaNext = () => {
-  currentStep.value = 3
-}
-
-const handleSerenaSkip = () => {
-  console.log('[WIZARD] Skipping Serena MCP setup')
+const handleSerenaNext = (data) => {
+  config.value.serenaEnabled = data.serenaEnabled
   currentStep.value = 3
 }
 
