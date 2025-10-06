@@ -574,20 +574,20 @@ def display_success(settings: Dict[str, Any], result: Dict[str, Any]):
         click.echo(c_red("  ⚠ Keep this file secure!"))
         click.echo()
 
-    if result.get('mcp_registered'):
-        click.echo(c_purple("MCP Registration:"))
-        click.echo(c_green("  ✓ Successfully registered with ") + c_white("Claude Code"))
-        click.echo()
-
     click.echo(c_gold("Services:"))
     click.echo(c_white("  API: ") + c_gold(f"http://localhost:{settings.get('api_port', 7272)}"))
     click.echo(c_white("  WebSocket: ") + c_gold(f"ws://localhost:{settings.get('api_port', 7272)}"))
     click.echo(c_white("  Dashboard: ") + c_gold(f"http://localhost:{settings.get('dashboard_port', 7274)}"))
     click.echo()
 
-    click.echo(c_purple("IMPORTANT NOTICE:"))
-    click.echo(c_white("  This installation currently supports ") + c_white("Claude Code") + c_white(" only"))
-    click.echo(c_white("  Support for ") + c_white("Codex") + c_white(" and ") + c_white("Gemini") + c_white(" coming in 2026"))
+    click.echo(c_purple("🎯 Next Step: Complete Setup in the Application"))
+    click.echo()
+    click.echo(c_white("  Open the dashboard and go to ") + c_gold("Settings → Setup Wizard"))
+    click.echo()
+    click.echo(c_white("  In the Setup Wizard, you can configure:"))
+    click.echo(c_white("    • Claude Code MCP tools (optional)"))
+    click.echo(c_white("    • LAN/WAN deployment (if needed)"))
+    click.echo(c_white("    • Firewall settings (if needed)"))
     click.echo()
 
     click.echo(c_gold("To start GiljoAI MCP:"))

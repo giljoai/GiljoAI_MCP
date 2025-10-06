@@ -1,22 +1,16 @@
 # ============================================================================
-# DEPRECATED: MCP registration moved to frontend setup wizard
-# This file is no longer used and will be removed in future versions.
-#
-# All MCP registration is now handled by the frontend setup wizard at /setup.
-# See: docs/IMPLEMENTATION_PLAN.md Phase 0
-#
-# Multi-tool support (Codex, Gemini) coming in 2026
+# DISABLED: Multi-tool support temporarily disabled
+# See docs/Techdebt.md and CLAUDE_CODE_EXCLUSIVITY_INVESTIGATION.md
+# This module will be re-enabled when Codex CLI gains subagent capabilities
+# or when hybrid orchestrator is implemented (Q2 2025)
 # ============================================================================
 
 #!/usr/bin/env python3
 """
 GiljoAI MCP - Codex CLI Adapter
-
-DEPRECATED: MCP registration moved to frontend setup wizard.
-Use the web-based setup wizard at http://localhost:7274/setup
+Handles MCP registration for OpenAI Codex CLI
 """
 
-import warnings
 import toml
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -24,21 +18,8 @@ from typing import Dict, List, Optional
 from installer.mcp_adapter_base import MCPAdapterBase
 
 
-# Issue deprecation warning when module is imported
-warnings.warn(
-    "CodexAdapter is deprecated. MCP registration is now handled by the "
-    "frontend setup wizard at /setup. This module will be removed in a future version.",
-    DeprecationWarning,
-    stacklevel=2
-)
-
-
 class CodexAdapter(MCPAdapterBase):
-    """
-    Adapter for Codex CLI MCP registration.
-
-    DEPRECATED: Use the frontend setup wizard at /setup instead.
-    """
+    """Adapter for Codex CLI MCP registration."""
 
     @staticmethod
     def get_cli_name() -> str:

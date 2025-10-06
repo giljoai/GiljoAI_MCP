@@ -1,97 +1,174 @@
 # GiljoAI MCP Implementation Plan
 **Created**: October 5, 2025
-**Updated**: October 5, 2025 (Phase 0 Complete - Setup Wizard)
+**Updated**: October 6, 2025 (Phase 0 Corrected - CLI Installer Focus)
 **Target**: Localhost Beta Ready
-**Timeline**: 2.2 Weeks (11 working days - Phase 0 completed ahead of schedule)
+**Timeline**: 2 Weeks (10 working days)
+**Single Source of Truth**: This document is the authoritative implementation plan
 
 ---
 
-## ✅ COMPLETED: Phase 0 - Frontend Setup Wizard
+## ✅ COMPLETED: Phase 0 - CLI Installer (Localhost Mode)
 
 **Status**: COMPLETE ✅
-**Completed**: October 5, 2025 (1 day with parallel agents)
-**Next**: Phase 1 - Claude Code Agent Profiles
+**Completed**: October 5, 2025 (commit 635a120)
+**Next**: Phase 0.5 - In-App Setup Wizard (Optional Features)
 
-### Problem Statement
+### What Phase 0 Accomplished
 
-The current CLI-based installer attempts to register MCP servers with AI tools (Claude Code, Cline, etc.) but faces fundamental limitations:
+The CLI installer provides a **minimal, fast, database-focused** installation for localhost mode:
 
-1. **User-Specific Configuration**: `~/.claude.json` is in user home directory, installer may run as different user
-2. **Tool Detection Impossible**: Can't reliably detect which AI tools are installed at CLI level
-3. **Timing Issues**: User may install AI tools AFTER running our installer
-4. **Multi-Tool Support**: Each tool has different config format/location
-5. **Validation Impossible**: CLI can't test if MCP connection actually works
-6. **Permission Issues**: Writing to user config files from installer raises security concerns
+**Core Functions:**
+1. ✅ **PostgreSQL Detection**
+   - Detect PostgreSQL software on system
+   - If not found: Pause, open download page, wait for user
+   - If found: Continue with credentials
 
-### Strategic Decision
+2. ✅ **Database Setup**
+   - Prompt for PostgreSQL admin password
+   - Create `giljo_mcp` database
+   - Create roles: `giljo_owner`, `giljo_user`
+   - Save credentials to config.yaml
+   - Generate secure credential file
 
-**Move MCP registration from CLI installer → Frontend Setup Wizard**
+3. ✅ **Dependencies**
+   - Install Python packages from requirements.txt
+   - Create virtual environment
+   - Install giljo_mcp package
 
-**Rationale**:
-- Frontend runs in user context (knows correct home directory)
-- Can detect installed tools via JavaScript/filesystem access
-- Can provide interactive guidance with real-time validation
-- Can test MCP connection immediately after registration
-- Supports all deployment modes (localhost/LAN/WAN) without code changes
-- Future-proofs for SaaS offering
+4. ✅ **Desktop Shortcuts**
+   - Create shortcuts in all available desktop locations
+   - OneDrive Desktop (personal) detection
+   - OneDrive Commercial detection
+   - Local Desktop fallback
+   - Cross-platform support
 
-### Scope: Frontend Setup Wizard
+5. ✅ **Service Launch**
+   - Start API server (localhost:7272)
+   - Start frontend (localhost:7274)
+   - Direct user to Settings → Setup Wizard for advanced features
 
-Create a post-installation setup wizard that runs on first launch:
+### What Phase 0 Does NOT Do
+
+❌ **No MCP Configuration** - Moved to Phase 0.5 (in-app wizard)
+❌ **No Tool Injection** - Moved to Phase 0.5 (in-app wizard)
+❌ **No Claude Code Setup** - Moved to Phase 0.5 (in-app wizard)
+❌ **No LAN/WAN Config** - Moved to Phase 1
+
+### Success Criteria
 
 ```
-http://localhost:7274/setup
-```
-
-**User Flow**:
-```
-┌─────────────────────────────────────────┐
-│  Step 1: Welcome                        │
-│  - Deployment mode selection            │
-│    ○ Localhost (single user)            │
-│    ○ LAN (team, local network)          │
-│    ○ WAN (internet, remote)             │
-└─────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────┐
-│  Step 2: Admin Account (if multi-user)  │
-│  - Username                             │
-│  - Password                             │
-│  - Email (optional)                     │
-└─────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────┐
-│  Step 3: AI Tool Integration            │
-│  - Auto-detect installed tools          │
-│    ✓ Claude Code detected               │
-│    ✓ Cline detected                     │
-│    ○ Cursor not found                   │
-│                                         │
-│  - Select tool(s) to configure          │
-│  - Show config preview                  │
-│  - One-click registration               │
-│  - Test connection                      │
-│    ✓ giljo-mcp connected!               │
-└─────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────┐
-│  Step 4: Verification & Complete        │
-│  ✓ Database: Connected                  │
-│  ✓ MCP Server: Healthy                  │
-│  ✓ Claude Code: Connected               │
-│  ✓ WebSocket: Active                    │
-│                                         │
-│  [🚀 Start Using GiljoAI]               │
-└─────────────────────────────────────────┘
+✅ Installer runs in <5 minutes
+✅ PostgreSQL detected or user guided to install
+✅ Database created successfully
+✅ Application launches and loads
+✅ User sees dashboard
+✅ Message directs user to Settings → Wizard for advanced setup
 ```
 
 ---
 
-### Implementation Tasks
+## PLANNED: Phase 0.5 - In-App Setup Wizard (Optional Features)
 
-#### Task 0.1: Setup Wizard Routes & Views
-**Priority**: 🔴 CRITICAL
-**Estimated Time**: 3 hours
+**Status**: PLANNED
+**Target**: Optional advanced configuration
+**Location**: `frontend/src/views/Settings.vue` → New "Setup Wizard" tab
+**Scope**: Simple configuration UI for power users
+
+### Wizard Features (In Settings)
+
+**Tab: "Setup Wizard"** in Settings view
+
+**Section 1: Claude Code MCP Configuration**
+- Button to configure GiljoAI MCP tools for Claude Code
+- Success/error feedback
+- Link to documentation
+
+**Section 2: LAN/WAN Configuration** (Phase 1)
+- Network configuration forms
+- Firewall setup buttons
+- API key generation
+- CORS configuration
+
+**Section 3: Advanced Settings** (Future)
+- Database connection settings
+- Port configuration
+- Logging levels
+- Performance tuning
+
+### Implementation Approach
+
+**NOT a standalone wizard page**
+**NOT part of installation flow**
+**IS a tab in Settings for power users**
+
+Simple, clean, no complexity.
+
+---
+
+### Historical Note: Wizard Complexity Removed
+
+**What Happened (Oct 5-6, 2025)**:
+- Attempted to build complex standalone wizard
+- Created `/api/setup/create-database` endpoint
+- Moved database creation OUT of CLI installer
+- Added 900+ lines of wizard code
+- Created 5+ wizard documentation files
+
+**Why It Was Wrong**:
+- Violated the principle: "CLI installer should create database"
+- Added unnecessary complexity to simple flow
+- Made wizard dependent on API/database (circular dependency)
+- Confused implementation with 1000+ lines of unnecessary code
+
+**What Was Reverted (Oct 6, 2025)**:
+- Deleted `/api/setup/create-database` endpoint
+- Deleted wizard documentation files
+- Removed MCP tool injection from CLI installer
+- Restored database creation to CLI installer (commit 635a120)
+- Updated IMPLEMENTATION_PLAN.md to be single source of truth
+
+**Lessons Learned**:
+- ✅ CLI installer MUST create database
+- ✅ Keep wizards simple and in-app
+- ✅ Don't move core functionality to UI
+- ✅ Maintain single source of truth
+
+---
+
+---
+
+## Phase 1: Claude Code Agent Profiles (Days 1-4)
+
+**See below for full Phase 1 details** (starting at line 920)
+
+This phase builds on the working CLI installer to create Claude Code integration for localhost mode.
+
+---
+
+## Phase 2: Dashboard & Testing (Days 5-10)
+
+**See below for full Phase 2 details** (starting at line 1486)
+
+This phase adds dashboard features and comprehensive testing.
+
+---
+
+## Phase 3: LAN/WAN Deployment (Future)
+
+**See below for full Phase 3 details** (starting at line 2057)
+
+This phase extends the system for network deployment.
+
+---
+
+## OLD WIZARD CONTENT (Deprecated - Kept for Reference)
+
+The following sections were part of the incorrect wizard approach (Oct 5-6, 2025).
+They are kept for historical reference but should NOT be implemented.
+
+### ~~Task 0.1: Setup Wizard Routes & Views~~ [DEPRECATED]
+**Priority**: ~~🔴 CRITICAL~~
+**Estimated Time**: ~~3 hours~~
 
 Create frontend setup wizard infrastructure:
 
