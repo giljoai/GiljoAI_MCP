@@ -302,7 +302,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import setupService from '@/services/setupService'
 
 /**
  * NetworkConfigStep - Network configuration step (Step 2 of 3)
@@ -443,6 +444,46 @@ const handleNext = () => {
   console.log('[NETWORK_CONFIG] Moving to next step with mode:', selectedMode.value)
   emit('next')
 }
+
+// Lifecycle - load existing config
+onMounted(async () => {
+  console.log('[NETWORK_CONFIG] Loading existing configuration')
+  
+  try {
+    const status = await setupService.checkStatus()
+    console.log('[NETWORK_CONFIG] Current status:', status)
+    
+    // Set mode from existing config
+    if (status.network_mode) {
+      selectedMode.value = status.network_mode
+      console.log('[NETWORK_CONFIG] Loaded mode:', status.network_mode)
+    }
+    
+    // Load existing config from config.yaml
+    const response = await fetch(`${setupService.baseURL}/api/v1/config`)
+    if (response.ok) {
+      const config = await response.json()
+      console.log('[NETWORK_CONFIG] Loaded config:', config)
+      
+      // If LAN mode, populate fields from server config
+      if (config.server) {
+        lanConfig.value.serverIp = config.server.ip || lanConfig.value.serverIp
+        lanConfig.value.hostname = config.server.hostname || lanConfig.value.hostname
+        lanConfig.value.adminUsername = config.server.admin_user || lanConfig.value.adminUsername
+        lanConfig.value.firewallConfigured = config.server.firewall_configured || false
+        console.log('[NETWORK_CONFIG] Loaded LAN settings from config')
+      }
+      
+      // Load API port if available
+      if (config.services?.api?.port) {
+        lanConfig.value.port = config.services.api.port
+      }
+    }
+  } catch (error) {
+    console.error('[NETWORK_CONFIG] Failed to load existing config:', error)
+    // Non-fatal, continue with defaults
+  }
+})
 </script>
 
 <style scoped>

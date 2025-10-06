@@ -327,6 +327,60 @@ async def generate_mcp_config(request: McpConfigRequest = Body(...)):
         raise HTTPException(status_code=500, detail=f"Failed to generate MCP configuration: {e}")
 
 
+@router.get("/check-mcp-configured")
+async def check_mcp_configured():
+    """
+    Check if giljo-mcp is already configured in Claude Code.
+
+    Returns:
+        Configuration status including whether MCP server is configured
+    """
+    try:
+        import json
+        from pathlib import Path
+
+        # Get Claude Code config path
+        home = Path.home()
+        claude_config_path = home / ".claude.json"
+
+        if not claude_config_path.exists():
+            return {
+                "configured": False,
+                "message": "Claude Code config file not found",
+            }
+
+        # Read config
+        try:
+            with open(claude_config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to read Claude config: {e}")
+            return {
+                "configured": False,
+                "message": "Could not read Claude Code config file",
+            }
+
+        # Check if giljo-mcp is configured
+        mcp_servers = config.get("mcpServers", {})
+        giljo_configured = "giljo-mcp" in mcp_servers
+
+        if giljo_configured:
+            return {
+                "configured": True,
+                "message": "giljo-mcp is already configured in Claude Code",
+                "config": mcp_servers["giljo-mcp"],
+            }
+        else:
+            return {
+                "configured": False,
+                "message": "giljo-mcp not found in Claude Code configuration",
+            }
+
+    except Exception as e:
+        logger.error(f"Error checking MCP configuration: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to check MCP configuration: {e}")
+
+
 @router.post("/register-mcp", response_model=RegisterMcpResponse)
 async def register_mcp(request: RegisterMcpRequest = Body(...)):
     """
@@ -352,7 +406,30 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
             home = Path.home()
             claude_config_path = home / ".claude.json"
 
-            # Backup existing config if it exists
+            # Read existing config or create new one
+            existing_config = {}
+            if claude_config_path.exists():
+                try:
+                    with open(claude_config_path, "r", encoding="utf-8") as f:
+                        existing_config = json.load(f)
+                except Exception as e:
+                    logger.warning(f"Failed to read existing config: {e}")
+
+            # Check if giljo-mcp is already configured
+            if "mcpServers" not in existing_config:
+                existing_config["mcpServers"] = {}
+            
+            # Check if already configured - if so, skip registration
+            if "giljo-mcp" in existing_config["mcpServers"]:
+                logger.info(f"giljo-mcp already configured in Claude Code, skipping registration")
+                return RegisterMcpResponse(
+                    success=True,
+                    message=f"MCP server already configured for {request.tool}",
+                    config_path=str(claude_config_path),
+                    backup_path=None,
+                )
+
+            # Backup existing config before modifying
             backup_path = None
             if claude_config_path.exists():
                 import shutil
@@ -362,15 +439,6 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
                 backup_path = home / f".claude.json.backup_{timestamp}"
                 shutil.copy2(claude_config_path, backup_path)
                 logger.info(f"Backed up existing config to {backup_path}")
-
-            # Read existing config or create new one
-            existing_config = {}
-            if claude_config_path.exists():
-                try:
-                    with open(claude_config_path, "r", encoding="utf-8") as f:
-                        existing_config = json.load(f)
-                except Exception as e:
-                    logger.warning(f"Failed to read existing config: {e}")
 
             # Merge MCP servers
             if "mcpServers" not in existing_config:

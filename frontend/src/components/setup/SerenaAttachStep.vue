@@ -158,7 +158,8 @@ uv run serena start-mcp-server
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import setupService from '@/services/setupService'
 
 const emit = defineEmits(['next', 'back'])
 
@@ -173,6 +174,27 @@ const handleNext = () => {
     serenaEnabled: choice.value === 'enabled'
   })
 }
+
+// Lifecycle - check if Serena is already enabled
+onMounted(async () => {
+  console.log('[SERENA_STEP] Checking Serena status')
+  
+  try {
+    const status = await setupService.getSerenaStatus()
+    
+    if (status.enabled) {
+      console.log('[SERENA_STEP] Serena is already enabled')
+      choice.value = 'enabled'
+    } else {
+      console.log('[SERENA_STEP] Serena is disabled')
+      choice.value = 'disabled'
+    }
+  } catch (error) {
+    console.error('[SERENA_STEP] Failed to check Serena status:', error)
+    // Default to disabled on error
+    choice.value = 'disabled'
+  }
+})
 </script>
 
 <style scoped>
