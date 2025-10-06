@@ -34,7 +34,7 @@
       </v-tab>
       <v-tab value="api">
         <v-icon start>mdi-api</v-icon>
-        API Configuration
+        API and Integrations
       </v-tab>
       <v-tab value="database">
         <v-icon start>mdi-database</v-icon>
@@ -291,31 +291,38 @@
 
             <h3 class="text-h6 mb-4">MCP Integrations</h3>
 
-            <v-list>
-              <v-list-item>
-                <template v-slot:prepend>
-                  <v-icon color="primary">mdi-code-braces</v-icon>
-                </template>
+            <v-card variant="outlined" class="mb-4">
+              <v-list>
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-icon color="primary" size="large">mdi-code-braces</v-icon>
+                  </template>
 
-                <v-list-item-title>Serena MCP</v-list-item-title>
-                <v-list-item-subtitle>
-                  Advanced semantic code analysis for coding agents
-                </v-list-item-subtitle>
+                  <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
+                  <v-list-item-subtitle>
+                    Enabling adds Serena tool instructions to agent prompts. Disabling removes them from
+                    agent tool startup. (Currently only Claude Code)
+                  </v-list-item-subtitle>
 
-                <template v-slot:append>
-                  <v-switch
-                    v-model="serenaEnabled"
-                    @update:model-value="toggleSerena"
-                    color="primary"
-                    :loading="toggling"
-                    :disabled="!serenaInstalled"
-                  />
-                </template>
-              </v-list-item>
-            </v-list>
+                  <template v-slot:append>
+                    <v-switch
+                      v-model="serenaEnabled"
+                      @update:model-value="toggleSerena"
+                      color="primary"
+                      :loading="toggling"
+                      hide-details
+                      inset
+                      class="serena-toggle"
+                    />
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card>
 
-            <v-alert v-if="!serenaInstalled" type="info" variant="tonal" class="mt-4">
-              Serena MCP not detected. Complete the setup wizard to configure Serena MCP.
+            <v-alert type="info" variant="tonal" class="mb-4">
+              <v-icon start>mdi-information</v-icon>
+              Serena MCP must be installed separately and configured in your coding tool (e.g., Claude
+              Code). This toggle only controls whether Serena instructions are included in agent prompts.
             </v-alert>
 
             <v-divider class="my-6" />
@@ -386,21 +393,6 @@
         </DatabaseConnection>
       </v-window-item>
     </v-window>
-
-    <!-- Serena Disable Confirmation Dialog -->
-    <v-dialog v-model="showDisableConfirmation" max-width="500">
-      <v-card>
-        <v-card-title>Disable Serena MCP?</v-card-title>
-        <v-card-text>
-          This will remove Serena from Claude Code configuration. You can re-enable it later.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="showDisableConfirmation = false">Cancel</v-btn>
-          <v-btn color="error" @click="confirmDisable">Disable</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
@@ -424,9 +416,7 @@ const activeTab = ref('general')
 const generalForm = ref(null)
 const setupCompleted = ref(false)
 const serenaEnabled = ref(false)
-const serenaInstalled = ref(false)
 const toggling = ref(false)
-const showDisableConfirmation = ref(false)
 
 // Settings object
 const settings = ref({
@@ -477,63 +467,30 @@ const settings = ref({
 async function checkSerenaStatus() {
   try {
     const status = await setupService.getSerenaStatus()
-    serenaInstalled.value = status.installed || false
-    serenaEnabled.value = status.configured || false
-    console.log('[SETTINGS] Serena status:', {
-      installed: serenaInstalled.value,
-      enabled: serenaEnabled.value,
-    })
+    serenaEnabled.value = status.enabled || false
+    console.log('[SETTINGS] Serena prompt injection status:', serenaEnabled.value)
   } catch (error) {
     console.error('[SETTINGS] Failed to check Serena status:', error)
-    serenaInstalled.value = false
     serenaEnabled.value = false
   }
 }
 
 async function toggleSerena(enabled) {
-  if (!enabled) {
-    // Show confirmation dialog before disabling
-    showDisableConfirmation.value = true
-    // Revert toggle immediately (will be set again if user confirms)
-    serenaEnabled.value = true
-    return
-  }
-
-  // Enabling Serena
   toggling.value = true
   try {
-    const result = await setupService.attachSerena()
+    const result = await setupService.toggleSerena(enabled)
     if (result.success) {
-      serenaEnabled.value = true
-      console.log('[SETTINGS] Serena enabled successfully')
+      serenaEnabled.value = result.enabled
+      console.log('[SETTINGS] Serena prompt injection toggled:', result.enabled)
     } else {
-      serenaEnabled.value = false
-      console.error('[SETTINGS] Failed to enable Serena:', result.error)
+      // Revert on failure
+      serenaEnabled.value = !enabled
+      console.error('[SETTINGS] Failed to toggle Serena:', result.message)
     }
   } catch (error) {
-    console.error('[SETTINGS] Error enabling Serena:', error)
-    serenaEnabled.value = false
-  } finally {
-    toggling.value = false
-  }
-}
-
-async function confirmDisable() {
-  toggling.value = true
-  showDisableConfirmation.value = false
-
-  try {
-    const result = await setupService.detachSerena()
-    if (result.success) {
-      serenaEnabled.value = false
-      console.log('[SETTINGS] Serena disabled successfully')
-    } else {
-      serenaEnabled.value = true
-      console.error('[SETTINGS] Failed to disable Serena:', result.error)
-    }
-  } catch (error) {
-    console.error('[SETTINGS] Error disabling Serena:', error)
-    serenaEnabled.value = true
+    console.error('[SETTINGS] Error toggling Serena:', error)
+    // Revert on error
+    serenaEnabled.value = !enabled
   } finally {
     toggling.value = false
   }
@@ -706,3 +663,14 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+/* Make Serena toggle more visible */
+.serena-toggle :deep(.v-switch__track) {
+  border: 2px solid rgba(var(--v-theme-primary), 0.5);
+}
+
+.serena-toggle :deep(.v-switch__thumb) {
+  border: 2px solid rgba(var(--v-theme-primary), 0.8);
+}
+</style>
