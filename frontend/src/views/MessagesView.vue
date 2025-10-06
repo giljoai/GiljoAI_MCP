@@ -264,12 +264,7 @@
           <v-icon class="mr-2">mdi-message-plus</v-icon>
           <span>Compose Message</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="cancelCompose"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="cancelCompose" aria-label="Close" />
         </v-card-title>
 
         <v-card-text>

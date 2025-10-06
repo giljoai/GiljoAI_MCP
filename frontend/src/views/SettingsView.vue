@@ -263,7 +263,8 @@
       <!-- API Configuration -->
       <v-window-item value="api">
         <v-card>
-          <v-card-title>API Configuration</v-card-title>
+          <v-card-title>API and Integrations</v-card-title>
+          <v-card-subtitle>Configure API settings and MCP tool integrations</v-card-subtitle>
           <v-card-text>
             <v-alert type="info" variant="tonal" class="mb-4">
               Configure your API endpoints and authentication settings
@@ -285,6 +286,37 @@
               persistent-hint
               class="mt-4"
             />
+
+            <v-divider class="my-6" />
+
+            <h3 class="text-h6 mb-4">MCP Integrations</h3>
+
+            <v-list>
+              <v-list-item>
+                <template v-slot:prepend>
+                  <v-icon color="primary">mdi-code-braces</v-icon>
+                </template>
+
+                <v-list-item-title>Serena MCP</v-list-item-title>
+                <v-list-item-subtitle>
+                  Advanced semantic code analysis for coding agents
+                </v-list-item-subtitle>
+
+                <template v-slot:append>
+                  <v-switch
+                    v-model="serenaEnabled"
+                    @update:model-value="toggleSerena"
+                    color="primary"
+                    :loading="toggling"
+                    :disabled="!serenaInstalled"
+                  />
+                </template>
+              </v-list-item>
+            </v-list>
+
+            <v-alert v-if="!serenaInstalled" type="info" variant="tonal" class="mt-4">
+              Serena MCP not detected. Complete the setup wizard to configure Serena MCP.
+            </v-alert>
 
             <v-divider class="my-6" />
 
@@ -354,6 +386,21 @@
         </DatabaseConnection>
       </v-window-item>
     </v-window>
+
+    <!-- Serena Disable Confirmation Dialog -->
+    <v-dialog v-model="showDisableConfirmation" max-width="500">
+      <v-card>
+        <v-card-title>Disable Serena MCP?</v-card-title>
+        <v-card-text>
+          This will remove Serena from Claude Code configuration. You can re-enable it later.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="showDisableConfirmation = false">Cancel</v-btn>
+          <v-btn color="error" @click="confirmDisable">Disable</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -376,6 +423,10 @@ const router = useRouter()
 const activeTab = ref('general')
 const generalForm = ref(null)
 const setupCompleted = ref(false)
+const serenaEnabled = ref(false)
+const serenaInstalled = ref(false)
+const toggling = ref(false)
+const showDisableConfirmation = ref(false)
 
 // Settings object
 const settings = ref({
@@ -421,6 +472,72 @@ const settings = ref({
     password: '',
   },
 })
+
+// Serena MCP Methods
+async function checkSerenaStatus() {
+  try {
+    const status = await setupService.getSerenaStatus()
+    serenaInstalled.value = status.installed || false
+    serenaEnabled.value = status.configured || false
+    console.log('[SETTINGS] Serena status:', {
+      installed: serenaInstalled.value,
+      enabled: serenaEnabled.value,
+    })
+  } catch (error) {
+    console.error('[SETTINGS] Failed to check Serena status:', error)
+    serenaInstalled.value = false
+    serenaEnabled.value = false
+  }
+}
+
+async function toggleSerena(enabled) {
+  if (!enabled) {
+    // Show confirmation dialog before disabling
+    showDisableConfirmation.value = true
+    // Revert toggle immediately (will be set again if user confirms)
+    serenaEnabled.value = true
+    return
+  }
+
+  // Enabling Serena
+  toggling.value = true
+  try {
+    const result = await setupService.attachSerena()
+    if (result.success) {
+      serenaEnabled.value = true
+      console.log('[SETTINGS] Serena enabled successfully')
+    } else {
+      serenaEnabled.value = false
+      console.error('[SETTINGS] Failed to enable Serena:', result.error)
+    }
+  } catch (error) {
+    console.error('[SETTINGS] Error enabling Serena:', error)
+    serenaEnabled.value = false
+  } finally {
+    toggling.value = false
+  }
+}
+
+async function confirmDisable() {
+  toggling.value = true
+  showDisableConfirmation.value = false
+
+  try {
+    const result = await setupService.detachSerena()
+    if (result.success) {
+      serenaEnabled.value = false
+      console.log('[SETTINGS] Serena disabled successfully')
+    } else {
+      serenaEnabled.value = true
+      console.error('[SETTINGS] Failed to disable Serena:', result.error)
+    }
+  } catch (error) {
+    console.error('[SETTINGS] Error disabling Serena:', error)
+    serenaEnabled.value = true
+  } finally {
+    toggling.value = false
+  }
+}
 
 // Methods
 async function saveGeneralSettings() {
@@ -576,6 +693,9 @@ const checkSetupStatus = async () => {
 onMounted(async () => {
   // Check setup status
   await checkSetupStatus()
+
+  // Check Serena MCP status
+  await checkSerenaStatus()
 
   // Load database settings from config on mount
   await loadDatabaseSettings()

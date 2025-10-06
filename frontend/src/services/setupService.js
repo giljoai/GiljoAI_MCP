@@ -54,7 +54,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/database/test-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dbConfig)
+      body: JSON.stringify(dbConfig),
     })
 
     if (!response.ok) {
@@ -79,7 +79,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/database/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dbConfig)
+      body: JSON.stringify(dbConfig),
     })
 
     if (!response.ok) {
@@ -112,7 +112,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/generate-mcp-config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool, mode })
+      body: JSON.stringify({ tool, mode }),
     })
 
     if (!response.ok) {
@@ -132,7 +132,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/register-mcp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool, config })
+      body: JSON.stringify({ tool, config }),
     })
 
     if (!response.ok) {
@@ -151,7 +151,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/test-mcp-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool })
+      body: JSON.stringify({ tool }),
     })
 
     if (!response.ok) {
@@ -172,7 +172,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/configure-deployment-mode`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, lan_ip: lanIp, wan_url: wanUrl })
+      body: JSON.stringify({ mode, lan_ip: lanIp, wan_url: wanUrl }),
     })
 
     if (!response.ok) {
@@ -191,7 +191,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config)
+      body: JSON.stringify(config),
     })
 
     if (!response.ok) {
@@ -207,7 +207,7 @@ class SetupService {
    */
   async restartServices() {
     const response = await fetch(`${this.baseURL}/api/setup/restart-services`, {
-      method: 'POST'
+      method: 'POST',
     })
 
     if (!response.ok) {
@@ -229,7 +229,7 @@ class SetupService {
       try {
         const response = await fetch(`${this.baseURL}/health`, {
           method: 'GET',
-          cache: 'no-cache'
+          cache: 'no-cache',
         })
 
         if (response.ok) {
@@ -242,7 +242,7 @@ class SetupService {
       }
 
       // Wait before next attempt
-      await new Promise(resolve => setTimeout(resolve, intervalMs))
+      await new Promise((resolve) => setTimeout(resolve, intervalMs))
     }
 
     console.error('Backend did not come back online within timeout')
@@ -270,6 +270,88 @@ class SetupService {
     }
 
     return response.json()
+  }
+
+  /**
+   * Detect if Serena MCP is installed
+   * @returns {Promise<{installed: boolean, version?: string, path?: string}>}
+   */
+  async detectSerena() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/setup/detect-serena`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena detection failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Attach Serena MCP to Claude Code configuration
+   * @returns {Promise<{success: boolean, config_path?: string, error?: string}>}
+   */
+  async attachSerena() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/setup/attach-serena`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena attachment failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Detach Serena MCP from Claude Code configuration
+   * @returns {Promise<{success: boolean, config_path?: string, error?: string}>}
+   */
+  async detachSerena() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/setup/detach-serena`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena detachment failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get current Serena MCP status
+   * @returns {Promise<{installed: boolean, configured: boolean, version?: string}>}
+   */
+  async getSerenaStatus() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/setup/serena-status`)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena status check failed:', error)
+      throw error
+    }
   }
 }
 

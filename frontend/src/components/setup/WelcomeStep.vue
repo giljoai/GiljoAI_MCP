@@ -2,9 +2,7 @@
   <v-card-text class="pa-8">
     <!-- Welcome message -->
     <h1 class="text-h4 text-center mb-2">Welcome to GiljoAI MCP</h1>
-    <p class="text-h6 text-center text-medium-emphasis mb-8">
-      Multi-Agent Coding Orchestrator
-    </p>
+    <p class="text-h6 text-center text-medium-emphasis mb-8">Multi-Agent Coding Orchestrator</p>
 
     <!-- Checklist -->
     <v-card variant="tonal" class="mb-6">
@@ -15,18 +13,9 @@
             prepend-icon="mdi-check-circle"
             title="Verify PostgreSQL database connection"
           />
-          <v-list-item
-            prepend-icon="mdi-check-circle"
-            title="Choose your deployment mode"
-          />
-          <v-list-item
-            prepend-icon="mdi-check-circle"
-            title="Configure AI tool integration"
-          />
-          <v-list-item
-            prepend-icon="mdi-check-circle"
-            title="Complete initial system setup"
-          />
+          <v-list-item prepend-icon="mdi-check-circle" title="Choose your deployment mode" />
+          <v-list-item prepend-icon="mdi-check-circle" title="Configure AI tool integration" />
+          <v-list-item prepend-icon="mdi-check-circle" title="Complete initial system setup" />
         </v-list>
         <p class="text-caption mt-4">
           <v-icon size="small" class="mr-1">mdi-clock-outline</v-icon>

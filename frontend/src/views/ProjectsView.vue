@@ -52,9 +52,13 @@
         <v-card>
           <v-card-text>
             <div class="d-flex align-center">
-              <div style="width: 35px; height: 35px; margin-right: 12px;">
+              <div style="width: 35px; height: 35px; margin-right: 12px">
                 <v-img
-                  :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+                  :src="
+                    theme.global.current.value.dark
+                      ? '/icons/Giljo_YW_Face.svg'
+                      : '/icons/Giljo_BY_Face.svg'
+                  "
                   alt="Total Agents"
                   width="35"
                   height="35"
@@ -117,7 +121,10 @@
         <template v-slot:item.name="{ item }">
           <div>
             <div class="text-body-1">{{ item.name }}</div>
-            <div class="text-caption text-medium-emphasis" style="font-family: monospace; font-size: 0.7rem;">
+            <div
+              class="text-caption text-medium-emphasis"
+              style="font-family: monospace; font-size: 0.7rem"
+            >
               Project ID: {{ item.id }}
             </div>
           </div>
@@ -135,7 +142,11 @@
           <v-chip size="small" variant="outlined">
             <template v-slot:prepend>
               <v-img
-                :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+                :src="
+                  theme.global.current.value.dark
+                    ? '/icons/Giljo_YW_Face.svg'
+                    : '/icons/Giljo_BY_Face.svg'
+                "
                 alt="Agents"
                 width="16"
                 height="16"
@@ -225,12 +236,7 @@
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="cancelEdit"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="cancelEdit" aria-label="Close" />
         </v-card-title>
         <v-card-text>
           <!-- Show UUID for newly created project -->
@@ -244,21 +250,15 @@
             <div class="text-body-2 mb-1">Project created successfully!</div>
             <div class="text-caption">
               <strong>Project ID:</strong>
-              <span class="ml-2" style="font-family: monospace;">{{ createdProjectId }}</span>
+              <span class="ml-2" style="font-family: monospace">{{ createdProjectId }}</span>
             </div>
           </v-alert>
 
           <!-- Show Project ID when editing -->
-          <v-alert
-            v-if="editingProject"
-            type="info"
-            variant="tonal"
-            density="compact"
-            class="mb-4"
-          >
+          <v-alert v-if="editingProject" type="info" variant="tonal" density="compact" class="mb-4">
             <div class="text-caption">
               <strong>Project ID:</strong>
-              <span class="ml-2" style="font-family: monospace;">{{ editingProject.id }}</span>
+              <span class="ml-2" style="font-family: monospace">{{ editingProject.id }}</span>
             </div>
           </v-alert>
 

@@ -1,9 +1,7 @@
 <template>
   <v-card-text class="pa-8">
     <h2 class="text-h5 mb-2">Network Configuration</h2>
-    <p class="text-body-1 mb-6">
-      Configure how your team will access GiljoAI MCP
-    </p>
+    <p class="text-body-1 mb-6">Configure how your team will access GiljoAI MCP</p>
 
     <!-- Mode Selection -->
     <v-radio-group v-model="selectedMode" class="mb-4">
@@ -11,7 +9,7 @@
       <v-card
         variant="outlined"
         class="mb-4 mode-card"
-        :class="{ 'selected': selectedMode === 'localhost' }"
+        :class="{ selected: selectedMode === 'localhost' }"
         @click="selectedMode = 'localhost'"
         role="button"
         tabindex="0"
@@ -61,7 +59,7 @@
       <v-card
         variant="outlined"
         class="mb-4 mode-card"
-        :class="{ 'selected': selectedMode === 'lan' }"
+        :class="{ selected: selectedMode === 'lan' }"
         @click="selectedMode = 'lan'"
         role="button"
         tabindex="0"
@@ -110,11 +108,7 @@
 
     <!-- LAN Configuration Panel (Expandable) -->
     <v-expand-transition>
-      <v-card
-        v-if="selectedMode === 'lan'"
-        variant="outlined"
-        class="lan-config-panel mb-4"
-      >
+      <v-card v-if="selectedMode === 'lan'" variant="outlined" class="lan-config-panel mb-4">
         <v-card-title class="bg-surface-variant">
           <v-icon start>mdi-cog</v-icon>
           LAN Configuration
@@ -214,7 +208,8 @@
           <!-- LAN Warning -->
           <v-alert type="warning" variant="tonal" class="mt-4">
             <v-icon start>mdi-shield-alert</v-icon>
-            <strong>Security Notice:</strong> LAN mode enables network access with API key authentication. Ensure your network is trusted and secure.
+            <strong>Security Notice:</strong> LAN mode enables network access with API key
+            authentication. Ensure your network is trusted and secure.
           </v-alert>
         </v-card-text>
       </v-card>
@@ -230,20 +225,16 @@
     <v-card variant="outlined" class="mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 2 of 3</span>
-          <span class="text-caption">67%</span>
+          <span class="text-caption">Progress: Step 3 of 4</span>
+          <span class="text-caption">75%</span>
         </div>
-        <v-progress-linear :model-value="67" color="primary" />
+        <v-progress-linear :model-value="75" color="primary" />
       </v-card-text>
     </v-card>
 
     <!-- Navigation -->
     <div class="d-flex justify-space-between">
-      <v-btn
-        variant="outlined"
-        @click="$emit('back')"
-        aria-label="Go back to tool attachment"
-      >
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to tool attachment">
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>
@@ -273,12 +264,12 @@ const props = defineProps({
   mode: {
     type: String,
     required: true,
-    validator: (value) => ['localhost', 'lan'].includes(value)
+    validator: (value) => ['localhost', 'lan'].includes(value),
   },
   lanSettings: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:mode', 'update:lanSettings', 'next', 'back'])
@@ -294,7 +285,7 @@ const lanConfig = ref({
   adminPassword: props.lanSettings?.adminPassword || '',
   firewallConfigured: props.lanSettings?.firewallConfigured || false,
   networkAccessible: props.lanSettings?.networkAccessible || false,
-  hostname: props.lanSettings?.hostname || ''
+  hostname: props.lanSettings?.hostname || '',
 })
 
 // Validation rules
@@ -312,7 +303,7 @@ const rules = {
   password: (value) => {
     if (!value) return true
     return value.length >= 8 || 'Password must be at least 8 characters'
-  }
+  },
 }
 
 // Computed
@@ -339,11 +330,15 @@ watch(selectedMode, (newMode) => {
 })
 
 // Watch for LAN config changes
-watch(lanConfig, (newConfig) => {
-  if (selectedMode.value === 'lan') {
-    emit('update:lanSettings', { ...newConfig })
-  }
-}, { deep: true })
+watch(
+  lanConfig,
+  (newConfig) => {
+    if (selectedMode.value === 'lan') {
+      emit('update:lanSettings', { ...newConfig })
+    }
+  },
+  { deep: true },
+)
 
 // Methods
 const detectServerIp = async () => {
