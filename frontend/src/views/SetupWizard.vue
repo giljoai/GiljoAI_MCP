@@ -13,7 +13,7 @@
           color="primary"
           class="mb-4"
         />
-        <h3 class="text-h5 mb-2">Restarting Services...</h3>
+        <h3 class="text-h5 mb-2">Completing Setup...</h3>
         <p class="text-body-1 text-medium-emphasis mb-4">
           {{ restartMessage }}
         </p>
@@ -44,65 +44,27 @@
             alt-labels
             flat
           >
-            <!-- Step 1: Welcome -->
+            <!-- Step 1: Attach Tools -->
             <v-stepper-window-item :value="1">
-              <WelcomeStep @next="handleWelcomeNext" />
-            </v-stepper-window-item>
-
-            <!-- Step 2: Database -->
-            <v-stepper-window-item :value="2">
-              <DatabaseStep
-                @next="handleDatabaseNext"
-                @back="handleBack"
-              />
-            </v-stepper-window-item>
-
-            <!-- Step 3: Deployment Mode -->
-            <v-stepper-window-item :value="3">
-              <DeploymentModeStep
-                v-model="config.deploymentMode"
-                @next="handleDeploymentModeNext"
-                @back="handleBack"
-              />
-            </v-stepper-window-item>
-
-            <!-- Step 4: Admin Account (conditional - LAN only) -->
-            <v-stepper-window-item
-              v-if="isLanMode"
-              :value="4"
-            >
-              <AdminAccountStep
-                v-model="config.adminAccount"
-                @next="handleAdminAccountNext"
-                @back="handleBack"
-              />
-            </v-stepper-window-item>
-
-            <!-- Step 5/4: AI Tools -->
-            <v-stepper-window-item :value="toolsStepNumber">
-              <ToolIntegrationStep
+              <AttachToolsStep
                 v-model="config.aiTools"
-                :deployment-mode="config.deploymentMode"
                 @next="handleToolsNext"
+              />
+            </v-stepper-window-item>
+
+            <!-- Step 2: Network Configuration -->
+            <v-stepper-window-item :value="2">
+              <NetworkConfigStep
+                v-model:mode="config.deploymentMode"
+                v-model:lan-settings="config.lanSettings"
+                @next="handleNetworkNext"
                 @back="handleBack"
               />
             </v-stepper-window-item>
 
-            <!-- Step 6: LAN Config (conditional - LAN only) -->
-            <v-stepper-window-item
-              v-if="isLanMode"
-              :value="6"
-            >
-              <LanConfigStep
-                v-model="config.lanSettings"
-                @next="handleLanConfigNext"
-                @back="handleBack"
-              />
-            </v-stepper-window-item>
-
-            <!-- Step 7/5: Complete -->
-            <v-stepper-window-item :value="completeStepNumber">
-              <CompleteStep
+            <!-- Step 3: Complete -->
+            <v-stepper-window-item :value="3">
+              <SetupCompleteStep
                 :config="config"
                 @finish="handleFinish"
               />
@@ -118,93 +80,40 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
-import WelcomeStep from '@/components/setup/WelcomeStep.vue'
-import DatabaseStep from '@/components/setup/DatabaseStep.vue'
-import DeploymentModeStep from '@/components/setup/DeploymentModeStep.vue'
-import AdminAccountStep from '@/components/setup/AdminAccountStep.vue'
-import ToolIntegrationStep from '@/components/setup/ToolIntegrationStep.vue'
-import LanConfigStep from '@/components/setup/LanConfigStep.vue'
-import CompleteStep from '@/components/setup/CompleteStep.vue'
+import AttachToolsStep from '@/components/setup/AttachToolsStep.vue'
+import NetworkConfigStep from '@/components/setup/NetworkConfigStep.vue'
+import SetupCompleteStep from '@/components/setup/SetupCompleteStep.vue'
 
 const theme = useTheme()
 
 // State
 const currentStep = ref(1)
 const isRestarting = ref(false)
-const restartMessage = ref("Please wait while services restart...")
+const restartMessage = ref("Saving configuration...")
 const config = ref({
-  deploymentMode: 'localhost', // 'localhost' | 'lan' | 'wan'
-  adminAccount: null,
+  deploymentMode: 'localhost', // 'localhost' | 'lan'
   aiTools: [],
-  lanSettings: null,
-  databaseVerified: false
+  lanSettings: null
 })
 
 // Computed
-const isLanMode = computed(() => config.value.deploymentMode === 'lan')
-
 const logoSrc = computed(() =>
   theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'
 )
 
-// Dynamic step numbers based on mode
-const toolsStepNumber = computed(() => isLanMode.value ? 5 : 4)
-const completeStepNumber = computed(() => isLanMode.value ? 7 : 5)
-
-const stepperItems = computed(() => {
-  const items = [
-    { title: 'Welcome', value: 1 },
-    { title: 'Database', value: 2 },
-    { title: 'Mode', value: 3 }
-  ]
-
-  if (isLanMode.value) {
-    items.push({ title: 'Admin', value: 4 })
-  }
-
-  items.push({ title: 'AI Tools', value: toolsStepNumber.value })
-
-  if (isLanMode.value) {
-    items.push({ title: 'Network', value: 6 })
-  }
-
-  items.push({ title: 'Complete', value: completeStepNumber.value })
-
-  return items
-})
+const stepperItems = computed(() => [
+  { title: 'Attach Tools', value: 1 },
+  { title: 'Network', value: 2 },
+  { title: 'Complete', value: 3 }
+])
 
 // Methods
-const handleWelcomeNext = () => {
+const handleToolsNext = () => {
   currentStep.value = 2
 }
 
-const handleDatabaseNext = () => {
-  config.value.databaseVerified = true
+const handleNetworkNext = () => {
   currentStep.value = 3
-}
-
-const handleDeploymentModeNext = () => {
-  if (isLanMode.value) {
-    currentStep.value = 4 // Admin account
-  } else {
-    currentStep.value = toolsStepNumber.value // AI tools
-  }
-}
-
-const handleAdminAccountNext = () => {
-  currentStep.value = toolsStepNumber.value
-}
-
-const handleToolsNext = () => {
-  if (isLanMode.value) {
-    currentStep.value = 6 // LAN config
-  } else {
-    currentStep.value = completeStepNumber.value
-  }
-}
-
-const handleLanConfigNext = () => {
-  currentStep.value = completeStepNumber.value
 }
 
 const handleBack = () => {
@@ -213,45 +122,26 @@ const handleBack = () => {
 
 const handleFinish = async () => {
   try {
-    console.log('[WIZARD] Completing setup...')
+    console.log('[WIZARD] Completing setup with config:', config.value)
 
-    // Show restart overlay
+    // Show completion overlay
     isRestarting.value = true
     restartMessage.value = 'Saving configuration...'
 
-    // Step 1: Save setup completion flag
+    // Save setup completion
     await setupService.completeSetup(config.value)
     console.log('[WIZARD] Setup marked as complete')
 
-    // Step 2: Trigger service restart
-    restartMessage.value = 'Restarting services...'
-    await setupService.restartServices()
-    console.log('[WIZARD] Restart triggered')
+    restartMessage.value = 'Setup complete! Redirecting to dashboard...'
 
-    // Step 3: Wait for backend to come back online
-    restartMessage.value = 'Waiting for services to restart... (this may take 15 seconds)'
-    const backendOnline = await setupService.waitForBackend(30, 1000)
+    // Wait 1 second to show success message
+    await new Promise(resolve => setTimeout(resolve, 1000))
 
-    if (backendOnline) {
-      console.log('[WIZARD] Backend is back online!')
-      restartMessage.value = 'Services restarted successfully! Redirecting...'
-
-      // Wait 1 second to show success message
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Redirect to main dashboard
-      window.location.href = 'http://localhost:7274'
-    } else {
-      console.error('[WIZARD] Backend did not come back online within timeout')
-      restartMessage.value = 'Services are taking longer than expected. Please refresh manually.'
-
-      // Wait 3 seconds then try redirecting anyway
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      window.location.href = 'http://localhost:7274'
-    }
+    // Redirect to main dashboard
+    window.location.href = 'http://localhost:7274'
   } catch (error) {
-    console.error('[WIZARD] Setup completion/restart failed:', error)
-    restartMessage.value = 'Error during restart. Redirecting...'
+    console.error('[WIZARD] Setup completion failed:', error)
+    restartMessage.value = 'Error during setup completion. Redirecting...'
 
     // Wait 2 seconds then redirect anyway
     await new Promise(resolve => setTimeout(resolve, 2000))
