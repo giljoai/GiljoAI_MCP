@@ -351,6 +351,24 @@ def create_app() -> FastAPI:
 
     logger.info(f"Configuring CORS with origins: {cors_origins}")
 
+    # Add middleware in reverse order of execution
+    # (last middleware added = first middleware executed in request chain)
+
+    # Add authentication middleware (executes 5th - after CORS, security, rate limit, setup)
+    app.add_middleware(AuthMiddleware, auth_manager=lambda: state.auth)
+
+    # Add rate limiting middleware (executes 4th - protects endpoints, 60 requests/minute for LAN security)
+    app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+
+    # Add security headers middleware (executes 3rd - adds security headers to all responses)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # Add setup mode middleware (executes 2nd - checks database config before auth)
+    # This must execute BEFORE auth middleware to allow setup endpoints without auth
+    app.add_middleware(SetupModeMiddleware, config_getter=lambda: state.config or get_config())
+
+    # Add CORS middleware (executes 1st - MUST be first to handle OPTIONS preflight requests)
+    # This MUST execute before all other middleware to add CORS headers to OPTIONS responses
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
@@ -358,19 +376,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Add setup mode middleware (checks database config)
-    # This must come BEFORE auth middleware to allow setup endpoints without auth
-    app.add_middleware(SetupModeMiddleware, config_getter=lambda: state.config or get_config())
-
-    # Add security headers middleware (always enabled for defense in depth)
-    app.add_middleware(SecurityHeadersMiddleware)
-
-    # Add rate limiting middleware (60 requests/minute for LAN security)
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
-
-    # Add authentication middleware
-    app.add_middleware(AuthMiddleware, auth_manager=lambda: state.auth)
 
     # Include routers
     app.include_router(products.router, prefix="/api/v1/products", tags=["products"])
