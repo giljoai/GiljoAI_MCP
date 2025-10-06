@@ -147,6 +147,93 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class SetupModeMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to handle setup mode - blocks most API access when database is not configured.
+    Only allows setup-related endpoints and essential system endpoints.
+    """
+
+    def __init__(self, app, config_getter: Callable):
+        super().__init__(app)
+        self.get_config = config_getter
+
+    async def dispatch(self, request: Request, call_next):
+        """Check if system is in setup mode and restrict access accordingly"""
+
+        # Always allow these endpoints regardless of setup mode
+        always_allowed = [
+            "/",
+            "/health",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            "/api/setup",  # All setup endpoints
+            "/api/setup/status",
+            "/api/setup/database",  # Database setup endpoints
+            "/api/setup/reset",
+            "/api/setup/detect-tools",
+            "/api/setup/generate-mcp-config",
+            "/api/setup/register-mcp",
+            "/api/setup/test-mcp-connection",
+            "/api/setup/configure-deployment-mode",
+            "/api/setup/complete",
+            "/api/setup/test-database",
+        ]
+
+        # Check if path is always allowed
+        path = request.url.path
+        if any(path.startswith(allowed) for allowed in always_allowed):
+            return await call_next(request)
+
+        # Get config and check setup mode
+        try:
+            config = self.get_config()
+        except Exception as e:
+            logger.error(f"Error getting config in SetupModeMiddleware: {e}", exc_info=True)
+            # If we can't get config, block access to be safe
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "System configuration error",
+                    "detail": "Unable to load system configuration. Please contact administrator.",
+                    "requires_setup": True
+                }
+            )
+
+        setup_mode = getattr(config, 'setup_mode', False)
+
+        # If not in setup mode, check if database is actually configured
+        if not setup_mode:
+            database_configured = False
+            if hasattr(config, 'database') and config.database:
+                database_configured = bool(
+                    config.database.host and
+                    config.database.port and
+                    config.database.database_name and
+                    config.database.username
+                )
+
+            if database_configured:
+                # Database configured and not in setup mode - allow request
+                return await call_next(request)
+            # Database not configured even though not in setup mode - block
+            logger.warning(f"Blocking access to {path} - database not configured")
+        else:
+            # In setup mode - block
+            logger.warning(f"Blocking access to {path} - system in setup mode")
+
+        # Block the request
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "System setup required",
+                "detail": "Database configuration is required. Please complete the setup wizard.",
+                "setup_url": "/setup",
+                "requires_setup": True
+            }
+        )
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Security headers middleware - adds standard security headers to all responses"""
 

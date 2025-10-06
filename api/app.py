@@ -55,7 +55,7 @@ except ImportError as e:
 try:
     from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
     from .endpoints import agents, configuration, context, database_setup, messages, mcp_tools, products, projects, setup, statistics, tasks, templates
-    from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
+    from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware, SetupModeMiddleware
     from .websocket import WebSocketManager
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
@@ -233,6 +233,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
+    from giljo_mcp.config_manager import get_config
 
     app = FastAPI(
         title="GiljoAI MCP Orchestrator API",
@@ -357,6 +358,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add setup mode middleware (checks database config)
+    # This must come BEFORE auth middleware to allow setup endpoints without auth
+    app.add_middleware(SetupModeMiddleware, config_getter=lambda: state.config or get_config())
 
     # Add security headers middleware (always enabled for defense in depth)
     app.add_middleware(SecurityHeadersMiddleware)
