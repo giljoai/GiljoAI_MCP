@@ -1,0 +1,11 @@
+# Developer Control Panel Dependencies
+# Install with: pip install -r dev_tools/requirements.txt
+
+# Process management and system utilities
+psutil>=5.9.0
+
+# PostgreSQL database driver
+psycopg2-binary>=2.9.0
+
+# YAML configuration parsing
+pyyaml>=6.0
