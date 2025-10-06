@@ -21,7 +21,7 @@
           </v-card-title>
 
           <!-- Vuetify Stepper -->
-          <v-stepper v-model="currentStep" :items="stepperItems" alt-labels flat>
+          <v-stepper v-model="currentStep" :items="stepperItems" alt-labels flat hide-actions>
             <template v-slot:item.1>
               <v-card flat>
                 <AttachToolsStep v-model="config.aiTools" @next="handleToolsNext" />
