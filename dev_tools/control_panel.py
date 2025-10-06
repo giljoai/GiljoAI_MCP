@@ -173,6 +173,7 @@ class GiljoDevControlPanel:
         ttk.Button(section, text="Start", command=self.start_backend, width=10).grid(row=0, column=3, padx=2)
         ttk.Button(section, text="Stop", command=self.stop_backend, width=10).grid(row=0, column=4, padx=2)
         ttk.Button(section, text="Restart", command=self.restart_backend, width=10).grid(row=0, column=5, padx=2)
+        ttk.Button(section, text="Check Port", command=self.check_backend_port, width=10).grid(row=0, column=6, padx=2)
 
         # Frontend service
         ttk.Label(section, text="Frontend Dev:").grid(row=1, column=0, sticky="w", pady=(10, 0))
@@ -189,9 +190,12 @@ class GiljoDevControlPanel:
         ttk.Button(section, text="Restart", command=self.restart_frontend, width=10).grid(
             row=1, column=5, padx=2, pady=(10, 0)
         )
+        ttk.Button(section, text="Check Port", command=self.check_frontend_port, width=10).grid(
+            row=1, column=6, padx=2, pady=(10, 0)
+        )
 
         # Control all services
-        ttk.Separator(section, orient="horizontal").grid(row=2, column=0, columnspan=6, sticky="ew", pady=10)
+        ttk.Separator(section, orient="horizontal").grid(row=2, column=0, columnspan=7, sticky="ew", pady=10)
         ttk.Button(section, text="Start All Services", command=self.start_all_services, width=20).grid(
             row=3, column=0, columnspan=3, pady=5
         )
@@ -297,11 +301,11 @@ class GiljoDevControlPanel:
         self.root.update_idletasks()
 
     def update_status(self):
-        """Update all status indicators."""
+        """Update all status indicators with port information."""
         # Check backend status
         if self.backend_process and self.backend_process.poll() is None:
             self.backend_indicator.config(foreground="green")
-            self.backend_status_label.config(text="Running")
+            self.backend_status_label.config(text="Running (Port 7272)")
             self.backend_status.set(True)
         else:
             self.backend_indicator.config(foreground="red")
@@ -311,7 +315,7 @@ class GiljoDevControlPanel:
         # Check frontend status
         if self.frontend_process and self.frontend_process.poll() is None:
             self.frontend_indicator.config(foreground="green")
-            self.frontend_status_label.config(text="Running")
+            self.frontend_status_label.config(text="Running (Port 7274)")
             self.frontend_status.set(True)
         else:
             self.frontend_indicator.config(foreground="red")
@@ -448,6 +452,56 @@ class GiljoDevControlPanel:
             pass
 
     # Service Management Methods
+
+    def check_backend_port(self):
+        """Check what's running on port 7272."""
+        port = 7272
+
+        if self._is_port_available(port):
+            messagebox.showinfo(
+                "Port Available",
+                f"Port {port} is available\n\nNo process is using this port."
+            )
+        else:
+            pid = self._find_process_on_port(port)
+            if pid:
+                messagebox.showwarning(
+                    "Port In Use",
+                    f"Port {port} is IN USE\n\nProcess ID: {pid}\n\n"
+                    "This process must be stopped before starting the backend."
+                )
+            else:
+                messagebox.showwarning(
+                    "Port In Use",
+                    f"Port {port} is IN USE\n\n"
+                    "Could not determine which process is using it.\n"
+                    "You may need administrator privileges."
+                )
+
+    def check_frontend_port(self):
+        """Check what's running on port 7274."""
+        port = 7274
+
+        if self._is_port_available(port):
+            messagebox.showinfo(
+                "Port Available",
+                f"Port {port} is available\n\nNo process is using this port."
+            )
+        else:
+            pid = self._find_process_on_port(port)
+            if pid:
+                messagebox.showwarning(
+                    "Port In Use",
+                    f"Port {port} is IN USE\n\nProcess ID: {pid}\n\n"
+                    "This process must be stopped before starting the frontend."
+                )
+            else:
+                messagebox.showwarning(
+                    "Port In Use",
+                    f"Port {port} is IN USE\n\n"
+                    "Could not determine which process is using it.\n"
+                    "You may need administrator privileges."
+                )
 
     def start_backend(self):
         """Start the backend API service in a new terminal window."""
