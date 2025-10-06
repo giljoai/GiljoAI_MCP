@@ -297,7 +297,7 @@ class GiljoLauncher:
         api_port = self.config['services'].get('api_port', 8000)
         self.start_service("API Server", [
             sys.executable, "-m", "uvicorn",
-            "api.main:app",
+            "api.app:app",
             "--host", "127.0.0.1",
             "--port", str(api_port)
         ])
