@@ -1,0 +1,4 @@
+// Vuetify SASS settings file
+@forward 'vuetify/settings' with (
+  $utilities: false
+);
