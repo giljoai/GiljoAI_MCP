@@ -451,6 +451,81 @@ class GiljoDevControlPanel:
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
+    def _nuclear_kill_port(self, port: int):
+        """
+        Nuclear option: Kill ALL processes using a specific port.
+        Uses system commands for maximum aggression.
+
+        Args:
+            port: Port number to clear
+        """
+        system = platform.system()
+
+        try:
+            if system == "Windows":
+                # Find PIDs using the port
+                result = subprocess.run(
+                    ["netstat", "-ano"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+
+                pids_to_kill = set()
+                for line in result.stdout.splitlines():
+                    if f":{port}" in line and "LISTENING" in line:
+                        parts = line.split()
+                        if parts:
+                            pid = parts[-1]
+                            if pid.isdigit() and pid != "0":
+                                pids_to_kill.add(pid)
+
+                # Force kill each PID
+                for pid in pids_to_kill:
+                    try:
+                        subprocess.run(
+                            ["taskkill", "/F", "/PID", pid],
+                            capture_output=True,
+                            timeout=5
+                        )
+                    except Exception:
+                        pass
+
+            else:  # Linux/macOS
+                # Use lsof to find and kill processes
+                try:
+                    result = subprocess.run(
+                        ["lsof", "-ti", f":{port}"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+
+                    pids = result.stdout.strip().split()
+                    for pid in pids:
+                        if pid:
+                            try:
+                                subprocess.run(
+                                    ["kill", "-9", pid],
+                                    capture_output=True,
+                                    timeout=5
+                                )
+                            except Exception:
+                                pass
+                except FileNotFoundError:
+                    # lsof not available, try fuser
+                    try:
+                        subprocess.run(
+                            ["fuser", "-k", f"{port}/tcp"],
+                            capture_output=True,
+                            timeout=5
+                        )
+                    except FileNotFoundError:
+                        pass
+
+        except Exception as e:
+            print(f"Warning: Nuclear kill port {port} failed: {e}")
+
     # Service Management Methods
 
     def check_backend_port(self):
@@ -552,24 +627,31 @@ class GiljoDevControlPanel:
             messagebox.showerror("Error", f"Failed to start backend:\n{e}")
 
     def stop_backend(self):
-        """Stop the backend API service."""
-        if not self.backend_process or self.backend_process.poll() is not None:
-            messagebox.showinfo("Not Running", "Backend service is not running.")
-            return
-
-        self.update_status_message("Stopping backend service...")
+        """Stop the backend API service - NUCLEAR OPTION (kills all processes on port 7272)."""
+        self.update_status_message("Stopping backend service (nuclear mode)...")
 
         try:
-            self.backend_process.terminate()
-            time.sleep(2)
+            # First try to stop tracked process if exists
+            if self.backend_process and self.backend_process.poll() is None:
+                try:
+                    self.backend_process.terminate()
+                    time.sleep(1)
+                    if self.backend_process.poll() is None:
+                        self.backend_process.kill()
+                except Exception:
+                    pass
+                finally:
+                    self.backend_process = None
 
-            # Force kill if still running
-            if self.backend_process.poll() is None:
-                self.backend_process.kill()
+            # NUCLEAR: Kill everything on port 7272
+            self._nuclear_kill_port(7272)
 
-            self.backend_process = None
-            self.update_status_message("Backend stopped")
-            messagebox.showinfo("Success", "Backend service stopped")
+            # Also try port 7273 (sometimes used)
+            self._nuclear_kill_port(7273)
+
+            time.sleep(1)
+            self.update_status_message("Backend stopped (nuclear)")
+            messagebox.showinfo("Success", "Backend service stopped (nuclear mode - killed all processes on ports 7272-7273)")
 
         except Exception as e:
             self.update_status_message(f"Error stopping backend: {e}")
@@ -682,24 +764,28 @@ class GiljoDevControlPanel:
             messagebox.showerror("Error", f"Failed to start frontend:\n{e}")
 
     def stop_frontend(self):
-        """Stop the frontend dev server."""
-        if not self.frontend_process or self.frontend_process.poll() is not None:
-            messagebox.showinfo("Not Running", "Frontend service is not running.")
-            return
-
-        self.update_status_message("Stopping frontend service...")
+        """Stop the frontend dev server - NUCLEAR OPTION (kills all processes on port 7274)."""
+        self.update_status_message("Stopping frontend service (nuclear mode)...")
 
         try:
-            self.frontend_process.terminate()
-            time.sleep(2)
+            # First try to stop tracked process if exists
+            if self.frontend_process and self.frontend_process.poll() is None:
+                try:
+                    self.frontend_process.terminate()
+                    time.sleep(1)
+                    if self.frontend_process.poll() is None:
+                        self.frontend_process.kill()
+                except Exception:
+                    pass
+                finally:
+                    self.frontend_process = None
 
-            # Force kill if still running
-            if self.frontend_process.poll() is None:
-                self.frontend_process.kill()
+            # NUCLEAR: Kill everything on port 7274
+            self._nuclear_kill_port(7274)
 
-            self.frontend_process = None
-            self.update_status_message("Frontend stopped")
-            messagebox.showinfo("Success", "Frontend service stopped")
+            time.sleep(1)
+            self.update_status_message("Frontend stopped (nuclear)")
+            messagebox.showinfo("Success", "Frontend service stopped (nuclear mode - killed all processes on port 7274)")
 
         except Exception as e:
             self.update_status_message(f"Error stopping frontend: {e}")
@@ -718,9 +804,52 @@ class GiljoDevControlPanel:
         self.start_frontend()
 
     def stop_all_services(self):
-        """Stop all services."""
-        self.stop_backend()
-        self.stop_frontend()
+        """Stop all services - NUCLEAR OPTION (kills all processes on ports 7272, 7273, 7274)."""
+        self.update_status_message("Stopping all services (nuclear mode)...")
+
+        try:
+            # Stop tracked processes first
+            if self.backend_process and self.backend_process.poll() is None:
+                try:
+                    self.backend_process.terminate()
+                    time.sleep(0.5)
+                    if self.backend_process.poll() is None:
+                        self.backend_process.kill()
+                except Exception:
+                    pass
+                finally:
+                    self.backend_process = None
+
+            if self.frontend_process and self.frontend_process.poll() is None:
+                try:
+                    self.frontend_process.terminate()
+                    time.sleep(0.5)
+                    if self.frontend_process.poll() is None:
+                        self.frontend_process.kill()
+                except Exception:
+                    pass
+                finally:
+                    self.frontend_process = None
+
+            # NUCLEAR: Kill everything on all GiljoAI ports
+            self._nuclear_kill_port(7272)  # Backend API
+            self._nuclear_kill_port(7273)  # Alternative backend
+            self._nuclear_kill_port(7274)  # Frontend
+
+            time.sleep(1)
+            self.update_status_message("All services stopped (nuclear)")
+            messagebox.showinfo(
+                "Success",
+                "All services stopped (nuclear mode)\n\n"
+                "Killed all processes on ports:\n"
+                "- 7272 (Backend API)\n"
+                "- 7273 (Alternative Backend)\n"
+                "- 7274 (Frontend)"
+            )
+
+        except Exception as e:
+            self.update_status_message(f"Error stopping services: {e}")
+            messagebox.showerror("Error", f"Failed to stop all services:\n{e}")
 
     # Database Management Methods
 
