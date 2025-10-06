@@ -159,7 +159,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import setupService from '@/services/setupService'
 
 /**
@@ -222,6 +222,35 @@ const handleNext = () => {
   console.log('[ATTACH_TOOLS] Moving to next step')
   emit('next')
 }
+
+// Lifecycle
+onMounted(async () => {
+  console.log('[ATTACH_TOOLS] Checking if Claude Code MCP is already configured')
+  
+  try {
+    const status = await setupService.checkMcpConfigured()
+    
+    if (status.configured) {
+      console.log('[ATTACH_TOOLS] Claude Code MCP already configured')
+      claudeCodeConfigured.value = true
+      
+      // Update parent with existing configuration
+      const tools = [
+        {
+          id: 'claude-code',
+          name: 'Claude Code',
+          configured: true,
+        },
+      ]
+      emit('update:modelValue', tools)
+    } else {
+      console.log('[ATTACH_TOOLS] Claude Code MCP not configured')
+    }
+  } catch (error) {
+    console.error('[ATTACH_TOOLS] Failed to check MCP status:', error)
+    // Non-fatal error, continue with wizard
+  }
+})
 </script>
 
 <style scoped>

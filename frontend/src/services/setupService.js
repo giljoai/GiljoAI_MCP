@@ -143,6 +143,20 @@ class SetupService {
   }
 
   /**
+   * Check if giljo-mcp is already configured in Claude Code
+   * @returns {Promise<{configured: boolean, message: string, config?: Object}>}
+   */
+  async checkMcpConfigured() {
+    const response = await fetch(`${this.baseURL}/api/setup/check-mcp-configured`)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Test MCP connection for a tool
    * @param {string} tool - Tool name to test
    * @returns {Promise<{success: boolean, status: string, message: string}>}
@@ -185,13 +199,33 @@ class SetupService {
   /**
    * Mark setup as complete
    * @param {Object} config - Complete wizard configuration
-   * @returns {Promise<{success: boolean, setup_completed: boolean}>}
+   * @param {string} config.deploymentMode - Deployment mode ('localhost', 'lan', 'wan')
+   * @param {Array<string>} config.aiTools - List of attached AI tools
+   * @param {Object|null} config.lanSettings - LAN configuration settings
+   * @returns {Promise<{success: boolean, message: string}>}
    */
   async completeSetup(config) {
+    // Transform wizard config to API format
+    const payload = {
+      tools_attached: config.aiTools || [],
+      network_mode: config.deploymentMode || 'localhost',
+      lan_config: null,
+    }
+
+    // Add LAN config if provided
+    if (config.lanSettings && config.deploymentMode === 'lan') {
+      payload.lan_config = {
+        server_ip: config.lanSettings.serverIp || '',
+        firewall_configured: config.lanSettings.firewallConfigured || false,
+        admin_username: config.lanSettings.adminUsername || 'admin',
+        hostname: config.lanSettings.hostname || 'giljo.local',
+      }
+    }
+
     const response = await fetch(`${this.baseURL}/api/setup/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {
