@@ -259,7 +259,7 @@ class GiljoLauncher:
 
         self.start_service("API Server", [
             python_exe, "-m", "uvicorn",
-            "api.app:app",
+            "api.main:app",
             "--host", api_host,
             "--port", str(api_port)
         ])

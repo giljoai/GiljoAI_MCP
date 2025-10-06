@@ -1,19 +1,9 @@
 #!/usr/bin/env python3
 """
 GiljoAI MCP - Base MCP Adapter
-
-DEPRECATED: MCP registration moved to frontend setup wizard.
-
-This file is no longer used and will be removed in future versions.
-All MCP registration is now handled by the frontend setup wizard at /setup.
-
-See:
-- docs/IMPLEMENTATION_PLAN.md Phase 0
-- docs/architecture/installer_responsibilities.md
-- docs/guides/SETUP_WIZARD_GUIDE.md
+Base class for AI CLI MCP registration adapters
 """
 
-import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -21,21 +11,8 @@ import shutil
 import sys
 
 
-# Issue deprecation warning when module is imported
-warnings.warn(
-    "MCPAdapterBase is deprecated. MCP registration is now handled by the "
-    "frontend setup wizard at /setup. This module will be removed in a future version.",
-    DeprecationWarning,
-    stacklevel=2
-)
-
-
 class MCPAdapterBase(ABC):
-    """
-    Base class for AI CLI MCP registration adapters.
-
-    DEPRECATED: Use the frontend setup wizard at /setup instead.
-    """
+    """Base class for AI CLI MCP registration adapters."""
 
     def __init__(self):
         """Initialize the adapter."""

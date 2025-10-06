@@ -132,21 +132,8 @@ class BaseInstaller(ABC):
                 result['details'] = mode_result.get('errors', [])
                 return result
 
-            # Step 7: Register with Claude Code (MCP)
-            if self.settings.get('register_mcp', True):
-                self.logger.info("Step 7: Registering with Claude Code MCP")
-                mcp_result = self.register_with_claude()
-
-                if not mcp_result['success']:
-                    # Don't fail installation if MCP registration fails, just warn
-                    result['warnings'] = result.get('warnings', [])
-                    result['warnings'].append("Failed to register with Claude Code - you can do this manually later")
-                    self.logger.warning("MCP registration failed, but continuing installation")
-                else:
-                    result['mcp_registered'] = True
-
-            # Step 8: Post-installation validation
-            self.logger.info("Step 8: Validating installation")
+            # Step 7: Post-installation validation
+            self.logger.info("Step 7: Validating installation")
             validation_result = self.post_validator.validate()
 
             if not validation_result['valid']:
@@ -164,9 +151,6 @@ class BaseInstaller(ABC):
                 "Launcher scripts created",
                 "Installation validated"
             ]
-
-            if result.get('mcp_registered'):
-                result['details'].append("Registered with Claude Code")
 
             self.logger.info("Installation completed successfully")
             return result
@@ -297,7 +281,7 @@ class GiljoLauncher:
         api_port = self.config['services'].get('api_port', 8000)
         self.start_service("API Server", [
             sys.executable, "-m", "uvicorn",
-            "api.app:app",
+            "api.main:app",
             "--host", "127.0.0.1",
             "--port", str(api_port)
         ])
@@ -677,49 +661,6 @@ venv/bin/python start_giljo.py "$@"
         except Exception as e:
             result['errors'].append(str(e))
             self.logger.error(f"Frontend dependency installation failed: {e}")
-            return result
-
-    def register_with_claude(self) -> Dict[str, Any]:
-        """Register MCP server with Claude Code"""
-        result = {'success': False, 'errors': []}
-
-        try:
-            # Import the universal MCP installer
-            from installer.universal_mcp_installer import UniversalMCPInstaller
-
-            # Get installation directory and venv paths
-            install_dir = Path(self.settings.get('install_dir', Path.cwd()))
-
-            if platform.system() == "Windows":
-                venv_python = install_dir / 'venv' / 'Scripts' / 'python.exe'
-            else:
-                venv_python = install_dir / 'venv' / 'bin' / 'python'
-
-            # Create MCP installer
-            mcp_installer = UniversalMCPInstaller()
-
-            # Register with all detected tools (currently only Claude Code)
-            registration_result = mcp_installer.register_all(
-                server_name='giljo-mcp',
-                command=str(venv_python),
-                args=['-m', 'giljo_mcp'],
-                env=None
-            )
-
-            # Check if Claude was registered
-            if registration_result.get('claude', False):
-                result['success'] = True
-                result['registered_tools'] = list(registration_result.keys())
-                self.logger.info("Successfully registered with Claude Code")
-            else:
-                result['errors'].append("Failed to register with Claude Code")
-                self.logger.warning("Claude Code registration failed")
-
-            return result
-
-        except Exception as e:
-            result['errors'].append(str(e))
-            self.logger.error(f"MCP registration failed: {e}", exc_info=True)
             return result
 
     @abstractmethod
