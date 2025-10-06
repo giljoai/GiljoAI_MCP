@@ -101,11 +101,15 @@
       </v-card-text>
     </v-card>
 
-    <!-- Finish Button -->
-    <div class="text-center">
-      <v-btn color="primary" size="large" @click="$emit('finish')" aria-label="Go to dashboard">
-        Go to Dashboard
-        <v-icon end>mdi-arrow-right</v-icon>
+    <!-- Navigation -->
+    <div class="d-flex justify-space-between">
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to network configuration">
+        <v-icon start>mdi-arrow-left</v-icon>
+        Back
+      </v-btn>
+      <v-btn color="primary" size="large" @click="$emit('finish')" aria-label="Save configuration and exit">
+        Save and Exit
+        <v-icon end>mdi-content-save</v-icon>
       </v-btn>
     </div>
   </v-card-text>
@@ -127,7 +131,7 @@ const props = defineProps({
   },
 })
 
-defineEmits(['finish'])
+defineEmits(['finish', 'back'])
 
 // Computed
 const isLanMode = computed(() => props.config.deploymentMode === 'lan')

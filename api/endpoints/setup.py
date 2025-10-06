@@ -45,6 +45,7 @@ class SetupCompleteRequest(BaseModel):
         default_factory=list, description="List of MCP tools that have been attached (e.g., ['claude-code'])"
     )
     network_mode: NetworkMode = Field(..., description="Network deployment mode (localhost, lan, or wan)")
+    serena_enabled: bool = Field(False, description="Whether Serena MCP instructions are enabled")
     lan_config: Optional[LANConfig] = Field(None, description="LAN-specific configuration (optional)")
 
     @field_validator("network_mode")
@@ -248,11 +249,25 @@ async def complete_setup(request: SetupCompleteRequest = Body(...)):
             # LAN or WAN mode - bind to all interfaces
             config["services"]["api"]["host"] = "0.0.0.0"
 
-        # Save updated configuration
+        # Toggle Serena MCP instructions if requested
+        try:
+            if "features" not in config:
+                config["features"] = {}
+            if "serena_mcp" not in config["features"]:
+                config["features"]["serena_mcp"] = {}
+            
+            config["features"]["serena_mcp"]["use_in_prompts"] = request.serena_enabled
+            logger.info(f"Serena prompts {'enabled' if request.serena_enabled else 'disabled'}")
+        except Exception as e:
+            logger.warning(f"Failed to set Serena prompts: {e}")
+            # Non-fatal error, continue with setup completion
+
+        # Save all configuration changes at once
         write_config(config)
 
         logger.info(
-            f"Setup completed successfully: mode={request.network_mode.value}, " f"tools={len(request.tools_attached)}"
+            f"Setup completed successfully: mode={request.network_mode.value}, "
+            f"tools={len(request.tools_attached)}, serena={request.serena_enabled}"
         )
 
         return SetupCompleteResponse(
