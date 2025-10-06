@@ -75,9 +75,7 @@ def check_tool_version(command: List[str], timeout: int = 5) -> Optional[str]:
         Version string if tool is found, None otherwise
     """
     try:
-        result = subprocess.run(
-            command, capture_output=True, text=True, timeout=timeout, check=False
-        )
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=False)
 
         if result.returncode == 0:
             return result.stdout.strip()
@@ -463,12 +461,40 @@ async def complete_setup() -> Dict:
     """
     Mark setup wizard as complete.
 
+    Updates config.yaml to set setup_mode: false, indicating
+    that the wizard has been completed and the system should
+    open the main dashboard on subsequent launches.
+
     Returns:
         Success status
     """
-    # TODO: Update user profile or system config to mark setup as complete
-    # For now, just return success
-    return {"success": True, "setup_completed": True}
+    try:
+        import yaml
+
+        config_path = Path.cwd() / "config.yaml"
+
+        # Load existing config
+        if not config_path.exists():
+            raise HTTPException(status_code=500, detail="config.yaml not found. Cannot mark setup as complete.")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = yaml.safe_load(f) or {}
+
+        # Update setup_mode flag
+        config_data["setup_mode"] = False
+
+        # Write updated config back
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(config_data, f, default_flow_style=False)
+
+        return {
+            "success": True,
+            "setup_completed": True,
+            "message": "Setup wizard completed successfully. Restart services to apply changes.",
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update setup status: {e}") from e
 
 
 @router.get("/status")
@@ -482,7 +508,7 @@ async def get_setup_status() -> Dict:
     config = get_config()
 
     # Check if we're in setup mode
-    setup_mode = getattr(config, 'setup_mode', False)
+    setup_mode = getattr(config, "setup_mode", False)
 
     # Check database configuration
     database_configured = False
@@ -490,18 +516,16 @@ async def get_setup_status() -> Dict:
     database_error = None
 
     # Check if database config exists
-    if hasattr(config, 'database') and config.database:
+    if hasattr(config, "database") and config.database:
         database_configured = bool(
-            config.database.host and
-            config.database.port and
-            config.database.database_name and
-            config.database.username
+            config.database.host and config.database.port and config.database.database_name and config.database.username
         )
 
         # If configured, try to connect
         if database_configured and not setup_mode:
             try:
                 from giljo_mcp.database import DatabaseManager
+                from sqlalchemy import text
                 import os
 
                 # Try to get database URL
@@ -513,7 +537,7 @@ async def get_setup_status() -> Dict:
                     db_manager = DatabaseManager(db_url, is_async=False)
                     with db_manager.get_session() as session:
                         # Test query
-                        result = session.execute("SELECT 1")
+                        result = session.execute(text("SELECT 1"))
                         result.fetchone()
                     database_connected = True
             except Exception as e:
@@ -525,12 +549,13 @@ async def get_setup_status() -> Dict:
     return {
         "setup_mode": setup_mode,
         "setup_complete": setup_complete,
+        "completed": setup_complete,  # For frontend compatibility
         "database_configured": database_configured,
         "database_connected": database_connected,
         "database_error": database_error,
         "requires_setup": not setup_complete,
-        "mode": getattr(config, 'mode', 'unknown'),
-        "version": "1.0.0"
+        "mode": getattr(config, "mode", "unknown"),
+        "version": "1.0.0",
     }
 
 
@@ -548,11 +573,8 @@ async def reset_setup() -> Dict:
     config = get_config()
 
     # Only allow in development/localhost mode
-    if getattr(config, 'mode', 'unknown') not in ['localhost', 'development']:
-        raise HTTPException(
-            status_code=403,
-            detail="Reset is only available in development mode"
-        )
+    if getattr(config, "mode", "unknown") not in ["localhost", "development"]:
+        raise HTTPException(status_code=403, detail="Reset is only available in development mode")
 
     # Set setup mode flag
     config.setup_mode = True
@@ -560,26 +582,27 @@ async def reset_setup() -> Dict:
     # Write updated config back
     try:
         import yaml
+
         config_path = Path.cwd() / "config.yaml"
 
         # Load existing config
         if config_path.exists():
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config_data = yaml.safe_load(f) or {}
         else:
             config_data = {}
 
         # Add setup_mode flag
-        config_data['setup_mode'] = True
+        config_data["setup_mode"] = True
 
         # Write back
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f, default_flow_style=False)
 
         return {
             "success": True,
             "message": "Setup mode reset. Restart the API server to enter setup mode.",
-            "setup_mode": True
+            "setup_mode": True,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reset setup mode: {e}") from e
