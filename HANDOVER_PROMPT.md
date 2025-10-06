@@ -1,334 +1,417 @@
-# 🔄 Agent Handover: Installation System Testing & Completion
+# Handover Prompt - GiljoAI MCP Development Session
 
-**Date**: October 5, 2025
-**Time**: ~10:00 PM
-**Status**: Critical bug fixed, ready for full installation testing
-**Priority**: 🔴 HIGH - Production readiness validation
+## Current Status (October 6, 2025)
 
----
-
-## 📋 Executive Summary
-
-The GiljoAI MCP installation system has been completely rebuilt with a minimal installer + wizard-based database setup. A critical bug preventing backend startup in setup mode was just fixed. **The system is now ready for comprehensive testing.**
+**User**: Patrik (GiljoAI Team)
+**System**: F: Drive (Windows - Server/LAN Mode Testing)
+**Branch**: master
+**Last Commit**: `ea7f49c` - "fix: Rollback to working installer, remove wizard complexity"
 
 ---
 
-## ✅ What's Been Completed
+## What Just Happened (Critical Context)
 
-### 1. Minimal Installer (`installer/cli/minimal_installer.py`)
-- ✅ User pause after welcome message
-- ✅ Python dependency installation with progress bar
-- ✅ Frontend npm install with real-time output
-- ✅ Creates config.yaml with `setup_mode: true`
-- ✅ Starts backend and frontend services
-- ✅ Opens browser to /setup wizard
+### The Problem (Oct 5-6, 2025)
+We spent 4+ hours building a complex standalone wizard that **violated core principles**:
+- Moved database creation OUT of CLI installer → INTO wizard
+- Created 900+ lines of unnecessary wizard code
+- Added `/api/setup/create-database` endpoint (wrong approach)
+- Made wizard dependent on API/database (circular dependency)
+- Created 5+ wizard documentation files
 
-### 2. Setup Mode Infrastructure
-- ✅ ConfigManager loads `setup_mode` flag (src/giljo_mcp/config_manager.py)
-- ✅ ConfigManager skips password validation when setup_mode=true
-- ✅ Backend skips database initialization when setup_mode=true (api/app.py lines 104-152) **[JUST FIXED]**
-- ✅ Backend sets db_manager=None and tenant_manager=None in setup mode
+### The Solution (Oct 6, 2025)
+**Complete rollback to working state:**
+- ✅ Reverted to commit `635a120` (Oct 5, 2:03 PM - last working installer)
+- ✅ Removed all wizard complexity (900+ lines deleted)
+- ✅ Deleted `/api/setup/create-database` endpoint
+- ✅ Removed MCP tool injection from CLI installer
+- ✅ Restored database creation to CLI installer (where it belongs)
+- ✅ Updated `IMPLEMENTATION_PLAN.md` as **single source of truth**
 
-### 3. Database Setup API (`api/endpoints/database_setup.py`)
-- ✅ POST /api/setup/database/test-connection - Tests credentials
-- ✅ POST /api/setup/database/setup - Creates DB + migrations
-- ✅ Error handling with specific error types (auth_failed, connection_refused)
-- ✅ PostgreSQL version detection
-- ✅ Alembic migration execution
-- ✅ Config.yaml update with validated credentials
+### Current State
+**CLI Installer is working correctly:**
+- PostgreSQL detection
+- Database creation during install
+- Desktop shortcuts (OneDrive-aware)
+- Dependencies installation
+- Service launch
+- User directed to Settings → Wizard for optional features
 
-### 4. Frontend Wizard (`frontend/src/components/setup/DatabaseStep.vue`)
-- ✅ Interactive form with smart defaults
-- ✅ Password show/hide toggle
-- ✅ Two-step workflow: Test Connection → Setup Database
-- ✅ Real-time validation and feedback
-- ✅ Error messages with troubleshooting guidance
-- ✅ WCAG 2.1 AA accessibility compliant
-- ✅ Progress indicators and success states
-
-### 5. Documentation
-- ✅ Session memory: `docs/sessions/2025-10-05_installation_system_completion.md`
-- ✅ Devlog: `docs/devlogs/2025-10-05_installation_system_completion.md`
-- ✅ Bug fix session: `docs/sessions/2025-10-05_setup_mode_backend_fix.md`
-- ✅ Bug fix devlog: `docs/devlogs/2025-10-05_setup_mode_backend_fix.md`
-- ✅ IMPLEMENTATION_PLAN.md updated with DatabaseStep details
+**User is NOW running fresh installation test** to verify everything works.
 
 ---
 
-## 🐛 Critical Bug Fixed (Just Now)
+## Key Architectural Decisions
 
-**Problem**: Backend crashed during startup even with `setup_mode: true`
-**Error**: `password authentication failed for user "postgres"`
-**Root Cause**: `api/app.py` lifespan function didn't check setup_mode before database init
-**Solution**: Added setup_mode check, skip db_manager and tenant_manager initialization
-**Status**: ✅ FIXED
+### ✅ CORRECT Approach (What We Have Now)
 
-**Code Change** (api/app.py lines 104-152):
-```python
-if getattr(state.config, 'setup_mode', False):
-    logger.info("Setup mode detected - skipping database initialization")
-    state.db_manager = None
-    state.tenant_manager = None
-else:
-    # Normal database initialization
+**Phase 0: CLI Installer (Localhost Mode)**
+```
+1. Detect PostgreSQL software
+2. Create giljo_mcp database (CLI installer does this!)
+3. Install Python dependencies
+4. Create desktop shortcuts
+5. Launch application
+6. Direct user to Settings → Setup Wizard
 ```
 
+**Phase 0.5: In-App Setup Wizard (Planned)**
+```
+Location: frontend/src/views/Settings.vue → New "Setup Wizard" tab
+
+Features:
+- Button to configure Claude Code MCP (optional)
+- LAN/WAN configuration forms (future)
+- Firewall setup buttons (future)
+- Advanced settings (future)
+
+NOT a standalone page
+NOT part of installation flow
+IS a simple tab in Settings for power users
+```
+
+### ❌ WRONG Approach (What We Reverted)
+
+**DO NOT:**
+- Move database creation to wizard
+- Create API endpoints for database setup
+- Make wizard standalone/complex
+- Add tool injection during CLI install
+- Create separate wizard documentation
+
 ---
 
-## 🎯 Your Mission: Complete Installation Testing
+## File Structure & Important Files
 
-### Phase 1: Fresh Installation Test (30 minutes)
+### Single Source of Truth
+**`docs/IMPLEMENTATION_PLAN.md`** - THE authoritative implementation plan
+- Phase 0: CLI Installer ✅ COMPLETE
+- Phase 0.5: In-App Wizard (planned)
+- Phase 1: Claude Code Agent Profiles (days 1-4)
+- Phase 2: Dashboard & Testing (days 5-10)
+- Phase 3: LAN/WAN Deployment (future)
 
-**Prerequisites**:
-- PostgreSQL 18 installed and running
-- Know your PostgreSQL admin password (default: "postgres" user)
+### Critical Files Modified Today
+- `installer/core/installer.py` - Removed `register_with_claude()` method
+- `installer/cli/install.py` - Updated completion message
+- `docs/IMPLEMENTATION_PLAN.md` - Updated with correct Phase 0
 
-**Test Steps**:
+### Files Deleted (Wizard Cleanup)
+- `api/endpoints/setup.py`
+- `frontend/src/components/setup/DatabaseStep.vue`
+- `docs/INSTALLATION_FLOW_SINGLE_SOURCE_OF_TRUTH.md`
+- `docs/devlog/DATABASE_ENDPOINT_REFACTORING_COMPLETE.md`
+- 3 more wizard-related session/devlog files
 
-1. **Run Installer**:
-   ```bash
-   cd F:\GiljoAI_MCP
-   install.bat
-   ```
+### Installation Runtime Files (Not in Repo)
+These get created during install and are `.gitignored`:
+- `venv/` - Virtual environment
+- `config.yaml` - Generated config
+- `.env` - Environment variables
+- `*.log` - Runtime logs
 
-2. **Verify Installer Output**:
-   - [ ] Welcome message displays
-   - [ ] Waits for user to press key
-   - [ ] Detects Python 3.11+
-   - [ ] Detects PostgreSQL 17+
-   - [ ] Creates virtual environment
-   - [ ] Shows pip progress bar during Python dependency install
-   - [ ] Shows npm output during frontend dependency install
-   - [ ] Creates config.yaml with setup_mode: true
-
-3. **Verify Backend Startup**:
-   - [ ] Backend console window opens
-   - [ ] Log shows: "Setup mode detected - skipping database initialization"
-   - [ ] Log shows: "Database will be configured through the setup wizard"
-   - [ ] Backend starts successfully on port 7272
-   - [ ] NO database connection errors
-   - [ ] NO authentication errors
-
-4. **Verify Frontend Startup**:
-   - [ ] Frontend console window opens
-   - [ ] Vite dev server starts successfully
-   - [ ] Runs on port 7274
-   - [ ] No "command not found" errors (vite should be installed)
-
-5. **Verify Browser Opens**:
-   - [ ] Browser automatically opens to http://localhost:7274/setup
-   - [ ] Setup wizard loads successfully
-   - [ ] No console errors in browser dev tools
-
-### Phase 2: Database Setup Wizard Test (20 minutes)
-
-**Navigate through wizard**:
-
-1. **WelcomeStep**:
-   - [ ] Loads successfully
-   - [ ] Shows deployment mode options (localhost/LAN/WAN)
-   - [ ] "Continue" button works
-
-2. **DatabaseStep** (THE CRITICAL TEST):
-   - [ ] Form displays with defaults:
-     - Host: localhost
-     - Port: 5432
-     - Admin Username: postgres
-     - Admin Password: (empty)
-     - Database Name: giljo_mcp
-   - [ ] Enter your PostgreSQL admin password
-   - [ ] Password show/hide toggle works
-   - [ ] Click "Test Connection" button
-   - [ ] Shows loading spinner
-   - [ ] Success: Green alert with "Connection successful!"
-   - [ ] Shows PostgreSQL version detected
-   - [ ] "Setup Database" button appears
-   - [ ] Click "Setup Database" button
-   - [ ] Shows progress indicator
-   - [ ] Success: "Database Setup Complete!" message
-   - [ ] Shows credentials file path
-   - [ ] "Continue" button becomes enabled
-
-3. **Remaining Wizard Steps**:
-   - [ ] DeploymentModeStep works
-   - [ ] Complete wizard
-   - [ ] Redirects to dashboard
-
-### Phase 3: Verify Database Created (10 minutes)
-
-**Check PostgreSQL**:
+**To reset for fresh install:**
 ```bash
-PGPASSWORD=<your_password> "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -l | grep giljo
+# Delete runtime files
+rm -rf venv/
+rm -f config.yaml .env *.log
+
+# Drop database
+psql -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp;"
+
+# Run fresh install
+python installer/cli/install.py
 ```
 
-**Expected**:
-- [ ] Database `giljo_mcp` exists
-- [ ] Can connect to it successfully
+---
 
-**Check Tables Created**:
+## Multi-System Development Workflow
+
+**CRITICAL**: This project uses TWO systems with ONE GitHub repo
+
+**System 1 - C: Drive (Localhost Mode)**
+- Location: `C:\Projects\GiljoAI_MCP`
+- Mode: `localhost` in config.yaml
+- Purpose: Development, rapid iteration
+- Database: PostgreSQL localhost only
+- API: Binds to 127.0.0.1
+- No API key required
+
+**System 2 - F: Drive (Server/LAN Mode)** ← **YOU ARE HERE**
+- Location: `F:\GiljoAI_MCP`
+- Mode: `server` in config.yaml
+- Purpose: LAN/server testing, multi-client
+- Database: PostgreSQL localhost (always!)
+- API: Binds to 0.0.0.0 (network accessible)
+- API key required
+
+**Git Workflow (MANDATORY):**
 ```bash
-PGPASSWORD=<your_password> "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -d giljo_mcp -c "\dt"
+# Always pull before work
+git pull
+
+# Work and commit
+git add .
+git commit -m "feat: description"
+git push
+
+# Other system pulls
+git pull
 ```
 
-**Expected**:
-- [ ] Tables exist: agents, projects, tasks, messages, products, etc.
-- [ ] Alembic migrations ran successfully
-
-### Phase 4: Verify Backend Restart (10 minutes)
-
-After wizard completes, the backend should be able to restart with real credentials:
-
-1. **Check config.yaml**:
-   ```bash
-   cat F:\GiljoAI_MCP\config.yaml
-   ```
-   - [ ] `setup_mode: false` (or removed)
-   - [ ] `password:` has real password (not SETUP_REQUIRED)
-
-2. **Restart Backend** (stop and start again):
-   - [ ] Backend connects to database successfully
-   - [ ] No authentication errors
-   - [ ] Tables are accessible
-   - [ ] API endpoints work (test with curl or browser)
+**Cross-Platform Rules:**
+- ✅ Always use `pathlib.Path()` for file paths
+- ✅ Never hardcode drive letters or path separators
+- ✅ Config-driven mode differences (localhost vs server)
+- ❌ Never commit: .env, config.yaml, venv/, logs/
 
 ---
 
-## 📊 Success Criteria
+## Database Information
 
-**Installation is successful if**:
-- ✅ Installer completes without errors
-- ✅ Backend starts in setup mode (no database errors)
-- ✅ Frontend loads successfully (vite installed)
-- ✅ Wizard DatabaseStep successfully:
-  - Tests PostgreSQL connection
-  - Creates database
-  - Runs migrations
-  - Updates config.yaml
-- ✅ Backend can restart with real database credentials
-- ✅ Dashboard is accessible
+**PostgreSQL Version**: 18 (recommended)
+**Database Name**: `giljo_mcp`
+**Admin Password**: `4010` (development)
 
----
+**Roles:**
+- `giljo_owner` - Database owner, runs migrations
+- `giljo_user` - Application user, limited privileges
 
-## 🚨 Known Issues / Edge Cases
-
-1. **If PostgreSQL is not installed**:
-   - Installer will redirect to download page
-   - User must install PostgreSQL 18 manually
-   - Re-run install.bat after PostgreSQL installed
-
-2. **If port 7272 or 7274 is in use**:
-   - Backend/frontend will fail to start
-   - Check with: `netstat -ano | findstr "7272"`
-   - Kill process or change ports in installer
-
-3. **If npm is not installed**:
-   - Frontend dependency install will fail
-   - Install Node.js/npm
-   - Re-run install.bat
-
----
-
-## 📝 If You Find Bugs
-
-**Document each bug**:
-1. Exact error message
-2. Steps to reproduce
-3. Expected vs actual behavior
-4. Console logs (backend and frontend)
-5. Config.yaml contents
-6. Browser console errors (if frontend issue)
-
-**Create bug report**:
+**Connection:**
 ```bash
-# Create bug report file
-echo "# Bug Report - Installation Testing" > bug_report.md
-# Add your findings
+# List databases
+PGPASSWORD=4010 psql -U postgres -l | grep giljo
+
+# Connect
+PGPASSWORD=4010 psql -U postgres -d giljo_mcp
+
+# Drop database (fresh install)
+PGPASSWORD=4010 psql -U postgres -c "DROP DATABASE IF EXISTS giljo_mcp;"
 ```
 
 ---
 
-## 🎉 If Everything Works
+## User Preferences & Context
 
-**Celebrate! Then**:
+### User's Communication Style
+- Direct, no-nonsense
+- Prefers concise answers
+- Values honesty over agreement
+- Will interrupt if going wrong direction
 
-1. **Update Documentation**:
-   - Mark installation system as PRODUCTION READY
-   - Update IMPLEMENTATION_PLAN.md Phase 0 status: COMPLETE
-   - Create test completion devlog
+### User's Expectations
+- **Production-grade code only** (no "v2" variants, no band-aids)
+- Chef's Kiss quality
+- Single source of truth for docs
+- Cross-platform compatibility (Windows/Linux/macOS)
+- No emojis unless requested
 
-2. **Create Release Notes** (if appropriate):
-   - Installation system v3.0
-   - Key features
-   - User benefits
+### What the User Values
+- **Simplicity over complexity**
+- CLI installer handles essentials
+- In-app wizard for advanced features
+- Clear separation of concerns
+- Maintainable, understandable code
 
-3. **Move to Phase 1**: Claude Code Agent Profiles
-   - See IMPLEMENTATION_PLAN.md Phase 1
-   - Create agent profile files
-   - Implement orchestrator prompt generation
+### What Frustrates the User
+- Circular dependencies
+- Moving core functionality to UI
+- Creating unnecessary complexity
+- Multiple "source of truth" documents
+- Agents implementing when they should coordinate
 
 ---
 
-## 🔗 Reference Materials
+## Current Task: Fresh Installation Test
 
-**Code Files**:
-- Installer: `installer/cli/minimal_installer.py`
-- Backend fix: `api/app.py` (lines 104-152)
-- Config manager: `src/giljo_mcp/config_manager.py` (lines 399-400, 558-560, 730-733)
-- Database API: `api/endpoints/database_setup.py`
-- DatabaseStep: `frontend/src/components/setup/DatabaseStep.vue`
+**User is NOW testing** the corrected CLI installer to verify:
+1. PostgreSQL detection works
+2. Database creation succeeds
+3. Dependencies install properly
+4. Desktop shortcuts created
+5. Application launches
+6. Frontend accessible
+7. No wizard complexity
 
-**Documentation**:
-- Session: `docs/sessions/2025-10-05_installation_system_completion.md`
-- Session: `docs/sessions/2025-10-05_setup_mode_backend_fix.md`
-- Devlog: `docs/devlogs/2025-10-05_installation_system_completion.md`
-- Devlog: `docs/devlogs/2025-10-05_setup_mode_backend_fix.md`
-- Plan: `docs/IMPLEMENTATION_PLAN.md` (Phase 0)
+**If test succeeds:**
+- Continue with Phase 1 (Claude Code integration)
+- Build simple in-app wizard (Settings tab)
 
-**Testing Commands**:
+**If test fails:**
+- Debug installer issues
+- Fix root cause
+- Do NOT add wizard complexity
+
+---
+
+## Agent Coordination Rules
+
+### When to Use Specific Agents
+
+**orchestrator-coordinator**: Strategic planning, multi-agent coordination
+**system-architect**: Understanding dependencies, architectural decisions
+**database-expert**: Database schema, migrations, PostgreSQL
+**tdd-implementor**: Feature implementation (after architecture decided)
+**backend-integration-tester**: API testing, integration validation
+**frontend-tester**: UI component testing
+**documentation-manager**: Session memories, devlogs, documentation
+**deep-researcher**: Technology evaluation, best practices research
+
+### CRITICAL Agent Rules
+- ❌ **Orchestrator does NOT implement** - they coordinate
+- ✅ **TDD implementor implements** - after design is clear
+- ✅ **Always use specialized agents** - don't do their work
+- ✅ **One agent in_progress at a time** - don't batch completions
+
+---
+
+## Next Steps (After Install Test Completes)
+
+### Immediate (Phase 1 - Days 1-4)
+1. Create Claude Code agent profiles (8 files)
+2. Implement prompt generator for orchestrator
+3. Add project activation API endpoint
+4. Test end-to-end orchestration flow
+
+### Short-term (Phase 2 - Days 5-10)
+1. Add "Activate Project" button to dashboard
+2. Create orchestrator prompt dialog
+3. Enhance WebSocket agent updates
+4. Build simple in-app wizard (Settings tab)
+
+### Long-term (Phase 3 - Future)
+1. LAN deployment enhancements
+2. WAN deployment support
+3. Multi-tool support (beyond Claude Code)
+
+---
+
+## Important Commands
+
+### Installation
 ```bash
-# Run installer
-cd F:\GiljoAI_MCP
-install.bat
-
-# Check config
-cat config.yaml
-
-# Check PostgreSQL databases
-PGPASSWORD=<pass> "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -l
-
-# Check tables
-PGPASSWORD=<pass> "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -d giljo_mcp -c "\dt"
+python installer/cli/install.py      # Fresh install
+install.bat                          # Windows wrapper
 ```
 
----
-
-## 🚀 Quick Start for Next Agent
-
+### Development
 ```bash
-# 1. Navigate to project
-cd F:\GiljoAI_MCP
+# Start services
+python start_giljo.py
+start_giljo.bat
 
-# 2. Read this handover
-cat HANDOVER_PROMPT.md
+# Backend only
+python api/run_api.py
 
-# 3. Review recent changes
-git log --oneline -10
+# Frontend only
+cd frontend && npm run dev
+```
 
-# 4. Run installation test
-install.bat
+### Testing
+```bash
+pytest tests/                        # All tests
+pytest tests/unit/                   # Unit tests
+pytest tests/integration/            # Integration tests
+```
 
-# 5. Monitor backend console for "Setup mode detected" message
-
-# 6. Test wizard database setup
-
-# 7. Document results
+### Git
+```bash
+git status
+git add .
+git commit -m "type: description"
+git push
+git pull
 ```
 
 ---
 
-**Good luck! The system is ready for you. Test thoroughly and document everything.** 🎯
+## Red Flags to Watch For
 
-**Previous Agent**: Claude (Documentation & Bug Fix Specialist)
-**Next Agent**: You (Installation Testing Specialist)
-**Expected Duration**: 1-2 hours for complete testing
-**Priority**: HIGH - This validates production readiness
+🚨 **If you find yourself doing these, STOP:**
+- Moving database creation out of CLI installer
+- Creating standalone wizard pages
+- Adding API endpoints for installation tasks
+- Building complex multi-step wizard flows
+- Creating multiple "source of truth" documents
+- Implementing without consulting system-architect
+- Using orchestrator to implement instead of coordinate
+
+✅ **Instead:**
+- Keep CLI installer simple and database-focused
+- Build in-app wizard as Settings tab
+- Use IMPLEMENTATION_PLAN.md as single source
+- Consult specialized agents for their domains
+- Ask user for clarification if unsure
+
+---
+
+## Lessons Learned (Oct 5-6, 2025)
+
+1. **CLI installer MUST create database** - Never move to UI
+2. **Keep wizards simple** - Settings tab, not standalone page
+3. **Don't move core functionality to UI** - Installation ≠ Configuration
+4. **Single source of truth** - IMPLEMENTATION_PLAN.md only
+5. **User's vision is right** - Listen when they correct direction
+6. **Agents have roles** - Orchestrator coordinates, doesn't implement
+7. **Simplicity wins** - 200 lines > 1000+ lines of complexity
+
+---
+
+## Files to Reference
+
+### Must Read
+- `docs/IMPLEMENTATION_PLAN.md` - Single source of truth
+- `CLAUDE.md` - Project instructions for Claude Code
+- `docs/TECHNICAL_ARCHITECTURE.md` - System architecture
+
+### Important Context
+- `docs/deployment/LAN_DEPLOYMENT_RUNBOOK.md` - LAN deployment
+- `docs/manuals/MCP_TOOLS_MANUAL.md` - MCP tools reference
+
+### Recent Work
+- `docs/sessions/2025-10-06_installation_rollback_session.md` - This session
+- `docs/devlog/2025-10-06_installation_rollback_complete.md` - This devlog
+
+---
+
+## Quick Reference: What's Working Now
+
+✅ CLI installer (localhost mode)
+✅ PostgreSQL detection
+✅ Database creation during install
+✅ Desktop shortcuts
+✅ Virtual environment setup
+✅ Dependency installation
+✅ Service launch
+✅ Cross-platform paths (pathlib.Path)
+✅ Multi-system git workflow
+✅ IMPLEMENTATION_PLAN.md as single source
+
+❌ Wizard complexity (removed)
+❌ Tool injection during install (removed)
+❌ API database creation endpoint (removed)
+❌ Multiple source of truth docs (consolidated)
+
+---
+
+## Final Notes
+
+**The user is testing the installer RIGHT NOW.** When they return:
+
+1. **If successful**: Celebrate! Ask about Phase 1 (Claude Code integration)
+2. **If failed**: Debug calmly, fix root cause, no band-aids
+3. **If confused**: Read IMPLEMENTATION_PLAN.md line 1-200
+4. **If unsure**: Ask user directly, don't assume
+
+**Remember**: This user values **simplicity, honesty, and production-grade code**. When in doubt, ask. They'd rather you ask than go down the wrong path for hours.
+
+Good luck! 🚀
+
+---
+
+**Handover Date**: October 6, 2025
+**Handover Time**: ~1:30 AM EST
+**Session Duration**: ~2.5 hours
+**Lines Changed**: +3817 / -2785
+**Commits**: 1 (ea7f49c)
+**Status**: ✅ Installer running, awaiting test results
