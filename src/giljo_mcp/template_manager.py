@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from .database import DatabaseManager
 from .models import AgentTemplate, TemplateAugmentation
+from .services.config_service import ConfigService
 
 
 logger = logging.getLogger(__name__)
@@ -389,6 +390,15 @@ SUCCESS CRITERIA:
             Processed template content
         """
         try:
+            # Initialize variables if None
+            if variables is None:
+                variables = {}
+
+            # Read Serena config
+            config_service = ConfigService()
+            serena_config = config_service.get_serena_config()
+            variables["serena_enabled"] = serena_config.get("enabled", False)
+
             # Try database first if available
             if self.db_manager:
                 template_content = await self._get_db_template(role, project_type, product_id, use_cache)
@@ -396,11 +406,16 @@ SUCCESS CRITERIA:
                 # Fall back to legacy templates
                 template_content = self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
 
+            # Add Serena augmentation if enabled
+            if variables["serena_enabled"]:
+                augmentations = augmentations or []
+                augmentations.append(self._create_serena_augmentation(role))
+
             # Process the template
             return process_template(template_content, variables, augmentations)
 
-        except Exception as e:
-            logger.exception(f"Failed to get template for role '{role}': {e}")
+        except Exception:
+            logger.exception(f"Failed to get template for role '{role}'")
             # Return fallback template
             fallback = self._legacy_templates.get(role.lower(), f"Error loading template for role: {role}")
             return process_template(fallback, variables, augmentations)
@@ -413,7 +428,13 @@ SUCCESS CRITERIA:
         use_cache: bool,
     ) -> str:
         """Get template from database with caching"""
-        cache_key = f"{role}_{project_type}_{product_id}"
+        # Read Serena config for cache key
+        config_service = ConfigService()
+        serena_config = config_service.get_serena_config()
+        serena_enabled = serena_config.get("enabled", False)
+
+        # Include serena status in cache key
+        cache_key = f"{role}_{project_type}_{product_id}_serena_{serena_enabled}"
 
         if use_cache and cache_key in self._template_cache:
             return self._template_cache[cache_key]
@@ -456,6 +477,162 @@ SUCCESS CRITERIA:
 
             # Fall back to legacy template
             return self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
+
+    def _create_serena_augmentation(self, role: str) -> dict:
+        """
+        Create role-specific Serena guidance augmentation.
+
+        Args:
+            role: Agent role (orchestrator, analyzer, implementer, etc.)
+
+        Returns:
+            Augmentation dict for injection
+        """
+        guidance = self._get_serena_guidance(role)
+
+        # Find appropriate injection target based on role
+        target = self._get_injection_target(role)
+
+        return {"type": "inject", "target": target, "content": guidance}
+
+    def _get_injection_target(self, role: str) -> str:
+        """
+        Get the injection target text for each role.
+
+        Args:
+            role: Agent role
+
+        Returns:
+            Target text to inject after
+        """
+        targets = {
+            "orchestrator": "YOUR DISCOVERY APPROACH",
+            "analyzer": "DISCOVERY WORKFLOW:",
+            "implementer": "IMPLEMENTATION WORKFLOW:",
+            "tester": "TESTING WORKFLOW:",
+            "reviewer": "REVIEW WORKFLOW:",
+            "documenter": "DOCUMENTATION WORKFLOW:",
+        }
+        return targets.get(role.lower(), "RESPONSIBILITIES:")
+
+    def _get_serena_guidance(self, role: str) -> str:
+        """
+        Get role-specific Serena MCP guidance.
+
+        Args:
+            role: Agent role
+
+        Returns:
+            Formatted Serena guidance text
+        """
+        guidance = {
+            "orchestrator": """
+
+SERENA MCP TOOLS (Use as FIRST TOOL for code exploration):
+The following tools provide semantic code analysis:
+
+├─ NAVIGATION & DISCOVERY
+│  ├─ list_dir: Navigate project structure
+│  ├─ find_file: Locate files by pattern
+│  └─ search_for_pattern: Regex search across codebase
+│
+├─ CODE ANALYSIS
+│  ├─ get_symbols_overview: High-level file structure (classes, functions)
+│  ├─ find_symbol: Locate specific classes/functions/methods
+│  └─ find_referencing_symbols: Find where code is used
+│
+└─ PRECISE EDITING
+   ├─ replace_symbol_body: Update function/class implementation
+   ├─ insert_after_symbol: Add new code after a symbol
+   └─ insert_before_symbol: Add new code before a symbol
+
+RECOMMENDED WORKFLOW:
+1. Use get_symbols_overview first to understand file structure
+2. Use find_symbol to locate specific code
+3. Use find_referencing_symbols to understand dependencies
+4. Guide implementer agents to use symbolic editing for precision
+""",
+            "analyzer": """
+
+SERENA MCP FOR ANALYSIS:
+├─ get_symbols_overview: Understand file structure without reading full code
+├─ find_symbol: Locate specific implementations
+├─ find_referencing_symbols: Map dependencies and usage patterns
+└─ search_for_pattern: Find code patterns across codebase
+
+ANALYSIS WORKFLOW:
+1. Start with get_symbols_overview for new files (avoids reading entire files)
+2. Use find_symbol to locate implementation details
+3. Use find_referencing_symbols to map dependencies
+4. Focus on architecture, not editing (you analyze, implementer edits)
+""",
+            "implementer": """
+
+SERENA MCP FOR IMPLEMENTATION:
+├─ get_symbols_overview: Understand file structure before editing
+├─ find_symbol: Locate exact symbols to modify
+├─ find_referencing_symbols: Check dependencies before changes
+└─ SYMBOLIC EDITING (use these for precision):
+   ├─ replace_symbol_body: Update function/class implementation
+   ├─ insert_after_symbol: Add new code after existing symbol
+   └─ insert_before_symbol: Add new code before existing symbol
+
+IMPLEMENTATION WORKFLOW:
+1. Use get_symbols_overview first (don't read entire files blindly)
+2. Locate exact symbols with find_symbol
+3. Check dependencies with find_referencing_symbols
+4. Use symbolic editing (replace_symbol_body, insert_*) for precise changes
+5. Prefer symbolic operations over file editing for maintainability
+""",
+            "tester": """
+
+SERENA MCP FOR TESTING:
+├─ get_symbols_overview: Identify testable units
+├─ find_symbol: Locate functions/classes to test
+└─ find_referencing_symbols: Find existing test coverage
+
+TESTING WORKFLOW:
+1. Use get_symbols_overview to discover testable units
+2. Use find_symbol to understand implementation details
+3. Use find_referencing_symbols to check if tests already exist
+""",
+            "reviewer": """
+
+SERENA MCP FOR CODE REVIEW:
+├─ get_symbols_overview: Understand code structure
+├─ find_symbol: Examine specific implementations
+└─ find_referencing_symbols: Check usage patterns
+
+REVIEW WORKFLOW:
+1. Use get_symbols_overview to understand file organization
+2. Use find_symbol to examine implementations
+3. Use find_referencing_symbols to verify correct usage
+""",
+            "documenter": """
+
+SERENA MCP FOR DOCUMENTATION:
+├─ get_symbols_overview: Discover public API surface
+├─ find_symbol: Examine implementations to document
+└─ search_for_pattern: Find similar patterns across codebase
+
+DOCUMENTATION WORKFLOW:
+1. Use get_symbols_overview to identify public APIs
+2. Use find_symbol to understand implementation details
+3. Document based on actual code structure
+""",
+        }
+
+        return guidance.get(
+            role.lower(),
+            """
+
+SERENA MCP TOOLS AVAILABLE:
+Use Serena MCP tools for semantic code analysis:
+- get_symbols_overview: Understand file structure
+- find_symbol: Locate specific code
+- find_referencing_symbols: Map dependencies
+""",
+        )
 
     def clear_cache(self):
         """Clear the template cache"""
