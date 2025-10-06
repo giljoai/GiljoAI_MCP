@@ -143,7 +143,6 @@
 
     <!-- Info -->
     <v-alert type="info" variant="tonal" class="mb-6">
-      <v-icon start>mdi-information</v-icon>
       You can change this setting later in Settings &gt; General
     </v-alert>
 

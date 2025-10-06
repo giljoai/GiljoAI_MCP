@@ -133,7 +133,6 @@
 
     <!-- Info Alert -->
     <v-alert type="info" variant="tonal" class="mt-6">
-      <v-icon start>mdi-information</v-icon>
       You can configure additional tools later in Settings. At least one tool is recommended but not
       required.
     </v-alert>
