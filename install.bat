@@ -39,10 +39,12 @@ echo.
 echo This installer will:
 echo   1. Detect Python and PostgreSQL
 echo   2. Create virtual environment
-echo   3. Install dependencies
-echo   4. Create minimal configuration
-echo   5. Start backend service
-echo   6. Open browser to setup wizard
+echo   3. Install Python dependencies
+echo   4. Install frontend dependencies (npm)
+echo   5. Create minimal configuration
+echo   6. Start backend service
+echo   7. Start frontend service
+echo   8. Open browser to setup wizard
 echo.
 echo All configuration is handled via the web wizard.
 echo.
