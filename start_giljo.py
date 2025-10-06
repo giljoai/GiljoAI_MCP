@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 # Try to import psutil, but don't fail if not available
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -28,9 +29,14 @@ except ImportError:
 # Import colored logger
 try:
     from giljo_mcp.colored_logger import (
-        print_error, print_warning, print_success,
-        print_info, print_debug, print_highlight
+        print_error,
+        print_warning,
+        print_success,
+        print_info,
+        print_debug,
+        print_highlight,
     )
+
     COLORED_OUTPUT = True
 except ImportError:
     # Fallback to regular print
@@ -46,7 +52,7 @@ SERVICES = {
         "health_endpoint": "/health",
         "health_check": "http",
         "startup_time": 10,
-        "required": True
+        "required": True,
     },
     "dashboard": {
         "name": "Dashboard (Frontend)",
@@ -56,8 +62,8 @@ SERVICES = {
         "health_check": "tcp",
         "startup_time": 15,
         "required": False,  # Optional - may not have npm installed
-        "shell": False  # Don't use shell to avoid process tree issues
-    }
+        "shell": False,  # Don't use shell to avoid process tree issues
+    },
     # Note: WebSocket service removed - it's unified in the backend (v2.0 architecture)
 }
 
@@ -92,16 +98,16 @@ class ServiceLauncher:
             return
 
         # Update backend port from config
-        if 'services' in self.config:
-            services = self.config['services']
+        if "services" in self.config:
+            services = self.config["services"]
 
             # Backend/API port
-            if 'api' in services and 'port' in services['api']:
-                SERVICES['backend']['port'] = services['api']['port']
+            if "api" in services and "port" in services["api"]:
+                SERVICES["backend"]["port"] = services["api"]["port"]
 
             # Frontend port
-            if 'frontend' in services and 'port' in services['frontend']:
-                SERVICES['dashboard']['port'] = services['frontend']['port']
+            if "frontend" in services and "port" in services["frontend"]:
+                SERVICES["dashboard"]["port"] = services["frontend"]["port"]
 
     def load_config(self) -> Dict:
         """Load configuration from config.yaml or .env"""
@@ -112,6 +118,7 @@ class ServiceLauncher:
         if config_file.exists():
             try:
                 import yaml
+
                 with open(config_file) as f:
                     config = yaml.safe_load(f)
             except ImportError:
@@ -126,8 +133,8 @@ class ServiceLauncher:
                 with open(env_file) as f:
                     for line in f:
                         line = line.strip()
-                        if line and not line.startswith('#') and '=' in line:
-                            key, value = line.split('=', 1)
+                        if line and not line.startswith("#") and "=" in line:
+                            key, value = line.split("=", 1)
                             config[key.strip()] = value.strip()
             except Exception as e:
                 print(f"Warning: Failed to load .env: {e}")
@@ -154,13 +161,13 @@ class ServiceLauncher:
             print_info(log_entry)
 
         # File output
-        with open(self.log_file, 'a') as f:
+        with open(self.log_file, "a") as f:
             f.write(log_entry + "\n")
 
     def check_port_available(self, port: int) -> bool:
         """Check if a port is available"""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('127.0.0.1', port))
+        result = sock.connect_ex(("127.0.0.1", port))
         sock.close()
         return result != 0
 
@@ -176,7 +183,7 @@ class ServiceLauncher:
             # Simple TCP connection check
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(1)
-            result = sock.connect_ex(('127.0.0.1', port))
+            result = sock.connect_ex(("127.0.0.1", port))
             sock.close()
             return result == 0
 
@@ -184,6 +191,7 @@ class ServiceLauncher:
             # HTTP health endpoint check
             try:
                 import requests
+
                 endpoint = config.get("health_endpoint", "/health")
                 response = requests.get(f"http://localhost:{port}{endpoint}", timeout=2)
                 return response.status_code == 200
@@ -191,6 +199,35 @@ class ServiceLauncher:
                 return False
 
         return True
+
+    def _check_setup_status(self) -> bool:
+        """
+        Check if setup wizard is required.
+
+        Returns:
+            True if setup is required, False if setup is complete
+        """
+        # First check config.yaml for setup_mode flag
+        setup_mode = self.config.get("setup_mode", True)
+        if setup_mode:
+            return True
+
+        # Try to check API endpoint if backend is running
+        if "backend" in self.processes:
+            try:
+                import requests
+
+                backend_port = SERVICES["backend"]["port"]
+                response = requests.get(f"http://localhost:{backend_port}/api/setup/status", timeout=2)
+                if response.status_code == 200:
+                    status = response.json()
+                    return status.get("requires_setup", True)
+            except:
+                # If API check fails, fall back to config
+                pass
+
+        # Default to requiring setup if uncertain
+        return setup_mode
 
     def start_service(self, name: str, config: Dict) -> Optional[subprocess.Popen]:
         """Start a single service"""
@@ -224,7 +261,7 @@ class ServiceLauncher:
                     cwd=cwd,
                     stdout=None,  # Show in console
                     stderr=None,  # Show in console
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
                 )
             else:
                 # Other services can be quiet
@@ -234,7 +271,7 @@ class ServiceLauncher:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
                 )
 
             self.processes[name] = process
@@ -331,23 +368,17 @@ class ServiceLauncher:
                     self.log(f"Ensuring port {port} is freed...")
                     try:
                         import subprocess as sp
-                        # Find and kill process on port
-                        netstat_output = sp.run(
-                            ['netstat', '-ano'],
-                            capture_output=True,
-                            text=True,
-                            timeout=5
-                        ).stdout
 
-                        for line in netstat_output.split('\n'):
-                            if f':{port} ' in line and 'LISTENING' in line:
+                        # Find and kill process on port
+                        netstat_output = sp.run(["netstat", "-ano"], capture_output=True, text=True, timeout=5).stdout
+
+                        for line in netstat_output.split("\n"):
+                            if f":{port} " in line and "LISTENING" in line:
                                 parts = line.split()
                                 if len(parts) >= 5:
                                     pid = parts[-1]
                                     self.log(f"  Killing process on port {port}: PID {pid}")
-                                    sp.run(['taskkill', '/PID', pid, '/F'],
-                                          capture_output=True,
-                                          timeout=5)
+                                    sp.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=5)
                     except Exception as e:
                         self.log(f"Port-based cleanup failed: {e}", "WARNING")
             else:
@@ -404,11 +435,11 @@ class ServiceLauncher:
 
     def run(self):
         """Main launcher execution"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("   GiljoAI MCP Service Launcher")
         if self.dev_mode:
             print("   [DEVELOPMENT MODE - No Auto-Restart]")
-        print("="*60)
+        print("=" * 60)
         print()
 
         # Check for required files
@@ -433,9 +464,9 @@ class ServiceLauncher:
             return 1
 
         # Display status
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("   Services Running")
-        print("="*60)
+        print("=" * 60)
 
         if "backend" in self.processes:
             # Get the actual port from SERVICES (which was updated from config)
@@ -451,13 +482,13 @@ class ServiceLauncher:
 
         print()
         print("  Press Ctrl+C to stop all services")
-        print("="*60)
+        print("=" * 60)
         print()
 
         # Open browser if configured (check frontend config)
-        if 'services' in self.config and 'frontend' in self.config['services']:
-            frontend_config = self.config['services']['frontend']
-            if frontend_config.get('auto_open', False) and "dashboard" in self.processes:
+        if "services" in self.config and "frontend" in self.config["services"]:
+            frontend_config = self.config["services"]["frontend"]
+            if frontend_config.get("auto_open", False) and "dashboard" in self.processes:
                 dashboard_port = SERVICES["dashboard"]["port"]
 
                 # Wait for Vite dev server to be fully ready
@@ -468,9 +499,10 @@ class ServiceLauncher:
                     try:
                         # Use socket connection instead of urlopen for security scan compliance
                         import socket
+
                         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         sock.settimeout(2)
-                        result = sock.connect_ex(('127.0.0.1', dashboard_port))
+                        result = sock.connect_ex(("127.0.0.1", dashboard_port))
                         sock.close()
                         if result == 0:
                             vite_ready = True
@@ -479,10 +511,19 @@ class ServiceLauncher:
                         pass
 
                 if vite_ready:
-                    browser_url = f"http://localhost:{dashboard_port}"
-                    self.log(f"Opening dashboard in browser: {browser_url}", "SUCCESS")
+                    # Check setup status to determine which URL to open
+                    requires_setup = self._check_setup_status()
+
+                    if requires_setup:
+                        browser_url = f"http://localhost:{dashboard_port}/wizard.html"
+                        self.log(f"Opening setup wizard in browser: {browser_url}", "SUCCESS")
+                    else:
+                        browser_url = f"http://localhost:{dashboard_port}"
+                        self.log(f"Opening dashboard in browser: {browser_url}", "SUCCESS")
+
                     self.log("IMPORTANT: If you see module errors, clear browser cache (Ctrl+Shift+Delete)", "INFO")
                     import webbrowser
+
                     webbrowser.open(browser_url)
                 else:
                     self.log("Vite dev server not ready yet. Open browser manually.", "WARNING")
@@ -512,14 +553,14 @@ def start_services(settings: dict = None):
     # Override config with installation settings if provided
     if settings:
         # Update SERVICES dict with installation settings
-        if 'api_port' in settings:
-            SERVICES['backend']['port'] = settings['api_port']
+        if "api_port" in settings:
+            SERVICES["backend"]["port"] = settings["api_port"]
 
-        if 'ws_port' in settings:
-            SERVICES['websocket']['port'] = settings['ws_port']
+        if "ws_port" in settings:
+            SERVICES["websocket"]["port"] = settings["ws_port"]
 
-        if 'dashboard_port' in settings:
-            SERVICES['dashboard']['port'] = settings['dashboard_port']
+        if "dashboard_port" in settings:
+            SERVICES["dashboard"]["port"] = settings["dashboard_port"]
 
     # Run the launcher
     return launcher.run()
@@ -530,26 +571,10 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="GiljoAI MCP Service Launcher")
-    parser.add_argument(
-        "--dev",
-        action="store_true",
-        help="Development mode: disable auto-restart on failures"
-    )
-    parser.add_argument(
-        "--no-restart",
-        action="store_true",
-        help="Disable auto-restart on failures (alias for --dev)"
-    )
-    parser.add_argument(
-        "--backend-only",
-        action="store_true",
-        help="Start only the backend API server"
-    )
-    parser.add_argument(
-        "--frontend-only",
-        action="store_true",
-        help="Start only the frontend dashboard"
-    )
+    parser.add_argument("--dev", action="store_true", help="Development mode: disable auto-restart on failures")
+    parser.add_argument("--no-restart", action="store_true", help="Disable auto-restart on failures (alias for --dev)")
+    parser.add_argument("--backend-only", action="store_true", help="Start only the backend API server")
+    parser.add_argument("--frontend-only", action="store_true", help="Start only the frontend dashboard")
     args = parser.parse_args()
 
     # Check for dev mode from args or environment
@@ -559,22 +584,22 @@ def main():
     services_to_start = None
     if args.backend_only:
         services_to_start = ["backend"]
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("   BACKEND ONLY MODE")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
     elif args.frontend_only:
         services_to_start = ["dashboard"]
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("   FRONTEND ONLY MODE")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
     launcher = ServiceLauncher(dev_mode=dev_mode, services_filter=services_to_start)
 
     if dev_mode:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("   DEVELOPMENT MODE: Auto-restart DISABLED")
         print("   Services will NOT restart on failure")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
     # Set up signal handlers
     def signal_handler(sig, frame):
