@@ -10,6 +10,9 @@ echo     GiljoAI MCP Minimal Installer v3.0
 echo     Simplified Setup - Configuration via Web Wizard
 echo ============================================================
 echo.
+echo Press any key to begin installation...
+pause >nul
+echo.
 
 REM Check if Python is installed
 python --version >nul 2>&1
