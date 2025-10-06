@@ -471,6 +471,120 @@ async def complete_setup() -> Dict:
     return {"success": True, "setup_completed": True}
 
 
+@router.get("/status")
+async def get_setup_status() -> Dict:
+    """
+    Check if database is configured and setup is complete.
+
+    Returns:
+        Setup status including database configuration state
+    """
+    config = get_config()
+
+    # Check if we're in setup mode
+    setup_mode = getattr(config, 'setup_mode', False)
+
+    # Check database configuration
+    database_configured = False
+    database_connected = False
+    database_error = None
+
+    # Check if database config exists
+    if hasattr(config, 'database') and config.database:
+        database_configured = bool(
+            config.database.host and
+            config.database.port and
+            config.database.database_name and
+            config.database.username
+        )
+
+        # If configured, try to connect
+        if database_configured and not setup_mode:
+            try:
+                from giljo_mcp.database import DatabaseManager
+                import os
+
+                # Try to get database URL
+                db_url = os.getenv("DATABASE_URL")
+                if not db_url and config.database.type == "postgresql":
+                    db_url = f"postgresql://{config.database.username}:{config.database.password}@{config.database.host}:{config.database.port}/{config.database.database_name}"
+
+                if db_url:
+                    db_manager = DatabaseManager(db_url, is_async=False)
+                    with db_manager.get_session() as session:
+                        # Test query
+                        result = session.execute("SELECT 1")
+                        result.fetchone()
+                    database_connected = True
+            except Exception as e:
+                database_error = str(e)
+
+    # Check if setup is complete (not in setup mode and database is connected)
+    setup_complete = database_configured and database_connected and not setup_mode
+
+    return {
+        "setup_mode": setup_mode,
+        "setup_complete": setup_complete,
+        "database_configured": database_configured,
+        "database_connected": database_connected,
+        "database_error": database_error,
+        "requires_setup": not setup_complete,
+        "mode": getattr(config, 'mode', 'unknown'),
+        "version": "1.0.0"
+    }
+
+
+@router.post("/reset", include_in_schema=False)
+async def reset_setup() -> Dict:
+    """
+    Reset setup mode (development only).
+
+    This endpoint is only available in development mode and allows
+    resetting the system to setup mode for testing purposes.
+
+    Returns:
+        Reset status
+    """
+    config = get_config()
+
+    # Only allow in development/localhost mode
+    if getattr(config, 'mode', 'unknown') not in ['localhost', 'development']:
+        raise HTTPException(
+            status_code=403,
+            detail="Reset is only available in development mode"
+        )
+
+    # Set setup mode flag
+    config.setup_mode = True
+
+    # Write updated config back
+    try:
+        import yaml
+        config_path = Path.cwd() / "config.yaml"
+
+        # Load existing config
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                config_data = yaml.safe_load(f) or {}
+        else:
+            config_data = {}
+
+        # Add setup_mode flag
+        config_data['setup_mode'] = True
+
+        # Write back
+        with open(config_path, 'w') as f:
+            yaml.dump(config_data, f, default_flow_style=False)
+
+        return {
+            "success": True,
+            "message": "Setup mode reset. Restart the API server to enter setup mode.",
+            "setup_mode": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset setup mode: {e}") from e
+
+
 @router.get("/test-database")
 async def test_database() -> Dict:
     """

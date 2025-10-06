@@ -1,5 +1,32 @@
 <template>
   <v-container fluid>
+    <!-- Setup Banner (shown when database not configured) -->
+    <v-alert
+      v-if="setupStatus.requires_setup"
+      type="warning"
+      prominent
+      closable
+      class="mb-4"
+      @click:close="dismissSetupBanner"
+    >
+      <v-alert-title class="text-h6">
+        <v-icon left>mdi-database-alert</v-icon>
+        Database Setup Required
+      </v-alert-title>
+      <div>
+        The database is not configured. Please complete the setup process to use all features.
+      </div>
+      <v-btn
+        color="white"
+        variant="outlined"
+        class="mt-3"
+        @click="navigateToSetup"
+      >
+        <v-icon left>mdi-cog</v-icon>
+        Go to Setup Wizard
+      </v-btn>
+    </v-alert>
+
     <!-- Header -->
     <v-row>
       <v-col cols="12">
@@ -159,6 +186,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTheme } from 'vuetify'
+import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectStore } from '@/stores/projects'
 import { useMessageStore } from '@/stores/messages'
@@ -168,8 +196,10 @@ import SubAgentTree from '@/components/SubAgentTree.vue'
 import AgentMetrics from '@/components/AgentMetrics.vue'
 import { formatDistanceToNow } from 'date-fns'
 import websocketService from '@/services/websocket'
+import api from '@/services/api'
 
 const theme = useTheme()
+const router = useRouter()
 
 // Stores
 const agentStore = useAgentStore()
@@ -182,6 +212,13 @@ const activeTab = ref('timeline')
 const selectedProject = ref(null)
 const agentMetrics = ref(null)
 const refreshInterval = ref(null)
+const setupStatus = ref({
+  setup_mode: false,
+  setup_complete: true,
+  database_configured: true,
+  database_connected: true,
+  requires_setup: false,
+})
 
 // Stats
 const stats = computed(() => ({
@@ -273,17 +310,45 @@ const loadMetrics = async () => {
   }
 }
 
-const refreshData = async () => {
-  await Promise.all([
-    projectStore.fetchProjects(),
-    agentStore.fetchAgents(),
-    messageStore.fetchMessages(),
-    taskStore.fetchTasks(),
-  ])
+const checkSetupStatus = async () => {
+  try {
+    const response = await api.get('/api/setup/status')
+    setupStatus.value = response.data
+  } catch (error) {
+    console.error('Failed to check setup status:', error)
+    // If we get a 503 error, it means setup is required
+    if (error.response?.status === 503) {
+      setupStatus.value.requires_setup = true
+    }
+  }
+}
 
-  if (selectedProject.value) {
-    await agentStore.fetchAgentTree(selectedProject.value)
-    await loadMetrics()
+const dismissSetupBanner = () => {
+  // Hide banner temporarily (will reappear on page reload if still needed)
+  setupStatus.value.requires_setup = false
+}
+
+const navigateToSetup = () => {
+  router.push('/setup/database')
+}
+
+const refreshData = async () => {
+  // Check setup status first
+  await checkSetupStatus()
+
+  // Only fetch data if setup is complete
+  if (!setupStatus.value.requires_setup) {
+    await Promise.all([
+      projectStore.fetchProjects(),
+      agentStore.fetchAgents(),
+      messageStore.fetchMessages(),
+      taskStore.fetchTasks(),
+    ])
+
+    if (selectedProject.value) {
+      await agentStore.fetchAgentTree(selectedProject.value)
+      await loadMetrics()
+    }
   }
 }
 
