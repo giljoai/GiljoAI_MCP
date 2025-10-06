@@ -115,14 +115,20 @@ const handleBack = () => {
 const handleFinish = async () => {
   try {
     console.log('[WIZARD] Completing setup with config:', config.value)
+    console.log('[WIZARD] Config details:', {
+      deploymentMode: config.value.deploymentMode,
+      aiTools: config.value.aiTools,
+      serenaEnabled: config.value.serenaEnabled,
+      lanSettings: config.value.lanSettings
+    })
 
     // Show completion overlay
     isRestarting.value = true
     restartMessage.value = 'Saving configuration...'
 
     // Save setup completion
-    await setupService.completeSetup(config.value)
-    console.log('[WIZARD] Setup marked as complete')
+    const result = await setupService.completeSetup(config.value)
+    console.log('[WIZARD] Setup marked as complete:', result)
 
     restartMessage.value = 'Setup complete! Redirecting to dashboard...'
 

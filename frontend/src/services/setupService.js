@@ -205,10 +205,19 @@ class SetupService {
    * @returns {Promise<{success: boolean, message: string}>}
    */
   async completeSetup(config) {
+    console.log('[SETUP_SERVICE] completeSetup called with:', config)
+    
     // Transform wizard config to API format
+    // aiTools is array of objects [{id, name, configured}], need to extract IDs
+    const toolIds = (config.aiTools || []).map(tool => {
+      // Handle both object format {id: 'claude-code'} and string format
+      return typeof tool === 'string' ? tool : tool.id
+    })
+    
     const payload = {
-      tools_attached: config.aiTools || [],
+      tools_attached: toolIds,
       network_mode: config.deploymentMode || 'localhost',
+      serena_enabled: config.serenaEnabled || false,
       lan_config: null,
     }
 
@@ -222,6 +231,8 @@ class SetupService {
       }
     }
 
+    console.log('[SETUP_SERVICE] Sending payload:', payload)
+
     const response = await fetch(`${this.baseURL}/api/setup/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -229,7 +240,16 @@ class SetupService {
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      // Try to get detailed error message from response body
+      let errorDetail = response.statusText
+      try {
+        const errorBody = await response.json()
+        console.error('[SETUP_SERVICE] Error response body:', errorBody)
+        errorDetail = errorBody.detail || JSON.stringify(errorBody)
+      } catch (e) {
+        // Response body not JSON, use statusText
+      }
+      throw new Error(`HTTP ${response.status}: ${errorDetail}`)
     }
 
     return response.json()
