@@ -268,7 +268,6 @@
 
     <!-- Info Alert -->
     <v-alert type="info" variant="tonal" class="mb-6">
-      <v-icon start>mdi-information</v-icon>
       You can change deployment mode later in Settings, but this may require service restart.
     </v-alert>
 

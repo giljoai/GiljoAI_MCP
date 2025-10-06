@@ -18,21 +18,18 @@
         </p>
 
         <v-alert type="info" variant="tonal" class="text-left mb-4">
-          <div class="d-flex align-center">
-            <v-icon start>mdi-information</v-icon>
-            <div>
-              <strong>Installation Required:</strong> Serena must be installed in your coding tool
-              separately.
-              <v-btn
-                variant="text"
-                size="small"
-                color="primary"
-                @click="showInstallGuide = true"
-                class="ml-2"
-              >
-                Installation Guide
-              </v-btn>
-            </div>
+          <div>
+            <strong>Installation Required:</strong> Serena must be installed in your coding tool
+            separately.
+            <v-btn
+              variant="text"
+              size="small"
+              color="primary"
+              @click="showInstallGuide = true"
+              class="ml-2"
+            >
+              Installation Guide
+            </v-btn>
           </div>
         </v-alert>
 

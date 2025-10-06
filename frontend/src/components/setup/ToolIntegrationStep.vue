@@ -87,7 +87,6 @@
 
       <!-- Info message -->
       <v-alert type="info" variant="tonal" class="mb-6">
-        <v-icon start>mdi-information</v-icon>
         You can configure additional tools later in Settings &gt; AI Tools
       </v-alert>
     </div>
