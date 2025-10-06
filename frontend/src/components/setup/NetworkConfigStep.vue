@@ -5,9 +5,9 @@
 
     <!-- Mode Selection -->
     <v-radio-group v-model="selectedMode" class="mb-4">
-      <v-row>
+      <v-row dense>
         <!-- Localhost Mode -->
-        <v-col cols="12" md="6">
+        <v-col cols="12" md="4">
           <v-card
             variant="outlined"
             class="h-100 mode-card"
@@ -17,10 +17,10 @@
             tabindex="0"
             aria-label="Select localhost mode for single user"
           >
-            <v-card-text>
+            <v-card-text class="pa-4">
               <v-radio value="localhost">
                 <template #label>
-                  <div class="ml-4">
+                  <div class="ml-2">
                     <div class="text-h6 d-flex align-center">
                       <v-icon class="mr-2">mdi-laptop</v-icon>
                       Localhost
@@ -32,15 +32,15 @@
                 </template>
               </v-radio>
 
-              <v-list density="compact" class="mt-4 bg-transparent">
+              <v-list density="compact" class="mt-3 bg-transparent">
                 <v-list-item
                   prepend-icon="mdi-check"
-                  title="No network configuration needed"
+                  title="No network configuration"
                   class="text-caption"
                 />
                 <v-list-item
                   prepend-icon="mdi-check"
-                  title="No authentication required"
+                  title="No authentication"
                   class="text-caption"
                 />
                 <v-list-item
@@ -50,7 +50,7 @@
                 />
                 <v-list-item
                   prepend-icon="mdi-check"
-                  title="Most secure (localhost only)"
+                  title="Most secure"
                   class="text-caption"
                 />
               </v-list>
@@ -59,7 +59,7 @@
         </v-col>
 
         <!-- LAN Mode -->
-        <v-col cols="12" md="6">
+        <v-col cols="12" md="4">
           <v-card
             variant="outlined"
             class="h-100 mode-card"
@@ -69,10 +69,10 @@
             tabindex="0"
             aria-label="Select LAN mode for team access"
           >
-            <v-card-text>
+            <v-card-text class="pa-4">
               <v-radio value="lan">
                 <template #label>
-                  <div class="ml-4">
+                  <div class="ml-2">
                     <div class="text-h6 d-flex align-center">
                       <v-icon class="mr-2">mdi-network</v-icon>
                       LAN
@@ -84,15 +84,15 @@
                 </template>
               </v-radio>
 
-              <v-list density="compact" class="mt-4 bg-transparent">
+              <v-list density="compact" class="mt-3 bg-transparent">
                 <v-list-item
                   prepend-icon="mdi-check"
-                  title="Multiple users can connect"
+                  title="Multiple users"
                   class="text-caption"
                 />
                 <v-list-item
                   prepend-icon="mdi-check"
-                  title="Network configuration required"
+                  title="Network configuration"
                   class="text-caption"
                 />
                 <v-list-item
@@ -102,8 +102,53 @@
                 />
                 <v-list-item
                   prepend-icon="mdi-check"
-                  title="Recommended for small teams (2-10 users)"
+                  title="Small teams (2-10)"
                   class="text-caption"
+                />
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
+        <!-- WAN/Hosted Mode (Future) -->
+        <v-col cols="12" md="4">
+          <v-card
+            variant="outlined"
+            class="h-100 mode-card disabled-card"
+            disabled
+            aria-label="WAN/Hosted mode coming soon"
+          >
+            <v-card-text class="pa-4">
+              <div class="d-flex align-center mb-1">
+                <v-icon class="mr-2" color="disabled" size="large">mdi-cloud</v-icon>
+                <div>
+                  <div class="text-h6 text-disabled">
+                    WAN/Hosted
+                  </div>
+                  <v-chip size="small" color="info" class="mt-1">Future</v-chip>
+                </div>
+              </div>
+
+              <v-list density="compact" class="mt-3 bg-transparent">
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Global internet access"
+                  class="text-caption text-disabled"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Cloud deployment"
+                  class="text-caption text-disabled"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Enterprise security"
+                  class="text-caption text-disabled"
+                />
+                <v-list-item
+                  prepend-icon="mdi-check"
+                  title="Unlimited users"
+                  class="text-caption text-disabled"
                 />
               </v-list>
             </v-card-text>
@@ -425,5 +470,15 @@ h2 {
 .lan-config-panel {
   border-color: rgb(var(--v-theme-primary));
   border-width: 2px;
+}
+
+.disabled-card {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.disabled-card:hover {
+  border-color: rgba(var(--v-theme-surface-variant), 0.5) !important;
+  box-shadow: none !important;
 }
 </style>
