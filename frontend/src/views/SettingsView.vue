@@ -295,7 +295,9 @@
               <v-list>
                 <v-list-item>
                   <template v-slot:prepend>
-                    <v-icon color="primary" size="large">mdi-code-braces</v-icon>
+                    <v-avatar size="40" rounded="0">
+                      <v-img src="/Serena.png" alt="Serena MCP" />
+                    </v-avatar>
                   </template>
 
                   <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>

@@ -17,7 +17,7 @@
           <v-card-text class="d-flex flex-column h-100">
             <!-- Tool Header -->
             <div class="text-center mb-4">
-              <v-icon size="48" color="primary">mdi-code-braces</v-icon>
+              <v-img src="/Claude_AI_symbol.svg" alt="Claude Code" max-width="48" class="mx-auto" />
               <h3 class="text-h6 mt-2">Claude Code</h3>
               <v-chip v-if="claudeCodeConfigured" size="small" color="success" class="mt-2">
                 Configured
@@ -64,7 +64,7 @@
           <v-card-text class="d-flex flex-column h-100">
             <!-- Tool Header -->
             <div class="text-center mb-4">
-              <v-icon size="48" color="disabled">mdi-robot</v-icon>
+              <v-img src="/openai-logo.svg" alt="ChatGPT" max-width="48" class="mx-auto" style="opacity: 0.5" />
               <h3 class="text-h6 mt-2 text-disabled">ChatGPT</h3>
               <v-chip size="small" color="info" class="mt-2">Future</v-chip>
             </div>
@@ -94,7 +94,7 @@
           <v-card-text class="d-flex flex-column h-100">
             <!-- Tool Header -->
             <div class="text-center mb-4">
-              <v-icon size="48" color="disabled">mdi-star</v-icon>
+              <v-img src="/gemini-icon.svg" alt="Gemini" max-width="48" class="mx-auto" style="opacity: 0.5" />
               <h3 class="text-h6 mt-2 text-disabled">Gemini</h3>
               <v-chip size="small" color="info" class="mt-2">Future</v-chip>
             </div>

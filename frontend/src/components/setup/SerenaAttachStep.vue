@@ -8,7 +8,7 @@
     <!-- Main Card -->
     <v-card variant="outlined" class="serena-card">
       <v-card-text class="text-center">
-        <v-icon size="64" color="primary" class="mb-4">mdi-code-braces-box</v-icon>
+        <v-img src="/Serena.png" alt="Serena MCP" max-width="80" class="mx-auto mb-4" />
 
         <h3 class="text-h6 mb-3">Enable Serena Instructions?</h3>
 
