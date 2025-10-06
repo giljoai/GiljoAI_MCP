@@ -197,6 +197,7 @@ import AgentMetrics from '@/components/AgentMetrics.vue'
 import { formatDistanceToNow } from 'date-fns'
 import websocketService from '@/services/websocket'
 import api from '@/services/api'
+import setupService from '@/services/setupService'
 
 const theme = useTheme()
 const router = useRouter()
@@ -312,14 +313,12 @@ const loadMetrics = async () => {
 
 const checkSetupStatus = async () => {
   try {
-    const response = await api.get('/api/setup/status')
-    setupStatus.value = response.data
+    const status = await setupService.checkStatus()
+    setupStatus.value = status
   } catch (error) {
     console.error('Failed to check setup status:', error)
-    // If we get a 503 error, it means setup is required
-    if (error.response?.status === 503) {
-      setupStatus.value.requires_setup = true
-    }
+    // If setup check fails, assume setup is not required (avoid blocking UI)
+    setupStatus.value.requires_setup = false
   }
 }
 
