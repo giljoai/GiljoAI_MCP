@@ -219,9 +219,9 @@ class ConfigurationManager:
         config.add_value("WEBSOCKET_PORT", user_inputs.get("websocket_port", 7273), description="WebSocket server port")
         config.add_value("WEBSOCKET_ENABLED", True, description="Enable WebSocket support")
 
-        # Database Configuration
-        db_type = profile_defaults.get("database", "sqlite")
-        if db_type == "postgresql" and "postgresql" in connection_strings:
+        # Database Configuration - PostgreSQL ONLY
+        db_type = profile_defaults.get("database", "postgresql")
+        if "postgresql" in connection_strings:
             config.add_value(
                 "DATABASE_URL",
                 connection_strings["postgresql"],
@@ -229,9 +229,11 @@ class ConfigurationManager:
                 secret=True,
             )
         else:
-            # SQLite fallback
-            db_path = user_inputs.get("db_path", "data/giljo_mcp.db")
-            config.add_value("DATABASE_URL", f"sqlite:///{db_path}", description="Database connection string")
+            # PostgreSQL is required - raise error if not configured
+            raise ValueError(
+                "PostgreSQL database configuration is required. "
+                "SQLite is not supported. Please install PostgreSQL 14-18."
+            )
 
         config.add_value("DATABASE_TYPE", db_type, description="Database type")
         config.add_value(
@@ -341,7 +343,7 @@ class ConfigurationManager:
             "developer": {
                 "environment": "development",
                 "debug": True,
-                "database": "sqlite",
+                "database": "postgresql",  # PostgreSQL required - SQLite not supported
                 "workers": 1,
                 "redis_enabled": False,
                 "auth_enabled": False,
@@ -581,11 +583,14 @@ class ConfigurationManager:
             if not isinstance(port, int) or port < 1 or port > 65535:
                 errors.append(f"Invalid FRONTEND_PORT: {port}")
 
-        # Check database URL format
+        # Check database URL format - PostgreSQL ONLY
         db_url = config.get_value("DATABASE_URL")
         if db_url:
-            if not any(db_url.startswith(prefix) for prefix in ["sqlite://", "postgresql://", "mysql://"]):
-                errors.append(f"Invalid DATABASE_URL format: {db_url}")
+            if not db_url.startswith("postgresql://"):
+                errors.append(
+                    f"Invalid DATABASE_URL: PostgreSQL required. "
+                    f"Got: {db_url[:20]}... SQLite/MySQL not supported."
+                )
 
         # Check Redis URL format if enabled
         if config.get_value("REDIS_ENABLED"):
