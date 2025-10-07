@@ -334,14 +334,16 @@
             <v-divider class="my-6" />
 
             <h3 class="text-h6 mb-4">Authentication</h3>
-            <v-text-field
-              v-model="settings.api.apiKey"
-              label="API Key"
-              variant="outlined"
-              type="password"
-              hint="Your API authentication key"
-              persistent-hint
-            />
+
+            <v-alert type="info" variant="tonal" class="mb-4">
+              <div class="d-flex align-center">
+                <v-icon start>mdi-information</v-icon>
+                <div>
+                  API authentication is configured automatically during setup.
+                  In LAN mode, the API key is managed in the <strong>Network</strong> settings tab.
+                </div>
+              </div>
+            </v-alert>
 
             <v-divider class="my-6" />
 
@@ -492,28 +494,40 @@
               type="info"
               variant="tonal"
             >
-              API key authentication is disabled in localhost mode
+              <div class="d-flex align-center">
+                <v-icon start>mdi-lock-open</v-icon>
+                <div>API key authentication is disabled in localhost mode</div>
+              </div>
             </v-alert>
 
-            <v-alert
-              v-else-if="currentMode === 'lan'"
-              type="warning"
-              variant="tonal"
-            >
-              LAN mode requires API key authentication
-            </v-alert>
+            <template v-else-if="currentMode === 'lan'">
+              <v-alert type="success" variant="tonal" class="mb-4">
+                <div class="d-flex align-center">
+                  <v-icon start>mdi-shield-check</v-icon>
+                  <div>LAN mode requires API key authentication for secure network access</div>
+                </div>
+              </v-alert>
 
-            <template v-else>
               <v-text-field
                 v-if="apiKeyInfo"
                 :model-value="maskedApiKey"
                 label="Active API Key"
                 variant="outlined"
                 readonly
-                hint="Key is masked for security"
+                hint="Key is masked for security. Clients must use this key to authenticate."
                 persistent-hint
                 class="mb-2"
-              />
+              >
+                <template v-slot:append>
+                  <v-btn
+                    icon="mdi-content-copy"
+                    size="small"
+                    variant="text"
+                    @click="copyApiKey"
+                    title="Copy API Key"
+                  />
+                </template>
+              </v-text-field>
 
               <v-text-field
                 v-if="apiKeyInfo"
@@ -530,29 +544,14 @@
               </v-btn>
             </template>
 
-            <!-- Mode Switching (Future Feature) -->
+            <!-- Deployment Mode Change via Setup Wizard -->
             <v-divider class="my-6" />
 
-            <h3 class="text-h6 mb-3">Deployment Mode</h3>
+            <h3 class="text-h6 mb-3">Change Deployment Mode</h3>
 
-            <v-alert type="warning" variant="tonal" class="mb-4">
-              Changing deployment mode requires restarting services and may affect network
-              accessibility.
-            </v-alert>
-
-            <v-select
-              v-model="selectedMode"
-              :items="availableModes"
-              label="Deployment Mode"
-              variant="outlined"
-              hint="Select how this server should be accessed"
-              persistent-hint
-              disabled
-            />
-
-            <v-alert type="info" variant="tonal" class="mt-2">
-              Mode switching will be available in a future update. Use the Setup Wizard to
-              reconfigure.
+            <v-alert type="info" variant="tonal" class="mb-4">
+              To change deployment mode (localhost ↔ LAN), use the Setup Wizard below.
+              This ensures all network settings, API keys, and configurations are properly updated.
             </v-alert>
           </v-card-text>
 
@@ -611,12 +610,6 @@ const currentMode = ref('localhost')
 const corsOrigins = ref([])
 const newOrigin = ref('')
 const apiKeyInfo = ref(null)
-const selectedMode = ref('localhost')
-const availableModes = ref([
-  { title: 'Localhost (Single User)', value: 'localhost' },
-  { title: 'LAN (Team Network)', value: 'lan' },
-  { title: 'WAN (Internet) - Coming Soon', value: 'wan', disabled: true },
-])
 const networkSettingsChanged = ref(false)
 const showRegenerateDialog = ref(false)
 
@@ -895,7 +888,6 @@ async function loadNetworkSettings() {
 
     // Set mode with robust fallback
     currentMode.value = config.installation?.mode?.toLowerCase() || 'localhost';
-    selectedMode.value = currentMode.value;
 
     // Set API settings
     networkSettings.value.apiHost = config.services?.api?.host || '127.0.0.1';
@@ -926,7 +918,6 @@ async function loadNetworkSettings() {
 
     // Absolute last resort fallback
     currentMode.value = 'localhost';
-    selectedMode.value = 'localhost';
     networkSettings.value.apiHost = '127.0.0.1';
     networkSettings.value.apiPort = 7272;
     corsOrigins.value = [];
@@ -940,6 +931,13 @@ function isDefaultOrigin(origin) {
 function copyOrigin(origin) {
   navigator.clipboard.writeText(origin)
   console.log('[SETTINGS] Origin copied to clipboard:', origin)
+}
+
+function copyApiKey() {
+  if (apiKeyInfo.value && apiKeyInfo.value.key_preview) {
+    navigator.clipboard.writeText(apiKeyInfo.value.key_preview)
+    console.log('[SETTINGS] API key copied to clipboard')
+  }
 }
 
 function addOrigin() {

@@ -82,10 +82,29 @@
         <div class="flex-grow-1">
           <div class="text-subtitle-1 font-weight-medium">Network: Configured for LAN access</div>
           <div class="text-caption text-medium-emphasis">
-            Server: http://{{ config.lanSettings.serverIp }}:{{ config.lanSettings.port }}
+            Server: {{ detectedServerUrl }}
           </div>
-          <div class="text-caption text-medium-emphasis">
+          <div v-if="isLanMode" class="text-caption text-medium-emphasis">
             Admin: {{ config.lanSettings.adminUsername }}
+          </div>
+          <div v-if="isLanMode" class="mt-2">
+            <v-btn
+              size="small"
+              @click="copyUrl"
+              variant="tonal"
+              color="primary"
+            >
+              Copy Server URL
+              <v-icon end>mdi-content-copy</v-icon>
+            </v-btn>
+            <v-snackbar
+              v-model="showCopyConfirmation"
+              timeout="2000"
+              location="top right"
+              color="success"
+            >
+              Server URL copied to clipboard!
+            </v-snackbar>
           </div>
         </div>
       </v-card-text>
@@ -141,6 +160,9 @@ import { computed } from 'vue'
  * Displays configuration summary and provides navigation to dashboard
  */
 
+import { ref, onMounted } from 'vue'
+import SetupService from '@/services/setupService'
+
 const props = defineProps({
   config: {
     type: Object,
@@ -148,7 +170,35 @@ const props = defineProps({
   },
 })
 
-defineEmits(['finish', 'back'])
+const emit = defineEmits(['finish', 'back'])
+
+// Ref to store detected IP
+const detectedServerUrl = ref('http://localhost:7272')
+
+// IP detection on component mount
+onMounted(async () => {
+  try {
+    // Use existing method from setup service to detect IP
+    const networkInfo = await SetupService.detectIp()
+
+    // Prefer primary IP, fall back to local IPs if needed
+    const serverIp = networkInfo.primary_ip ||
+                     (networkInfo.local_ips && networkInfo.local_ips[0]) ||
+                     'localhost'
+
+    // Always use 7272 unless different port specified in LAN settings
+    const serverPort = props.config.lanSettings?.port || 7272
+
+    // Update server URL based on deployment mode
+    detectedServerUrl.value = props.config.deploymentMode === 'lan'
+      ? `http://${serverIp}:${serverPort}`
+      : 'http://127.0.0.1:7272'
+  } catch (error) {
+    console.error('IP detection failed:', error)
+    // Fallback to default localhost
+    detectedServerUrl.value = 'http://127.0.0.1:7272'
+  }
+})
 
 // Computed
 const isLanMode = computed(() => props.config.deploymentMode === 'lan')
@@ -187,6 +237,18 @@ const toolNames = computed(() => {
 const serenaEnabled = computed(() => {
   return props.config.serenaEnabled || false
 })
+
+const showCopyConfirmation = ref(false)
+
+const copyUrl = () => {
+  try {
+    navigator.clipboard.writeText(detectedServerUrl.value).then(() => {
+      showCopyConfirmation.value = true
+    })
+  } catch (err) {
+    console.error('Failed to copy URL:', err)
+  }
+}
 </script>
 
 <style scoped>
