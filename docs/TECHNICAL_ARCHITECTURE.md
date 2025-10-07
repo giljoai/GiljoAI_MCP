@@ -170,7 +170,82 @@ Agent ←→ Session (1:many)
 Project ←→ Vision (1:1)
 Product ←→ AgentTemplate (1:many)
 AgentTemplate ←→ TemplateArchive (1:many)
+SetupState      # Setup wizard completion tracking (v2.0+)
+
+# Relationships (continued)
+SetupState ←→ Tenant (1:1)
 ```
+
+#### 4. Setup State Management (Added October 2025)
+
+**SetupStateManager** - Hybrid file/database setup state tracking
+
+The setup state management system tracks installation and configuration completion with version tracking to prevent configuration drift.
+
+**Architecture:**
+
+```
+Bootstrap Phase (Before Database):
+    ├── File storage: ~/.giljo-mcp/setup_state.json
+    ├── Used by CLI installer
+    └── Migrates to database when available
+
+Production Phase (After Database):
+    ├── Database storage: setup_state table
+    ├── Per-tenant isolation
+    ├── Version tracking (setup, schema, database)
+    └── Configuration snapshots for rollback
+```
+
+**Key Features:**
+
+- **Hybrid Storage**: File fallback when database unavailable
+- **Version Tracking**: Detect setup/code version mismatches
+- **Multi-tenant Ready**: Per-tenant setup state isolation
+- **Configuration Snapshots**: Enable rollback to known-good state
+- **Automatic Migration**: Seamless migration from legacy file-based state
+
+**Database Model:**
+
+```python
+class SetupState(Base):
+    """Tracks setup completion per tenant"""
+    __tablename__ = "setup_state"
+
+    id = Column(String(36), primary_key=True)
+    tenant_key = Column(String(36), unique=True, nullable=False)
+
+    # Completion tracking
+    completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime(timezone=True))
+
+    # Version tracking (prevents drift after git pull)
+    setup_version = Column(String(20))      # Wizard version: "2.0.0"
+    database_version = Column(String(20))   # PostgreSQL: "18"
+    python_version = Column(String(20))     # Python: "3.11.0"
+    node_version = Column(String(20))       # Node: "20.19.0"
+
+    # Feature and tool configuration (JSONB for flexibility)
+    features_configured = Column(JSONB, default=dict)
+    tools_enabled = Column(JSONB, default=list)
+    config_snapshot = Column(JSONB)         # Full config.yaml backup
+
+    # Validation tracking
+    validation_passed = Column(Boolean, default=True)
+    validation_failures = Column(JSONB, default=list)
+    last_validation_at = Column(DateTime(timezone=True))
+```
+
+**API Endpoints:**
+
+- `GET /api/setup/status` - Check setup completion and detect version mismatches
+- `POST /api/setup/complete` - Save wizard configuration to database
+- `POST /api/setup/migrate` - Migrate setup state between versions
+
+**See Also:**
+
+- `docs/architecture/SETUP_STATE_ARCHITECTURE.md` - Complete architecture documentation
+- `docs/architecture/SETUP_STATE_MIGRATION_GUIDE.md` - Migration guide for developers
 
 ### Phase 2 Installer Architecture (Major Update September 2025)
 
@@ -591,6 +666,49 @@ CREATE TABLE tasks (
     status VARCHAR(50),
     created_at TIMESTAMP
 );
+
+-- Setup State (v2.0+)
+CREATE TABLE setup_state (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_key VARCHAR(36) NOT NULL UNIQUE,
+    completed BOOLEAN NOT NULL DEFAULT false,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Version tracking
+    setup_version VARCHAR(20),
+    database_version VARCHAR(20),
+    python_version VARCHAR(20),
+    node_version VARCHAR(20),
+    
+    -- Configuration (JSONB for flexibility)
+    features_configured JSONB NOT NULL DEFAULT '{}',
+    tools_enabled JSONB NOT NULL DEFAULT '[]',
+    config_snapshot JSONB,
+    
+    -- Validation tracking
+    validation_passed BOOLEAN NOT NULL DEFAULT true,
+    validation_failures JSONB NOT NULL DEFAULT '[]',
+    validation_warnings JSONB NOT NULL DEFAULT '[]',
+    last_validation_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Installation metadata
+    installer_version VARCHAR(20),
+    install_mode VARCHAR(20),
+    install_path TEXT,
+    
+    -- Timestamps
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Additional metadata
+    meta_data JSONB DEFAULT '{}'
+);
+
+-- Indexes for setup_state
+CREATE INDEX idx_setup_tenant ON setup_state(tenant_key);
+CREATE INDEX idx_setup_completed ON setup_state(completed);
+CREATE INDEX idx_setup_features_gin ON setup_state USING gin(features_configured);
+CREATE INDEX idx_setup_tools_gin ON setup_state USING gin(tools_enabled);
 ```
 
 ### File Structure

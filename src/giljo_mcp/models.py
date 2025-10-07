@@ -7,6 +7,9 @@ Supports both SQLite (local) and PostgreSQL (production).
 
 from uuid import uuid4
 
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -21,7 +24,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Session, declarative_base, relationship
 from sqlalchemy.sql import func
 
 
@@ -819,3 +823,289 @@ class GitCommit(Base):
             name="ck_git_commit_push_status",
         ),
     )
+
+
+class SetupState(Base):
+    """
+    SetupState model - tracks installation and setup completion status.
+
+    This table maintains setup state per tenant, replacing the legacy file-based
+    setup_state.json approach. It tracks:
+    - Installation completion status
+    - Version information (setup, database, Python, PostgreSQL)
+    - Configured features and MCP tools
+    - Configuration snapshots
+    - Validation failures and warnings
+
+    Multi-tenant isolation: Each tenant has exactly one SetupState row.
+    """
+
+    __tablename__ = "setup_state"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, unique=True, index=True)
+
+    # Completion status
+    completed = Column(Boolean, default=False, nullable=False, index=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Version tracking
+    setup_version = Column(String(20), nullable=True)  # e.g., "2.0.0"
+    database_version = Column(String(20), nullable=True)  # PostgreSQL version
+    python_version = Column(String(20), nullable=True)
+    node_version = Column(String(20), nullable=True)
+
+    # Feature and tool configuration (JSONB for performance)
+    features_configured = Column(
+        JSONB,
+        default=dict,
+        nullable=False,
+        comment="Nested dict of configured features: {database: true, api: {enabled: true, port: 7272}}"
+    )
+    tools_enabled = Column(
+        JSONB,
+        default=list,
+        nullable=False,
+        comment="Array of enabled MCP tool names"
+    )
+
+    # Configuration snapshot
+    config_snapshot = Column(
+        JSONB,
+        nullable=True,
+        comment="Snapshot of config.yaml at setup completion"
+    )
+
+    # Validation tracking
+    validation_passed = Column(Boolean, default=True, nullable=False)
+    validation_failures = Column(
+        JSONB,
+        default=list,
+        nullable=False,
+        comment="Array of validation failure messages"
+    )
+    validation_warnings = Column(
+        JSONB,
+        default=list,
+        nullable=False,
+        comment="Array of validation warning messages"
+    )
+    last_validation_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Installation metadata
+    installer_version = Column(String(20), nullable=True)
+    install_mode = Column(
+        String(20),
+        nullable=True,
+        comment="Installation mode: localhost, server, lan, wan"
+    )
+    install_path = Column(Text, nullable=True, comment="Installation directory path")
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Additional metadata
+    meta_data = Column(JSONB, default=dict)
+
+    __table_args__ = (
+        # Version format constraint (semantic versioning)
+        CheckConstraint(
+            "setup_version IS NULL OR setup_version ~ '^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9\\.\\-]+)?$'",
+            name="ck_setup_version_format"
+        ),
+        CheckConstraint(
+            "database_version IS NULL OR database_version ~ '^[0-9]+(\\.([0-9]+|[0-9]+\\.[0-9]+))?$'",
+            name="ck_database_version_format"
+        ),
+        # Install mode constraint
+        CheckConstraint(
+            "install_mode IS NULL OR install_mode IN ('localhost', 'server', 'lan', 'wan')",
+            name="ck_install_mode_values"
+        ),
+        # Completed_at must be set when completed=true
+        CheckConstraint(
+            "(completed = false) OR (completed = true AND completed_at IS NOT NULL)",
+            name="ck_completed_at_required"
+        ),
+        # Regular indexes
+        Index("idx_setup_tenant", "tenant_key"),  # Primary lookup index
+        Index("idx_setup_completed", "completed"),  # Filter by completion status
+        Index("idx_setup_mode", "install_mode"),  # Filter by installation mode
+        # GIN indexes for JSONB columns (enables efficient queries on nested JSON)
+        Index("idx_setup_features_gin", "features_configured", postgresql_using="gin"),
+        Index("idx_setup_tools_gin", "tools_enabled", postgresql_using="gin"),
+        # Partial index for incomplete setups (frequently queried)
+        Index("idx_setup_incomplete", "tenant_key", "completed", postgresql_where="completed = false"),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize SetupState to dictionary.
+
+        Returns:
+            Dict containing all setup state fields
+        """
+        return {
+            "id": self.id,
+            "tenant_key": self.tenant_key,
+            "completed": self.completed,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "setup_version": self.setup_version,
+            "database_version": self.database_version,
+            "python_version": self.python_version,
+            "node_version": self.node_version,
+            "features_configured": self.features_configured,
+            "tools_enabled": self.tools_enabled,
+            "config_snapshot": self.config_snapshot,
+            "validation_passed": self.validation_passed,
+            "validation_failures": self.validation_failures,
+            "validation_warnings": self.validation_warnings,
+            "last_validation_at": self.last_validation_at.isoformat() if self.last_validation_at else None,
+            "installer_version": self.installer_version,
+            "install_mode": self.install_mode,
+            "install_path": self.install_path,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "meta_data": self.meta_data,
+        }
+
+    @classmethod
+    def get_by_tenant(cls, session: Session, tenant_key: str) -> Optional["SetupState"]:
+        """
+        Retrieve SetupState for a specific tenant.
+
+        Args:
+            session: SQLAlchemy session
+            tenant_key: Tenant identifier
+
+        Returns:
+            SetupState instance or None if not found
+        """
+        return session.query(cls).filter(cls.tenant_key == tenant_key).first()
+
+    @classmethod
+    def create_or_update(
+        cls,
+        session: Session,
+        tenant_key: str,
+        **kwargs
+    ) -> "SetupState":
+        """
+        Create or update SetupState for a tenant.
+
+        Args:
+            session: SQLAlchemy session
+            tenant_key: Tenant identifier
+            **kwargs: Fields to set/update
+
+        Returns:
+            SetupState instance (new or updated)
+        """
+        state = cls.get_by_tenant(session, tenant_key)
+
+        if state:
+            # Update existing
+            for key, value in kwargs.items():
+                if hasattr(state, key):
+                    setattr(state, key, value)
+        else:
+            # Create new
+            state = cls(tenant_key=tenant_key, **kwargs)
+            session.add(state)
+
+        session.flush()
+        return state
+
+    def mark_completed(self, setup_version: Optional[str] = None) -> None:
+        """
+        Mark setup as completed.
+
+        Args:
+            setup_version: Optional version string to set
+        """
+        self.completed = True
+        self.completed_at = datetime.utcnow()
+        if setup_version:
+            self.setup_version = setup_version
+
+    def add_validation_failure(self, message: str) -> None:
+        """
+        Add a validation failure message.
+
+        Args:
+            message: Error message describing the validation failure
+        """
+        if self.validation_failures is None:
+            self.validation_failures = []
+
+        failures = list(self.validation_failures)  # Convert to mutable list
+        failures.append({
+            "message": message,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        self.validation_failures = failures
+        self.validation_passed = False
+        self.last_validation_at = datetime.utcnow()
+
+    def add_validation_warning(self, message: str) -> None:
+        """
+        Add a validation warning message.
+
+        Args:
+            message: Warning message
+        """
+        if self.validation_warnings is None:
+            self.validation_warnings = []
+
+        warnings = list(self.validation_warnings)  # Convert to mutable list
+        warnings.append({
+            "message": message,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        self.validation_warnings = warnings
+        self.last_validation_at = datetime.utcnow()
+
+    def clear_validation_failures(self) -> None:
+        """Clear all validation failures and warnings."""
+        self.validation_failures = []
+        self.validation_warnings = []
+        self.validation_passed = True
+        self.last_validation_at = datetime.utcnow()
+
+    def has_feature(self, feature_path: str) -> bool:
+        """
+        Check if a feature is configured.
+
+        Supports nested paths using dot notation: "api.enabled"
+
+        Args:
+            feature_path: Dot-separated path to feature (e.g., "database" or "api.enabled")
+
+        Returns:
+            True if feature is configured and truthy, False otherwise
+        """
+        if not self.features_configured:
+            return False
+
+        keys = feature_path.split(".")
+        value = self.features_configured
+
+        for key in keys:
+            if not isinstance(value, dict) or key not in value:
+                return False
+            value = value[key]
+
+        return bool(value)
+
+    def has_tool(self, tool_name: str) -> bool:
+        """
+        Check if an MCP tool is enabled.
+
+        Args:
+            tool_name: Name of the MCP tool
+
+        Returns:
+            True if tool is in tools_enabled list, False otherwise
+        """
+        return tool_name in (self.tools_enabled or [])

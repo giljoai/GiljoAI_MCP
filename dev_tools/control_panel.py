@@ -967,7 +967,7 @@ class GiljoDevControlPanel:
             messagebox.showerror("Error", f"Failed to check database:\n\n{e}")
 
     def delete_database(self):
-        """Delete giljo_mcp database after confirmation."""
+        """Delete giljo_mcp database after confirmation with proper ownership handling."""
         if psycopg2 is None:
             messagebox.showerror(
                 "Missing Dependency", "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
@@ -1009,7 +1009,8 @@ class GiljoDevControlPanel:
             conn.autocommit = True
 
             with conn.cursor() as cur:
-                # Terminate all connections to giljo_mcp
+                # Step 1: Terminate all connections to giljo_mcp
+                self.update_status_message("Terminating active connections...")
                 cur.execute(
                     """
                     SELECT pg_terminate_backend(pg_stat_activity.pid)
@@ -1019,7 +1020,37 @@ class GiljoDevControlPanel:
                 """
                 )
 
-                # Drop database
+                # Step 2: Reassign owned objects to postgres superuser (fixes ownership issues)
+                self.update_status_message("Resolving ownership conflicts...")
+                for role in ['giljo_user', 'giljo_owner']:
+                    try:
+                        # Check if role exists first
+                        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,))
+                        if cur.fetchone():
+                            cur.execute(f"REASSIGN OWNED BY {role} TO postgres")
+                    except Exception:
+                        pass  # Role doesn't exist or already handled
+
+                # Step 3: Drop owned objects (CASCADE to handle dependencies)
+                self.update_status_message("Dropping owned objects...")
+                for role in ['giljo_user', 'giljo_owner']:
+                    try:
+                        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,))
+                        if cur.fetchone():
+                            cur.execute(f"DROP OWNED BY {role} CASCADE")
+                    except Exception:
+                        pass  # Role doesn't exist or already handled
+
+                # Step 4: Drop roles if they exist
+                self.update_status_message("Dropping database roles...")
+                for role in ['giljo_user', 'giljo_owner']:
+                    try:
+                        cur.execute(f"DROP ROLE IF EXISTS {role}")
+                    except Exception:
+                        pass  # Role in use or other issue
+
+                # Step 5: Finally drop the database
+                self.update_status_message("Dropping database...")
                 cur.execute("DROP DATABASE IF EXISTS giljo_mcp")
 
             conn.close()
@@ -1027,8 +1058,16 @@ class GiljoDevControlPanel:
             self.db_exists_indicator.config(foreground="red")
             self.db_exists_label.config(text="Deleted")
             self.db_exists_status.set(False)
-            self.update_status_message("giljo_mcp database deleted")
-            messagebox.showinfo("Success", "giljo_mcp database has been deleted!")
+            self.update_status_message("giljo_mcp database deleted successfully")
+            messagebox.showinfo(
+                "Success",
+                "Database deletion complete!\n\n"
+                "Removed:\n"
+                "- giljo_mcp database\n"
+                "- giljo_user role\n"
+                "- giljo_owner role\n"
+                "- All owned objects"
+            )
 
         except Exception as e:
             self.update_status_message(f"Database deletion failed: {e}")

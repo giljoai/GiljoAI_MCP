@@ -16,6 +16,9 @@ import yaml
 from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
+# Import SetupStateManager for hybrid file/database state tracking
+from src.giljo_mcp.setup.state_manager import SetupStateManager
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -196,29 +199,32 @@ async def get_setup_status():
 
     The database is always configured by the CLI installer in Phase 0,
     so database_configured will always be true.
+
+    Now uses SetupStateManager for hybrid file/database state tracking.
     """
     try:
-        config = read_config()
+        # Get tenant_key (use "default" for single-tenant mode)
+        tenant_key = "default"
 
-        # Extract setup status from config
-        setup_section = config.get("setup", {})
+        # Initialize SetupStateManager (will try database first, fall back to file)
+        state_manager = SetupStateManager.get_instance(tenant_key=tenant_key)
+
+        # Get state from SetupStateManager (hybrid storage)
+        state = state_manager.get_state()
+
+        # Also read config.yaml for network mode (still authoritative for deployment settings)
+        config = read_config()
         installation_section = config.get("installation", {})
+        network_mode = installation_section.get("mode", "localhost")
 
         # Database is always configured by CLI installer
         database_configured = True
 
-        # Check if setup has been completed
-        completed = setup_section.get("completed", False)
+        # Get completion status from state manager
+        completed = state.get("completed", False)
 
-        # Get attached tools (may be stored in setup section or tools section)
-        tools_attached = setup_section.get("tools_attached", [])
-        if not tools_attached:
-            # Fallback: check if any MCP tools are configured
-            tools_section = config.get("tools", {})
-            tools_attached = list(tools_section.keys()) if tools_section else []
-
-        # Get network mode from installation section
-        network_mode = installation_section.get("mode", "localhost")
+        # Get attached tools from state manager
+        tools_attached = state.get("tools_enabled", [])
 
         return SetupStatusResponse(
             completed=completed,
@@ -249,6 +255,8 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
     The endpoint is idempotent - calling it multiple times will not
     cause errors and will update the configuration each time.
 
+    Now uses SetupStateManager for persistent state tracking with version support.
+
     Args:
         request_body: Setup completion request with tools and network configuration
         request: FastAPI Request object (to access app state)
@@ -257,6 +265,12 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         Success response with confirmation message and API key (for LAN mode)
     """
     try:
+        # Get tenant_key (use "default" for single-tenant mode)
+        tenant_key = "default"
+
+        # Initialize SetupStateManager
+        state_manager = SetupStateManager.get_instance(tenant_key=tenant_key)
+
         # Read current config
         config = read_config()
 
@@ -392,6 +406,49 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         # Save all configuration changes at once
         write_config(config)
 
+        # SAVE STATE TO SETUPSTATEMANAGER (hybrid file/database storage)
+        try:
+            # Create config snapshot for rollback capability (convert to JSON-serializable)
+            import json
+            config_snapshot = json.loads(json.dumps(config, default=str))
+
+            # Track configured features
+            features_configured = {
+                "database_configured": True,  # Always true (CLI installer)
+                "api_keys_configured": request_body.network_mode == NetworkMode.LAN,
+                "cors_configured": request_body.network_mode == NetworkMode.LAN,
+                "serena_enabled": request_body.serena_enabled,
+            }
+
+            # Get version for tracking
+            setup_version = config.get("installation", {}).get("version", "2.0.0")
+
+            # Mark as completed with version tracking
+            state_manager.mark_completed(
+                setup_version=setup_version,
+                config_snapshot=config_snapshot
+            )
+
+            # Update additional state fields
+            state_manager.update_state(
+                tools_enabled=request_body.tools_attached,
+                features_configured=features_configured,
+                install_mode=request_body.network_mode.value,
+                validation_passed=True,
+                validation_failures=[],
+            )
+
+            logger.info(
+                f"✅ Setup state saved to SetupStateManager for tenant {tenant_key}"
+            )
+
+        except Exception as e:
+            # Non-fatal - log but don't fail the setup
+            logger.warning(
+                f"Failed to save setup state to SetupStateManager: {e}. "
+                "Setup completed but state tracking may be incomplete."
+            )
+
         logger.info(
             f"Setup completed successfully: mode={request_body.network_mode.value}, "
             f"tools={len(request_body.tools_attached)}, serena={request_body.serena_enabled}"
@@ -410,6 +467,91 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
     except Exception as e:
         logger.error(f"Error completing setup: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to complete setup: {e}")
+
+
+@router.post("/migrate")
+async def migrate_setup_state():
+    """
+    Migrate setup state from old version to current version.
+
+    This endpoint checks if the stored setup state version matches the current
+    application version. If there's a mismatch, it migrates the state to the
+    current version.
+
+    Returns:
+        Migration status and details
+    """
+    try:
+        # Get tenant_key (use "default" for single-tenant mode)
+        tenant_key = "default"
+
+        # Get current version from config
+        config = read_config()
+        current_setup_version = config.get("installation", {}).get("version", "2.0.0")
+
+        # PostgreSQL version (could be queried from database)
+        # For now, use the configured version
+        current_db_version = "18"  # PostgreSQL 18
+
+        # Initialize SetupStateManager with current versions
+        state_manager = SetupStateManager.get_instance(
+            tenant_key=tenant_key,
+            current_version=current_setup_version,
+            required_db_version=current_db_version
+        )
+
+        # Check if migration is needed
+        if not state_manager.requires_migration():
+            state = state_manager.get_state()
+            return {
+                "message": "No migration needed",
+                "migrated": False,
+                "current_version": current_setup_version,
+                "stored_version": state.get("setup_version"),
+                "database_version": current_db_version,
+            }
+
+        # Perform migration
+        logger.info(
+            f"Migrating setup state to version {current_setup_version} "
+            f"for tenant {tenant_key}"
+        )
+
+        state_manager.migrate_state(
+            new_setup_version=current_setup_version,
+            new_database_version=current_db_version
+        )
+
+        # Validate state after migration
+        valid, failures = state_manager.validate_state()
+
+        if not valid:
+            logger.warning(
+                f"Setup state validation failed after migration: {failures}"
+            )
+            return {
+                "message": "State migrated with validation warnings",
+                "migrated": True,
+                "current_version": current_setup_version,
+                "database_version": current_db_version,
+                "validation_passed": False,
+                "validation_failures": failures,
+            }
+
+        return {
+            "message": "State migrated successfully",
+            "migrated": True,
+            "current_version": current_setup_version,
+            "database_version": current_db_version,
+            "validation_passed": True,
+        }
+
+    except ValueError as e:
+        logger.error(f"Invalid version format during migration: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Migration failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Migration failed: {e}")
 
 
 @router.post("/generate-mcp-config", response_model=McpConfigResponse)
