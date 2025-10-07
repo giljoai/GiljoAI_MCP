@@ -141,10 +141,10 @@
     <v-card variant="outlined" class="mt-6 mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 1 of 4</span>
-          <span class="text-caption">25%</span>
+          <span class="text-caption">Progress: Step 2 of 5</span>
+          <span class="text-caption">40%</span>
         </div>
-        <v-progress-linear :model-value="25" color="primary" />
+        <v-progress-linear :model-value="40" color="warning" />
       </v-card-text>
     </v-card>
 
