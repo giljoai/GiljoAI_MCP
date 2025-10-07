@@ -149,8 +149,12 @@
     </v-card>
 
     <!-- Navigation -->
-    <div class="d-flex justify-end">
-      <v-btn color="primary" @click="handleNext" aria-label="Continue to network configuration">
+    <div class="d-flex justify-space-between">
+      <v-btn variant="text" @click="$emit('back')" aria-label="Go back to database check">
+        <v-icon start>mdi-arrow-left</v-icon>
+        Back
+      </v-btn>
+      <v-btn color="primary" @click="handleNext" aria-label="Continue to Serena MCP">
         Continue
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>
@@ -175,7 +179,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'next'])
+const emit = defineEmits(['update:modelValue', 'next', 'back'])
 
 // State
 const attaching = ref(false)
