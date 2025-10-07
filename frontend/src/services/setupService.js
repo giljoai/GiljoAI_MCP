@@ -227,6 +227,7 @@ class SetupService {
         server_ip: config.lanSettings.serverIp || '',
         firewall_configured: config.lanSettings.firewallConfigured || false,
         admin_username: config.lanSettings.adminUsername || 'admin',
+        admin_password: config.lanSettings.adminPassword || '',
         hostname: config.lanSettings.hostname || 'giljo.local',
       }
     }
@@ -321,6 +322,20 @@ class SetupService {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Detect server IP addresses using backend endpoint
+   * @returns {Promise<{primary_ip: string, hostname: string, local_ips: Array<string>}>}
+   */
+  async detectIp() {
+    const response = await fetch(`${this.baseURL}/api/network/detect-ip`)
+
+    if (!response.ok) {
+      throw new Error('IP detection failed')
     }
 
     return response.json()
