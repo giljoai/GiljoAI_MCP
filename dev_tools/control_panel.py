@@ -854,33 +854,24 @@ class GiljoDevControlPanel:
     # Database Management Methods
 
     def get_db_credentials(self) -> dict[str, Any]:
-        """Get database credentials from config and environment."""
+        """
+        Get database credentials from config and environment.
+
+        Multi-PC Support:
+        - C: drive and F: drive both use localhost PostgreSQL
+        - Hardcoded development password: 4010
+        - Always connects to localhost:5432
+        """
         credentials = {
             "host": "localhost",
             "port": 5432,
             "user": "postgres",
-            "password": "4010",  # Development default
+            "password": "4010",  # Hardcoded for development (both C: and F: systems)
             "database": "postgres",  # Connect to postgres DB to check/create giljo_mcp
         }
 
-        # Load from config if available
-        if self.config:
-            db_config = self.config.get("database", {})
-            credentials["host"] = db_config.get("host", "localhost")
-            credentials["port"] = db_config.get("port", 5432)
-            credentials["user"] = db_config.get("user", "postgres")
-
-        # Try to load password from .env
-        env_file = self.project_root / ".env"
-        if env_file.exists():
-            try:
-                with open(env_file) as f:
-                    for line in f:
-                        if line.startswith("DB_PASSWORD="):
-                            credentials["password"] = line.split("=", 1)[1].strip()
-                            break
-            except Exception:
-                pass  # Use default
+        # Note: Config and .env are gitignored and system-specific
+        # We use hardcoded localhost:5432 since both dev systems use local PostgreSQL
 
         return credentials
 
@@ -967,13 +958,14 @@ class GiljoDevControlPanel:
             messagebox.showerror("Error", f"Failed to check database:\n\n{e}")
 
     def delete_database(self):
-        """Delete giljo_mcp database after confirmation with proper ownership handling."""
-        if psycopg2 is None:
-            messagebox.showerror(
-                "Missing Dependency", "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
-            )
-            return
+        """
+        Delete giljo_mcp database after confirmation with proper ownership handling.
 
+        Multi-PC Support:
+        - Uses hardcoded password 4010 (same on both C: and F: systems)
+        - Always connects to localhost PostgreSQL
+        - Fallback to psql.exe command-line if psycopg2 fails
+        """
         # Confirmation dialog
         confirm = messagebox.askyesno(
             "Confirm Database Deletion",
@@ -994,6 +986,25 @@ class GiljoDevControlPanel:
 
         self.update_status_message("Deleting giljo_mcp database...")
 
+        # Try psycopg2 first, fallback to psql.exe command-line
+        if psycopg2 is not None:
+            success = self._delete_database_with_psycopg2()
+            if success:
+                return
+            else:
+                # psycopg2 failed, try fallback
+                self.update_status_message("psycopg2 failed, trying psql.exe fallback...")
+
+        # Fallback to Windows psql.exe command-line
+        self._delete_database_with_psql_cli()
+
+    def _delete_database_with_psycopg2(self) -> bool:
+        """
+        Delete database using psycopg2 library.
+
+        Returns:
+            True if successful, False if failed
+        """
         try:
             credentials = self.get_db_credentials()
 
@@ -1068,10 +1079,115 @@ class GiljoDevControlPanel:
                 "- giljo_owner role\n"
                 "- All owned objects"
             )
+            return True
 
         except Exception as e:
-            self.update_status_message(f"Database deletion failed: {e}")
-            messagebox.showerror("Error", f"Failed to delete database:\n\n{e}")
+            self.update_status_message(f"psycopg2 deletion failed: {e}")
+            print(f"psycopg2 error: {e}")
+            return False
+
+    def _delete_database_with_psql_cli(self):
+        """
+        Delete database using Windows psql.exe command-line (fallback method).
+
+        This method:
+        1. Uses PGPASSWORD environment variable (password: 4010)
+        2. Directly calls psql.exe (should be in PATH on both C: and F: systems)
+        3. Runs the same SQL sequence as psycopg2 method
+        """
+        self.update_status_message("Using psql.exe command-line fallback...")
+
+        try:
+            # SQL commands to execute (same sequence as psycopg2 method)
+            sql_commands = """
+-- Terminate connections
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'giljo_mcp' AND pid <> pg_backend_pid();
+
+-- Reassign owned objects
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'giljo_user') THEN
+        REASSIGN OWNED BY giljo_user TO postgres;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'giljo_owner') THEN
+        REASSIGN OWNED BY giljo_owner TO postgres;
+    END IF;
+END $$;
+
+-- Drop owned objects
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'giljo_user') THEN
+        DROP OWNED BY giljo_user CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'giljo_owner') THEN
+        DROP OWNED BY giljo_owner CASCADE;
+    END IF;
+END $$;
+
+-- Drop roles
+DROP ROLE IF EXISTS giljo_user;
+DROP ROLE IF EXISTS giljo_owner;
+
+-- Drop database
+DROP DATABASE IF EXISTS giljo_mcp;
+"""
+
+            # Write SQL to temp file
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
+                f.write(sql_commands)
+                sql_file = f.name
+
+            try:
+                # Execute psql with password in environment
+                env = os.environ.copy()
+                env['PGPASSWORD'] = '4010'
+
+                result = subprocess.run(
+                    ['psql', '-U', 'postgres', '-h', 'localhost', '-p', '5432', '-d', 'postgres', '-f', sql_file],
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    timeout=30
+                )
+
+                # Clean up temp file
+                os.unlink(sql_file)
+
+                if result.returncode == 0:
+                    self.db_exists_indicator.config(foreground="red")
+                    self.db_exists_label.config(text="Deleted")
+                    self.db_exists_status.set(False)
+                    self.update_status_message("Database deleted via psql.exe")
+                    messagebox.showinfo(
+                        "Success",
+                        "Database deletion complete (using psql.exe)!\n\n"
+                        "Removed:\n"
+                        "- giljo_mcp database\n"
+                        "- giljo_user role\n"
+                        "- giljo_owner role\n"
+                        "- All owned objects"
+                    )
+                else:
+                    raise Exception(f"psql.exe failed: {result.stderr}")
+
+            finally:
+                # Ensure temp file is cleaned up
+                if os.path.exists(sql_file):
+                    os.unlink(sql_file)
+
+        except FileNotFoundError:
+            self.update_status_message("psql.exe not found in PATH")
+            messagebox.showerror(
+                "Error",
+                "psql.exe not found!\n\n"
+                "PostgreSQL command-line tools not in PATH.\n"
+                "Please install psycopg2: pip install psycopg2"
+            )
+        except Exception as e:
+            self.update_status_message(f"psql.exe deletion failed: {e}")
+            messagebox.showerror("Error", f"Database deletion failed:\n\n{e}")
 
     # Development Reset Methods
 
