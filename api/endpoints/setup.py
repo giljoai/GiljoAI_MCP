@@ -113,8 +113,9 @@ class RegisterMcpResponse(BaseModel):
 
 
 def get_config_path() -> Path:
-    """Get path to config.yaml file"""
-    return Path.cwd() / "config.yaml"
+    """Get path to config.yaml file - relative to project root"""
+    # __file__ is api/endpoints/setup.py, go up to project root
+    return Path(__file__).parent.parent.parent / "config.yaml"
 
 
 def read_config() -> dict[str, Any]:

@@ -61,10 +61,12 @@ async def get_system_configuration():
     """
     try:
         # Read config.yaml directly for accurate structure
-        config_path = Path.cwd() / "config.yaml"
+        # __file__ is api/endpoints/configuration.py
+        # .parent = api/endpoints, .parent.parent = api, .parent.parent.parent = project root
+        config_path = Path(__file__).parent.parent.parent / "config.yaml"
 
         if not config_path.exists():
-            raise HTTPException(status_code=404, detail="config.yaml not found")
+            raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
 
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
