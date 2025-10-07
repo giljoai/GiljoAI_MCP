@@ -15,16 +15,11 @@
     <v-row justify="center">
       <v-col cols="12" md="10" lg="8" xl="6">
         <v-card class="wizard-card" elevation="4">
-          <!-- Logo Header -->
-          <v-card-title class="text-center pa-6">
-            <v-img :src="logoSrc" alt="GiljoAI Logo" height="60" contain />
-          </v-card-title>
-
           <!-- Vuetify Stepper -->
           <v-stepper v-model="currentStep" :items="stepperItems" alt-labels flat hide-actions>
             <template v-slot:item.1>
               <v-card flat>
-                <DatabaseStep @next="handleDatabaseNext" />
+                <DatabaseCheckStep @next="handleDatabaseNext" />
               </v-card>
             </template>
 
@@ -150,7 +145,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
-import DatabaseStep from '@/components/setup/DatabaseStep_NEW.vue'
+import DatabaseCheckStep from '@/components/setup/DatabaseCheckStep.vue'
 import AttachToolsStep from '@/components/setup/AttachToolsStep.vue'
 import SerenaAttachStep from '@/components/setup/SerenaAttachStep.vue'
 import NetworkConfigStep from '@/components/setup/NetworkConfigStep.vue'

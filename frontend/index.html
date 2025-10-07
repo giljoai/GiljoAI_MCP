@@ -78,27 +78,42 @@
     <script>
       console.log('[SPLASH] Script initialized');
 
-      // Fade in (1.5s) + hold (2s) + fade out (1.5s) = 5 seconds total
-      window.addEventListener('load', () => {
-        console.log('[SPLASH] Window load event fired');
-        const loader = document.getElementById('app-loader');
-        console.log('[SPLASH] Loader element:', loader);
+      // Check if this is the first load of the session
+      const hasShownSplash = sessionStorage.getItem('splashShown');
+      const loader = document.getElementById('app-loader');
 
+      if (hasShownSplash) {
+        // Not first load - hide splash immediately
+        console.log('[SPLASH] Already shown this session - hiding immediately');
         if (loader) {
-          console.log('[SPLASH] Starting timer - will hold for 3.5s');
-          setTimeout(() => {
-            console.log('[SPLASH] Starting fade out');
-            loader.classList.add('fade-out');
-            setTimeout(() => {
-              console.log('[SPLASH] Hiding loader');
-              loader.classList.add('hidden');
-              console.log('[SPLASH] Splash screen complete');
-            }, 750); // Wait for fade-out animation to complete
-          }, 2500); // Hold for 2.5s after fade-in completes (1.5s fade in + 1s hold)
-        } else {
-          console.error('[SPLASH] Loader element not found!');
+          loader.classList.add('hidden');
         }
-      });
+      } else {
+        // First load - show splash animation
+        console.log('[SPLASH] First load - showing splash animation');
+
+        // Fade in (1.5s) + hold (2s) + fade out (0.75s) = ~4 seconds total
+        window.addEventListener('load', () => {
+          console.log('[SPLASH] Window load event fired');
+
+          if (loader) {
+            console.log('[SPLASH] Starting timer - will hold for 2.5s');
+            setTimeout(() => {
+              console.log('[SPLASH] Starting fade out');
+              loader.classList.add('fade-out');
+              setTimeout(() => {
+                console.log('[SPLASH] Hiding loader');
+                loader.classList.add('hidden');
+                // Mark as shown for this session
+                sessionStorage.setItem('splashShown', 'true');
+                console.log('[SPLASH] Splash screen complete');
+              }, 750); // Wait for fade-out animation to complete
+            }, 2500); // Hold for 2.5s after fade-in completes (1.5s fade in + 1s hold)
+          } else {
+            console.error('[SPLASH] Loader element not found!');
+          }
+        });
+      }
 
       console.log('[SPLASH] Event listener registered');
     </script>

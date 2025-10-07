@@ -110,12 +110,13 @@
     </v-card-text>
 
     <!-- Action Buttons -->
-    <v-card-actions>
+    <v-card-actions :class="{ 'justify-center': centerButton }">
       <!-- Test Connection Button -->
       <v-btn
         v-if="showTestButton"
-        variant="outlined"
+        variant="flat"
         color="primary"
+        size="large"
         :loading="testing"
         :disabled="testing"
         @click="testConnection"
@@ -126,7 +127,7 @@
         {{ testButtonText }}
       </v-btn>
 
-      <v-spacer />
+      <v-spacer v-if="!centerButton" />
 
       <!-- Actions Slot (for custom buttons like "Reload from Config") -->
       <slot name="actions"></slot>
@@ -197,6 +198,11 @@ const props = defineProps({
   initialSettings: {
     type: Object,
     default: null,
+  },
+  /** Center the test button (for wizard mode) */
+  centerButton: {
+    type: Boolean,
+    default: false,
   },
 })
 
