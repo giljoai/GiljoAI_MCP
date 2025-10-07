@@ -18,13 +18,29 @@ from giljo_mcp.models import Base
 config = context.config
 
 # Override database URL with environment variable if set
-if os.getenv("DATABASE_URL"):
-    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
-else:
-    # Default to SQLite for local development
-    db_path = Path.home() / ".giljo-mcp" / "data" / "giljo_mcp.db"
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+# CRITICAL: PostgreSQL is REQUIRED - SQLite is not supported
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file
+
+db_url = os.getenv("DATABASE_URL")
+if not db_url:
+    # Try to construct from individual env vars
+    db_host = os.getenv("POSTGRES_HOST", "localhost")
+    db_port = os.getenv("POSTGRES_PORT", "5432")
+    db_name = os.getenv("POSTGRES_DB", "giljo_mcp")
+    db_user = os.getenv("POSTGRES_USER", "giljo_user")
+    db_pass = os.getenv("POSTGRES_PASSWORD")
+
+    if db_pass:
+        db_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    else:
+        raise ValueError(
+            "PostgreSQL database URL not configured!\n"
+            "Set DATABASE_URL or POSTGRES_PASSWORD in .env file.\n"
+            "SQLite is NOT supported - PostgreSQL 14-18 is required."
+        )
+
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
