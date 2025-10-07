@@ -137,9 +137,9 @@ class ProfileManager:
         self._profiles[ProfileType.LOCAL_DEVELOPMENT] = Profile(
             name="Local Development",
             type=ProfileType.LOCAL_DEVELOPMENT,
-            description="Ideal for individual developers working on local machines. Uses SQLite for simplicity and requires minimal configuration.",
+            description="Ideal for individual developers working on local machines. Uses PostgreSQL 14-18 for development.",
             configuration=ProfileConfiguration(
-                database_type="sqlite",
+                database_type="postgresql",
                 api_enabled=True,
                 websocket_enabled=True,
                 auth_method="none",
