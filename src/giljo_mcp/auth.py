@@ -120,6 +120,75 @@ class AuthManager:
         logger.info(f"Generated and encrypted API key for '{name}'")
         return api_key
 
+    def get_or_create_api_key(self, name: str, permissions: Optional[list[str]] = None) -> str:
+        """
+        Get an existing API key by name or create a new one if it doesn't exist.
+
+        This method provides idempotent behavior for API key generation:
+        - If an active key with the given name exists, return it
+        - If a revoked key with the given name exists, create new key with timestamped name
+        - If no key exists, create a new one
+
+        This ensures that re-running the setup wizard doesn't create duplicate keys
+        and that the API key modal always appears with a valid key for LAN mode.
+
+        Args:
+            name: Name/description for the API key
+            permissions: Optional list of permissions (default: ["*"])
+
+        Returns:
+            API key string (either existing or newly created)
+        """
+        # Load API keys from encrypted file if not in memory
+        if not self.api_keys:
+            api_keys_file = Path.home() / ".giljo-mcp" / "api_keys.json"
+            if api_keys_file.exists():
+                try:
+                    # Decrypt and load keys
+                    encrypted_data = api_keys_file.read_bytes()
+                    decrypted_data = self.cipher.decrypt(encrypted_data)
+                    self.api_keys = json.loads(decrypted_data.decode())
+                    logger.debug("Loaded API keys from encrypted storage")
+                except Exception as e:
+                    logger.warning(f"Could not decrypt API keys (might be unencrypted): {e}")
+                    # Try reading as plaintext for migration
+                    try:
+                        self.api_keys = json.loads(api_keys_file.read_text())
+                        logger.info("Loaded plaintext API keys - will encrypt on next save")
+                    except Exception:
+                        logger.error("Could not load API keys from file")
+                        self.api_keys = {}
+
+        # Check if an active key with this name already exists
+        for api_key, key_info in self.api_keys.items():
+            if key_info.get("name") == name and key_info.get("active", True):
+                # Found an active key with matching name - return it (idempotent)
+                key_prefix = api_key[:10] + "..."
+                logger.info(f"Reusing existing active API key '{name}' (prefix: {key_prefix})")
+                return api_key
+
+        # Check if a revoked key with this name exists
+        revoked_key_exists = any(
+            key_info.get("name") == name and not key_info.get("active", True) for key_info in self.api_keys.values()
+        )
+
+        if revoked_key_exists:
+            # Create new key with timestamped name to avoid collision
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            timestamped_name = f"{name} ({timestamp})"
+            logger.info(f"Revoked key exists with name '{name}', creating new key with name '{timestamped_name}'")
+            api_key = self.generate_api_key(name=timestamped_name, permissions=permissions)
+        else:
+            # No key exists - create new one
+            logger.info(f"No existing key found for '{name}', creating new API key")
+            api_key = self.generate_api_key(name=name, permissions=permissions)
+
+        # Log key prefix for debugging (never log full key)
+        key_prefix = api_key[:10] + "..."
+        logger.info(f"API key created/retrieved for '{name}' (prefix: {key_prefix})")
+
+        return api_key
+
     def validate_api_key(self, api_key: str) -> Optional[dict[str, Any]]:
         """Validate an API key for LAN mode"""
         # Load API keys from encrypted file if not in memory

@@ -294,15 +294,18 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                     auth_manager = request.app.state.api_state.auth
 
                 if auth_manager:
-                    api_key = auth_manager.generate_api_key(name="LAN Setup Key", permissions=["*"])
-                    logger.info("✅ Generated API key for LAN mode")
+                    # Use get_or_create_api_key for idempotent behavior
+                    # This ensures the same key is returned when re-running the wizard
+                    api_key = auth_manager.get_or_create_api_key(name="LAN Setup Key", permissions=["*"])
+                    logger.info("✅ API key ready for LAN mode (idempotent)")
 
                     # 3. Store admin account (encrypted)
                     password_to_store = request_body.lan_config.admin_password
-                    logger.info(f"DEBUG: Password length = {len(password_to_store)} chars, {len(password_to_store.encode('utf-8'))} bytes")
+                    logger.info(
+                        f"DEBUG: Password length = {len(password_to_store)} chars, {len(password_to_store.encode('utf-8'))} bytes"
+                    )
                     auth_manager.store_admin_account(
-                        username=request_body.lan_config.admin_username,
-                        password=password_to_store
+                        username=request_body.lan_config.admin_username, password=password_to_store
                     )
                     logger.info(f"✅ Stored admin account for user: {request_body.lan_config.admin_username}")
                 else:
@@ -310,16 +313,14 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                     logger.error("❌ AuthManager not available - cannot configure LAN mode")
                     raise HTTPException(
                         status_code=500,
-                        detail="Authentication system not initialized. Please restart the API server and try again."
+                        detail="Authentication system not initialized. Please restart the API server and try again.",
                     )
             except HTTPException:
                 # Re-raise HTTP exceptions
                 raise
             except Exception as e:
                 logger.error(f"❌ Failed to configure LAN authentication: {e}", exc_info=True)
-                raise HTTPException(
-                    status_code=500, detail=f"Failed to configure LAN authentication: {e}"
-                )
+                raise HTTPException(status_code=500, detail=f"Failed to configure LAN authentication: {e}")
 
             # 4. Save LAN server configuration
             if "server" not in config:
@@ -402,9 +403,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         else:
             message = "Setup completed successfully. Configuration has been saved."
 
-        return SetupCompleteResponse(
-            success=True, message=message, api_key=api_key, requires_restart=requires_restart
-        )
+        return SetupCompleteResponse(success=True, message=message, api_key=api_key, requires_restart=requires_restart)
 
     except HTTPException:
         raise
@@ -600,7 +599,7 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
             # Check if giljo-mcp is already configured
             if "mcpServers" not in existing_config:
                 existing_config["mcpServers"] = {}
-            
+
             # Check if already configured - if so, skip registration
             if "giljo-mcp" in existing_config["mcpServers"]:
                 logger.info(f"giljo-mcp already configured in Claude Code, skipping registration")
@@ -644,9 +643,7 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
 
         else:
             # Tool not supported yet
-            raise HTTPException(
-                status_code=400, detail=f"MCP registration not yet supported for tool: {request.tool}"
-            )
+            raise HTTPException(status_code=400, detail=f"MCP registration not yet supported for tool: {request.tool}")
 
     except HTTPException:
         raise
