@@ -10,25 +10,22 @@
 #
 # QUICK START:
 # 1. Copy this file to config.yaml
-# 2. Set your PostgreSQL password (or use SQLite for testing)
+# 2. Set your PostgreSQL password
 # 3. Run: start_giljo.bat (Windows) or ./start_giljo.sh (Mac/Linux)
 # 4. Access dashboard at: http://localhost:7272
 
 # Database Configuration
 database:
-  # Database type: postgresql (recommended) or sqlite
+  # Database type: postgresql (recommended)
   database_type: postgresql
 
-  # PostgreSQL configuration (recommended for production)
+  # PostgreSQL configuration (required for production)
   host: localhost
   port: 5432
   name: giljo_mcp
   user: postgres
   password: ""  # Set your PostgreSQL password here
 
-  # SQLite configuration (uncomment for development/testing only)
-  # database_type: sqlite
-  # path: ./data/giljo.db
 
 # Server Configuration - Unified v2.0 Architecture
 server:

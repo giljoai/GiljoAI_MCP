@@ -228,11 +228,11 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                 if state_manager.requires_migration():
                     logger.warning("⚠️ Setup state version mismatch detected!")
                     logger.warning(f"Current version: {current_version}")
-                    state = state_manager.get_state()
-                    logger.warning(f"Stored version: {state.get('setup_version')}")
+                    setup_state = state_manager.get_state()
+                    logger.warning(f"Stored version: {setup_state.get('setup_version')}")
                     logger.warning("Run POST /api/setup/migrate to update state")
                 else:
-                    logger.info("✅ Setup state version is current")
+                    logger.info("Setup state version is current")
 
                 # Validate current state
                 valid, failures = state_manager.validate_state()
@@ -242,7 +242,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                         logger.warning(f"  - {failure}")
                     logger.warning("Review setup configuration or run migration")
                 else:
-                    logger.info("✅ Setup state validation passed")
+                    logger.info("Setup state validation passed")
 
         except Exception as e:
             logger.error(f"Startup setup check failed: {e}", exc_info=True)

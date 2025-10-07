@@ -26,7 +26,7 @@ def init_database(database_url: Optional[str] = None, drop_existing: bool = Fals
     Initialize the database with tables and optionally run migrations.
 
     Args:
-        database_url: Database URL. If None, uses default SQLite.
+        database_url: Database URL. If None, PostgreSQL default will be used.
         drop_existing: Whether to drop existing tables first.
         run_migrations: Whether to run Alembic migrations.
     """
@@ -34,10 +34,11 @@ def init_database(database_url: Optional[str] = None, drop_existing: bool = Fals
     # Create database manager
     db_manager = get_db_manager(database_url)
 
-    if database_url:
-        pass
-    else:
-        pass
+    if not database_url:
+        # Require PostgreSQL by default; build local PostgreSQL URL if none provided
+        database_url = DatabaseManager.build_postgresql_url(
+            host="localhost", port=5432, database="giljo_mcp", username="postgres", password=os.getenv("DB_PASSWORD", "")
+        )
 
     try:
         # Drop tables if requested
