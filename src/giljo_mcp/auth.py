@@ -148,6 +148,79 @@ class AuthManager:
 
         return None
 
+    def store_admin_account(self, username: str, password: str, tenant_key: str = "default") -> None:
+        """
+        Hash password and store admin account in encrypted format.
+
+        Args:
+            username: Admin username
+            password: Plain text password (will be hashed)
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Note:
+            Password is hashed using bcrypt before storage.
+            Data is encrypted using Fernet cipher before writing to disk.
+        """
+        from passlib.hash import bcrypt
+
+        # Hash the password using bcrypt
+        password_hash = bcrypt.hash(password)
+
+        admin_data = {
+            "username": username,
+            "password_hash": password_hash,
+            "tenant_key": tenant_key,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Store in encrypted file
+        admin_file = Path.home() / ".giljo-mcp" / "admin_account.json"
+        admin_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Encrypt and save
+        plaintext_data = json.dumps(admin_data, indent=2).encode()
+        encrypted_data = self.cipher.encrypt(plaintext_data)
+        admin_file.write_bytes(encrypted_data)
+
+        logger.info(f"Stored encrypted admin account for user '{username}'")
+
+    def validate_admin_credentials(self, username: str, password: str) -> bool:
+        """
+        Validate admin credentials against stored account.
+
+        Args:
+            username: Admin username
+            password: Plain text password to validate
+
+        Returns:
+            True if credentials are valid, False otherwise
+        """
+        from passlib.hash import bcrypt
+
+        admin_file = Path.home() / ".giljo-mcp" / "admin_account.json"
+
+        if not admin_file.exists():
+            logger.warning("No admin account configured")
+            return False
+
+        try:
+            # Decrypt admin account
+            encrypted_data = admin_file.read_bytes()
+            decrypted_data = self.cipher.decrypt(encrypted_data)
+            admin_data = json.loads(decrypted_data.decode())
+
+            # Check username matches
+            if admin_data.get("username") != username:
+                return False
+
+            # Verify password hash
+            password_hash = admin_data.get("password_hash")
+            return bcrypt.verify(password, password_hash)
+
+        except Exception as e:
+            logger.error(f"Failed to validate admin credentials: {e}")
+            return False
+
     def generate_jwt_token(self, user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600) -> str:
         """Generate JWT token for WAN mode"""
         payload = {

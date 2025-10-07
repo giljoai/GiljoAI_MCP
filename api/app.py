@@ -54,7 +54,7 @@ except ImportError as e:
 
 try:
     from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
-    from .endpoints import agents, configuration, context, database_setup, messages, mcp_tools, products, projects, serena, setup, statistics, tasks, templates
+    from .endpoints import agents, configuration, context, database_setup, messages, mcp_tools, network, products, projects, serena, setup, statistics, tasks, templates
     from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware, SetupModeMiddleware
     from .websocket import WebSocketManager
     logger.info("API endpoint modules loaded successfully")
@@ -390,6 +390,7 @@ def create_app() -> FastAPI:
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
     app.include_router(setup.router, prefix="/api/setup", tags=["setup"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
+    app.include_router(network.router, prefix="/api/network", tags=["network"])
 
     # MCP tool endpoints for stdio-to-HTTP bridge
     app.include_router(mcp_tools.router, prefix="/mcp/tools", tags=["mcp_tools"])
