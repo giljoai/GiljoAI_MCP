@@ -275,10 +275,10 @@
     <v-card variant="outlined" class="mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 3 of 4</span>
-          <span class="text-caption">75%</span>
+          <span class="text-caption">Progress: Step 4 of 5</span>
+          <span class="text-caption">80%</span>
         </div>
-        <v-progress-linear :model-value="75" color="primary" />
+        <v-progress-linear :model-value="80" color="warning" />
       </v-card-text>
     </v-card>
 
@@ -523,8 +523,9 @@ h2 {
 }
 
 .mode-card.selected {
-  border-color: rgb(var(--v-theme-primary));
-  background-color: rgba(var(--v-theme-primary), 0.05);
+  border-color: rgb(var(--v-theme-warning));
+  background-color: rgba(var(--v-theme-warning), 0.05);
+  border-width: 3px;
 }
 
 .lan-config-panel {

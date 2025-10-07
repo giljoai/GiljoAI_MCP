@@ -24,11 +24,17 @@
           <v-stepper v-model="currentStep" :items="stepperItems" alt-labels flat hide-actions>
             <template v-slot:item.1>
               <v-card flat>
-                <AttachToolsStep v-model="config.aiTools" @next="handleToolsNext" />
+                <DatabaseStep @next="handleDatabaseNext" />
               </v-card>
             </template>
 
             <template v-slot:item.2>
+              <v-card flat>
+                <AttachToolsStep v-model="config.aiTools" @next="handleToolsNext" @back="handleBack" />
+              </v-card>
+            </template>
+
+            <template v-slot:item.3>
               <v-card flat>
                 <SerenaAttachStep
                   @next="handleSerenaNext"
@@ -37,7 +43,7 @@
               </v-card>
             </template>
 
-            <template v-slot:item.3>
+            <template v-slot:item.4>
               <v-card flat>
                 <NetworkConfigStep
                   v-model:mode="config.deploymentMode"
@@ -48,9 +54,9 @@
               </v-card>
             </template>
 
-            <template v-slot:item.4>
+            <template v-slot:item.5>
               <v-card flat>
-                <SetupCompleteStep :config="config" @finish="handleFinish" />
+                <SetupCompleteStep :config="config" @finish="handleFinish" @back="handleBack" />
               </v-card>
             </template>
           </v-stepper>
@@ -144,6 +150,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
+import DatabaseStep from '@/components/setup/DatabaseStep_NEW.vue'
 import AttachToolsStep from '@/components/setup/AttachToolsStep.vue'
 import SerenaAttachStep from '@/components/setup/SerenaAttachStep.vue'
 import NetworkConfigStep from '@/components/setup/NetworkConfigStep.vue'
@@ -174,10 +181,11 @@ const logoSrc = computed(() =>
 )
 
 const stepperItems = computed(() => [
-  { title: 'Attach Tools', value: 1 },
-  { title: 'Serena MCP', value: 2 },
-  { title: 'Network', value: 3 },
-  { title: 'Complete', value: 4 },
+  { title: 'Database', value: 1 },
+  { title: 'Attach Tools', value: 2 },
+  { title: 'Serena MCP', value: 3 },
+  { title: 'Network', value: 4 },
+  { title: 'Complete', value: 5 },
 ])
 
 const platform = computed(() => {
@@ -215,17 +223,21 @@ const restartInstructions = computed(() => {
 })
 
 // Methods
-const handleToolsNext = () => {
+const handleDatabaseNext = () => {
   currentStep.value = 2
+}
+
+const handleToolsNext = () => {
+  currentStep.value = 3
 }
 
 const handleSerenaNext = (data) => {
   config.value.serenaEnabled = data.serenaEnabled
-  currentStep.value = 3
+  currentStep.value = 4
 }
 
 const handleNetworkNext = () => {
-  currentStep.value = 4
+  currentStep.value = 5
 }
 
 const handleBack = () => {

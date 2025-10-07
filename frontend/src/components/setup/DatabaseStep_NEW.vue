@@ -3,15 +3,17 @@
     <h2 class="text-h5 mb-6">Database Connection</h2>
 
     <!-- Reusable Database Connection Component -->
-    <DatabaseConnection
-      :readonly="true"
-      :show-test-button="true"
-      :show-title="false"
-      :show-info-banner="true"
-      info-banner-text="Database settings are configured during installation. This step verifies connectivity."
-      @connection-success="handleConnectionSuccess"
-      @connection-error="handleConnectionFailure"
-    />
+    <div class="wizard-database-step">
+      <DatabaseConnection
+        :readonly="true"
+        :show-test-button="true"
+        :show-title="false"
+        :show-info-banner="true"
+        info-banner-text="Database settings are configured during installation. This step verifies connectivity."
+        @connection-success="handleConnectionSuccess"
+        @connection-error="handleConnectionFailure"
+      />
+    </div>
 
     <!-- Troubleshooting link -->
     <div class="text-center mt-4">
@@ -33,24 +35,20 @@
     <v-card variant="outlined" class="mt-6 mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 2 of 7</span>
-          <span class="text-caption">29%</span>
+          <span class="text-caption">Progress: Step 1 of 5</span>
+          <span class="text-caption">20%</span>
         </div>
-        <v-progress-linear :model-value="29" color="primary" />
+        <v-progress-linear :model-value="20" color="warning" />
       </v-card-text>
     </v-card>
 
     <!-- Navigation buttons -->
-    <div class="d-flex justify-space-between">
-      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to welcome">
-        <v-icon start>mdi-arrow-left</v-icon>
-        Back
-      </v-btn>
+    <div class="d-flex justify-end">
       <v-btn
         color="primary"
         :disabled="!connectionVerified"
         @click="$emit('next')"
-        aria-label="Continue to deployment mode"
+        aria-label="Continue to AI tools attachment"
       >
         Continue
         <v-icon end>mdi-arrow-right</v-icon>
@@ -93,5 +91,15 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* Wizard-specific styling for centered test button */
+.wizard-database-step :deep(.v-card-actions) {
+  justify-content: center;
+  padding: 16px 24px;
+}
+
+.wizard-database-step :deep(.v-btn) {
+  background-color: rgba(var(--v-theme-surface-variant), 0.8);
 }
 </style>

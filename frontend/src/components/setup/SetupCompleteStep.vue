@@ -43,6 +43,23 @@
       </v-card-text>
     </v-card>
 
+    <!-- Serena MCP Status -->
+    <v-card variant="outlined" class="mb-3">
+      <v-card-text class="d-flex align-center">
+        <v-icon :color="serenaEnabled ? 'success' : 'grey'" class="mr-3">
+          {{ serenaEnabled ? 'mdi-check-circle' : 'mdi-circle-outline' }}
+        </v-icon>
+        <div class="flex-grow-1">
+          <div class="text-subtitle-1 font-weight-medium">
+            Serena: {{ serenaEnabled ? 'Enabled' : 'Not enabled' }}
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            {{ serenaEnabled ? 'Agent prompts include Serena MCP instructions' : 'You can enable this later in Settings' }}
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
+
     <!-- Deployment Mode -->
     <v-card variant="outlined" class="mb-3">
       <v-card-text class="d-flex align-center">
@@ -94,10 +111,10 @@
     <v-card variant="outlined" class="mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 4 of 4</span>
+          <span class="text-caption">Progress: Step 5 of 5</span>
           <span class="text-caption">100%</span>
         </div>
-        <v-progress-linear :model-value="100" color="success" />
+        <v-progress-linear :model-value="100" color="warning" />
       </v-card-text>
     </v-card>
 
@@ -165,6 +182,10 @@ const toolNames = computed(() => {
     return []
   }
   return props.config.aiTools.map((tool) => tool.name)
+})
+
+const serenaEnabled = computed(() => {
+  return props.config.serenaEnabled || false
 })
 </script>
 
