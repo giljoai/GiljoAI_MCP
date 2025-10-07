@@ -2,6 +2,7 @@
 # Python 3.8+ required
 
 # Core Dependencies
+mcp==1.12.3                 # MCP SDK (pinned for serena-agent compatibility)
 fastmcp>=0.1.0              # MCP server framework
 fastapi>=0.100.0            # REST API and WebSockets
 uvicorn[standard]>=0.23.0   # ASGI server

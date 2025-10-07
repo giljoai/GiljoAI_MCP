@@ -22,6 +22,36 @@
       </v-btn>
     </v-alert>
 
+    <!-- LAN Setup Complete Banner -->
+    <v-alert
+      v-if="showLanWelcome"
+      type="success"
+      prominent
+      closable
+      class="mb-4"
+      @click:close="dismissLanWelcome"
+    >
+      <v-alert-title class="text-h6">
+        <v-icon left>mdi-check-circle</v-icon>
+        Application Now Configured for LAN Access
+      </v-alert-title>
+      <div class="mb-3">
+        <p class="mb-2">
+          <strong>Congratulations!</strong> GiljoAI MCP is now accessible over your local network.
+        </p>
+        <p class="mb-2">
+          <strong>Server URL:</strong> <code>http://{{ serverIp }}:{{ serverPort }}</code>
+        </p>
+        <p class="text-body-2">
+          Download the comprehensive setup and testing guide to verify network connectivity and troubleshoot any issues.
+        </p>
+      </div>
+      <v-btn color="white" variant="outlined" @click="downloadLanGuide">
+        <v-icon left>mdi-download</v-icon>
+        Download LAN Setup & Testing Guide
+      </v-btn>
+    </v-alert>
+
     <!-- Header -->
     <v-row>
       <v-col cols="12">
@@ -219,6 +249,9 @@ const setupStatus = ref({
   database_connected: true,
   requires_setup: false,
 })
+const showLanWelcome = ref(false)
+const serverIp = ref('localhost')
+const serverPort = ref(7272)
 
 // Stats
 const stats = computed(() => ({
@@ -356,8 +389,108 @@ const handleRealtimeUpdate = (data) => {
   performance.value.activeSessions = data.activeSessions || performance.value.activeSessions
 }
 
+// LAN Welcome Banner
+const dismissLanWelcome = () => {
+  showLanWelcome.value = false
+  localStorage.removeItem('giljo_lan_setup_complete')
+}
+
+const downloadLanGuide = () => {
+  // Read the guide content from docs/LAN_SETUP_GUIDE.md (already created)
+  // Or generate it dynamically with current config values
+  const guideContent = generateLanGuide()
+
+  const blob = new Blob([guideContent], { type: 'text/markdown' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'LAN_SETUP_GUIDE.md'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const generateLanGuide = () => {
+  return `# GiljoAI MCP - LAN/Server Mode Setup Guide
+
+**Network Configuration Complete**
+
+This guide helps you verify and troubleshoot network connectivity for GiljoAI MCP in Server/LAN mode.
+
+---
+
+## Your Configuration
+
+**Server URL:** http://${serverIp.value}:${serverPort.value}
+**Mode:** Server/LAN
+**Status:** Services restarted and ready
+
+---
+
+## Quick Network Tests
+
+### From Another Device on Your Network:
+
+**1. Ping Test (Basic Connectivity)**
+\`\`\`bash
+ping ${serverIp.value}
+\`\`\`
+Expected: Reply from ${serverIp.value}
+
+**2. API Health Check**
+\`\`\`bash
+curl http://${serverIp.value}:${serverPort.value}/health
+\`\`\`
+Expected: {"status": "ok"}
+
+**3. Browser Access**
+Open: http://${serverIp.value}:7274
+
+---
+
+## Troubleshooting
+
+**If ping works but API doesn't:**
+- Verify firewall allows port ${serverPort.value}
+- Check API server is running
+- Confirm services restarted after configuration
+
+**If nothing works:**
+- Both devices must be on same network
+- Check router's AP Isolation is disabled
+- Verify firewall on both server and client
+
+---
+
+For complete troubleshooting guide, see: docs/LAN_SETUP_GUIDE.md
+
+**Generated:** ${new Date().toLocaleString()}
+`
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Check for LAN setup completion flag
+  const lanSetupComplete = localStorage.getItem('giljo_lan_setup_complete')
+  if (lanSetupComplete === 'true') {
+    showLanWelcome.value = true
+
+    // Fetch server IP and port from config
+    try {
+      const response = await fetch(`${setupService.baseURL}/api/v1/config`)
+      if (response.ok) {
+        const config = await response.json()
+        if (config.server?.ip) {
+          serverIp.value = config.server.ip
+        }
+        if (config.services?.api?.port) {
+          serverPort.value = config.services.api.port
+        }
+      }
+    } catch (error) {
+      console.warn('[DASHBOARD] Could not fetch server config:', error)
+    }
+  }
+
   await refreshData()
 
   // Set up refresh interval
