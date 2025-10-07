@@ -396,7 +396,27 @@ const detectServerIp = async () => {
   detectingIp.value = true
 
   try {
-    // Simple method: Get local IP via RTCPeerConnection
+    // Try backend endpoint first
+    const response = await setupService.detectIp()
+
+    if (response.local_ips && response.local_ips.length > 0) {
+      lanConfig.value.serverIp = response.primary_ip
+      lanConfig.value.hostname = response.hostname
+
+      // If multiple IPs, log them (could show dropdown in future)
+      if (response.local_ips.length > 1) {
+        console.log('[NETWORK_CONFIG] Multiple IPs detected:', response.local_ips)
+      }
+
+      detectingIp.value = false
+      return // Success
+    }
+  } catch (error) {
+    console.warn('[NETWORK_CONFIG] Backend IP detection failed, using WebRTC fallback:', error)
+  }
+
+  // Fallback to existing WebRTC method
+  try {
     const pc = new RTCPeerConnection({ iceServers: [] })
     pc.createDataChannel('')
     const offer = await pc.createOffer()
@@ -426,7 +446,7 @@ const detectServerIp = async () => {
 
     pc.close()
   } catch (error) {
-    console.error('[NETWORK_CONFIG] Failed to detect IP:', error)
+    console.error('[NETWORK_CONFIG] WebRTC IP detection failed:', error)
     // Fallback to manual entry
   } finally {
     detectingIp.value = false
