@@ -2,55 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## CRITICAL: Multi-System Development Workflow
+## Development Environment
 
-**GiljoAI MCP Development Environment Strategy**
-
-We use a **multi-system development workflow** to test different deployment modes simultaneously:
-
-### Development Systems
-
-**System 1 - C: Drive (Windows - Localhost Mode)**
-- **Location**: `C:\Projects\GiljoAI_MCP`
-- **Purpose**: Development and localhost mode testing
-- **Mode**: `localhost` in config.yaml
-- **Database**: PostgreSQL on localhost
-- **Binding**: API binds to `127.0.0.1` (localhost only)
-- **Auth**: No API key required
-- **Use Case**: Individual developer, rapid iteration, testing
-
-**System 2 - F: Drive (Windows - Server/LAN Mode)**
-- **Location**: `F:\GiljoAI_MCP`
-- **Purpose**: LAN/server mode testing and multi-client scenarios
-- **Mode**: `server` in config.yaml
-- **Database**: PostgreSQL on localhost (security: database always localhost-only)
-- **Binding**: API binds to `0.0.0.0` (network accessible)
-- **Auth**: API key required
-- **Use Case**: Team deployment testing, network access validation
-
-### Git Workflow (MANDATORY)
-
-**Both systems use the SAME GitHub repository**
-
-```bash
-# Always pull before starting work
-git pull
-
-# Work on code (any system)
-# Make changes to src/, api/, installer/, frontend/, tests/
-
-# Commit from whichever system you're on
-git add .
-git commit -m "feat: [description]"
-git push
-
-# Other system pulls the changes
-git pull
-```
+**Location**: `F:\GiljoAI_MCP`
 
 ### Environment-Specific Files (NEVER COMMIT)
 
-These files are **gitignored** and stay local to each system:
+These files are **gitignored** and stay local:
 
 - `.env` - Environment variables (database credentials, ports, API keys)
 - `config.yaml` - System-specific configuration (mode, paths, ports)
@@ -61,9 +19,9 @@ These files are **gitignored** and stay local to each system:
 - `venv/` - Python virtual environment
 - `node_modules/` - NPM dependencies
 
-### Code Syncs Automatically
+### Code Syncs via Git
 
-These files/folders **DO sync via git** to both systems:
+These files/folders sync via git:
 
 - `src/` - Core application code
 - `api/` - API endpoints and middleware
@@ -76,7 +34,7 @@ These files/folders **DO sync via git** to both systems:
 
 ### Cross-Platform Coding Standards
 
-**CRITICAL**: All code must work on both systems (and Linux/macOS):
+**CRITICAL**: All code must work on Windows, Linux, and macOS:
 
 ```python
 # ✅ CORRECT - Cross-platform
@@ -84,15 +42,15 @@ from pathlib import Path
 data_dir = Path.cwd() / 'data'
 log_file = Path('logs') / 'app.log'
 
-# ❌ WRONG - Windows-specific
-data_dir = 'C:\\Projects\\data'
-log_file = 'C:/logs/app.log'
+# ❌ WRONG - Hardcoded paths
+data_dir = 'F:\\GiljoAI_MCP\\data'
+log_file = 'F:/logs/app.log'
 ```
 
 **Always use:**
 - `pathlib.Path()` for all file paths
 - `Path.cwd()` for current directory
-- Relative paths in config files (`./data`, not `C:/Projects/data`)
+- Relative paths in config files (`./data`, not absolute paths)
 - Config-driven differences (mode: localhost vs server)
 
 ## Project Overview
@@ -103,7 +61,7 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 
 The system supports two deployment configurations:
 
-1. **Localhost Mode** (System 1 - C: Drive)
+1. **Localhost Mode**
    - PostgreSQL 18 database with local configuration
    - Preconfigured development credentials
    - Localhost access only (127.0.0.1)
@@ -111,7 +69,7 @@ The system supports two deployment configurations:
    - Up to 20 concurrent agents
    - Ideal for individual developers and testing
 
-2. **Server Mode** (System 2 - F: Drive, or production)
+2. **Server/LAN Mode**
    - PostgreSQL 18 database with secure network configuration
    - API key authentication required
    - Full network accessibility (LAN/WAN)
@@ -539,25 +497,14 @@ git commit -m "fix: Remove environment files from git tracking"
 git push
 ```
 
-## System-Specific Notes
+## Configuration Notes
 
-### System 1 (C: Drive - Localhost Mode)
+The system can be configured for different deployment modes via the installer:
 
-- Uses default localhost configuration
-- No API key authentication
-- API binds to 127.0.0.1 only
-- Perfect for rapid development and testing
-- No network security concerns
+- **Localhost Mode**: Development configuration with no API keys, binds to 127.0.0.1
+- **Server/LAN Mode**: Production configuration with API key authentication, binds to 0.0.0.0
 
-### System 2 (F: Drive - Server Mode)
-
-- Uses server configuration for LAN testing
-- Requires API key authentication
-- API binds to 0.0.0.0 (network accessible)
-- Tests multi-client scenarios
-- Validates security features
-
-Both systems share the same codebase via GitHub, but maintain their own deployment-specific configurations.
+Configuration is stored in `config.yaml` and `.env` (gitignored - deployment-specific).
 
 ## MCP Server Configuration Management
 
