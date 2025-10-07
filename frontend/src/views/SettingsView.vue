@@ -487,8 +487,20 @@
 
             <h3 class="text-h6 mb-3">API Key Information</h3>
 
-            <v-alert v-if="currentMode === 'localhost'" type="info" variant="tonal">
+            <v-alert
+              v-if="currentMode === 'localhost'"
+              type="info"
+              variant="tonal"
+            >
               API key authentication is disabled in localhost mode
+            </v-alert>
+
+            <v-alert
+              v-else-if="currentMode === 'lan'"
+              type="warning"
+              variant="tonal"
+            >
+              LAN mode requires API key authentication
             </v-alert>
 
             <template v-else>
@@ -840,32 +852,84 @@ function handleDatabaseError(error) {
 // Network Settings Methods
 async function loadNetworkSettings() {
   try {
-    // Load config from API
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`)
-    const config = await response.json()
+    let config;
+    try {
+      // First, try loading from /api/v1/config
+      const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
+        timeout: 5000  // Add a timeout to prevent hanging
+      });
 
-    // Set mode
-    currentMode.value = config.installation?.mode || 'localhost'
-    selectedMode.value = currentMode.value
+      if (!response.ok) {
+        throw new Error('Config endpoint failed');
+      }
+
+      config = await response.json();
+    } catch (configError) {
+      console.warn('[SETTINGS] Failed to load config from /api/v1/config, falling back to /api/setup/status');
+
+      // Fallback to /api/setup/status
+      const fallbackResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/status`);
+
+      if (!fallbackResponse.ok) {
+        throw fallbackResponse.statusText;
+      }
+
+      const fallbackConfig = await fallbackResponse.json();
+
+      // Map the fallback response to the expected config structure
+      config = {
+        installation: { mode: fallbackConfig.network_mode || 'localhost' },
+        services: {
+          api: {
+            host: fallbackConfig.host || '127.0.0.1',
+            port: fallbackConfig.port || 7272
+          }
+        },
+        security: {
+          cors: {
+            allowed_origins: fallbackConfig.allowed_origins || []
+          }
+        }
+      };
+    }
+
+    // Set mode with robust fallback
+    currentMode.value = config.installation?.mode?.toLowerCase() || 'localhost';
+    selectedMode.value = currentMode.value;
 
     // Set API settings
-    networkSettings.value.apiHost = config.services?.api?.host || '127.0.0.1'
-    networkSettings.value.apiPort = config.services?.api?.port || 7272
+    networkSettings.value.apiHost = config.services?.api?.host || '127.0.0.1';
+    networkSettings.value.apiPort = config.services?.api?.port || 7272;
 
     // Set CORS origins
-    corsOrigins.value = config.security?.cors?.allowed_origins || []
+    corsOrigins.value = config.security?.cors?.allowed_origins || [];
 
     // Load API key info for LAN mode
     if (currentMode.value === 'lan') {
-      apiKeyInfo.value = {
-        created_at: new Date().toISOString(),
-        key_preview: 'gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      try {
+        const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/api-key-info`);
+        const apiKeyData = await apiKeyResponse.json();
+
+        apiKeyInfo.value = {
+          created_at: apiKeyData.created_at || new Date().toISOString(),
+          key_preview: apiKeyData.key_preview || 'gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+        };
+      } catch (apiKeyError) {
+        console.warn('[SETTINGS] Failed to load API key info', apiKeyError);
+        apiKeyInfo.value = null;
       }
     }
 
-    console.log('[SETTINGS] Network settings loaded')
+    console.log('[SETTINGS] Network settings loaded successfully');
   } catch (error) {
-    console.error('Failed to load network settings:', error)
+    console.error('Completely failed to load network settings:', error);
+
+    // Absolute last resort fallback
+    currentMode.value = 'localhost';
+    selectedMode.value = 'localhost';
+    networkSettings.value.apiHost = '127.0.0.1';
+    networkSettings.value.apiPort = 7272;
+    corsOrigins.value = [];
   }
 }
 

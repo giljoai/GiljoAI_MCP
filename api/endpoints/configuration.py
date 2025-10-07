@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import yaml
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field
 
@@ -48,62 +49,49 @@ class SystemConfigResponse(BaseModel):
     features: dict[str, Any]
 
 
-@router.get("/", response_model=SystemConfigResponse)
+@router.get("/")
 async def get_system_configuration():
-    """Get complete system configuration (non-sensitive values only)"""
-    from api.app import state
+    """
+    Get complete system configuration from config.yaml.
 
-    if not state.config:
-        raise HTTPException(status_code=503, detail="Configuration manager not available")
+    Returns the full config.yaml structure that the frontend expects,
+    including installation.mode, services, security, database, etc.
 
+    Sensitive data (passwords, API keys) are masked for security.
+    """
     try:
-        # Get safe configuration values (no secrets)
-        config = {
-            "database": {
-                "type": state.config.get("database.type", "sqlite"),
-                "pool_size": state.config.get("database.pool_size", 5),
-                "max_overflow": state.config.get("database.max_overflow", 10),
-                "pool_timeout": state.config.get("database.pool_timeout", 30),
-                "echo": state.config.get("database.echo", False),
-            },
-            "api": {
-                "host": state.config.get(
-                    "api.host",
-                    "0.0.0.0",  # noqa: S104
-                ),  # Binding to all interfaces needed for Docker
-                "port": state.config.get("api.port", 7272),
-                "workers": state.config.get("api.workers", 1),
-                "cors_origins": state.config.get("api.cors_origins", ["*"]),
-                "max_request_size": state.config.get("api.max_request_size", 10485760),
-                "request_timeout": state.config.get("api.request_timeout", 60),
-            },
-            "orchestration": {
-                "max_agents_per_project": state.config.get("orchestration.max_agents_per_project", 10),
-                "agent_timeout": state.config.get("orchestration.agent_timeout", 3600),
-                "message_retention_days": state.config.get("orchestration.message_retention_days", 30),
-                "context_budget_default": state.config.get("orchestration.context_budget_default", 150000),
-                "context_warning_threshold": state.config.get("orchestration.context_warning_threshold", 0.8),
-            },
-            "security": {
-                "auth_enabled": state.config.get("security.auth_enabled", False),
-                "auth_type": state.config.get("security.auth_type", "api_key"),
-                "session_timeout": state.config.get("security.session_timeout", 3600),
-                "rate_limiting_enabled": state.config.get("security.rate_limiting_enabled", False),
-                "max_requests_per_minute": state.config.get("security.max_requests_per_minute", 60),
-            },
-            "features": {
-                "vision_chunking_enabled": state.config.get("features.vision_chunking_enabled", True),
-                "vision_max_tokens": state.config.get("features.vision_max_tokens", 24000),
-                "websocket_enabled": state.config.get("features.websocket_enabled", True),
-                "telemetry_enabled": state.config.get("features.telemetry_enabled", False),
-                "auto_cleanup_enabled": state.config.get("features.auto_cleanup_enabled", True),
-            },
-        }
+        # Read config.yaml directly for accurate structure
+        config_path = Path.cwd() / "config.yaml"
 
-        return SystemConfigResponse(**config)
+        if not config_path.exists():
+            raise HTTPException(status_code=404, detail="config.yaml not found")
 
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+
+        if not config:
+            raise HTTPException(status_code=500, detail="config.yaml is empty")
+
+        # Mask sensitive data for security
+        if "database" in config and "password" in config.get("database", {}):
+            # Mask database password
+            config["database"]["password"] = "****" if config["database"]["password"] else ""
+
+        if "security" in config and "api_keys" in config.get("security", {}):
+            # Mask API keys
+            api_keys = config["security"].get("api_keys", {})
+            if isinstance(api_keys, dict):
+                for key in api_keys:
+                    if isinstance(api_keys[key], str):
+                        api_keys[key] = "****"
+
+        # Return the full structure (matches config.yaml format)
+        return config
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail=f"Failed to load configuration: {str(e)}") from e
 
 
 @router.get("/key/{key_path}", response_model=ConfigurationResponse)
