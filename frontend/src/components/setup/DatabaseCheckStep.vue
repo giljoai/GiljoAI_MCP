@@ -7,22 +7,22 @@
 
     <!-- Advanced Configuration Warning -->
     <v-alert type="warning" variant="tonal" class="mb-6">
-      <div class="d-flex align-center">
-        <v-icon color="warning" size="small" class="mr-3">mdi-lock</v-icon>
-        <div class="flex-grow-1">
-          <div class="text-subtitle-2 font-weight-medium mb-1">Database Settings Locked</div>
-          <div class="text-body-2">
-            Database configuration is managed by the installer. To modify database settings,
-            re-run the installer:
-          </div>
-          <div class="mt-2 ml-2">
-            <code class="px-2 py-1">python installer/cli/install.py</code>
-          </div>
-          <div class="text-caption mt-2 d-flex align-center text-warning ml-2">
-            <v-icon size="x-small" class="mr-1">mdi-alert</v-icon>
-            <span><strong>Warning:</strong> Re-running the installer with different database settings
-            will reset the application to factory defaults.</span>
-          </div>
+      <div class="text-center">
+        <div class="text-subtitle-2 font-weight-medium mb-2">
+          <v-icon color="warning" size="small" class="mr-2">mdi-lock</v-icon>
+          Database Settings Locked
+        </div>
+        <div class="text-body-2 mb-3">
+          Database configuration is managed by the installer. To modify database settings,
+          re-run the installer:
+        </div>
+        <div class="mb-3">
+          <code class="px-2 py-1">python installer/cli/install.py</code>
+        </div>
+        <div class="text-caption text-warning">
+          <v-icon size="x-small" class="mr-1">mdi-alert</v-icon>
+          <strong>Warning:</strong> Re-running the installer with different database settings
+          will reset the application to factory defaults.
         </div>
       </div>
     </v-alert>
