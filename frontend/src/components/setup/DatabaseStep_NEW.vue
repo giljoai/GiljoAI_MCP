@@ -3,7 +3,7 @@
     <h2 class="text-h5 mb-6">Database Connection</h2>
 
     <!-- Reusable Database Connection Component -->
-    <div class="wizard-database-step">
+    <div class="database-step-wrapper">
       <DatabaseConnection
         :readonly="true"
         :show-test-button="true"
@@ -28,6 +28,13 @@
         >
           View troubleshooting guide
         </a>
+        or configure database in
+        <a
+          href="/settings"
+          class="text-primary"
+        >
+          Settings
+        </a>
       </p>
     </div>
 
@@ -45,6 +52,7 @@
     <!-- Navigation buttons -->
     <div class="d-flex justify-end">
       <v-btn
+        variant="flat"
         color="primary"
         :disabled="!connectionVerified"
         @click="$emit('next')"
@@ -93,13 +101,22 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Wizard-specific styling for centered test button */
-.wizard-database-step :deep(.v-card-actions) {
+/* Center and brighten the Test Connection button */
+.database-step-wrapper :deep(.v-card-actions) {
   justify-content: center;
-  padding: 16px 24px;
+  padding: 24px;
 }
 
-.wizard-database-step :deep(.v-btn) {
-  background-color: rgba(var(--v-theme-surface-variant), 0.8);
+.database-step-wrapper :deep(.v-btn[data-test="test-connection-btn"]) {
+  background-color: rgba(33, 150, 243, 0.12) !important;
+  border: 2px solid rgba(33, 150, 243, 0.5) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-weight: 600;
+  min-width: 180px;
+}
+
+.database-step-wrapper :deep(.v-btn[data-test="test-connection-btn"]:hover) {
+  background-color: rgba(33, 150, 243, 0.2) !important;
+  border-color: rgba(33, 150, 243, 0.7) !important;
 }
 </style>
