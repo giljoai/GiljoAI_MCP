@@ -9,16 +9,67 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
-3. [Architecture Overview](#architecture-overview)
-4. [Cross-Platform Installation](#cross-platform-installation)
-5. [LAN-Specific Configuration](#lan-specific-configuration)
-6. [Step-by-Step Setup](#step-by-step-setup)
-7. [Security Hardening](#security-hardening)
-8. [Testing and Validation](#testing-and-validation)
-9. [Troubleshooting](#troubleshooting)
-10. [Platform-Specific Commands](#platform-specific-commands)
+1. [Quick Start (Wizard Method - Recommended)](#quick-start-wizard-method---recommended)
+2. [Overview](#overview)
+3. [Prerequisites](#prerequisites)
+4. [Architecture Overview](#architecture-overview)
+5. [Cross-Platform Installation](#cross-platform-installation)
+6. [LAN-Specific Configuration](#lan-specific-configuration)
+7. [Manual Setup (Advanced)](#manual-setup-advanced)
+8. [Security Hardening](#security-hardening)
+9. [Testing and Validation](#testing-and-validation)
+10. [Troubleshooting](#troubleshooting)
+11. [Platform-Specific Commands](#platform-specific-commands)
+
+---
+
+## Quick Start (Wizard Method - Recommended)
+
+The fastest way to enable LAN mode is through the Setup Wizard:
+
+### Prerequisites
+- PostgreSQL 18 installed and running
+- GiljoAI MCP services running
+- Browser access to http://localhost:7274
+
+### Steps
+
+1. **Access Setup Wizard**
+   - Navigate to http://localhost:7274/setup
+   - Or click "Setup Wizard" in Settings page
+
+2. **Complete Wizard**
+   - Step 1: Welcome
+   - Step 2: Tool Attachment (optional: enable Serena MCP)
+   - **Step 3: Network Configuration**
+     - Select "LAN" mode
+     - Auto-detect or manually enter server IP
+     - Create admin account (username + password)
+     - Confirm firewall configuration
+   - Step 4: Completion + API Key modal + Restart instructions
+
+3. **Post-Setup**
+   - API key displayed once (save it!)
+   - Restart services as instructed
+   - config.yaml automatically updated:
+     - `installation.mode: lan`
+     - `services.api.host: 0.0.0.0`
+     - `security.cors.allowed_origins` includes LAN IP
+
+### What the Wizard Does Automatically
+
+**Backend Updates:**
+- Generates cryptographically secure API key (`gk_` prefix, 43 chars)
+- Stores encrypted API key in `~/.giljo-mcp/api_keys.json`
+- Hashes admin password (bcrypt) and stores in `~/.giljo-mcp/admin_account.json`
+- Updates CORS origins to include server IP and hostname
+- Saves LAN configuration to config.yaml
+
+**Security Measures:**
+- API key encrypted with Fernet cipher
+- Admin password hashed with bcrypt (rounds=12)
+- Database binding remains localhost-only
+- CORS origins explicitly configured (no wildcards)
 
 ---
 
@@ -981,7 +1032,9 @@ api_key: giljo_lan_Xy9z8W7vU6tS5rQ4pO3nM2lK1jH0gF9e8D7c6B5a4
 
 ---
 
-## Step-by-Step Setup
+## Manual Setup (Advanced)
+
+If you need to configure LAN mode manually without the wizard, follow these steps:
 
 ### Phase 1: Server Configuration
 
@@ -1301,6 +1354,74 @@ python load_test.py
 ---
 
 ## Troubleshooting
+
+### Wizard Issues
+
+**Problem:** "Auto-Detect IP" button doesn't work
+**Solution:**
+- Backend endpoint may be unavailable
+- Check API server is running: `http://localhost:7272/health`
+- Wizard falls back to WebRTC detection automatically
+- Or enter IP manually (find with `ipconfig` / `ifconfig`)
+
+**Problem:** API key modal doesn't appear
+**Solution:**
+- Check browser console for errors
+- Verify `/api/setup/complete` endpoint returns `api_key` field
+- Check mode is set to "lan" (not "localhost")
+
+**Problem:** Services don't restart properly
+**Solution:**
+- Manually run: `stop_giljo.bat && start_giljo.bat` (Windows)
+- Check ports not in use: `netstat -ano | findstr :7272`
+- Verify config.yaml updated with LAN settings
+
+### Network Access Issues
+
+**Problem:** Can't access from LAN device
+**Solution:**
+1. Verify server IP in CORS origins:
+   ```yaml
+   # config.yaml
+   security:
+     cors:
+       allowed_origins:
+         - http://192.168.1.50:7274  # Your server IP
+   ```
+2. Ensure API key in request header:
+   ```bash
+   curl -H "X-API-Key: gk_your_key" http://192.168.1.50:7272/health
+   ```
+3. Check firewall allows ports 7272, 7274
+
+**Problem:** CORS errors in browser
+**Solution:**
+- Settings → Network tab → Add LAN client IP to CORS origins
+- Restart services after CORS change
+- Clear browser cache
+
+### API Key Issues
+
+**Problem:** Lost API key
+**Solution:**
+- Option 1: Re-run Setup Wizard (generates new key, invalidates old)
+- Option 2: Regenerate via Settings (future feature)
+- Option 3: Manual regeneration:
+  ```python
+  from giljo_mcp.auth import AuthManager
+  auth = AuthManager()
+  new_key = auth.generate_api_key("manual-key")
+  print(f"New API key: {new_key}")
+  ```
+
+**Problem:** API key authentication fails
+**Solution:**
+- Verify header name: `X-API-Key` (not `Authorization`)
+- Check key format: starts with `gk_`
+- Confirm mode is `lan` in config.yaml
+- Check `~/.giljo-mcp/api_keys.json` exists and contains key
+
+---
 
 ### Issue: Cannot access server from LAN
 

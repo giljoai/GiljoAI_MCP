@@ -25,6 +25,23 @@ This summary preserves technical context, implementation details, and lessons le
 - Integration: enhanced existing README, built on MCP tools manual, referenced color themes/assets, extracted issues from historical devlogs.
 - Testing: diagram rendering, code structure, link integrity, tool count accuracy; future needs include execution validation and user testing.
 
+## Installer Documentation & Validation Highlights (Sep–Oct 2025)
+- Automated registration scripts and comprehensive documentation for multi-AI-tool MCP integration; improved onboarding and reduced support burden.
+- Standardized terminology, configuration review, installation logging, and improved guidance for CLI/GUI installer workflows.
+- Comprehensive documentation for installer architecture overhaul, agent prompt naming, and uninstallers.
+- QA retest validated all installer file migrations and documentation; system approved for production.
+- Universal MCP registration system: comprehensive testing, documentation, and user instructions for Claude exclusivity.
+- GUI installer registration fix: documentation and instructions updated for reliability and exclusivity.
+- PostgreSQL migration and dynamic port configuration: migration guide and port configuration tutorials recommended for future.
+- CLI installer restoration/upgrade: all installation, startup, and uninstallation scenarios tested and validated; documentation updated.
+- Multi-tenant testing: recommendations to update documentation for isolation, performance, and security.
+- Setup script development/testing: documentation, user experience, and error handling strategies outlined.
+- Configuration system implementation: migration path, known issues documented and resolved.
+- MCP tools implementation: documentation and best practices updated.
+- Tool-API integration bridge: lessons learned and documentation improvements.
+- Quick fixes bundle: robust documentation for encoding, path handling, and MVP launch.
+- Production code unification: documentation, code quality, and security standards enforced for deployment readiness.
+
 ---
 
 This summary retains the technical depth, code references, and historical decisions from the original devlogs. For full documentation and guides, refer to the archived devlog files or main documentation.

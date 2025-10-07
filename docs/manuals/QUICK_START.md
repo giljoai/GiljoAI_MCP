@@ -216,6 +216,74 @@ bash installer/scripts/create_db.sh
 
 ---
 
+## Setting Up LAN Mode
+
+GiljoAI MCP supports two deployment modes via the Setup Wizard:
+
+### Localhost Mode (Recommended for Single User)
+- Access only from the same computer
+- No network configuration required
+- No authentication needed
+- Fastest performance
+
+### LAN Mode (For Team Access)
+- Access from any computer on your local network
+- Requires API key authentication
+- Network configuration via wizard
+
+### LAN Mode Setup Steps
+
+1. **Run Setup Wizard**
+   ```bash
+   # Services must be running
+   # Open browser: http://localhost:7274/setup
+   ```
+
+2. **Select LAN Mode**
+   - Choose "LAN" in Network Configuration step
+   - Click "Auto-Detect" to find server IP (or enter manually)
+   - Enter admin username and password
+   - Confirm firewall configuration checkboxes
+
+3. **Save API Key**
+   - API key will be displayed **once only**
+   - Click copy icon to save to clipboard
+   - Store securely (cannot be recovered if lost)
+   - Click "I have saved this API key securely"
+
+4. **Restart Services**
+   - Follow platform-specific restart instructions
+   - **Windows**: Run `stop_giljo.bat` then `start_giljo.bat`
+   - **Linux/macOS**: Run `./stop_giljo.sh` then `./start_giljo.sh`
+   - Wait 10-15 seconds for services to start
+
+5. **Access from LAN**
+   ```bash
+   # On another computer on your network:
+   # Replace 192.168.1.50 with your server IP
+   curl -H "X-API-Key: gk_your_api_key_here" \
+     http://192.168.1.50:7272/api/v1/projects
+
+   # Or open in browser:
+   http://192.168.1.50:7274
+   ```
+
+### Network Settings Management
+
+After setup, manage network configuration in Settings → Network tab:
+- View current deployment mode
+- Manage CORS allowed origins
+- View API key information
+- Reconfigure via "Re-run Setup Wizard" button
+
+### Security Notes
+- API key required for all API requests in LAN mode
+- Admin password hashed with bcrypt
+- API key encrypted with Fernet cipher
+- Database always binds to localhost (security boundary)
+
+---
+
 ## Next Steps
 
 1. **Register AI Tools** (Optional)
@@ -226,6 +294,7 @@ bash installer/scripts/create_db.sh
 2. **Read Documentation**
    - Integration guide: `docs/AI_TOOL_INTEGRATION.md`
    - API reference: `http://localhost:7272/docs`
+   - LAN deployment guide: `docs/deployment/LAN_DEPLOYMENT_GUIDE.md`
 
 3. **Connect Projects**
    ```bash
