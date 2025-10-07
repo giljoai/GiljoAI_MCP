@@ -1,648 +1,508 @@
-# Handover Prompt: LAN Mode Test Guide
+# PC 2 LAN Testing - Step-by-Step Instructions
 
-**Agent Role:** LAN Mode Test Guide
-**User Location:** F:/GiljoAI_MCP (Windows, LAN testing system)
-**Context:** User is mid-LAN test on Step 4 (Network Configuration)
-
----
-
-## Your Mission
-
-Guide the user through completing the LAN mode setup wizard test, **one step at a time**, using the Top Gun communication style ("talk to me goose"). Wait for user confirmation after each action before proceeding.
+**Date:** January 7, 2025
+**Purpose:** Verify GiljoAI MCP network connectivity from secondary computer
+**Prerequisites:** PC 1 (F: Drive) configured for LAN mode and services restarted
 
 ---
 
-## Current State
+## Context
 
-✅ **Completed:**
-- 5-step wizard converted (Database → Attach Tools → Serena → Network → Complete)
-- Database Check step created with yellow warning and locked fields
-- Splash screen fixed (shows once per session)
-- All progress bars unified to Giljo yellow
-- Back button added to Step 2
-- Serena status added to completion screen
-- IP detection improved with virtual adapter filtering
+PC 1 (F: Drive - Windows) has just completed the LAN setup wizard and is configured as a server with the following settings:
 
-🔄 **Current Position:**
-- User is on **Step 4 of 5: Network Configuration**
-- LAN card is **selected** (yellow border visible)
-- Configuration panel has **expanded** below the three mode cards
-- User can see all LAN config fields (IP, Port, Admin, Firewall)
+- **Server IP:** `10.1.0.164` (auto-detected)
+- **API Port:** `7272`
+- **Frontend Port:** `7274`
+- **Mode:** `server` (bound to 0.0.0.0)
+- **Authentication:** API key required
+- **Services:** Restarted and running
 
-⚠️ **Important:** New IP detection code requires API restart to activate!
+Your task is to test network connectivity from PC 2 (another device on the same local network).
 
 ---
 
-## Session Context
+## Pre-Flight Checklist (PC 1 - Server)
 
-### System Setup
-- **Location:** F:/GiljoAI_MCP
-- **OS:** Windows (Hyper-V/WSL installed, causing virtual adapter detection issue)
-- **Real Network:** 10.1.0.164 (user's actual IP)
-- **Virtual Adapter:** 192.168.32.1 (Hyper-V/WSL - should be ignored)
-- **Services Running:**
-  - Frontend: http://localhost:7274
-  - API: http://localhost:7272
+Before testing from PC 2, verify on PC 1:
 
-### User's Network
-- **Multiple IPs Detected:** `['192.168.32.1', '10.1.0.164']`
-- **Desired Primary:** 10.1.0.164 (real network)
-- **Fix Applied:** Cross-platform virtual adapter filtering in `installer/core/network.py`
+### 1. Services Are Running
 
-### Recent Code Changes
-1. **Virtual Adapter Filtering** (`installer/core/network.py`):
-   - Uses `psutil.net_if_addrs()` to get interfaces
-   - Filters out: `vEthernet`, `Hyper-V`, `docker`, `vmnet`, etc.
-   - Now should detect only real network: 10.1.0.164
+Open Command Prompt on PC 1 and check:
 
-2. **API Endpoint** (`api/endpoints/network.py`):
-   - Simplified to use first IP from filtered list
-   - Relies on NetworkManager filtering
+```bash
+# Check if API server is running
+curl http://localhost:7272/health
+# Expected: {"status": "ok"}
 
-**Status:** Code modified but API not yet restarted!
-
----
-
-## Test Guide Workflow
-
-### Phase 1: Restart API (CRITICAL FIRST STEP)
-
-**Step 1.1**: Restart API Server
-
-**Action to Guide User:**
-```
-Before we continue testing, we need to restart the API server to activate
-the new IP detection logic.
-
-Please do the following:
-1. Stop the current API server (Ctrl+C in the terminal running it)
-2. Restart it with: python api/run_api.py
-3. Wait for the message "Uvicorn running on http://..."
-4. Tell me when you see it running
+# Check if frontend is running
+curl http://localhost:7274
+# Expected: HTML content
 ```
 
-**Wait for:** User confirms API restarted
+If not running, restart services:
 
----
-
-### Phase 2: Test Auto-Detect IP
-
-**Step 2.1**: Click Auto-Detect Button
-
-**Action:**
-```
-Perfect! Now let's test the improved IP detection.
-
-Click the "Auto-Detect" button next to the Server IP Address field.
-```
-
-**Expected:**
-- Server IP field populates with: **10.1.0.164** (not 192.168.32.1!)
-- Hostname field may also populate with computer name
-
-**Questions to Ask:**
-1. What IP address appeared in the Server IP field?
-2. Did the Hostname field also populate? If so, with what?
-
-**If Wrong IP (192.168.32.1):**
-- Check console (F12) for errors
-- Verify API actually restarted
-- Ask user to manually type: 10.1.0.164
-
-**If Correct IP (10.1.0.164):**
-- 🎉 Celebrate! "Perfect! The virtual adapter filtering is working!"
-- Proceed to next step
-
----
-
-### Phase 3: Fill LAN Configuration
-
-**Step 3.1**: Verify/Enter Server IP
-
-**If auto-detected correctly:**
-```
-Great! The Server IP is set to 10.1.0.164 - that's your real network.
-```
-
-**If needs manual entry:**
-```
-No worries! Just clear the field and type: 10.1.0.164
-```
-
-**Wait for:** User confirms IP is 10.1.0.164
-
----
-
-**Step 3.2**: Verify API Port
-
-**Check:**
-```
-The API Port should show 7272 (default). Is that what you see?
-```
-
-**Wait for:** User confirms port is 7272
-
----
-
-**Step 3.3**: Enter Admin Credentials
-
-**Action:**
-```
-Now let's create an admin account. Enter these credentials:
-
-Admin Username: testadmin
-Admin Password: TestPass123!
-
-(This is just for testing - in production you'd use a strong, unique password)
-```
-
-**Wait for:** User confirms credentials entered
-
----
-
-**Step 3.4**: Check Firewall Checkboxes
-
-**Action:**
-```
-Check both firewall configuration checkboxes:
-☑ "I have configured my firewall..."
-☑ "This computer is accessible from other devices..."
-
-(We're simulating this for testing - in real deployment you'd actually
-configure your firewall)
-```
-
-**Wait for:** User confirms both checked
-
----
-
-**Step 3.5**: Verify Continue Button Enabled
-
-**Question:**
-```
-Is the "Continue" button at the bottom now enabled (not grayed out)?
-```
-
-**Expected:** Yes (all required fields filled + checkboxes checked)
-
-**If not enabled:**
-- Check which fields might be missing
-- Verify password is at least 8 characters
-- Ensure both checkboxes are checked
-
-**Wait for:** User confirms button is enabled
-
----
-
-### Phase 4: API Key Modal
-
-**Step 4.1**: Click Continue
-
-**Action:**
-```
-Excellent! Click the "Continue" button.
-
-CRITICAL: You should see a modal pop up with the title "Your API Key" or similar.
-```
-
-**Wait for:** User describes what they see
-
-**Expected:** API Key modal appears
-
-**If no modal:**
-- Open browser console (F12)
-- Check for errors
-- Verify LAN mode was actually selected
-
----
-
-**Step 4.2**: Examine API Key Modal
-
-**Questions:**
-```
-Please describe what you see in the API Key modal. You should see:
-- A warning about saving the key securely
-- A text field with a long API key starting with "gk_"
-- A copy button (clipboard icon)
-- A checkbox: "I have saved this API key securely"
-- A disabled "Continue" button
-
-Do you see all of these?
-```
-
-**Wait for:** User confirms all elements present
-
----
-
-**Step 4.3**: Copy API Key
-
-**Action:**
-```
-Click the copy button (clipboard icon) next to the API key.
-
-Then open Notepad and paste (Ctrl+V) to verify the key was copied.
-
-Tell me the first 3-4 characters of the key you copied.
-```
-
-**Wait for:** User reports key format
-
-**Expected:** Starts with `gk_` (like `gk_abcd...`)
-
-**Also ask:**
-```
-How long is the full key? (Approximately how many characters?)
-```
-
-**Expected:** ~46 characters total (gk_ + 43 chars)
-
----
-
-**Step 4.4**: Confirm API Key Saved
-
-**Action:**
-```
-Perfect! Now check the checkbox that says "I have saved this API key securely"
-
-The "Continue" button should become enabled.
-```
-
-**Wait for:** User confirms checkbox checked and button enabled
-
----
-
-**Step 4.5**: Proceed to Restart Instructions
-
-**Action:**
-```
-Click the "Continue" button.
-
-You should see the API Key modal close, and a NEW modal should appear
-with "Restart Services Required" or similar title.
-
-Do you see this new modal?
-```
-
-**Wait for:** User confirms restart modal appeared
-
----
-
-### Phase 5: Restart Instructions Modal
-
-**Step 5.1**: Review Platform Detection
-
-**Questions:**
-```
-What platform was detected?
-(Look for "Restart Instructions (Windows)" or similar)
-
-Are the restart instructions specific to Windows?
-(Should mention stop_giljo.bat and start_giljo.bat)
-```
-
-**Wait for:** User confirms platform-specific instructions shown
-
----
-
-**Step 5.2**: Perform Service Restart
-
-**Action:**
-```
-Now we'll actually restart the services to switch to LAN mode.
-
-Open a NEW terminal (keep the current API terminal open for reference) and run:
-
+```bash
 cd F:\GiljoAI_MCP
-stop_giljo.bat
-
-(This stops both API and Frontend)
-
-Then run:
-
-start_giljo.bat
-
-(This starts both in LAN mode)
-
-Wait 10-15 seconds for services to start up.
-
-Tell me when you see log messages indicating the services started.
+.\stop_giljo.bat
+.\start_giljo.bat
+# Wait 10-15 seconds
 ```
 
-**Wait for:** User confirms services restarted
+### 2. Firewall Configuration
+
+**Windows Firewall Rules Required:**
+
+```powershell
+# Run as Administrator in PowerShell
+New-NetFirewallRule -DisplayName "GiljoAI API Server" -Direction Inbound -LocalPort 7272 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "GiljoAI Frontend" -Direction Inbound -LocalPort 7274 -Protocol TCP -Action Allow
+```
+
+**Verify Rules:**
+
+```powershell
+Get-NetFirewallRule -DisplayName "*GiljoAI*" | Format-Table -AutoSize
+```
+
+Should show two rules, both enabled.
+
+### 3. Network Information
+
+Verify server IP from PC 1:
+
+```bash
+ipconfig | findstr IPv4
+```
+
+Look for your LAN adapter (not Hyper-V virtual adapter). Should show `10.1.0.164`.
 
 ---
 
-**Step 5.3**: Verify Services Restarted
+## Testing from PC 2
 
-**Action:**
+### Step 1: Basic Network Connectivity
+
+**Test:** Can PC 2 reach PC 1 on the network?
+
+```bash
+# From PC 2 command prompt/terminal
+ping 10.1.0.164
 ```
-In a new browser tab, go to: http://localhost:7272/health
 
-What response do you get?
+**Expected Result:**
+```
+Reply from 10.1.0.164: bytes=32 time<10ms TTL=128
+Reply from 10.1.0.164: bytes=32 time<10ms TTL=128
+Reply from 10.1.0.164: bytes=32 time<10ms TTL=128
+Reply from 10.1.0.164: bytes=32 time<10ms TTL=128
 ```
 
-**Expected:** `{"status": "healthy", ...}`
-
-**If error:**
-- Services might still be starting
-- Wait another 10 seconds and try again
-
-**Wait for:** User confirms health check passes
+**If Fails:**
+- Verify both PCs are on same network (same subnet)
+- Check router AP Isolation setting (must be OFF)
+- Verify PC 1 firewall isn't blocking ICMP
+- Check network cables/WiFi connection
 
 ---
 
-**Step 5.4**: Confirm Restart in Modal
+### Step 2: API Health Check
 
-**Action:**
-```
-Go back to the wizard tab.
+**Test:** Can PC 2 reach the API server?
 
-Check the checkbox: "I have restarted the services"
-
-The "Finish Setup" button should become enabled.
+```bash
+# From PC 2
+curl http://10.1.0.164:7272/health
 ```
 
-**Wait for:** User confirms checkbox checked
+**Expected Result:**
+```json
+{"status":"ok"}
+```
+
+**If Fails:**
+- API server not running on PC 1 → restart services
+- Firewall blocking port 7272 → check firewall rules
+- Wrong IP/port → verify with `ipconfig` on PC 1
+- API bound to localhost only → check `config.yaml` has `host: 0.0.0.0`
 
 ---
 
-**Step 5.5**: Complete Wizard
+### Step 3: Frontend Browser Access
 
-**Action:**
+**Test:** Can PC 2 open the dashboard in a browser?
+
+**From PC 2 Web Browser:**
 ```
-Click the "Finish Setup" button.
-
-The modal should close and you should be redirected to the dashboard.
-
-Did this happen?
+http://10.1.0.164:7274
 ```
 
-**Wait for:** User confirms redirected to dashboard
+**Expected Result:**
+- GiljoAI MCP dashboard loads
+- Shows login or API key prompt
+- No CORS errors in browser console (F12 → Console tab)
+
+**If Fails:**
+- Frontend not running → check PC 1 services
+- Firewall blocking port 7274 → check firewall rules
+- CORS error → verify `config.yaml` has PC 2's IP in `allowed_origins`
+- Connection refused → frontend crashed, check logs on PC 1
 
 ---
 
-### Phase 6: Verification
+### Step 4: API Key Authentication
 
-**Step 6.1**: Check config.yaml Updates
+**Test:** Can PC 2 authenticate with the API?
 
-**Action:**
+You'll need the API key generated during setup (shown in API Key Modal on PC 1).
+
+**Method 1: Using curl**
+
+```bash
+# From PC 2
+curl -H "X-API-Key: <YOUR_API_KEY_HERE>" http://10.1.0.164:7272/api/v1/projects
 ```
-Open the file: F:\GiljoAI_MCP\config.yaml in a text editor
 
-Search for the "installation:" section.
-
-What is the "mode:" value? (Should be "lan", not "localhost")
+**Expected Result:**
+```json
+[]
 ```
+(Empty array if no projects created yet, or list of projects)
 
-**Wait for:** User confirms `mode: lan`
+**Method 2: Browser DevTools**
+
+1. Open `http://10.1.0.164:7274` on PC 2
+2. Open browser console (F12)
+3. Enter API key when prompted
+4. Verify API calls succeed (Network tab → should see 200 OK responses)
+
+**If Fails:**
+- "Unauthorized" → API key incorrect or not sent
+- "Forbidden" → API key valid but lacks permissions
+- "Connection refused" → Network/firewall issue
 
 ---
 
-**Step 6.2**: Verify API Host Binding
+### Step 5: CORS Verification
 
-**Question:**
+**Test:** Does the frontend on PC 2 successfully communicate with API on PC 1?
+
+1. Open `http://10.1.0.164:7274` on PC 2
+2. Open browser console (F12)
+3. Navigate through dashboard
+4. Check Console tab for errors
+
+**Expected Result:**
+- No CORS errors
+- API calls succeed
+- Dashboard loads data
+
+**If CORS Error:**
 ```
-In config.yaml, search for "services:" → "api:" → "host:"
-
-What is the value? (Should be "0.0.0.0", not "127.0.0.1")
-```
-
-**Expected:** `host: 0.0.0.0` (network accessible)
-
-**Wait for:** User confirms
-
----
-
-**Step 6.3**: Check CORS Origins
-
-**Action:**
-```
-Search for "security:" → "cors:" → "allowed_origins:"
-
-List all the origins you see.
+Access to fetch at 'http://10.1.0.164:7272/api/...' from origin 'http://10.1.0.164:7274' has been blocked by CORS policy
 ```
 
-**Expected Origins:**
-- `http://127.0.0.1:7274`
-- `http://localhost:7274`
-- `http://10.1.0.164:7274` (user's LAN IP)
-- Possibly hostname origin
-
-**Wait for:** User lists origins
-
----
-
-**Step 6.4**: Test API Without Key
-
-**Action:**
-```
-Open a terminal and run this curl command:
-
-curl http://localhost:7272/api/v1/projects
-
-What response do you get?
+**Fix:**
+Edit `config.yaml` on PC 1:
+```yaml
+security:
+  cors:
+    allowed_origins:
+      - http://127.0.0.1:7274
+      - http://localhost:7274
+      - http://10.1.0.164:7274  # Add this
+      - http://<PC2_IP>:7274    # Add PC 2's IP if accessing from there
 ```
 
-**Expected:** 401 Unauthorized or authentication error
-
-**If succeeds without key:** This is a bug! Authentication not enforced.
-
-**Wait for:** User reports result
-
----
-
-**Step 6.5**: Test API With Key
-
-**Action:**
-```
-Now run the same command but with the API key you saved earlier:
-
-curl -H "X-API-Key: YOUR_API_KEY_HERE" http://localhost:7272/api/v1/projects
-
-(Replace YOUR_API_KEY_HERE with the actual key from Notepad)
-
-What response do you get?
-```
-
-**Expected:** Successful response (likely `[]` empty array or list of projects)
-
-**Wait for:** User reports result
-
-**If successful:**
-```
-🎉 Excellent! API key authentication is working correctly!
+Then restart API server:
+```bash
+cd F:\GiljoAI_MCP
+.\stop_backend.bat
+.\start_backend.bat
 ```
 
 ---
 
-**Step 6.6**: Navigate to Settings → Network
+### Step 6: Create Test Project
 
-**Action:**
-```
-In the dashboard, click the Settings icon in the sidebar.
+**Test:** Full CRUD operation from PC 2
 
-Then click on the "Network" tab.
+**From PC 2 Browser at `http://10.1.0.164:7274`:**
 
-What does the "Current Mode" badge say, and what color is it?
-```
+1. Click **[+ New Project]**
+2. Fill in:
+   - Name: "PC2 Test Project"
+   - Mission: "Test network connectivity from PC 2"
+   - Agents: Leave default or select "orchestrator-coordinator"
+3. Click **[Create Project]**
 
-**Expected:** "LAN" in blue/info color (not "LOCALHOST" in green)
+**Expected Result:**
+- Project created successfully
+- Shows in projects list
+- No errors in console
 
-**Wait for:** User confirms
+**If Fails:**
+- Check API key authentication
+- Check CORS settings
+- Verify database connection on PC 1
+- Check PC 1 logs: `F:\GiljoAI_MCP\logs\api.log`
 
 ---
 
-### Phase 7: Final Summary
+### Step 7: WebSocket Real-Time Updates
 
-**Step 7.1**: Celebrate Success
+**Test:** Real-time communication between PC 1 and PC 2
 
-```
-🎯 Congratulations! You've completed the full LAN mode test tour!
+**Setup:**
+1. PC 1: Open dashboard at `http://localhost:7274`
+2. PC 2: Open dashboard at `http://10.1.0.164:7274`
 
-Let's review what we tested:
+**Test:**
+3. PC 2: Create a new project
+4. PC 1: Should see the new project appear in real-time (without refresh)
 
-✅ Phase 1: Services running correctly
-✅ Phase 2: Improved IP detection (10.1.0.164, not 192.168.32.1!)
-✅ Phase 3: LAN configuration filled correctly
-✅ Phase 4: API key generation and display
-✅ Phase 5: Restart instructions and service restart
-✅ Phase 6: Verification:
-   - Config file updated (mode: lan, host: 0.0.0.0)
-   - API key authentication working
-   - CORS origins configured
-   - Network Settings tab showing LAN mode
+**Expected Result:**
+- Both dashboards show same data
+- Updates appear instantly
+- WebSocket connection stable
 
-How was your testing experience? Did you encounter any issues or
-unexpected behavior?
-```
-
-**Wait for user feedback**
+**If Fails:**
+- WebSocket connection rejected → check firewall
+- Updates delayed → check network latency
+- Connection drops → check network stability
 
 ---
 
 ## Troubleshooting Guide
 
-### Issue: Wrong IP Still Detected (192.168.32.1)
+### Issue: Ping Works, API Doesn't
 
-**Debug Steps:**
-1. Check API actually restarted (not just frontend)
-2. Check console for: `[NETWORK_CONFIG] Multiple IPs detected: [...]`
-3. Verify `psutil` is installed: `pip list | grep psutil`
-4. Check API logs for interface filtering debug messages
+**Diagnosis:** Firewall blocking specific ports
 
-**Fallback:** User can manually type 10.1.0.164
-
----
-
-### Issue: API Key Modal Doesn't Appear
-
-**Debug Steps:**
-1. Open browser DevTools (F12) → Console tab
-2. Check for JavaScript errors
-3. Check Network tab - did POST to `/api/v1/setup/complete` succeed?
-4. Verify LAN mode is actually selected (yellow border on LAN card)
-
-**Diagnosis:** Modal trigger is in `SetupWizard.vue` `handleNetworkNext()` method
+**Fix:**
+```powershell
+# On PC 1 (as Administrator)
+New-NetFirewallRule -DisplayName "GiljoAI API" -Direction Inbound -LocalPort 7272 -Protocol TCP -Action Allow
+```
 
 ---
 
-### Issue: Services Won't Restart
+### Issue: CORS Errors in Browser
 
-**Debug Steps:**
-1. Check ports not in use: `netstat -ano | findstr :7272`
-2. Try stopping manually: `stop_giljo.bat`
-3. Kill any hanging processes
-4. Start fresh: `start_giljo.bat`
+**Diagnosis:** `allowed_origins` in config doesn't include PC 2's access URL
 
----
+**Fix:**
+Edit `F:\GiljoAI_MCP\config.yaml`:
+```yaml
+security:
+  cors:
+    allowed_origins:
+      - http://127.0.0.1:7274
+      - http://localhost:7274
+      - http://10.1.0.164:7274  # Server's IP
+      - http://<PC2_IP>:7274    # Client's IP if needed
+```
 
-### Issue: API Authentication Not Working
-
-**Possible Causes:**
-1. Config still in localhost mode (check config.yaml)
-2. API key not properly saved in encrypted storage
-3. Request missing `X-API-Key` header
-
-**Verify:**
-- Check `~/.giljo-mcp/api_keys.json` exists (should be encrypted)
-- Check API logs for authentication middleware messages
+Restart API: `.\stop_backend.bat && .\start_backend.bat`
 
 ---
 
-## Important Context
+### Issue: Connection Refused
 
-### User Communication Style
-- User likes step-by-step guidance
-- Appreciates Top Gun references ("talk to me goose")
-- Values clean UX and Giljo yellow branding
-- Catches edge cases quickly (good tester!)
+**Diagnosis:** Service not running or wrong IP/port
 
-### System Info
-- **F: drive system** = LAN/server mode testing
-- **C: drive system** = Localhost development (user has both)
-- Same codebase synced via GitHub
-- `.env` and `config.yaml` are gitignored (system-specific)
+**Verify on PC 1:**
+```bash
+netstat -an | findstr 7272
+netstat -an | findstr 7274
+```
 
-### Files Modified This Session
-**Frontend:**
-- SetupWizard.vue (5-step structure, removed logo)
-- DatabaseCheckStep.vue (NEW - Step 1)
-- AttachToolsStep.vue (back button, step 2/5)
-- SerenaAttachStep.vue (step 3/5)
-- NetworkConfigStep.vue (step 4/5, spacing fix)
-- SetupCompleteStep.vue (step 5/5, Serena status)
-- DatabaseConnection.vue (centerButton prop)
-- index.html (splash screen session logic)
+Should show:
+```
+TCP    0.0.0.0:7272    0.0.0.0:0    LISTENING
+TCP    0.0.0.0:7274    0.0.0.0:0    LISTENING
+```
 
-**Backend:**
-- installer/core/network.py (psutil virtual adapter filtering)
-- api/endpoints/network.py (simplified IP selection)
+If shows `127.0.0.1` instead of `0.0.0.0`, config is wrong:
+```yaml
+# config.yaml should have:
+installation:
+  mode: server  # NOT localhost
 
-**Documentation:**
-- docs/sessions/2025-01-06-setup-wizard-5-step-conversion.md
-- docs/devlog/2025-01-06-wizard-5-step-upgrade.md
-- docs/troubleshooting/database.md
+services:
+  api:
+    host: 0.0.0.0  # NOT 127.0.0.1
+```
+
+---
+
+### Issue: Router AP Isolation
+
+**Diagnosis:** Router has AP Isolation enabled (common on guest WiFi)
+
+**Symptoms:**
+- Ping fails between devices
+- Both devices can access internet
+- Both devices connected to same WiFi
+
+**Fix:**
+1. Access router admin panel (usually `192.168.1.1` or `192.168.0.1`)
+2. Look for "AP Isolation", "Client Isolation", or "Wireless Isolation"
+3. Disable the setting
+4. Reconnect devices
 
 ---
 
 ## Success Criteria
 
-### Must Verify
-✅ Auto-Detect selects 10.1.0.164 (not 192.168.32.1)
-✅ API Key modal appears and functions correctly
-✅ Restart Instructions modal appears with Windows-specific commands
-✅ Services restart successfully in LAN mode
-✅ config.yaml updates: `mode: lan`, `host: 0.0.0.0`
-✅ API requires authentication (fails without key, succeeds with key)
-✅ Settings → Network tab shows LAN mode
+Check all that apply:
 
-### Optional Tests
-- Access dashboard from another device on network: `http://10.1.0.164:7274`
-- Verify CORS allows the LAN IP origin
-- Check encrypted storage: `~/.giljo-mcp/api_keys.json`
+- [ ] Ping from PC 2 to PC 1 succeeds
+- [ ] API health check returns `{"status": "ok"}`
+- [ ] Frontend loads in PC 2 browser
+- [ ] API key authentication works
+- [ ] No CORS errors in browser console
+- [ ] Projects list loads from PC 2
+- [ ] Can create project from PC 2
+- [ ] Real-time updates work (WebSocket)
+- [ ] Dashboard fully functional from PC 2
 
----
-
-## Your Behavior as Test Guide
-
-1. **One step at a time** - Never rush ahead
-2. **Wait for confirmation** - User must confirm each step
-3. **Use Top Gun style** - "Talk to me goose", celebrate victories
-4. **Be thorough** - Ask for exact values, colors, text
-5. **Debug together** - If issues arise, work through them systematically
-6. **Document issues** - Keep track of any bugs found
-7. **End positively** - Thank user for thorough testing
+If all checked: **LAN mode is working correctly!** 🎉
 
 ---
 
-## Example Interaction Start
+## What to Report Back
 
-**You:** "Welcome back, Maverick! 🛩️ You're at Step 4 (Network Config) with LAN mode selected and the configuration panel open. Before we fill out the fields, we need to activate the new IP detection code. Ready to restart that API server?"
+### Success Report Template
 
-**User:** "Yes, ready!"
+```markdown
+## PC 2 LAN Testing Results
 
-**You:** "Roger that! Stop the current API server (Ctrl+C), then run: `python api/run_api.py`. Let me know when you see 'Uvicorn running on http://...'"
+**Date:** [Date]
+**PC 1 (Server):** 10.1.0.164
+**PC 2 (Client):** [Your PC 2 IP]
+
+### Test Results
+- ✅ Ping: Success
+- ✅ API Health: Success
+- ✅ Frontend Load: Success
+- ✅ API Auth: Success
+- ✅ CORS: No errors
+- ✅ Project CRUD: Success
+- ✅ WebSocket: Success
+
+### Notes
+- All tests passed without issues
+- Network latency: ~5ms
+- No firewall configuration needed (already open)
+
+**Status:** LAN mode fully functional
+```
+
+### Failure Report Template
+
+```markdown
+## PC 2 LAN Testing Results
+
+**Date:** [Date]
+**PC 1 (Server):** 10.1.0.164
+**PC 2 (Client):** [Your PC 2 IP]
+
+### Test Results
+- ✅ Ping: Success
+- ❌ API Health: Failed
+- ⏸️ Frontend Load: Not tested (API failed)
+- ⏸️ API Auth: Not tested
+- ⏸️ CORS: Not tested
+- ⏸️ Project CRUD: Not tested
+- ⏸️ WebSocket: Not tested
+
+### Error Details
+- API Health returned: "Connection refused"
+- Verified API running on PC 1: Yes (curl localhost:7272/health works)
+- Firewall rules: Checked, rule exists but may be disabled
+- Port 7272 listening: Yes, on 0.0.0.0
+
+### Actions Taken
+1. Verified API running locally on PC 1 ✅
+2. Checked firewall rules on PC 1 (found rule, but not sure if active)
+3. Attempted curl from PC 2 again (still fails)
+
+### Next Steps Needed
+- Help verifying Windows Firewall rule is actually active
+- Consider temporarily disabling firewall for testing
+- Check if antivirus is blocking port 7272
+
+**Status:** Blocked at API connectivity
+```
 
 ---
 
-**Good luck, and fly safe!** 🎯
+## Additional Resources
+
+- **LAN Setup Guide:** `F:\GiljoAI_MCP\docs\LAN_SETUP_GUIDE.md`
+- **Session Memory:** `F:\GiljoAI_MCP\docs\sessions\2025-01-07-lan-wizard-ux-complete.md`
+- **DevLog:** `F:\GiljoAI_MCP\docs\devlog\2025-01-07-lan-wizard-ux-complete.md`
+- **API Logs:** `F:\GiljoAI_MCP\logs\api.log`
+- **Frontend Logs:** Browser console (F12 → Console tab)
+
+---
+
+## Quick Reference Commands
+
+### PC 1 (Server) - F:\GiljoAI_MCP
+
+```bash
+# Check services
+curl http://localhost:7272/health
+curl http://localhost:7274
+
+# Restart services
+.\stop_giljo.bat
+.\start_giljo.bat
+
+# Check listening ports
+netstat -an | findstr 7272
+netstat -an | findstr 7274
+
+# Get server IP
+ipconfig | findstr IPv4
+
+# View API logs
+type logs\api.log | more
+```
+
+### PC 2 (Client)
+
+```bash
+# Basic connectivity
+ping 10.1.0.164
+
+# API health
+curl http://10.1.0.164:7272/health
+
+# Test with API key
+curl -H "X-API-Key: YOUR_KEY_HERE" http://10.1.0.164:7272/api/v1/projects
+
+# Browser
+http://10.1.0.164:7274
+```
+
+---
+
+## Safety Notes
+
+- **Do not expose to internet** - This setup is for LAN only
+- **API key is sensitive** - Do not share publicly
+- **Firewall rules** - Only open ports 7272 and 7274 on trusted network
+- **Database security** - PostgreSQL stays on localhost (never exposed to network)
+
+---
+
+**Good luck with testing! Report back with results.**
+
+If you encounter issues not covered in this guide, provide:
+1. Exact error message
+2. Step where it failed
+3. Output of diagnostic commands
+4. PC 1 and PC 2 IP addresses
+5. Network topology (router model, WiFi vs Ethernet, etc.)
