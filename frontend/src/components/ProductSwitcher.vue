@@ -1,5 +1,11 @@
 <template>
-  <v-menu v-model="menu" :close-on-content-click="false" location="bottom" min-width="370" max-width="500">
+  <v-menu
+    v-model="menu"
+    :close-on-content-click="false"
+    location="bottom"
+    min-width="370"
+    max-width="500"
+  >
     <template v-slot:activator="{ props }">
       <v-btn
         v-bind="props"
@@ -130,7 +136,13 @@
 
       <!-- Actions -->
       <v-card-actions>
-        <v-btn variant="text" size="small" prepend-icon="mdi-plus" @click="showCreateDialog = true" color="#FFD93D">
+        <v-btn
+          variant="text"
+          size="small"
+          prepend-icon="mdi-plus"
+          @click="showCreateDialog = true"
+          color="#FFD93D"
+        >
           New Product
         </v-btn>
         <v-spacer></v-spacer>
@@ -206,12 +218,7 @@
                 clearable
               >
                 <template v-slot:append>
-                  <v-btn
-                    icon
-                    variant="text"
-                    size="small"
-                    @click="triggerFileInput"
-                  >
+                  <v-btn icon variant="text" size="small" @click="triggerFileInput">
                     <v-icon>mdi-folder-open</v-icon>
                   </v-btn>
                 </template>
@@ -222,9 +229,7 @@
                 <div class="text-caption text-medium-emphasis mt-2">
                   Drag & drop your vision document here
                 </div>
-                <div class="text-caption text-medium-emphasis">
-                  Supported: .txt, .md, .markdown
-                </div>
+                <div class="text-caption text-medium-emphasis">Supported: .txt, .md, .markdown</div>
               </div>
 
               <!-- File Preview -->
@@ -237,11 +242,12 @@
                   variant="tonal"
                 >
                   {{ visionFile[0]?.name || visionFile.name }}
-                  <span class="ml-2 text-caption">({{ formatFileSize(visionFile[0]?.size || visionFile.size) }})</span>
+                  <span class="ml-2 text-caption"
+                    >({{ formatFileSize(visionFile[0]?.size || visionFile.size) }})</span
+                  >
                 </v-chip>
               </div>
             </div>
-
           </div>
         </v-form>
       </v-card-text>
@@ -304,7 +310,12 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="showEditDialog = false">Cancel</v-btn>
-        <v-btn variant="text" color="#FFD93D" @click="saveProductEdit" :disabled="!editProductData.name">
+        <v-btn
+          variant="text"
+          color="#FFD93D"
+          @click="saveProductEdit"
+          :disabled="!editProductData.name"
+        >
           Save Changes
         </v-btn>
       </v-card-actions>
@@ -329,7 +340,10 @@
       <v-divider></v-divider>
 
       <v-card-text class="py-4">
-        <p>Are you sure you want to delete <strong>{{ productToDelete?.name }}</strong>?</p>
+        <p>
+          Are you sure you want to delete <strong>{{ productToDelete?.name }}</strong
+          >?
+        </p>
         <p class="text-caption text-medium-emphasis mt-2">
           This will permanently delete the product and all associated data.
         </p>
@@ -373,7 +387,7 @@ const newProduct = ref({
 const editProductData = ref({
   id: '',
   name: '',
-  description: ''
+  description: '',
 })
 
 const productToDelete = ref(null)
@@ -386,7 +400,7 @@ const productInitial = computed(() => {
 })
 
 const otherProducts = computed(() => {
-  return productStore.products.filter(p => p.id !== productStore.currentProductId)
+  return productStore.products.filter((p) => p.id !== productStore.currentProductId)
 })
 
 const otherProductsCount = computed(() => {
@@ -430,7 +444,7 @@ function editCurrentProduct() {
     editProductData.value = {
       id: productStore.currentProduct.id,
       name: productStore.currentProduct.name,
-      description: productStore.currentProduct.description || ''
+      description: productStore.currentProduct.description || '',
     }
   }
 }
@@ -448,7 +462,10 @@ async function deleteProduct() {
     await productStore.fetchProducts()
 
     // If deleted current product, switch to first available
-    if (productToDelete.value.id === productStore.currentProductId && productStore.products.length > 0) {
+    if (
+      productToDelete.value.id === productStore.currentProductId &&
+      productStore.products.length > 0
+    ) {
       await productStore.setCurrentProduct(productStore.products[0].id)
       router.go(0)
     }
@@ -466,7 +483,7 @@ async function saveProductEdit() {
   try {
     await productsApi.update(editProductData.value.id, {
       name: editProductData.value.name,
-      description: editProductData.value.description
+      description: editProductData.value.description,
     })
 
     await productStore.fetchProducts()
@@ -570,7 +587,7 @@ function formatFileSize(bytes) {
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
 // Load products on mount
@@ -603,7 +620,7 @@ onMounted(async () => {
 }
 
 .metric-separator {
-  color: #FFFFFF;
+  color: #ffffff;
   opacity: 1;
   font-size: 12px;
   line-height: 1;

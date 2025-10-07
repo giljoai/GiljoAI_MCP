@@ -120,12 +120,7 @@
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Compare Versions</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="diffDialog = false"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="diffDialog = false" aria-label="Close" />
         </v-card-title>
 
         <v-card-text>
@@ -188,12 +183,7 @@
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Confirm Restore</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="cancelRestore"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="cancelRestore" aria-label="Close" />
         </v-card-title>
         <v-card-text>
           <div class="mb-4">

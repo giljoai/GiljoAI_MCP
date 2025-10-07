@@ -186,6 +186,7 @@ class TestSetupCompleteEndpoint:
                 "server_ip": "192.168.1.100",
                 "firewall_configured": True,
                 "admin_username": "admin",
+                "admin_password": "SecurePassword123!",
                 "hostname": "giljo.local"
             }
         }
@@ -196,6 +197,15 @@ class TestSetupCompleteEndpoint:
         assert response.status_code in [200, 201]
         data = response.json()
         assert data["success"] is True
+
+        # LAN mode should have API key field (may be None in test environment)
+        assert "api_key" in data
+        # Note: api_key may be None in test environment if AuthManager isn't initialized
+        # In production with lifespan, it will be populated
+
+        # LAN mode should require restart
+        assert "requires_restart" in data
+        assert data["requires_restart"] is True
 
     def test_complete_updates_status(self, client):
         """Test that completion actually updates the status"""
@@ -324,12 +334,20 @@ class TestSetupIntegration:
                 "server_ip": "10.1.0.100",
                 "firewall_configured": True,
                 "admin_username": "admin",
+                "admin_password": "SecurePass456!",
                 "hostname": "giljo-server"
             }
         }
 
         complete_response = client.post("/api/setup/complete", json=complete_payload)
         assert complete_response.status_code in [200, 201]
+
+        # Verify restart flag for LAN mode
+        complete_data = complete_response.json()
+        # API key may be None in test environment without full app initialization
+        assert "api_key" in complete_data
+        assert "requires_restart" in complete_data
+        assert complete_data["requires_restart"] is True
 
         # Verify status shows LAN mode
         status = client.get("/api/setup/status")
@@ -356,6 +374,7 @@ class TestSetupIntegration:
                 "server_ip": "192.168.1.50",
                 "firewall_configured": True,
                 "admin_username": "admin",
+                "admin_password": "NewSecurePass789!",
                 "hostname": "giljo.local"
             }
         }

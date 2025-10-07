@@ -389,12 +389,7 @@
           <v-icon class="mr-2">{{ editingTask ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           <span>{{ editingTask ? 'Edit Task' : 'Create Task' }}</span>
           <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="cancelTask"
-            aria-label="Close"
-          />
+          <v-btn icon="mdi-close" variant="text" @click="cancelTask" aria-label="Close" />
         </v-card-title>
 
         <v-card-text>

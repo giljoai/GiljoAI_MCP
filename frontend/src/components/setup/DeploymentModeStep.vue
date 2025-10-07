@@ -8,7 +8,7 @@
       <v-card
         variant="outlined"
         class="mb-4 mode-card"
-        :class="{ 'selected': selectedMode === 'localhost' }"
+        :class="{ selected: selectedMode === 'localhost' }"
         @click="selectedMode = 'localhost'"
         role="button"
         tabindex="0"
@@ -58,7 +58,7 @@
       <v-card
         variant="outlined"
         class="mb-4 mode-card"
-        :class="{ 'selected': selectedMode === 'lan' }"
+        :class="{ selected: selectedMode === 'lan' }"
         @click="selectedMode = 'lan'"
         role="button"
         tabindex="0"
@@ -105,12 +105,7 @@
       </v-card>
 
       <!-- WAN (disabled) -->
-      <v-card
-        variant="outlined"
-        class="mb-4 mode-card disabled"
-        disabled
-        aria-disabled="true"
-      >
+      <v-card variant="outlined" class="mb-4 mode-card disabled" disabled aria-disabled="true">
         <v-card-text>
           <v-radio value="wan" disabled>
             <template #label>
@@ -120,9 +115,7 @@
                   WAN (Wide Area Network)
                   <v-chip size="small" color="info" class="ml-2">Coming Soon</v-chip>
                 </div>
-                <div class="text-caption text-disabled">
-                  Internet access for remote teams
-                </div>
+                <div class="text-caption text-disabled">Internet access for remote teams</div>
               </div>
             </template>
           </v-radio>
@@ -150,7 +143,6 @@
 
     <!-- Info -->
     <v-alert type="info" variant="tonal" class="mb-6">
-      <v-icon start>mdi-information</v-icon>
       You can change this setting later in Settings &gt; General
     </v-alert>
 
@@ -167,11 +159,7 @@
 
     <!-- Navigation -->
     <div class="d-flex justify-space-between">
-      <v-btn
-        variant="outlined"
-        @click="$emit('back')"
-        aria-label="Go back to database"
-      >
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to database">
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>
@@ -201,8 +189,8 @@ const props = defineProps({
   modelValue: {
     type: String,
     required: true,
-    validator: (value) => ['localhost', 'lan', 'wan'].includes(value)
-  }
+    validator: (value) => ['localhost', 'lan', 'wan'].includes(value),
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'next', 'back'])

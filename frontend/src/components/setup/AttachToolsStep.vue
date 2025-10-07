@@ -17,14 +17,9 @@
           <v-card-text class="d-flex flex-column h-100">
             <!-- Tool Header -->
             <div class="text-center mb-4">
-              <v-icon size="48" color="primary">mdi-code-braces</v-icon>
+              <v-img src="/Claude_AI_symbol.svg" alt="Claude Code" max-width="48" class="mx-auto" />
               <h3 class="text-h6 mt-2">Claude Code</h3>
-              <v-chip
-                v-if="claudeCodeConfigured"
-                size="small"
-                color="success"
-                class="mt-2"
-              >
+              <v-chip v-if="claudeCodeConfigured" size="small" color="success" class="mt-2">
                 Configured
               </v-chip>
             </div>
@@ -69,7 +64,7 @@
           <v-card-text class="d-flex flex-column h-100">
             <!-- Tool Header -->
             <div class="text-center mb-4">
-              <v-icon size="48" color="disabled">mdi-robot</v-icon>
+              <v-img src="/openai-logo.svg" alt="ChatGPT" max-width="48" class="mx-auto" style="opacity: 0.5" />
               <h3 class="text-h6 mt-2 text-disabled">ChatGPT</h3>
               <v-chip size="small" color="info" class="mt-2">Future</v-chip>
             </div>
@@ -99,7 +94,7 @@
           <v-card-text class="d-flex flex-column h-100">
             <!-- Tool Header -->
             <div class="text-center mb-4">
-              <v-icon size="48" color="disabled">mdi-star</v-icon>
+              <v-img src="/gemini-icon.svg" alt="Gemini" max-width="48" class="mx-auto" style="opacity: 0.5" />
               <h3 class="text-h6 mt-2 text-disabled">Gemini</h3>
               <v-chip size="small" color="info" class="mt-2">Future</v-chip>
             </div>
@@ -138,37 +133,39 @@
 
     <!-- Info Alert -->
     <v-alert type="info" variant="tonal" class="mt-6">
-      <v-icon start>mdi-information</v-icon>
-      You can configure additional tools later in Settings. At least one tool is recommended but not required.
+      You can configure additional tools later in Settings. At least one tool is recommended but not
+      required.
     </v-alert>
 
     <!-- Progress -->
     <v-card variant="outlined" class="mt-6 mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 1 of 3</span>
-          <span class="text-caption">33%</span>
+          <span class="text-caption">Progress: Step 2 of 5</span>
+          <span class="text-caption">40%</span>
         </div>
-        <v-progress-linear :model-value="33" color="primary" />
+        <v-progress-linear :model-value="40" color="warning" />
       </v-card-text>
     </v-card>
 
     <!-- Navigation -->
-    <div class="d-flex justify-end">
-      <v-btn
-        color="primary"
-        @click="handleNext"
-        aria-label="Continue to network configuration"
-      >
-        Continue
-        <v-icon end>mdi-arrow-right</v-icon>
-      </v-btn>
-    </div>
+    <v-card variant="outlined" class="mt-6 mb-0">
+      <v-card-text class="d-flex justify-space-between">
+        <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to database check">
+          <v-icon start>mdi-arrow-left</v-icon>
+          Back
+        </v-btn>
+        <v-btn color="primary" @click="handleNext" aria-label="Continue to Serena MCP">
+          Continue
+          <v-icon end>mdi-arrow-right</v-icon>
+        </v-btn>
+      </v-card-text>
+    </v-card>
   </v-card-text>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import setupService from '@/services/setupService'
 
 /**
@@ -180,11 +177,11 @@ import setupService from '@/services/setupService'
 const props = defineProps({
   modelValue: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
 })
 
-const emit = defineEmits(['update:modelValue', 'next'])
+const emit = defineEmits(['update:modelValue', 'next', 'back'])
 
 // State
 const attaching = ref(false)
@@ -213,8 +210,8 @@ const attachClaudeCode = async () => {
       {
         id: 'claude-code',
         name: 'Claude Code',
-        configured: true
-      }
+        configured: true,
+      },
     ]
     emit('update:modelValue', tools)
 
@@ -231,6 +228,35 @@ const handleNext = () => {
   console.log('[ATTACH_TOOLS] Moving to next step')
   emit('next')
 }
+
+// Lifecycle
+onMounted(async () => {
+  console.log('[ATTACH_TOOLS] Checking if Claude Code MCP is already configured')
+  
+  try {
+    const status = await setupService.checkMcpConfigured()
+    
+    if (status.configured) {
+      console.log('[ATTACH_TOOLS] Claude Code MCP already configured')
+      claudeCodeConfigured.value = true
+      
+      // Update parent with existing configuration
+      const tools = [
+        {
+          id: 'claude-code',
+          name: 'Claude Code',
+          configured: true,
+        },
+      ]
+      emit('update:modelValue', tools)
+    } else {
+      console.log('[ATTACH_TOOLS] Claude Code MCP not configured')
+    }
+  } catch (error) {
+    console.error('[ATTACH_TOOLS] Failed to check MCP status:', error)
+    // Non-fatal error, continue with wizard
+  }
+})
 </script>
 
 <style scoped>

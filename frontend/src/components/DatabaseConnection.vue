@@ -5,12 +5,7 @@
 
     <v-card-text>
       <!-- Info Alert Banner -->
-      <v-alert
-        v-if="showInfoBanner"
-        type="info"
-        variant="tonal"
-        class="mb-4"
-      >
+      <v-alert v-if="showInfoBanner" type="info" variant="tonal" class="mb-4">
         <strong>{{ infoBannerText }}</strong>
         <div class="text-caption mt-1">
           {{ readonly ? 'Settings are read-only and locked' : 'Future - Configurable settings' }}
@@ -115,12 +110,13 @@
     </v-card-text>
 
     <!-- Action Buttons -->
-    <v-card-actions>
+    <v-card-actions :class="{ 'justify-center': centerButton }">
       <!-- Test Connection Button -->
       <v-btn
         v-if="showTestButton"
-        variant="outlined"
+        variant="flat"
         color="primary"
+        size="large"
         :loading="testing"
         :disabled="testing"
         @click="testConnection"
@@ -131,7 +127,7 @@
         {{ testButtonText }}
       </v-btn>
 
-      <v-spacer />
+      <v-spacer v-if="!centerButton" />
 
       <!-- Actions Slot (for custom buttons like "Reload from Config") -->
       <slot name="actions"></slot>
@@ -166,43 +162,48 @@ const props = defineProps({
   /** Lock all fields for read-only display */
   readonly: {
     type: Boolean,
-    default: false
+    default: false,
   },
   /** Show test connection button */
   showTestButton: {
     type: Boolean,
-    default: true
+    default: true,
   },
   /** Show title in card header */
   showTitle: {
     type: Boolean,
-    default: false
+    default: false,
   },
   /** Card title text */
   title: {
     type: String,
-    default: 'PostgreSQL Database Configuration'
+    default: 'PostgreSQL Database Configuration',
   },
   /** Show info banner */
   showInfoBanner: {
     type: Boolean,
-    default: true
+    default: true,
   },
   /** Info banner text */
   infoBannerText: {
     type: String,
-    default: 'Database settings are configured during installation'
+    default: 'Database settings are configured during installation',
   },
   /** Test button text */
   testButtonText: {
     type: String,
-    default: 'Test Connection'
+    default: 'Test Connection',
   },
   /** Initial database settings */
   initialSettings: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
+  /** Center the test button (for wizard mode) */
+  centerButton: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // Emits
@@ -211,7 +212,7 @@ const emit = defineEmits([
   'connection-error',
   'tested',
   'settings-loaded',
-  'settings-load-error'
+  'settings-load-error',
 ])
 
 // State
@@ -221,7 +222,7 @@ const dbConfig = ref({
   port: 5432,
   name: 'giljo_mcp',
   user: 'postgres',
-  password: '********'
+  password: '********',
 })
 
 const testing = ref(false)
@@ -236,9 +237,7 @@ const testConnection = async () => {
   connectionTestResult.value = null
 
   try {
-    const response = await fetch(
-      `${API_CONFIG.REST_API.baseURL}/api/v1/config/health/database`
-    )
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/health/database`)
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -254,8 +253,8 @@ const testConnection = async () => {
           host: dbConfig.value.host,
           port: dbConfig.value.port,
           database: dbConfig.value.name,
-          user: dbConfig.value.user
-        }
+          user: dbConfig.value.user,
+        },
       }
       emit('connection-success', connectionTestResult.value)
     } else {
@@ -264,7 +263,7 @@ const testConnection = async () => {
         message: result.error || 'Database connection failed',
         error: result.error,
         code: result.code,
-        suggestions: generateSuggestions(result)
+        suggestions: generateSuggestions(result),
       }
       emit('connection-error', connectionTestResult.value)
     }
@@ -273,7 +272,7 @@ const testConnection = async () => {
       success: false,
       message: `Connection test failed: ${error.message}`,
       error: error.message,
-      suggestions: generateSuggestions(error)
+      suggestions: generateSuggestions(error),
     }
     emit('connection-error', connectionTestResult.value)
   } finally {
@@ -287,9 +286,7 @@ const testConnection = async () => {
  */
 const loadSettings = async () => {
   try {
-    const response = await fetch(
-      `${API_CONFIG.REST_API.baseURL}/api/v1/config/database`
-    )
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/database`)
 
     if (!response.ok) {
       throw new Error('Failed to load database configuration')
@@ -303,7 +300,7 @@ const loadSettings = async () => {
       port: config.port || 5432,
       name: config.name || 'giljo_mcp',
       user: config.user || 'postgres',
-      password: '********' // Always masked
+      password: '********', // Always masked
     }
 
     emit('settings-loaded', dbConfig.value)
@@ -332,7 +329,7 @@ const formatTestResultMessage = (result) => {
   if (result.suggestions && result.suggestions.length > 0) {
     html += '<div class="mt-2 text-caption"><strong>Possible causes:</strong></div>'
     html += '<ul class="mt-1 ml-4">'
-    result.suggestions.forEach(suggestion => {
+    result.suggestions.forEach((suggestion) => {
       html += `<li class="text-caption">${suggestion}</li>`
     })
     html += '</ul>'
@@ -379,18 +376,22 @@ const generateSuggestions = (error) => {
 }
 
 // Watchers
-watch(() => props.initialSettings, (newSettings) => {
-  if (newSettings) {
-    dbConfig.value = {
-      type: newSettings.type || 'postgresql',
-      host: newSettings.host || 'localhost',
-      port: newSettings.port || 5432,
-      name: newSettings.name || 'giljo_mcp',
-      user: newSettings.user || 'postgres',
-      password: '********' // Always masked
+watch(
+  () => props.initialSettings,
+  (newSettings) => {
+    if (newSettings) {
+      dbConfig.value = {
+        type: newSettings.type || 'postgresql',
+        host: newSettings.host || 'localhost',
+        port: newSettings.port || 5432,
+        name: newSettings.name || 'giljo_mcp',
+        user: newSettings.user || 'postgres',
+        password: '********', // Always masked
+      }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 
 // Lifecycle
 onMounted(async () => {
@@ -404,7 +405,7 @@ onMounted(async () => {
 defineExpose({
   testConnection,
   loadSettings,
-  clearTestResult
+  clearTestResult,
 })
 </script>
 

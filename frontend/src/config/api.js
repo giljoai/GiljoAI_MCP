@@ -1,23 +1,20 @@
 // API Configuration for GiljoAI MCP Dashboard
 // Dynamically configured from environment or config file
-const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272';
-const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || 'localhost';
+const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
+const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || 'localhost'
 
 export const API_CONFIG = {
   REST_API: {
-    baseURL:
-      import.meta.env.VITE_API_URL ||
-      `http://${API_HOST}:${API_PORT}`,
+    baseURL: import.meta.env.VITE_API_URL || `http://${API_HOST}:${API_PORT}`,
     timeout: 30000,
     headers: {
       'Content-Type': 'application/json',
-      'X-Tenant-Key': import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd',
+      'X-Tenant-Key':
+        import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd',
     },
   },
   WEBSOCKET: {
-    url:
-      import.meta.env.VITE_WS_URL ||
-      `ws://${API_HOST}:${API_PORT}`,
+    url: import.meta.env.VITE_WS_URL || `ws://${API_HOST}:${API_PORT}`,
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 30000,

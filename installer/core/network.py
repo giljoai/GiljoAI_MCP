@@ -364,11 +364,48 @@ class NetworkManager:
             'platform': platform.system()
         }
 
-        # Add local IP addresses
+        # Add local IP addresses - filter out virtual/docker/loopback interfaces
         try:
-            hostname = socket.gethostname()
-            info['local_ips'] = socket.gethostbyname_ex(hostname)[2]
-        except Exception:
+            import psutil
+            local_ips = []
+
+            # Get all network interfaces
+            for interface_name, addresses in psutil.net_if_addrs().items():
+                # Skip known virtual/tunnel interfaces (cross-platform)
+                skip_patterns = [
+                    'docker', 'veth', 'br-', 'vmnet', 'vboxnet',  # Docker, VirtualBox
+                    'virbr', 'tun', 'tap',  # Linux virtual bridges/tunnels
+                    'vEthernet', 'Hyper-V',  # Windows Hyper-V, WSL
+                    'lo', 'Loopback'  # Loopback interfaces
+                ]
+
+                # Check if interface name contains virtual adapter patterns
+                is_virtual = any(pattern.lower() in interface_name.lower() for pattern in skip_patterns)
+
+                if not is_virtual:
+                    for addr in addresses:
+                        # Only IPv4 addresses (family 2)
+                        if addr.family == 2:  # AF_INET
+                            ip = addr.address
+                            # Skip loopback IPs
+                            if not ip.startswith('127.'):
+                                local_ips.append(ip)
+                                self.logger.debug(f"Found real network interface: {interface_name} -> {ip}")
+                else:
+                    self.logger.debug(f"Skipped virtual interface: {interface_name}")
+
+            info['local_ips'] = local_ips
+
+        except ImportError:
+            # Fallback if psutil not available
+            self.logger.warning("psutil not available, using socket fallback for IP detection")
+            try:
+                hostname = socket.gethostname()
+                info['local_ips'] = socket.gethostbyname_ex(hostname)[2]
+            except Exception:
+                info['local_ips'] = []
+        except Exception as e:
+            self.logger.error(f"Failed to get network interfaces: {e}")
             info['local_ips'] = []
 
         return info

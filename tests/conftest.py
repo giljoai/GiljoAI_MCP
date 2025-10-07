@@ -90,6 +90,72 @@ def test_config():
     return config
 
 
+# Serena MCP test fixtures
+@pytest.fixture
+def temp_config_path(tmp_path):
+    """Create temporary config.yaml for Serena tests."""
+    import yaml
+
+    config_path = tmp_path / "config.yaml"
+    config_data = {
+        "features": {"serena_mcp": {"enabled": False, "installed": False, "registered": False}},
+        "services": {"api": {"port": 7272}},
+    }
+    config_path.write_text(yaml.dump(config_data))
+    return config_path
+
+
+@pytest.fixture
+def temp_claude_json(tmp_path):
+    """Create temporary .claude.json for Serena tests."""
+    import json
+
+    claude_path = tmp_path / ".claude.json"
+    claude_path.write_text(json.dumps({"mcpServers": {"giljo-mcp": {"command": "python", "args": ["-m", "giljo_mcp"]}}}))
+    return claude_path
+
+
+@pytest.fixture
+def mock_serena_detected(monkeypatch):
+    """Mock Serena as detected."""
+    import subprocess
+    from unittest.mock import MagicMock
+
+    def mock_run(cmd, *args, **kwargs):
+        if "uvx" in cmd and "--version" in cmd:
+            return MagicMock(returncode=0, stdout="uvx 0.1.0")
+        elif "uvx" in cmd and "serena" in cmd:
+            return MagicMock(returncode=0, stdout="Serena MCP v1.2.3")
+        return MagicMock(returncode=1)
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+
+@pytest.fixture
+def mock_serena_not_detected(monkeypatch):
+    """Mock Serena as not detected."""
+    import subprocess
+
+    def mock_run(*args, **kwargs):
+        raise FileNotFoundError("uvx not found")
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+
+@pytest.fixture
+def api_client():
+    """Create FastAPI test client for API endpoint tests."""
+    from fastapi.testclient import TestClient
+
+    # Import the FastAPI app
+    try:
+        from api.app import app
+
+        return TestClient(app)
+    except ImportError:
+        pytest.skip("API app not available")
+
+
 @pytest_asyncio.fixture(scope="function")
 async def test_project_id(db_session):
     """Create a test project and return its ID"""

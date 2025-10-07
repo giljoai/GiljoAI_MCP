@@ -4,9 +4,7 @@
     <div class="text-center mb-6">
       <v-icon color="success" size="80">mdi-check-circle</v-icon>
       <h2 class="text-h4 mt-4">Setup Complete!</h2>
-      <p class="text-h6 text-medium-emphasis mt-2">
-        GiljoAI MCP is ready to use
-      </p>
+      <p class="text-h6 text-medium-emphasis mt-2">GiljoAI MCP is ready to use</p>
     </div>
 
     <!-- Configuration Summary -->
@@ -18,9 +16,7 @@
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
           <div class="text-subtitle-1 font-weight-medium">Database: Connected</div>
-          <div class="text-caption text-medium-emphasis">
-            PostgreSQL on localhost:5432
-          </div>
+          <div class="text-caption text-medium-emphasis">PostgreSQL on localhost:5432</div>
         </div>
       </v-card-text>
     </v-card>
@@ -60,9 +56,7 @@
       <v-card-text class="d-flex align-center">
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
-          <div class="text-subtitle-1 font-weight-medium">
-            AI Tools: {{ toolCount }} configured
-          </div>
+          <div class="text-subtitle-1 font-weight-medium">AI Tools: {{ toolCount }} configured</div>
           <div v-if="toolNames.length > 0" class="text-caption text-medium-emphasis">
             {{ toolNames.join(', ') }}
           </div>
@@ -78,9 +72,7 @@
       <v-card-text class="d-flex align-center">
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
-          <div class="text-subtitle-1 font-weight-medium">
-            Network: Configured for LAN access
-          </div>
+          <div class="text-subtitle-1 font-weight-medium">Network: Configured for LAN access</div>
           <div class="text-caption text-medium-emphasis">
             Server URL: http://{{ config.lanSettings.localIp }}:{{ config.lanSettings.port }}
           </div>
@@ -117,12 +109,7 @@
 
     <!-- Finish button -->
     <div class="text-center">
-      <v-btn
-        color="primary"
-        size="large"
-        @click="$emit('finish')"
-        aria-label="Go to dashboard"
-      >
+      <v-btn color="primary" size="large" @click="$emit('finish')" aria-label="Go to dashboard">
         Go to Dashboard
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>
@@ -142,8 +129,8 @@ import { computed } from 'vue'
 const props = defineProps({
   config: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 defineEmits(['finish'])
@@ -155,7 +142,7 @@ const deploymentModeLabel = computed(() => {
   const modes = {
     localhost: 'Localhost',
     lan: 'LAN (Local Area Network)',
-    wan: 'WAN (Wide Area Network)'
+    wan: 'WAN (Wide Area Network)',
   }
   return modes[props.config.deploymentMode] || 'Unknown'
 })
@@ -164,7 +151,7 @@ const deploymentModeDescription = computed(() => {
   const descriptions = {
     localhost: 'Single-user mode on this computer',
     lan: 'Team access on local network',
-    wan: 'Internet access for remote teams'
+    wan: 'Internet access for remote teams',
   }
   return descriptions[props.config.deploymentMode] || ''
 })
@@ -177,7 +164,7 @@ const toolNames = computed(() => {
   if (!props.config.aiTools || props.config.aiTools.length === 0) {
     return []
   }
-  return props.config.aiTools.map(tool => tool.name)
+  return props.config.aiTools.map((tool) => tool.name)
 })
 </script>
 
