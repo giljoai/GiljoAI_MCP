@@ -39,4 +39,11 @@ This summary preserves technical context, implementation details, and lessons le
 
 ---
 
+## Critical Architecture Issue – Stdio vs Server (Sep 28, 2025)
+- Discovered that the stdio-based server architecture prevented multi-user, networked, and persistent operation.
+- Solution: Merge MCP functionality into the persistent API server, create a stdio-to-HTTP adapter for Claude, unify all operations on a single port, and update startup scripts.
+- This architectural change is required for production deployment and multi-agent orchestration.
+
+---
+
 This summary retains the technical depth, code references, and historical decisions from the original devlogs. For full code samples and architecture details, refer to the archived devlog files or main documentation.

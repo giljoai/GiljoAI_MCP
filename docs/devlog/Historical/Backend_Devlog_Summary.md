@@ -27,6 +27,12 @@ This summary preserves essential technical context, implementation details, and 
 - Lessons: Log context is essential, enum value casing/import paths must be verified, PostgreSQL permissions require explicit grants, fresh install testing is critical, production readiness requires robust error handling and user feedback.
 - Next steps: Monitor logs during test installation/startup, add performance metrics logging, consider log rotation, continue integration testing/documentation updates.
 
+## Installation & Startup Fixes (Jan 28, 2025)
+- Resolved startup failures due to missing Python package installation and frontend dependencies.
+- Enhanced start scripts for development mode installation, dependency checks, and visible error reporting.
+- Created a debug launcher for step-by-step validation and troubleshooting.
+- Improved developer experience and reliability.
+
 ---
 
 This summary retains the technical depth, code references, and historical decisions from the original devlogs. For full code samples and configuration details, refer to the archived devlog files or main documentation.
