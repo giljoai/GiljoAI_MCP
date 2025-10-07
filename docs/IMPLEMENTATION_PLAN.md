@@ -2704,3 +2704,205 @@ This implementation plan focuses on delivering a **working localhost beta** with
 5. **Daily standups** - Track progress and blockers
 
 **Let's build this!** 🚀
+
+---
+
+## Appendix C: Slash Commands System
+
+### Overview
+
+**Status**: ✅ IMPLEMENTED (October 6, 2025)
+**Location**: `.claude/commands/*.md`
+**Documentation**: `docs/manuals/SLASH_COMMANDS.md`
+
+GiljoAI MCP provides 7 custom slash commands for Claude Code CLI that enable intelligent task management, agent messaging, and project orchestration.
+
+### Implemented Commands
+
+1. **`/gil-quick-task`** - Simple task creation without context analysis
+2. **`/gil-smart-task`** - Context-aware task creation with conversation analysis
+3. **`/gil-message`** - Send messages to agents with fuzzy name matching
+4. **`/gil-run`** - Activate project and start multi-agent orchestration
+5. **`/gil-status`** - Display current project status and active agents
+6. **`/gil-agents`** - List all agents in current project
+7. **`/gil-tasks`** - List tasks organized by status
+
+### Design Philosophy
+
+**Problem Solved**: During active development sessions, users need to:
+- Capture technical debt without breaking flow (prevent scope creep)
+- Create contextual tasks from discussions (preserve conversation context)
+- Communicate with agents using natural language
+- Start orchestration without copy/paste from web UI
+
+**Solution**: Prefix-based command system with `/gil-` namespace
+- ✅ Unambiguous (distinguishes commands from conversation)
+- ✅ Memorable (associated with product name)
+- ✅ Extensible (easy to add new commands)
+
+### Architecture
+
+Commands work by loading markdown files from `~/.claude/commands/`:
+
+```
+User types /gil-smart-task → Claude Code reads gil-smart-task.md
+                           ↓
+              Markdown contains instructions
+                           ↓
+              Claude analyzes conversation
+                           ↓
+              Claude calls mcp__giljo-mcp__create_task
+                           ↓
+              Task created with rich context
+```
+
+### Example: Smart Task with Context
+
+**User conversation**:
+```
+[10 messages ago] "The database connection pool is inefficient"
+[8 messages ago] "We could use PgBouncer or custom pooling"
+[5 messages ago] "Let's implement custom pooling in db_manager.py"
+
+User: /gil-smart-task the connection pooling refactor
+```
+
+**Claude creates task**:
+```javascript
+{
+  title: "Refactor database connection pooling in db_manager.py",
+  description: `Implement custom connection pooling to improve performance.
+
+**Context**: During performance optimization on Oct 6, 2025, identified
+current pooling is inefficient causing delays.
+
+**Technical Details**:
+- File: src/giljo_mcp/database/db_manager.py
+- Replace basic logic with connection pool
+- Target: <50ms query performance
+
+**Why Needed**: Technical debt - creates new connections per query
+causing 200-300ms overhead.`,
+  priority: "medium"
+}
+```
+
+### Installation
+
+**Current**: Manual
+```bash
+mkdir -p ~/.claude/commands
+cp .claude/commands/*.md ~/.claude/commands/
+```
+
+**Future (Phase 0.5)**: Automated via setup wizard or CLI installer
+
+**Recommended Implementation**:
+```python
+# installer/core/installer.py
+def install_claude_commands(self):
+    """Copy slash commands to user's Claude Code directory."""
+    source = Path("C:/Projects/GiljoAI_MCP/.claude/commands")
+    target = Path.home() / ".claude" / "commands"
+    target.mkdir(parents=True, exist_ok=True)
+
+    for cmd_file in source.glob("gil-*.md"):
+        shutil.copy(cmd_file, target / cmd_file.name)
+
+    print(f"✓ Installed {len(list(source.glob('gil-*.md')))} slash commands")
+```
+
+### Usage Examples
+
+**Example 1: Technical Debt Capture**
+```
+[During code review]
+User: "The error handling in login() is inconsistent"
+User: /gil-smart-task fix error handling inconsistencies
+
+Claude: ✓ Task #TASK-456 created with full context from code review
+```
+
+**Example 2: Agent Coordination**
+```
+User: /gil-message backend implement checkout endpoints, schema is ready
+Claude: ✓ Message sent to backend-agent
+```
+
+**Example 3: Quick Meeting Notes**
+```
+User: /gil-quick-task Add CSV export for transaction history
+Claude: ✓ Task #TASK-789 created
+```
+
+### Key Design Decisions
+
+**Why Quick vs Smart Task?**
+- Quick: Instant capture, no analysis (meetings, simple todos)
+- Smart: 2-5 second analysis with rich context (technical debt, discussed work)
+- Trade-off: User control over speed vs. detail
+
+**Why Fuzzy Matching for Agents?**
+- Agent names can be verbose: `database-expert-agent-for-authentication`
+- Fuzzy matching: `/gil-message db ...` → finds database agent
+- Implementation: Exact → Substring → Partial matching with fallback
+
+**Why `/gil-run` Instead of Copy/Paste?**
+- Old: Dashboard → Activate → Copy → Switch → Paste (5 steps)
+- New: `/gil-run Authentication System` (1 step)
+- Eliminates context switching and clipboard management
+
+### Future Enhancements
+
+Planned commands:
+- `/gil-assign <task> <agent>` - Assign tasks to agents
+- `/gil-complete <task>` - Mark tasks complete
+- `/gil-archive` - Archive completed tasks
+- `/gil-report` - Generate status reports
+
+### Documentation
+
+**Complete Documentation**: `docs/manuals/SLASH_COMMANDS.md`
+
+Includes:
+- Full implementation details for each command
+- Code examples and flow diagrams
+- Testing strategies
+- Troubleshooting guide
+- Design reasoning and trade-offs
+- Future enhancement roadmap
+
+### Integration with Implementation Plan
+
+**Relationship to Phase 0.5 (Setup Wizard)**:
+- Slash commands are user-facing productivity features
+- Should be installed during Claude Code MCP configuration
+- Can be part of "Setup Wizard" tab in Settings (future)
+- Alternative: CLI installer can copy during installation
+
+**Recommendation**: Add to CLI installer now, enhance with wizard UI later
+
+```python
+# Add to installer/core/installer.py completion step:
+
+def complete_installation(self):
+    # ... existing code ...
+
+    # Install Claude Code slash commands
+    if self._claude_code_detected():
+        print("\n📝 Installing Claude Code slash commands...")
+        self.install_claude_commands()
+        print("✓ 7 GiljoAI slash commands installed")
+        print("  Usage: /gil-quick-task, /gil-smart-task, /gil-run, etc.")
+```
+
+### References
+
+- **Command Files**: `.claude/commands/gil-*.md`
+- **Full Documentation**: `docs/manuals/SLASH_COMMANDS.md`
+- **MCP Tools**: `docs/manuals/MCP_TOOLS_MANUAL.md`
+- **Architecture**: `docs/TECHNICAL_ARCHITECTURE.md`
+
+---
+
+**End of Appendix C**
