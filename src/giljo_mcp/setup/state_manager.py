@@ -19,11 +19,10 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 from threading import Lock
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 
 
 logger = logging.getLogger(__name__)
@@ -135,8 +134,7 @@ class SetupStateManager:
                 return state_dict
         except Exception as e:
             logger.warning(
-                f"Failed to get state from file for tenant {self.tenant_key}: {e}. "
-                "Returning default state."
+                f"Failed to get state from file for tenant {self.tenant_key}: {e}. " "Returning default state."
             )
 
         # Return default state
@@ -158,7 +156,7 @@ class SetupStateManager:
 
         with self._file_lock:
             try:
-                with open(self.state_file, "r") as f:
+                with open(self.state_file) as f:
                     data = json.load(f)
 
                 # Filter to current tenant
@@ -277,8 +275,10 @@ class SetupStateManager:
 
             # Set secure permissions (Unix only)
             import platform
+
             if platform.system() != "Windows":
                 import os
+
                 os.chmod(self.state_file, 0o600)
 
     def update_state(self, **kwargs) -> None:
@@ -306,11 +306,7 @@ class SetupStateManager:
         """Update state in database."""
         from src.giljo_mcp.models import SetupState
 
-        SetupState.create_or_update(
-            self.db_session,
-            tenant_key=self.tenant_key,
-            **kwargs
-        )
+        SetupState.create_or_update(self.db_session, tenant_key=self.tenant_key, **kwargs)
 
         self.db_session.commit()
 
@@ -335,8 +331,10 @@ class SetupStateManager:
 
             # Set secure permissions (Unix only)
             import platform
+
             if platform.system() != "Windows":
                 import os
+
                 os.chmod(self.state_file, 0o600)
 
     def migrate_file_to_database(self) -> bool:
@@ -364,9 +362,9 @@ class SetupStateManager:
                 self.db_session,
                 tenant_key=self.tenant_key,
                 completed=file_state.get("completed", False),
-                completed_at=datetime.fromisoformat(file_state["completed_at"])
-                if file_state.get("completed_at")
-                else None,
+                completed_at=(
+                    datetime.fromisoformat(file_state["completed_at"]) if file_state.get("completed_at") else None
+                ),
                 setup_version=file_state.get("setup_version"),
                 database_version=file_state.get("database_version"),
                 python_version=file_state.get("python_version"),
@@ -425,8 +423,7 @@ class SetupStateManager:
         if self.current_version and state.get("setup_version"):
             if state["setup_version"] != self.current_version:
                 errors.append(
-                    f"Setup version mismatch: stored={state['setup_version']}, "
-                    f"current={self.current_version}"
+                    f"Setup version mismatch: stored={state['setup_version']}, " f"current={self.current_version}"
                 )
 
         # Check database version
@@ -467,9 +464,7 @@ class SetupStateManager:
             updates["database_version"] = new_database_version
 
         self.update_state(**updates)
-        logger.info(
-            f"Migrated state for tenant {self.tenant_key} to version {new_setup_version}"
-        )
+        logger.info(f"Migrated state for tenant {self.tenant_key} to version {new_setup_version}")
 
     def add_validation_failure(self, message: str) -> None:
         """
@@ -493,15 +488,10 @@ class SetupStateManager:
         # Fall back to file
         current_state = self.get_state()
         failures = list(current_state.get("validation_failures", []))
-        failures.append({
-            "message": message,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        failures.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
 
         self.update_state(
-            validation_failures=failures,
-            validation_passed=False,
-            last_validation_at=datetime.utcnow().isoformat()
+            validation_failures=failures, validation_passed=False, last_validation_at=datetime.utcnow().isoformat()
         )
 
     def add_validation_warning(self, message: str) -> None:
@@ -526,15 +516,9 @@ class SetupStateManager:
         # Fall back to file
         current_state = self.get_state()
         warnings = list(current_state.get("validation_warnings", []))
-        warnings.append({
-            "message": message,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        warnings.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
 
-        self.update_state(
-            validation_warnings=warnings,
-            last_validation_at=datetime.utcnow().isoformat()
-        )
+        self.update_state(validation_warnings=warnings, last_validation_at=datetime.utcnow().isoformat())
 
     def reset_state(self) -> None:
         """
@@ -648,6 +632,5 @@ class SetupStateManager:
 
         if not re.match(pattern, version):
             raise ValueError(
-                f"Invalid version format: {version}. "
-                "Expected semantic versioning (e.g., 1.0.0, 2.1.0-beta)"
+                f"Invalid version format: {version}. " "Expected semantic versioning (e.g., 1.0.0, 2.1.0-beta)"
             )
