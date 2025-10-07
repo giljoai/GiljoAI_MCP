@@ -10,13 +10,7 @@
       <v-card variant="outlined" class="mt-2">
         <v-card-text class="d-flex align-center justify-space-between pa-3">
           <code class="text-h6">{{ serverUrl }}</code>
-          <v-btn
-            icon
-            variant="text"
-            size="small"
-            @click="copyUrl"
-            aria-label="Copy server URL"
-          >
+          <v-btn icon variant="text" size="small" @click="copyUrl" aria-label="Copy server URL">
             <v-icon>{{ urlCopied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
           </v-btn>
         </v-card-text>
@@ -67,11 +61,7 @@
 
     <!-- Port test -->
     <div class="mb-6">
-      <v-btn
-        variant="outlined"
-        :loading="testing"
-        @click="testPort"
-      >
+      <v-btn variant="outlined" :loading="testing" @click="testPort">
         <v-icon start>mdi-network-strength-4</v-icon>
         Test Port Access
       </v-btn>
@@ -87,7 +77,7 @@
           <strong>Port 7274 is accessible on your network!</strong>
           <div class="mt-2">
             Team members can now connect to:
-            <br>
+            <br />
             <code>{{ serverUrl }}</code>
           </div>
         </div>
@@ -95,7 +85,7 @@
           <strong>Port appears blocked</strong>
           <div class="mt-2">
             {{ testResult.message }}
-            <br>
+            <br />
             Please verify firewall settings and try again.
           </div>
         </div>
@@ -115,19 +105,11 @@
 
     <!-- Navigation -->
     <div class="d-flex justify-space-between">
-      <v-btn
-        variant="outlined"
-        @click="$emit('back')"
-        aria-label="Go back to AI tools"
-      >
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to AI tools">
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>
-      <v-btn
-        color="primary"
-        @click="$emit('next')"
-        aria-label="Continue to completion"
-      >
+      <v-btn color="primary" @click="$emit('next')" aria-label="Continue to completion">
         Continue
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>
@@ -148,8 +130,8 @@ import { ref, computed, onMounted } from 'vue'
 const props = defineProps({
   modelValue: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'next', 'back'])
@@ -170,7 +152,7 @@ const platformName = computed(() => {
   const names = {
     windows: 'Windows',
     linux: 'Linux',
-    macos: 'macOS'
+    macos: 'macOS',
   }
   return names[platform.value] || 'Unknown'
 })
@@ -179,7 +161,7 @@ const platformIcon = computed(() => {
   const icons = {
     windows: 'mdi-microsoft-windows',
     linux: 'mdi-linux',
-    macos: 'mdi-apple'
+    macos: 'mdi-apple',
   }
   return icons[platform.value] || 'mdi-desktop-tower'
 })
@@ -204,13 +186,13 @@ const instructions = computed(() => {
       'Open PowerShell as Administrator (Right-click Start menu → Windows PowerShell (Admin))',
       'Paste and run the command above',
       'Press Enter to execute',
-      'Click "Test Port Access" button below to verify'
+      'Click "Test Port Access" button below to verify',
     ]
   } else if (platform.value === 'linux') {
     return [
       'Open a terminal',
       'Run the commands above (requires sudo password)',
-      'Click "Test Port Access" button below to verify'
+      'Click "Test Port Access" button below to verify',
     ]
   } else if (platform.value === 'macos') {
     return [
@@ -218,7 +200,7 @@ const instructions = computed(() => {
       'Go to Security & Privacy → Firewall',
       'Click Firewall Options',
       'Add GiljoAI MCP or allow port 7274',
-      'Click "Test Port Access" button below to verify'
+      'Click "Test Port Access" button below to verify',
     ]
   }
   return []
@@ -274,12 +256,12 @@ const testPort = async () => {
 
   try {
     // Simulate port test (in real implementation, call backend API)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     // Mock result - in real implementation, test actual port accessibility
     testResult.value = {
       success: true,
-      message: 'Port is accessible'
+      message: 'Port is accessible',
     }
 
     // Update parent state
@@ -287,12 +269,12 @@ const testPort = async () => {
       platform: platform.value,
       localIp: localIp.value,
       port: port.value,
-      firewallConfigured: true
+      firewallConfigured: true,
     })
   } catch (error) {
     testResult.value = {
       success: false,
-      message: error.message
+      message: error.message,
     }
   } finally {
     testing.value = false
@@ -307,7 +289,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-h2, h3 {
+h2,
+h3 {
   color: rgb(var(--v-theme-primary));
 }
 

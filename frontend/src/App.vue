@@ -4,9 +4,16 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <a href="#navigation" class="skip-link">Skip to navigation</a>
     <!-- Navigation Drawer -->
-    <v-navigation-drawer id="navigation" v-model="drawer" :rail="rail" permanent color="surface" width="180">
+    <v-navigation-drawer
+      id="navigation"
+      v-model="drawer"
+      :rail="rail"
+      permanent
+      color="surface"
+      width="180"
+    >
       <!-- Logo/Mascot -->
-      <v-list-item class="px-2" style="min-height: 64px;">
+      <v-list-item class="px-2" style="min-height: 64px">
         <div class="d-flex justify-center align-center w-100">
           <!-- Full logo when expanded, small face when collapsed -->
           <v-img
@@ -19,7 +26,11 @@
           ></v-img>
           <v-avatar v-else size="40">
             <v-img
-              :src="theme.global.current.value.dark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'"
+              :src="
+                theme.global.current.value.dark
+                  ? '/icons/Giljo_YW_Face.svg'
+                  : '/icons/Giljo_BY_Face.svg'
+              "
               alt="GiljoAI"
             ></v-img>
           </v-avatar>
@@ -44,7 +55,7 @@
               :src="item.customIcon"
               width="28"
               height="28"
-              style="margin-left: -2px; margin-right: 30px;"
+              style="margin-left: -2px; margin-right: 30px"
             ></v-img>
             <v-icon v-else>{{ item.icon }}</v-icon>
           </template>
@@ -65,9 +76,9 @@
 
     <!-- App Bar -->
     <v-app-bar color="surface" elevation="0" border>
-      <div style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
+      <div style="display: flex; align-items: center; width: 100%; justify-content: space-between">
         <!-- Left: Sidebar Toggle -->
-        <div style="flex: 0 0 auto;">
+        <div style="flex: 0 0 auto">
           <v-btn
             v-if="!mobile"
             variant="text"
@@ -85,13 +96,13 @@
         </div>
 
         <!-- Center: Title -->
-        <div style="flex: 1 1 auto; display: flex; justify-content: center; min-width: 0;">
+        <div style="flex: 1 1 auto; display: flex; justify-content: center; min-width: 0">
           <v-toolbar-title
             class="text-no-wrap"
             :style="{
               color: theme.global.current.value.dark ? '#ffc300' : '#1e3147',
               fontWeight: 500,
-              fontSize: 'clamp(0.875rem, 2vw, 1.25rem)'
+              fontSize: 'clamp(0.875rem, 2vw, 1.25rem)',
             }"
           >
             Agent Orchestration MCP Server
@@ -99,7 +110,7 @@
         </div>
 
         <!-- Right: Product Switcher, Connection Status, Notifications -->
-        <div style="flex: 0 0 auto; display: flex; align-items: center;">
+        <div style="flex: 0 0 auto; display: flex; align-items: center">
           <ProductSwitcher class="mr-3" />
           <ConnectionStatus class="mr-2" />
           <v-btn icon="mdi-bell" variant="text" aria-label="View notifications"></v-btn>

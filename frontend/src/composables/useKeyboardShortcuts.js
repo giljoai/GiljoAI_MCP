@@ -58,18 +58,36 @@ export function useKeyboardShortcuts() {
 
     // Build key combination string
     const keys = []
-    if (event.ctrlKey) {keys.push('Ctrl')}
-    if (event.metaKey) {keys.push('Cmd')}
-    if (event.altKey) {keys.push('Alt')}
-    if (event.shiftKey) {keys.push('Shift')}
+    if (event.ctrlKey) {
+      keys.push('Ctrl')
+    }
+    if (event.metaKey) {
+      keys.push('Cmd')
+    }
+    if (event.altKey) {
+      keys.push('Alt')
+    }
+    if (event.shiftKey) {
+      keys.push('Shift')
+    }
 
     // Add the actual key
     let key = event.key
-    if (key === ' ') {key = 'Space'}
-    if (key === 'ArrowUp') {key = '↑'}
-    if (key === 'ArrowDown') {key = '↓'}
-    if (key === 'ArrowLeft') {key = '←'}
-    if (key === 'ArrowRight') {key = '→'}
+    if (key === ' ') {
+      key = 'Space'
+    }
+    if (key === 'ArrowUp') {
+      key = '↑'
+    }
+    if (key === 'ArrowDown') {
+      key = '↓'
+    }
+    if (key === 'ArrowLeft') {
+      key = '←'
+    }
+    if (key === 'ArrowRight') {
+      key = '→'
+    }
 
     // Special handling for single keys
     if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
@@ -154,7 +172,6 @@ export function useKeyboardShortcuts() {
           )
         }
       }
-
     }
     // Escape key
     if (event.key === 'Escape') {

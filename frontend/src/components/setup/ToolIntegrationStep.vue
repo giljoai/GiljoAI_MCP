@@ -11,22 +11,13 @@
 
     <!-- Tool cards -->
     <div v-else>
-      <v-card
-        v-for="tool in tools"
-        :key="tool.id"
-        variant="outlined"
-        class="mb-4 tool-card"
-      >
+      <v-card v-for="tool in tools" :key="tool.id" variant="outlined" class="mb-4 tool-card">
         <v-card-text>
           <div class="d-flex align-center justify-space-between">
             <!-- Tool info -->
             <div class="flex-grow-1">
               <div class="d-flex align-center">
-                <v-icon
-                  :color="tool.detected ? 'success' : 'error'"
-                  size="large"
-                  class="mr-3"
-                >
+                <v-icon :color="tool.detected ? 'success' : 'error'" size="large" class="mr-3">
                   {{ tool.detected ? 'mdi-check-circle' : 'mdi-close-circle' }}
                 </v-icon>
                 <div>
@@ -96,7 +87,6 @@
 
       <!-- Info message -->
       <v-alert type="info" variant="tonal" class="mb-6">
-        <v-icon start>mdi-information</v-icon>
         You can configure additional tools later in Settings &gt; AI Tools
       </v-alert>
     </div>
@@ -133,14 +123,8 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="outlined" @click="configDialog = false">
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            :loading="applying"
-            @click="applyConfiguration"
-          >
+          <v-btn variant="outlined" @click="configDialog = false"> Cancel </v-btn>
+          <v-btn color="primary" :loading="applying" @click="applyConfiguration">
             Apply Configuration
           </v-btn>
         </v-card-actions>
@@ -162,21 +146,12 @@
 
     <!-- Navigation -->
     <div class="d-flex justify-space-between">
-      <v-btn
-        variant="outlined"
-        @click="$emit('back')"
-        aria-label="Go back"
-      >
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back">
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>
       <div>
-        <v-btn
-          v-if="!hasConfiguredTools"
-          variant="text"
-          @click="handleSkip"
-          class="mr-2"
-        >
+        <v-btn v-if="!hasConfiguredTools" variant="text" @click="handleSkip" class="mr-2">
           Skip This Step
         </v-btn>
         <v-btn
@@ -206,12 +181,12 @@ import setupService from '@/services/setupService'
 const props = defineProps({
   modelValue: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   deploymentMode: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'next', 'back'])
@@ -229,7 +204,7 @@ const applying = ref(false)
 const isLanMode = computed(() => props.deploymentMode === 'lan')
 
 const hasConfiguredTools = computed(() => {
-  return Object.values(toolStates.value).some(state => state.configured)
+  return Object.values(toolStates.value).some((state) => state.configured)
 })
 
 const canProceed = computed(() => {
@@ -253,12 +228,12 @@ const detectTools = async () => {
     tools.value = result.tools || []
 
     // Initialize tool states
-    tools.value.forEach(tool => {
+    tools.value.forEach((tool) => {
       toolStates.value[tool.id] = {
         configured: false,
         configuring: false,
         testing: false,
-        testResult: null
+        testResult: null,
       }
     })
   } catch (error) {
@@ -292,7 +267,7 @@ const handleConfigure = async (tool) => {
     console.error('Config generation failed:', error)
     toolStates.value[tool.id].testResult = {
       success: false,
-      message: `Failed to generate configuration: ${error.message}`
+      message: `Failed to generate configuration: ${error.message}`,
     }
   } finally {
     toolStates.value[tool.id].configuring = false
@@ -309,15 +284,15 @@ const applyConfiguration = async () => {
     toolStates.value[selectedTool.value.id].configured = true
     toolStates.value[selectedTool.value.id].testResult = {
       success: true,
-      message: 'Configuration applied successfully!'
+      message: 'Configuration applied successfully!',
     }
 
     // Update parent
-    const configuredTools = props.modelValue.filter(t => t.id !== selectedTool.value.id)
+    const configuredTools = props.modelValue.filter((t) => t.id !== selectedTool.value.id)
     configuredTools.push({
       id: selectedTool.value.id,
       name: selectedTool.value.name,
-      configured: true
+      configured: true,
     })
     emit('update:modelValue', configuredTools)
 
@@ -329,7 +304,7 @@ const applyConfiguration = async () => {
     console.error('Configuration application failed:', error)
     toolStates.value[selectedTool.value.id].testResult = {
       success: false,
-      message: `Failed to apply configuration: ${error.message}`
+      message: `Failed to apply configuration: ${error.message}`,
     }
   } finally {
     applying.value = false
@@ -347,7 +322,7 @@ const handleTest = async (tool) => {
     console.error('Connection test failed:', error)
     toolStates.value[tool.id].testResult = {
       success: false,
-      message: `Connection test failed: ${error.message}`
+      message: `Connection test failed: ${error.message}`,
     }
   } finally {
     toolStates.value[tool.id].testing = false

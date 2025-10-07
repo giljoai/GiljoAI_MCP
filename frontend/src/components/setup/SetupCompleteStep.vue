@@ -32,14 +32,29 @@
           {{ hasTools ? 'mdi-check-circle' : 'mdi-information' }}
         </v-icon>
         <div class="flex-grow-1">
-          <div class="text-subtitle-1 font-weight-medium">
-            AI Tools: {{ toolCount }} configured
-          </div>
+          <div class="text-subtitle-1 font-weight-medium">AI Tools: {{ toolCount }} configured</div>
           <div v-if="toolNames.length > 0" class="text-caption text-medium-emphasis">
             {{ toolNames.join(', ') }}
           </div>
           <div v-else class="text-caption text-medium-emphasis">
             No tools configured yet (can be added in Settings)
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
+
+    <!-- Serena MCP Status -->
+    <v-card variant="outlined" class="mb-3">
+      <v-card-text class="d-flex align-center">
+        <v-icon :color="serenaEnabled ? 'success' : 'grey'" class="mr-3">
+          {{ serenaEnabled ? 'mdi-check-circle' : 'mdi-circle-outline' }}
+        </v-icon>
+        <div class="flex-grow-1">
+          <div class="text-subtitle-1 font-weight-medium">
+            Serena: {{ serenaEnabled ? 'Enabled' : 'Not enabled' }}
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            {{ serenaEnabled ? 'Agent prompts include Serena MCP instructions' : 'You can enable this later in Settings' }}
           </div>
         </div>
       </v-card-text>
@@ -65,9 +80,7 @@
       <v-card-text class="d-flex align-center">
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
-          <div class="text-subtitle-1 font-weight-medium">
-            Network: Configured for LAN access
-          </div>
+          <div class="text-subtitle-1 font-weight-medium">Network: Configured for LAN access</div>
           <div class="text-caption text-medium-emphasis">
             Server: http://{{ config.lanSettings.serverIp }}:{{ config.lanSettings.port }}
           </div>
@@ -84,7 +97,9 @@
         <strong>Next Steps:</strong>
       </div>
       <ul class="pl-4 mb-0">
-        <li v-if="hasTools">Relaunch Claude Code CLI and type <code>/mcp</code> to verify attachment</li>
+        <li v-if="hasTools">
+          Relaunch Claude Code CLI and type <code>/mcp</code> to verify attachment
+        </li>
         <li>Create your first project from the dashboard</li>
         <li>Explore agent templates and customize missions</li>
         <li v-if="isLanMode">Share the server URL with your team members</li>
@@ -96,23 +111,22 @@
     <v-card variant="outlined" class="mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 3 of 3</span>
+          <span class="text-caption">Progress: Step 5 of 5</span>
           <span class="text-caption">100%</span>
         </div>
-        <v-progress-linear :model-value="100" color="success" />
+        <v-progress-linear :model-value="100" color="warning" />
       </v-card-text>
     </v-card>
 
-    <!-- Finish Button -->
-    <div class="text-center">
-      <v-btn
-        color="primary"
-        size="large"
-        @click="$emit('finish')"
-        aria-label="Go to dashboard"
-      >
-        Go to Dashboard
-        <v-icon end>mdi-arrow-right</v-icon>
+    <!-- Navigation -->
+    <div class="d-flex justify-space-between">
+      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to network configuration">
+        <v-icon start>mdi-arrow-left</v-icon>
+        Back
+      </v-btn>
+      <v-btn color="primary" size="large" @click="$emit('finish')" aria-label="Save configuration and exit">
+        <span class="text-white">Save and Exit</span>
+        <v-icon end color="white">mdi-content-save</v-icon>
       </v-btn>
     </div>
   </v-card-text>
@@ -130,11 +144,11 @@ import { computed } from 'vue'
 const props = defineProps({
   config: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
-defineEmits(['finish'])
+defineEmits(['finish', 'back'])
 
 // Computed
 const isLanMode = computed(() => props.config.deploymentMode === 'lan')
@@ -142,7 +156,7 @@ const isLanMode = computed(() => props.config.deploymentMode === 'lan')
 const deploymentModeLabel = computed(() => {
   const modes = {
     localhost: 'Localhost',
-    lan: 'LAN (Local Network)'
+    lan: 'LAN (Local Network)',
   }
   return modes[props.config.deploymentMode] || 'Localhost'
 })
@@ -150,7 +164,7 @@ const deploymentModeLabel = computed(() => {
 const deploymentModeDescription = computed(() => {
   const descriptions = {
     localhost: 'Single-user mode on this computer (127.0.0.1)',
-    lan: 'Multi-user mode accessible on local network'
+    lan: 'Multi-user mode accessible on local network',
   }
   return descriptions[props.config.deploymentMode] || ''
 })
@@ -167,7 +181,11 @@ const toolNames = computed(() => {
   if (!props.config.aiTools || props.config.aiTools.length === 0) {
     return []
   }
-  return props.config.aiTools.map(tool => tool.name)
+  return props.config.aiTools.map((tool) => tool.name)
+})
+
+const serenaEnabled = computed(() => {
+  return props.config.serenaEnabled || false
 })
 </script>
 

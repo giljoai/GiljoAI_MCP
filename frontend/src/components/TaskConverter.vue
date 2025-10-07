@@ -1,5 +1,11 @@
 <template>
-  <v-dialog :model-value="show" max-width="900" persistent @update:model-value="$emit('close')" @click:outside="false">
+  <v-dialog
+    :model-value="show"
+    max-width="900"
+    persistent
+    @update:model-value="$emit('close')"
+    @click:outside="false"
+  >
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2" color="primary">mdi-arrow-right-bold-circle</v-icon>

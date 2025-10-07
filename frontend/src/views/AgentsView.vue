@@ -13,12 +13,7 @@
           <v-btn value="cards" icon="mdi-view-grid" aria-label="Card view" />
           <v-btn value="table" icon="mdi-table" aria-label="Table view" />
         </v-btn-toggle>
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-refresh"
-          @click="refreshAgents"
-          :loading="loading"
-        >
+        <v-btn color="primary" prepend-icon="mdi-refresh" @click="refreshAgents" :loading="loading">
           Refresh Status
         </v-btn>
       </v-col>
@@ -266,7 +261,11 @@
       <v-col>
         <v-card>
           <v-card-text class="text-center py-8">
-            <img src="/icons/Giljo_gray_Face_sleeping.svg?v=4" alt="Sleeping agent" style="width: 64px; height: 64px;" />
+            <img
+              src="/icons/Giljo_gray_Face_sleeping.svg?v=4"
+              alt="Sleeping agent"
+              style="width: 64px; height: 64px"
+            />
             <p class="text-h6 mt-4">No agents found</p>
             <p class="text-body-2 text-medium-emphasis">
               {{

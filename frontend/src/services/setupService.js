@@ -54,7 +54,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/database/test-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dbConfig)
+      body: JSON.stringify(dbConfig),
     })
 
     if (!response.ok) {
@@ -79,7 +79,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/database/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dbConfig)
+      body: JSON.stringify(dbConfig),
     })
 
     if (!response.ok) {
@@ -112,7 +112,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/generate-mcp-config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool, mode })
+      body: JSON.stringify({ tool, mode }),
     })
 
     if (!response.ok) {
@@ -132,8 +132,22 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/register-mcp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool, config })
+      body: JSON.stringify({ tool, config }),
     })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Check if giljo-mcp is already configured in Claude Code
+   * @returns {Promise<{configured: boolean, message: string, config?: Object}>}
+   */
+  async checkMcpConfigured() {
+    const response = await fetch(`${this.baseURL}/api/setup/check-mcp-configured`)
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -151,7 +165,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/test-mcp-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool })
+      body: JSON.stringify({ tool }),
     })
 
     if (!response.ok) {
@@ -172,7 +186,7 @@ class SetupService {
     const response = await fetch(`${this.baseURL}/api/setup/configure-deployment-mode`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, lan_ip: lanIp, wan_url: wanUrl })
+      body: JSON.stringify({ mode, lan_ip: lanIp, wan_url: wanUrl }),
     })
 
     if (!response.ok) {
@@ -185,17 +199,58 @@ class SetupService {
   /**
    * Mark setup as complete
    * @param {Object} config - Complete wizard configuration
-   * @returns {Promise<{success: boolean, setup_completed: boolean}>}
+   * @param {string} config.deploymentMode - Deployment mode ('localhost', 'lan', 'wan')
+   * @param {Array<string>} config.aiTools - List of attached AI tools
+   * @param {Object|null} config.lanSettings - LAN configuration settings
+   * @returns {Promise<{success: boolean, message: string}>}
    */
   async completeSetup(config) {
+    console.log('[SETUP_SERVICE] completeSetup called with:', config)
+    
+    // Transform wizard config to API format
+    // aiTools is array of objects [{id, name, configured}], need to extract IDs
+    const toolIds = (config.aiTools || []).map(tool => {
+      // Handle both object format {id: 'claude-code'} and string format
+      return typeof tool === 'string' ? tool : tool.id
+    })
+    
+    const payload = {
+      tools_attached: toolIds,
+      network_mode: config.deploymentMode || 'localhost',
+      serena_enabled: config.serenaEnabled || false,
+      lan_config: null,
+    }
+
+    // Add LAN config if provided
+    if (config.lanSettings && config.deploymentMode === 'lan') {
+      payload.lan_config = {
+        server_ip: config.lanSettings.serverIp || '',
+        firewall_configured: config.lanSettings.firewallConfigured || false,
+        admin_username: config.lanSettings.adminUsername || 'admin',
+        admin_password: config.lanSettings.adminPassword || '',
+        hostname: config.lanSettings.hostname || 'giljo.local',
+      }
+    }
+
+    console.log('[SETUP_SERVICE] Sending payload:', payload)
+
     const response = await fetch(`${this.baseURL}/api/setup/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config)
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      // Try to get detailed error message from response body
+      let errorDetail = response.statusText
+      try {
+        const errorBody = await response.json()
+        console.error('[SETUP_SERVICE] Error response body:', errorBody)
+        errorDetail = errorBody.detail || JSON.stringify(errorBody)
+      } catch (e) {
+        // Response body not JSON, use statusText
+      }
+      throw new Error(`HTTP ${response.status}: ${errorDetail}`)
     }
 
     return response.json()
@@ -207,7 +262,7 @@ class SetupService {
    */
   async restartServices() {
     const response = await fetch(`${this.baseURL}/api/setup/restart-services`, {
-      method: 'POST'
+      method: 'POST',
     })
 
     if (!response.ok) {
@@ -229,7 +284,7 @@ class SetupService {
       try {
         const response = await fetch(`${this.baseURL}/health`, {
           method: 'GET',
-          cache: 'no-cache'
+          cache: 'no-cache',
         })
 
         if (response.ok) {
@@ -242,7 +297,7 @@ class SetupService {
       }
 
       // Wait before next attempt
-      await new Promise(resolve => setTimeout(resolve, intervalMs))
+      await new Promise((resolve) => setTimeout(resolve, intervalMs))
     }
 
     console.error('Backend did not come back online within timeout')
@@ -270,6 +325,63 @@ class SetupService {
     }
 
     return response.json()
+  }
+
+  /**
+   * Detect server IP addresses using backend endpoint
+   * @returns {Promise<{primary_ip: string, hostname: string, local_ips: Array<string>}>}
+   */
+  async detectIp() {
+    const response = await fetch(`${this.baseURL}/api/network/detect-ip`)
+
+    if (!response.ok) {
+      throw new Error('IP detection failed')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Toggle Serena MCP prompt injection on/off
+   * @param {boolean} enabled - Whether to enable Serena prompts
+   * @returns {Promise<{success: boolean, enabled: boolean, message?: string}>}
+   */
+  async toggleSerena(enabled) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/serena/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena toggle failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get current Serena MCP prompt injection status
+   * @returns {Promise<{enabled: boolean}>}
+   */
+  async getSerenaStatus() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/serena/status`)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena status check failed:', error)
+      throw error
+    }
   }
 }
 
