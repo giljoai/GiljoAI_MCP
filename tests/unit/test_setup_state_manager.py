@@ -128,37 +128,45 @@ class TestDatabasePhase:
     def test_get_state_from_database(self, sync_db_session, setup_state_factory):
         """When database available, read state from setup_state table"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
+
+        tenant_key = f"db_tenant_{uuid4().hex[:8]}"
 
         # Create database state
         db_state = setup_state_factory(
-            tenant_key="db_tenant",
+            tenant_key=tenant_key,
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="2.0.0"
         )
         sync_db_session.commit()
 
         # Manager should read from database
         manager = SetupStateManager(
-            tenant_key="db_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session
         )
         state = manager.get_state()
 
         assert state["completed"] is True
         assert state["setup_version"] == "2.0.0"
-        assert state["tenant_key"] == "db_tenant"
+        assert state["tenant_key"] == tenant_key
 
     def test_mark_completed_updates_database(self, sync_db_session, setup_state_factory):
         """When marking complete with database, update database row"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from uuid import uuid4
+
+        tenant_key = f"db_tenant_mark_{uuid4().hex[:8]}"
 
         # Create incomplete state
-        db_state = setup_state_factory(tenant_key="db_tenant", completed=False)
+        db_state = setup_state_factory(tenant_key=tenant_key, completed=False)
         sync_db_session.commit()
 
         # Mark as completed
         manager = SetupStateManager(
-            tenant_key="db_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session
         )
         manager.mark_completed(setup_version="2.0.0")
@@ -173,15 +181,18 @@ class TestDatabasePhase:
         """If no database row exists, create one when marking completed"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
         from src.giljo_mcp.models import SetupState
+        from uuid import uuid4
+
+        tenant_key = f"new_tenant_{uuid4().hex[:8]}"
 
         manager = SetupStateManager(
-            tenant_key="new_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session
         )
         manager.mark_completed(setup_version="2.0.0")
 
         # Verify row was created
-        state = SetupState.get_by_tenant(sync_db_session, "new_tenant")
+        state = SetupState.get_by_tenant(sync_db_session, tenant_key)
         assert state is not None
         assert state.completed is True
         assert state.setup_version == "2.0.0"
@@ -243,23 +254,28 @@ class TestHybridFallback:
     def test_prefer_database_over_file(self, tmp_path, sync_db_session, setup_state_factory):
         """When both exist, prefer database state over file state"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
+
+        tenant_key = f"conflict_tenant_{uuid4().hex[:8]}"
 
         with patch('pathlib.Path.home', return_value=tmp_path):
             # Create file state
-            manager_file = SetupStateManager(tenant_key="conflict_tenant")
+            manager_file = SetupStateManager(tenant_key=tenant_key)
             manager_file.mark_completed(setup_version="1.0.0")
 
             # Create database state (different version)
             db_state = setup_state_factory(
-                tenant_key="conflict_tenant",
+                tenant_key=tenant_key,
                 completed=True,
+                completed_at=datetime.utcnow(),
                 setup_version="2.0.0"
             )
             sync_db_session.commit()
 
             # Manager should prefer database
             manager = SetupStateManager(
-                tenant_key="conflict_tenant",
+                tenant_key=tenant_key,
                 db_session=sync_db_session
             )
             state = manager.get_state()
@@ -273,16 +289,21 @@ class TestVersionTracking:
     def test_detect_version_mismatch(self, sync_db_session, setup_state_factory):
         """When setup_version differs from current, requires_migration returns True"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
+
+        tenant_key = f"version_tenant_mismatch_{uuid4().hex[:8]}"
 
         db_state = setup_state_factory(
-            tenant_key="version_tenant",
+            tenant_key=tenant_key,
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="1.0.0"
         )
         sync_db_session.commit()
 
         manager = SetupStateManager(
-            tenant_key="version_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session,
             current_version="2.0.0"
         )
@@ -292,16 +313,21 @@ class TestVersionTracking:
     def test_no_migration_needed_when_versions_match(self, sync_db_session, setup_state_factory):
         """When versions match, requires_migration returns False"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
+
+        tenant_key = f"version_tenant_match_{uuid4().hex[:8]}"
 
         db_state = setup_state_factory(
-            tenant_key="version_tenant",
+            tenant_key=tenant_key,
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="2.0.0"
         )
         sync_db_session.commit()
 
         manager = SetupStateManager(
-            tenant_key="version_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session,
             current_version="2.0.0"
         )
@@ -311,17 +337,22 @@ class TestVersionTracking:
     def test_validate_state_checks_versions(self, sync_db_session, setup_state_factory):
         """validate_state should check version compatibility"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
+
+        tenant_key = f"version_tenant_validate_{uuid4().hex[:8]}"
 
         db_state = setup_state_factory(
-            tenant_key="version_tenant",
+            tenant_key=tenant_key,
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="1.0.0",
             database_version="17"
         )
         sync_db_session.commit()
 
         manager = SetupStateManager(
-            tenant_key="version_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session,
             current_version="2.0.0",
             required_db_version="18"
@@ -336,17 +367,22 @@ class TestVersionTracking:
     def test_migrate_state_updates_versions(self, sync_db_session, setup_state_factory):
         """When migrating state, all version fields are updated"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
+
+        tenant_key = f"migrate_version_tenant_{uuid4().hex[:8]}"
 
         db_state = setup_state_factory(
-            tenant_key="migrate_version_tenant",
+            tenant_key=tenant_key,
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="1.0.0",
             database_version="17"
         )
         sync_db_session.commit()
 
         manager = SetupStateManager(
-            tenant_key="migrate_version_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session,
             current_version="2.0.0"
         )
@@ -384,31 +420,43 @@ class TestStateMachine:
     def test_transition_in_progress_to_completed(self, sync_db_session, setup_state_factory):
         """Valid transition: IN_PROGRESS → COMPLETED"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from uuid import uuid4
+
+        tenant_key = f"state_tenant_transition_{uuid4().hex[:8]}"
 
         db_state = setup_state_factory(
-            tenant_key="state_tenant",
+            tenant_key=tenant_key,
             completed=False,
             install_mode="localhost"
         )
         sync_db_session.commit()
 
+        # Store original ID for verification
+        original_id = db_state.id
+
         manager = SetupStateManager(
-            tenant_key="state_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session
         )
 
         # Complete setup
         manager.mark_completed(setup_version="2.0.0")
 
+        # Refresh to get updated data
+        sync_db_session.refresh(db_state)
         state = manager.get_state()
         assert state["completed"] is True
+        assert db_state.completed is True
 
     def test_validation_state_tracking(self, sync_db_session, setup_state_factory):
         """Track validation state through setup process"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from uuid import uuid4
+
+        tenant_key = f"validation_tenant_{uuid4().hex[:8]}"
 
         manager = SetupStateManager(
-            tenant_key="validation_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session
         )
 
@@ -449,21 +497,27 @@ class TestMultiTenantIsolation:
     def test_tenant_cannot_access_other_tenant_state(self, sync_db_session, setup_state_factory):
         """Tenant should not be able to read another tenant's state"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
+
+        tenant1 = f"tenant1_{uuid4().hex[:8]}"
+        tenant2 = f"tenant2_{uuid4().hex[:8]}"
 
         # Create state for tenant1
         db_state = setup_state_factory(
-            tenant_key="tenant1",
+            tenant_key=tenant1,
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="1.0.0"
         )
         sync_db_session.commit()
 
         # Try to access as tenant2
-        manager2 = SetupStateManager(tenant_key="tenant2", db_session=sync_db_session)
+        manager2 = SetupStateManager(tenant_key=tenant2, db_session=sync_db_session)
         state2 = manager2.get_state()
 
         # Should get default state, not tenant1's state
-        assert state2["tenant_key"] == "tenant2"
+        assert state2["tenant_key"] == tenant2
         assert state2["completed"] is False
         assert state2["setup_version"] is None
 
@@ -600,19 +654,23 @@ class TestConfigSnapshot:
     def test_rollback_to_config_snapshot(self, sync_db_session, setup_state_factory):
         """Should be able to retrieve config snapshot for rollback"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from datetime import datetime
+        from uuid import uuid4
 
+        tenant_key = f"rollback_tenant_{uuid4().hex[:8]}"
         config_data = {"installation": {"mode": "localhost"}}
 
         db_state = setup_state_factory(
-            tenant_key="rollback_tenant",
+            tenant_key=tenant_key,
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="2.0.0",
             config_snapshot=config_data
         )
         sync_db_session.commit()
 
         manager = SetupStateManager(
-            tenant_key="rollback_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session
         )
 
@@ -627,10 +685,12 @@ class TestResetState:
         """reset_state should clear setup state from database"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
         from src.giljo_mcp.models import SetupState
+        from datetime import datetime
 
         db_state = setup_state_factory(
             tenant_key="reset_tenant",
             completed=True,
+            completed_at=datetime.utcnow(),
             setup_version="2.0.0"
         )
         sync_db_session.commit()
@@ -706,15 +766,18 @@ class TestFeatureTracking:
     def test_has_feature_check(self, sync_db_session, setup_state_factory):
         """Should check if feature is configured"""
         from src.giljo_mcp.setup.state_manager import SetupStateManager
+        from uuid import uuid4
+
+        tenant_key = f"feature_check_tenant_{uuid4().hex[:8]}"
 
         db_state = setup_state_factory(
-            tenant_key="feature_check_tenant",
+            tenant_key=tenant_key,
             features_configured={"database": True, "api": {"enabled": True}}
         )
         sync_db_session.commit()
 
         manager = SetupStateManager(
-            tenant_key="feature_check_tenant",
+            tenant_key=tenant_key,
             db_session=sync_db_session
         )
 
