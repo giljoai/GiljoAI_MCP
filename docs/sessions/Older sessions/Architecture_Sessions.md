@@ -99,3 +99,14 @@ Successfully created the FastMCP server foundation for GiljoAI MCP Coding Orches
 - Success criteria: 100% test pass rate, performance under 100ms.
 - All major issues resolved; only minor field/import fixes may remain.
 - Database-backed message queue with priority handling, intelligent routing, ACID compliance, and crash recovery.
+
+---
+## Project 5.1.c: Dashboard Sub-Agent Visualization
+- **Summary:** This project successfully enhanced the GiljoAI dashboard to visualize the new sub-agent orchestration model. It involved a team of agents to deliver frontend components (timelines, trees, metrics), backend APIs for data, and WebSocket events for real-time updates.
+- **Key Deliverables:**
+    - **Frontend:** `SubAgentTimeline.vue`, `SubAgentTree.vue`, `AgentMetrics.vue`, and a full `TemplateManager.vue` for CRUD operations.
+    - **Backend:** APIs to provide hierarchical agent data (`/api/agents/tree`) and performance metrics, plus full template management endpoints.
+    - **Real-time:** WebSocket events (`agent:spawn`, `agent:complete`, etc.) for live dashboard updates.
+- **Performance:** The implementation significantly exceeded performance requirements, with WebSocket latency under 1ms and API responses averaging 1.67ms.
+- **Integration Testing:** The integration test report confirmed that the system was functional, with all critical features working. It identified minor, non-blocking issues like a 500 error on the template list endpoint and some API redirects, which were documented for future sprints.
+- **Outcome:** The project was deemed ready for production, providing crucial visibility into the sub-agent architecture.

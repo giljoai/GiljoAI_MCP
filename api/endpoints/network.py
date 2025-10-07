@@ -58,12 +58,15 @@ async def detect_ip():
 
         logger.debug(f"Network info from NetworkManager: {network_info}")
 
-        # Filter out loopback addresses (127.x.x.x)
-        local_ips_raw = network_info.get("local_ips", [])
-        local_ips = [ip for ip in local_ips_raw if not ip.startswith("127.")]
+        # Get filtered local IPs (NetworkManager already filters out virtual adapters)
+        local_ips = network_info.get("local_ips", [])
 
-        # Select primary IP (first non-loopback)
+        # Select primary IP (first real network interface)
+        # NetworkManager filters out virtual adapters (Docker, Hyper-V, WSL, etc.)
+        # based on interface names, so the first IP should be the real network
         primary_ip = local_ips[0] if local_ips else "127.0.0.1"
+
+        logger.debug(f"Detected IPs: {local_ips}, selected primary: {primary_ip}")
 
         # Get hostname
         hostname = network_info.get("hostname", socket.gethostname())

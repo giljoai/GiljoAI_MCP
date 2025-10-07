@@ -499,6 +499,41 @@ async def check_mcp_configured():
         raise HTTPException(status_code=500, detail=f"Failed to check MCP configuration: {e}")
 
 
+@router.get("/installation-info")
+async def get_installation_info():
+    """
+    Get installation directory and platform information for restart instructions.
+
+    Returns:
+        Installation path and platform details
+    """
+    try:
+        import platform as platform_module
+
+        # Get project root
+        project_root = Path.cwd()
+
+        # Detect platform
+        system = platform_module.system().lower()
+        if system == "windows":
+            platform_name = "windows"
+        elif system == "darwin":
+            platform_name = "macos"
+        else:
+            platform_name = "linux"
+
+        return {
+            "installation_path": str(project_root),
+            "platform": platform_name,
+            "start_script": "start_giljo.bat" if platform_name == "windows" else "start_giljo.sh",
+            "stop_script": "stop_giljo.bat" if platform_name == "windows" else "stop_giljo.sh",
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting installation info: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get installation info: {e}")
+
+
 @router.post("/register-mcp", response_model=RegisterMcpResponse)
 async def register_mcp(request: RegisterMcpRequest = Body(...)):
     """

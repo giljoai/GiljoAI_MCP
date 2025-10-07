@@ -59,6 +59,50 @@
       </v-col>
     </v-row>
 
+    <!-- LAN Confirmation Modal -->
+    <v-dialog v-model="showLanConfirmModal" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="text-h5">
+          <v-icon start color="warning">mdi-alert</v-icon>
+          Confirm LAN Mode Configuration
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert type="warning" variant="tonal" class="mb-4">
+            <div class="text-body-1 mb-2">
+              <strong>You are about to configure GiljoAI for LAN/Network access.</strong>
+            </div>
+            <div class="text-body-2">
+              When you restart the backend services, this application will be accessible over your local network.
+            </div>
+          </v-alert>
+
+          <div class="text-body-2">
+            <p class="mb-2"><strong>This will:</strong></p>
+            <ul class="ml-4 mb-3">
+              <li>Bind the API server to 0.0.0.0 (all network interfaces)</li>
+              <li>Enable API key authentication</li>
+              <li>Allow network devices to access this server</li>
+              <li>Require a service restart to take effect</li>
+            </ul>
+            <p class="text-medium-emphasis">
+              Make sure your firewall is configured and your network is trusted.
+            </p>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-btn variant="outlined" @click="cancelLanConfig">
+            Cancel
+          </v-btn>
+          <v-spacer />
+          <v-btn color="warning" @click="confirmLanConfig">
+            <span class="text-white">Yes, Configure for LAN</span>
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- API Key Modal -->
     <v-dialog v-model="showApiKeyModal" max-width="600" persistent>
       <v-card>
@@ -93,7 +137,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn color="primary" :disabled="!apiKeyConfirmed" @click="proceedToRestart">
-            Continue
+            <span class="text-white">Continue</span>
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -108,8 +152,8 @@
         </v-card-title>
 
         <v-card-text>
-          <v-alert type="info" variant="tonal" class="mb-4">
-            Configuration changes require restarting GiljoAI services to take effect.
+          <v-alert type="success" variant="tonal" class="mb-4">
+            <strong>Setup Complete!</strong> Configuration has been saved. Please restart services to activate LAN mode.
           </v-alert>
 
           <h3 class="mb-2">Restart Instructions ({{ platform }})</h3>
@@ -122,18 +166,17 @@
             </v-list-item>
           </v-list>
 
-          <v-checkbox
-            v-model="restartConfirmed"
-            label="I have restarted the services"
-            color="primary"
-            class="mt-4"
-          />
+          <v-alert type="warning" variant="tonal" class="mt-4">
+            <div class="text-body-2">
+              <strong>Note:</strong> After restarting, this browser window will reconnect and show a welcome message confirming LAN mode is active.
+            </div>
+          </v-alert>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer />
-          <v-btn color="primary" :disabled="!restartConfirmed" @click="finishSetup">
-            Finish Setup
+          <v-btn color="primary" @click="finishSetup">
+            <span class="text-white">I've Restarted - Go to Dashboard</span>
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -157,12 +200,14 @@ const theme = useTheme()
 const currentStep = ref(1)
 const isRestarting = ref(false)
 const restartMessage = ref('Saving configuration...')
+const showLanConfirmModal = ref(false)
 const showApiKeyModal = ref(false)
 const showRestartModal = ref(false)
 const generatedApiKey = ref(null)
 const apiKeyCopied = ref(false)
 const apiKeyConfirmed = ref(false)
-const restartConfirmed = ref(false)
+const installationPath = ref('(project directory)')  // Fallback if API fails
+const detectedPlatform = ref('windows')
 const config = ref({
   deploymentMode: 'localhost', // 'localhost' | 'lan'
   aiTools: [],
@@ -184,31 +229,28 @@ const stepperItems = computed(() => [
 ])
 
 const platform = computed(() => {
-  const ua = window.navigator.userAgent.toLowerCase()
-  if (ua.includes('win')) return 'windows'
-  if (ua.includes('mac')) return 'macos'
-  return 'linux'
+  return detectedPlatform.value
 })
 
 const restartInstructions = computed(() => {
   const instructions = {
     windows: [
       'Open Command Prompt or PowerShell',
-      'Navigate to F:\\GiljoAI_MCP',
+      `Navigate to ${installationPath.value}`,
       'Run: stop_giljo.bat',
       'Run: start_giljo.bat',
       'Wait 10-15 seconds for services to start',
     ],
     macos: [
       'Open Terminal',
-      'Navigate to the project directory',
+      `Navigate to ${installationPath.value}`,
       'Run: ./stop_giljo.sh',
       'Run: ./start_giljo.sh',
       'Wait 10-15 seconds',
     ],
     linux: [
       'Open Terminal',
-      'Navigate to the project directory',
+      `Navigate to ${installationPath.value}`,
       'Run: ./stop_giljo.sh',
       'Run: ./start_giljo.sh',
       'Wait 10-15 seconds',
@@ -240,6 +282,27 @@ const handleBack = () => {
 }
 
 const handleFinish = async () => {
+  // For LAN mode, show confirmation modal first
+  if (config.value.deploymentMode === 'lan') {
+    showLanConfirmModal.value = true
+    return
+  }
+
+  // For localhost mode, proceed directly
+  await saveSetupConfig()
+}
+
+const cancelLanConfig = () => {
+  showLanConfirmModal.value = false
+  // User stays on summary screen
+}
+
+const confirmLanConfig = async () => {
+  showLanConfirmModal.value = false
+  await saveSetupConfig()
+}
+
+const saveSetupConfig = async () => {
   try {
     console.log('[WIZARD] Completing setup with config:', config.value)
     console.log('[WIZARD] Config details:', {
@@ -304,12 +367,36 @@ const proceedToRestart = () => {
 
 const finishSetup = () => {
   showRestartModal.value = false
+  // Set flag in localStorage to show LAN welcome banner
+  if (config.value.deploymentMode === 'lan') {
+    localStorage.setItem('giljo_lan_setup_complete', 'true')
+  }
   window.location.href = 'http://localhost:7274'
 }
 
 // Lifecycle
 onMounted(async () => {
   console.log('[WIZARD] Component mounted')
+
+  // Fetch installation info for dynamic restart instructions
+  try {
+    const response = await fetch(`${setupService.baseURL}/api/setup/installation-info`)
+    if (response.ok) {
+      const info = await response.json()
+      installationPath.value = info.installation_path
+      detectedPlatform.value = info.platform
+      console.log('[WIZARD] Loaded installation info:', info)
+    } else {
+      console.warn('[WIZARD] Installation info API returned error:', response.status)
+    }
+  } catch (error) {
+    console.warn('[WIZARD] Could not fetch installation info, using fallback:', error)
+    // Fallback to browser detection if API fails
+    const ua = window.navigator.userAgent.toLowerCase()
+    if (ua.includes('win')) detectedPlatform.value = 'windows'
+    else if (ua.includes('mac')) detectedPlatform.value = 'macos'
+    else detectedPlatform.value = 'linux'
+  }
 
   // Allow wizard to run even if setup was previously completed
   // (user clicked "Re-run Setup Wizard" button)

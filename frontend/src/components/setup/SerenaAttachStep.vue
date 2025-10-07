@@ -61,16 +61,18 @@
     </v-card>
 
     <!-- Navigation -->
-    <div class="d-flex justify-space-between">
-      <v-btn variant="text" @click="$emit('back')">
-        <v-icon start>mdi-arrow-left</v-icon>
-        Back
-      </v-btn>
-      <v-btn color="primary" @click="handleNext">
-        Continue
-        <v-icon end>mdi-arrow-right</v-icon>
-      </v-btn>
-    </div>
+    <v-card variant="outlined" class="mt-6 mb-0">
+      <v-card-text class="d-flex justify-space-between">
+        <v-btn variant="outlined" @click="$emit('back')">
+          <v-icon start>mdi-arrow-left</v-icon>
+          Back
+        </v-btn>
+        <v-btn color="primary" @click="handleNext">
+          Continue
+          <v-icon end>mdi-arrow-right</v-icon>
+        </v-btn>
+      </v-card-text>
+    </v-card>
 
     <!-- Installation Guide Dialog -->
     <v-dialog v-model="showInstallGuide" max-width="700">

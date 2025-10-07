@@ -125,8 +125,8 @@
         Back
       </v-btn>
       <v-btn color="primary" size="large" @click="$emit('finish')" aria-label="Save configuration and exit">
-        Save and Exit
-        <v-icon end>mdi-content-save</v-icon>
+        <span class="text-white">Save and Exit</span>
+        <v-icon end color="white">mdi-content-save</v-icon>
       </v-btn>
     </div>
   </v-card-text>
