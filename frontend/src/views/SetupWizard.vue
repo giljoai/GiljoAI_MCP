@@ -57,6 +57,86 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- API Key Modal -->
+    <v-dialog v-model="showApiKeyModal" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="text-h5">
+          <v-icon start color="warning">mdi-key</v-icon>
+          Your API Key
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert type="warning" variant="tonal" class="mb-4">
+            <strong>Important:</strong> Save this API key securely. You will need it to access the
+            API from network clients. It cannot be recovered if lost.
+          </v-alert>
+
+          <v-text-field
+            :model-value="generatedApiKey"
+            label="API Key"
+            readonly
+            variant="outlined"
+            density="compact"
+            :append-icon="apiKeyCopied ? 'mdi-check' : 'mdi-content-copy'"
+            @click:append="copyApiKey"
+          />
+
+          <v-checkbox
+            v-model="apiKeyConfirmed"
+            label="I have saved this API key securely"
+            color="primary"
+          />
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" :disabled="!apiKeyConfirmed" @click="proceedToRestart">
+            Continue
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Restart Instructions Modal -->
+    <v-dialog v-model="showRestartModal" max-width="700" persistent>
+      <v-card>
+        <v-card-title class="text-h5">
+          <v-icon start color="info">mdi-restart</v-icon>
+          Restart Services Required
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert type="info" variant="tonal" class="mb-4">
+            Configuration changes require restarting GiljoAI services to take effect.
+          </v-alert>
+
+          <h3 class="mb-2">Restart Instructions ({{ platform }})</h3>
+          <v-list density="compact">
+            <v-list-item v-for="(step, index) in restartInstructions" :key="index">
+              <template v-slot:prepend>
+                <v-avatar color="primary" size="24">{{ index + 1 }}</v-avatar>
+              </template>
+              <v-list-item-title>{{ step }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+
+          <v-checkbox
+            v-model="restartConfirmed"
+            label="I have restarted the services"
+            color="primary"
+            class="mt-4"
+          />
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" :disabled="!restartConfirmed" @click="finishSetup">
+            Finish Setup
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -75,6 +155,12 @@ const theme = useTheme()
 const currentStep = ref(1)
 const isRestarting = ref(false)
 const restartMessage = ref('Saving configuration...')
+const showApiKeyModal = ref(false)
+const showRestartModal = ref(false)
+const generatedApiKey = ref(null)
+const apiKeyCopied = ref(false)
+const apiKeyConfirmed = ref(false)
+const restartConfirmed = ref(false)
 const config = ref({
   deploymentMode: 'localhost', // 'localhost' | 'lan'
   aiTools: [],
@@ -93,6 +179,40 @@ const stepperItems = computed(() => [
   { title: 'Network', value: 3 },
   { title: 'Complete', value: 4 },
 ])
+
+const platform = computed(() => {
+  const ua = window.navigator.userAgent.toLowerCase()
+  if (ua.includes('win')) return 'windows'
+  if (ua.includes('mac')) return 'macos'
+  return 'linux'
+})
+
+const restartInstructions = computed(() => {
+  const instructions = {
+    windows: [
+      'Open Command Prompt or PowerShell',
+      'Navigate to F:\\GiljoAI_MCP',
+      'Run: stop_giljo.bat',
+      'Run: start_giljo.bat',
+      'Wait 10-15 seconds for services to start',
+    ],
+    macos: [
+      'Open Terminal',
+      'Navigate to the project directory',
+      'Run: ./stop_giljo.sh',
+      'Run: ./start_giljo.sh',
+      'Wait 10-15 seconds',
+    ],
+    linux: [
+      'Open Terminal',
+      'Navigate to the project directory',
+      'Run: ./stop_giljo.sh',
+      'Run: ./start_giljo.sh',
+      'Wait 10-15 seconds',
+    ],
+  }
+  return instructions[platform.value]
+})
 
 // Methods
 const handleToolsNext = () => {
@@ -119,7 +239,7 @@ const handleFinish = async () => {
       deploymentMode: config.value.deploymentMode,
       aiTools: config.value.aiTools,
       serenaEnabled: config.value.serenaEnabled,
-      lanSettings: config.value.lanSettings
+      lanSettings: config.value.lanSettings,
     })
 
     // Show completion overlay
@@ -130,21 +250,54 @@ const handleFinish = async () => {
     const result = await setupService.completeSetup(config.value)
     console.log('[WIZARD] Setup marked as complete:', result)
 
-    restartMessage.value = 'Setup complete! Redirecting to dashboard...'
+    // Hide completion overlay
+    isRestarting.value = false
 
-    // Wait 1 second to show success message
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (result.api_key) {
+      // LAN mode - show API key modal
+      generatedApiKey.value = result.api_key
+      showApiKeyModal.value = true
+    } else if (result.requires_restart) {
+      // Localhost mode but requires restart
+      showRestartModal.value = true
+    } else {
+      // Localhost mode - skip to completion
+      restartMessage.value = 'Setup complete! Redirecting to dashboard...'
+      isRestarting.value = true
 
-    // Redirect to main dashboard
-    window.location.href = 'http://localhost:7274'
+      // Wait 1 second to show success message
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      // Redirect to main dashboard
+      window.location.href = 'http://localhost:7274'
+    }
   } catch (error) {
     console.error('[WIZARD] Setup completion failed:', error)
+    isRestarting.value = false
     restartMessage.value = 'Error during setup completion. Redirecting...'
 
     // Wait 2 seconds then redirect anyway
     await new Promise((resolve) => setTimeout(resolve, 2000))
     window.location.href = 'http://localhost:7274'
   }
+}
+
+const copyApiKey = () => {
+  navigator.clipboard.writeText(generatedApiKey.value)
+  apiKeyCopied.value = true
+  setTimeout(() => {
+    apiKeyCopied.value = false
+  }, 3000)
+}
+
+const proceedToRestart = () => {
+  showApiKeyModal.value = false
+  showRestartModal.value = true
+}
+
+const finishSetup = () => {
+  showRestartModal.value = false
+  window.location.href = 'http://localhost:7274'
 }
 
 // Lifecycle
