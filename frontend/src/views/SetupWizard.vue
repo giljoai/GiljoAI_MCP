@@ -208,6 +208,7 @@ const apiKeyCopied = ref(false)
 const apiKeyConfirmed = ref(false)
 const installationPath = ref('(project directory)')  // Fallback if API fails
 const detectedPlatform = ref('windows')
+const setupError = ref(null)
 const config = ref({
   deploymentMode: 'localhost', // 'localhost' | 'lan'
   aiTools: [],
@@ -237,23 +238,26 @@ const restartInstructions = computed(() => {
     windows: [
       'Open Command Prompt or PowerShell',
       `Navigate to ${installationPath.value}`,
-      'Run: stop_giljo.bat',
-      'Run: start_giljo.bat',
-      'Wait 10-15 seconds for services to start',
+      '⚠️ Stop BACKEND only: stop_backend.bat',
+      '⚠️ Start BACKEND only: start_backend.bat',
+      'Wait 10-15 seconds for backend to start',
+      '(Frontend does NOT need restart)',
     ],
     macos: [
       'Open Terminal',
       `Navigate to ${installationPath.value}`,
-      'Run: ./stop_giljo.sh',
-      'Run: ./start_giljo.sh',
-      'Wait 10-15 seconds',
+      '⚠️ Stop BACKEND only: ./stop_backend.sh',
+      '⚠️ Start BACKEND only: ./start_backend.sh',
+      'Wait 10-15 seconds for backend to start',
+      '(Frontend does NOT need restart)',
     ],
     linux: [
       'Open Terminal',
       `Navigate to ${installationPath.value}`,
-      'Run: ./stop_giljo.sh',
-      'Run: ./start_giljo.sh',
-      'Wait 10-15 seconds',
+      '⚠️ Stop BACKEND only: ./stop_backend.sh',
+      '⚠️ Start BACKEND only: ./start_backend.sh',
+      'Wait 10-15 seconds for backend to start',
+      '(Frontend does NOT need restart)',
     ],
   }
   return instructions[platform.value]
