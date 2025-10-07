@@ -268,7 +268,7 @@ class DependencyValidator:
                 print(f"   • {warning}")
 
             print("\n💡 Optional fixes:")
-            print("   pip install aiosqlite asyncpg psycopg2-binary")
+            print("   pip install asyncpg psycopg2-binary")
 
     def run_validation(self, test_functionality: bool = True) -> bool:
         """Run complete validation"""

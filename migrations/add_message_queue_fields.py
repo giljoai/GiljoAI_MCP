@@ -185,7 +185,8 @@ async def main():
     else:
         # Default to SQLite for local development
         db_path = os.path.join(os.path.dirname(__file__), "..", "giljo_mcp.db")
-        database_url = f"sqlite+aiosqlite:///{db_path}"
+    # SQLite fallback removed; migrations should target PostgreSQL only
+    raise RuntimeError("SQLite fallback removed; use PostgreSQL database URL for migrations")
         action = "upgrade"
 
     if action == "upgrade":

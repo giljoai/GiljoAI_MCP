@@ -2,7 +2,7 @@
 SQLAlchemy models for GiljoAI MCP with multi-tenant support.
 
 All models include tenant_key for project isolation.
-Supports both SQLite (local) and PostgreSQL (production).
+Supports PostgreSQL (production).
 """
 
 from uuid import uuid4

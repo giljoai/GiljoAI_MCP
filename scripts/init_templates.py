@@ -160,7 +160,7 @@ def init_templates(
     Initialize the database with default templates.
 
     Args:
-        database_url: Database URL. If None, uses default SQLite.
+        database_url: Database URL. If None, a local PostgreSQL URL will be used.
         tenant_key: Tenant key for multi-tenant isolation.
         product_id: Product ID for template association.
         force_reload: Whether to reload templates even if they exist.
@@ -169,10 +169,15 @@ def init_templates(
     # Create database manager
     db_manager = get_db_manager(database_url)
 
-    if database_url:
-        pass
-    else:
-        pass
+    if not database_url:
+        # Default to local PostgreSQL if no database_url provided
+        database_url = DatabaseManager.build_postgresql_url(
+            host=os.getenv("DB_HOST", "localhost"),
+            port=int(os.getenv("DB_PORT", 5432)),
+            database=os.getenv("DB_NAME", "giljo_mcp"),
+            username=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", ""),
+        )
 
     # Use defaults if not provided
     if not tenant_key:
