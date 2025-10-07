@@ -295,18 +295,28 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
 
                 if auth_manager:
                     api_key = auth_manager.generate_api_key(name="LAN Setup Key", permissions=["*"])
-                    logger.info("Generated API key for LAN mode")
+                    logger.info("✅ Generated API key for LAN mode")
 
                     # 3. Store admin account (encrypted)
+                    password_to_store = request_body.lan_config.admin_password
+                    logger.info(f"DEBUG: Password length = {len(password_to_store)} chars, {len(password_to_store.encode('utf-8'))} bytes")
                     auth_manager.store_admin_account(
-                        username=request_body.lan_config.admin_username, password=request_body.lan_config.admin_password
+                        username=request_body.lan_config.admin_username,
+                        password=password_to_store
                     )
-                    logger.info(f"Stored admin account for user: {request_body.lan_config.admin_username}")
+                    logger.info(f"✅ Stored admin account for user: {request_body.lan_config.admin_username}")
                 else:
-                    logger.warning("AuthManager not available - skipping API key generation")
+                    # AuthManager not available - this is a critical error for LAN mode
+                    logger.error("❌ AuthManager not available - cannot configure LAN mode")
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Authentication system not initialized. Please restart the API server and try again."
+                    )
+            except HTTPException:
+                # Re-raise HTTP exceptions
+                raise
             except Exception as e:
-                logger.error(f"Failed to configure LAN authentication: {e}", exc_info=True)
-                # Continue with setup but warn user
+                logger.error(f"❌ Failed to configure LAN authentication: {e}", exc_info=True)
                 raise HTTPException(
                     status_code=500, detail=f"Failed to configure LAN authentication: {e}"
                 )
@@ -329,6 +339,13 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             config["services"]["api"]["host"] = "0.0.0.0"
             requires_restart = True
 
+            # 6. Enable API key authentication for LAN mode
+            if "features" not in config:
+                config["features"] = {}
+            config["features"]["api_keys_required"] = True
+            config["features"]["multi_user"] = True
+            logger.info("✅ LAN MODE: Enabled API key authentication (api_keys_required=True, multi_user=True)")
+
             logger.info("LAN mode configuration complete - restart required")
 
         # Update network configuration based on mode
@@ -341,10 +358,22 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         # Set API host based on mode
         if request_body.network_mode == NetworkMode.LOCALHOST:
             config["services"]["api"]["host"] = "127.0.0.1"
+            # Disable API key authentication for localhost mode
+            if "features" not in config:
+                config["features"] = {}
+            config["features"]["api_keys_required"] = False
+            config["features"]["multi_user"] = False
+            logger.info("Localhost mode: API key authentication disabled")
         elif request_body.network_mode == NetworkMode.LAN and not request_body.lan_config:
             # LAN mode without LAN config - use default
             config["services"]["api"]["host"] = "0.0.0.0"
             requires_restart = True
+            # Enable API key authentication for LAN mode (no full config)
+            if "features" not in config:
+                config["features"] = {}
+            config["features"]["api_keys_required"] = True
+            config["features"]["multi_user"] = True
+            logger.info("✅ LAN MODE: Enabled API key authentication (api_keys_required=True, multi_user=True)")
 
         # Toggle Serena MCP instructions if requested
         try:
