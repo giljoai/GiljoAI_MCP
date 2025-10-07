@@ -610,11 +610,6 @@ class GiljoDevControlPanel:
             # Check if process started (None on macOS is acceptable)
             if self.backend_process is None or self.backend_process.poll() is None:
                 self.update_status_message(f"Backend started in terminal on port {api_port}")
-                messagebox.showinfo(
-                    "Success",
-                    f"Backend service started in terminal window on port {api_port}\n\n"
-                    "Check the terminal window for verbose output.",
-                )
             else:
                 self.update_status_message("Backend failed to start")
                 messagebox.showerror(
@@ -651,7 +646,6 @@ class GiljoDevControlPanel:
 
             time.sleep(1)
             self.update_status_message("Backend stopped (nuclear)")
-            messagebox.showinfo("Success", "Backend service stopped (nuclear mode - killed all processes on ports 7272-7273)")
 
         except Exception as e:
             self.update_status_message(f"Error stopping backend: {e}")
@@ -746,12 +740,6 @@ class GiljoDevControlPanel:
             # Check if process started (None on macOS is acceptable)
             if self.frontend_process is None or self.frontend_process.poll() is None:
                 self.update_status_message(f"Frontend started on port {frontend_port} (strict)")
-                messagebox.showinfo(
-                    "Frontend Starting",
-                    f"Frontend dev server starting in terminal window.\n"
-                    f"Port: {frontend_port} (strict - will not use alternative ports)\n\n"
-                    "Check the terminal window for verbose output."
-                )
             else:
                 self.update_status_message("Frontend failed to start")
                 messagebox.showerror(
@@ -785,7 +773,6 @@ class GiljoDevControlPanel:
 
             time.sleep(1)
             self.update_status_message("Frontend stopped (nuclear)")
-            messagebox.showinfo("Success", "Frontend service stopped (nuclear mode - killed all processes on port 7274)")
 
         except Exception as e:
             self.update_status_message(f"Error stopping frontend: {e}")
@@ -838,14 +825,6 @@ class GiljoDevControlPanel:
 
             time.sleep(1)
             self.update_status_message("All services stopped (nuclear)")
-            messagebox.showinfo(
-                "Success",
-                "All services stopped (nuclear mode)\n\n"
-                "Killed all processes on ports:\n"
-                "- 7272 (Backend API)\n"
-                "- 7273 (Alternative Backend)\n"
-                "- 7274 (Frontend)"
-            )
 
         except Exception as e:
             self.update_status_message(f"Error stopping services: {e}")
@@ -1192,7 +1171,14 @@ DROP DATABASE IF EXISTS giljo_mcp;
     # Development Reset Methods
 
     def reset_to_fresh(self):
-        """Reset to fresh state by removing venv, configs, etc."""
+        """
+        Reset to fresh state by removing venv, configs, etc.
+
+        Simulates a fresh GitHub release download by removing all
+        installation-generated files and directories.
+
+        Uses aggressive Windows deletion methods to handle locked files.
+        """
         # Build list of targets
         targets = []
         venv_path = self.project_root / "venv"
@@ -1222,6 +1208,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             f"This will DELETE the following:\n\n{target_list}\n\n"
             "This simulates a fresh download.\n"
             "You will need to run the installer again.\n\n"
+            "IMPORTANT: Close all terminals and Python processes first!\n\n"
             "Continue?",
             icon="warning",
         )
@@ -1231,15 +1218,20 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
         self.update_status_message("Resetting to fresh state...")
 
-        # Remove targets
+        # Remove targets with aggressive Windows deletion
         errors = []
         for name, desc in targets:
             try:
                 target = self.project_root / name
                 if target.is_dir():
-                    import shutil
-
-                    shutil.rmtree(target)
+                    # Special handling for venv on Windows (use rmdir /s /q)
+                    if name == "venv/":
+                        success = self._aggressive_delete_venv(target)
+                        if not success:
+                            errors.append(f"{name}: Failed to delete (files may be locked)")
+                    else:
+                        import shutil
+                        shutil.rmtree(target)
                 else:
                     target.unlink()
             except Exception as e:
@@ -1250,14 +1242,108 @@ DROP DATABASE IF EXISTS giljo_mcp;
             messagebox.showerror(
                 "Partial Success",
                 f"Some items could not be removed:\n\n{error_msg}\n\n"
-                "You may need to remove them manually or run with admin privileges.",
+                "Solutions:\n"
+                "1. Close all Python processes and terminals\n"
+                "2. Manually delete remaining files\n"
+                "3. Restart computer and try again\n"
+                "4. Run control panel as Administrator",
             )
         else:
             self.update_status_message("Reset complete")
             messagebox.showinfo(
                 "Reset Complete",
-                "Reset to fresh state complete!\n\n" "You can now run the installer to set up again.",
+                "Reset to fresh state complete!\n\n"
+                "All installation files removed.\n\n"
+                "You can now run install.bat to set up again.",
             )
+
+    def _aggressive_delete_venv(self, venv_path: Path) -> bool:
+        """
+        Aggressively delete venv directory using Windows commands.
+
+        Uses rmdir /s /q on Windows for better handling of locked files.
+        Falls back to shutil.rmtree with retry logic.
+
+        Args:
+            venv_path: Path to venv directory
+
+        Returns:
+            True if successful, False otherwise
+        """
+        import shutil
+        import time
+
+        system = platform.system()
+
+        if system == "Windows":
+            # Method 1: Try Windows rmdir command (most aggressive)
+            try:
+                self.update_status_message("Deleting venv (using Windows rmdir)...")
+                result = subprocess.run(
+                    ["cmd", "/c", "rmdir", "/s", "/q", str(venv_path)],
+                    capture_output=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    return True
+            except Exception as e:
+                print(f"rmdir failed: {e}")
+
+            # Method 2: Try Python shutil with retry
+            try:
+                self.update_status_message("Deleting venv (using Python with retry)...")
+
+                def retry_rmtree(path, max_retries=3):
+                    """Retry deletion with delays for locked files."""
+                    for attempt in range(max_retries):
+                        try:
+                            shutil.rmtree(path)
+                            return True
+                        except PermissionError:
+                            if attempt < max_retries - 1:
+                                time.sleep(1)  # Wait for files to unlock
+                                continue
+                            raise
+                    return False
+
+                if retry_rmtree(venv_path):
+                    return True
+            except Exception as e:
+                print(f"shutil.rmtree failed: {e}")
+
+            # Method 3: Rename then delete (Windows workaround for locked files)
+            try:
+                self.update_status_message("Deleting venv (rename-then-delete workaround)...")
+                temp_name = venv_path.parent / f"_venv_delete_{int(time.time())}"
+                venv_path.rename(temp_name)
+                time.sleep(0.5)
+
+                # Try Windows rmdir on renamed directory
+                result = subprocess.run(
+                    ["cmd", "/c", "rmdir", "/s", "/q", str(temp_name)],
+                    capture_output=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    return True
+
+                # If still exists, try shutil on renamed dir
+                if temp_name.exists():
+                    shutil.rmtree(temp_name, ignore_errors=True)
+
+                return not temp_name.exists()
+            except Exception as e:
+                print(f"Rename-then-delete failed: {e}")
+                return False
+
+        else:
+            # Linux/macOS: Standard shutil.rmtree should work
+            try:
+                shutil.rmtree(venv_path)
+                return True
+            except Exception as e:
+                print(f"Failed to delete venv: {e}")
+                return False
 
     # Cache Management Methods
 
