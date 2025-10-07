@@ -7,9 +7,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./vitest.setup.js'],
+    setupFiles: ['./tests/setup.js'],
     include: ['tests/**/*.spec.js', 'tests/**/*.spec.vue'],
-    css: true,
+    deps: {
+      inline: ['vuetify']
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

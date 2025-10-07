@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import yaml
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -35,6 +35,7 @@ class LANConfig(BaseModel):
     server_ip: str = Field(..., description="Server IP address on LAN")
     firewall_configured: bool = Field(False, description="Whether firewall rules are configured")
     admin_username: str = Field("admin", description="Admin username for server mode")
+    admin_password: str = Field(..., description="Admin password for server mode (will be hashed)")
     hostname: str = Field("giljo.local", description="Hostname for LAN access")
 
 
@@ -75,6 +76,8 @@ class SetupCompleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether setup completion was successful")
     message: str = Field(..., description="Human-readable status message")
+    api_key: Optional[str] = Field(None, description="Generated API key for LAN/WAN modes")
+    requires_restart: bool = Field(False, description="Whether service restart is required")
 
 
 class McpConfigRequest(BaseModel):
@@ -140,6 +143,46 @@ def write_config(config: dict[str, Any]) -> None:
         raise HTTPException(status_code=500, detail=f"Failed to save configuration: {e}")
 
 
+def update_cors_origins(config: dict[str, Any], server_ip: str, hostname: str = None) -> None:
+    """
+    Update CORS origins with LAN IP and hostname for network accessibility.
+
+    Args:
+        config: Configuration dictionary to update
+        server_ip: Server IP address on LAN
+        hostname: Optional hostname for LAN access
+    """
+    # Ensure security section exists
+    if "security" not in config:
+        config["security"] = {}
+    if "cors" not in config["security"]:
+        config["security"]["cors"] = {}
+    if "allowed_origins" not in config["security"]["cors"]:
+        config["security"]["cors"]["allowed_origins"] = []
+
+    # Get frontend port from config
+    frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
+
+    # Get current origins
+    origins = config["security"]["cors"]["allowed_origins"]
+
+    # Add server IP origin
+    server_origin = f"http://{server_ip}:{frontend_port}"
+    if server_origin not in origins:
+        origins.append(server_origin)
+        logger.info(f"Added CORS origin: {server_origin}")
+
+    # Add hostname origin if provided
+    if hostname:
+        hostname_origin = f"http://{hostname}:{frontend_port}"
+        if hostname_origin not in origins:
+            origins.append(hostname_origin)
+            logger.info(f"Added CORS origin: {hostname_origin}")
+
+    # Update config
+    config["security"]["cors"]["allowed_origins"] = origins
+
+
 @router.get("/status", response_model=SetupStatusResponse)
 async def get_setup_status():
     """
@@ -190,21 +233,28 @@ async def get_setup_status():
 
 
 @router.post("/complete", response_model=SetupCompleteResponse)
-async def complete_setup(request: SetupCompleteRequest = Body(...)):
+async def complete_setup(request_body: SetupCompleteRequest = Body(...), request: Request = None):
     """
     Mark setup as complete and save configuration.
 
     This endpoint is called when the user finishes the setup wizard.
     It saves the configuration choices and marks setup as complete.
 
+    For LAN mode, this endpoint also:
+    - Generates an API key
+    - Stores admin account credentials (encrypted)
+    - Updates CORS origins for network access
+    - Configures API to bind to 0.0.0.0
+
     The endpoint is idempotent - calling it multiple times will not
     cause errors and will update the configuration each time.
 
     Args:
-        request: Setup completion request with tools and network configuration
+        request_body: Setup completion request with tools and network configuration
+        request: FastAPI Request object (to access app state)
 
     Returns:
-        Success response with confirmation message
+        Success response with confirmation message and API key (for LAN mode)
     """
     try:
         # Read current config
@@ -216,24 +266,70 @@ async def complete_setup(request: SetupCompleteRequest = Body(...)):
 
         # Update setup section
         config["setup"]["completed"] = True
-        config["setup"]["tools_attached"] = request.tools_attached
+        config["setup"]["tools_attached"] = request_body.tools_attached
         config["setup"]["completed_at"] = datetime.now(timezone.utc).isoformat()
 
         # Update installation mode
         if "installation" not in config:
             config["installation"] = {}
 
-        config["installation"]["mode"] = request.network_mode.value
+        config["installation"]["mode"] = request_body.network_mode.value
 
-        # If LAN config provided, save it
-        if request.lan_config and request.network_mode == NetworkMode.LAN:
+        # Initialize response variables
+        api_key = None
+        requires_restart = False
+
+        # Handle LAN mode configuration
+        if request_body.lan_config and request_body.network_mode == NetworkMode.LAN:
+            logger.info("Configuring LAN mode setup...")
+
+            # 1. Update CORS origins for network access
+            update_cors_origins(config, request_body.lan_config.server_ip, request_body.lan_config.hostname)
+
+            # 2. Generate API key (requires AuthManager from app state)
+            try:
+                # Get auth manager from request app state
+                auth_manager = None
+                if request and hasattr(request.app, "state") and hasattr(request.app.state, "api_state"):
+                    auth_manager = request.app.state.api_state.auth
+
+                if auth_manager:
+                    api_key = auth_manager.generate_api_key(name="LAN Setup Key", permissions=["*"])
+                    logger.info("Generated API key for LAN mode")
+
+                    # 3. Store admin account (encrypted)
+                    auth_manager.store_admin_account(
+                        username=request_body.lan_config.admin_username, password=request_body.lan_config.admin_password
+                    )
+                    logger.info(f"Stored admin account for user: {request_body.lan_config.admin_username}")
+                else:
+                    logger.warning("AuthManager not available - skipping API key generation")
+            except Exception as e:
+                logger.error(f"Failed to configure LAN authentication: {e}", exc_info=True)
+                # Continue with setup but warn user
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to configure LAN authentication: {e}"
+                )
+
+            # 4. Save LAN server configuration
             if "server" not in config:
                 config["server"] = {}
 
-            config["server"]["ip"] = request.lan_config.server_ip
-            config["server"]["hostname"] = request.lan_config.hostname
-            config["server"]["admin_user"] = request.lan_config.admin_username
-            config["server"]["firewall_configured"] = request.lan_config.firewall_configured
+            config["server"]["ip"] = request_body.lan_config.server_ip
+            config["server"]["hostname"] = request_body.lan_config.hostname
+            config["server"]["admin_user"] = request_body.lan_config.admin_username
+            config["server"]["firewall_configured"] = request_body.lan_config.firewall_configured
+
+            # 5. Set API host to bind to all interfaces
+            if "services" not in config:
+                config["services"] = {}
+            if "api" not in config["services"]:
+                config["services"]["api"] = {}
+
+            config["services"]["api"]["host"] = "0.0.0.0"
+            requires_restart = True
+
+            logger.info("LAN mode configuration complete - restart required")
 
         # Update network configuration based on mode
         if "services" not in config:
@@ -243,11 +339,12 @@ async def complete_setup(request: SetupCompleteRequest = Body(...)):
             config["services"]["api"] = {}
 
         # Set API host based on mode
-        if request.network_mode == NetworkMode.LOCALHOST:
+        if request_body.network_mode == NetworkMode.LOCALHOST:
             config["services"]["api"]["host"] = "127.0.0.1"
-        else:
-            # LAN or WAN mode - bind to all interfaces
+        elif request_body.network_mode == NetworkMode.LAN and not request_body.lan_config:
+            # LAN mode without LAN config - use default
             config["services"]["api"]["host"] = "0.0.0.0"
+            requires_restart = True
 
         # Toggle Serena MCP instructions if requested
         try:
@@ -255,9 +352,9 @@ async def complete_setup(request: SetupCompleteRequest = Body(...)):
                 config["features"] = {}
             if "serena_mcp" not in config["features"]:
                 config["features"]["serena_mcp"] = {}
-            
-            config["features"]["serena_mcp"]["use_in_prompts"] = request.serena_enabled
-            logger.info(f"Serena prompts {'enabled' if request.serena_enabled else 'disabled'}")
+
+            config["features"]["serena_mcp"]["use_in_prompts"] = request_body.serena_enabled
+            logger.info(f"Serena prompts {'enabled' if request_body.serena_enabled else 'disabled'}")
         except Exception as e:
             logger.warning(f"Failed to set Serena prompts: {e}")
             # Non-fatal error, continue with setup completion
@@ -266,12 +363,18 @@ async def complete_setup(request: SetupCompleteRequest = Body(...)):
         write_config(config)
 
         logger.info(
-            f"Setup completed successfully: mode={request.network_mode.value}, "
-            f"tools={len(request.tools_attached)}, serena={request.serena_enabled}"
+            f"Setup completed successfully: mode={request_body.network_mode.value}, "
+            f"tools={len(request_body.tools_attached)}, serena={request_body.serena_enabled}"
         )
 
+        # Build response message
+        if request_body.network_mode == NetworkMode.LAN and api_key:
+            message = "LAN setup completed. Please restart services and save your API key securely."
+        else:
+            message = "Setup completed successfully. Configuration has been saved."
+
         return SetupCompleteResponse(
-            success=True, message="Setup completed successfully. Configuration has been saved."
+            success=True, message=message, api_key=api_key, requires_restart=requires_restart
         )
 
     except HTTPException:
