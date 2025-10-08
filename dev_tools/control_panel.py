@@ -18,6 +18,7 @@ Usage:
 """
 
 import ctypes
+import logging
 import os
 import platform
 import subprocess
@@ -84,6 +85,14 @@ class GiljoDevControlPanel:
         # Configuration
         self.config: Optional[dict[str, Any]] = None
         self.load_config()
+
+        # Setup logger for database operations
+        self.logger = logging.getLogger("GiljoDevControlPanel")
+        self.logger.setLevel(logging.INFO)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+            self.logger.addHandler(handler)
 
         # Check admin privileges
         self.is_admin = self.check_admin()
@@ -245,16 +254,51 @@ class GiljoDevControlPanel:
 
         ttk.Label(
             section,
-            text="Reset to fresh state (removes venv, configs, etc.)",
+            text="Reset options for development and testing",
             wraplength=600,
-        ).grid(row=0, column=0, sticky="w", pady=(0, 10))
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
 
+        # Row 1: Buttons
         ttk.Button(
             section,
             text="Reset to Fresh State",
             command=self.reset_to_fresh,
-            width=30,
-        ).grid(row=1, column=0, pady=5)
+            width=25,
+        ).grid(row=1, column=0, pady=5, padx=5)
+
+        ttk.Button(
+            section,
+            text="Verify Fresh State",
+            command=self.display_fresh_state_report,
+            width=25,
+        ).grid(row=1, column=1, pady=5, padx=5)
+
+        ttk.Button(
+            section,
+            text="Reset to Pristine",
+            command=self.reset_to_pristine,
+            width=25,
+        ).grid(row=1, column=2, pady=5, padx=5)
+
+        # Row 2: Descriptions
+        ttk.Label(
+            section,
+            text="Remove venv, configs (keeps data)",
+            font=("Arial", 8),
+        ).grid(row=2, column=0, sticky="w", padx=5)
+
+        ttk.Label(
+            section,
+            text="Check if system is clean",
+            font=("Arial", 8),
+        ).grid(row=2, column=1, sticky="w", padx=5)
+
+        ttk.Label(
+            section,
+            text="Complete reset (deletes everything)",
+            font=("Arial", 8),
+            foreground="red",
+        ).grid(row=2, column=2, sticky="w", padx=5)
 
         return row + 1
 
@@ -407,7 +451,7 @@ class GiljoDevControlPanel:
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(('127.0.0.1', port))
+                s.bind(("127.0.0.1", port))
                 return True
         except OSError:
             return False
@@ -426,7 +470,7 @@ class GiljoDevControlPanel:
             return None
 
         try:
-            for conn in psutil.net_connections(kind='inet'):
+            for conn in psutil.net_connections(kind="inet"):
                 if conn.laddr.port == port:
                     return conn.pid
         except (psutil.AccessDenied, AttributeError):
@@ -466,7 +510,7 @@ class GiljoDevControlPanel:
                 # Find PIDs using the port
                 result = subprocess.run(
                     ["netstat", "-ano"],
-                    capture_output=True,
+                    check=False, capture_output=True,
                     text=True,
                     timeout=5
                 )
@@ -485,7 +529,7 @@ class GiljoDevControlPanel:
                     try:
                         subprocess.run(
                             ["taskkill", "/F", "/PID", pid],
-                            capture_output=True,
+                            check=False, capture_output=True,
                             timeout=5
                         )
                     except Exception:
@@ -496,7 +540,7 @@ class GiljoDevControlPanel:
                 try:
                     result = subprocess.run(
                         ["lsof", "-ti", f":{port}"],
-                        capture_output=True,
+                        check=False, capture_output=True,
                         text=True,
                         timeout=5
                     )
@@ -507,7 +551,7 @@ class GiljoDevControlPanel:
                             try:
                                 subprocess.run(
                                     ["kill", "-9", pid],
-                                    capture_output=True,
+                                    check=False, capture_output=True,
                                     timeout=5
                                 )
                             except Exception:
@@ -517,7 +561,7 @@ class GiljoDevControlPanel:
                     try:
                         subprocess.run(
                             ["fuser", "-k", f"{port}/tcp"],
-                            capture_output=True,
+                            check=False, capture_output=True,
                             timeout=5
                         )
                     except FileNotFoundError:
@@ -680,7 +724,7 @@ class GiljoDevControlPanel:
                         "Port In Use",
                         f"Port {frontend_port} is in use by process {existing_pid}.\n\n"
                         "Kill the existing process and start frontend?",
-                        icon='warning'
+                        icon="warning"
                     )
 
                     if response:
@@ -970,16 +1014,21 @@ class GiljoDevControlPanel:
             success = self._delete_database_with_psycopg2()
             if success:
                 return
-            else:
-                # psycopg2 failed, try fallback
-                self.update_status_message("psycopg2 failed, trying psql.exe fallback...")
+            # psycopg2 failed, try fallback
+            self.update_status_message("psycopg2 failed, trying psql.exe fallback...")
 
         # Fallback to Windows psql.exe command-line
         self._delete_database_with_psql_cli()
 
     def _delete_database_with_psycopg2(self) -> bool:
         """
-        Delete database using psycopg2 library.
+        Delete database using psycopg2 library with User/ApiKey auditing.
+
+        Enhanced to:
+        - Count User and ApiKey records before deletion
+        - Verify foreign key constraints
+        - Display detailed counts in success message
+        - Handle counting errors gracefully
 
         Returns:
             True if successful, False if failed
@@ -987,7 +1036,61 @@ class GiljoDevControlPanel:
         try:
             credentials = self.get_db_credentials()
 
-            # Connect to postgres database (not giljo_mcp)
+            # First, connect to giljo_mcp to count Users/ApiKeys before deletion
+            user_count = 0
+            apikey_count = 0
+            fk_count = 0
+
+            try:
+                self.update_status_message("Auditing User/ApiKey data...")
+                audit_conn = psycopg2.connect(
+                    host=credentials["host"],
+                    port=credentials["port"],
+                    user=credentials["user"],
+                    password=credentials["password"],
+                    database="giljo_mcp",
+                    connect_timeout=5,
+                )
+
+                with audit_conn.cursor() as audit_cur:
+                    # Count users
+                    try:
+                        audit_cur.execute("SELECT COUNT(*) FROM users")
+                        user_count = audit_cur.fetchone()[0]
+                        self.logger.info(f"Found {user_count} users to delete")
+                    except Exception as e:
+                        user_count = 0
+                        self.logger.warning(f"Could not count users: {e}")
+
+                    # Count API keys
+                    try:
+                        audit_cur.execute("SELECT COUNT(*) FROM api_keys")
+                        apikey_count = audit_cur.fetchone()[0]
+                        self.logger.info(f"Found {apikey_count} API keys to delete")
+                    except Exception as e:
+                        apikey_count = 0
+                        self.logger.warning(f"Could not count API keys: {e}")
+
+                    # Verify foreign key constraints
+                    self.update_status_message("Verifying User/ApiKey constraints...")
+                    try:
+                        audit_cur.execute("""
+                            SELECT COUNT(*)
+                            FROM information_schema.table_constraints
+                            WHERE constraint_type = 'FOREIGN KEY'
+                              AND table_name IN ('users', 'api_keys')
+                        """)
+                        fk_count = audit_cur.fetchone()[0]
+                        self.logger.info(f"Found {fk_count} foreign key constraints on User/ApiKey tables")
+                    except Exception as e:
+                        self.logger.warning(f"Could not verify constraints: {e}")
+
+                audit_conn.close()
+            except Exception as e:
+                # Database might not exist or tables don't exist - continue with deletion
+                self.logger.warning(f"Could not audit database (may not exist): {e}")
+
+            # Connect to postgres database (not giljo_mcp) for deletion
             conn = psycopg2.connect(
                 host=credentials["host"],
                 port=credentials["port"],
@@ -1012,7 +1115,7 @@ class GiljoDevControlPanel:
 
                 # Step 2: Reassign owned objects to postgres superuser (fixes ownership issues)
                 self.update_status_message("Resolving ownership conflicts...")
-                for role in ['giljo_user', 'giljo_owner']:
+                for role in ["giljo_user", "giljo_owner"]:
                     try:
                         # Check if role exists first
                         cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,))
@@ -1023,7 +1126,7 @@ class GiljoDevControlPanel:
 
                 # Step 3: Drop owned objects (CASCADE to handle dependencies)
                 self.update_status_message("Dropping owned objects...")
-                for role in ['giljo_user', 'giljo_owner']:
+                for role in ["giljo_user", "giljo_owner"]:
                     try:
                         cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,))
                         if cur.fetchone():
@@ -1033,7 +1136,7 @@ class GiljoDevControlPanel:
 
                 # Step 4: Drop roles if they exist
                 self.update_status_message("Dropping database roles...")
-                for role in ['giljo_user', 'giljo_owner']:
+                for role in ["giljo_user", "giljo_owner"]:
                     try:
                         cur.execute(f"DROP ROLE IF EXISTS {role}")
                     except Exception:
@@ -1053,10 +1156,12 @@ class GiljoDevControlPanel:
                 "Success",
                 "Database deletion complete!\n\n"
                 "Removed:\n"
-                "- giljo_mcp database\n"
+                f"- giljo_mcp database\n"
+                f"- {user_count} users\n"
+                f"- {apikey_count} API keys\n"
                 "- giljo_user role\n"
                 "- giljo_owner role\n"
-                "- All owned objects"
+                "- All projects, agents, tasks, and data"
             )
             return True
 
@@ -1114,18 +1219,18 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
             # Write SQL to temp file
             import tempfile
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".sql", delete=False) as f:
                 f.write(sql_commands)
                 sql_file = f.name
 
             try:
                 # Execute psql with password in environment
                 env = os.environ.copy()
-                env['PGPASSWORD'] = '4010'
+                env["PGPASSWORD"] = "4010"
 
                 result = subprocess.run(
-                    ['psql', '-U', 'postgres', '-h', 'localhost', '-p', '5432', '-d', 'postgres', '-f', sql_file],
-                    capture_output=True,
+                    ["psql", "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
+                    check=False, capture_output=True,
                     text=True,
                     env=env,
                     timeout=30
@@ -1167,6 +1272,119 @@ DROP DATABASE IF EXISTS giljo_mcp;
         except Exception as e:
             self.update_status_message(f"psql.exe deletion failed: {e}")
             messagebox.showerror("Error", f"Database deletion failed:\n\n{e}")
+
+    def verify_fresh_state(self) -> dict[str, bool]:
+        """
+        Verify system is in true "fresh download" state.
+
+        Checks all components that should be deleted after reset:
+        - Virtual environment (venv/)
+        - Configuration files (config.yaml, .env, install_config.yaml)
+        - Database (giljo_mcp)
+        - PostgreSQL roles (giljo_user, giljo_owner)
+
+        Returns:
+            Dict mapping component name to is_clean boolean
+            - True: Component is clean (deleted/doesn't exist)
+            - False: Component still exists (NOT CLEAN)
+            - None: Cannot verify (missing dependencies)
+        """
+        checks = {}
+
+        # Check venv deleted
+        checks["venv"] = not (self.project_root / "venv").exists()
+
+        # Check config files deleted
+        checks["config.yaml"] = not (self.project_root / "config.yaml").exists()
+        checks[".env"] = not (self.project_root / ".env").exists()
+        checks["install_config.yaml"] = not (self.project_root / "install_config.yaml").exists()
+
+        # Check database deleted (requires psycopg2)
+        if psycopg2:
+            try:
+                credentials = self.get_db_credentials()
+                conn = psycopg2.connect(
+                    host=credentials["host"],
+                    port=credentials["port"],
+                    database="postgres",
+                    user=credentials["user"],
+                    password=credentials["password"],
+                    connect_timeout=5
+                )
+
+                with conn.cursor() as cur:
+                    # Check if giljo_mcp database exists
+                    cur.execute("SELECT 1 FROM pg_database WHERE datname = 'giljo_mcp'")
+                    checks["database"] = cur.fetchone() is None
+
+                    # Check if roles exist
+                    cur.execute("""
+                        SELECT 1 FROM pg_roles
+                        WHERE rolname IN ('giljo_user', 'giljo_owner')
+                    """)
+                    checks["roles"] = cur.fetchone() is None
+
+                conn.close()
+            except Exception as e:
+                print(f"Warning: Could not verify database state: {e}")
+                checks["database"] = None
+                checks["roles"] = None
+        else:
+            # psycopg2 not installed
+            checks["database"] = None
+            checks["roles"] = None
+
+        return checks
+
+    def display_fresh_state_report(self):
+        """
+        Display fresh state verification report in GUI dialog.
+
+        Shows status of each component:
+        - ✓ Clean: Component deleted/doesn't exist
+        - ✗ NOT CLEAN: Component still exists
+        - ⚠ Cannot verify: Missing dependencies or check failed
+        """
+        self.update_status_message("Verifying fresh state...")
+
+        checks = self.verify_fresh_state()
+
+        # Build report text
+        report = "Fresh State Verification:\n\n"
+
+        all_clean = True
+        cannot_verify = []
+        not_clean = []
+
+        for component, is_clean in checks.items():
+            if is_clean is None:
+                status = "⚠ Cannot verify"
+                cannot_verify.append(component)
+            elif is_clean:
+                status = "✓ Clean"
+            else:
+                status = "✗ NOT CLEAN"
+                not_clean.append(component)
+                all_clean = False
+
+            report += f"{status} - {component}\n"
+
+        # Add summary
+        report += "\n"
+        if all_clean and not cannot_verify:
+            report += "✓ System is in fresh download state!"
+        elif not_clean:
+            report += f"✗ {len(not_clean)} component(s) need cleanup:\n"
+            for comp in not_clean:
+                report += f"  - {comp}\n"
+
+        if cannot_verify:
+            report += f"\n⚠ Could not verify {len(cannot_verify)} component(s):\n"
+            for comp in cannot_verify:
+                report += f"  - {comp}\n"
+
+        self.update_status_message("Fresh state verification complete")
+        messagebox.showinfo("Fresh State Report", report)
 
     # Development Reset Methods
 
@@ -1257,6 +1475,238 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 "You can now run install.bat to set up again.",
             )
 
+    def reset_to_pristine(self):
+        """
+        Comprehensive reset to pristine "fresh GitHub download" state.
+
+        Deletes:
+        - Configuration files (config.yaml, .env, install_config.yaml)
+        - Virtual environment (venv/)
+        - Database (giljo_mcp) with all tables and roles
+        - Logs directory (logs/)
+        - Data directory (data/)
+        - Frontend build artifacts (dist/, node_modules/.vite)
+
+        This provides the most complete reset, simulating a truly fresh
+        installation experience.
+        """
+        # Confirmation dialog with comprehensive list
+        confirm = messagebox.askyesno(
+            "Confirm Pristine Reset",
+            "This will DELETE everything to simulate a fresh GitHub download:
+
+"
+            "Configuration & Environment:
+"
+            "- Virtual environment (venv/)
+"
+            "- Configuration files (config.yaml, .env)
+"
+            "- Installer config (install_config.yaml)
+
+"
+            "Database & Data:
+"
+            "- Database (giljo_mcp) and all tables
+"
+            "- PostgreSQL roles (giljo_user, giljo_owner)
+"
+            "- All users and API keys
+
+"
+            "Application Data:
+"
+            "- Logs directory (logs/)
+"
+            "- Uploaded files (data/)
+"
+            "- Session memories (docs/sessions/)
+
+"
+            "Frontend Artifacts:
+"
+            "- Build output (frontend/dist/)
+"
+            "- Vite cache (frontend/node_modules/.vite)
+
+"
+            "⚠ This action CANNOT be undone!
+
+"
+            "Continue?",
+            icon="warning"
+        )
+
+        if not confirm:
+            self.update_status_message("Pristine reset cancelled")
+            return
+
+        self.update_status_message("Starting pristine reset...")
+
+        errors = []
+        deleted = []
+
+        # Step 1: Delete configuration files and venv
+        try:
+            self.update_status_message("Step 1/6: Deleting configuration files and venv...")
+
+            targets = [
+                (self.project_root / "venv", "Virtual environment"),
+                (self.project_root / "config.yaml", "Configuration file"),
+                (self.project_root / ".env", "Environment file"),
+                (self.project_root / "install_config.yaml", "Installer config"),
+            ]
+
+            for target, desc in targets:
+                if target.exists():
+                    try:
+                        if target.is_dir():
+                            if target.name == "venv":
+                                success = self._aggressive_delete_venv(target)
+                                if success:
+                                    deleted.append(desc)
+                                else:
+                                    errors.append(f"{desc}: Failed to delete")
+                            else:
+                                import shutil
+                                shutil.rmtree(target)
+                                deleted.append(desc)
+                        else:
+                            target.unlink()
+                            deleted.append(desc)
+                    except Exception as e:
+                        errors.append(f"{desc}: {e}")
+
+        except Exception as e:
+            errors.append(f"Configuration cleanup: {e}")
+
+        # Step 2: Delete database
+        try:
+            self.update_status_message("Step 2/6: Deleting database...")
+
+            if psycopg2:
+                result = self._delete_database_with_psycopg2()
+                if result:
+                    deleted.append("Database (giljo_mcp)")
+                    deleted.append("PostgreSQL roles")
+                else:
+                    errors.append("Database deletion failed")
+            else:
+                errors.append("Database: psycopg2 not installed")
+
+        except Exception as e:
+            errors.append(f"Database deletion: {e}")
+
+        # Step 3: Delete logs directory
+        try:
+            self.update_status_message("Step 3/6: Cleaning logs directory...")
+
+            logs_dir = self.project_root / "logs"
+            if logs_dir.exists():
+                import shutil
+                shutil.rmtree(logs_dir, ignore_errors=True)
+                deleted.append("Logs directory")
+
+        except Exception as e:
+            errors.append(f"Logs cleanup: {e}")
+
+        # Step 4: Delete data directory
+        try:
+            self.update_status_message("Step 4/6: Cleaning data directory...")
+
+            data_dir = self.project_root / "data"
+            if data_dir.exists():
+                import shutil
+                shutil.rmtree(data_dir, ignore_errors=True)
+                deleted.append("Data directory")
+
+        except Exception as e:
+            errors.append(f"Data cleanup: {e}")
+
+        # Step 5: Delete session memories
+        try:
+            self.update_status_message("Step 5/6: Cleaning session memories...")
+
+            sessions_dir = self.project_root / "docs" / "sessions"
+            if sessions_dir.exists():
+                import shutil
+                shutil.rmtree(sessions_dir, ignore_errors=True)
+                deleted.append("Session memories")
+
+        except Exception as e:
+            errors.append(f"Session cleanup: {e}")
+
+        # Step 6: Delete frontend build artifacts
+        try:
+            self.update_status_message("Step 6/6: Cleaning frontend artifacts...")
+
+            frontend_targets = [
+                (self.project_root / "frontend" / "dist", "Frontend build output"),
+                (self.project_root / "frontend" / "node_modules" / ".vite", "Vite cache"),
+            ]
+
+            for target, desc in frontend_targets:
+                if target.exists():
+                    import shutil
+                    shutil.rmtree(target, ignore_errors=True)
+                    deleted.append(desc)
+
+        except Exception as e:
+            errors.append(f"Frontend cleanup: {e}")
+
+        # Final verification
+        self.update_status_message("Verifying pristine state...")
+        time.sleep(1)
+
+        # Build result message
+        if errors:
+            error_msg = "
+".join(errors)
+            messagebox.showwarning(
+                "Pristine Reset Partial Success",
+                f"Pristine reset completed with errors:
+
+"
+                f"Deleted ({len(deleted)} items):
+" + "
+".join(f"✓ {d}" for d in deleted[:5]) +
+                (f"
+  ... and {len(deleted) - 5} more" if len(deleted) > 5 else "") +
+                f"
+
+Errors ({len(errors)}):
+{error_msg[:200]}" +
+                ("..." if len(error_msg) > 200 else "") +
+                "
+
+You may need to manually delete remaining items."
+            )
+        else:
+            messagebox.showinfo(
+                "Pristine Reset Complete",
+                f"System reset to pristine state!
+
+"
+                f"Deleted {len(deleted)} components:
+" +
+                "
+".join(f"✓ {d}" for d in deleted[:8]) +
+                (f"
+  ... and {len(deleted) - 8} more" if len(deleted) > 8 else "") +
+                "
+
+You can now run install.bat to set up from scratch.
+
+"
+                "This simulates a fresh GitHub download."
+            )
+
+        # Display fresh state verification
+        self.display_fresh_state_report()
+
+        self.update_status_message("Pristine reset complete")
+
+
     def _aggressive_delete_venv(self, venv_path: Path) -> bool:
         """
         Aggressively delete venv directory using Windows commands.
@@ -1281,7 +1731,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 self.update_status_message("Deleting venv (using Windows rmdir)...")
                 result = subprocess.run(
                     ["cmd", "/c", "rmdir", "/s", "/q", str(venv_path)],
-                    capture_output=True,
+                    check=False, capture_output=True,
                     timeout=30
                 )
                 if result.returncode == 0:
@@ -1321,7 +1771,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 # Try Windows rmdir on renamed directory
                 result = subprocess.run(
                     ["cmd", "/c", "rmdir", "/s", "/q", str(temp_name)],
-                    capture_output=True,
+                    check=False, capture_output=True,
                     timeout=30
                 )
                 if result.returncode == 0:
