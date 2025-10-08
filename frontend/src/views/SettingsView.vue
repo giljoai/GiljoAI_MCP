@@ -36,11 +36,15 @@
         <v-icon start>mdi-api</v-icon>
         API and Integrations
       </v-tab>
+      <v-tab value="apikeys">
+        <v-icon start>mdi-key-variant</v-icon>
+        API Keys
+      </v-tab>
       <v-tab value="database">
         <v-icon start>mdi-database</v-icon>
         Database
       </v-tab>
-      <v-tab value="network">
+      <v-tab v-if="userStore.isAdmin" value="network">
         <v-icon start>mdi-network-outline</v-icon>
         Network
       </v-tab>
@@ -306,8 +310,8 @@
 
                   <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
                   <v-list-item-subtitle>
-                    Enabling adds Serena tool instructions to agent prompts. Disabling removes them from
-                    agent tool startup. (Currently only Claude Code)
+                    Enabling adds Serena tool instructions to agent prompts. Disabling removes them
+                    from agent tool startup. (Currently only Claude Code)
                   </v-list-item-subtitle>
 
                   <template v-slot:append>
@@ -327,8 +331,9 @@
 
             <v-alert type="info" variant="tonal" class="mb-4">
               <v-icon start>mdi-information</v-icon>
-              Serena MCP must be installed separately and configured in your coding tool (e.g., Claude
-              Code). This toggle only controls whether Serena instructions are included in agent prompts.
+              Serena MCP must be installed separately and configured in your coding tool (e.g.,
+              Claude Code). This toggle only controls whether Serena instructions are included in
+              agent prompts.
             </v-alert>
 
             <v-divider class="my-6" />
@@ -339,8 +344,8 @@
               <div class="d-flex align-center">
                 <v-icon start>mdi-information</v-icon>
                 <div>
-                  API authentication is configured automatically during setup.
-                  In LAN mode, the API key is managed in the <strong>Network</strong> settings tab.
+                  API authentication is configured automatically during setup. In LAN mode, the API
+                  key is managed in the <strong>Network</strong> settings tab.
                 </div>
               </div>
             </v-alert>
@@ -377,6 +382,11 @@
             <v-btn color="primary" variant="flat" @click="saveApiSettings">Save Changes</v-btn>
           </v-card-actions>
         </v-card>
+      </v-window-item>
+
+      <!-- API Keys -->
+      <v-window-item value="apikeys">
+        <ApiKeyManager />
       </v-window-item>
 
       <!-- Database Settings -->
@@ -489,11 +499,7 @@
 
             <h3 class="text-h6 mb-3">API Key Information</h3>
 
-            <v-alert
-              v-if="currentMode === 'localhost'"
-              type="info"
-              variant="tonal"
-            >
+            <v-alert v-if="currentMode === 'localhost'" type="info" variant="tonal">
               <div class="d-flex align-center">
                 <v-icon start>mdi-lock-open</v-icon>
                 <div>API key authentication is disabled in localhost mode</div>
@@ -550,8 +556,8 @@
             <h3 class="text-h6 mb-3">Change Deployment Mode</h3>
 
             <v-alert type="info" variant="tonal" class="mb-4">
-              To change deployment mode (localhost ↔ LAN), use the Setup Wizard below.
-              This ensures all network settings, API keys, and configurations are properly updated.
+              To change deployment mode (localhost ↔ LAN), use the Setup Wizard below. This ensures
+              all network settings, API keys, and configurations are properly updated.
             </v-alert>
           </v-card-text>
 
@@ -565,11 +571,7 @@
               <v-icon start>mdi-refresh</v-icon>
               Reload
             </v-btn>
-            <v-btn
-              color="primary"
-              :disabled="!networkSettingsChanged"
-              @click="saveNetworkSettings"
-            >
+            <v-btn color="primary" :disabled="!networkSettingsChanged" @click="saveNetworkSettings">
               Save Changes
             </v-btn>
           </v-card-actions>
@@ -583,14 +585,17 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
+import { useUserStore } from '@/stores/user'
 import { useTheme } from 'vuetify'
 import TemplateManager from '@/components/TemplateManager.vue'
+import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
 import { API_CONFIG } from '@/config/api'
 import setupService from '@/services/setupService'
 
 // Stores and Router
 const settingsStore = useSettingsStore()
+const userStore = useUserStore()
 const theme = useTheme()
 const router = useRouter()
 
@@ -845,29 +850,31 @@ function handleDatabaseError(error) {
 // Network Settings Methods
 async function loadNetworkSettings() {
   try {
-    let config;
+    let config
     try {
       // First, try loading from /api/v1/config
       const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
-        timeout: 5000  // Add a timeout to prevent hanging
-      });
+        timeout: 5000, // Add a timeout to prevent hanging
+      })
 
       if (!response.ok) {
-        throw new Error('Config endpoint failed');
+        throw new Error('Config endpoint failed')
       }
 
-      config = await response.json();
+      config = await response.json()
     } catch (configError) {
-      console.warn('[SETTINGS] Failed to load config from /api/v1/config, falling back to /api/setup/status');
+      console.warn(
+        '[SETTINGS] Failed to load config from /api/v1/config, falling back to /api/setup/status',
+      )
 
       // Fallback to /api/setup/status
-      const fallbackResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/status`);
+      const fallbackResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/status`)
 
       if (!fallbackResponse.ok) {
-        throw fallbackResponse.statusText;
+        throw fallbackResponse.statusText
       }
 
-      const fallbackConfig = await fallbackResponse.json();
+      const fallbackConfig = await fallbackResponse.json()
 
       // Map the fallback response to the expected config structure
       config = {
@@ -875,52 +882,52 @@ async function loadNetworkSettings() {
         services: {
           api: {
             host: fallbackConfig.host || '127.0.0.1',
-            port: fallbackConfig.port || 7272
-          }
+            port: fallbackConfig.port || 7272,
+          },
         },
         security: {
           cors: {
-            allowed_origins: fallbackConfig.allowed_origins || []
-          }
-        }
-      };
+            allowed_origins: fallbackConfig.allowed_origins || [],
+          },
+        },
+      }
     }
 
     // Set mode with robust fallback
-    currentMode.value = config.installation?.mode?.toLowerCase() || 'localhost';
+    currentMode.value = config.installation?.mode?.toLowerCase() || 'localhost'
 
     // Set API settings
-    networkSettings.value.apiHost = config.services?.api?.host || '127.0.0.1';
-    networkSettings.value.apiPort = config.services?.api?.port || 7272;
+    networkSettings.value.apiHost = config.services?.api?.host || '127.0.0.1'
+    networkSettings.value.apiPort = config.services?.api?.port || 7272
 
     // Set CORS origins
-    corsOrigins.value = config.security?.cors?.allowed_origins || [];
+    corsOrigins.value = config.security?.cors?.allowed_origins || []
 
     // Load API key info for LAN mode
     if (currentMode.value === 'lan') {
       try {
-        const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/api-key-info`);
-        const apiKeyData = await apiKeyResponse.json();
+        const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/api-key-info`)
+        const apiKeyData = await apiKeyResponse.json()
 
         apiKeyInfo.value = {
           created_at: apiKeyData.created_at || new Date().toISOString(),
-          key_preview: apiKeyData.key_preview || 'gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-        };
+          key_preview: apiKeyData.key_preview || 'gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        }
       } catch (apiKeyError) {
-        console.warn('[SETTINGS] Failed to load API key info', apiKeyError);
-        apiKeyInfo.value = null;
+        console.warn('[SETTINGS] Failed to load API key info', apiKeyError)
+        apiKeyInfo.value = null
       }
     }
 
-    console.log('[SETTINGS] Network settings loaded successfully');
+    console.log('[SETTINGS] Network settings loaded successfully')
   } catch (error) {
-    console.error('Completely failed to load network settings:', error);
+    console.error('Completely failed to load network settings:', error)
 
     // Absolute last resort fallback
-    currentMode.value = 'localhost';
-    networkSettings.value.apiHost = '127.0.0.1';
-    networkSettings.value.apiPort = 7272;
-    corsOrigins.value = [];
+    currentMode.value = 'localhost'
+    networkSettings.value.apiHost = '127.0.0.1'
+    networkSettings.value.apiPort = 7272
+    corsOrigins.value = []
   }
 }
 

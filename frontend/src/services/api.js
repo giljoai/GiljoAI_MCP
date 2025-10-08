@@ -6,6 +6,7 @@ const apiClient = axios.create({
   baseURL: API_CONFIG.REST_API.baseURL,
   timeout: API_CONFIG.REST_API.timeout,
   headers: API_CONFIG.REST_API.headers,
+  withCredentials: true, // CRITICAL: Send cookies with requests for JWT auth
 })
 
 // Request interceptor for auth token and tenant key
@@ -34,8 +35,16 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized access
+      // Clear any cached user state
       localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+      localStorage.removeItem('user')
+
+      // Only redirect to login if not already on the login page
+      if (!window.location.pathname.includes('/login')) {
+        // Store the current path to redirect back after login
+        const currentPath = window.location.pathname + window.location.search
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
+      }
     }
     return Promise.reject(error)
   },
@@ -159,9 +168,29 @@ export const api = {
     create: (data) => apiClient.post('/api/v1/templates/', data),
     update: (id, data) => apiClient.put(`/api/v1/templates/${id}/`, data),
     delete: (id) => apiClient.delete(`/api/v1/templates/${id}/`),
-    history: (id, limit = 10) => apiClient.get(`/api/v1/templates/${id}/history/`, { params: { limit } }),
-    restore: (templateId, archiveId) => apiClient.post(`/api/v1/templates/${templateId}/restore/${archiveId}/`),
+    history: (id, limit = 10) =>
+      apiClient.get(`/api/v1/templates/${id}/history/`, { params: { limit } }),
+    restore: (templateId, archiveId) =>
+      apiClient.post(`/api/v1/templates/${templateId}/restore/${archiveId}/`),
     preview: (id, data) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
+  },
+
+  // Authentication (JWT via httpOnly cookies)
+  auth: {
+    login: (username, password) => apiClient.post('/api/auth/login', { username, password }),
+    logout: () => apiClient.post('/api/auth/logout'),
+    me: () => apiClient.get('/api/auth/me'),
+    register: (data) => apiClient.post('/api/auth/register', data),
+    listUsers: () => apiClient.get('/api/auth/users'),
+    updateUser: (userId, data) => apiClient.put(`/api/auth/users/${userId}`, data),
+    deleteUser: (userId) => apiClient.delete(`/api/auth/users/${userId}`),
+  },
+
+  // API Key Management
+  apiKeys: {
+    list: () => apiClient.get('/api/auth/api-keys'),
+    create: (name) => apiClient.post('/api/auth/api-keys', { name }),
+    delete: (keyId) => apiClient.delete(`/api/auth/api-keys/${keyId}`),
   },
 }
 
