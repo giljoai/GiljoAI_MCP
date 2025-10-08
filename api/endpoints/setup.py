@@ -79,8 +79,11 @@ class SetupCompleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether setup completion was successful")
     message: str = Field(..., description="Human-readable status message")
-    api_key: Optional[str] = Field(None, description="Generated API key for LAN/WAN modes")
+    api_key: Optional[str] = Field(None, description="Generated API key for LAN/WAN modes (ONLY shown once)")
     requires_restart: bool = Field(False, description="Whether service restart is required")
+    mode: Optional[str] = Field(None, description="Installation mode (localhost, lan, wan)")
+    server_url: Optional[str] = Field(None, description="Server URL for API access")
+    admin_username: Optional[str] = Field(None, description="Admin username (LAN/WAN modes only)")
 
 
 class McpConfigRequest(BaseModel):
@@ -145,6 +148,63 @@ def write_config(config: dict[str, Any]) -> None:
     except Exception as e:
         logger.error(f"Failed to write config.yaml: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save configuration: {e}")
+
+
+def validate_lan_config(lan_config: LANConfig) -> None:
+    """
+    Validate LAN configuration input.
+
+    Args:
+        lan_config: LAN configuration to validate
+
+    Raises:
+        HTTPException 400: If validation fails
+    """
+    import ipaddress
+
+    # Validate username
+    if len(lan_config.admin_username) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Admin username must be at least 3 characters long"
+        )
+
+    if not lan_config.admin_username.replace("_", "").replace("-", "").isalnum():
+        raise HTTPException(
+            status_code=400,
+            detail="Admin username must contain only alphanumeric characters, hyphens, and underscores"
+        )
+
+    # Validate password
+    if len(lan_config.admin_password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Admin password must be at least 8 characters long"
+        )
+
+    # Validate IP address
+    try:
+        ip = ipaddress.ip_address(lan_config.server_ip)
+
+        # Reject link-local addresses (169.254.x.x)
+        if ip.is_link_local:
+            raise HTTPException(
+                status_code=400,
+                detail="Link-local IP addresses (169.254.x.x) are not allowed. Please use a valid LAN IP address."
+            )
+
+        # Reject loopback addresses
+        if ip.is_loopback:
+            raise HTTPException(
+                status_code=400,
+                detail="Loopback addresses (127.x.x.x) are not allowed. Please use a valid LAN IP address."
+            )
+
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid IP address format: {lan_config.server_ip}"
+        )
 
 
 def update_cors_origins(config: dict[str, Any], server_ip: str, hostname: str = None) -> None:
@@ -247,23 +307,30 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
     This endpoint is called when the user finishes the setup wizard.
     It saves the configuration choices and marks setup as complete.
 
-    For LAN mode, this endpoint also:
-    - Generates an API key
-    - Stores admin account credentials (encrypted)
+    For LAN/WAN mode, this endpoint:
+    - Validates input (username, password, IP address)
+    - Creates admin User in database with hashed password
+    - Generates API key for admin user
     - Updates CORS origins for network access
     - Configures API to bind to 0.0.0.0
 
-    The endpoint is idempotent - calling it multiple times will not
-    cause errors and will update the configuration each time.
+    For localhost mode:
+    - No user creation
+    - No API key generation
+    - Binds to 127.0.0.1
 
-    Now uses SetupStateManager for persistent state tracking with version support.
+    The endpoint is idempotent - calling it multiple times will update configuration.
 
     Args:
         request_body: Setup completion request with tools and network configuration
         request: FastAPI Request object (to access app state)
 
     Returns:
-        Success response with confirmation message and API key (for LAN mode)
+        Success response with confirmation message and API key (for LAN/WAN mode only)
+
+    Raises:
+        HTTPException 400: Invalid input (weak password, invalid IP, missing config)
+        HTTPException 500: Database error, config write error
     """
     try:
         # Get tenant_key (use "default" for single-tenant mode)
@@ -292,50 +359,128 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
 
         # Initialize response variables
         api_key = None
+        admin_username = None
         requires_restart = False
+        server_url = None
 
-        # Handle LAN mode configuration
-        if request_body.lan_config and request_body.network_mode == NetworkMode.LAN:
-            logger.info("Configuring LAN mode setup...")
+        # Handle LAN/WAN mode configuration
+        if request_body.network_mode in [NetworkMode.LAN, NetworkMode.WAN]:
+            logger.info(f"Configuring {request_body.network_mode.value.upper()} mode setup...")
+
+            # Validate lan_config is provided
+            if not request_body.lan_config:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{request_body.network_mode.value.upper()} mode requires lan_config with admin credentials and server IP"
+                )
+
+            # Validate LAN configuration
+            validate_lan_config(request_body.lan_config)
 
             # 1. Update CORS origins for network access
             update_cors_origins(config, request_body.lan_config.server_ip, request_body.lan_config.hostname)
 
-            # 2. Generate API key (requires AuthManager from app state)
+            # 2. Create admin user in database with hashed password
             try:
-                # Get auth manager from request app state
-                auth_manager = None
-                if request and hasattr(request.app, "state") and hasattr(request.app.state, "api_state"):
-                    auth_manager = request.app.state.api_state.auth
+                from passlib.hash import bcrypt
+                from sqlalchemy import select
+                from src.giljo_mcp.models import User, APIKey
+                from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key, get_key_prefix
 
-                if auth_manager:
-                    # Use get_or_create_api_key for idempotent behavior
-                    # This ensures the same key is returned when re-running the wizard
-                    api_key = auth_manager.get_or_create_api_key(name="LAN Setup Key", permissions=["*"])
-                    logger.info("✅ API key ready for LAN mode (idempotent)")
-
-                    # 3. Store admin account (encrypted)
-                    password_to_store = request_body.lan_config.admin_password
-                    logger.info(
-                        f"DEBUG: Password length = {len(password_to_store)} chars, {len(password_to_store.encode('utf-8'))} bytes"
-                    )
-                    auth_manager.store_admin_account(
-                        username=request_body.lan_config.admin_username, password=password_to_store
-                    )
-                    logger.info(f"✅ Stored admin account for user: {request_body.lan_config.admin_username}")
-                else:
-                    # AuthManager not available - this is a critical error for LAN mode
-                    logger.error("❌ AuthManager not available - cannot configure LAN mode")
+                # Get database session from request app state
+                if not (request and hasattr(request.app, "state") and hasattr(request.app.state, "api_state")):
                     raise HTTPException(
                         status_code=500,
-                        detail="Authentication system not initialized. Please restart the API server and try again.",
+                        detail="Database connection not available. Please restart the API server and try again."
                     )
+
+                db_manager = request.app.state.api_state.db_manager
+                if not db_manager:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Database manager not initialized. Please restart the API server and try again."
+                    )
+
+                async with db_manager.get_session_async() as session:
+                    # Check if user already exists
+                    stmt = select(User).where(User.username == request_body.lan_config.admin_username)
+                    result = await session.execute(stmt)
+                    existing_user = result.scalar_one_or_none()
+
+                    if existing_user:
+                        # Update existing user's password (idempotent behavior)
+                        existing_user.password_hash = bcrypt.hash(request_body.lan_config.admin_password)
+                        existing_user.is_active = True
+                        existing_user.role = "admin"
+                        await session.flush()
+                        user_id = existing_user.id
+                        admin_username = existing_user.username
+                        logger.info(f"Updated existing admin user in database: {admin_username}")
+                    else:
+                        # Create new admin user
+                        new_user = User(
+                            username=request_body.lan_config.admin_username,
+                            email=None,  # Email not collected in setup wizard yet
+                            password_hash=bcrypt.hash(request_body.lan_config.admin_password),
+                            role="admin",
+                            tenant_key=tenant_key,
+                            is_active=True,
+                            created_at=datetime.now(timezone.utc)
+                        )
+                        session.add(new_user)
+                        await session.flush()  # Get user.id
+                        user_id = new_user.id
+                        admin_username = new_user.username
+                        logger.info(f"Created admin user in database: {admin_username}")
+
+                    # 3. Generate API key for admin user
+                    plaintext_key = generate_api_key()
+                    key_hash = hash_api_key(plaintext_key)
+                    key_prefix = get_key_prefix(plaintext_key)
+
+                    # Check if setup key already exists for this user
+                    stmt = select(APIKey).where(
+                        APIKey.user_id == user_id,
+                        APIKey.name.like("%Setup%")
+                    )
+                    result = await session.execute(stmt)
+                    existing_key = result.scalar_one_or_none()
+
+                    if existing_key:
+                        # Update existing key (regenerate)
+                        existing_key.key_hash = key_hash
+                        existing_key.key_prefix = key_prefix
+                        existing_key.is_active = True
+                        existing_key.revoked_at = None
+                        logger.info("Regenerated API key for existing setup key")
+                    else:
+                        # Create new API key
+                        new_key = APIKey(
+                            user_id=user_id,
+                            tenant_key=tenant_key,
+                            name="Setup Wizard Key",
+                            key_hash=key_hash,
+                            key_prefix=key_prefix,
+                            permissions=["*"],
+                            is_active=True,
+                            created_at=datetime.now(timezone.utc)
+                        )
+                        session.add(new_key)
+                        logger.info("Created new API key for admin user")
+
+                    await session.commit()
+
+                    # Store plaintext key for response (ONLY TIME IT'S SHOWN)
+                    api_key = plaintext_key
+
+                logger.info(f"LAN/WAN mode: Admin user and API key configured successfully")
+
             except HTTPException:
                 # Re-raise HTTP exceptions
                 raise
             except Exception as e:
-                logger.error(f"❌ Failed to configure LAN authentication: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail=f"Failed to configure LAN authentication: {e}")
+                logger.error(f"Failed to configure LAN/WAN authentication: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail=f"Failed to configure authentication: {str(e)}")
 
             # 4. Save LAN server configuration
             if "server" not in config:
@@ -355,41 +500,38 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             config["services"]["api"]["host"] = "0.0.0.0"
             requires_restart = True
 
-            # 6. Enable API key authentication for LAN mode
+            # 6. Enable API key authentication for LAN/WAN mode
             if "features" not in config:
                 config["features"] = {}
             config["features"]["api_keys_required"] = True
             config["features"]["multi_user"] = True
-            logger.info("✅ LAN MODE: Enabled API key authentication (api_keys_required=True, multi_user=True)")
 
-            logger.info("LAN mode configuration complete - restart required")
+            # 7. Build server URL for response
+            api_port = config.get("services", {}).get("api", {}).get("port", 7272)
+            server_url = f"http://{request_body.lan_config.server_ip}:{api_port}"
 
-        # Update network configuration based on mode
-        if "services" not in config:
-            config["services"] = {}
+            logger.info(f"{request_body.network_mode.value.upper()} mode configuration complete - restart required")
 
-        if "api" not in config["services"]:
-            config["services"]["api"] = {}
-
-        # Set API host based on mode
+        # Handle localhost mode configuration
         if request_body.network_mode == NetworkMode.LOCALHOST:
+            if "services" not in config:
+                config["services"] = {}
+            if "api" not in config["services"]:
+                config["services"]["api"] = {}
+
             config["services"]["api"]["host"] = "127.0.0.1"
+
             # Disable API key authentication for localhost mode
             if "features" not in config:
                 config["features"] = {}
             config["features"]["api_keys_required"] = False
             config["features"]["multi_user"] = False
+
+            # Build localhost server URL
+            api_port = config.get("services", {}).get("api", {}).get("port", 7272)
+            server_url = f"http://127.0.0.1:{api_port}"
+
             logger.info("Localhost mode: API key authentication disabled")
-        elif request_body.network_mode == NetworkMode.LAN and not request_body.lan_config:
-            # LAN mode without LAN config - use default
-            config["services"]["api"]["host"] = "0.0.0.0"
-            requires_restart = True
-            # Enable API key authentication for LAN mode (no full config)
-            if "features" not in config:
-                config["features"] = {}
-            config["features"]["api_keys_required"] = True
-            config["features"]["multi_user"] = True
-            logger.info("✅ LAN MODE: Enabled API key authentication (api_keys_required=True, multi_user=True)")
 
         # Toggle Serena MCP instructions if requested
         try:
@@ -455,13 +597,24 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             f"tools={len(request_body.tools_attached)}, serena={request_body.serena_enabled}"
         )
 
-        # Build response message
-        if request_body.network_mode == NetworkMode.LAN and api_key:
-            message = "LAN setup completed. Please restart services and save your API key securely."
+        # Build response message and response model
+        if request_body.network_mode in [NetworkMode.LAN, NetworkMode.WAN]:
+            message = f"{request_body.network_mode.value.upper()} setup completed successfully. Save your API key securely - it will not be shown again."
         else:
             message = "Setup completed successfully. Configuration has been saved."
 
-        return SetupCompleteResponse(success=True, message=message, api_key=api_key, requires_restart=requires_restart)
+        # Build response with updated model fields
+        response_data = {
+            "success": True,
+            "message": message,
+            "api_key": api_key,
+            "requires_restart": requires_restart,
+            "mode": request_body.network_mode.value,
+            "server_url": server_url,
+            "admin_username": admin_username
+        }
+
+        return SetupCompleteResponse(**response_data)
 
     except HTTPException:
         raise
