@@ -80,14 +80,14 @@
     </v-card>
 
     <!-- LAN Settings (if LAN mode) -->
-    <v-card v-if="isLanMode && config.lanSettings" variant="outlined" class="mb-6">
+    <v-card v-if="isLanMode" variant="outlined" class="mb-6">
       <v-card-text class="d-flex align-center">
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
           <div class="text-subtitle-1 font-weight-medium">Network: Configured for LAN access</div>
           <div class="text-caption text-medium-emphasis">Server: {{ detectedServerUrl }}</div>
           <div v-if="isLanMode" class="text-caption text-medium-emphasis">
-            Admin: {{ config.lanSettings.adminUsername }}
+            Admin: {{ config.adminUsername }}
           </div>
           <div v-if="isLanMode" class="mt-2">
             <v-btn size="small" @click="copyUrl" variant="tonal" color="primary">
@@ -134,7 +134,7 @@
           <v-row>
             <v-col cols="12" md="6">
               <v-text-field
-                :model-value="config.lanSettings?.adminUsername || 'admin'"
+                :model-value="config.adminUsername || 'admin'"
                 label="Admin Username"
                 variant="outlined"
                 readonly
@@ -144,7 +144,7 @@
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field
-                :model-value="showPassword ? config.lanSettings?.adminPassword || '' : '••••••••'"
+                :model-value="showPassword ? config.adminPassword || '' : '••••••••'"
                 label="Admin Password"
                 variant="outlined"
                 readonly
@@ -299,10 +299,10 @@ const detectedServerUrl = ref('http://localhost:7272')
 // IP detection on component mount
 onMounted(async () => {
   try {
-    // FIXED: Use the IP the user entered in NetworkConfigStep, NOT auto-detection
-    // The user's IP is in props.config.lanSettings.serverIp
-    const serverIp = props.config.lanSettings?.serverIp || 'localhost'
-    const serverPort = props.config.lanSettings?.port || 7272
+    // Use the IP the user entered in NetworkConfigStep
+    // Config structure: props.config.serverIp (not nested in lanSettings)
+    const serverIp = props.config.serverIp || 'localhost'
+    const serverPort = 7272
 
     // Update server URL based on deployment mode
     detectedServerUrl.value =
@@ -310,7 +310,9 @@ onMounted(async () => {
         ? `http://${serverIp}:${serverPort}`
         : 'http://127.0.0.1:7272'
 
-    console.log('[COMPLETE_STEP] Using user-entered IP:', serverIp)
+    console.log('[COMPLETE_STEP] Server IP:', serverIp)
+    console.log('[COMPLETE_STEP] Deployment mode:', props.config.deploymentMode)
+    console.log('[COMPLETE_STEP] Serena enabled:', props.config.serenaEnabled)
   } catch (error) {
     console.error('IP detection failed:', error)
     // Fallback to default localhost
