@@ -53,6 +53,14 @@ class Product(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     meta_data = Column(JSON, default=dict)
+    
+    # Rich configuration data (JSONB for PostgreSQL performance)
+    config_data = Column(
+        JSONB,
+        nullable=True,
+        default=dict,
+        comment="Rich project configuration: architecture, tech_stack, features, etc."
+    )
 
     # Relationships
     projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
@@ -61,7 +69,38 @@ class Product(Base):
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),
         Index("idx_product_name", "name"),
+        Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
     )
+
+    @property
+    def has_config_data(self) -> bool:
+        """Check if product has config_data populated"""
+        return bool(self.config_data and len(self.config_data) > 0)
+
+    def get_config_field(self, field_path: str, default: Any = None) -> Any:
+        """
+        Get config field using dot notation (e.g., 'tech_stack.python')
+
+        Args:
+            field_path: Dot-separated path (e.g., 'architecture' or 'test_config.coverage')
+            default: Default value if field not found
+
+        Returns:
+            Field value or default
+        """
+        if not self.config_data:
+            return default
+
+        keys = field_path.split('.')
+        value = self.config_data
+
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return default
+
+        return value
 
 
 class Project(Base):
