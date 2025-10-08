@@ -536,8 +536,12 @@ const detectedVariables = computed(() => {
 const loadTemplates = async () => {
   loading.value = true
   try {
-    const response = await api.get('/api/templates')
-    templates.value = response.data.templates || []
+    const response = await api.templates.list()
+    // Map backend fields to frontend fields
+    templates.value = (response.data || []).map(t => ({
+      ...t,
+      template: t.template_content // Map template_content to template for frontend
+    }))
   } catch (error) {
     console.error('Failed to load templates:', error)
   } finally {
@@ -560,7 +564,10 @@ const openCreateDialog = () => {
 }
 
 const editTemplate = (template) => {
-  editingTemplate.value = { ...template }
+  editingTemplate.value = { 
+    ...template,
+    template: template.template_content || template.template // Ensure template field is set
+  }
   editDialog.value = true
 }
 
@@ -569,6 +576,7 @@ const duplicateTemplate = (template) => {
     ...template,
     id: null,
     name: `${template.name} (Copy)`,
+    template: template.template_content || template.template // Ensure template field is set
   }
   editDialog.value = true
 }
@@ -591,14 +599,30 @@ const saveTemplate = async () => {
   saving.value = true
   try {
     const data = {
-      ...editingTemplate.value,
-      variables: detectedVariables.value,
+      name: editingTemplate.value.name,
+      category: editingTemplate.value.category,
+      description: editingTemplate.value.description,
+      template_content: editingTemplate.value.template,
+      preferred_tool: editingTemplate.value.preferred_tool,
+      behavioral_rules: editingTemplate.value.behavioral_rules || [],
+      success_criteria: editingTemplate.value.success_criteria || [],
+      tags: editingTemplate.value.tags || [],
+      is_default: editingTemplate.value.is_default || false,
     }
 
     if (editingTemplate.value.id) {
-      await api.put(`/api/templates/${editingTemplate.value.id}`, data)
+      await api.templates.update(editingTemplate.value.id, {
+        name: data.name,
+        template_content: data.template_content,
+        description: data.description,
+        preferred_tool: data.preferred_tool,
+        behavioral_rules: data.behavioral_rules,
+        success_criteria: data.success_criteria,
+        tags: data.tags,
+        is_default: data.is_default,
+      })
     } else {
-      await api.post('/api/templates', data)
+      await api.templates.create(data)
     }
 
     await loadTemplates()
@@ -629,7 +653,7 @@ const generatePreview = async () => {
       variables[v.name] = v.value
     })
 
-    const response = await api.post(`/api/templates/${previewingTemplate.value.id}/preview`, {
+    const response = await api.templates.preview(previewingTemplate.value.id, {
       variables,
       augmentations: previewAugmentations.value,
     })
@@ -650,7 +674,7 @@ const confirmDelete = (template) => {
 const deleteTemplate = async () => {
   deleting.value = true
   try {
-    await api.delete(`/api/templates/${deletingTemplate.value.id}`)
+    await api.templates.delete(deletingTemplate.value.id)
     await loadTemplates()
     deleteDialog.value = false
     deletingTemplate.value = null
@@ -668,9 +692,7 @@ const viewHistory = (template) => {
 
 const handleRestore = async (version) => {
   try {
-    await api.post(`/api/templates/${version.template_id}/restore`, {
-      version_id: version.id,
-    })
+    await api.templates.restore(version.template_id, version.id)
     await loadTemplates()
     historyDialog.value = false
   } catch (error) {

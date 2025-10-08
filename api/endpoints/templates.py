@@ -64,7 +64,7 @@ class TemplateResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
     created_by: Optional[str]
-    preferred_tool: str
+    preferred_tool: str = "claude"
 
 
 class TemplateHistoryResponse(BaseModel):
@@ -169,6 +169,7 @@ async def get_templates(
                     created_at=template.created_at,
                     updated_at=template.updated_at,
                     created_by=template.created_by,
+                    preferred_tool=template.preferred_tool or "claude",
                 )
             )
 
@@ -274,6 +275,7 @@ async def create_template(template: TemplateCreate, session: AsyncSession = Depe
             created_at=new_template.created_at,
             updated_at=new_template.updated_at,
             created_by=new_template.created_by,
+            preferred_tool=getattr(new_template, 'preferred_tool', 'claude'),
         )
 
     except Exception as e:
@@ -412,6 +414,7 @@ async def update_template(
             created_at=template.created_at,
             updated_at=template.updated_at,
             created_by=template.created_by,
+            preferred_tool=template.preferred_tool or "claude",
         )
 
     except HTTPException:
