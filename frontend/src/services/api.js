@@ -151,6 +151,18 @@ export const api = {
     info: () => apiClient.get('/api/v1/stats/session/'),
     stats: () => apiClient.get('/api/v1/stats/'),
   },
+
+  // Templates
+  templates: {
+    list: (params) => apiClient.get('/api/v1/templates/', { params }),
+    get: (id) => apiClient.get(`/api/v1/templates/${id}/`),
+    create: (data) => apiClient.post('/api/v1/templates/', data),
+    update: (id, data) => apiClient.put(`/api/v1/templates/${id}/`, data),
+    delete: (id) => apiClient.delete(`/api/v1/templates/${id}/`),
+    history: (id, limit = 10) => apiClient.get(`/api/v1/templates/${id}/history/`, { params: { limit } }),
+    restore: (templateId, archiveId) => apiClient.post(`/api/v1/templates/${templateId}/restore/${archiveId}/`),
+    preview: (id, data) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
+  },
 }
 
 export default api
