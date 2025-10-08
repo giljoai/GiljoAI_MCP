@@ -207,44 +207,46 @@ def validate_lan_config(lan_config: LANConfig) -> None:
         )
 
 
-def update_cors_origins(config: dict[str, Any], server_ip: str, hostname: str = None) -> None:
+def update_cors_origins(config: dict[str, Any], server_ip: str = None, hostname: str = None, mode: str = "localhost") -> None:
     """
-    Update CORS origins with LAN IP and hostname for network accessibility.
+    Update CORS origins (DESTRUCTIVE - replaces all non-localhost origins).
+
+    Wizard is destructive by design - always starts fresh with base localhost origins
+    and adds LAN/WAN origins only for network modes.
 
     Args:
         config: Configuration dictionary to update
-        server_ip: Server IP address on LAN
-        hostname: Optional hostname for LAN access
+        server_ip: Server IP address for LAN/WAN mode (optional)
+        hostname: Optional hostname for LAN/WAN access
+        mode: Deployment mode (localhost, lan, wan)
     """
-    # Ensure security section exists
+    # Get frontend port from config
+    frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
+
+    # ALWAYS start with base localhost origins (preserved across all modes)
+    origins = [
+        f"http://127.0.0.1:{frontend_port}",
+        f"http://localhost:{frontend_port}",
+    ]
+
+    # Add LAN/WAN-specific origins ONLY in network modes
+    if mode in ["lan", "wan"]:
+        if server_ip:
+            origins.append(f"http://{server_ip}:{frontend_port}")
+            logger.info(f"Added CORS origin for {mode} mode: {server_ip}")
+
+        if hostname:
+            origins.append(f"http://{hostname}:{frontend_port}")
+            logger.info(f"Added CORS origin for {mode} mode: {hostname}")
+
+    # DESTRUCTIVE: Replace entire origins list
     if "security" not in config:
         config["security"] = {}
     if "cors" not in config["security"]:
         config["security"]["cors"] = {}
-    if "allowed_origins" not in config["security"]["cors"]:
-        config["security"]["cors"]["allowed_origins"] = []
 
-    # Get frontend port from config
-    frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
-
-    # Get current origins
-    origins = config["security"]["cors"]["allowed_origins"]
-
-    # Add server IP origin
-    server_origin = f"http://{server_ip}:{frontend_port}"
-    if server_origin not in origins:
-        origins.append(server_origin)
-        logger.info(f"Added CORS origin: {server_origin}")
-
-    # Add hostname origin if provided
-    if hostname:
-        hostname_origin = f"http://{hostname}:{frontend_port}"
-        if hostname_origin not in origins:
-            origins.append(hostname_origin)
-            logger.info(f"Added CORS origin: {hostname_origin}")
-
-    # Update config
     config["security"]["cors"]["allowed_origins"] = origins
+    logger.info(f"CORS origins set for {mode} mode: {origins}")
 
 
 @router.get("/status", response_model=SetupStatusResponse)
@@ -377,8 +379,13 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             # Validate LAN configuration
             validate_lan_config(request_body.lan_config)
 
-            # 1. Update CORS origins for network access
-            update_cors_origins(config, request_body.lan_config.server_ip, request_body.lan_config.hostname)
+            # 1. Update CORS origins for network access (destructive - replaces old origins)
+            update_cors_origins(
+                config,
+                server_ip=request_body.lan_config.server_ip,
+                hostname=request_body.lan_config.hostname,
+                mode=request_body.network_mode.value
+            )
 
             # 2. Create admin user in database with hashed password
             try:
@@ -527,11 +534,19 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             config["features"]["api_keys_required"] = False
             config["features"]["multi_user"] = False
 
+            # Remove orphaned server section (from previous LAN mode)
+            if "server" in config:
+                del config["server"]
+                logger.info("Removed orphaned server section (switched from LAN to localhost)")
+
+            # Clear LAN/WAN CORS origins (destructive cleanup)
+            update_cors_origins(config, mode="localhost")
+
             # Build localhost server URL
             api_port = config.get("services", {}).get("api", {}).get("port", 7272)
             server_url = f"http://127.0.0.1:{api_port}"
 
-            logger.info("Localhost mode: API key authentication disabled")
+            logger.info("Localhost mode: API key authentication disabled, LAN config cleaned up")
 
         # Toggle Serena MCP instructions if requested
         try:
@@ -892,21 +907,14 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
                 except Exception as e:
                     logger.warning(f"Failed to read existing config: {e}")
 
-            # Check if giljo-mcp is already configured
+            # Ensure mcpServers section exists
             if "mcpServers" not in existing_config:
                 existing_config["mcpServers"] = {}
 
-            # Check if already configured - if so, skip registration
-            if "giljo-mcp" in existing_config["mcpServers"]:
-                logger.info(f"giljo-mcp already configured in Claude Code, skipping registration")
-                return RegisterMcpResponse(
-                    success=True,
-                    message=f"MCP server already configured for {request.tool}",
-                    config_path=str(claude_config_path),
-                    backup_path=None,
-                )
+            # Check if already configured - UPDATE it instead of skipping (wizard is destructive)
+            is_update = "giljo-mcp" in existing_config["mcpServers"]
 
-            # Backup existing config before modifying
+            # Always backup existing config before modifying
             backup_path = None
             if claude_config_path.exists():
                 import shutil
@@ -916,6 +924,9 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
                 backup_path = home / f".claude.json.backup_{timestamp}"
                 shutil.copy2(claude_config_path, backup_path)
                 logger.info(f"Backed up existing config to {backup_path}")
+
+            if is_update:
+                logger.info(f"Wizard: Updating existing giljo-mcp configuration (destructive)")
 
             # Merge MCP servers
             if "mcpServers" not in existing_config:
@@ -928,11 +939,12 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
             with open(claude_config_path, "w", encoding="utf-8") as f:
                 json.dump(existing_config, f, indent=2, ensure_ascii=False)
 
-            logger.info(f"Registered MCP server for {request.tool} at {claude_config_path}")
+            action = "Updated" if is_update else "Registered"
+            logger.info(f"{action} MCP server for {request.tool} at {claude_config_path}")
 
             return RegisterMcpResponse(
                 success=True,
-                message=f"MCP server registered for {request.tool}",
+                message=f"MCP server {action.lower()} for {request.tool}",
                 config_path=str(claude_config_path),
                 backup_path=str(backup_path) if backup_path else None,
             )
@@ -1010,6 +1022,24 @@ async def create_admin_user(request: AdminUserRequest = Body(...)):
 
         db_manager = DatabaseManager(database_url=db_url, is_async=True)
         async with db_manager.get_session_async() as db:
+            # Delete existing users with same username or email (wizard is destructive)
+            from sqlalchemy import select, delete
+
+            # Delete any existing API keys for users we're about to delete
+            stmt = select(User.id).where(
+                (User.username == request.username) | (User.email == request.email)
+            )
+            result = await db.execute(stmt)
+            existing_user_ids = [row[0] for row in result.fetchall()]
+
+            if existing_user_ids:
+                logger.info(f"Wizard: Deleting {len(existing_user_ids)} existing user(s) and their API keys")
+                # Delete API keys first (foreign key constraint)
+                await db.execute(delete(APIKey).where(APIKey.user_id.in_(existing_user_ids)))
+                # Delete users
+                await db.execute(delete(User).where(User.id.in_(existing_user_ids)))
+                await db.flush()
+
             # Hash password
             password_hash = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 

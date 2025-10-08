@@ -371,7 +371,13 @@ const currentStepProps = computed(() => {
 })
 
 // Navigation methods
-const handleNext = () => {
+const handleNext = (data) => {
+  // Handle data from steps that emit it (like SerenaAttachStep)
+  if (data && 'serenaEnabled' in data) {
+    config.serenaEnabled = data.serenaEnabled
+    console.log('[WIZARD] Serena enabled:', data.serenaEnabled)
+  }
+
   if (currentStepIndex.value < visibleSteps.value.length - 1) {
     currentStepIndex.value++
   }
