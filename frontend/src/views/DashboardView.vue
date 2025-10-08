@@ -43,7 +43,8 @@
           <strong>Server URL:</strong> <code>http://{{ serverIp }}:{{ serverPort }}</code>
         </p>
         <p class="text-body-2">
-          Download the comprehensive setup and testing guide to verify network connectivity and troubleshoot any issues.
+          Download the comprehensive setup and testing guide to verify network connectivity and
+          troubleshoot any issues.
         </p>
       </div>
       <v-btn color="white" variant="outlined" @click="downloadLanGuide">

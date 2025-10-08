@@ -1,7 +1,9 @@
 // API Configuration for GiljoAI MCP Dashboard
 // Dynamically configured from environment or config file
 const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
-const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || 'localhost'
+// FIXED: Use window.location.hostname to get the server IP/hostname dynamically
+// This allows the frontend to work on localhost AND remote access
+const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
 
 export const API_CONFIG = {
   REST_API: {

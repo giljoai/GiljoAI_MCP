@@ -29,12 +29,7 @@
           View troubleshooting guide
         </a>
         or configure database in
-        <a
-          href="/settings"
-          class="text-primary"
-        >
-          Settings
-        </a>
+        <a href="/settings" class="text-primary"> Settings </a>
       </p>
     </div>
 
@@ -107,7 +102,7 @@ a:hover {
   padding: 24px;
 }
 
-.database-step-wrapper :deep(.v-btn[data-test="test-connection-btn"]) {
+.database-step-wrapper :deep(.v-btn[data-test='test-connection-btn']) {
   background-color: rgba(33, 150, 243, 0.12) !important;
   border: 2px solid rgba(33, 150, 243, 0.5) !important;
   color: rgb(var(--v-theme-primary)) !important;
@@ -115,7 +110,7 @@ a:hover {
   min-width: 180px;
 }
 
-.database-step-wrapper :deep(.v-btn[data-test="test-connection-btn"]:hover) {
+.database-step-wrapper :deep(.v-btn[data-test='test-connection-btn']:hover) {
   background-color: rgba(33, 150, 243, 0.2) !important;
   border-color: rgba(33, 150, 243, 0.7) !important;
 }

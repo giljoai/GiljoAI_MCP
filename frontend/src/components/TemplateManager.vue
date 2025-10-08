@@ -538,9 +538,9 @@ const loadTemplates = async () => {
   try {
     const response = await api.templates.list()
     // Map backend fields to frontend fields
-    templates.value = (response.data || []).map(t => ({
+    templates.value = (response.data || []).map((t) => ({
       ...t,
-      template: t.template_content // Map template_content to template for frontend
+      template: t.template_content, // Map template_content to template for frontend
     }))
   } catch (error) {
     console.error('Failed to load templates:', error)
@@ -564,9 +564,9 @@ const openCreateDialog = () => {
 }
 
 const editTemplate = (template) => {
-  editingTemplate.value = { 
+  editingTemplate.value = {
     ...template,
-    template: template.template_content || template.template // Ensure template field is set
+    template: template.template_content || template.template, // Ensure template field is set
   }
   editDialog.value = true
 }
@@ -576,7 +576,7 @@ const duplicateTemplate = (template) => {
     ...template,
     id: null,
     name: `${template.name} (Copy)`,
-    template: template.template_content || template.template // Ensure template field is set
+    template: template.template_content || template.template, // Ensure template field is set
   }
   editDialog.value = true
 }

@@ -206,14 +206,14 @@ class SetupService {
    */
   async completeSetup(config) {
     console.log('[SETUP_SERVICE] completeSetup called with:', config)
-    
+
     // Transform wizard config to API format
     // aiTools is array of objects [{id, name, configured}], need to extract IDs
-    const toolIds = (config.aiTools || []).map(tool => {
+    const toolIds = (config.aiTools || []).map((tool) => {
       // Handle both object format {id: 'claude-code'} and string format
       return typeof tool === 'string' ? tool : tool.id
     })
-    
+
     const payload = {
       tools_attached: toolIds,
       network_mode: config.deploymentMode || 'localhost',

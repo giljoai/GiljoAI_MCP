@@ -25,9 +25,7 @@
                       <v-icon class="mr-2">mdi-laptop</v-icon>
                       Localhost
                     </div>
-                    <div class="text-caption text-medium-emphasis">
-                      (Recommended)
-                    </div>
+                    <div class="text-caption text-medium-emphasis">(Recommended)</div>
                   </div>
                 </template>
               </v-radio>
@@ -48,11 +46,7 @@
                   title="Fastest performance"
                   class="text-caption"
                 />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Most secure"
-                  class="text-caption"
-                />
+                <v-list-item prepend-icon="mdi-check" title="Most secure" class="text-caption" />
               </v-list>
             </v-card-text>
           </v-card>
@@ -77,19 +71,13 @@
                       <v-icon class="mr-2">mdi-network</v-icon>
                       LAN
                     </div>
-                    <div class="text-caption text-medium-emphasis">
-                      Team access on your network
-                    </div>
+                    <div class="text-caption text-medium-emphasis">Team access on your network</div>
                   </div>
                 </template>
               </v-radio>
 
               <v-list density="compact" class="mt-3 bg-transparent">
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Multiple users"
-                  class="text-caption"
-                />
+                <v-list-item prepend-icon="mdi-check" title="Multiple users" class="text-caption" />
                 <v-list-item
                   prepend-icon="mdi-check"
                   title="Network configuration"
@@ -122,9 +110,7 @@
               <div class="d-flex align-center mb-1">
                 <v-icon class="mr-2" color="disabled" size="large">mdi-cloud</v-icon>
                 <div>
-                  <div class="text-h6 text-disabled">
-                    WAN/Hosted
-                  </div>
+                  <div class="text-h6 text-disabled">WAN/Hosted</div>
                   <v-chip size="small" color="info" class="mt-1">Future</v-chip>
                 </div>
               </div>
@@ -192,7 +178,8 @@
           <!-- Admin Credentials -->
           <h3 class="text-h6 mb-3">Administrator Account</h3>
           <p class="text-caption text-medium-emphasis mb-3">
-            Create an admin account for the GiljoAI API. This is used for API authentication and user management, not your operating system login.
+            Create an admin account for the GiljoAI API. This is used for API authentication and
+            user management, not your operating system login.
           </p>
 
           <v-text-field
@@ -307,12 +294,20 @@
             <v-card variant="outlined" class="mb-2">
               <v-card-text class="pa-2">
                 <div class="d-flex align-center">
-                  <code class="flex-grow-1">netsh advfirewall firewall add rule name="GiljoAI API" dir=in action=allow protocol=TCP localport={{ lanConfig.port }}</code>
+                  <code class="flex-grow-1"
+                    >netsh advfirewall firewall add rule name="GiljoAI API" dir=in action=allow
+                    protocol=TCP localport={{ lanConfig.port }}</code
+                  >
                   <v-btn
                     icon="mdi-content-copy"
                     size="small"
                     variant="text"
-                    @click="copyToClipboard(`netsh advfirewall firewall add rule name=&quot;GiljoAI API&quot; dir=in action=allow protocol=TCP localport=${lanConfig.port}`, 'firewall-win')"
+                    @click="
+                      copyToClipboard(
+                        `netsh advfirewall firewall add rule name=&quot;GiljoAI API&quot; dir=in action=allow protocol=TCP localport=${lanConfig.port}`,
+                        'firewall-win',
+                      )
+                    "
                   />
                 </div>
               </v-card-text>
@@ -364,12 +359,19 @@
             <v-card variant="outlined" class="mb-2">
               <v-card-text class="pa-2">
                 <div class="d-flex align-center">
-                  <code class="flex-grow-1">sudo firewall-cmd --permanent --add-port={{ lanConfig.port }}/tcp</code>
+                  <code class="flex-grow-1"
+                    >sudo firewall-cmd --permanent --add-port={{ lanConfig.port }}/tcp</code
+                  >
                   <v-btn
                     icon="mdi-content-copy"
                     size="small"
                     variant="text"
-                    @click="copyToClipboard(`sudo firewall-cmd --permanent --add-port=${lanConfig.port}/tcp`, 'firewall-firewalld')"
+                    @click="
+                      copyToClipboard(
+                        `sudo firewall-cmd --permanent --add-port=${lanConfig.port}/tcp`,
+                        'firewall-firewalld',
+                      )
+                    "
                   />
                 </div>
               </v-card-text>
@@ -382,7 +384,9 @@
                     icon="mdi-content-copy"
                     size="small"
                     variant="text"
-                    @click="copyToClipboard('sudo firewall-cmd --reload', 'firewall-firewalld-reload')"
+                    @click="
+                      copyToClipboard('sudo firewall-cmd --reload', 'firewall-firewalld-reload')
+                    "
                   />
                 </div>
               </v-card-text>
@@ -396,9 +400,9 @@
               macOS
             </h3>
             <p class="text-body-2">
-              1. Open System Preferences → Security & Privacy → Firewall<br>
-              2. Click "Firewall Options"<br>
-              3. Click "+" and add the GiljoAI API application<br>
+              1. Open System Preferences → Security & Privacy → Firewall<br />
+              2. Click "Firewall Options"<br />
+              3. Click "+" and add the GiljoAI API application<br />
               4. Set to "Allow incoming connections"
             </p>
           </div>
@@ -533,7 +537,10 @@ const copyToClipboard = async (text, id) => {
 const handleNext = () => {
   // Emit final configuration
   if (selectedMode.value === 'lan') {
-    emit('update:lanSettings', { ...lanConfig.value })
+    const settings = { ...lanConfig.value }
+    console.log('[NETWORK_CONFIG] Emitting lanSettings:', settings)
+    console.log('[NETWORK_CONFIG] serverIp value:', settings.serverIp)
+    emit('update:lanSettings', settings)
   } else {
     emit('update:lanSettings', null)
   }
@@ -545,32 +552,41 @@ const handleNext = () => {
 // Lifecycle - load existing config
 onMounted(async () => {
   console.log('[NETWORK_CONFIG] Loading existing configuration')
-  
+
   try {
     const status = await setupService.checkStatus()
     console.log('[NETWORK_CONFIG] Current status:', status)
-    
+
     // Set mode from existing config
     if (status.network_mode) {
       selectedMode.value = status.network_mode
       console.log('[NETWORK_CONFIG] Loaded mode:', status.network_mode)
     }
-    
+
     // Load existing config from config.yaml
     const response = await fetch(`${setupService.baseURL}/api/v1/config`)
     if (response.ok) {
       const config = await response.json()
       console.log('[NETWORK_CONFIG] Loaded config:', config)
-      
-      // If LAN mode, populate fields from server config
+
+      // If LAN mode, populate EMPTY fields from server config (don't override user input)
       if (config.server) {
-        lanConfig.value.serverIp = config.server.ip || lanConfig.value.serverIp
-        lanConfig.value.hostname = config.server.hostname || lanConfig.value.hostname
-        lanConfig.value.adminUsername = config.server.admin_user || lanConfig.value.adminUsername
+        // Only use backend IP as fallback if user hasn't entered one
+        if (!lanConfig.value.serverIp) {
+          lanConfig.value.serverIp = config.server.ip || ''
+        }
+        // Only use backend hostname as fallback if user hasn't entered one
+        if (!lanConfig.value.hostname) {
+          lanConfig.value.hostname = config.server.hostname || ''
+        }
+        // Only use backend admin username as fallback if user hasn't entered one
+        if (!lanConfig.value.adminUsername) {
+          lanConfig.value.adminUsername = config.server.admin_user || ''
+        }
         lanConfig.value.firewallConfigured = config.server.firewall_configured || false
-        console.log('[NETWORK_CONFIG] Loaded LAN settings from config')
+        console.log('[NETWORK_CONFIG] Loaded LAN settings from config (as fallbacks only)')
       }
-      
+
       // Load API port if available
       if (config.services?.api?.port) {
         lanConfig.value.port = config.services.api.port

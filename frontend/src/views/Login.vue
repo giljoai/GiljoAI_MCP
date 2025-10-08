@@ -1,0 +1,231 @@
+<template>
+  <v-container fluid class="fill-height login-container">
+    <v-row align="center" justify="center">
+      <v-col cols="12" sm="8" md="5" lg="4">
+        <v-card elevation="8" class="login-card">
+          <!-- Logo/Header -->
+          <v-card-title class="text-center pa-6">
+            <div class="d-flex flex-column align-center w-100">
+              <v-img
+                :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
+                alt="GiljoAI MCP"
+                height="50"
+                width="auto"
+                max-width="200"
+                class="mb-3"
+              />
+              <h1 class="text-h5 font-weight-bold">GiljoAI MCP Login</h1>
+              <p class="text-body-2 text-medium-emphasis mt-2">Agent Orchestration System</p>
+            </div>
+          </v-card-title>
+
+          <v-divider />
+
+          <v-card-text class="pa-6">
+            <!-- Alert for errors -->
+            <v-alert
+              v-if="error"
+              type="error"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="error = ''"
+            >
+              {{ error }}
+            </v-alert>
+
+            <!-- Alert for success messages -->
+            <v-alert
+              v-if="successMessage"
+              type="success"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="successMessage = ''"
+            >
+              {{ successMessage }}
+            </v-alert>
+
+            <!-- Login Form -->
+            <v-form @submit.prevent="handleLogin" ref="loginForm">
+              <v-text-field
+                v-model="username"
+                label="Username"
+                prepend-inner-icon="mdi-account"
+                variant="outlined"
+                :rules="[rules.required]"
+                :disabled="loading"
+                autofocus
+                autocomplete="username"
+                @keyup.enter="handleLogin"
+              />
+
+              <v-text-field
+                v-model="password"
+                label="Password"
+                prepend-inner-icon="mdi-lock"
+                :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                :type="showPassword ? 'text' : 'password'"
+                variant="outlined"
+                :rules="[rules.required]"
+                :disabled="loading"
+                autocomplete="current-password"
+                class="mt-4"
+                @click:append-inner="showPassword = !showPassword"
+                @keyup.enter="handleLogin"
+              />
+
+              <v-checkbox
+                v-model="rememberMe"
+                label="Remember me"
+                color="primary"
+                density="compact"
+                :disabled="loading"
+                class="mt-2"
+              />
+
+              <v-btn
+                type="submit"
+                color="primary"
+                size="large"
+                block
+                :loading="loading"
+                :disabled="!username || !password"
+                class="mt-4"
+              >
+                <v-icon start>mdi-login</v-icon>
+                Sign In
+              </v-btn>
+            </v-form>
+          </v-card-text>
+
+          <v-divider />
+
+          <!-- Footer Info -->
+          <v-card-text class="text-center pa-4">
+            <p class="text-caption text-medium-emphasis">
+              <v-icon size="small" class="mr-1">mdi-information</v-icon>
+              Localhost mode (127.0.0.1) bypasses authentication
+            </p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useTheme } from 'vuetify'
+import api from '@/services/api'
+
+// Composables
+const router = useRouter()
+const route = useRoute()
+const theme = useTheme()
+
+// State
+const username = ref('')
+const password = ref('')
+const rememberMe = ref(false)
+const showPassword = ref(false)
+const loading = ref(false)
+const error = ref('')
+const successMessage = ref('')
+const loginForm = ref(null)
+
+// Validation rules
+const rules = {
+  required: (value) => !!value || 'This field is required',
+}
+
+// Methods
+async function handleLogin() {
+  // Validate form
+  const { valid } = await loginForm.value.validate()
+  if (!valid) {
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+
+  try {
+    // POST to /api/auth/login with credentials
+    await api.auth.login(username.value, password.value)
+
+    // Show success message briefly
+    successMessage.value = 'Login successful! Redirecting...'
+
+    // Small delay to show success message
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    // Redirect to the original destination or dashboard
+    const redirect = route.query.redirect || '/'
+    router.push(redirect)
+  } catch (err) {
+    // Handle specific error types
+    if (err.response?.status === 401) {
+      error.value = 'Invalid username or password'
+    } else if (err.response?.status === 403) {
+      error.value = 'Access forbidden. Please contact your administrator.'
+    } else if (err.response?.data?.detail) {
+      error.value = err.response.data.detail
+    } else if (err.message) {
+      error.value = `Login failed: ${err.message}`
+    } else {
+      error.value = 'Login failed. Please try again.'
+    }
+
+    // Clear password field on error
+    password.value = ''
+  } finally {
+    loading.value = false
+  }
+}
+
+// Check if already authenticated on mount
+onMounted(async () => {
+  try {
+    // Try to access a protected endpoint to check if already logged in
+    await api.auth.me()
+
+    // If successful, user is already authenticated, redirect to dashboard
+    const redirect = route.query.redirect || '/'
+    router.push(redirect)
+  } catch (err) {
+    // Not authenticated, stay on login page
+    console.log('User not authenticated, showing login page')
+  }
+})
+</script>
+
+<style scoped>
+.login-container {
+  background: linear-gradient(135deg, rgba(30, 49, 71, 0.95) 0%, rgba(18, 29, 42, 0.98) 100%);
+  min-height: 100vh;
+}
+
+.login-card {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Dark theme adjustments */
+:deep(.v-theme--dark) .login-container {
+  background: linear-gradient(135deg, rgba(18, 29, 42, 0.98) 0%, rgba(10, 15, 22, 1) 100%);
+}
+
+/* Light theme adjustments */
+:deep(.v-theme--light) .login-container {
+  background: linear-gradient(135deg, rgba(240, 244, 248, 0.95) 0%, rgba(220, 230, 240, 0.98) 100%);
+}
+
+/* Accessibility: Focus indicators */
+.v-text-field:focus-within {
+  outline: 2px solid rgba(var(--v-theme-primary), 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+</style>

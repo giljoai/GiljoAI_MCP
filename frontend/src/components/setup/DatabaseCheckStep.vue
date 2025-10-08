@@ -1,9 +1,7 @@
 <template>
   <v-card-text class="pa-8">
     <h2 class="text-h5 mb-2">Database Connection</h2>
-    <p class="text-body-1 mb-6">
-      Verify your PostgreSQL database connection
-    </p>
+    <p class="text-body-1 mb-6">Verify your PostgreSQL database connection</p>
 
     <!-- Advanced Configuration Warning -->
     <v-alert type="warning" variant="tonal" class="mb-6">
@@ -13,16 +11,16 @@
           Database Settings Locked
         </div>
         <div class="text-body-2 mb-3">
-          Database configuration is managed by the installer. To modify database settings,
-          re-run the installer:
+          Database configuration is managed by the installer. To modify database settings, re-run
+          the installer:
         </div>
         <div class="mb-3">
           <code class="px-2 py-1">python installer/cli/install.py</code>
         </div>
         <div class="text-caption text-warning">
           <v-icon size="x-small" class="mr-1">mdi-alert</v-icon>
-          <strong>Warning:</strong> Re-running the installer with different database settings
-          will reset the application to factory defaults.
+          <strong>Warning:</strong> Re-running the installer with different database settings will
+          reset the application to factory defaults.
         </div>
       </div>
     </v-alert>
@@ -65,11 +63,7 @@
 
     <!-- Navigation -->
     <div class="d-flex justify-end navigation-buttons">
-      <v-btn
-        color="primary"
-        @click="$emit('next')"
-        aria-label="Continue to attach tools"
-      >
+      <v-btn color="primary" @click="$emit('next')" aria-label="Continue to attach tools">
         Continue
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>

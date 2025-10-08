@@ -3,7 +3,7 @@
     <!-- Success header -->
     <div class="text-center mb-6">
       <v-icon color="success" size="80">mdi-check-circle</v-icon>
-      <h2 class="text-h4 mt-4">Setup Complete!</h2>
+      <h2 class="text-h4 mt-4">Setup Complete! [DEBUG]</h2>
       <p class="text-h6 text-medium-emphasis mt-2">GiljoAI MCP is ready to use</p>
     </div>
 
@@ -74,7 +74,16 @@
         <div class="flex-grow-1">
           <div class="text-subtitle-1 font-weight-medium">Network: Configured for LAN access</div>
           <div class="text-caption text-medium-emphasis">
-            Server URL: http://{{ config.lanSettings.localIp }}:{{ config.lanSettings.port }}
+            Server: http://{{ config.lanSettings.serverIp }}:{{ config.lanSettings.port }}
+          </div>
+          <div class="text-caption text-error">
+            DEBUG: serverIp from prop = {{ config.lanSettings?.serverIp }}
+          </div>
+          <div class="text-caption text-error">
+            DEBUG: Full lanSettings = {{ JSON.stringify(config.lanSettings) }}
+          </div>
+          <div v-if="config.lanSettings.hostname" class="text-caption text-medium-emphasis">
+            Hostname: {{ config.lanSettings.hostname }}
           </div>
         </div>
       </v-card-text>
@@ -118,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
 /**
  * CompleteStep - Final setup completion step
@@ -134,6 +143,21 @@ const props = defineProps({
 })
 
 defineEmits(['finish'])
+
+// DEBUG: Log what IP we're actually receiving
+watch(
+  () => props.config.lanSettings,
+  (newSettings) => {
+    console.error('[COMPLETE_STEP] ===== lanSettings changed:', newSettings)
+    if (newSettings) {
+      console.error('[COMPLETE_STEP] ===== serverIp:', newSettings.serverIp)
+      console.error('[COMPLETE_STEP] ===== Full object:', JSON.stringify(newSettings, null, 2))
+    }
+  },
+  { immediate: true, deep: true },
+)
+
+console.error('[COMPLETE_STEP] ===== Component loaded!')
 
 // Computed
 const isLanMode = computed(() => props.config.deploymentMode === 'lan')

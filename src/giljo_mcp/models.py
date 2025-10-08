@@ -1109,3 +1109,118 @@ class SetupState(Base):
             True if tool is in tools_enabled list, False otherwise
         """
         return tool_name in (self.tools_enabled or [])
+
+
+class User(Base):
+    """
+    User model - user accounts for authentication (LAN/WAN modes).
+    
+    Users are the primary authentication entity in LAN/WAN deployment modes.
+    Each user can have multiple API keys for different applications/contexts.
+    
+    Multi-tenant isolation: Users belong to a tenant_key namespace.
+    """
+    __tablename__ = "users"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    
+    # Credentials
+    username = Column(String(64), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=True, index=True)
+    password_hash = Column(String(255), nullable=False)
+    
+    # Profile
+    full_name = Column(String(255), nullable=True)
+    
+    # Authorization
+    role = Column(String(32), nullable=False, default="developer")
+    # Roles: "admin", "developer", "viewer"
+    
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_login = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+    
+    __table_args__ = (
+        Index("idx_user_tenant", "tenant_key"),
+        Index("idx_user_username", "username"),
+        Index("idx_user_email", "email"),
+        Index("idx_user_active", "is_active"),
+        CheckConstraint(
+            "role IN ('admin', 'developer', 'viewer')",
+            name="ck_user_role"
+        ),
+    )
+    
+    def __repr__(self):
+        return f"<User(id={self.id}, username={self.username}, role={self.role})>"
+
+
+class APIKey(Base):
+    """
+    API Key model - personal API keys for MCP tool authentication.
+    
+    API keys enable programmatic access to the MCP server in LAN/WAN modes.
+    Each key is scoped to a user and can have specific permissions.
+    
+    Security:
+    - Keys are hashed using bcrypt before storage (never stored in plaintext)
+    - key_prefix stores first 12 chars for display purposes only
+    - Actual key is only returned once at creation time
+    
+    Multi-tenant isolation: API keys inherit tenant_key from their user.
+    """
+    __tablename__ = "api_keys"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    
+    # Foreign key to user
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    
+    # Key details
+    name = Column(String(255), nullable=False)  # Description/label
+    key_hash = Column(String(255), nullable=False, unique=True, index=True)  # Hashed API key (bcrypt)
+    key_prefix = Column(String(16), nullable=False)  # First 12 chars for display (e.g., "gk_abc12...")
+    
+    # Permissions (JSON array)
+    permissions = Column(JSONB, nullable=False, default=list)
+    
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_used = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    user = relationship("User", back_populates="api_keys")
+    
+    __table_args__ = (
+        Index("idx_apikey_tenant", "tenant_key"),
+        Index("idx_apikey_user", "user_id"),
+        Index("idx_apikey_hash", "key_hash"),
+        Index("idx_apikey_active", "is_active"),
+        # GIN index for JSONB permissions (enables efficient permission queries)
+        Index("idx_apikey_permissions_gin", "permissions", postgresql_using="gin"),
+        # Ensure revoked_at is set when is_active=false
+        CheckConstraint(
+            "(is_active = true AND revoked_at IS NULL) OR (is_active = false)",
+            name="ck_apikey_revoked_consistency"
+        ),
+    )
+    
+    def __repr__(self):
+        return f"<APIKey(id={self.id}, name={self.name}, user_id={self.user_id}, active={self.is_active})>"
+    
+    @property
+    def display_key(self) -> str:
+        """Get display-friendly version of key (prefix only)"""
+        return f"{self.key_prefix}..."
