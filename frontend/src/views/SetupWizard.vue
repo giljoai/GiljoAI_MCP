@@ -15,46 +15,33 @@
     <v-row justify="center">
       <v-col cols="12" md="10" lg="8" xl="6">
         <v-card class="wizard-card" elevation="4">
-          <!-- Vuetify Stepper -->
-          <v-stepper v-model="currentStep" :items="stepperItems" alt-labels flat hide-actions>
-            <template v-slot:item.1>
-              <v-card flat>
-                <DatabaseCheckStep @next="handleDatabaseNext" />
-              </v-card>
-            </template>
+          <!-- Progress Indicator -->
+          <v-card-text class="pa-6 pb-0">
+            <div class="d-flex justify-space-between align-center mb-2">
+              <h2 class="text-h5">GiljoAI MCP Setup</h2>
+              <v-chip size="small" color="primary">{{ stepCounter }}</v-chip>
+            </div>
+            <v-progress-linear
+              :model-value="progressPercent"
+              color="primary"
+              height="8"
+              rounded
+              class="mb-4"
+            />
+          </v-card-text>
 
-            <template v-slot:item.2>
-              <v-card flat>
-                <AttachToolsStep v-model="config.aiTools" @next="handleToolsNext" @back="handleBack" />
-              </v-card>
-            </template>
-
-            <template v-slot:item.3>
-              <v-card flat>
-                <SerenaAttachStep
-                  @next="handleSerenaNext"
-                  @back="handleBack"
-                />
-              </v-card>
-            </template>
-
-            <template v-slot:item.4>
-              <v-card flat>
-                <NetworkConfigStep
-                  v-model:mode="config.deploymentMode"
-                  v-model:lan-settings="config.lanSettings"
-                  @next="handleNetworkNext"
-                  @back="handleBack"
-                />
-              </v-card>
-            </template>
-
-            <template v-slot:item.5>
-              <v-card flat>
-                <SetupCompleteStep :config="config" @finish="handleFinish" @back="handleBack" />
-              </v-card>
-            </template>
-          </v-stepper>
+          <!-- Current Step Component -->
+          <v-window v-model="currentStepIndex" class="wizard-window">
+            <v-window-item v-for="(step, index) in visibleSteps" :key="index" :value="index">
+              <component
+                :is="step.component"
+                v-bind="getStepProps(step)"
+                @next="handleNext"
+                @back="handlePrevious"
+                @admin-setup-complete="handleAdminSetupComplete"
+              />
+            </v-window-item>
+          </v-window>
         </v-card>
       </v-col>
     </v-row>
@@ -73,7 +60,8 @@
               <strong>You are about to configure GiljoAI for LAN/Network access.</strong>
             </div>
             <div class="text-body-2">
-              When you restart the backend services, this application will be accessible over your local network.
+              When you restart the backend services, this application will be accessible over your
+              local network.
             </div>
           </v-alert>
 
@@ -92,9 +80,7 @@
         </v-card-text>
 
         <v-card-actions>
-          <v-btn variant="outlined" @click="cancelLanConfig">
-            Cancel
-          </v-btn>
+          <v-btn variant="outlined" @click="cancelLanConfig"> Cancel </v-btn>
           <v-spacer />
           <v-btn color="warning" @click="confirmLanConfig">
             <span class="text-white">Yes, Configure for LAN</span>
@@ -153,7 +139,8 @@
 
         <v-card-text>
           <v-alert type="success" variant="tonal" class="mb-4">
-            <strong>Setup Complete!</strong> Configuration has been saved. Please restart services to activate LAN mode.
+            <strong>Setup Complete!</strong> Configuration has been saved. Please restart services
+            to activate LAN mode.
           </v-alert>
 
           <h3 class="mb-2">Restart Instructions ({{ platform }})</h3>
@@ -168,7 +155,8 @@
 
           <v-alert type="warning" variant="tonal" class="mt-4">
             <div class="text-body-2">
-              <strong>Note:</strong> After restarting, this browser window will reconnect and show a welcome message confirming LAN mode is active.
+              <strong>Note:</strong> After restarting, this browser window will reconnect and show a
+              welcome message confirming LAN mode is active.
             </div>
           </v-alert>
         </v-card-text>
@@ -185,19 +173,68 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
 import DatabaseCheckStep from '@/components/setup/DatabaseCheckStep.vue'
+import DeploymentModeStep from '@/components/setup/DeploymentModeStep.vue'
+import AdminAccountStep from '@/components/setup/AdminAccountStep.vue'
 import AttachToolsStep from '@/components/setup/AttachToolsStep.vue'
 import SerenaAttachStep from '@/components/setup/SerenaAttachStep.vue'
-import NetworkConfigStep from '@/components/setup/NetworkConfigStep.vue'
 import SetupCompleteStep from '@/components/setup/SetupCompleteStep.vue'
 
 const theme = useTheme()
 
+// Step configuration with conditional rendering
+const allSteps = [
+  {
+    component: DatabaseCheckStep,
+    title: 'Database Test',
+    name: 'database',
+  },
+  {
+    component: DeploymentModeStep,
+    title: 'Deployment Mode',
+    name: 'deploymentMode',
+  },
+  {
+    component: AdminAccountStep,
+    title: 'Admin Setup',
+    name: 'adminSetup',
+    showIf: (config) => config.deploymentMode === 'lan' || config.deploymentMode === 'wan',
+  },
+  {
+    component: AttachToolsStep,
+    title: 'MCP Configuration',
+    name: 'attachTools',
+  },
+  {
+    component: SerenaAttachStep,
+    title: 'Serena Enhancement',
+    name: 'serena',
+  },
+  {
+    component: SetupCompleteStep,
+    title: 'Complete',
+    name: 'complete',
+  },
+]
+
+// Reactive configuration state
+const config = reactive({
+  deploymentMode: 'localhost', // Selected mode
+  adminUsername: '', // Admin username (LAN only)
+  adminPassword: '', // Admin password (LAN only)
+  adminEmail: '', // Admin email (LAN only)
+  serverIp: '', // Server IP (LAN only)
+  apiKey: '', // Generated API key (LAN only)
+  serenaEnabled: false, // Serena enabled flag
+  dbTestPassed: false, // Database test status
+  aiTools: [], // Configured AI tools
+})
+
 // State
-const currentStep = ref(1)
+const currentStepIndex = ref(0)
 const isRestarting = ref(false)
 const restartMessage = ref('Saving configuration...')
 const showLanConfirmModal = ref(false)
@@ -206,56 +243,75 @@ const showRestartModal = ref(false)
 const generatedApiKey = ref(null)
 const apiKeyCopied = ref(false)
 const apiKeyConfirmed = ref(false)
-const installationPath = ref('(project directory)')  // Fallback if API fails
+const installationPath = ref('(project directory)')
 const detectedPlatform = ref('windows')
 const setupError = ref(null)
-const config = ref({
-  deploymentMode: 'localhost', // 'localhost' | 'lan'
-  aiTools: [],
-  serenaEnabled: false,
-  lanSettings: null,
+
+// Computed: Visible steps based on current configuration
+const visibleSteps = computed(() => {
+  return allSteps.filter((step) => {
+    if (!step.showIf) return true
+    return step.showIf(config)
+  })
 })
 
-// Computed
-const logoSrc = computed(() =>
-  theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg',
-)
+// Computed: Current visible step
+const currentVisibleStep = computed(() => {
+  return visibleSteps.value[currentStepIndex.value]
+})
 
-const stepperItems = computed(() => [
-  { title: 'Database', value: 1 },
-  { title: 'Attach Tools', value: 2 },
-  { title: 'Serena MCP', value: 3 },
-  { title: 'Network', value: 4 },
-  { title: 'Complete', value: 5 },
-])
+// Computed: Step counter
+const stepCounter = computed(() => {
+  const current = currentStepIndex.value + 1
+  const total = visibleSteps.value.length
+  return `Step ${current} of ${total}`
+})
 
+// Computed: Progress percentage
+const progressPercent = computed(() => {
+  const current = currentStepIndex.value + 1
+  const total = visibleSteps.value.length
+  return Math.round((current / total) * 100)
+})
+
+// Computed: Server URL based on deployment mode
+const serverUrl = computed(() => {
+  if (config.deploymentMode === 'lan' || config.deploymentMode === 'wan') {
+    const ip = config.serverIp || 'localhost'
+    return `http://${ip}:7272`
+  }
+  return 'http://127.0.0.1:7272'
+})
+
+// Computed: Platform
 const platform = computed(() => {
   return detectedPlatform.value
 })
 
+// Computed: Restart instructions
 const restartInstructions = computed(() => {
   const instructions = {
     windows: [
       'Open Command Prompt or PowerShell',
       `Navigate to ${installationPath.value}`,
-      '⚠️ Stop BACKEND only: stop_backend.bat',
-      '⚠️ Start BACKEND only: start_backend.bat',
+      'Stop BACKEND only: stop_backend.bat',
+      'Start BACKEND only: start_backend.bat',
       'Wait 10-15 seconds for backend to start',
       '(Frontend does NOT need restart)',
     ],
     macos: [
       'Open Terminal',
       `Navigate to ${installationPath.value}`,
-      '⚠️ Stop BACKEND only: ./stop_backend.sh',
-      '⚠️ Start BACKEND only: ./start_backend.sh',
+      'Stop BACKEND only: ./stop_backend.sh',
+      'Start BACKEND only: ./start_backend.sh',
       'Wait 10-15 seconds for backend to start',
       '(Frontend does NOT need restart)',
     ],
     linux: [
       'Open Terminal',
       `Navigate to ${installationPath.value}`,
-      '⚠️ Stop BACKEND only: ./stop_backend.sh',
-      '⚠️ Start BACKEND only: ./start_backend.sh',
+      'Stop BACKEND only: ./stop_backend.sh',
+      'Start BACKEND only: ./start_backend.sh',
       'Wait 10-15 seconds for backend to start',
       '(Frontend does NOT need restart)',
     ],
@@ -263,31 +319,91 @@ const restartInstructions = computed(() => {
   return instructions[platform.value]
 })
 
-// Methods
-const handleDatabaseNext = () => {
-  currentStep.value = 2
+// Get props for current step
+const getStepProps = (step) => {
+  const baseProps = {}
+
+  switch (step.name) {
+    case 'database':
+      baseProps.dbTestPassed = config.dbTestPassed
+      break
+    case 'deploymentMode':
+      baseProps.modelValue = config.deploymentMode
+      baseProps['onUpdate:modelValue'] = (value) => {
+        config.deploymentMode = value
+      }
+      break
+    case 'adminSetup':
+      baseProps.modelValue = {
+        username: config.adminUsername,
+        password: config.adminPassword,
+        email: config.adminEmail,
+      }
+      baseProps['onUpdate:modelValue'] = (value) => {
+        config.adminUsername = value.username
+        config.adminPassword = value.password
+        config.adminEmail = value.email || ''
+      }
+      break
+    case 'attachTools':
+      baseProps.modelValue = config.aiTools
+      baseProps['onUpdate:modelValue'] = (value) => {
+        config.aiTools = value
+      }
+      baseProps.deploymentMode = config.deploymentMode
+      baseProps.apiKey = config.apiKey
+      baseProps.serverUrl = serverUrl.value
+      break
+    case 'serena':
+      // Serena step doesn't use modelValue, it emits next with data
+      break
+    case 'complete':
+      baseProps.config = config
+      break
+  }
+
+  return baseProps
 }
 
-const handleToolsNext = () => {
-  currentStep.value = 3
+// Computed: Props for current step
+const currentStepProps = computed(() => {
+  return getStepProps(currentVisibleStep.value)
+})
+
+// Navigation methods
+const handleNext = () => {
+  if (currentStepIndex.value < visibleSteps.value.length - 1) {
+    currentStepIndex.value++
+  }
 }
 
-const handleSerenaNext = (data) => {
-  config.value.serenaEnabled = data.serenaEnabled
-  currentStep.value = 4
+const handlePrevious = () => {
+  if (currentStepIndex.value > 0) {
+    currentStepIndex.value--
+  }
 }
 
-const handleNetworkNext = () => {
-  currentStep.value = 5
-}
+// Special handlers
+const handleAdminSetupComplete = async (data) => {
+  // Call API to create admin user and get API key
+  try {
+    const response = await setupService.createAdminUser({
+      username: config.adminUsername,
+      password: config.adminPassword,
+      email: config.adminEmail,
+    })
 
-const handleBack = () => {
-  currentStep.value--
+    config.apiKey = response.api_key
+    console.log('[WIZARD] Admin user created, API key received')
+  } catch (error) {
+    console.error('[WIZARD] Failed to create admin user:', error)
+    setupError.value = 'Failed to create admin user. Please try again.'
+  }
 }
 
 const handleFinish = async () => {
   // For LAN mode, show confirmation modal first
-  if (config.value.deploymentMode === 'lan') {
+  if (config.deploymentMode === 'lan') {
     showLanConfirmModal.value = true
     return
   }
@@ -298,7 +414,6 @@ const handleFinish = async () => {
 
 const cancelLanConfig = () => {
   showLanConfirmModal.value = false
-  // User stays on summary screen
 }
 
 const confirmLanConfig = async () => {
@@ -308,20 +423,26 @@ const confirmLanConfig = async () => {
 
 const saveSetupConfig = async () => {
   try {
-    console.log('[WIZARD] Completing setup with config:', config.value)
-    console.log('[WIZARD] Config details:', {
-      deploymentMode: config.value.deploymentMode,
-      aiTools: config.value.aiTools,
-      serenaEnabled: config.value.serenaEnabled,
-      lanSettings: config.value.lanSettings,
-    })
+    console.log('[WIZARD] Completing setup with config:', config)
 
     // Show completion overlay
     isRestarting.value = true
     restartMessage.value = 'Saving configuration...'
 
     // Save setup completion
-    const result = await setupService.completeSetup(config.value)
+    const result = await setupService.completeSetup({
+      deploymentMode: config.deploymentMode,
+      aiTools: config.aiTools,
+      serenaEnabled: config.serenaEnabled,
+      lanSettings:
+        config.deploymentMode === 'lan'
+          ? {
+              adminUsername: config.adminUsername,
+              serverIp: config.serverIp,
+            }
+          : null,
+    })
+
     console.log('[WIZARD] Setup marked as complete:', result)
 
     // Hide completion overlay
@@ -372,7 +493,7 @@ const proceedToRestart = () => {
 const finishSetup = () => {
   showRestartModal.value = false
   // Set flag in localStorage to show LAN welcome banner
-  if (config.value.deploymentMode === 'lan') {
+  if (config.deploymentMode === 'lan') {
     localStorage.setItem('giljo_lan_setup_complete', 'true')
   }
   window.location.href = 'http://localhost:7274'
@@ -402,8 +523,6 @@ onMounted(async () => {
     else detectedPlatform.value = 'linux'
   }
 
-  // Allow wizard to run even if setup was previously completed
-  // (user clicked "Re-run Setup Wizard" button)
   console.log('[WIZARD] Wizard ready for configuration')
 })
 </script>
@@ -418,5 +537,9 @@ onMounted(async () => {
 .wizard-card {
   border-radius: 16px;
   max-width: 100%;
+}
+
+.wizard-window {
+  min-height: 500px;
 }
 </style>

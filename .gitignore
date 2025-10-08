@@ -146,3 +146,4 @@ CLAUDE.md
 cleanup_auto.ps1
 cleanup_for_fresh_install.ps1
 IMPORTANT.txt
+.aider*

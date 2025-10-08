@@ -131,8 +131,8 @@
       <v-card>
         <v-card-title class="text-h5">Confirm Delete</v-card-title>
         <v-card-text>
-          Are you sure you want to delete user <strong>{{ userToDelete?.username }}</strong>?
-          This action cannot be undone.
+          Are you sure you want to delete user <strong>{{ userToDelete?.username }}</strong
+          >? This action cannot be undone.
         </v-card-text>
         <v-card-actions>
           <v-spacer />

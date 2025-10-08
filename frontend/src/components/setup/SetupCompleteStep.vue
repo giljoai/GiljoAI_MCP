@@ -54,7 +54,11 @@
             Serena: {{ serenaEnabled ? 'Enabled' : 'Not enabled' }}
           </div>
           <div class="text-caption text-medium-emphasis">
-            {{ serenaEnabled ? 'Agent prompts include Serena MCP instructions' : 'You can enable this later in Settings' }}
+            {{
+              serenaEnabled
+                ? 'Agent prompts include Serena MCP instructions'
+                : 'You can enable this later in Settings'
+            }}
           </div>
         </div>
       </v-card-text>
@@ -81,19 +85,12 @@
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
           <div class="text-subtitle-1 font-weight-medium">Network: Configured for LAN access</div>
-          <div class="text-caption text-medium-emphasis">
-            Server: {{ detectedServerUrl }}
-          </div>
+          <div class="text-caption text-medium-emphasis">Server: {{ detectedServerUrl }}</div>
           <div v-if="isLanMode" class="text-caption text-medium-emphasis">
             Admin: {{ config.lanSettings.adminUsername }}
           </div>
           <div v-if="isLanMode" class="mt-2">
-            <v-btn
-              size="small"
-              @click="copyUrl"
-              variant="tonal"
-              color="primary"
-            >
+            <v-btn size="small" @click="copyUrl" variant="tonal" color="primary">
               Copy Server URL
               <v-icon end>mdi-content-copy</v-icon>
             </v-btn>
@@ -110,21 +107,125 @@
       </v-card-text>
     </v-card>
 
-    <!-- Next Steps -->
-    <v-alert type="info" variant="tonal" class="mb-6">
+    <!-- Localhost Mode: Next Steps -->
+    <v-alert v-if="!isLanMode" type="info" variant="tonal" class="mb-6">
       <div class="text-subtitle-1 mb-2">
         <strong>Next Steps:</strong>
       </div>
-      <ul class="pl-4 mb-0">
-        <li v-if="hasTools">
-          Relaunch Claude Code CLI and type <code>/mcp</code> to verify attachment
+      <ol class="pl-4 mb-0">
+        <li v-if="hasTools">Relaunch Claude Code CLI to load MCP configuration</li>
+        <li v-if="hasTools">Type <code>/mcp</code> to verify giljo-mcp tools are loaded</li>
+        <li>
+          Access dashboard at <code>{{ detectedServerUrl.replace(':7272', ':7274') }}</code>
         </li>
-        <li>Create your first project from the dashboard</li>
-        <li>Explore agent templates and customize missions</li>
-        <li v-if="isLanMode">Share the server URL with your team members</li>
-        <li v-else>Configure additional AI tools in Settings if needed</li>
-      </ul>
+        <li>Create your first project and start orchestrating agents</li>
+      </ol>
     </v-alert>
+
+    <!-- LAN Mode: Admin Credentials & Next Steps -->
+    <div v-if="isLanMode">
+      <!-- Admin Credentials Display -->
+      <v-card variant="outlined" class="mb-4">
+        <v-card-title class="bg-surface-variant">
+          <v-icon start>mdi-account-key</v-icon>
+          Administrator Credentials
+        </v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
+                :model-value="config.lanSettings?.adminUsername || 'admin'"
+                label="Admin Username"
+                variant="outlined"
+                readonly
+                density="compact"
+                aria-label="Administrator username"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                :model-value="showPassword ? config.lanSettings?.adminPassword || '' : '••••••••'"
+                label="Admin Password"
+                variant="outlined"
+                readonly
+                density="compact"
+                :type="showPassword ? 'text' : 'password'"
+                aria-label="Administrator password"
+              >
+                <template #append-inner>
+                  <v-btn
+                    :icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                    variant="text"
+                    density="compact"
+                    @click="showPassword = !showPassword"
+                    aria-label="Toggle password visibility"
+                  />
+                </template>
+              </v-text-field>
+            </v-col>
+          </v-row>
+          <v-alert type="warning" variant="tonal" density="compact" class="mt-2">
+            <v-icon start size="small">mdi-shield-lock</v-icon>
+            Save these credentials securely. You will need them to access the dashboard.
+          </v-alert>
+        </v-card-text>
+      </v-card>
+
+      <!-- Team Access URLs -->
+      <v-card variant="outlined" class="mb-4">
+        <v-card-title class="bg-surface-variant">
+          <v-icon start>mdi-web</v-icon>
+          Team Access URLs
+        </v-card-title>
+        <v-card-text>
+          <div class="mb-3">
+            <div class="text-caption text-medium-emphasis mb-1">API Server</div>
+            <div class="d-flex align-center">
+              <code class="flex-grow-1 mr-2">{{ detectedServerUrl }}</code>
+              <v-btn
+                icon="mdi-content-copy"
+                size="small"
+                variant="text"
+                @click="copyUrl"
+                aria-label="Copy API server URL"
+              />
+            </div>
+          </div>
+          <div>
+            <div class="text-caption text-medium-emphasis mb-1">Dashboard</div>
+            <div class="d-flex align-center">
+              <code class="flex-grow-1 mr-2">{{
+                detectedServerUrl.replace(':7272', ':7274')
+              }}</code>
+              <v-btn
+                icon="mdi-content-copy"
+                size="small"
+                variant="text"
+                @click="copyDashboardUrl"
+                aria-label="Copy dashboard URL"
+              />
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <!-- LAN Next Steps -->
+      <v-alert type="info" variant="tonal" class="mb-6">
+        <div class="text-subtitle-1 mb-2">
+          <strong>Next Steps:</strong>
+        </div>
+        <ol class="pl-4 mb-0">
+          <li>Add MCP configuration to Claude Code CLI (see instructions in Attach Tools step)</li>
+          <li>Restart Claude Code CLI and verify with <code>/mcp</code> command</li>
+          <li>
+            Login at <code>{{ detectedServerUrl.replace(':7272', ':7274') }}</code> with admin
+            credentials
+          </li>
+          <li>Invite team members via Settings → Users (they will need their own API keys)</li>
+          <li>Share the dashboard URL with your team for access</li>
+        </ol>
+      </v-alert>
+    </div>
 
     <!-- Progress (100%) -->
     <v-card variant="outlined" class="mb-6">
@@ -139,13 +240,33 @@
 
     <!-- Navigation -->
     <div class="d-flex justify-space-between">
-      <v-btn variant="outlined" @click="$emit('back')" aria-label="Go back to network configuration">
+      <v-btn
+        variant="outlined"
+        @click="$emit('back')"
+        aria-label="Go back to network configuration"
+      >
         <v-icon start>mdi-arrow-left</v-icon>
         Back
       </v-btn>
-      <v-btn color="primary" size="large" @click="$emit('finish')" aria-label="Save configuration and exit">
-        <span class="text-white">Save and Exit</span>
-        <v-icon end color="white">mdi-content-save</v-icon>
+      <v-btn
+        v-if="!isLanMode"
+        color="primary"
+        size="large"
+        @click="$emit('finish')"
+        aria-label="Finish setup and close wizard"
+      >
+        <span class="text-white">Finish & Close Wizard</span>
+        <v-icon end color="white">mdi-check</v-icon>
+      </v-btn>
+      <v-btn
+        v-else
+        color="primary"
+        size="large"
+        @click="$emit('finish')"
+        aria-label="Finish setup and restart services"
+      >
+        <span class="text-white">Finish & Restart Services</span>
+        <v-icon end color="white">mdi-restart</v-icon>
       </v-btn>
     </div>
   </v-card-text>
@@ -178,21 +299,18 @@ const detectedServerUrl = ref('http://localhost:7272')
 // IP detection on component mount
 onMounted(async () => {
   try {
-    // Use existing method from setup service to detect IP
-    const networkInfo = await SetupService.detectIp()
-
-    // Prefer primary IP, fall back to local IPs if needed
-    const serverIp = networkInfo.primary_ip ||
-                     (networkInfo.local_ips && networkInfo.local_ips[0]) ||
-                     'localhost'
-
-    // Always use 7272 unless different port specified in LAN settings
+    // FIXED: Use the IP the user entered in NetworkConfigStep, NOT auto-detection
+    // The user's IP is in props.config.lanSettings.serverIp
+    const serverIp = props.config.lanSettings?.serverIp || 'localhost'
     const serverPort = props.config.lanSettings?.port || 7272
 
     // Update server URL based on deployment mode
-    detectedServerUrl.value = props.config.deploymentMode === 'lan'
-      ? `http://${serverIp}:${serverPort}`
-      : 'http://127.0.0.1:7272'
+    detectedServerUrl.value =
+      props.config.deploymentMode === 'lan'
+        ? `http://${serverIp}:${serverPort}`
+        : 'http://127.0.0.1:7272'
+
+    console.log('[COMPLETE_STEP] Using user-entered IP:', serverIp)
   } catch (error) {
     console.error('IP detection failed:', error)
     // Fallback to default localhost
@@ -239,6 +357,7 @@ const serenaEnabled = computed(() => {
 })
 
 const showCopyConfirmation = ref(false)
+const showPassword = ref(false)
 
 const copyUrl = () => {
   try {
@@ -247,6 +366,17 @@ const copyUrl = () => {
     })
   } catch (err) {
     console.error('Failed to copy URL:', err)
+  }
+}
+
+const copyDashboardUrl = () => {
+  const dashboardUrl = detectedServerUrl.value.replace(':7272', ':7274')
+  try {
+    navigator.clipboard.writeText(dashboardUrl).then(() => {
+      showCopyConfirmation.value = true
+    })
+  } catch (err) {
+    console.error('Failed to copy dashboard URL:', err)
   }
 }
 </script>
