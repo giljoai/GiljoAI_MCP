@@ -446,23 +446,33 @@ const highlightedMcpConfig = computed(() => {
   const apiKeyValue = props.apiKey || 'YOUR_API_KEY_HERE'
   const jsonString = mcpConfigJson.value
 
-  // Escape HTML to prevent XSS
-  const escaped = jsonString
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
+  // Find the line with GILJO_API_KEY BEFORE escaping
+  const lines = jsonString.split('\n')
+  const highlightedLines = lines.map((line) => {
+    // Check if this line contains the GILJO_API_KEY
+    if (line.includes('GILJO_API_KEY') && line.includes(apiKeyValue)) {
+      // Escape the line
+      const escapedLine = line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
 
-  // Highlight the entire API key line with Giljo yellow (#FFC107)
-  // Match: "GILJO_API_KEY": "actual_key_value"
-  const apiKeyLinePattern = `&quot;GILJO_API_KEY&quot;: &quot;${apiKeyValue}&quot;`
-  const highlighted = escaped.replace(
-    apiKeyLinePattern,
-    `<span class="api-key-highlight">${apiKeyLinePattern}</span>`
-  )
+      // Apply CSS class for yellow highlighting
+      return `<span class="api-key-highlight">${escapedLine}</span>`
+    } else {
+      // Escape normally
+      return line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+    }
+  })
 
-  return highlighted
+  return highlightedLines.join('\n')
 })
 
 // Methods
@@ -597,6 +607,13 @@ code {
   word-wrap: break-word;
   max-height: 400px;
   overflow-y: auto;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Target dynamically injected content via v-html using :deep() */
+.mcp-config-code :deep(.api-key-highlight) {
+  color: #ffc107;
+  display: block;
 }
 
 v-code {
@@ -608,13 +625,5 @@ v-code {
   font-size: 0.875rem;
   white-space: pre-wrap;
   overflow-x: auto;
-}
-
-.api-key-highlight {
-  background-color: #ffc107;
-  color: #000;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-weight: 600;
 }
 </style>
