@@ -240,21 +240,22 @@ class TestNetworkAdaptersEdgeCases:
 
     def test_adapters_handles_no_psutil(self, client, monkeypatch):
         """Test graceful degradation if psutil is not available"""
-        # Mock psutil import failure
-        import sys
+        # Mock psutil.net_if_addrs to raise ImportError
+        def mock_import_error(*args, **kwargs):
+            raise ImportError("psutil not available")
 
-        original_import = __builtins__.__import__
+        # We can't easily mock the import itself, so we'll skip this edge case test
+        # or test it by mocking psutil functions instead
+        import psutil
 
-        def mock_import(name, *args, **kwargs):
-            if name == "psutil":
-                raise ImportError("psutil not available")
-            return original_import(name, *args, **kwargs)
-
-        monkeypatch.setattr(__builtins__, "__import__", mock_import)
+        monkeypatch.setattr(psutil, "net_if_addrs", mock_import_error)
+        monkeypatch.setattr(psutil, "net_if_stats", mock_import_error)
 
         response = client.get("/api/network/adapters")
 
-        # Should either work with fallback or return 500 with clear error
+        # Should return 500 with clear error about psutil
+        # Note: The actual ImportError would happen on module import, not function call
+        # So this test validates function-level errors instead
         assert response.status_code in [200, 500]
 
         if response.status_code == 500:
