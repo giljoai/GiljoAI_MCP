@@ -108,8 +108,8 @@ class TestVerifyFreshStateCleanSystem:
         mock_control_panel.project_root = project_root
 
         # Mock database connection - database does NOT exist
-        mock_conn = Mock()
-        mock_cursor = Mock()
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
 
         # First query: Check if giljo_mcp database exists (should return None - doesn't exist)
         # Second query: Check if roles exist (should return None - don't exist)
@@ -211,8 +211,8 @@ class TestVerifyFreshStateDirtySystem:
         mock_control_panel.project_root = project_root
 
         # Mock database connection - database DOES exist
-        mock_conn = Mock()
-        mock_cursor = Mock()
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
 
         # First query: Database exists (returns row)
         # Second query: Roles don't exist (returns None)
@@ -273,8 +273,8 @@ class TestVerifyFreshStateDirtySystem:
         mock_control_panel.project_root = project_root
 
         # Mock database connection
-        mock_conn = Mock()
-        mock_cursor = Mock()
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
 
         # Database doesn't exist, but roles do
         mock_cursor.fetchone.side_effect = [None, ("giljo_user",)]
