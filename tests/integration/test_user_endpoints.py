@@ -525,11 +525,11 @@ async def test_require_authentication(test_client: AsyncClient):
     assert response.status_code == 401
 
 
-# Fixtures (reuse from test_auth_endpoints.py)
+# Fixtures - same pattern as test_auth_endpoints.py
 
 @pytest_asyncio.fixture
 async def test_client():
-    """Create async HTTP client for testing user endpoints."""
+    """Create async HTTP client for testing user endpoints with proper database dependency override."""
     from httpx import AsyncClient, ASGITransport
     from api.app import app
     from src.giljo_mcp.database import DatabaseManager
@@ -561,11 +561,14 @@ async def test_client():
 
     app.dependency_overrides[get_db_session] = override_get_db_session
 
-    # Disable localhost bypass for tests (force authentication)
-    import src.giljo_mcp.auth.dependencies
+    # IMPORTANT: Disable localhost bypass for tests
+    # We need to patch the get_current_user to not treat test requests as localhost
+    from functools import wraps
     from fastapi import Request, Cookie, Header, Depends
     from typing import Optional
     from sqlalchemy.ext.asyncio import AsyncSession
+
+    import src.giljo_mcp.auth.dependencies
 
     original_code = src.giljo_mcp.auth.dependencies.get_current_user
 
@@ -573,15 +576,17 @@ async def test_client():
         request: Request,
         access_token: Optional[str] = Cookie(None),
         x_api_key: Optional[str] = Header(None),
-        db: AsyncSession = Depends(override_get_db_session)
+        db: AsyncSession = Depends(override_get_db_session)  # Use our override directly
     ):
         # Mock the client to appear as non-localhost
         if request.client:
+            # Create a mock client object with non-localhost IP
             class MockClient:
                 def __init__(self, original_client):
                     self.host = "192.168.1.100"  # Non-localhost IP
                     self.port = original_client.port if original_client else 12345
 
+            # Temporarily replace client
             original_client = request.client
             request._client = MockClient(original_client)
             try:
@@ -593,12 +598,12 @@ async def test_client():
 
     app.dependency_overrides[src.giljo_mcp.auth.dependencies.get_current_user] = patched_get_current_user
 
-    # Create async client
+    # Create async client with a non-localhost hostname to force authentication
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver:8000") as ac:
         yield ac
 
-    # Cleanup
+    # Cleanup: clear overrides and close test database
     app.dependency_overrides.clear()
     await test_db_manager.close_async()
 
@@ -609,6 +614,7 @@ async def test_user(test_client):
     from api.app import app
     from src.giljo_mcp.auth.dependencies import get_db_session
 
+    # Get the overridden database session
     db_session_gen = app.dependency_overrides[get_db_session]
     async for session in db_session_gen():
         user = User(
@@ -631,6 +637,7 @@ async def admin_user(test_client):
     from api.app import app
     from src.giljo_mcp.auth.dependencies import get_db_session
 
+    # Get the overridden database session
     db_session_gen = app.dependency_overrides[get_db_session]
     async for session in db_session_gen():
         user = User(
