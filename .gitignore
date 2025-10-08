@@ -148,3 +148,9 @@ cleanup_auto.ps1
 cleanup_for_fresh_install.ps1
 IMPORTANT.txt
 .aider*
+external/serena-venv/bin/python
+external/serena-venv/bin/python3
+external/serena-venv/bin/python3.12
+external/serena-venv/lib64
+external/serena-venv/pyvenv.cfg
+external/serena/
