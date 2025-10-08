@@ -39,6 +39,7 @@
                 @next="handleNext"
                 @back="handlePrevious"
                 @admin-setup-complete="handleAdminSetupComplete"
+                @finish="handleFinish"
               />
             </v-window-item>
           </v-window>
@@ -227,10 +228,14 @@ const config = reactive({
   adminPassword: '', // Admin password (LAN only)
   adminEmail: '', // Admin email (LAN only)
   serverIp: '', // Server IP (LAN only)
+  port: 7272, // API port (LAN only)
+  hostname: '', // Optional hostname (LAN only)
   apiKey: '', // Generated API key (LAN only)
   serenaEnabled: false, // Serena enabled flag
   dbTestPassed: false, // Database test status
   aiTools: [], // Configured AI tools
+  adapterName: '', // Network adapter name (LAN only)
+  adapterId: '', // Network adapter ID (LAN only)
 })
 
 // State
@@ -338,11 +343,24 @@ const getStepProps = (step) => {
         username: config.adminUsername,
         password: config.adminPassword,
         email: config.adminEmail,
+        serverIp: config.serverIp,
+        adapterName: config.adapterName,
+        adapterId: config.adapterId,
       }
       baseProps['onUpdate:modelValue'] = (value) => {
         config.adminUsername = value.username
         config.adminPassword = value.password
         config.adminEmail = value.email || ''
+        config.serverIp = value.serverIp || ''
+        config.adapterName = value.adapterName || ''
+        config.adapterId = value.adapterId || ''
+        console.log('[WIZARD] Admin setup updated:', {
+          username: config.adminUsername,
+          email: config.adminEmail,
+          serverIp: config.serverIp,
+          adapterName: config.adapterName,
+          adapterId: config.adapterId,
+        })
       }
       break
     case 'attachTools':
@@ -444,7 +462,12 @@ const saveSetupConfig = async () => {
         config.deploymentMode === 'lan'
           ? {
               adminUsername: config.adminUsername,
+              adminPassword: config.adminPassword,
               serverIp: config.serverIp,
+              port: config.port,
+              hostname: config.hostname,
+              adapterName: config.adapterName,
+              adapterId: config.adapterId,
             }
           : null,
     })

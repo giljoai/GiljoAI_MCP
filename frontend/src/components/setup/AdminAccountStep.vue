@@ -9,22 +9,78 @@
     </v-alert>
 
     <v-form ref="form" v-model="formValid" @submit.prevent="handleNext">
-      <!-- Username -->
-      <v-text-field
-        v-model="formData.username"
-        label="Username"
+      <!-- Network Adapter Selection -->
+      <v-select
+        v-if="!showManualIpEntry"
+        v-model="formData.selectedAdapter"
+        :items="adapterItems"
+        item-title="label"
+        item-value="value"
+        label="Network Adapter"
         variant="outlined"
-        :rules="usernameRules"
+        :rules="adapterRules"
+        :loading="loadingAdapters"
+        :disabled="loadingAdapters"
         required
         class="mb-4"
-        aria-label="Admin username"
-        hint="Alphanumeric, underscores, and hyphens only"
+        aria-label="Select network adapter"
+        hint="Choose the network adapter for LAN access"
         persistent-hint
+        autocomplete="off"
       >
-        <template v-if="usernameAvailable" #append-inner>
+        <template #append-inner>
+          <v-icon
+            v-if="formData.selectedAdapter && !loadingAdapters"
+            color="success"
+          >
+            mdi-check-circle
+          </v-icon>
+        </template>
+      </v-select>
+
+      <!-- Fallback: Manual IP Entry -->
+      <v-text-field
+        v-if="showManualIpEntry"
+        v-model="formData.serverIp"
+        label="Server IP Address"
+        variant="outlined"
+        :rules="serverIpRules"
+        required
+        class="mb-4"
+        aria-label="Server IP address"
+        hint="The IP address of this computer on your network (e.g., 192.168.1.100)"
+        persistent-hint
+        autocomplete="off"
+      >
+        <template v-if="isValidIp" #append-inner>
           <v-icon color="success">mdi-check-circle</v-icon>
         </template>
       </v-text-field>
+
+      <!-- Toggle for Manual Entry -->
+      <div v-if="!loadingAdapters" class="text-caption mb-4">
+        <a
+          href="#"
+          @click.prevent="toggleManualEntry"
+          class="text-primary"
+          aria-label="Toggle manual IP entry"
+        >
+          {{ showManualIpEntry ? 'Use adapter dropdown' : 'Enter IP manually' }}
+        </a>
+      </div>
+
+      <!-- Error Alert -->
+      <v-alert
+        v-if="adapterError"
+        type="warning"
+        variant="tonal"
+        closable
+        class="mb-4"
+        @click:close="adapterError = null"
+      >
+        <strong>Network adapter detection failed</strong>
+        <div class="text-caption mt-1">{{ adapterError }}</div>
+      </v-alert>
 
       <!-- Email (optional) -->
       <v-text-field
@@ -37,7 +93,26 @@
         aria-label="Admin email"
         hint="Optional email for account recovery"
         persistent-hint
+        autocomplete="email"
       />
+
+      <!-- Username -->
+      <v-text-field
+        v-model="formData.username"
+        label="Username"
+        variant="outlined"
+        :rules="usernameRules"
+        required
+        class="mb-4"
+        aria-label="Admin username"
+        hint="Alphanumeric, underscores, and hyphens only"
+        persistent-hint
+        autocomplete="username"
+      >
+        <template v-if="usernameAvailable" #append-inner>
+          <v-icon color="success">mdi-check-circle</v-icon>
+        </template>
+      </v-text-field>
 
       <!-- Password -->
       <v-text-field
@@ -49,6 +124,7 @@
         required
         class="mb-2"
         aria-label="Admin password"
+        autocomplete="new-password"
       >
         <template #append-inner>
           <v-icon
@@ -81,6 +157,7 @@
         required
         class="mb-4"
         aria-label="Confirm admin password"
+        autocomplete="new-password"
       >
         <template #append-inner>
           <v-icon
@@ -182,12 +259,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import setupService from '@/services/setupService'
 
 /**
  * AdminAccountStep - Admin account creation for LAN mode
  *
  * Collects admin credentials with password strength validation
+ * Features network adapter dropdown with fallback to manual IP entry
  */
 
 const props = defineProps({
@@ -205,9 +284,18 @@ const formValid = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
+// Network adapter state
+const loadingAdapters = ref(false)
+const adapterError = ref(null)
+const adapters = ref([])
+const showManualIpEntry = ref(false)
+
 const formData = ref({
   username: 'admin',
   email: '',
+  serverIp: '',
+  selectedAdapter: null,
+  selectedAdapterObject: null,  // Store full adapter object
   password: '',
   confirmPassword: '',
 })
@@ -221,6 +309,19 @@ const usernameRules = [
 ]
 
 const emailRules = [(v) => !v || /.+@.+\..+/.test(v) || 'Email must be valid']
+
+const serverIpRules = [
+  (v) => !!v || 'Server IP address is required',
+  (v) => /^(\d{1,3}\.){3}\d{1,3}$/.test(v) || 'Must be a valid IP address (e.g., 192.168.1.100)',
+  (v) => {
+    const parts = v.split('.')
+    return parts.every(part => parseInt(part) >= 0 && parseInt(part) <= 255) || 'Each number must be between 0-255'
+  }
+]
+
+const adapterRules = [
+  (v) => !!v || 'Please select a network adapter',
+]
 
 const passwordRules = [
   (v) => !!v || 'Password is required',
@@ -244,6 +345,17 @@ const hasSpecial = computed(() => /[!@#$%^&*(),.?":{}|<>]/.test(formData.value.p
 
 const usernameAvailable = computed(() => {
   return formData.value.username.length >= 3 && /^[a-zA-Z0-9_-]+$/.test(formData.value.username)
+})
+
+const isValidIp = computed(() => {
+  const ip = formData.value.serverIp
+  if (!ip) return false
+  const parts = ip.split('.')
+  if (parts.length !== 4) return false
+  return parts.every(part => {
+    const num = parseInt(part)
+    return num >= 0 && num <= 255 && !isNaN(num)
+  })
 })
 
 const passwordsMatch = computed(() => {
@@ -286,6 +398,76 @@ const strengthText = computed(() => {
   return level.charAt(0).toUpperCase() + level.slice(1)
 })
 
+// Adapter items for dropdown
+const adapterItems = computed(() => {
+  return adapters.value.map(adapter => ({
+    label: `${adapter.name} (${adapter.ip_address})`,
+    value: adapter.ip_address,
+    adapter: adapter,  // Store full adapter object for later use
+  }))
+})
+
+// Lifecycle: Fetch adapters on mount
+onMounted(async () => {
+  await fetchAdapters()
+})
+
+// Methods
+const fetchAdapters = async () => {
+  try {
+    loadingAdapters.value = true
+    adapterError.value = null
+
+    const response = await setupService.getAdapters()
+    adapters.value = response.adapters || []
+
+    // Auto-select recommended adapter
+    if (response.recommended) {
+      formData.value.selectedAdapter = response.recommended.ip_address
+      formData.value.selectedAdapterObject = response.recommended
+      formData.value.serverIp = response.recommended.ip_address
+    } else if (adapters.value.length > 0) {
+      // Fallback: select first adapter if no recommendation
+      formData.value.selectedAdapter = adapters.value[0].ip_address
+      formData.value.selectedAdapterObject = adapters.value[0]
+      formData.value.serverIp = adapters.value[0].ip_address
+    }
+
+  } catch (error) {
+    console.error('Failed to fetch network adapters:', error)
+    adapterError.value = error.message || 'Failed to detect network adapters'
+    // Fallback to manual entry on error
+    showManualIpEntry.value = true
+  } finally {
+    loadingAdapters.value = false
+  }
+}
+
+const toggleManualEntry = () => {
+  showManualIpEntry.value = !showManualIpEntry.value
+
+  // When switching back to dropdown, restore selected adapter IP
+  if (!showManualIpEntry.value && formData.value.selectedAdapter) {
+    formData.value.serverIp = formData.value.selectedAdapter
+  }
+}
+
+// Watch selectedAdapter and update serverIp + adapter object
+watch(
+  () => formData.value.selectedAdapter,
+  (newAdapterIp) => {
+    if (newAdapterIp && !showManualIpEntry.value) {
+      formData.value.serverIp = newAdapterIp
+
+      // Find and store the full adapter object
+      const adapterObj = adapters.value.find(a => a.ip_address === newAdapterIp)
+      if (adapterObj) {
+        formData.value.selectedAdapterObject = adapterObj
+      }
+    }
+  }
+)
+
 // Watch for changes and emit to parent
 watch(
   formData,
@@ -294,20 +476,25 @@ watch(
       emit('update:modelValue', {
         username: newVal.username,
         email: newVal.email,
+        serverIp: newVal.serverIp,
         password: newVal.password,
+        adapterName: newVal.selectedAdapterObject?.name || null,
+        adapterId: newVal.selectedAdapterObject?.interface_id || newVal.selectedAdapterObject?.name || null,
       })
     }
   },
   { deep: true },
 )
 
-// Methods
 const handleNext = () => {
   if (formValid.value) {
     const adminData = {
       username: formData.value.username,
       email: formData.value.email,
+      serverIp: formData.value.serverIp,
       password: formData.value.password,
+      adapterName: formData.value.selectedAdapterObject?.name || null,
+      adapterId: formData.value.selectedAdapterObject?.interface_id || formData.value.selectedAdapterObject?.name || null,
     }
     emit('update:modelValue', adminData)
     emit('admin-setup-complete', adminData)
