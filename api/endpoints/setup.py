@@ -40,6 +40,8 @@ class LANConfig(BaseModel):
     admin_username: str = Field("admin", description="Admin username for server mode")
     admin_password: str = Field(..., description="Admin password for server mode (will be hashed)")
     hostname: str = Field("giljo.local", description="Hostname for LAN access")
+    adapter_name: Optional[str] = Field(None, description="Network adapter name (e.g., 'Ethernet')")
+    adapter_id: Optional[str] = Field(None, description="Network adapter ID/interface ID")
 
 
 class SetupCompleteRequest(BaseModel):
@@ -497,6 +499,19 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             config["server"]["hostname"] = request_body.lan_config.hostname
             config["server"]["admin_user"] = request_body.lan_config.admin_username
             config["server"]["firewall_configured"] = request_body.lan_config.firewall_configured
+
+            # 4a. Save selected adapter information if provided
+            if request_body.lan_config.adapter_name and request_body.lan_config.adapter_id:
+                config["server"]["selected_adapter"] = {
+                    "name": request_body.lan_config.adapter_name,
+                    "id": request_body.lan_config.adapter_id,
+                    "initial_ip": request_body.lan_config.server_ip,
+                    "detected_at": datetime.now(timezone.utc).isoformat()
+                }
+                logger.info(
+                    f"Saved adapter info: {request_body.lan_config.adapter_name} "
+                    f"({request_body.lan_config.server_ip})"
+                )
 
             # 5. Set API host to bind to all interfaces
             if "services" not in config:

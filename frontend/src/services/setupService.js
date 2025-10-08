@@ -229,6 +229,8 @@ class SetupService {
         admin_username: config.lanSettings.adminUsername || 'admin',
         admin_password: config.lanSettings.adminPassword || '',
         hostname: config.lanSettings.hostname || 'giljo.local',
+        adapter_name: config.lanSettings.adapterName || null,
+        adapter_id: config.lanSettings.adapterId || null,
       }
     }
 
@@ -336,6 +338,20 @@ class SetupService {
 
     if (!response.ok) {
       throw new Error('IP detection failed')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Get network adapters for LAN mode configuration
+   * @returns {Promise<{adapters: Array<{name: string, interface_id: string, ip_address: string, is_active: boolean, is_virtual: boolean, is_loopback: boolean}>, recommended: Object}>}
+   */
+  async getAdapters() {
+    const response = await fetch(`${this.baseURL}/api/network/adapters`)
+
+    if (!response.ok) {
+      throw new Error('Network adapter detection failed')
     }
 
     return response.json()
