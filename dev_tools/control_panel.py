@@ -65,12 +65,20 @@ class GiljoDevControlPanel:
         self.root.resizable(False, False)
 
         # Project root detection (dynamic, no hardcoded paths)
-        self.project_root = Path.cwd()
-        if not (self.project_root / "config.yaml").exists():
-            # Try parent directory
+        # If running from dev_tools/, go up one level
+        if Path.cwd().name == "dev_tools":
             self.project_root = Path.cwd().parent
-            if not (self.project_root / "config.yaml").exists():
+        else:
+            self.project_root = Path.cwd()
+
+        # Verify we found the project root
+        if not (self.project_root / "api" / "run_api.py").exists():
+            # Fallback: check if we're in project root
+            if (Path.cwd() / "api" / "run_api.py").exists():
                 self.project_root = Path.cwd()
+            # Or if we need to go up
+            elif (Path.cwd().parent / "api" / "run_api.py").exists():
+                self.project_root = Path.cwd().parent
 
         # Process tracking
         self.backend_process: Optional[subprocess.Popen] = None
@@ -641,8 +649,14 @@ class GiljoDevControlPanel:
             if not api_script.exists():
                 raise FileNotFoundError(f"API script not found: {api_script}")
 
-            # Build command
-            command = [sys.executable, str(api_script), "--port", str(api_port)]
+            # Build command - use main venv Python, not dev tools venv
+            main_venv_python = self.project_root / "venv" / "Scripts" / "python.exe"
+            if not main_venv_python.exists():
+                raise FileNotFoundError(
+                    f"Main venv Python not found: {main_venv_python}\n\n"
+                    "Please run the installer first to create the virtual environment."
+                )
+            command = [str(main_venv_python), str(api_script), "--port", str(api_port)]
 
             # Launch in terminal window with verbose output
             self.backend_process = self._launch_in_terminal(
@@ -1178,11 +1192,68 @@ class GiljoDevControlPanel:
         1. Uses PGPASSWORD environment variable (password: 4010)
         2. Directly calls psql.exe (should be in PATH on both C: and F: systems)
         3. Runs the same SQL sequence as psycopg2 method
+        4. Includes User/ApiKey counting via DO block with RAISE NOTICE
+
+        Enhanced to audit User/ApiKey counts before deletion.
         """
         self.update_status_message("Using psql.exe command-line fallback...")
 
         try:
-            # SQL commands to execute (same sequence as psycopg2 method)
+            # First, audit User/ApiKey counts via psql
+            user_count = 0
+            apikey_count = 0
+
+            import tempfile
+            audit_sql = """
+-- Audit User/ApiKey counts
+DO $$
+DECLARE
+    user_count INT;
+    apikey_count INT;
+BEGIN
+    BEGIN
+        SELECT COUNT(*) INTO user_count FROM users;
+        SELECT COUNT(*) INTO apikey_count FROM api_keys;
+        RAISE NOTICE 'Deleting % users and % API keys', user_count, apikey_count;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not count users/API keys (tables may not exist)';
+    END;
+END $$;
+"""
+
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
+                f.write(audit_sql)
+                audit_file = f.name
+
+            try:
+                env = os.environ.copy()
+                env['PGPASSWORD'] = '4010'
+
+                # Run audit against giljo_mcp database
+                audit_result = subprocess.run(
+                    ['psql', '-U', 'postgres', '-h', 'localhost', '-p', '5432', '-d', 'giljo_mcp', '-f', audit_file],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    timeout=10
+                )
+
+                # Parse NOTICE output for counts
+                if audit_result.returncode == 0 and 'Deleting' in audit_result.stderr:
+                    import re
+                    match = re.search(r'Deleting (\d+) users and (\d+) API keys', audit_result.stderr)
+                    if match:
+                        user_count = int(match.group(1))
+                        apikey_count = int(match.group(2))
+                        self.logger.info(f"Found {user_count} users and {apikey_count} API keys to delete")
+            except Exception as e:
+                self.logger.warning(f"Could not audit database via psql: {e}")
+            finally:
+                if os.path.exists(audit_file):
+                    os.unlink(audit_file)
+
+            # SQL commands to execute (deletion sequence)
             sql_commands = """
 -- Terminate connections
 SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'giljo_mcp' AND pid <> pg_backend_pid();
@@ -1218,7 +1289,6 @@ DROP DATABASE IF EXISTS giljo_mcp;
 """
 
             # Write SQL to temp file
-            import tempfile
             with tempfile.NamedTemporaryFile(mode="w", suffix=".sql", delete=False) as f:
                 f.write(sql_commands)
                 sql_file = f.name
@@ -1249,9 +1319,11 @@ DROP DATABASE IF EXISTS giljo_mcp;
                         "Database deletion complete (using psql.exe)!\n\n"
                         "Removed:\n"
                         "- giljo_mcp database\n"
+                        f"- {user_count} users\n"
+                        f"- {apikey_count} API keys\n"
                         "- giljo_user role\n"
                         "- giljo_owner role\n"
-                        "- All owned objects"
+                        "- All projects, agents, tasks, and data"
                     )
                 else:
                     raise Exception(f"psql.exe failed: {result.stderr}")
@@ -1493,46 +1565,23 @@ DROP DATABASE IF EXISTS giljo_mcp;
         # Confirmation dialog with comprehensive list
         confirm = messagebox.askyesno(
             "Confirm Pristine Reset",
-            "This will DELETE everything to simulate a fresh GitHub download:
-
-"
-            "Configuration & Environment:
-"
-            "- Virtual environment (venv/)
-"
-            "- Configuration files (config.yaml, .env)
-"
-            "- Installer config (install_config.yaml)
-
-"
-            "Database & Data:
-"
-            "- Database (giljo_mcp) and all tables
-"
-            "- PostgreSQL roles (giljo_user, giljo_owner)
-"
-            "- All users and API keys
-
-"
-            "Application Data:
-"
-            "- Logs directory (logs/)
-"
-            "- Uploaded files (data/)
-"
-            "- Session memories (docs/sessions/)
-
-"
-            "Frontend Artifacts:
-"
-            "- Build output (frontend/dist/)
-"
-            "- Vite cache (frontend/node_modules/.vite)
-
-"
-            "⚠ This action CANNOT be undone!
-
-"
+            "This will DELETE everything to simulate a fresh GitHub download:\n\n"
+            "Configuration & Environment:\n"
+            "- Virtual environment (venv/)\n"
+            "- Configuration files (config.yaml, .env)\n"
+            "- Installer config (install_config.yaml)\n\n"
+            "Database & Data:\n"
+            "- Database (giljo_mcp) and all tables\n"
+            "- PostgreSQL roles (giljo_user, giljo_owner)\n"
+            "- All users and API keys\n\n"
+            "Application Data:\n"
+            "- Logs directory (logs/)\n"
+            "- Uploaded files (data/)\n"
+            "- Session memories (docs/sessions/)\n\n"
+            "Frontend Artifacts:\n"
+            "- Build output (frontend/dist/)\n"
+            "- Vite cache (frontend/node_modules/.vite)\n\n"
+            "⚠ This action CANNOT be undone!\n\n"
             "Continue?",
             icon="warning"
         )
@@ -1660,44 +1709,24 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
         # Build result message
         if errors:
-            error_msg = "
-".join(errors)
+            error_msg = "\n".join(errors)
             messagebox.showwarning(
                 "Pristine Reset Partial Success",
-                f"Pristine reset completed with errors:
-
-"
-                f"Deleted ({len(deleted)} items):
-" + "
-".join(f"✓ {d}" for d in deleted[:5]) +
-                (f"
-  ... and {len(deleted) - 5} more" if len(deleted) > 5 else "") +
-                f"
-
-Errors ({len(errors)}):
-{error_msg[:200]}" +
+                f"Pristine reset completed with errors:\n\n"
+                f"Deleted ({len(deleted)} items):\n" + "\n".join(f"✓ {d}" for d in deleted[:5]) +
+                (f"\n  ... and {len(deleted) - 5} more" if len(deleted) > 5 else "") +
+                f"\n\nErrors ({len(errors)}):\n{error_msg[:200]}" +
                 ("..." if len(error_msg) > 200 else "") +
-                "
-
-You may need to manually delete remaining items."
+                "\n\nYou may need to manually delete remaining items."
             )
         else:
             messagebox.showinfo(
                 "Pristine Reset Complete",
-                f"System reset to pristine state!
-
-"
-                f"Deleted {len(deleted)} components:
-" +
-                "
-".join(f"✓ {d}" for d in deleted[:8]) +
-                (f"
-  ... and {len(deleted) - 8} more" if len(deleted) > 8 else "") +
-                "
-
-You can now run install.bat to set up from scratch.
-
-"
+                f"System reset to pristine state!\n\n"
+                f"Deleted {len(deleted)} components:\n" +
+                "\n".join(f"✓ {d}" for d in deleted[:8]) +
+                (f"\n  ... and {len(deleted) - 8} more" if len(deleted) > 8 else "") +
+                "\n\nYou can now run install.bat to set up from scratch.\n\n"
                 "This simulates a fresh GitHub download."
             )
 

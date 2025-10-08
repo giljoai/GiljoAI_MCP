@@ -946,3 +946,112 @@ async def register_mcp(request: RegisterMcpRequest = Body(...)):
     except Exception as e:
         logger.error(f"Error registering MCP: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to register MCP configuration: {e}")
+
+
+# ================================================================================
+# LAN Mode Admin User Creation
+# ================================================================================
+
+
+class AdminUserRequest(BaseModel):
+    """Request model for creating admin user"""
+
+    username: str = Field(..., description="Admin username")
+    password: str = Field(..., description="Admin password")
+    email: str = Field(..., description="Admin email")
+
+
+class AdminUserResponse(BaseModel):
+    """Response model for admin user creation"""
+
+    success: bool
+    api_key: str = Field(..., description="Generated API key (shown once)")
+    message: str
+
+
+async def get_db_session():
+    """Get async database session"""
+    import os
+    from src.giljo_mcp.database import DatabaseManager
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError("DATABASE_URL environment variable is required")
+
+    db_manager = DatabaseManager(database_url=db_url, is_async=True)
+    async with db_manager.get_session_async() as session:
+        yield session
+
+
+@router.post("/admin-user", response_model=AdminUserResponse)
+async def create_admin_user(request: AdminUserRequest = Body(...)):
+    """
+    Create admin user for LAN mode with API key generation.
+
+    This endpoint is called during the setup wizard when LAN mode is selected.
+    It creates an admin user in the database and generates an API key for authentication.
+
+    The API key is returned in plaintext ONCE and must be saved by the user.
+    """
+    try:
+        import os
+        from sqlalchemy.ext.asyncio import AsyncSession
+        from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.models import User, APIKey
+        from src.giljo_mcp.tenant import generate_tenant_key
+        from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key, get_key_prefix
+        import bcrypt
+        from datetime import datetime, timezone
+
+        # Get database session
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise ValueError("DATABASE_URL environment variable is required")
+
+        db_manager = DatabaseManager(database_url=db_url, is_async=True)
+        async with db_manager.get_session_async() as db:
+            # Hash password
+            password_hash = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            # Create admin user
+            tenant_key = generate_tenant_key(project_name=f"admin_{request.username}")
+            admin_user = User(
+                username=request.username,
+                email=request.email,
+                password_hash=password_hash,
+                role='admin',
+                tenant_key=tenant_key
+            )
+
+            db.add(admin_user)
+            await db.flush()  # Get user ID
+
+            # Generate API key
+            plaintext_key = generate_api_key()
+            hashed_key = hash_api_key(plaintext_key)
+            key_prefix = get_key_prefix(plaintext_key, length=12)
+
+            # Create API key record
+            api_key = APIKey(
+                user_id=admin_user.id,
+                key_hash=hashed_key,
+                key_prefix=key_prefix,
+                name=f"Admin Setup Key - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+                permissions=["*"],  # Grant full admin access
+                tenant_key=tenant_key
+            )
+
+            db.add(api_key)
+            await db.commit()
+
+            logger.info(f"Admin user '{request.username}' created with API key")
+
+            return AdminUserResponse(
+                success=True,
+                api_key=plaintext_key,
+                message=f"Admin user '{request.username}' created successfully"
+            )
+
+    except Exception as e:
+        logger.error(f"Error creating admin user: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create admin user: {e}")

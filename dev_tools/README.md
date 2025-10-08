@@ -2,6 +2,45 @@
 
 A comprehensive GUI tool for managing the GiljoAI MCP development environment.
 
+## Quick Start (Recommended - Isolated Environment)
+
+The control panel uses its own **isolated virtual environment** to avoid conflicts with the main application venv.
+
+### First Time Setup
+
+```bash
+# From project root (or cd to dev_tools/)
+dev_tools\setup_devtools_venv.bat
+```
+
+This creates `dev_tools/venv_devtools/` with all required dependencies (psutil, psycopg2-binary, pyyaml).
+
+### Launch Control Panel
+
+**Option 1: Use the Launcher (Easiest)**
+```bash
+# From anywhere in project
+dev_tools\launch_control_panel.bat
+```
+
+**Option 2: Manual Launch**
+```bash
+cd dev_tools
+venv_devtools\Scripts\activate
+python control_panel.py
+```
+
+### Why Separate Virtual Environment?
+
+The control panel needs to delete the main `venv/` folder during reset operations. Running from the main venv would lock those files. The isolated `dev_tools/venv_devtools/` environment allows:
+
+- ✅ **Full venv deletion** without file locks
+- ✅ **Independent dependencies** (won't break if main venv is corrupted)
+- ✅ **No interference** with main application
+- ✅ **Can run even if** main venv is broken or missing
+
+---
+
 ## Features
 
 ### Service Management

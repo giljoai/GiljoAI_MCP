@@ -210,7 +210,7 @@
           </v-btn>
         </v-card-title>
         <v-card-text>
-          <pre class="mcp-config-code">{{ mcpConfigJson }}</pre>
+          <pre class="mcp-config-code" v-html="highlightedMcpConfig"></pre>
         </v-card-text>
       </v-card>
 
@@ -442,6 +442,29 @@ const mcpConfigJson = computed(() => {
   return JSON.stringify(config, null, 2)
 })
 
+const highlightedMcpConfig = computed(() => {
+  const apiKeyValue = props.apiKey || 'YOUR_API_KEY_HERE'
+  const jsonString = mcpConfigJson.value
+
+  // Escape HTML to prevent XSS
+  const escaped = jsonString
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+  // Highlight the entire API key line with Giljo yellow (#FFC107)
+  // Match: "GILJO_API_KEY": "actual_key_value"
+  const apiKeyLinePattern = `&quot;GILJO_API_KEY&quot;: &quot;${apiKeyValue}&quot;`
+  const highlighted = escaped.replace(
+    apiKeyLinePattern,
+    `<span class="api-key-highlight">${apiKeyLinePattern}</span>`
+  )
+
+  return highlighted
+})
+
 // Methods
 const copyToClipboard = async (text, label) => {
   if (!text) {
@@ -585,5 +608,13 @@ v-code {
   font-size: 0.875rem;
   white-space: pre-wrap;
   overflow-x: auto;
+}
+
+.api-key-highlight {
+  background-color: #ffc107;
+  color: #000;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
 }
 </style>

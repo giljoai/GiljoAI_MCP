@@ -383,6 +383,29 @@ class SetupService {
       throw error
     }
   }
+
+  /**
+   * Create admin user for LAN mode
+   * @param {Object} adminData - Admin user data
+   * @param {string} adminData.username - Admin username
+   * @param {string} adminData.password - Admin password
+   * @param {string} adminData.email - Admin email
+   * @returns {Promise<{success: boolean, api_key: string, message: string}>}
+   */
+  async createAdminUser(adminData) {
+    const response = await fetch(`${this.baseURL}/api/setup/admin-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(adminData),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
 }
 
 export default new SetupService()
