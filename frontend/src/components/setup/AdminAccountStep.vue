@@ -197,7 +197,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'next', 'back'])
+const emit = defineEmits(['update:modelValue', 'next', 'back', 'admin-setup-complete'])
 
 // Form state
 const form = ref(null)
@@ -304,11 +304,13 @@ watch(
 // Methods
 const handleNext = () => {
   if (formValid.value) {
-    emit('update:modelValue', {
+    const adminData = {
       username: formData.value.username,
       email: formData.value.email,
       password: formData.value.password,
-    })
+    }
+    emit('update:modelValue', adminData)
+    emit('admin-setup-complete', adminData)
     emit('next')
   }
 }
