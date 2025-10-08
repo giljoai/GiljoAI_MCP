@@ -502,6 +502,110 @@ async def test_wan_mode_setup(test_client: AsyncClient, config_path: Path):
     assert config["services"]["api"]["host"] == "0.0.0.0"
 
 
+@pytest.mark.asyncio
+async def test_lan_mode_saves_adapter_info_to_config(test_client: AsyncClient, config_path: Path):
+    """Test LAN mode setup saves selected adapter information to config.yaml."""
+    response = await test_client.post(
+        "/api/setup/complete",
+        json={
+            "network_mode": "lan",
+            "tools_attached": ["claude-code"],
+            "serena_enabled": False,
+            "lan_config": {
+                "admin_username": "admin",
+                "admin_password": "SecurePassword123!",
+                "server_ip": "10.1.0.164",
+                "hostname": "giljo.local",
+                "firewall_configured": True,
+                "adapter_name": "Ethernet",
+                "adapter_id": "Ethernet"
+            }
+        }
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+
+    # Verify config.yaml contains adapter info
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+
+    # Check server.selected_adapter section exists
+    assert "server" in config
+    assert "selected_adapter" in config["server"]
+
+    adapter_info = config["server"]["selected_adapter"]
+    assert adapter_info["name"] == "Ethernet"
+    assert adapter_info["id"] == "Ethernet"
+    assert adapter_info["initial_ip"] == "10.1.0.164"
+    assert "detected_at" in adapter_info
+
+    # Verify detected_at is a valid ISO timestamp
+    from datetime import datetime
+    detected_at = adapter_info["detected_at"]
+    assert isinstance(detected_at, str)
+    # Should be parseable as ISO format
+    datetime.fromisoformat(detected_at.replace('Z', '+00:00'))
+
+
+@pytest.mark.asyncio
+async def test_lan_mode_adapter_info_optional(test_client: AsyncClient, config_path: Path):
+    """Test LAN mode setup works without adapter info (backward compatibility)."""
+    response = await test_client.post(
+        "/api/setup/complete",
+        json={
+            "network_mode": "lan",
+            "tools_attached": ["claude-code"],
+            "serena_enabled": False,
+            "lan_config": {
+                "admin_username": "admin",
+                "admin_password": "SecurePassword123!",
+                "server_ip": "10.1.0.164",
+                "hostname": "giljo.local",
+                "firewall_configured": True
+                # No adapter_name or adapter_id
+            }
+        }
+    )
+
+    # Should succeed even without adapter info
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+
+    # Config should still have server section, but no selected_adapter
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+
+    assert "server" in config
+    # selected_adapter should not exist if no adapter info provided
+    assert "selected_adapter" not in config["server"]
+
+
+@pytest.mark.asyncio
+async def test_localhost_mode_does_not_save_adapter_info(test_client: AsyncClient, config_path: Path):
+    """Test localhost mode does not create server.selected_adapter section."""
+    response = await test_client.post(
+        "/api/setup/complete",
+        json={
+            "network_mode": "localhost",
+            "tools_attached": ["claude-code"],
+            "serena_enabled": False,
+            "lan_config": None
+        }
+    )
+
+    assert response.status_code == 200
+
+    # Verify config.yaml does not have server section
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+
+    # Localhost mode should remove server section
+    assert "server" not in config
+
+
 # Fixtures
 
 @pytest_asyncio.fixture
