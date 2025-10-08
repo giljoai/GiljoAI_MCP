@@ -48,6 +48,7 @@
           :title="item.title"
           :value="item.name"
           color="primary"
+          role="listitem"
         >
           <template v-slot:prepend>
             <v-img
@@ -109,11 +110,47 @@
           </v-toolbar-title>
         </div>
 
-        <!-- Right: Product Switcher, Connection Status, Notifications -->
+        <!-- Right: Product Switcher, Connection Status, User Menu -->
         <div style="flex: 0 0 auto; display: flex; align-items: center">
           <ProductSwitcher class="mr-3" />
           <ConnectionStatus class="mr-2" />
-          <v-btn icon="mdi-bell" variant="text" aria-label="View notifications"></v-btn>
+          <v-btn
+            icon="mdi-bell"
+            variant="text"
+            aria-label="View notifications"
+            class="mr-2"
+          ></v-btn>
+
+          <!-- User Menu -->
+          <v-menu offset-y>
+            <template v-slot:activator="{ props }">
+              <v-btn icon v-bind="props" aria-label="User menu">
+                <v-icon>mdi-account-circle</v-icon>
+              </v-btn>
+            </template>
+
+            <v-list density="compact" min-width="200">
+              <v-list-item v-if="currentUser" prepend-icon="mdi-account">
+                <v-list-item-title class="font-weight-medium">
+                  {{ currentUser.username }}
+                </v-list-item-title>
+                <v-list-item-subtitle v-if="currentUser.role">
+                  {{ currentUser.role }}
+                </v-list-item-subtitle>
+              </v-list-item>
+
+              <v-divider v-if="currentUser" />
+
+              <v-list-item prepend-icon="mdi-cog" title="Settings" @click="navigateToSettings" />
+
+              <v-list-item
+                v-if="currentUser"
+                prepend-icon="mdi-logout"
+                title="Logout"
+                @click="handleLogout"
+              />
+            </v-list>
+          </v-menu>
         </div>
       </div>
     </v-app-bar>
@@ -179,38 +216,57 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useTheme, useDisplay } from 'vuetify'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentStore } from '@/stores/agents'
 import { useMessageStore } from '@/stores/messages'
+import { useUserStore } from '@/stores/user'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import ConnectionStatus from '@/components/ConnectionStatus.vue'
 import ProductSwitcher from '@/components/ProductSwitcher.vue'
 import ToastManager from '@/components/ToastManager.vue'
+import api from '@/services/api'
 
 // Composables
 const route = useRoute()
+const router = useRouter()
 const theme = useTheme()
 const { mobile } = useDisplay()
 const wsStore = useWebSocketStore()
 const agentStore = useAgentStore()
 const messageStore = useMessageStore()
+const userStore = useUserStore()
 const { isHelpModalOpen, hideHelp, shortcuts } = useKeyboardShortcuts()
 
 // State
 const drawer = ref(true)
 const rail = ref(false)
+const currentUser = ref(null)
 
-// Navigation items
-const navigationItems = [
-  { name: 'Dashboard', path: '/', title: 'Dashboard', icon: 'mdi-view-dashboard' },
-  { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-  { name: 'Agents', path: '/agents', title: 'Agents', customIcon: '/Giljo_gray_Face.svg?v=2' },
-  { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },
-  { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
-  { name: 'Settings', path: '/settings', title: 'Settings', icon: 'mdi-cog' },
-]
+// Navigation items - filter based on user role
+const navigationItems = computed(() => {
+  const baseItems = [
+    { name: 'Dashboard', path: '/', title: 'Dashboard', icon: 'mdi-view-dashboard' },
+    { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
+    { name: 'Agents', path: '/agents', title: 'Agents', customIcon: '/Giljo_gray_Face.svg?v=2' },
+    { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },
+    { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
+    { name: 'Settings', path: '/settings', title: 'Settings', icon: 'mdi-cog' },
+  ]
+
+  // Add Users menu item only for admin users
+  if (userStore.isAdmin) {
+    baseItems.push({
+      name: 'Users',
+      path: '/users',
+      title: 'Users',
+      icon: 'mdi-account-multiple',
+    })
+  }
+
+  return baseItems
+})
 
 // Computed
 const currentPageTitle = computed(() => route.meta.title || 'GiljoAI MCP')
@@ -233,6 +289,47 @@ const toggleTheme = () => {
   localStorage.setItem('theme-preference', theme.global.name.value)
 }
 
+const navigateToSettings = () => {
+  router.push('/settings')
+}
+
+const handleLogout = async () => {
+  try {
+    // Call logout endpoint
+    await api.auth.logout()
+
+    // Clear any cached user state
+    currentUser.value = null
+    localStorage.removeItem('user')
+
+    // Disconnect WebSocket
+    wsStore.disconnect()
+
+    // Redirect to login page
+    router.push('/login')
+
+    console.log('[Auth] User logged out successfully')
+  } catch (error) {
+    console.error('[Auth] Logout failed:', error)
+    // Even if logout fails, clear local state and redirect
+    currentUser.value = null
+    localStorage.removeItem('user')
+    router.push('/login')
+  }
+}
+
+const loadCurrentUser = async () => {
+  try {
+    const response = await api.auth.me()
+    currentUser.value = response.data
+    console.log('[Auth] Current user loaded:', currentUser.value.username)
+  } catch (error) {
+    // Not authenticated or error occurred
+    console.log('[Auth] Not authenticated or error loading user')
+    currentUser.value = null
+  }
+}
+
 // Lifecycle
 let messagePollingInterval = null
 
@@ -253,6 +350,9 @@ onMounted(async () => {
   setTimeout(() => {
     document.documentElement.classList.remove('no-transition')
   }, 100)
+
+  // Load current user (if authenticated)
+  await loadCurrentUser()
 
   // Connect WebSocket with optional authentication
   // You can pass { apiKey: 'your-key' } or { token: 'your-token' } if needed

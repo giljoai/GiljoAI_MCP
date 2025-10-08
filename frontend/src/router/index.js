@@ -1,8 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import setupService from '@/services/setupService'
+import { useUserStore } from '@/stores/user'
 
 // Route definitions - views will be implemented after analyzer results
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: {
+      title: 'Login',
+      showInNav: false,
+      requiresAuth: false, // Public route, no auth required
+      requiresSetup: false, // Skip setup check for this route
+    },
+  },
   {
     path: '/setup',
     name: 'Setup',
@@ -102,6 +114,18 @@ const routes = [
     },
   },
   {
+    path: '/users',
+    name: 'Users',
+    component: () => import('@/views/UsersView.vue'),
+    meta: {
+      title: 'User Management',
+      icon: 'mdi-account-multiple',
+      showInNav: true,
+      requiresAuth: true,
+      requiresAdmin: true,
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),
@@ -117,35 +141,77 @@ const router = createRouter({
   routes,
 })
 
-// Navigation guard for page titles and setup check
+// Navigation guard for page titles, authentication, setup check, and role-based access
 router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
 
-  // Skip setup check for the setup route itself
-  if (to.meta.requiresSetup === false) {
+  // Skip all checks for routes that explicitly don't require them
+  if (to.meta.requiresSetup === false && to.meta.requiresAuth === false) {
     next()
     return
   }
 
-  // Check if setup is complete
-  try {
-    const status = await setupService.checkStatus()
+  // Get user store for role checking
+  const userStore = useUserStore()
 
-    if (!status.completed && to.path !== '/setup') {
-      // Setup not complete, redirect to wizard
-      console.log('Setup not completed, redirecting to setup wizard')
-      next('/setup')
-    } else {
-      // Allow access to all routes (including /setup for re-running wizard)
-      next()
+  // Check authentication (unless explicitly disabled)
+  const requiresAuth = to.meta.requiresAuth !== false
+  if (requiresAuth) {
+    try {
+      // Try to get current user to verify authentication
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include', // Include cookies
+      })
+
+      if (!response.ok) {
+        // Not authenticated, redirect to login
+        console.log('User not authenticated, redirecting to login')
+        next({
+          path: '/login',
+          query: { redirect: to.fullPath },
+        })
+        return
+      }
+
+      // If we don't have user data in store, fetch it
+      if (!userStore.currentUser) {
+        await userStore.fetchCurrentUser()
+      }
+    } catch (error) {
+      // Network error or API not available
+      // In localhost mode, this might be expected, so allow through
+      console.warn('Auth check failed, allowing navigation:', error.message)
     }
-  } catch (error) {
-    // If setup status check fails (endpoint doesn't exist yet),
-    // continue anyway to avoid blocking navigation
-    console.log('Setup status check unavailable, continuing with navigation')
-    next()
   }
+
+  // Check admin role requirement
+  if (to.meta.requiresAdmin && !userStore.isAdmin) {
+    console.log('Admin access required, redirecting to dashboard')
+    next({ name: 'Dashboard' })
+    return
+  }
+
+  // Check if setup is complete (for authenticated routes)
+  if (to.meta.requiresSetup !== false) {
+    try {
+      const status = await setupService.checkStatus()
+
+      if (!status.completed && to.path !== '/setup') {
+        // Setup not complete, redirect to wizard
+        console.log('Setup not completed, redirecting to setup wizard')
+        next('/setup')
+        return
+      }
+    } catch (error) {
+      // If setup status check fails (endpoint doesn't exist yet),
+      // continue anyway to avoid blocking navigation
+      console.log('Setup status check unavailable, continuing with navigation')
+    }
+  }
+
+  // All checks passed, allow navigation
+  next()
 })
 
 export default router
