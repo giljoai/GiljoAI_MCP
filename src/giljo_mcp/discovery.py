@@ -14,8 +14,9 @@ from typing import Any, Optional
 import yaml
 from sqlalchemy import select
 
+from .context_manager import get_filtered_config, get_full_config, is_orchestrator
 from .database import DatabaseManager
-from .models import Configuration, Vision
+from .models import Configuration, Product, Project, Vision
 from .tenant import TenantManager
 
 
@@ -208,13 +209,16 @@ class DiscoveryManager:
         self.serena_hooks = SerenaHooks(db_manager, tenant_manager)
         self._content_hashes = {}
 
-    async def discover_context(self, agent_role: str, project_id: str, force_refresh: bool = False) -> dict[str, Any]:
+    async def discover_context(
+        self, agent_role: str, project_id: str, agent_name: Optional[str] = None, force_refresh: bool = False
+    ) -> dict[str, Any]:
         """
         Main discovery method with role-based filtering.
 
         Args:
             agent_role: Role of the agent requesting context
             project_id: Project ID for context
+            agent_name: Optional agent name for precise filtering
             force_refresh: Force fresh discovery ignoring cache
 
         Returns:
@@ -229,12 +233,15 @@ class DiscoveryManager:
             self.path_resolver.clear_cache()
             self._content_hashes.clear()
 
-        # Load context by priority
-        context = await self.load_by_priority(priorities, project_id, token_limit)
+        # Load context by priority (pass agent_name for filtering)
+        context = await self.load_by_priority(
+            priorities, project_id, token_limit, agent_name=agent_name, agent_role=agent_role
+        )
 
         # Add metadata
         context["metadata"] = {
             "agent_role": agent_role,
+            "agent_name": agent_name,
             "priorities_used": priorities,
             "token_limit": token_limit,
             "discovered_at": datetime.now(timezone.utc).isoformat(),
@@ -243,7 +250,14 @@ class DiscoveryManager:
 
         return context
 
-    async def load_by_priority(self, priorities: list[str], project_id: str, token_limit: int) -> dict[str, Any]:
+    async def load_by_priority(
+        self,
+        priorities: list[str],
+        project_id: str,
+        token_limit: int,
+        agent_name: Optional[str] = None,
+        agent_role: Optional[str] = None,
+    ) -> dict[str, Any]:
         """
         Load context in priority order with token limits.
 
@@ -251,6 +265,8 @@ class DiscoveryManager:
             priorities: List of context types in priority order
             project_id: Project ID
             token_limit: Maximum tokens to load
+            agent_name: Optional agent name for filtering
+            agent_role: Optional agent role for filtering
 
         Returns:
             Loaded context by type
@@ -269,7 +285,7 @@ class DiscoveryManager:
                 if priority == "vision":
                     result = await self._load_vision(project_id, remaining_tokens)
                 elif priority == "config":
-                    result = await self._load_config(project_id, remaining_tokens)
+                    result = await self._load_config(project_id, remaining_tokens, agent_name, agent_role)
                 elif priority == "docs":
                     result = await self._load_docs(project_id, remaining_tokens)
                 elif priority == "memories":
@@ -346,13 +362,49 @@ class DiscoveryManager:
 
         return None
 
-    async def _load_config(self, project_id: str, max_tokens: int) -> Optional[dict]:
-        """Load configuration from database and files"""
+    async def _load_config(
+        self, project_id: str, max_tokens: int, agent_name: Optional[str] = None, agent_role: Optional[str] = None
+    ) -> Optional[dict]:
+        """
+        Load configuration from database and files.
+
+        Args:
+            project_id: Project ID
+            max_tokens: Maximum tokens to load
+            agent_name: Optional agent name for filtering
+            agent_role: Optional agent role for filtering
+        """
         try:
             config_data = {}
 
             # Load from database
             async with self.db_manager.get_session_async() as session:
+                # Get project to find product
+                project_query = select(Project).where(Project.id == project_id)
+                result = await session.execute(project_query)
+                project = result.scalar_one_or_none()
+
+                if project and project.product_id:
+                    # Get product config_data
+                    product_query = select(Product).where(Product.id == project.product_id)
+                    result = await session.execute(product_query)
+                    product = result.scalar_one_or_none()
+
+                    if product and product.config_data:
+                        # Apply role-based filtering
+                        if agent_name and is_orchestrator(agent_name, agent_role):
+                            # Orchestrator gets FULL config
+                            config_data["product_config"] = get_full_config(product)
+                            logger.info("Loaded FULL product config for orchestrator")
+                        elif agent_name:
+                            # Worker agents get FILTERED config
+                            config_data["product_config"] = get_filtered_config(agent_name, product, agent_role)
+                            logger.info(f"Loaded FILTERED product config for {agent_name}")
+                        else:
+                            # No agent specified - return full (backward compatible)
+                            config_data["product_config"] = dict(product.config_data)
+
+                # Load standard Configuration entries
                 config_query = select(Configuration).where(Configuration.project_id == project_id)
                 result = await session.execute(config_query)
                 configs = result.scalars().all()
@@ -438,7 +490,9 @@ class DiscoveryManager:
                     sessions_path.glob("*.md"),
                     key=lambda x: x.stat().st_mtime,
                     reverse=True,
-                )[:5]  # Last 5 sessions
+                )[
+                    :5
+                ]  # Last 5 sessions
 
                 for file in session_files:
                     if tokens_used >= max_tokens:
