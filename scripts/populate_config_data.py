@@ -14,10 +14,15 @@ Usage:
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -25,7 +30,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.context_manager import validate_config_data
-from src.giljo_mcp.tenant import get_tenant_manager
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -42,18 +46,19 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
 
     # Look for architecture section
     arch_patterns = [
-        r'(?:## Architecture|### Architecture Overview)\s+(.+?)(?=\n##|\n###|\Z)',
-        r'Architecture:\s*(.+?)(?=\n|$)',
-        r'System:\s*(.+?)(?=\n|$)'
+        r'##\s*Architecture\s*(?:Overview)?\s*\n+([^\n#]+)',  # ## Architecture Overview\n<text> (not another header)
+        r'###\s*Architecture\s*(?:Overview)?\s*\n+([^\n#]+)',  # ### Architecture Overview\n<text> (not another header)
+        r'Architecture:\s*(.+?)(?=\n|$)',  # Architecture: <text>
+        r'System:\s*(.+?)(?=\n|$)'  # System: <text>
     ]
 
     for pattern in arch_patterns:
-        match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
+        match = re.search(pattern, content, re.IGNORECASE)
         if match:
             arch = match.group(1).strip()
-            # Clean up (take first line if multi-line)
-            arch = arch.split('\n')[0].strip()
-            return arch
+            # Skip if it's just whitespace or looks like a header
+            if arch and not arch.startswith('#'):
+                return arch
 
     # Fallback: try to infer from content
     if 'FastAPI' in content and 'PostgreSQL' in content:
@@ -80,7 +85,7 @@ def extract_tech_stack_from_claude_md(claude_md_path: Path) -> List[str]:
     if python_match:
         tech_stack.append(f"Python {python_match.group(1)}")
 
-    postgres_match = re.search(r'PostgreSQL\s+([\d\.]+)', content, re.IGNORECASE)
+    postgres_match = re.search(r'PostgreSQL\s+([\d]+)', content, re.IGNORECASE)
     if postgres_match:
         tech_stack.append(f"PostgreSQL {postgres_match.group(1)}")
 
@@ -115,20 +120,34 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> List[str]:
     content = claude_md_path.read_text(encoding='utf-8')
     test_commands = []
 
-    # Look for test command patterns
-    pytest_match = re.search(r'pytest\s+[^\n]+', content)
-    if pytest_match:
-        test_commands.append(pytest_match.group(0).strip())
+    # Look for test command patterns - must be in command context (after : or on new line or after $)
+    # Match patterns like "pytest tests/" or "Run: pytest" but not "use pytest for"
+    pytest_patterns = [
+        r'(?:^|\n|:|\$)\s*pytest\s+\S+[^\n]*',  # After newline, colon, or $
+        r'```[^\n]*\n\s*pytest\s+\S+[^\n]*',  # In code block
+    ]
+
+    for pattern in pytest_patterns:
+        pytest_match = re.search(pattern, content)
+        if pytest_match:
+            cmd = pytest_match.group(0).strip()
+            # Clean up prefixes
+            cmd = re.sub(r'^[$:]\s*', '', cmd)
+            if cmd.startswith('pytest'):
+                test_commands.append(cmd)
+                break
 
     npm_test_match = re.search(r'npm\s+run\s+test[^\n]*', content)
     if npm_test_match:
         test_commands.append(npm_test_match.group(0).strip())
 
-    # Fallback defaults
+    # Fallback defaults (only if commands are mentioned but no specific command found)
     if not test_commands:
-        if 'pytest' in content.lower():
+        # Only add fallback if the word "pytest" appears and testing is mentioned
+        if re.search(r'\bpytest\b', content, re.IGNORECASE) and 'test' in content.lower():
             test_commands.append('pytest tests/')
-        if 'npm' in content.lower():
+        # Only add npm test if npm is mentioned with test context
+        if re.search(r'\bnpm\b', content, re.IGNORECASE) and 'test' in content.lower():
             test_commands.append('npm run test')
 
     return test_commands
@@ -318,8 +337,12 @@ def populate_product_config_data(
     Returns:
         Summary of operation
     """
-    db = get_db_manager()
-    tenant_mgr = get_tenant_manager()
+    # Get database URL from environment
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        raise ValueError("DATABASE_URL environment variable not set")
+
+    db = get_db_manager(database_url=database_url)
 
     # Use current directory as project root
     root_path = Path.cwd()

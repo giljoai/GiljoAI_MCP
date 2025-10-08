@@ -10,8 +10,13 @@ Checks:
 6. Population script extracts from CLAUDE.md
 """
 
+import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -25,7 +30,12 @@ def validate_migration():
     """Validate config_data column exists with GIN index"""
     print("Validating database migration...")
 
-    db = get_db_manager()
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        print("DATABASE_URL environment variable not set")
+        return False
+
+    db = get_db_manager(database_url=database_url)
     engine = db.engine
     inspector = inspect(engine)
 
@@ -53,8 +63,13 @@ def validate_filtering():
     """Validate role-based filtering works"""
     print("\nValidating role-based filtering...")
 
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        print("DATABASE_URL environment variable not set")
+        return False
+
     # Create test product
-    db = get_db_manager()
+    db = get_db_manager(database_url=database_url)
     with db.get_session() as session:
         test_product = Product(
             tenant_key="validation-test",
@@ -107,7 +122,12 @@ def validate_orchestrator_template():
     """Validate enhanced orchestrator template is seeded as default"""
     print("\nValidating orchestrator template...")
 
-    db = get_db_manager()
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        print("DATABASE_URL environment variable not set")
+        return False
+
+    db = get_db_manager(database_url=database_url)
     with db.get_session() as session:
         template = session.query(AgentTemplate).filter(
             AgentTemplate.name == "orchestrator",
