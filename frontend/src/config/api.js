@@ -1,9 +1,50 @@
 // API Configuration for GiljoAI MCP Dashboard
 // Dynamically configured from environment or config file
+import configService from '@/services/configService'
+
+// Initial fallback configuration (used before backend config is fetched)
 const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
-// FIXED: Use window.location.hostname to get the server IP/hostname dynamically
-// This allows the frontend to work on localhost AND remote access
 const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
+
+// Configuration object that will be updated after fetching from backend
+let runtimeConfig = null
+
+/**
+ * Initialize API configuration from backend
+ * This should be called before the app mounts to ensure correct API host
+ */
+export async function initializeApiConfig() {
+  try {
+    // Fetch config from backend
+    const backendConfig = await configService.fetchConfig()
+
+    // Update runtime config with backend values
+    runtimeConfig = {
+      api: backendConfig.api,
+      websocket: backendConfig.websocket,
+      mode: backendConfig.mode,
+      security: backendConfig.security,
+    }
+
+    // Update API_CONFIG with correct values
+    API_CONFIG.REST_API.baseURL = `http://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+    API_CONFIG.WEBSOCKET.url = runtimeConfig.websocket.url
+
+    console.log('[API Config] Initialized from backend:', runtimeConfig)
+    return true
+  } catch (error) {
+    console.error('[API Config] Failed to initialize from backend, using fallback:', error)
+    return false
+  }
+}
+
+/**
+ * Get current runtime configuration
+ * @returns {Object} Current configuration
+ */
+export function getRuntimeConfig() {
+  return runtimeConfig
+}
 
 export const API_CONFIG = {
   REST_API: {
