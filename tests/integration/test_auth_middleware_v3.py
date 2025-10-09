@@ -26,6 +26,8 @@ from src.giljo_mcp.models import User
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession) -> User:
     """Create a test user with API key for testing"""
+    from src.giljo_mcp.auth_legacy import AuthManager
+
     user = User(
         username="test_network_user",
         email="test@example.com",
@@ -33,12 +35,18 @@ async def test_user(db_session: AsyncSession) -> User:
         role="user",
         is_active=True,
         tenant_key="test_tenant",
-        api_key="test_api_key_12345678901234567890",
     )
 
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
+
+    # Generate an API key for this user using AuthManager
+    auth_manager = AuthManager(db=db_session)
+    api_key = auth_manager.generate_api_key(name="test_network_user")
+
+    # Store the API key on the user object for test access
+    user.api_key = api_key
 
     return user
 

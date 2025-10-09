@@ -341,6 +341,7 @@ class AuthManager:
                 - is_auto_login: bool (if localhost auto-login)
                 - tenant_key: str (tenant key)
                 - error: str (if authentication failed)
+                - user_obj: User (if authenticated via database)
 
         Example:
             >>> result = await auth_manager.authenticate_request(request)
@@ -349,11 +350,25 @@ class AuthManager:
         """
         from .auth.auto_login import LOCALHOST_IPS, AutoLoginMiddleware
 
-        # Get client IP - handle missing client gracefully
-        try:
-            client_ip = request.client.host if request.client else None
-        except (AttributeError, Exception):
-            client_ip = None
+        # Get client IP - check headers first (for proxy/load balancer support)
+        client_ip = None
+
+        # Check X-Forwarded-For header (proxy standard)
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # X-Forwarded-For can have multiple IPs, get the first (original client)
+            client_ip = forwarded_for.split(",")[0].strip()
+
+        # Check X-Real-IP header (nginx standard)
+        if not client_ip:
+            client_ip = request.headers.get("X-Real-IP")
+
+        # Fall back to request.client.host if headers not present
+        if not client_ip:
+            try:
+                client_ip = request.client.host if request.client else None
+            except (AttributeError, Exception):
+                client_ip = None
 
         # Check for auto-login (localhost clients)
         if client_ip in LOCALHOST_IPS:
@@ -364,11 +379,15 @@ class AuthManager:
                 is_auto = await auto_login.authenticate_request(request)
 
                 if is_auto:
+                    # Get the user object from request.state (set by auto_login)
+                    user_obj = getattr(request.state, "user", None)
+
                     return {
                         "authenticated": True,
                         "user": "localhost",
                         "is_auto_login": True,
                         "tenant_key": "default",  # Localhost uses default tenant
+                        "user_obj": user_obj,
                     }
 
         # Network clients require credentials
@@ -389,21 +408,34 @@ class AuthManager:
         Returns:
             dict: Authentication result
         """
-        # Try JWT first
+        # Try JWT first (Bearer token)
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]  # Remove "Bearer " prefix
-            token_info = self.validate_jwt_token(token)
 
+            # Check if it's a JWT token
+            token_info = self.validate_jwt_token(token)
             if token_info:
                 return {
                     "authenticated": True,
                     "user": token_info.get("user_id"),
-                    "tenant_key": token_info.get("tenant_key"),
+                    "tenant_key": token_info.get("tenant_key", "default"),
+                    "is_auto_login": False,
                     "permissions": ["*"],
                 }
 
-        # Try API key
+            # If JWT validation failed, try as API key
+            key_info = self.validate_api_key(token)
+            if key_info:
+                return {
+                    "authenticated": True,
+                    "user": key_info["name"],
+                    "tenant_key": "default",  # API keys use default tenant for now
+                    "is_auto_login": False,
+                    "permissions": key_info.get("permissions", ["*"]),
+                }
+
+        # Try API key (X-API-Key header)
         api_key = request.headers.get("X-API-Key")
         if api_key:
             key_info = self.validate_api_key(api_key)
@@ -411,6 +443,8 @@ class AuthManager:
                 return {
                     "authenticated": True,
                     "user": key_info["name"],
+                    "tenant_key": "default",  # API keys use default tenant for now
+                    "is_auto_login": False,
                     "permissions": key_info.get("permissions", ["*"]),
                 }
 

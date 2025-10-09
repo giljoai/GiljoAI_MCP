@@ -3,7 +3,6 @@ Middleware for FastAPI application
 """
 
 import logging
-import os
 import time
 from typing import Callable
 
@@ -16,78 +15,76 @@ logger = logging.getLogger(__name__)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    """Authentication middleware for API endpoints"""
+    """
+    Authentication middleware - ALWAYS ACTIVE.
 
-    def __init__(self, app, auth_manager: Callable):
+    - Localhost (127.0.0.1, ::1): Auto-login
+    - Network clients: Require JWT or API key
+
+    This middleware replaces the mode-based authentication logic
+    with a unified approach that always authenticates requests.
+    """
+
+    def __init__(self, app, db=None):
+        """
+        Initialize authentication middleware.
+
+        Args:
+            app: FastAPI application
+            db: Optional async database session for authentication
+        """
         super().__init__(app)
-        self.get_auth_manager = auth_manager
+        self.db = db
+        self.auth_manager = None
 
     async def dispatch(self, request: Request, call_next):
-        """Process requests and check authentication"""
-        from giljo_mcp.tenant import TenantManager
+        """Process all requests through authentication"""
+        from src.giljo_mcp.auth_legacy import AuthManager
 
-        # Always set tenant context for all requests (including public endpoints)
-        tenant_key = request.headers.get("X-Tenant-Key")
-        if tenant_key:
-            logger.debug(f"Extracted tenant key from header: {tenant_key[:8]}...")
+        # Lazy init auth manager
+        if not self.auth_manager:
+            self.auth_manager = AuthManager(db=self.db)
+
+        # Public endpoints bypass auth
+        if self._is_public_endpoint(request.url.path):
+            return await call_next(request)
+
+        # Authenticate (auto-login or credentials)
+        auth_result = await self.auth_manager.authenticate_request(request)
+
+        # Set request state
+        request.state.authenticated = auth_result.get("authenticated", False)
+
+        if auth_result.get("authenticated"):
+            request.state.user_id = auth_result.get("user")
+            request.state.is_auto_login = auth_result.get("is_auto_login", False)
+            request.state.tenant_key = auth_result.get("tenant_key", "default")
+
+            if "user_obj" in auth_result:
+                request.state.user = auth_result["user_obj"]
         else:
-            # Use default tenant key from environment if header is missing
-            tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
-            logger.debug(f"No tenant key in header, using default: {tenant_key[:8]}...")
+            # Auth failed - return 401
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": "Authentication required",
+                    "detail": auth_result.get("error", "No credentials provided"),
+                },
+            )
 
-        # Set tenant context AND store in request state (for persistence across async boundaries)
-        try:
-            TenantManager.set_current_tenant(tenant_key)
-        except ValueError:
-            # If tenant key is invalid, use the default
-            logger.warning(f"Invalid tenant key format, using default")
-            tenant_key = "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd"
-            TenantManager.set_current_tenant(tenant_key)
+        return await call_next(request)
 
-        request.state.tenant_key = tenant_key
-
-        # Skip auth for public endpoints
-        public_paths = ["/", "/health", "/docs", "/openapi.json", "/ws", "/redoc"]
-        if any(request.url.path.startswith(path) for path in public_paths):
-            return await call_next(request)
-
-        # OPTIONS requests should always pass through (CORS preflight)
-        # They are handled by CORS middleware before reaching endpoints
-        if request.method == "OPTIONS":
-            return await call_next(request)
-
-        # Get auth manager
-        auth_manager = self.get_auth_manager()
-        if not auth_manager:
-            logger.warning("Auth manager not initialized")
-            return await call_next(request)
-
-        # Check for API key in header
-        api_key = request.headers.get("X-API-Key")
-        if not api_key:
-            # Check for Bearer token
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                api_key = auth_header[7:]
-
-        # Validate API key if auth is enabled (mode-based: server/lan/wan require auth, localhost does not)
-        if auth_manager.is_enabled():
-            if not api_key:
-                return JSONResponse(
-                    status_code=401,
-                    content={
-                        "error": "Missing API key",
-                        "detail": f"API key required for {auth_manager.mode.value} mode. Include X-API-Key header or Authorization: Bearer <key>"
-                    }
-                )
-
-            # Validate API key - validate_api_key is synchronous
-            if not auth_manager.validate_api_key(api_key):
-                return JSONResponse(status_code=401, content={"error": "Invalid API key"})
-
-        # Process request
-        response = await call_next(request)
-        return response
+    def _is_public_endpoint(self, path: str) -> bool:
+        """Check if endpoint is public"""
+        PUBLIC_PATHS = [
+            "/health",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+            "/api/setup/status",
+            "/api/auth/login",
+        ]
+        return any(path.startswith(p) for p in PUBLIC_PATHS)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -197,40 +194,37 @@ class SetupModeMiddleware(BaseHTTPMiddleware):
                 content={
                     "error": "System configuration error",
                     "detail": "Unable to load system configuration. Please contact administrator.",
-                    "requires_setup": True
-                }
+                    "requires_setup": True,
+                },
             )
 
-        setup_mode = getattr(config, 'setup_mode', False)
+        setup_mode = getattr(config, "setup_mode", False)
         logger.info(f"[SetupModeMiddleware] path={path}, setup_mode={setup_mode}")
 
         # If not in setup mode, check if database is actually configured
         if not setup_mode:
             database_configured = False
-            if hasattr(config, 'database') and config.database:
+            if hasattr(config, "database") and config.database:
                 # Log what we're checking
-                logger.debug(f"Database config: host={getattr(config.database, 'host', None)}, "
-                           f"port={getattr(config.database, 'port', None)}, "
-                           f"name={getattr(config.database, 'name', None)}, "
-                           f"database_name={getattr(config.database, 'database_name', None)}, "
-                           f"username={getattr(config.database, 'username', None)}, "
-                           f"user={getattr(config.database, 'user', None)}")
+                logger.debug(
+                    f"Database config: host={getattr(config.database, 'host', None)}, "
+                    f"port={getattr(config.database, 'port', None)}, "
+                    f"name={getattr(config.database, 'name', None)}, "
+                    f"database_name={getattr(config.database, 'database_name', None)}, "
+                    f"username={getattr(config.database, 'username', None)}, "
+                    f"user={getattr(config.database, 'user', None)}"
+                )
 
                 # Check for both 'name' and 'database_name' fields
-                db_name = getattr(config.database, 'database_name', None) or getattr(config.database, 'name', None)
-                db_user = getattr(config.database, 'username', None) or getattr(config.database, 'user', None)
+                db_name = getattr(config.database, "database_name", None) or getattr(config.database, "name", None)
+                db_user = getattr(config.database, "username", None) or getattr(config.database, "user", None)
 
-                database_configured = bool(
-                    config.database.host and
-                    config.database.port and
-                    db_name and
-                    db_user
-                )
+                database_configured = bool(config.database.host and config.database.port and db_name and db_user)
                 logger.debug(f"Database configured: {database_configured}")
 
             if database_configured:
                 # Database configured and not in setup mode - allow request
-                logger.debug(f"Allowing request - database configured and not in setup mode")
+                logger.debug("Allowing request - database configured and not in setup mode")
                 return await call_next(request)
             # Database not configured even though not in setup mode - block
             logger.warning(f"Blocking access to {path} - database not configured")
@@ -245,8 +239,8 @@ class SetupModeMiddleware(BaseHTTPMiddleware):
                 "error": "System setup required",
                 "detail": "Database configuration is required. Please complete the setup wizard.",
                 "setup_url": "/setup",
-                "requires_setup": True
-            }
+                "requires_setup": True,
+            },
         )
 
 
@@ -267,7 +261,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
         # Content Security Policy - restrict resource loading
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:"
+        )
 
         # Strict Transport Security (only if HTTPS is enabled)
         # response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
