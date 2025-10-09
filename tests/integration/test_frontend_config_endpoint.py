@@ -59,13 +59,13 @@ class TestFrontendConfigEndpoint:
     """Test suite for frontend configuration endpoint."""
 
     def test_endpoint_exists(self, client: TestClient):
-        """Test that the /api/config/frontend endpoint exists."""
-        response = client.get("/api/config/frontend")
+        """Test that the /api/v1/config/frontend endpoint exists."""
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code in [200, 404], "Endpoint should exist or return 404 if not implemented yet"
 
     def test_returns_json(self, client: TestClient):
         """Test that endpoint returns JSON response."""
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.headers.get("content-type") == "application/json"
 
     def test_localhost_mode_returns_correct_host(self, client: TestClient, monkeypatch, test_config_localhost):
@@ -73,7 +73,7 @@ class TestFrontendConfigEndpoint:
         # Mock the config file path
         monkeypatch.setenv("GILJO_MCP_HOME", str(test_config_localhost.parent))
 
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         data = response.json()
@@ -86,7 +86,7 @@ class TestFrontendConfigEndpoint:
         # Mock the config file path
         monkeypatch.setenv("GILJO_MCP_HOME", str(test_config_lan.parent))
 
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         data = response.json()
@@ -96,7 +96,7 @@ class TestFrontendConfigEndpoint:
 
     def test_includes_websocket_url(self, client: TestClient):
         """Test that response includes WebSocket URL."""
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         data = response.json()
@@ -107,7 +107,7 @@ class TestFrontendConfigEndpoint:
         """Test that WebSocket URL uses the same host as REST API."""
         monkeypatch.setenv("GILJO_MCP_HOME", str(test_config_lan.parent))
 
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         data = response.json()
@@ -122,7 +122,7 @@ class TestFrontendConfigEndpoint:
         """Test that response includes deployment mode."""
         monkeypatch.setenv("GILJO_MCP_HOME", str(test_config_lan.parent))
 
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         data = response.json()
@@ -133,7 +133,7 @@ class TestFrontendConfigEndpoint:
         """Test that response includes security configuration (e.g., API keys required)."""
         monkeypatch.setenv("GILJO_MCP_HOME", str(test_config_lan.parent))
 
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         data = response.json()
@@ -142,7 +142,7 @@ class TestFrontendConfigEndpoint:
 
     def test_no_sensitive_data_exposed(self, client: TestClient):
         """Test that response does NOT include sensitive configuration."""
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         data = response.json()
@@ -159,14 +159,14 @@ class TestFrontendConfigEndpoint:
 
     def test_cors_headers_present(self, client: TestClient):
         """Test that CORS headers are present for frontend access."""
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
 
         # Should have CORS headers for cross-origin access
         assert "access-control-allow-origin" in response.headers or response.status_code == 200
 
     def test_caching_headers(self, client: TestClient):
         """Test that caching is appropriately configured."""
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200
 
         # Config should be cacheable but with short TTL
@@ -182,13 +182,13 @@ class TestFrontendConfigIntegration:
     def test_config_served_on_api_port(self, client: TestClient):
         """Test that config is served on the same port as the API."""
         # This ensures frontend can always reach the config endpoint
-        response = client.get("/api/config/frontend")
+        response = client.get("/api/v1/config/frontend")
         assert response.status_code == 200, "Config endpoint should be accessible on API port"
 
     def test_config_consistency_with_rest_api(self, client: TestClient):
         """Test that config endpoint returns data consistent with actual API behavior."""
         # Get config
-        config_response = client.get("/api/config/frontend")
+        config_response = client.get("/api/v1/config/frontend")
         assert config_response.status_code == 200
 
         config_data = config_response.json()

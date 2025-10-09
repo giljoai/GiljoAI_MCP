@@ -544,6 +544,69 @@ async def update_database_password(update: DatabasePasswordUpdate):
         raise HTTPException(status_code=500, detail=f"Failed to update password: {str(e)}") from e
 
 
+@router.get("/frontend")
+async def get_frontend_configuration():
+    """
+    Get frontend-specific configuration.
+
+    Returns essential configuration that the frontend needs to connect to the API,
+    specifically the correct API host for WebSocket connections in LAN mode.
+
+    This endpoint solves the problem where the frontend might be accessed via localhost
+    but needs to connect to the API via the actual LAN IP (e.g., 10.1.0.164).
+
+    Returns:
+        - api.host: The host where the API is running (e.g., "127.0.0.1" or "10.1.0.164")
+        - api.port: The API port (e.g., 7272)
+        - websocket.url: The full WebSocket URL (e.g., "ws://10.1.0.164:7272")
+        - mode: Deployment mode ("localhost", "lan", "server", "wan")
+        - security.api_keys_required: Whether API keys are required
+
+    This endpoint does NOT expose sensitive data like passwords or API keys.
+    """
+    try:
+        # Read config.yaml directly
+        config_path = Path(__file__).parent.parent.parent / "config.yaml"
+
+        if not config_path.exists():
+            raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+
+        if not config:
+            raise HTTPException(status_code=500, detail="config.yaml is empty")
+
+        # Extract frontend-needed configuration
+        api_host = config.get("services", {}).get("api", {}).get("host", "127.0.0.1")
+        api_port = config.get("services", {}).get("api", {}).get("port", 7272)
+        mode = config.get("installation", {}).get("mode", "localhost")
+        api_keys_required = config.get("features", {}).get("api_keys_required", False)
+
+        # Build WebSocket URL (use ws:// for http, wss:// for https)
+        ws_protocol = "wss" if config.get("features", {}).get("ssl_enabled", False) else "ws"
+        ws_url = f"{ws_protocol}://{api_host}:{api_port}"
+
+        return {
+            "api": {
+                "host": api_host,
+                "port": api_port,
+            },
+            "websocket": {
+                "url": ws_url,
+            },
+            "mode": mode,
+            "security": {
+                "api_keys_required": api_keys_required,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load frontend configuration: {str(e)}") from e
+
+
 @router.get("/health/database")
 async def test_database_connection():
     """Test database connection"""
