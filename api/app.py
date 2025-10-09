@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Optional
 
 # Set up logging early to catch import issues
 logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
 )
 logger = logging.getLogger(__name__)
 logger.info("Loading FastAPI application...")
@@ -26,6 +25,7 @@ try:
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import JSONResponse
     from sqlalchemy import select, text
+
     logger.info("FastAPI and core dependencies loaded successfully")
 except ImportError as e:
     logger.error(f"Failed to import FastAPI dependencies: {e}", exc_info=True)
@@ -46,6 +46,7 @@ try:
     from giljo_mcp.models import Project
     from giljo_mcp.tenant import TenantManager
     from giljo_mcp.tools.tool_accessor import ToolAccessor
+
     logger.info("GiljoAI MCP core modules loaded successfully")
 except ImportError as e:
     logger.error(f"Failed to import GiljoAI MCP modules: {e}", exc_info=True)
@@ -54,9 +55,27 @@ except ImportError as e:
 
 try:
     from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
-    from .endpoints import agents, auth, configuration, context, database_setup, messages, mcp_tools, network, products, projects, serena, setup, statistics, tasks, templates, users
+    from .endpoints import (
+        agents,
+        auth,
+        configuration,
+        context,
+        database_setup,
+        messages,
+        mcp_tools,
+        network,
+        products,
+        projects,
+        serena,
+        setup,
+        statistics,
+        tasks,
+        templates,
+        users,
+    )
     from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware, SetupModeMiddleware
     from .websocket import WebSocketManager
+
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
     logger.error(f"Failed to import API modules: {e}", exc_info=True)
@@ -102,7 +121,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         raise
 
     # Initialize database (skip if in setup mode)
-    if getattr(state.config, 'setup_mode', False):
+    if getattr(state.config, "setup_mode", False):
         logger.info("Setup mode detected - skipping database initialization")
         logger.info("Database will be configured through the setup wizard")
         state.db_manager = None
@@ -119,7 +138,9 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             logger.info("Constructing database URL from configuration")
             if state.config.database.type == "postgresql":
                 db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
-                logger.debug(f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}")
+                logger.debug(
+                    f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
+                )
             else:
                 logger.error(f"Invalid database type: {state.config.database.type}")
                 raise ValueError("Database configuration missing. PostgreSQL is required.")
@@ -142,7 +163,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             raise
 
     # Initialize tenant manager (skip if in setup mode)
-    if not getattr(state.config, 'setup_mode', False):
+    if not getattr(state.config, "setup_mode", False):
         try:
             logger.info("Initializing tenant manager...")
             state.tenant_manager = TenantManager()  # TenantManager uses static methods
@@ -160,28 +181,32 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         logger.error(f"Failed to initialize tool accessor: {e}", exc_info=True)
         raise
 
-    # Initialize auth with environment variables
+    # Initialize auth with database session (for auto-login support)
     try:
         logger.info("Initializing authentication manager...")
-        state.auth = AuthManager(state.config)
-        logger.info(f"Auth manager initialized with mode: {state.auth.mode}")
+        # Note: db parameter will be set later per-request for auto-login
+        # The db_manager provides sessions, not a single session
+        state.auth = AuthManager(state.config, db=None)
+        logger.info("Auth manager initialized (mode-independent authentication)")
     except Exception as e:
         logger.error(f"Failed to initialize auth manager: {e}", exc_info=True)
         raise
 
     # Load API key from environment if available
     api_key = os.getenv("API_KEY") or os.getenv("GILJO_MCP_API_KEY")
-    if api_key and state.auth.mode != "LOCAL":
-        # Add the configured API key to AuthManager
+    if api_key:
+        # Add the configured API key to AuthManager (for network clients)
         state.auth.api_keys[api_key] = {
             "name": "Installer Generated",
             "created_at": "2024-01-01T00:00:00Z",
             "permissions": ["*"],
             "active": True,
         }
-        logger.info(f"Loaded API key from environment (key ending in: ...{api_key[-4:] if len(api_key) > 4 else 'XXXX'})")
+        logger.info(
+            f"Loaded API key from environment (key ending in: ...{api_key[-4:] if len(api_key) > 4 else 'XXXX'})"
+        )
     else:
-        logger.info(f"No API key configured (auth mode: {state.auth.mode if state.auth else 'N/A'})")
+        logger.info("No API key configured - localhost auto-login available, network clients require JWT")
 
     # Initialize WebSocket manager
     try:
@@ -201,8 +226,22 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as e:
         logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)
 
+    # Ensure system users exist (localhost user for auto-login)
+    if not getattr(state.config, "setup_mode", False) and state.db_manager:
+        try:
+            logger.info("Ensuring system users exist...")
+            from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
+
+            async with state.db_manager.get_session_async() as session:
+                await ensure_localhost_user(session)
+                logger.info("Localhost user ensured successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to ensure localhost user: {e}", exc_info=True)
+            logger.warning("Continuing startup despite localhost user creation failure")
+
     # Check setup state on startup (version tracking and validation)
-    if not getattr(state.config, 'setup_mode', False) and state.db_manager:
+    if not getattr(state.config, "setup_mode", False) and state.db_manager:
         try:
             logger.info("Checking setup state...")
             from src.giljo_mcp.setup.state_manager import SetupStateManager
@@ -210,6 +249,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             # Get current version from config
             import yaml
             from pathlib import Path
+
             config_path = Path.cwd() / "config.yaml"
             if config_path.exists():
                 with open(config_path) as f:
@@ -219,9 +259,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
                 # Initialize state manager with versions
                 state_manager = SetupStateManager.get_instance(
-                    tenant_key="default",
-                    current_version=current_version,
-                    required_db_version=db_version
+                    tenant_key="default", current_version=current_version, required_db_version=db_version
                 )
 
                 # Check if migration needed
@@ -351,17 +389,18 @@ def create_app() -> FastAPI:
 
     # Configure CORS - use explicit origins from config.yaml security section
     import yaml
+
     cors_origins = []
 
     # Try to load from config.yaml security section
     try:
         config_path = Path(__file__).parent.parent / "config.yaml"
         if config_path.exists():
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
-                security_config = config.get('security', {})
-                cors_config = security_config.get('cors', {})
-                cors_origins = cors_config.get('allowed_origins', [])
+                security_config = config.get("security", {})
+                cors_config = security_config.get("cors", {})
+                cors_origins = cors_config.get("allowed_origins", [])
 
                 if cors_origins:
                     logger.info(f"Loaded CORS origins from config.yaml security section: {cors_origins}")
@@ -376,6 +415,7 @@ def create_app() -> FastAPI:
             if cors_origins_str.startswith("["):
                 # JSON array format from installer
                 import json
+
                 try:
                     cors_origins = json.loads(cors_origins_str)
                 except json.JSONDecodeError:
@@ -393,11 +433,10 @@ def create_app() -> FastAPI:
         logger.info(f"Using default CORS origins (no wildcards): {cors_origins}")
     else:
         # Validate no wildcard patterns for security
-        has_wildcards = any('*' in origin for origin in cors_origins)
+        has_wildcards = any("*" in origin for origin in cors_origins)
         if has_wildcards:
             logger.warning(f"CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
 
-    
     # Dynamic network adapter IP detection for CORS updates
     try:
         from giljo_mcp.network_detector import AdapterIPDetector
@@ -407,7 +446,7 @@ def create_app() -> FastAPI:
 
         if current_ip:
             # Add adapter IP to CORS origins (whether changed or not)
-            frontend_port = config.get('services', {}).get('frontend', {}).get('port', 7274)
+            frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
             adapter_origins = [
                 f"http://{current_ip}:{frontend_port}",
                 f"http://{current_ip}:5173",  # Vite dev server
@@ -427,7 +466,7 @@ def create_app() -> FastAPI:
             # Adapter disconnected - log warning and fall back to localhost
             if adapter_name:
                 logger.warning(f"Network adapter '{adapter_name}' disconnected - using localhost fallback")
-    
+
     except ImportError:
         logger.debug("Network detector not available - skipping dynamic IP detection")
     except Exception as e:
@@ -623,7 +662,7 @@ def create_app() -> FastAPI:
             content={
                 "error": "Internal server error",
                 "detail": str(exc),  # Always show details in verbose mode
-                "type": type(exc).__name__
+                "type": type(exc).__name__,
             },
         )
 
