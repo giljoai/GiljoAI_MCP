@@ -102,7 +102,7 @@ class McpConfigRequest(BaseModel):
     """Request model for MCP configuration generation"""
 
     tool: str = Field(..., description="Tool name (e.g., 'Claude Code')")
-    mode: NetworkMode = Field(..., description="Deployment mode (localhost, lan, or wan)")
+    mode: DeploymentContext = Field(..., description="Deployment context (localhost, lan, or wan)")
 
 
 class McpConfigResponse(BaseModel):
@@ -361,7 +361,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         if "installation" not in config:
             config["installation"] = {}
 
-        config["installation"]["mode"] = request_body.network_mode.value
+        config["installation"]["mode"] = request_body.deployment_context.value
 
         # Initialize response variables
         api_key = None
@@ -370,14 +370,14 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         server_url = None
 
         # Handle LAN/WAN mode configuration
-        if request_body.network_mode in [NetworkMode.LAN, NetworkMode.WAN]:
-            logger.info(f"Configuring {request_body.network_mode.value.upper()} mode setup...")
+        if request_body.deployment_context in [DeploymentContext.LAN, DeploymentContext.WAN]:
+            logger.info(f"Configuring {request_body.deployment_context.value.upper()} mode setup...")
 
             # Validate lan_config is provided
             if not request_body.lan_config:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"{request_body.network_mode.value.upper()} mode requires lan_config with admin credentials and server IP",
+                    detail=f"{request_body.deployment_context.value.upper()} mode requires lan_config with admin credentials and server IP",
                 )
 
             # Validate LAN configuration
@@ -388,7 +388,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                 config,
                 server_ip=request_body.lan_config.server_ip,
                 hostname=request_body.lan_config.hostname,
-                mode=request_body.network_mode.value,
+                mode=request_body.deployment_context.value,
             )
 
             # 2. Create admin user in database with hashed password
@@ -500,10 +500,10 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             api_port = config.get("services", {}).get("api", {}).get("port", 7272)
             server_url = f"http://{request_body.lan_config.server_ip}:{api_port}"
 
-            logger.info(f"{request_body.network_mode.value.upper()} mode configuration complete - restart required")
+            logger.info(f"{request_body.deployment_context.value.upper()} mode configuration complete - restart required")
 
         # Handle localhost mode configuration
-        if request_body.network_mode == NetworkMode.LOCALHOST:
+        if request_body.deployment_context == DeploymentContext.LOCALHOST:
             if "services" not in config:
                 config["services"] = {}
             if "api" not in config["services"]:
@@ -557,8 +557,8 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             # Track configured features
             features_configured = {
                 "database_configured": True,  # Always true (CLI installer)
-                "api_keys_configured": request_body.network_mode == NetworkMode.LAN,
-                "cors_configured": request_body.network_mode == NetworkMode.LAN,
+                "api_keys_configured": request_body.deployment_context == DeploymentContext.LAN,
+                "cors_configured": request_body.deployment_context == DeploymentContext.LAN,
                 "serena_enabled": request_body.serena_enabled,
             }
 
@@ -572,7 +572,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             state_manager.update_state(
                 tools_enabled=request_body.tools_attached,
                 features_configured=features_configured,
-                install_mode=request_body.network_mode.value,
+                install_mode=request_body.deployment_context.value,
                 validation_passed=True,
                 validation_failures=[],
             )
@@ -587,13 +587,13 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             )
 
         logger.info(
-            f"Setup completed successfully: mode={request_body.network_mode.value}, "
+            f"Setup completed successfully: mode={request_body.deployment_context.value}, "
             f"tools={len(request_body.tools_attached)}, serena={request_body.serena_enabled}"
         )
 
         # Build response message and response model
-        if request_body.network_mode in [NetworkMode.LAN, NetworkMode.WAN]:
-            message = f"{request_body.network_mode.value.upper()} setup completed successfully. Use your admin credentials to login."
+        if request_body.deployment_context in [DeploymentContext.LAN, DeploymentContext.WAN]:
+            message = f"{request_body.deployment_context.value.upper()} setup completed successfully. Use your admin credentials to login."
         else:
             message = "Setup completed successfully. Configuration has been saved."
 
@@ -603,7 +603,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             "message": message,
             "api_key": None,  # No API key for dashboard login - JWT auth only
             "requires_restart": requires_restart,
-            "mode": request_body.network_mode.value,
+            "mode": request_body.deployment_context.value,
             "server_url": server_url,
             "admin_username": admin_username,
         }
@@ -716,7 +716,7 @@ async def generate_mcp_config(request: McpConfigRequest = Body(...)):
         api_port = api_config.get("port", 7272)
 
         # Get API host based on mode
-        if request.mode == NetworkMode.LOCALHOST:
+        if request.mode == DeploymentContext.LOCALHOST:
             api_host = "localhost"
         else:
             # For LAN/WAN, use the server IP from config
