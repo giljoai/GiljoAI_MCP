@@ -148,7 +148,8 @@ async def test_lan_mode_setup_creates_user_and_api_key(test_client: AsyncClient,
         config = yaml.safe_load(f)
 
     assert config["installation"]["mode"] == "lan"
-    assert config["services"]["api"]["host"] == "0.0.0.0"
+    # After fix: Wizard writes selected IP, not 0.0.0.0
+    assert config["services"]["api"]["host"] == "10.1.0.164"
     assert config["features"]["api_keys_required"] is True
     assert config["features"]["multi_user"] is True
     assert config["server"]["ip"] == "10.1.0.164"
@@ -499,7 +500,8 @@ async def test_wan_mode_setup(test_client: AsyncClient, config_path: Path):
         config = yaml.safe_load(f)
 
     assert config["installation"]["mode"] == "wan"
-    assert config["services"]["api"]["host"] == "0.0.0.0"
+    # After fix: Wizard writes selected IP, not 0.0.0.0
+    assert config["services"]["api"]["host"] == "203.0.113.42"
 
 
 @pytest.mark.asyncio

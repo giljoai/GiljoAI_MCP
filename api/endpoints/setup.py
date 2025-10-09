@@ -81,7 +81,7 @@ class SetupCompleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether setup completion was successful")
     message: str = Field(..., description="Human-readable status message")
-    api_key: Optional[str] = Field(None, description="Generated API key for LAN/WAN modes (ONLY shown once)")
+    api_key: Optional[str] = Field(None, description="API key for tool integrations (created separately in Attach Tools step)")
     requires_restart: bool = Field(False, description="Whether service restart is required")
     mode: Optional[str] = Field(None, description="Installation mode (localhost, lan, wan)")
     server_url: Optional[str] = Field(None, description="Server URL for API access")
@@ -316,7 +316,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
     - Creates admin User in database with hashed password
     - Generates API key for admin user
     - Updates CORS origins for network access
-    - Configures API to bind to 0.0.0.0
+    - Configures API to bind to selected adapter IP
 
     For localhost mode:
     - No user creation
@@ -442,47 +442,10 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                         admin_username = new_user.username
                         logger.info(f"Created admin user in database: {admin_username}")
 
-                    # 3. Generate API key for admin user
-                    plaintext_key = generate_api_key()
-                    key_hash = hash_api_key(plaintext_key)
-                    key_prefix = get_key_prefix(plaintext_key)
-
-                    # Check if setup key already exists for this user
-                    stmt = select(APIKey).where(
-                        APIKey.user_id == user_id,
-                        APIKey.name.like("%Setup%")
-                    )
-                    result = await session.execute(stmt)
-                    existing_key = result.scalar_one_or_none()
-
-                    if existing_key:
-                        # Update existing key (regenerate)
-                        existing_key.key_hash = key_hash
-                        existing_key.key_prefix = key_prefix
-                        existing_key.is_active = True
-                        existing_key.revoked_at = None
-                        logger.info("Regenerated API key for existing setup key")
-                    else:
-                        # Create new API key
-                        new_key = APIKey(
-                            user_id=user_id,
-                            tenant_key=tenant_key,
-                            name="Setup Wizard Key",
-                            key_hash=key_hash,
-                            key_prefix=key_prefix,
-                            permissions=["*"],
-                            is_active=True,
-                            created_at=datetime.now(timezone.utc)
-                        )
-                        session.add(new_key)
-                        logger.info("Created new API key for admin user")
-
+                    # Commit user creation (no API key needed - JWT auth for dashboard)
                     await session.commit()
 
-                    # Store plaintext key for response (ONLY TIME IT'S SHOWN)
-                    api_key = plaintext_key
-
-                logger.info(f"LAN/WAN mode: Admin user and API key configured successfully")
+                logger.info(f"LAN/WAN mode: Admin user configured successfully (JWT auth enabled)")
 
             except HTTPException:
                 # Re-raise HTTP exceptions
@@ -513,14 +476,17 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                     f"({request_body.lan_config.server_ip})"
                 )
 
-            # 5. Set API host to bind to all interfaces
+            # 5. Set API host to selected adapter IP for LAN/WAN access
             if "services" not in config:
                 config["services"] = {}
             if "api" not in config["services"]:
                 config["services"]["api"] = {}
 
-            config["services"]["api"]["host"] = "0.0.0.0"
+            # Use selected adapter IP instead of hardcoded 0.0.0.0
+            # This allows the API to bind to the specific network interface
+            config["services"]["api"]["host"] = request_body.lan_config.server_ip
             requires_restart = True
+            logger.info(f"Set API host to selected adapter IP: {request_body.lan_config.server_ip}")
 
             # 6. Enable API key authentication for LAN/WAN mode
             if "features" not in config:
@@ -629,7 +595,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
 
         # Build response message and response model
         if request_body.network_mode in [NetworkMode.LAN, NetworkMode.WAN]:
-            message = f"{request_body.network_mode.value.upper()} setup completed successfully. Save your API key securely - it will not be shown again."
+            message = f"{request_body.network_mode.value.upper()} setup completed successfully. Use your admin credentials to login."
         else:
             message = "Setup completed successfully. Configuration has been saved."
 
@@ -637,7 +603,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         response_data = {
             "success": True,
             "message": message,
-            "api_key": api_key,
+            "api_key": None,  # No API key for dashboard login - JWT auth only
             "requires_restart": requires_restart,
             "mode": request_body.network_mode.value,
             "server_url": server_url,
