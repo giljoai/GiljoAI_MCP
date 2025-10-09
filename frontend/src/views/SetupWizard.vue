@@ -69,8 +69,8 @@
           <div class="text-body-2">
             <p class="mb-2"><strong>This will:</strong></p>
             <ul class="ml-4 mb-3">
-              <li>Bind the API server to 0.0.0.0 (all network interfaces)</li>
-              <li>Enable API key authentication</li>
+              <li>Bind the API server to your selected network adapter</li>
+              <li>Enable user authentication (username/password login)</li>
               <li>Allow network devices to access this server</li>
               <li>Require a service restart to take effect</li>
             </ul>
@@ -85,46 +85,6 @@
           <v-spacer />
           <v-btn color="warning" @click="confirmLanConfig">
             <span class="text-white">Yes, Configure for LAN</span>
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- API Key Modal -->
-    <v-dialog v-model="showApiKeyModal" max-width="600" persistent>
-      <v-card>
-        <v-card-title class="text-h5">
-          <v-icon start color="warning">mdi-key</v-icon>
-          Your API Key
-        </v-card-title>
-
-        <v-card-text>
-          <v-alert type="warning" variant="tonal" class="mb-4">
-            <strong>Important:</strong> Save this API key securely. You will need it to access the
-            API from network clients. It cannot be recovered if lost.
-          </v-alert>
-
-          <v-text-field
-            :model-value="generatedApiKey"
-            label="API Key"
-            readonly
-            variant="outlined"
-            density="compact"
-            :append-icon="apiKeyCopied ? 'mdi-check' : 'mdi-content-copy'"
-            @click:append="copyApiKey"
-          />
-
-          <v-checkbox
-            v-model="apiKeyConfirmed"
-            label="I have saved this API key securely"
-            color="primary"
-          />
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="primary" :disabled="!apiKeyConfirmed" @click="proceedToRestart">
-            <span class="text-white">Continue</span>
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -243,11 +203,7 @@ const currentStepIndex = ref(0)
 const isRestarting = ref(false)
 const restartMessage = ref('Saving configuration...')
 const showLanConfirmModal = ref(false)
-const showApiKeyModal = ref(false)
 const showRestartModal = ref(false)
-const generatedApiKey = ref(null)
-const apiKeyCopied = ref(false)
-const apiKeyConfirmed = ref(false)
 const installationPath = ref('(project directory)')
 const detectedPlatform = ref('windows')
 const setupError = ref(null)
@@ -477,12 +433,8 @@ const saveSetupConfig = async () => {
     // Hide completion overlay
     isRestarting.value = false
 
-    if (result.api_key) {
-      // LAN mode - show API key modal
-      generatedApiKey.value = result.api_key
-      showApiKeyModal.value = true
-    } else if (result.requires_restart) {
-      // Localhost mode but requires restart
+    if (result.requires_restart) {
+      // LAN mode or localhost mode - show restart modal
       showRestartModal.value = true
     } else {
       // Localhost mode - skip to completion
@@ -504,19 +456,6 @@ const saveSetupConfig = async () => {
     await new Promise((resolve) => setTimeout(resolve, 2000))
     window.location.href = 'http://localhost:7274'
   }
-}
-
-const copyApiKey = () => {
-  navigator.clipboard.writeText(generatedApiKey.value)
-  apiKeyCopied.value = true
-  setTimeout(() => {
-    apiKeyCopied.value = false
-  }, 3000)
-}
-
-const proceedToRestart = () => {
-  showApiKeyModal.value = false
-  showRestartModal.value = true
 }
 
 const finishSetup = () => {

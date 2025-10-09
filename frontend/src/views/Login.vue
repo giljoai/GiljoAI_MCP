@@ -153,7 +153,24 @@ async function handleLogin() {
 
   try {
     // POST to /api/auth/login with credentials
-    await api.auth.login(username.value, password.value)
+    const response = await api.auth.login(username.value, password.value)
+
+    // Store auth token if provided in response (Bearer token approach)
+    if (response.data?.access_token) {
+      localStorage.setItem('auth_token', response.data.access_token)
+    }
+
+    // Store user data if provided
+    if (response.data?.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+    }
+
+    // Store remember me preference
+    if (rememberMe.value) {
+      localStorage.setItem('remember_me', 'true')
+    } else {
+      localStorage.removeItem('remember_me')
+    }
 
     // Show success message briefly
     successMessage.value = 'Login successful! Redirecting...'
@@ -203,23 +220,31 @@ onMounted(async () => {
 
 <style scoped>
 .login-container {
-  background: linear-gradient(135deg, rgba(30, 49, 71, 0.95) 0%, rgba(18, 29, 42, 0.98) 100%);
+  background: linear-gradient(135deg, rgb(30, 49, 71) 0%, rgb(18, 29, 42) 100%);
   min-height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  overflow-y: auto;
 }
 
 .login-card {
   border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* Dark theme adjustments */
 :deep(.v-theme--dark) .login-container {
-  background: linear-gradient(135deg, rgba(18, 29, 42, 0.98) 0%, rgba(10, 15, 22, 1) 100%);
+  background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
 }
 
 /* Light theme adjustments */
 :deep(.v-theme--light) .login-container {
-  background: linear-gradient(135deg, rgba(240, 244, 248, 0.95) 0%, rgba(220, 230, 240, 0.98) 100%);
+  background: linear-gradient(135deg, rgb(240, 244, 248) 0%, rgb(220, 230, 240) 100%);
 }
 
 /* Accessibility: Focus indicators */

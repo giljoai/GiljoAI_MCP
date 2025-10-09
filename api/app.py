@@ -397,6 +397,42 @@ def create_app() -> FastAPI:
         if has_wildcards:
             logger.warning(f"CORS origins contain wildcards - this reduces security. Consider using explicit origins.")
 
+    
+    # Dynamic network adapter IP detection for CORS updates
+    try:
+        from giljo_mcp.network_detector import AdapterIPDetector
+
+        detector = AdapterIPDetector()
+        ip_changed, current_ip, adapter_name = detector.detect_ip_change(config)
+
+        if current_ip:
+            # Add adapter IP to CORS origins (whether changed or not)
+            frontend_port = config.get('services', {}).get('frontend', {}).get('port', 7274)
+            adapter_origins = [
+                f"http://{current_ip}:{frontend_port}",
+                f"http://{current_ip}:5173",  # Vite dev server
+            ]
+
+            # Add if not already present
+            for origin in adapter_origins:
+                if origin not in cors_origins:
+                    cors_origins.append(origin)
+                    logger.info(f"Added CORS origin: {origin}")
+
+            if ip_changed:
+                logger.info(f"Network adapter IP changed: {adapter_name} -> {current_ip}")
+            else:
+                logger.info(f"Network adapter IP unchanged: {adapter_name} @ {current_ip}")
+        else:
+            # Adapter disconnected - log warning and fall back to localhost
+            if adapter_name:
+                logger.warning(f"Network adapter '{adapter_name}' disconnected - using localhost fallback")
+    
+    except ImportError:
+        logger.debug("Network detector not available - skipping dynamic IP detection")
+    except Exception as e:
+        logger.warning(f"Network IP detection failed: {e} - continuing with static CORS config")
+
     logger.info(f"Configuring CORS with origins: {cors_origins}")
 
     # Add middleware in reverse order of execution

@@ -354,33 +354,41 @@ onMounted(async () => {
   // Load current user (if authenticated)
   await loadCurrentUser()
 
-  // Connect WebSocket with optional authentication
-  // You can pass { apiKey: 'your-key' } or { token: 'your-token' } if needed
-  try {
-    await wsStore.connect()
-    console.log('WebSocket connected successfully')
+  // Only connect WebSocket and start polling if user is authenticated
+  if (currentUser.value) {
+    // Connect WebSocket with authentication credentials
+    try {
+      // Get auth token from localStorage for WebSocket authentication
+      const authToken = localStorage.getItem('auth_token')
+      const wsOptions = authToken ? { token: authToken } : {}
 
-    // Load initial data
-    await Promise.all([agentStore.fetchAgents(), messageStore.fetchMessages()])
+      await wsStore.connect(wsOptions)
+      console.log('WebSocket connected successfully')
 
-    // Set up 10-second message polling interval
-    messagePollingInterval = setInterval(async () => {
-      try {
-        await messageStore.fetchMessages()
-        console.log('Messages refreshed at', new Date().toLocaleTimeString())
-      } catch (error) {
-        console.error('Failed to fetch messages:', error)
-      }
-    }, 10000) // Poll every 10 seconds
+      // Load initial data
+      await Promise.all([agentStore.fetchAgents(), messageStore.fetchMessages()])
 
-    // Subscribe to relevant updates for the whole app
-    // Individual views will subscribe to specific entities
+      // Set up 10-second message polling interval
+      messagePollingInterval = setInterval(async () => {
+        try {
+          await messageStore.fetchMessages()
+          console.log('Messages refreshed at', new Date().toLocaleTimeString())
+        } catch (error) {
+          console.error('Failed to fetch messages:', error)
+        }
+      }, 10000) // Poll every 10 seconds
 
-    // Listen for notifications
-    window.addEventListener('ws-notification', handleNotification)
-    window.addEventListener('new-message', handleNewMessage)
-  } catch (error) {
-    console.error('Failed to initialize WebSocket:', error)
+      // Subscribe to relevant updates for the whole app
+      // Individual views will subscribe to specific entities
+
+      // Listen for notifications
+      window.addEventListener('ws-notification', handleNotification)
+      window.addEventListener('new-message', handleNewMessage)
+    } catch (error) {
+      console.error('Failed to initialize WebSocket:', error)
+    }
+  } else {
+    console.log('[Auth] User not authenticated, skipping WebSocket connection and message polling')
   }
 })
 

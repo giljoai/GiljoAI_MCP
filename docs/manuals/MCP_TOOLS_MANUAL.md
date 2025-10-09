@@ -15,7 +15,7 @@ Successfully implemented and validated all 20 required MCP tools for the GiljoAI
 
 ### Tool Categories and Status
 
-#### 1. Project Management Tools (6/6) ✅
+#### 1. Project Management Tools (8/8) ✅
 
 Tools for managing projects and their lifecycle.
 
@@ -27,6 +27,8 @@ Tools for managing projects and their lifecycle.
 | `close_project`          | project.py | Close a completed project with summary                      | ✅ Implemented |
 | `update_project_mission` | project.py | Update the mission field after orchestrator analysis        | ✅ Implemented |
 | `project_status`         | project.py | Get comprehensive project status                            | ✅ Implemented |
+| `get_product_config`     | product.py | Get product configuration with role-based filtering         | ✅ Implemented |
+| `update_product_config`  | product.py | Update product configuration with validation                | ✅ Implemented |
 
 #### 2. Agent Management Tools (6/6) ✅
 
@@ -80,7 +82,7 @@ Bonus tools discovered during implementation:
 - `metrics` - Performance metrics
 - `status` - Overall server status
 
-**Total Tools Available**: 26 (20 required + 6 bonus)
+**Total Tools Available**: 28 (22 core + 6 bonus)
 
 ## Usage Examples and Best Practices
 
@@ -210,6 +212,101 @@ section = await get_context_section(
 help_docs = await help()
 ```
 
+### 5. Product Configuration Management (New in v2.0)
+
+```python
+# Get product configuration (role-based filtering)
+config = await get_product_config(
+    project_id="uuid-here",
+    filtered=True,  # Enable role-based filtering
+    agent_name="implementer-agent",  # Agent requesting config
+    agent_role="implementer"  # Optional explicit role
+)
+
+# Returns only relevant fields for implementer role:
+# {
+#     "architecture": "FastAPI + PostgreSQL + Vue.js",
+#     "tech_stack": ["Python 3.11", "PostgreSQL 18", "Vue 3"],
+#     "codebase_structure": {...},
+#     "critical_features": [...],
+#     "database_type": "postgresql",
+#     "backend_framework": "fastapi",
+#     "frontend_framework": "vue",
+#     "deployment_modes": ["localhost", "server"]
+# }
+
+# Get FULL configuration (orchestrator only)
+full_config = await get_product_config(
+    project_id="uuid-here",
+    filtered=False  # Get all fields
+)
+
+# Update product configuration
+update_result = await update_product_config(
+    project_id="uuid-here",
+    config_updates={
+        "test_commands": ["pytest tests/ --cov=src"],
+        "test_config": {
+            "coverage_threshold": 90,
+            "test_framework": "pytest"
+        }
+    },
+    merge=True  # Deep merge (True) or replace (False)
+)
+
+# Returns:
+# {
+#     "success": true,
+#     "message": "Configuration updated successfully",
+#     "updated_fields": ["test_commands", "test_config"]
+# }
+```
+
+#### Role-Based Filtering Examples
+
+The `get_product_config()` tool automatically filters config_data based on agent role:
+
+**Orchestrator** (gets ALL 13+ fields):
+```python
+config = await get_product_config(
+    project_id="uuid",
+    filtered=True,
+    agent_name="orchestrator"
+)
+# Returns: Complete config_data with all fields
+```
+
+**Implementer** (gets 8 fields):
+```python
+config = await get_product_config(
+    project_id="uuid",
+    filtered=True,
+    agent_name="implementer-agent"
+)
+# Returns: architecture, tech_stack, codebase_structure, critical_features,
+#          database_type, backend_framework, frontend_framework, deployment_modes
+```
+
+**Tester** (gets 5 fields):
+```python
+config = await get_product_config(
+    project_id="uuid",
+    filtered=True,
+    agent_name="tester-agent"
+)
+# Returns: test_commands, test_config, critical_features, known_issues, tech_stack
+```
+
+**Documenter** (gets 5 fields):
+```python
+config = await get_product_config(
+    project_id="uuid",
+    filtered=True,
+    agent_name="documenter-agent"
+)
+# Returns: api_docs, documentation_style, architecture, critical_features, codebase_structure
+```
+
 ## Best Practices
 
 ### 1. Agent Management
@@ -242,6 +339,14 @@ help_docs = await help()
 - **All tools return success/error status** - always check returns
 - **Handle failures gracefully** with retry logic where appropriate
 - **Log errors comprehensively** for debugging
+
+### 6. Product Configuration (New in v2.0)
+
+- **Use filtered config for workers** - Save 60% tokens by requesting role-specific config
+- **Orchestrators get full config** - Always use `filtered=False` for orchestrators
+- **Validate before updating** - Configuration updates are validated against schema
+- **Use deep merge** - Set `merge=True` to preserve existing config fields
+- **Check config_data availability** - Not all products may have config_data populated yet
 
 ## Implementation Details
 

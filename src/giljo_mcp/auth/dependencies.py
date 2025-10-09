@@ -31,7 +31,6 @@ Usage Example:
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
 
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,7 +101,7 @@ async def get_current_user(
     if access_token:
         try:
             payload = JWTManager.verify_token(access_token)
-            user_id = UUID(payload["sub"])
+            user_id = payload["sub"]  # Keep as string - User.id is String(36), not UUID
 
             # Query user from database
             from sqlalchemy import select
