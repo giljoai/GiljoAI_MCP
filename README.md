@@ -18,59 +18,83 @@
 
 ---
 
-[... previous content remains the same until the "Install and Run" section ...]
+## Quick Start
 
-### Install and Run
+**NEW (v3.0+): Simplified Startup**
+
+```bash
+# Install and start GiljoAI MCP (one command for everything)
+python startup.py
+```
+
+**What happens**:
+- **First time**: Launches interactive setup wizard in your browser
+- **Already configured**: Starts services and opens dashboard directly
+- **No manual steps**: Everything is automatic
+
+**That's it.** No complex installation. No platform-specific scripts. Just one command.
+
+---
+
+### Detailed Installation
+
+For those who want to understand what's happening:
 
 ```bash
 # 1. Clone and enter directory (30 seconds)
 git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
 cd GiljoAI_MCP
 
-# 2. Run the CLI installer (3-5 minutes)
-python install.py
-# or on Windows:
-install.bat
+# 2. Run startup script (automatic first-run detection)
+python startup.py
 
-# The CLI installer will:
-# ✅ Detect your system and requirements
-# ✅ Install PostgreSQL 18 automatically (if needed)
-# ✅ Create Python virtual environment
-# ✅ Install all dependencies
-# ✅ Configure database and services
-# ✅ Start backend and frontend
-# ✅ Open dashboard in browser
+# First Run: Setup wizard opens in browser
+# - Database connection verification
+# - Admin account creation
+# - Deployment mode selection (Localhost/LAN/WAN)
+# - MCP tool integration (Claude Code, Cline, Cursor)
+# - Firewall configuration (if LAN/WAN)
+# - Service startup
 
-# 3. Complete setup wizard (3-5 minutes)
-# After installer finishes, setup wizard opens automatically
-# http://localhost:7274/setup
-#
-# The Setup Wizard guides you through:
-# ✅ Database connection verification
-# ✅ Deployment mode selection (Localhost/LAN/WAN)
-# ✅ Admin account creation (if LAN/WAN)
-# ✅ AI tool integration (Claude Code, Cline, Cursor)
-# ✅ Firewall configuration (if LAN/WAN)
-# ✅ Final system verification
+# Subsequent Runs: Dashboard opens directly
+# - All services start automatically
+# - Browser opens to dashboard
+# - Ready to use immediately
 
-# 4. Start using your AI orchestration team!
+# 3. Start orchestrating AI agents!
 # ✨ Dashboard: http://localhost:7274
 # ✨ API: http://localhost:7272
 ```
 
+**Command-Line Options**:
+```bash
+python startup.py              # Auto-detect and run
+python startup.py --setup      # Force setup wizard
+python startup.py --dev        # Development mode (auto-reload)
+python startup.py --no-browser # Skip browser auto-open
+python startup.py --verbose    # Detailed logging
+```
+
 ### What Just Happened?
 
-**Phase 1 - CLI Installer**:
-1. **System Detection**: Identified your OS and existing software
-2. **PostgreSQL Setup**: Installed and configured PostgreSQL 18
-3. **Environment Setup**: Created isolated Python environment with all dependencies
-4. **Service Startup**: Started backend API and frontend dashboard
+`python startup.py` intelligently handles the entire process:
 
-**Phase 2 - Setup Wizard**:
-5. **Database Verified**: Tested and confirmed database connection
-6. **Mode Configured**: Selected deployment mode for your use case
-7. **Tools Integrated**: Connected your AI coding tools (Claude Code, etc.)
-8. **System Ready**: All services verified and ready for use
+**First Run (Setup Mode)**:
+1. **Environment Check**: Validates Python 3.10+, PostgreSQL 18, dependencies
+2. **First-Run Detection**: Checks for admin user (none found = first run)
+3. **Setup Wizard Launch**: Opens browser to http://localhost:7274/setup
+4. **Interactive Configuration**: Guides you through all setup steps
+5. **Service Startup**: Starts API and frontend automatically
+6. **Dashboard Launch**: Opens to configured dashboard
+
+**Subsequent Runs (Normal Mode)**:
+1. **Environment Check**: Quick validation of prerequisites
+2. **First-Run Detection**: Admin user found = skip setup wizard
+3. **Service Startup**: Starts API (port 7272) and frontend (port 7274)
+4. **Dashboard Launch**: Opens browser directly to dashboard
+5. **Auto-Login**: Localhost users automatically authenticated
+
+**For complete details**, see [Startup Simplification Guide](docs/guides/STARTUP_SIMPLIFICATION.md)
 
 ### Installation Modes
 
@@ -100,11 +124,33 @@ python -m giljo_mcp docs
 ### Advanced Setup Options
 
 ```bash
-# Server setup with PostgreSQL
-python install.py --server
+# Force setup wizard (even if already configured)
+python startup.py --setup
 
-# Development mode with hot reload
-python -m giljo_mcp dev
+# Development mode with auto-reload
+python startup.py --dev
+
+# Headless installation (CI/CD, automated deployment)
+python startup.py --config install_config.yaml --headless
+
+# Custom ports
+python startup.py --api-port 8000 --dashboard-port 8001
+
+# Verbose logging for troubleshooting
+python startup.py --verbose
+
+# See all options
+python startup.py --help
+```
+
+**Legacy Installation** (still supported):
+```bash
+# CLI installer (older method)
+python installer/cli/install.py
+
+# Platform-specific scripts
+install.bat              # Windows
+quickstart.sh            # Linux/macOS
 ```
 
 [... rest of the README remains the same ...]
