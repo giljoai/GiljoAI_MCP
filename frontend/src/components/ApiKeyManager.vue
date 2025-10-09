@@ -4,7 +4,7 @@
       <v-icon class="mr-2">mdi-key-variant</v-icon>
       API Keys
       <v-spacer />
-      <v-btn color="primary" @click="showGenerateDialog = true" :disabled="loading">
+      <v-btn color="primary" @click="showWizard = true" :disabled="loading">
         <v-icon start>mdi-plus</v-icon>
         Generate New Key
       </v-btn>
@@ -53,6 +53,11 @@
           <span class="text-caption">{{ formatDate(item.created_at) }}</span>
         </template>
 
+        <!-- Last Used Column -->
+        <template #item.last_used="{ item }">
+          <span class="text-caption">{{ humanizeTimestamp(item.last_used) }}</span>
+        </template>
+
         <!-- Actions Column -->
         <template #item.actions="{ item }">
           <v-tooltip text="Revoke this API key">
@@ -71,113 +76,8 @@
       </v-data-table>
     </v-card-text>
 
-    <!-- Generate Key Dialog -->
-    <v-dialog v-model="showGenerateDialog" max-width="500" persistent>
-      <v-card>
-        <v-card-title>
-          <v-icon class="mr-2">mdi-key-plus</v-icon>
-          Generate New API Key
-        </v-card-title>
-
-        <v-card-text>
-          <v-form ref="generateForm" @submit.prevent="generateKey">
-            <v-text-field
-              v-model="newKeyName"
-              label="Key Name"
-              hint="A descriptive name for this API key (e.g., 'Production Server', 'Dev Environment')"
-              persistent-hint
-              variant="outlined"
-              :rules="[rules.required]"
-              autofocus
-              class="mt-4"
-            />
-          </v-form>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="cancelGenerate" :disabled="generating">Cancel</v-btn>
-          <v-btn color="primary" @click="generateKey" :loading="generating" :disabled="!newKeyName">
-            Generate
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Show New Key Dialog (ONCE) -->
-    <v-dialog v-model="showNewKeyDialog" max-width="700" persistent>
-      <v-card>
-        <v-card-title class="bg-warning">
-          <v-icon class="mr-2">mdi-alert</v-icon>
-          Save Your API Key
-        </v-card-title>
-
-        <v-card-text class="pt-6">
-          <v-alert type="warning" variant="tonal" prominent class="mb-4">
-            <v-alert-title class="text-h6 mb-2">
-              <v-icon start>mdi-shield-alert</v-icon>
-              Important: Copy this key now!
-            </v-alert-title>
-            This API key will only be shown ONCE. After you close this dialog, you will not be able
-            to retrieve it again. If you lose it, you'll need to generate a new key.
-          </v-alert>
-
-          <v-text-field
-            :model-value="newApiKey"
-            label="Your New API Key"
-            variant="outlined"
-            readonly
-            class="mt-4 mb-2"
-          >
-            <template #append-inner>
-              <v-tooltip text="Copy to clipboard">
-                <template v-slot:activator="{ props }">
-                  <v-btn
-                    icon="mdi-content-copy"
-                    size="small"
-                    variant="text"
-                    color="primary"
-                    v-bind="props"
-                    @click="copyToClipboard"
-                  />
-                </template>
-              </v-tooltip>
-            </template>
-          </v-text-field>
-
-          <v-alert v-if="copied" type="success" variant="tonal" density="compact" class="mb-4">
-            <v-icon start size="small">mdi-check-circle</v-icon>
-            API key copied to clipboard!
-          </v-alert>
-
-          <v-divider class="my-4" />
-
-          <h3 class="text-subtitle-1 mb-2">How to use this API key:</h3>
-          <v-code class="d-block pa-3 bg-surface-variant rounded">
-            # HTTP Header<br />
-            X-API-Key: {{ newApiKey }}
-          </v-code>
-        </v-card-text>
-
-        <v-card-actions class="pa-4">
-          <v-checkbox
-            v-model="confirmSaved"
-            label="I have copied and saved this key securely"
-            color="primary"
-            density="compact"
-          />
-          <v-spacer />
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="closeNewKeyDialog"
-            :disabled="!confirmSaved"
-          >
-            I've Saved It
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- API Key Wizard -->
+    <ApiKeyWizard v-model="showWizard" @key-created="refreshKeys" />
 
     <!-- Revoke Confirmation Dialog -->
     <v-dialog v-model="showRevokeDialog" max-width="500">
@@ -188,23 +88,49 @@
         </v-card-title>
 
         <v-card-text class="pt-6">
-          <p class="text-body-1 mb-4">
-            Are you sure you want to revoke the API key <strong>{{ keyToRevoke?.name }}</strong
-            >?
+          <p class="text-body-1 mb-2">
+            You are about to revoke the API key:
           </p>
+          <v-card variant="outlined" class="mb-4 pa-3">
+            <div class="d-flex align-center">
+              <v-icon class="mr-2">mdi-label</v-icon>
+              <strong>{{ keyToRevoke?.name }}</strong>
+            </div>
+            <div class="d-flex align-center mt-2">
+              <v-icon class="mr-2" size="small">mdi-key</v-icon>
+              <code class="text-caption">{{ keyToRevoke?.key_prefix }}...</code>
+            </div>
+          </v-card>
 
-          <v-alert type="warning" variant="tonal" density="compact">
+          <v-alert type="warning" variant="tonal" density="compact" class="mb-4">
             This action cannot be undone. Any applications using this key will immediately lose
             access to the API.
           </v-alert>
+
+          <v-text-field
+            v-model="deleteConfirmation"
+            label="Type DELETE to confirm"
+            variant="outlined"
+            hint="Type the word DELETE (all caps) to enable the revoke button"
+            persistent-hint
+            placeholder="DELETE"
+            autofocus
+          />
         </v-card-text>
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showRevokeDialog = false" :disabled="revoking">
+          <v-btn variant="text" @click="cancelRevoke" :disabled="revoking">
             Cancel
           </v-btn>
-          <v-btn color="error" @click="revokeKey" :loading="revoking"> Revoke Key </v-btn>
+          <v-btn
+            color="error"
+            @click="revokeKey"
+            :loading="revoking"
+            :disabled="deleteConfirmation !== 'DELETE'"
+          >
+            Revoke Key
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -213,37 +139,37 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
+import ApiKeyWizard from './ApiKeyWizard.vue'
 
 // State
 const apiKeys = ref([])
 const loading = ref(false)
-const showGenerateDialog = ref(false)
-const showNewKeyDialog = ref(false)
+const showWizard = ref(false)
 const showRevokeDialog = ref(false)
-const newKeyName = ref('')
-const newApiKey = ref('')
-const generating = ref(false)
 const revoking = ref(false)
-const copied = ref(false)
-const confirmSaved = ref(false)
 const keyToRevoke = ref(null)
-const generateForm = ref(null)
+const deleteConfirmation = ref('')
 
 // Table headers
 const headers = [
   { title: 'Name', key: 'name', sortable: true },
   { title: 'Key Prefix', key: 'key_prefix', sortable: false },
   { title: 'Created', key: 'created_at', sortable: true },
+  { title: 'Last Used', key: 'last_used', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
 ]
 
-// Validation rules
-const rules = {
-  required: (value) => !!value || 'This field is required',
-}
-
 // Methods
+function humanizeTimestamp(timestamp) {
+  if (!timestamp) return 'Never'
+  try {
+    return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+  } catch (err) {
+    return 'Unknown'
+  }
+}
 async function loadKeys() {
   loading.value = true
   try {
@@ -261,53 +187,25 @@ async function loadKeys() {
   }
 }
 
-async function generateKey() {
-  // Validate form
-  const { valid } = await generateForm.value.validate()
-  if (!valid) {
-    return
-  }
-
-  generating.value = true
-  try {
-    const response = await api.apiKeys.create(newKeyName.value)
-    newApiKey.value = response.data.api_key
-    console.log('[API Keys] Generated new key:', newKeyName.value)
-
-    // Close generate dialog and show new key dialog
-    showGenerateDialog.value = false
-    showNewKeyDialog.value = true
-
-    // Reload keys list
-    await loadKeys()
-  } catch (err) {
-    console.error('[API Keys] Failed to generate:', err)
-    // Could show error toast here
-  } finally {
-    generating.value = false
-  }
-}
-
-function cancelGenerate() {
-  showGenerateDialog.value = false
-  newKeyName.value = ''
-}
-
-function closeNewKeyDialog() {
-  showNewKeyDialog.value = false
-  newApiKey.value = ''
-  newKeyName.value = ''
-  confirmSaved.value = false
-  copied.value = false
+async function refreshKeys() {
+  console.log('[API Keys] Refreshing keys after wizard completion')
+  await loadKeys()
 }
 
 function confirmRevoke(key) {
   keyToRevoke.value = key
+  deleteConfirmation.value = ''
   showRevokeDialog.value = true
 }
 
+function cancelRevoke() {
+  showRevokeDialog.value = false
+  keyToRevoke.value = null
+  deleteConfirmation.value = ''
+}
+
 async function revokeKey() {
-  if (!keyToRevoke.value) return
+  if (!keyToRevoke.value || deleteConfirmation.value !== 'DELETE') return
 
   revoking.value = true
   try {
@@ -320,26 +218,12 @@ async function revokeKey() {
     // Close dialog
     showRevokeDialog.value = false
     keyToRevoke.value = null
+    deleteConfirmation.value = ''
   } catch (err) {
     console.error('[API Keys] Failed to revoke:', err)
     // Could show error toast here
   } finally {
     revoking.value = false
-  }
-}
-
-async function copyToClipboard() {
-  try {
-    await navigator.clipboard.writeText(newApiKey.value)
-    copied.value = true
-    console.log('[API Keys] Copied to clipboard')
-
-    // Reset copied state after 3 seconds
-    setTimeout(() => {
-      copied.value = false
-    }, 3000)
-  } catch (err) {
-    console.error('[API Keys] Failed to copy:', err)
   }
 }
 
