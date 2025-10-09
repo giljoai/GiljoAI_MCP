@@ -61,6 +61,7 @@ try:
         configuration,
         context,
         database_setup,
+        mcp_installer,
         messages,
         mcp_tools,
         network,
@@ -322,7 +323,7 @@ def create_app() -> FastAPI:
     from giljo_mcp.config_manager import get_config
 
     app = FastAPI(
-        title="GiljoAI MCP Orchestrator API",
+        title="GiljoAI MCP Orchestrator API v3.0.0",
         description="""
         ## Multi-Agent Orchestration System REST API
 
@@ -347,7 +348,7 @@ def create_app() -> FastAPI:
         ### Rate Limiting:
         Rate limiting can be configured per tenant. Default: 60 requests/minute.
         """,
-        version="1.0.0",
+        version="3.0.0",
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
@@ -517,6 +518,9 @@ def create_app() -> FastAPI:
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
     app.include_router(network.router, prefix="/api/network", tags=["network"])
 
+    # MCP Installer endpoints for downloadable script generation (Phase 2.1)
+    app.include_router(mcp_installer.router, prefix="/api/mcp-installer", tags=["MCP Integration"])
+
     # MCP tool endpoints for stdio-to-HTTP bridge
     app.include_router(mcp_tools.router, prefix="/mcp/tools", tags=["mcp_tools"])
 
@@ -525,7 +529,7 @@ def create_app() -> FastAPI:
         """Root endpoint"""
         return {
             "name": "GiljoAI MCP Orchestrator",
-            "version": "1.0.0",
+            "version": "3.0.0",
             "status": "operational",
             "endpoints": {"api": "/docs", "websocket": "/ws", "health": "/health"},
         }

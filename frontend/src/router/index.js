@@ -150,6 +150,18 @@ const routes = [
     },
   },
   {
+    path: '/admin/mcp-integration',
+    name: 'McpIntegration',
+    component: () => import('@/views/McpIntegration.vue'),
+    meta: {
+      title: 'MCP Integration',
+      icon: 'mdi-connection',
+      showInNav: true,
+      requiresAuth: true,
+      requiresAdmin: true,
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),
