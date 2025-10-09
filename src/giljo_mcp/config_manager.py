@@ -31,39 +31,42 @@ from .exceptions import ConfigValidationError
 logger = logging.getLogger(__name__)
 
 
-class DeploymentMode(Enum):
-    """Deployment modes for the application."""
-
-    LOCAL = "local"  # Single machine, localhost only
-    LAN = "lan"  # Local network, API key auth
-    WAN = "wan"  # Internet accessible, OAuth/TLS
+# DeploymentMode enum removed in v3.0
+# v3.0 uses fixed network binding (0.0.0.0) with authentication always enabled
+# and IP-based auto-login for localhost users
 
 
 @dataclass
 class ServerConfig:
-    """Server configuration settings."""
+    """Server configuration settings.
 
-    mode: DeploymentMode = DeploymentMode.LOCAL
+    v3.0: All servers bind to 0.0.0.0 (all interfaces).
+    Access control is handled via:
+    - Firewall rules (recommended)
+    - IP-based auto-login for localhost
+    - API key for network clients
+    """
+
     debug: bool = False
 
-    # MCP Server
-    mcp_host: str = "127.0.0.1"
+    # MCP Server - always bind all interfaces
+    mcp_host: str = "0.0.0.0"
     mcp_port: int = 6001
     mcp_transport: str = "stdio"
 
-    # REST API
-    api_host: str = "127.0.0.1"
+    # REST API - always bind all interfaces
+    api_host: str = "0.0.0.0"
     api_port: int = 7272  # Production default (PortManager managed)
     api_cors_enabled: bool = True
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None  # Generated on first run
 
     # WebSocket
     websocket_enabled: bool = True
     websocket_port: int = 6003
 
-    # Dashboard
+    # Dashboard - always bind all interfaces
     dashboard_enabled: bool = True
-    dashboard_host: str = "127.0.0.1"
+    dashboard_host: str = "0.0.0.0"
     dashboard_port: int = 7274
     dashboard_dev_port: int = 5173
 
@@ -405,15 +408,8 @@ class ConfigManager:
         if auto_reload:
             self._setup_file_watcher()
 
-    @property
-    def deployment_mode(self):
-        """Get deployment mode (compatibility alias for server.mode)."""
-        return self.server.mode
-
-    @deployment_mode.setter
-    def deployment_mode(self, value):
-        """Set deployment mode (compatibility alias for server.mode)."""
-        self.server.mode = value
+    # deployment_mode property removed in v3.0
+    # No longer needed as mode detection is removed
 
     def get_data_dir(self) -> Path:
         """Get application data directory (restored from cleanup)."""
@@ -456,16 +452,72 @@ class ConfigManager:
             # 2. Override with environment variables
             self._load_from_env()
 
-            # 3. Detect and set deployment mode
-            self._detect_mode()
-
-            # 4. Validate configuration
+            # 3. Validate configuration
             self.validate()
 
-            # 5. Apply mode-specific adjustments
-            self._apply_mode_settings()
+            logger.info("Configuration loaded successfully (v3.0 - mode detection removed)")
 
-            logger.info(f"Configuration loaded: mode={self.server.mode.value}")
+    def _migrate_v2_config(self, data: dict) -> dict:
+        """Migrate v2.x config to v3.0 format.
+
+        Args:
+            data: Configuration dictionary from YAML
+
+        Returns:
+            Migrated configuration dictionary
+        """
+        if 'version' in data and data.get('version', '').startswith('3.'):
+            return data  # Already v3
+
+        logger.info("Migrating v2.x config to v3.0 format")
+
+        # Detect old mode
+        old_mode = data.get('server', {}).get('mode', 'local')
+        if 'installation' in data and 'mode' in data['installation']:
+            old_mode = data['installation']['mode']
+
+        # Remove mode field from server section
+        if 'server' in data and 'mode' in data['server']:
+            del data['server']['mode']
+
+        # Remove mode field from installation section
+        if 'installation' in data and 'mode' in data['installation']:
+            del data['installation']['mode']
+
+        # Add v3 fields
+        data['version'] = '3.0.0'
+
+        # Map old mode to deployment context (informational only)
+        data['deployment_context'] = old_mode
+
+        # Ensure features section
+        if 'features' not in data:
+            data['features'] = {}
+
+        data['features']['authentication'] = True
+        data['features']['auto_login_localhost'] = True
+        data['features']['firewall_configured'] = False
+
+        # Ensure all hosts bind to 0.0.0.0
+        if 'server' not in data:
+            data['server'] = {}
+
+        # Update network binding
+        if 'api' not in data['server']:
+            data['server']['api'] = {}
+        data['server']['api']['host'] = '0.0.0.0'
+
+        if 'dashboard' not in data['server']:
+            data['server']['dashboard'] = {}
+        data['server']['dashboard']['host'] = '0.0.0.0'
+
+        if 'mcp' not in data['server']:
+            data['server']['mcp'] = {}
+        data['server']['mcp']['host'] = '0.0.0.0'
+
+        logger.info(f"Config migrated from {old_mode} mode to v3.0")
+
+        return data
 
     def _load_from_file(self):
         """Load configuration from YAML file."""
@@ -473,25 +525,31 @@ class ConfigManager:
             with open(self.config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
 
-            # Read deployment mode from installation section first (new config.yaml format)
-            # Fall back to server section for backwards compatibility
+            # Migrate v2.x config if needed
+            data = self._migrate_v2_config(data)
+
+            # Warn about deprecated mode field (after migration removes it)
+            if "server" in data and "mode" in data["server"]:
+                logger.warning(
+                    "Deprecated 'mode' field found in config.yaml. "
+                    "This field is ignored in v3.0. "
+                    "See MIGRATION_GUIDE_V3.md for details."
+                )
+                del data["server"]["mode"]
+
             if "installation" in data and "mode" in data["installation"]:
-                mode_value = data["installation"]["mode"]
-                self.server.mode = DeploymentMode(mode_value)
-                logger.debug(f"Read mode from installation section: {mode_value}")
-            elif "server" in data and "mode" in data["server"]:
-                mode_value = data["server"]["mode"]
-                self.server.mode = DeploymentMode(mode_value)
-                logger.debug(f"Read mode from server section (legacy): {mode_value}")
+                logger.warning(
+                    "Deprecated 'mode' field found in installation section. "
+                    "This field is ignored in v3.0. "
+                    "See MIGRATION_GUIDE_V3.md for details."
+                )
+                del data["installation"]["mode"]
 
             # Server configuration
             if "server" in data:
                 srv = data["server"]
-                # Don't override mode if already set from installation section
-                if "installation" not in data or "mode" not in data["installation"]:
-                    if "mode" in srv:
-                        self.server.mode = DeploymentMode(srv.get("mode", "local"))
                 self.server.debug = srv.get("debug", self.server.debug)
+                self.server.api_key = srv.get("api_key", self.server.api_key)  # Load API key
 
                 if "mcp" in srv:
                     self.server.mcp_host = srv["mcp"].get("host", self.server.mcp_host)
@@ -587,8 +645,7 @@ class ConfigManager:
     def _load_from_env(self):
         """Override configuration with environment variables."""
         # Server settings
-        if mode := os.getenv("GILJO_MCP_MODE"):
-            self.server.mode = DeploymentMode(mode)
+        # GILJO_MCP_MODE environment variable removed in v3.0
 
         if port := os.getenv("GILJO_MCP_SERVER_PORT"):
             self.server.mcp_port = int(port)
@@ -653,72 +710,11 @@ class ConfigManager:
         if val := os.getenv("ENABLE_WEBSOCKET"):
             self.features.websocket_updates = val.lower() in ("true", "1", "yes")
 
-    def _detect_mode(self):
-        """Automatically detect deployment mode based on configuration."""
-        # If explicitly set, respect it
-        if os.getenv("GILJO_MCP_MODE"):
-            return
+    # _detect_mode() method removed in v3.0
+    # No longer needed as mode detection is removed
 
-        # Check if we're binding to non-localhost addresses
-        if self.server.api_host not in ("127.0.0.1", "localhost"):
-            # Check if it's a LAN address
-            try:
-                ip = ipaddress.ip_address(self.server.api_host)
-                if ip.is_private:
-                    self.server.mode = DeploymentMode.LAN
-                else:
-                    self.server.mode = DeploymentMode.WAN
-            except ValueError:
-                # Might be a hostname, try to resolve
-                try:
-                    ip = socket.gethostbyname(self.server.api_host)
-                    if ipaddress.ip_address(ip).is_private:
-                        self.server.mode = DeploymentMode.LAN
-                    else:
-                        self.server.mode = DeploymentMode.WAN
-                except:
-                    pass
-
-        # Check for security settings
-        if self.server.api_key and self.server.mode == DeploymentMode.LOCAL:
-            self.server.mode = DeploymentMode.LAN
-
-    def _apply_mode_settings(self):
-        """Apply mode-specific configuration adjustments."""
-        if self.server.mode == DeploymentMode.LOCAL:
-            # Local mode: localhost only, no auth required
-            self.server.mcp_host = "127.0.0.1"
-            self.server.api_host = "127.0.0.1"
-            self.server.dashboard_host = "127.0.0.1"
-            self.server.api_key = None  # No auth in local mode
-
-        elif self.server.mode == DeploymentMode.LAN:
-            # LAN mode: Use selected adapter IP from setup wizard
-            # Only default to 0.0.0.0 if still set to localhost (backwards compatibility)
-            if self.server.api_host in ("127.0.0.1", "localhost"):
-                # No selected adapter IP, default to all interfaces for backwards compatibility
-                logger.info("LAN mode: No specific adapter selected, binding to 0.0.0.0 (all interfaces)")
-                self.server.api_host = "0.0.0.0"  # noqa: S104
-            else:
-                # Specific adapter IP selected via wizard - use it
-                logger.info(f"LAN mode: Binding to selected adapter IP: {self.server.api_host}")
-
-            if self.server.dashboard_host in ("127.0.0.1", "localhost"):
-                # Frontend inherits API host behavior for consistency
-                self.server.dashboard_host = self.server.api_host
-
-            # Generate API key if not set
-            if not self.server.api_key:
-                import secrets
-
-                self.server.api_key = secrets.token_urlsafe(32)
-                logger.warning(f"Generated API key for LAN mode: {self.server.api_key}")
-
-        elif self.server.mode == DeploymentMode.WAN:
-            # WAN mode: require strong auth
-
-            if not self.server.api_key:
-                raise ConfigValidationError("API key is required for WAN mode")
+    # _apply_mode_settings() method removed in v3.0
+    # Network binding is now always 0.0.0.0 (all interfaces)
 
     def validate(self):
         """Validate configuration for correctness and consistency."""
@@ -764,9 +760,8 @@ class ConfigManager:
         if self.message.batch_size > self.message.max_queue_size:
             errors.append("Batch size cannot exceed max queue size")
 
-        # Mode-specific validation
-        if self.server.mode == DeploymentMode.WAN and not self.server.api_key:
-            errors.append("API key is required for WAN mode")
+        # Mode-specific validation removed in v3.0
+        # Authentication is always enabled, controlled by middleware
 
         if errors:
             error_msg = "Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
@@ -775,14 +770,9 @@ class ConfigManager:
     def reload(self):
         """Reload configuration from file and environment."""
         logger.info("Reloading configuration...")
-        old_mode = self.server.mode
 
         try:
             self.load()
-
-            if old_mode != self.server.mode:
-                logger.warning(f"Deployment mode changed from {old_mode.value} to {self.server.mode.value}")
-
             logger.info("Configuration reloaded successfully")
         except Exception as e:
             logger.exception(f"Failed to reload configuration: {e}")
@@ -814,7 +804,6 @@ class ConfigManager:
         """Get all configuration settings as a dictionary."""
         return {
             "server": {
-                "mode": self.server.mode.value,
                 "debug": self.server.debug,
                 "mcp": {
                     "host": self.server.mcp_host,
@@ -900,10 +889,8 @@ class ConfigManager:
         # Get connection string with optional tenant separation
         connection_string = self.database.get_connection_string(tenant_key)
 
-        # Create DatabaseManager with async support for WAN mode
-        is_async = self.server.mode == DeploymentMode.WAN
-
-        return DatabaseManager(database_url=connection_string, is_async=is_async)
+        # v3.0: Always use async for better performance
+        return DatabaseManager(database_url=connection_string, is_async=True)
 
     def get_tenant_manager(self):
         """
@@ -1007,14 +994,15 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
     config_path = path or Path("./config.yaml")
 
     sample_config = {
+        "version": "3.0.0",
         "server": {
-            "mode": "local",  # local, lan, wan
-            "mcp": {"host": "127.0.0.1", "port": 6001, "transport": "stdio"},
-            "api": {"host": "127.0.0.1", "port": 6002, "cors_enabled": True},
+            "debug": False,
+            "mcp": {"host": "0.0.0.0", "port": 6001, "transport": "stdio"},
+            "api": {"host": "0.0.0.0", "port": 6002, "cors_enabled": True},
             "websocket": {"enabled": True, "port": 6003},
             "dashboard": {
                 "enabled": True,
-                "host": "127.0.0.1",
+                "host": "0.0.0.0",
                 "port": 7274,
                 "dev_server_port": 5173,
             },
@@ -1054,7 +1042,11 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
             "websocket_updates": True,
             "auto_handoff": True,
             "dynamic_discovery": True,
+            "authentication": True,
+            "auto_login_localhost": True,
+            "firewall_configured": False,
         },
+        "deployment_context": "localhost",  # Informational only: localhost|lan|wan
     }
 
     # Add helpful comments
