@@ -338,6 +338,7 @@ class AuthManager:
             dict: Authentication result with keys:
                 - authenticated: bool
                 - user: str (username)
+                - user_id: str (username for consistency)
                 - is_auto_login: bool (if localhost auto-login)
                 - tenant_key: str (tenant key)
                 - error: str (if authentication failed)
@@ -348,50 +349,83 @@ class AuthManager:
             >>> if result["authenticated"]:
             ...     print(f"User: {result['user']}")
         """
-        from .auth.auto_login import LOCALHOST_IPS, AutoLoginMiddleware
+        from .auth.auto_login import LOCALHOST_IPS
 
-        # Get client IP - check headers first (for proxy/load balancer support)
-        client_ip = None
-
-        # Check X-Forwarded-For header (proxy standard)
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            # X-Forwarded-For can have multiple IPs, get the first (original client)
-            client_ip = forwarded_for.split(",")[0].strip()
-
-        # Check X-Real-IP header (nginx standard)
-        if not client_ip:
-            client_ip = request.headers.get("X-Real-IP")
-
-        # Fall back to request.client.host if headers not present
-        if not client_ip:
-            try:
-                client_ip = request.client.host if request.client else None
-            except (AttributeError, Exception):
-                client_ip = None
+        # Get client IP using helper method
+        client_ip = self._get_client_ip(request)
 
         # Check for auto-login (localhost clients)
         if client_ip in LOCALHOST_IPS:
             logger.debug(f"Localhost client detected: {client_ip}")
 
-            if self.db:
-                auto_login = AutoLoginMiddleware(self.db)
-                is_auto = await auto_login.authenticate_request(request)
+            # Get db_manager from app state (per-request session)
+            db_manager = getattr(request.app.state, 'db_manager', None)
+            if not db_manager:
+                logger.error("db_manager not available in app state")
+                return {
+                    "authenticated": False,
+                    "error": "Database not configured"
+                }
 
-                if is_auto:
-                    # Get the user object from request.state (set by auto_login)
-                    user_obj = getattr(request.state, "user", None)
+            # Use async context manager for request-scoped session
+            from .auth.localhost_user import ensure_localhost_user
+
+            try:
+                async with db_manager.get_session_async() as session:
+                    # Create/retrieve localhost user
+                    localhost_user = await ensure_localhost_user(session)
+
+                    # Set request state
+                    request.state.user = localhost_user
+                    request.state.user_id = localhost_user.username
+                    request.state.authenticated = True
+                    request.state.is_auto_login = True
+                    request.state.tenant_key = localhost_user.tenant_key
 
                     return {
                         "authenticated": True,
-                        "user": "localhost",
+                        "user": localhost_user.username,
+                        "user_id": localhost_user.username,
+                        "user_obj": localhost_user,
                         "is_auto_login": True,
-                        "tenant_key": "default",  # Localhost uses default tenant
-                        "user_obj": user_obj,
+                        "tenant_key": localhost_user.tenant_key
                     }
+            except Exception as e:
+                logger.error(f"Failed to authenticate localhost user: {e}", exc_info=True)
+                return {
+                    "authenticated": False,
+                    "error": f"Localhost authentication failed: {str(e)}"
+                }
 
         # Network clients require credentials
         return await self._validate_network_credentials(request)
+
+    def _get_client_ip(self, request: Request) -> str:
+        """
+        Get client IP from request (handles proxies).
+
+        Args:
+            request: FastAPI Request object
+
+        Returns:
+            str: Client IP address
+        """
+        # Check X-Forwarded-For (reverse proxy)
+        forwarded_for = request.headers.get("X-Forwarded-For", "").strip()
+        if forwarded_for:
+            # Take first IP (original client)
+            return forwarded_for.split(",")[0].strip()
+
+        # Check X-Real-IP (nginx)
+        real_ip = request.headers.get("X-Real-IP", "").strip()
+        if real_ip:
+            return real_ip
+
+        # Direct connection
+        if hasattr(request, 'client') and request.client:
+            return request.client.host
+
+        return "unknown"
 
     async def _validate_network_credentials(self, request: Request) -> dict[str, Any]:
         """
@@ -406,8 +440,10 @@ class AuthManager:
             request: FastAPI Request object
 
         Returns:
-            dict: Authentication result
+            dict: Authentication result with consistent user_id and user_obj
         """
+        from sqlalchemy import select
+
         # Try JWT first (Bearer token)
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
@@ -416,40 +452,91 @@ class AuthManager:
             # Check if it's a JWT token
             token_info = self.validate_jwt_token(token)
             if token_info:
-                return {
+                jwt_result = {
                     "authenticated": True,
                     "user": token_info.get("user_id"),
+                    "user_id": token_info.get("user_id"),
                     "tenant_key": token_info.get("tenant_key", "default"),
                     "is_auto_login": False,
                     "permissions": ["*"],
                 }
 
+                # Get user object from database for consistency
+                db_manager = getattr(request.app.state, 'db_manager', None)
+                if db_manager:
+                    try:
+                        async with db_manager.get_session_async() as session:
+                            result = await session.execute(
+                                select(User).where(User.username == token_info.get("user_id"))
+                            )
+                            user_obj = result.scalar_one_or_none()
+
+                            if user_obj:
+                                jwt_result["user_obj"] = user_obj
+                    except Exception as e:
+                        logger.warning(f"Failed to load user object for JWT: {e}")
+
+                return jwt_result
+
             # If JWT validation failed, try as API key
             key_info = self.validate_api_key(token)
             if key_info:
-                return {
-                    "authenticated": True,
-                    "user": key_info["name"],
-                    "tenant_key": "default",  # API keys use default tenant for now
-                    "is_auto_login": False,
-                    "permissions": key_info.get("permissions", ["*"]),
-                }
+                return await self._build_api_key_result(key_info, request)
 
         # Try API key (X-API-Key header)
         api_key = request.headers.get("X-API-Key")
         if api_key:
             key_info = self.validate_api_key(api_key)
             if key_info:
-                return {
-                    "authenticated": True,
-                    "user": key_info["name"],
-                    "tenant_key": "default",  # API keys use default tenant for now
-                    "is_auto_login": False,
-                    "permissions": key_info.get("permissions", ["*"]),
-                }
+                return await self._build_api_key_result(key_info, request)
 
         # No valid credentials
         return {"authenticated": False, "error": "Authentication required for network access"}
+
+    async def _build_api_key_result(
+        self,
+        key_info: dict[str, Any],
+        request: Request
+    ) -> dict[str, Any]:
+        """
+        Build authentication result for API key with user object lookup.
+
+        Args:
+            key_info: API key information
+            request: FastAPI Request object
+
+        Returns:
+            dict: Authentication result with user_obj if available
+        """
+        from sqlalchemy import select
+
+        result = {
+            "authenticated": True,
+            "user": key_info["name"],
+            "user_id": key_info["name"],
+            "tenant_key": "default",  # API keys use default tenant for now
+            "is_auto_login": False,
+            "permissions": key_info.get("permissions", ["*"]),
+        }
+
+        # Try to get user object from database
+        # Note: API keys might not have associated user accounts
+        # This is best-effort for consistency
+        db_manager = getattr(request.app.state, 'db_manager', None)
+        if db_manager:
+            try:
+                async with db_manager.get_session_async() as session:
+                    db_result = await session.execute(
+                        select(User).where(User.username == key_info["name"])
+                    )
+                    user_obj = db_result.scalar_one_or_none()
+
+                    if user_obj:
+                        result["user_obj"] = user_obj
+            except Exception as e:
+                logger.debug(f"No user object found for API key: {e}")
+
+        return result
 
 
 def create_auth_middleware(auth_manager: AuthManager):
