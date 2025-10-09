@@ -30,9 +30,10 @@ def register_task_tools(mcp):
         tenant_key: Optional[str] = None,
         product_id: Optional[str] = None,
         project_id: Optional[str] = None,
+        assigned_to_user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Create a new task with product isolation
+        Create a new task with product isolation and user assignment (Phase 4)
 
         Args:
             title: Task title
@@ -42,6 +43,7 @@ def register_task_tools(mcp):
             tenant_key: Tenant key for multi-tenancy
             product_id: Product ID for product isolation
             project_id: Project ID if associating with a project
+            assigned_to_user_id: Optional user ID to assign task to (Phase 4)
 
         Returns:
             Created task details
@@ -78,7 +80,21 @@ def register_task_tools(mcp):
                     if not product_id and hasattr(project, "product_id"):
                         product_id = project.product_id
 
-                # Create task with product isolation
+                # Phase 4: Validate user assignment (if provided)
+                if assigned_to_user_id:
+                    from giljo_mcp.models import User
+
+                    user_query = select(User).where(and_(User.id == assigned_to_user_id, User.tenant_key == tenant_key))
+                    user_result = await session.execute(user_query)
+                    assignee = user_result.scalar_one_or_none()
+
+                    if not assignee:
+                        return {
+                            "success": False,
+                            "error": f"User {assigned_to_user_id} not found in tenant {tenant_key}",
+                        }
+
+                # Create task with product isolation and user assignment
                 task = Task(
                     tenant_key=tenant_key,
                     product_id=product_id,
@@ -88,6 +104,7 @@ def register_task_tools(mcp):
                     category=category,
                     priority=priority,
                     status="pending",
+                    assigned_to_user_id=assigned_to_user_id,
                 )
 
                 session.add(task)
@@ -103,6 +120,7 @@ def register_task_tools(mcp):
                     "project_id": task.project_id,
                     "status": task.status,
                     "priority": task.priority,
+                    "assigned_to_user_id": task.assigned_to_user_id,
                     "created_at": task.created_at.isoformat(),
                 }
 
@@ -770,6 +788,221 @@ def register_task_tools(mcp):
 
         except Exception as e:
             logger.exception(f"Failed to get conversion history: {e}")
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def project_from_task(
+        task_id: str,
+        project_name: Optional[str] = None,
+        conversion_strategy: str = "single",
+        include_subtasks: bool = True,
+        tenant_key: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Convert a task into a full project (Phase 4)
+
+        This tool supports the TaskConverter frontend wizard which has 4 steps:
+        1. Select tasks to convert
+        2. Choose conversion strategy (single/individual/grouped)
+        3. Configure project details
+        4. Review and confirm
+
+        Args:
+            task_id: ID of task to convert
+            project_name: Name for new project (defaults to task title)
+            conversion_strategy: How to handle conversion
+                - "single": Convert task to single project
+                - "individual": Convert each subtask to separate project
+                - "grouped": Group related subtasks into projects
+            include_subtasks: Whether to include subtasks in conversion
+            tenant_key: Tenant key for multi-tenancy
+
+        Returns:
+            Created project(s) with conversion metadata
+        """
+        try:
+            from giljo_mcp.tenant import tenant_manager
+
+            # Use current tenant if not provided
+            if not tenant_key:
+                tenant_key = tenant_manager.get_current_tenant()
+                if not tenant_key:
+                    return {
+                        "success": False,
+                        "error": "No active project. Use switch_project first.",
+                    }
+
+            db_manager = DatabaseManager(is_async=True)
+            async with db_manager.get_session_async() as session:
+                # Get task
+                task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
+                task_result = await session.execute(task_query)
+                task = task_result.scalar_one_or_none()
+
+                if not task:
+                    return {
+                        "success": False,
+                        "error": f"Task {task_id} not found or access denied",
+                    }
+
+                # Check if already converted
+                if task.converted_to_project_id:
+                    return {
+                        "success": False,
+                        "error": f"Task {task_id} already converted to project {task.converted_to_project_id}",
+                    }
+
+                # Create project
+                project = Project(
+                    name=project_name or task.title,
+                    mission=task.description or f"Converted from task: {task.title}",
+                    product_id=task.product_id,
+                    tenant_key=task.tenant_key,
+                    status="active",
+                )
+
+                session.add(project)
+                await session.flush()  # Get project.id
+
+                # Mark task as converted
+                task.converted_to_project_id = project.id
+                task.status = "converted"
+
+                # Update meta_data for backward compatibility
+                if not task.meta_data:
+                    task.meta_data = {}
+                task.meta_data["converted_to_project"] = str(project.id)
+                task.meta_data["conversion_strategy"] = conversion_strategy
+                task.meta_data["converted_at"] = datetime.now(timezone.utc).isoformat()
+
+                # Handle subtasks based on strategy
+                converted_subtasks = []
+                if include_subtasks and conversion_strategy != "individual":
+                    subtasks_query = select(Task).where(Task.parent_task_id == task_id)
+                    subtasks_result = await session.execute(subtasks_query)
+                    subtasks = subtasks_result.scalars().all()
+
+                    for subtask in subtasks:
+                        # Convert subtask to project task or new project
+                        if conversion_strategy == "single":
+                            # Link subtask to new project
+                            subtask.project_id = project.id
+                            converted_subtasks.append(str(subtask.id))
+                        elif conversion_strategy == "grouped":
+                            # Group logic (can be enhanced later)
+                            subtask.project_id = project.id
+                            converted_subtasks.append(str(subtask.id))
+
+                await session.commit()
+
+                logger.info(f"Converted task {task_id} to project {project.id}")
+
+                return {
+                    "success": True,
+                    "project_id": str(project.id),
+                    "project_name": project.name,
+                    "original_task_id": str(task.id),
+                    "conversion_strategy": conversion_strategy,
+                    "converted_subtasks": converted_subtasks,
+                    "created_at": project.created_at.isoformat(),
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to convert task to project: {e}")
+            return {"success": False, "error": str(e)}
+
+    @mcp.tool()
+    async def list_my_tasks(
+        filter_type: str = "assigned",
+        status: Optional[str] = None,
+        tenant_key: Optional[str] = None,
+        current_user_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        List tasks assigned to or created by current user (Phase 4)
+
+        Args:
+            filter_type: Type of tasks to list
+                - "assigned": Tasks assigned to me
+                - "created": Tasks I created
+                - "all": All my tasks (assigned OR created)
+            status: Optional status filter (pending, in_progress, completed, etc.)
+            tenant_key: Tenant key for multi-tenancy
+            current_user_id: Current user ID (usually from context)
+
+        Returns:
+            List of tasks with count
+        """
+        try:
+            from sqlalchemy import or_
+
+            from giljo_mcp.tenant import tenant_manager
+
+            # Use current tenant if not provided
+            if not tenant_key:
+                tenant_key = tenant_manager.get_current_tenant()
+                if not tenant_key:
+                    return {
+                        "success": False,
+                        "error": "No active project. Use switch_project first.",
+                    }
+
+            if not current_user_id:
+                return {
+                    "success": False,
+                    "error": "current_user_id is required for filtering user tasks",
+                }
+
+            db_manager = DatabaseManager(is_async=True)
+            async with db_manager.get_session_async() as session:
+                query = select(Task).where(Task.tenant_key == tenant_key)
+
+                if filter_type == "assigned":
+                    query = query.where(Task.assigned_to_user_id == current_user_id)
+                elif filter_type == "created":
+                    query = query.where(Task.created_by_user_id == current_user_id)
+                elif filter_type == "all":
+                    query = query.where(
+                        or_(
+                            Task.assigned_to_user_id == current_user_id,
+                            Task.created_by_user_id == current_user_id,
+                        )
+                    )
+
+                if status:
+                    query = query.where(Task.status == status)
+
+                query = query.order_by(Task.created_at.desc())
+
+                result = await session.execute(query)
+                tasks = result.scalars().all()
+
+                task_list = []
+                for task in tasks:
+                    task_list.append(
+                        {
+                            "id": str(task.id),
+                            "title": task.title,
+                            "description": task.description,
+                            "status": task.status,
+                            "priority": task.priority,
+                            "assigned_to_user_id": task.assigned_to_user_id,
+                            "created_by_user_id": task.created_by_user_id,
+                            "project_id": task.project_id,
+                            "product_id": task.product_id,
+                            "created_at": task.created_at.isoformat(),
+                        }
+                    )
+
+                return {
+                    "success": True,
+                    "tasks": task_list,
+                    "count": len(task_list),
+                    "filter_type": filter_type,
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to list my tasks: {e}")
             return {"success": False, "error": str(e)}
 
     # Register template integration tools
