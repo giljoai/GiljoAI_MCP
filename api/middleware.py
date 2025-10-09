@@ -4,7 +4,7 @@ Middleware for FastAPI application
 
 import logging
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -25,7 +25,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     with a unified approach that always authenticates requests.
     """
 
-    def __init__(self, app, auth_manager: Callable = None):
+    def __init__(self, app, auth_manager: Optional[Callable] = None):
         """
         Initialize authentication middleware.
 
@@ -46,7 +46,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             auth_manager = self.get_auth_manager()
         else:
             # Fallback: get from app state
-            auth_manager = getattr(request.app.state, 'auth', None)
+            auth_manager = getattr(request.app.state, "auth", None)
             if not auth_manager:
                 logger.error("AuthManager not configured in middleware or app state")
                 return JSONResponse(
