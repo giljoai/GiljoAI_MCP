@@ -117,12 +117,15 @@ config_file = "C:\\Users\\name\\.giljo-mcp"  # Windows only
 - Dashboard notifications
 - Collaborative features
 
-**Authentication Layer**
+**Authentication Layer (v3.0 Unified Architecture)**
 
-- Mode-based authentication (none/apikey/oauth)
-- Project key validation
-- Rate limiting (WAN mode)
-- Audit logging (enterprise)
+- **Localhost Auto-Login**: Automatic authentication for 127.0.0.1 and ::1 connections
+- **Network Authentication**: JWT tokens and API keys for network access
+- **Request-Scoped Sessions**: Database sessions managed per-request for thread safety
+- **Defense in Depth**: OS firewall + IP detection + credential validation
+- Project key validation for multi-tenancy
+- Rate limiting (network access)
+- Audit logging (enterprise features)
 
 #### 2. Orchestration Core
 

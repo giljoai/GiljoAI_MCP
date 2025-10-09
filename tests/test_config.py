@@ -20,7 +20,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.config_manager import ConfigManager, DeploymentMode, get_config, set_config
+from src.giljo_mcp.config_manager import ConfigManager, get_config, set_config
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -42,19 +42,12 @@ class TestConfigManager:
         assert config.session.vision_chunk_size == 50000
         assert config.session.vision_overlap == 500
 
-    def test_deployment_mode_settings(self):
-        """Test deployment mode configuration."""
+    def test_server_binds_all_interfaces(self):
+        """Test that server always binds to 0.0.0.0 (v3.0: mode removed, firewall controls access)."""
         config = get_config()
 
-        # Default should be local mode
-        assert config.deployment_mode == DeploymentMode.LOCAL
-
-        # Test different deployment modes
-        config.deployment_mode = DeploymentMode.LAN
-        assert config.deployment_mode == DeploymentMode.LAN
-
-        config.deployment_mode = DeploymentMode.WAN
-        assert config.deployment_mode == DeploymentMode.WAN
+        # v3.0: Server always binds to 0.0.0.0, firewall controls access
+        assert config.server.api_host == "0.0.0.0"
 
     def test_path_settings_os_neutral(self):
         """Test that path settings use OS-neutral paths."""

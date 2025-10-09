@@ -15,16 +15,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import contextlib
 from typing import Optional
 
-from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, DeploymentMode, generate_sample_config
+from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, generate_sample_config
 
 
 def init_local_config():
-    """Initialize configuration for local development"""
+    """Initialize configuration for local development (v3.0: mode removed, always uses defaults)"""
 
     config = ConfigManager(auto_reload=False)
-    config.server.mode = DeploymentMode.LOCAL
 
-    # Local defaults
+    # Local defaults (v3.0: server always binds 0.0.0.0, firewall controls access)
     config.database.type = "sqlite"
     config.server.api_key = None
 
@@ -32,14 +31,12 @@ def init_local_config():
 
 
 def init_lan_config():
-    """Initialize configuration for LAN deployment"""
+    """Initialize configuration for LAN deployment (v3.0: mode removed, defaults to 0.0.0.0)"""
 
     config = ConfigManager(auto_reload=False)
-    config.server.mode = DeploymentMode.LAN
 
-    # LAN settings
-    config.server.api_host = "0.0.0.0"
-    config.server.dashboard_host = "0.0.0.0"
+    # LAN settings (v3.0: server always binds 0.0.0.0 by default)
+    # No need to explicitly set host values - they default to 0.0.0.0
 
     # Generate API key
     import secrets
@@ -53,14 +50,12 @@ def init_lan_config():
 
 
 def init_wan_config():
-    """Initialize configuration for WAN deployment"""
+    """Initialize configuration for WAN deployment (v3.0: mode removed, defaults to 0.0.0.0)"""
 
     config = ConfigManager(auto_reload=False)
-    config.server.mode = DeploymentMode.WAN
 
-    # WAN settings
-    config.server.api_host = "0.0.0.0"
-    config.server.dashboard_host = "0.0.0.0"
+    # WAN settings (v3.0: server always binds 0.0.0.0 by default)
+    # No need to explicitly set host values - they default to 0.0.0.0
 
     # Generate strong keys
     import secrets
@@ -122,8 +117,7 @@ def migrate_from_env():
                 env_vars[key.strip()] = value.strip()
 
     # Apply environment variables
-    if "GILJO_MCP_MODE" in env_vars:
-        config.server.mode = DeploymentMode(env_vars["GILJO_MCP_MODE"])
+    # v3.0: GILJO_MCP_MODE ignored (DeploymentMode removed)
 
     if "DB_TYPE" in env_vars:
         config.database.type = env_vars["DB_TYPE"]

@@ -57,7 +57,8 @@ class TestInstallerV3NoMode:
         }
 
         # Should not raise - mode is optional in settings
-        installer = BaseInstaller(settings)
+        # Use LocalhostInstaller since BaseInstaller is abstract
+        installer = LocalhostInstaller(settings)
         assert installer.settings == settings
 
 
@@ -165,7 +166,8 @@ class TestInstallationFlow:
             'batch': True,  # Non-interactive
         }
 
-        installer = BaseInstaller(settings)
+        # Use LocalhostInstaller since BaseInstaller is abstract
+        installer = LocalhostInstaller(settings)
 
         # Mock sub-components
         installer.db_installer = Mock()
