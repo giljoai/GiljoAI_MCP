@@ -79,9 +79,9 @@ def c_bold_gold(text):
 
 @click.command()
 @click.option('--mode',
-              type=click.Choice(['localhost', 'server']),
-              default='localhost',
-              help='Installation mode: localhost for development, server for team deployment')
+              type=click.Choice(['local', 'server']),
+              default='local',
+              help='Installation mode: local for development, server for team deployment')
 @click.option('--batch',
               is_flag=True,
               help='Non-interactive batch mode')
@@ -493,7 +493,7 @@ def generate_config_template():
     """Generate a configuration template file"""
 
     template = {
-        'mode': 'localhost',
+        'mode': 'local',
         'pg_host': 'localhost',
         'pg_port': 5432,
         'pg_password': 'your_postgres_password',

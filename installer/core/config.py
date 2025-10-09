@@ -17,7 +17,7 @@ class ConfigManager:
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.mode = settings.get("mode", "localhost")
+        self.mode = settings.get("mode", "local")
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Allow override of file paths for testing
@@ -83,7 +83,7 @@ class ConfigManager:
             frontend_port = self.settings.get("dashboard_port", 7274)  # FIXED: Correct default
 
             # Determine bind address
-            if self.mode == "localhost":
+            if self.mode == "local":
                 bind_address = "127.0.0.1"
                 api_url_host = "localhost"
             else:
@@ -136,7 +136,7 @@ DATABASE_URL=postgresql://giljo_user:{user_password}@{pg_host}:{pg_port}/giljo_m
 # SERVER CONFIGURATION
 # =============================================================================
 # Deployment mode: LOCAL, LAN, or WAN
-GILJO_MCP_MODE={'local' if self.mode == 'localhost' else 'lan'}
+GILJO_MCP_MODE={'local' if self.mode == 'local' else 'lan'}
 
 # API Host (0.0.0.0 for network access, 127.0.0.1 for localhost only)
 GILJO_API_HOST={bind_address}
@@ -148,15 +148,15 @@ SERVICE_BIND={bind_address}
 # API URL for frontend (WebSocket uses same port in v2.0)
 VITE_API_URL=http://{api_url_host}:{api_port}
 VITE_WS_URL=ws://{api_url_host}:{api_port}
-VITE_APP_MODE={'local' if self.mode == 'localhost' else 'server'}
+VITE_APP_MODE={'local' if self.mode == 'local' else 'server'}
 VITE_API_PORT={api_port}
 
 # =============================================================================
 # ENVIRONMENT SETTINGS
 # =============================================================================
-ENVIRONMENT={'development' if self.mode == 'localhost' else 'production'}
-DEBUG={'true' if self.mode == 'localhost' else 'false'}
-LOG_LEVEL={'DEBUG' if self.mode == 'localhost' else 'INFO'}
+ENVIRONMENT={'development' if self.mode == 'local' else 'production'}
+DEBUG={'true' if self.mode == 'local' else 'false'}
+LOG_LEVEL={'DEBUG' if self.mode == 'local' else 'INFO'}
 LOG_FILE=./logs/giljo_mcp.log
 
 # =============================================================================
@@ -224,13 +224,13 @@ TEMP_DIR=./temp
 # =============================================================================
 # PERFORMANCE
 # =============================================================================
-WORKER_COUNT={'1' if self.mode == 'localhost' else '4'}
-CONNECTION_POOL_SIZE={'5' if self.mode == 'localhost' else '20'}
+WORKER_COUNT={'1' if self.mode == 'local' else '4'}
+CONNECTION_POOL_SIZE={'5' if self.mode == 'local' else '20'}
 
 # =============================================================================
 # DOCKER BUILD CONFIGURATION
 # =============================================================================
-BUILD_TARGET={'development' if self.mode == 'localhost' else 'production'}
+BUILD_TARGET={'development' if self.mode == 'local' else 'production'}
 
 # =============================================================================
 # ACTIVE PRODUCT
