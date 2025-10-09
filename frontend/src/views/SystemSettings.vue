@@ -270,17 +270,9 @@
         </v-card>
       </v-window-item>
 
-      <!-- Users Placeholder (Phase 5) -->
+      <!-- Users Management (Phase 5) -->
       <v-window-item value="users">
-        <v-card>
-          <v-card-title>User Management</v-card-title>
-          <v-card-text>
-            <v-alert type="info" variant="tonal" data-test="users-placeholder">
-              <v-icon start>mdi-information</v-icon>
-              User management coming in Phase 5
-            </v-alert>
-          </v-card-text>
-        </v-card>
+        <UserManager />
       </v-window-item>
     </v-window>
 
@@ -309,6 +301,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
+import UserManager from '@/components/UserManager.vue'
 import { API_CONFIG } from '@/config/api'
 import setupService from '@/services/setupService'
 
