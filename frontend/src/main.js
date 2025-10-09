@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { pinia } from './stores'
+import { initializeApiConfig } from './config/api'
 
 console.log('[MAIN] Imports loaded')
 
@@ -39,21 +40,44 @@ const vuetify = createVuetify({
 
 console.log('[MAIN] Vuetify instance created')
 
-// Create Vue app
-const app = createApp(App)
+// Initialize API configuration from backend before mounting app
+async function initializeApp() {
+  console.log('[MAIN] Initializing API configuration from backend...')
 
-console.log('[MAIN] Vue app created')
+  // Fetch API configuration from backend
+  // This ensures WebSocket uses correct host in LAN mode
+  await initializeApiConfig()
 
-// Use plugins
-app.use(router)
-console.log('[MAIN] Router registered')
+  console.log('[MAIN] API configuration initialized')
 
-app.use(pinia)
-console.log('[MAIN] Pinia registered')
+  // Create Vue app
+  const app = createApp(App)
 
-app.use(vuetify)
-console.log('[MAIN] Vuetify registered')
+  console.log('[MAIN] Vue app created')
 
-// Mount app
-app.mount('#app')
-console.log('[MAIN] App mounted to #app')
+  // Use plugins
+  app.use(router)
+  console.log('[MAIN] Router registered')
+
+  app.use(pinia)
+  console.log('[MAIN] Pinia registered')
+
+  app.use(vuetify)
+  console.log('[MAIN] Vuetify registered')
+
+  // Mount app
+  app.mount('#app')
+  console.log('[MAIN] App mounted to #app')
+}
+
+// Start app initialization
+initializeApp().catch((error) => {
+  console.error('[MAIN] Failed to initialize app:', error)
+  // Even if API config fails, still mount the app with fallback config
+  const app = createApp(App)
+  app.use(router)
+  app.use(pinia)
+  app.use(vuetify)
+  app.mount('#app')
+  console.log('[MAIN] App mounted with fallback configuration')
+})
