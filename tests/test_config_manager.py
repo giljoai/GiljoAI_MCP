@@ -4,11 +4,12 @@ Tests for the ConfigManager class.
 Tests cover:
 - Configuration loading from YAML files
 - Environment variable overrides
-- Deployment mode detection (LOCAL/LAN/WAN)
 - Configuration validation
 - Hot-reloading functionality
 - Multi-tenant support
 - Thread safety
+
+Note: v3.0 - DeploymentMode removed, server always binds to 0.0.0.0
 """
 
 import os
@@ -24,7 +25,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, DeploymentMode, get_config, set_config
+from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, get_config, set_config
 
 
 class TestConfigManager:
@@ -32,10 +33,10 @@ class TestConfigManager:
 
     @pytest.fixture
     def temp_config_file(self):
-        """Create a temporary config file for testing."""
+        """Create a temporary config file for testing (v3.0: mode removed)."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             config = {
-                "server": {"host": "localhost", "port": 6000, "mode": "local"},
+                "server": {"host": "localhost", "port": 6000},
                 "database": {"type": "sqlite", "path": "/tmp/test.db"},
                 "logging": {"level": "INFO", "file": "/tmp/test.log"},
                 "features": {"hot_reload": True, "multi_tenant": True},
@@ -46,11 +47,11 @@ class TestConfigManager:
         os.unlink(f.name)
 
     def test_default_initialization(self):
-        """Test ConfigManager initializes with defaults."""
+        """Test ConfigManager initializes with defaults (v3.0: always binds 0.0.0.0)."""
         manager = ConfigManager()
 
-        assert manager.server.mode == DeploymentMode.LOCAL
-        assert manager.server.host == "127.0.0.1"
+        # v3.0: Server always binds to 0.0.0.0, firewall controls access
+        assert manager.server.host == "0.0.0.0"
         assert manager.server.port == 6000
         assert manager.database.type == "sqlite"
         assert manager.logging.level == "INFO"
@@ -90,59 +91,6 @@ class TestConfigManager:
         assert manager.database.host == "db.example.com"
         assert manager.logging.level == "DEBUG"
 
-    def test_mode_detection_local(self):
-        """Test LOCAL mode detection."""
-        manager = ConfigManager()
-        manager.server.host = "127.0.0.1"
-        manager.server.api_key = None
-        manager.server.tls_enabled = False
-
-        manager._detect_mode()
-        assert manager.server.mode == DeploymentMode.LOCAL
-
-    def test_mode_detection_lan(self):
-        """Test LAN mode detection."""
-        manager = ConfigManager()
-        manager.server.host = "192.168.1.100"
-        manager.server.api_key = "test-key"
-        manager.server.tls_enabled = False
-
-        manager._detect_mode()
-        assert manager.server.mode == DeploymentMode.LAN
-
-    def test_mode_detection_wan(self):
-        """Test WAN mode detection."""
-        manager = ConfigManager()
-        manager.server.host = "0.0.0.0"
-        manager.server.tls_enabled = True
-        manager.server.api_key = "secure-key"
-
-        manager._detect_mode()
-        assert manager.server.mode == DeploymentMode.WAN
-
-    def test_mode_specific_settings(self):
-        """Test that mode-specific settings are applied correctly."""
-        manager = ConfigManager()
-
-        # Test LOCAL mode settings
-        manager.server.mode = DeploymentMode.LOCAL
-        manager._apply_mode_settings()
-        assert manager.server.cors_enabled is False
-        assert manager.server.api_key is None
-
-        # Test LAN mode settings
-        manager.server.mode = DeploymentMode.LAN
-        manager._apply_mode_settings()
-        assert manager.server.cors_enabled is True
-        assert manager.database.connection_pool_size == 10
-
-        # Test WAN mode settings
-        manager.server.mode = DeploymentMode.WAN
-        manager._apply_mode_settings()
-        assert manager.server.cors_enabled is True
-        assert manager.database.connection_pool_size == 20
-        assert manager.logging.level == "WARNING"
-
     def test_validation_success(self):
         """Test successful configuration validation."""
         manager = ConfigManager()
@@ -177,25 +125,6 @@ class TestConfigManager:
         manager.database.host = None
 
         with pytest.raises(ConfigValidationError, match="PostgreSQL requires host"):
-            manager.validate()
-
-    def test_validation_wan_requires_tls(self):
-        """Test validation fails when WAN mode lacks TLS."""
-        manager = ConfigManager()
-        manager.server.mode = DeploymentMode.WAN
-        manager.server.tls_enabled = False
-
-        with pytest.raises(ConfigValidationError, match="WAN mode requires TLS"):
-            manager.validate()
-
-    def test_validation_wan_requires_api_key(self):
-        """Test validation fails when WAN mode lacks API key."""
-        manager = ConfigManager()
-        manager.server.mode = DeploymentMode.WAN
-        manager.server.tls_enabled = True
-        manager.server.api_key = None
-
-        with pytest.raises(ConfigValidationError, match="WAN mode requires API key"):
             manager.validate()
 
     def test_hot_reload_functionality(self, temp_config_file):
@@ -389,11 +318,11 @@ class TestConfigurationScenarios:
     """Test different deployment scenarios."""
 
     def test_fresh_installation_scenario(self):
-        """Test configuration for fresh installation."""
+        """Test configuration for fresh installation (v3.0: always binds 0.0.0.0)."""
         manager = ConfigManager()
 
-        # Fresh install should use defaults
-        assert manager.server.mode == DeploymentMode.LOCAL
+        # Fresh install should use defaults (v3.0: no mode, always binds 0.0.0.0)
+        assert manager.server.host == "0.0.0.0"
         assert manager.database.type == "sqlite"
         assert manager.server.first_run is True
 
@@ -416,36 +345,3 @@ class TestConfigurationScenarios:
             assert hasattr(manager.server, "host")
             assert hasattr(manager.server, "port")
             assert hasattr(manager.database, "type")
-
-    def test_development_environment(self):
-        """Test configuration for development environment."""
-        manager = ConfigManager()
-        manager.server.mode = DeploymentMode.LOCAL
-        manager.logging.level = "DEBUG"
-        manager.features.hot_reload = True
-        manager.features.debug_mode = True
-
-        settings = manager.get_all_settings()
-
-        assert settings["server"]["mode"] == "local"
-        assert settings["logging"]["level"] == "DEBUG"
-        assert settings["features"]["hot_reload"] is True
-
-    def test_production_environment(self):
-        """Test configuration for production environment."""
-        manager = ConfigManager()
-        manager.server.mode = DeploymentMode.WAN
-        manager.server.tls_enabled = True
-        manager.server.api_key = "secure-production-key"
-        manager.logging.level = "WARNING"
-        manager.features.hot_reload = False
-        manager.features.debug_mode = False
-        manager.database.type = "postgresql"
-        manager.database.connection_pool_size = 50
-
-        settings = manager.get_all_settings()
-
-        assert settings["server"]["mode"] == "wan"
-        assert settings["server"]["tls_enabled"] is True
-        assert settings["logging"]["level"] == "WARNING"
-        assert settings["database"]["connection_pool_size"] == 50

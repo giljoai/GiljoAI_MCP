@@ -20,7 +20,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, DeploymentMode
+from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError
 
 
 class TestConfigIntegration:
@@ -86,39 +86,6 @@ class TestConfigIntegration:
         assert manager.server.host == "0.0.0.0"
         assert manager.server.port == 8888
         assert manager.database.type == "postgresql"
-
-    def test_progressive_deployment_modes(self, temp_dir, clean_environment):
-        """Test progression from LOCAL -> LAN -> WAN modes."""
-        config_file = temp_dir / "config.yaml"
-
-        # Start with LOCAL mode
-        local_config = {"server": {"host": "127.0.0.1", "port": 6000, "api_key": None, "tls_enabled": False}}
-
-        with open(config_file, "w") as f:
-            yaml.dump(local_config, f)
-
-        manager = ConfigManager(config_path=config_file)
-        manager.load()
-
-        assert manager.server.mode == DeploymentMode.LOCAL
-
-        # Progress to LAN mode
-        lan_config = {"server": {"host": "192.168.1.100", "port": 6000, "api_key": "lan-key-123", "tls_enabled": False}}
-
-        with open(config_file, "w") as f:
-            yaml.dump(lan_config, f)
-
-        manager.reload()
-        assert manager.server.mode == DeploymentMode.LAN
-
-        # Progress to WAN mode
-        wan_config = {"server": {"host": "0.0.0.0", "port": 443, "api_key": "wan-key-xyz", "tls_enabled": True}}
-
-        with open(config_file, "w") as f:
-            yaml.dump(wan_config, f)
-
-        manager.reload()
-        assert manager.server.mode == DeploymentMode.WAN
 
     def test_hot_reload_with_validation(self, temp_dir):
         """Test hot-reload with validation of changed configuration."""
@@ -293,12 +260,12 @@ class TestConfigIntegration:
         assert manager.features.debug_mode is True
 
     def test_zero_config_local_development(self):
-        """Test that system works with zero configuration for local dev."""
+        """Test that system works with zero configuration (v3.0: always binds 0.0.0.0)."""
         # No config file, no environment variables
         with patch.dict(os.environ, {}, clear=True):
-            # ConfigManager should work with defaults
+            # ConfigManager should work with defaults (v3.0: always binds 0.0.0.0)
             manager = ConfigManager()
-            assert manager.server.mode == DeploymentMode.LOCAL
+            assert manager.server.host == "0.0.0.0"
             assert manager.database.type == "sqlite"
 
             # Should be able to get database URL

@@ -17,7 +17,7 @@ class ConfigManager:
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.mode = settings.get("mode", "localhost")
+        self.mode = settings.get("mode", "local")
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Allow override of file paths for testing
@@ -83,19 +83,19 @@ class ConfigManager:
             frontend_port = self.settings.get("dashboard_port", 7274)  # FIXED: Correct default
 
             # Determine bind address
-            if self.mode == "localhost":
+            if self.mode == "local":
                 bind_address = "127.0.0.1"
                 api_url_host = "localhost"
             else:
                 bind_address = self.settings.get("bind", "0.0.0.0")
                 api_url_host = self.settings.get("server_name", "localhost")
 
-            env_content = f"""# GiljoAI MCP Environment Configuration
+            env_content = f"""# GiljoAI MCP Environment Configuration v3.0
 # Generated: {datetime.now().isoformat()}
-# Mode: {self.mode}
+# Deployment Context: localhost (informational only)
 
 # =============================================================================
-# PORT CONFIGURATION (v2.0 Unified Architecture)
+# PORT CONFIGURATION (v2.0+ Unified Architecture)
 # =============================================================================
 # Main API Server Port (handles API + WebSocket + MCP tools)
 GILJO_API_PORT={api_port}
@@ -133,14 +133,14 @@ DB_PASSWORD={user_password}
 DATABASE_URL=postgresql://giljo_user:{user_password}@{pg_host}:{pg_port}/giljo_mcp
 
 # =============================================================================
-# SERVER CONFIGURATION
+# SERVER CONFIGURATION (v3.0)
 # =============================================================================
-# Deployment mode: LOCAL, LAN, or WAN
-GILJO_MCP_MODE={'local' if self.mode == 'localhost' else 'lan'}
+# Deployment context (informational only - not a mode)
+DEPLOYMENT_CONTEXT=localhost
 
-# API Host (0.0.0.0 for network access, 127.0.0.1 for localhost only)
-GILJO_API_HOST={bind_address}
-SERVICE_BIND={bind_address}
+# API Host (v3.0: Always binds to 0.0.0.0, firewall controls access)
+GILJO_API_HOST=0.0.0.0
+SERVICE_BIND=0.0.0.0
 
 # =============================================================================
 # FRONTEND CONFIGURATION
@@ -148,15 +148,15 @@ SERVICE_BIND={bind_address}
 # API URL for frontend (WebSocket uses same port in v2.0)
 VITE_API_URL=http://{api_url_host}:{api_port}
 VITE_WS_URL=ws://{api_url_host}:{api_port}
-VITE_APP_MODE={'local' if self.mode == 'localhost' else 'server'}
+VITE_APP_MODE={'local' if self.mode == 'local' else 'server'}
 VITE_API_PORT={api_port}
 
 # =============================================================================
 # ENVIRONMENT SETTINGS
 # =============================================================================
-ENVIRONMENT={'development' if self.mode == 'localhost' else 'production'}
-DEBUG={'true' if self.mode == 'localhost' else 'false'}
-LOG_LEVEL={'DEBUG' if self.mode == 'localhost' else 'INFO'}
+ENVIRONMENT={'development' if self.mode == 'local' else 'production'}
+DEBUG={'true' if self.mode == 'local' else 'false'}
+LOG_LEVEL={'DEBUG' if self.mode == 'local' else 'INFO'}
 LOG_FILE=./logs/giljo_mcp.log
 
 # =============================================================================
@@ -224,13 +224,13 @@ TEMP_DIR=./temp
 # =============================================================================
 # PERFORMANCE
 # =============================================================================
-WORKER_COUNT={'1' if self.mode == 'localhost' else '4'}
-CONNECTION_POOL_SIZE={'5' if self.mode == 'localhost' else '20'}
+WORKER_COUNT={'1' if self.mode == 'local' else '4'}
+CONNECTION_POOL_SIZE={'5' if self.mode == 'local' else '20'}
 
 # =============================================================================
 # DOCKER BUILD CONFIGURATION
 # =============================================================================
-BUILD_TARGET={'development' if self.mode == 'localhost' else 'production'}
+BUILD_TARGET={'development' if self.mode == 'local' else 'production'}
 
 # =============================================================================
 # ACTIVE PRODUCT
@@ -287,9 +287,10 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
             install_dir = self.settings.get("install_dir", str(Path.cwd()))
 
             config = {
+                "version": "3.0.0",  # v3.0: Unified authentication architecture
+                "deployment_context": "localhost",  # Informational only (not a mode)
                 "installation": {
-                    "version": "2.0.0",
-                    "mode": self.mode,
+                    # NO MODE FIELD in v3.0
                     "timestamp": datetime.now().isoformat(),
                     "platform": platform.system(),
                     "python_version": platform.python_version(),
@@ -308,14 +309,20 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                     "owner": "giljo_owner",
                     "pool_size": 5 if self.mode == "localhost" else 20,
                 },
+                "server": {
+                    # v3.0: Always bind to 0.0.0.0 (all interfaces)
+                    # Firewall controls access (localhost-only by default)
+                    "api_host": "0.0.0.0",
+                    "api_port": api_port,
+                    "dashboard_host": "0.0.0.0",
+                    "dashboard_port": frontend_port,
+                    "mcp_host": "0.0.0.0",
+                    "mcp_port": api_port,  # MCP uses same port as API in v2.0+
+                    "api_key": None,  # Generated on first run if needed
+                },
                 "services": {
                     "api": {
-                        # API host varies by deployment mode (this is WHERE users connect):
-                        # - localhost mode: 127.0.0.1 (same machine only)
-                        # - lan/server mode: Network adapter IP (e.g., 10.1.0.164) for LAN access
-                        # - wan mode: Public IP or domain for internet access
-                        # NOTE: Database ALWAYS remains on localhost regardless of this setting
-                        "host": self.settings.get("bind", "127.0.0.1" if self.mode == "localhost" else "0.0.0.0"),
+                        "host": "0.0.0.0",  # v3.0: Always bind all interfaces
                         "port": api_port,
                         "unified_port": True,  # v2.0 uses single port for API+WebSocket
                         "description": "Main API server (REST + WebSocket + MCP)",
@@ -327,14 +334,22 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                     },
                 },
                 "features": {
+                    # v3.0 feature flags
+                    "authentication": True,  # Always enabled in v3.0
+                    "auto_login_localhost": True,  # IP-based auto-login for 127.0.0.1
+                    "firewall_configured": self.settings.get("configure_firewall", False),
+
+                    # Core features
                     "vision_chunking": True,
                     "multi_tenant": True,
                     "websocket": True,
                     "auto_handoff": True,
                     "dynamic_discovery": True,
+
+                    # Security features (optional)
                     "ssl_enabled": self.settings.get("features", {}).get("ssl", False),
-                    "api_keys_required": self.mode == "server",
-                    "multi_user": self.mode == "server",
+                    "api_keys_enabled": self.settings.get("features", {}).get("api_keys", False),
+                    "multi_user": self.settings.get("features", {}).get("multi_user", False),
                 },
                 "paths": {
                     "install_dir": install_dir,
