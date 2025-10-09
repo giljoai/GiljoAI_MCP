@@ -135,9 +135,9 @@
                   {{ currentUser.username }}
                 </v-list-item-title>
                 <v-list-item-subtitle v-if="currentUser.role" class="d-flex align-center mt-1">
-                  <v-chip 
-                    :color="getRoleColor(currentUser.role)" 
-                    size="small" 
+                  <v-chip
+                    :color="getRoleColor(currentUser.role)"
+                    size="small"
                     variant="flat"
                     class="text-caption"
                   >
@@ -148,7 +148,21 @@
 
               <v-divider v-if="currentUser" />
 
-              <v-list-item prepend-icon="mdi-cog" title="Settings" @click="navigateToSettings" />
+              <v-list-item :to="{ name: 'UserSettings' }">
+                <template v-slot:prepend>
+                  <v-icon>mdi-cog</v-icon>
+                </template>
+                <v-list-item-title>My Settings</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item :to="{ name: 'ApiKeys' }">
+                <template v-slot:prepend>
+                  <v-icon>mdi-key-variant</v-icon>
+                </template>
+                <v-list-item-title>My API Keys</v-list-item-title>
+              </v-list-item>
+
+              <v-divider />
 
               <v-list-item
                 v-if="currentUser"
@@ -259,11 +273,16 @@ const navigationItems = computed(() => {
     { name: 'Agents', path: '/agents', title: 'Agents', customIcon: '/Giljo_gray_Face.svg?v=2' },
     { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
-    { name: 'Settings', path: '/settings', title: 'Settings', icon: 'mdi-cog' },
   ]
 
-  // Add Users menu item only for admin users
+  // Add admin-only menu items
   if (userStore.isAdmin) {
+    baseItems.push({
+      name: 'SystemSettings',
+      path: '/admin/settings',
+      title: 'System Settings',
+      icon: 'mdi-cog-outline',
+    })
     baseItems.push({
       name: 'Users',
       path: '/users',
@@ -299,17 +318,13 @@ const toggleTheme = () => {
 const getRoleColor = (role) => {
   if (!role) return 'grey'
   const roleLower = role.toLowerCase()
-  
+
   // Color coding: Admin=Red/Pink, Developer=Blue, Viewer=Green
   if (roleLower === 'admin') return 'error'
   if (roleLower === 'developer' || roleLower === 'dev') return 'primary'
   if (roleLower === 'viewer') return 'success'
-  
-  return 'grey' // Default for unknown roles
-}
 
-const navigateToSettings = () => {
-  router.push('/settings')
+  return 'grey' // Default for unknown roles
 }
 
 const handleLogout = async () => {
