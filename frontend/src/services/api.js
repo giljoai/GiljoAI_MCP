@@ -142,6 +142,12 @@ export const api = {
     changeStatus: (id, status) => apiClient.patch(`/api/v1/tasks/${id}/status/`, { status }),
     summary: (productId) =>
       apiClient.get('/api/v1/tasks/summary/', { params: { product_id: productId } }),
+    convert: (id, data) => apiClient.post(`/api/v1/tasks/${id}/convert/`, data),
+  },
+
+  // Users (for tenant user listing and assignment)
+  users: {
+    list: () => apiClient.get('/api/auth/users'),
   },
 
   // Vision Documents

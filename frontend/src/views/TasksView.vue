@@ -77,8 +77,22 @@
     </v-row>
 
     <!-- Filters Row -->
-    <v-row class="mb-4">
-      <v-col cols="12" md="4">
+    <v-row class="mb-4" align="center">
+      <!-- User Filter Toggle (Phase 4) -->
+      <v-col cols="12" md="3">
+        <v-chip-group v-model="taskFilter" mandatory active-class="primary" density="comfortable">
+          <v-chip value="my_tasks" data-test="my-tasks-chip">
+            <v-icon start>mdi-account</v-icon>
+            My Tasks
+          </v-chip>
+          <v-chip v-if="user && user.role === 'admin'" value="all" data-test="all-tasks-chip">
+            <v-icon start>mdi-account-group</v-icon>
+            All Tasks
+          </v-chip>
+        </v-chip-group>
+      </v-col>
+
+      <v-col cols="12" md="3">
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
@@ -106,17 +120,6 @@
           v-model="priorityFilter"
           :items="priorityOptions"
           label="Priority"
-          variant="outlined"
-          density="compact"
-          clearable
-          hide-details
-        />
-      </v-col>
-      <v-col cols="12" md="2">
-        <v-select
-          v-model="categoryFilter"
-          :items="categoryOptions"
-          label="Category"
           variant="outlined"
           density="compact"
           clearable
@@ -223,7 +226,9 @@
               dragging: draggedTask?.id === item.id,
               'hierarchy-item': showHierarchy && item.parent_task_id,
               'parent-item': showHierarchy && hasChildren(item.id),
+              'assigned-to-me': item.assigned_to_user_id === user?.id,
             }"
+            :data-test="`task-row-${item.id}`"
             draggable="true"
             @dragstart="handleDragStart(item, $event)"
             @dragend="handleDragEnd"
@@ -258,7 +263,31 @@
 
             <!-- Task Content -->
             <div class="task-content flex-grow-1">
-              <div class="font-weight-medium">{{ item.title }}</div>
+              <div class="d-flex align-center">
+                <!-- Owner indicator (Phase 4) -->
+                <v-icon
+                  v-if="item.created_by_user_id === user?.id"
+                  color="primary"
+                  size="small"
+                  class="mr-2"
+                  data-test="owner-icon"
+                >
+                  mdi-account-circle
+                </v-icon>
+
+                <!-- Assignment indicator (Phase 4) -->
+                <v-icon
+                  v-if="item.assigned_to_user_id === user?.id"
+                  color="success"
+                  size="small"
+                  class="mr-2"
+                  data-test="assigned-icon"
+                >
+                  mdi-clipboard-account
+                </v-icon>
+
+                <span class="font-weight-medium">{{ item.title }}</span>
+              </div>
               <div class="text-caption text-medium-emphasis">{{ item.description }}</div>
 
               <!-- Parent/Child Indicators -->
@@ -293,12 +322,34 @@
           </div>
         </template>
 
-        <!-- Assigned To Column -->
+        <!-- Assigned To Column (Agent) -->
         <template v-slot:item.assigned_to="{ item }">
           <v-chip v-if="item.assigned_to" size="small" prepend-icon="mdi-robot">
             {{ item.assigned_to }}
           </v-chip>
           <span v-else class="text-medium-emphasis">Unassigned</span>
+        </template>
+
+        <!-- Assigned To User Column (Phase 4) -->
+        <template v-slot:item.assigned_to_user_id="{ item }">
+          <v-chip
+            v-if="item.assigned_to_user_id"
+            size="small"
+            :color="item.assigned_to_user_id === user?.id ? 'primary' : 'default'"
+            :data-test="`task-assignee-${item.assigned_to_user_id}`"
+          >
+            <v-icon start size="small">mdi-account</v-icon>
+            {{ getUserName(item.assigned_to_user_id) }}
+          </v-chip>
+          <span v-else class="text-medium-emphasis" data-test="task-assignee-null">Unassigned</span>
+        </template>
+
+        <!-- Created By User Column (Phase 4) -->
+        <template v-slot:item.created_by_user_id="{ item }">
+          <v-chip size="small" variant="outlined">
+            <v-icon start size="small">mdi-account-circle</v-icon>
+            {{ getUserName(item.created_by_user_id) }}
+          </v-chip>
         </template>
 
         <!-- Due Date Column -->
@@ -440,12 +491,38 @@
                 <v-select
                   v-model="currentTask.assigned_to"
                   :items="agentOptions"
-                  label="Assign To"
+                  label="Assign To (Agent)"
                   variant="outlined"
                   clearable
                 />
               </v-col>
             </v-row>
+
+            <!-- User Assignment (Phase 4) -->
+            <v-autocomplete
+              v-model="currentTask.assigned_to_user_id"
+              :items="tenantUsers"
+              item-title="username"
+              item-value="id"
+              label="Assign To (User)"
+              variant="outlined"
+              clearable
+              hint="Assign this task to a team member"
+              persistent-hint
+              data-test="assign-to-user-select"
+            >
+              <template v-slot:item="{ props, item }">
+                <v-list-item v-bind="props">
+                  <template v-slot:prepend>
+                    <v-avatar color="primary" size="small">
+                      <span class="text-caption">{{ item.raw.username?.charAt(0)?.toUpperCase() }}</span>
+                    </v-avatar>
+                  </template>
+                  <v-list-item-title>{{ item.raw.username }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ item.raw.role }}</v-list-item-subtitle>
+                </v-list-item>
+              </template>
+            </v-autocomplete>
 
             <v-text-field
               v-model="currentTask.due_date"
@@ -498,11 +575,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
 import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
+import { useUserStore } from '@/stores/user'
 import { format, isAfter } from 'date-fns'
+import api from '@/services/api'
 import MascotLoader from '@/components/MascotLoader.vue'
 import TaskConverter from '@/components/TaskConverter.vue'
 import ConversionHistory from '@/components/ConversionHistory.vue'
@@ -511,6 +590,7 @@ import ConversionHistory from '@/components/ConversionHistory.vue'
 const taskStore = useTaskStore()
 const productStore = useProductStore()
 const agentStore = useAgentStore()
+const userStore = useUserStore()
 
 // State
 const search = ref('')
@@ -522,6 +602,11 @@ const showCreateDialog = ref(false)
 const editingTask = ref(null)
 const taskForm = ref(null)
 const saving = ref(false)
+
+// Phase 4: Multi-user state
+const taskFilter = ref('my_tasks')
+const tenantUsers = ref([])
+const user = computed(() => userStore.currentUser)
 
 // Bulk selection state
 const selectedTasks = ref([])
@@ -543,6 +628,7 @@ const currentTask = ref({
   priority: 'medium',
   category: 'general',
   assigned_to: null,
+  assigned_to_user_id: null, // Phase 4: User assignment
   due_date: null,
 })
 
@@ -553,7 +639,9 @@ const headers = [
   { title: 'Priority', key: 'priority', width: '100' },
   { title: 'Task', key: 'title' },
   { title: 'Category', key: 'category', width: '120' },
-  { title: 'Assigned To', key: 'assigned_to', width: '150' },
+  { title: 'Assigned To (Agent)', key: 'assigned_to', width: '150' },
+  { title: 'Assigned To', key: 'assigned_to_user_id', width: '150' },
+  { title: 'Created By', key: 'created_by_user_id', width: '150' },
   { title: 'Due Date', key: 'due_date', width: '120' },
   { title: 'Convert Status', key: 'convert_status', width: '130' },
   { title: 'Actions', key: 'actions', sortable: false, width: '120' },
@@ -564,19 +652,54 @@ const statusOptions = ['pending', 'in_progress', 'completed', 'cancelled']
 const priorityOptions = ['low', 'medium', 'high', 'critical']
 const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'documentation', 'testing']
 
+// Phase 4: User management methods
+async function fetchTenantUsers() {
+  try {
+    const response = await api.users.list()
+    tenantUsers.value = response.data || []
+  } catch (error) {
+    console.error('Failed to fetch tenant users:', error)
+    tenantUsers.value = []
+  }
+}
+
+function getUserName(userId) {
+  if (!userId) return 'Unassigned'
+  const foundUser = tenantUsers.value.find((u) => u.id === userId)
+  return foundUser ? foundUser.username : `User ${userId}`
+}
+
 // Computed
 const loading = computed(() => taskStore.loading)
 const tasks = computed(() => taskStore.tasks)
+
+// Phase 4: User-filtered tasks
+const userFilteredTasks = computed(() => {
+  if (taskFilter.value === 'all') {
+    return tasks.value
+  }
+
+  // "My Tasks" - show tasks created by or assigned to current user
+  const userId = user.value?.id
+  if (!userId) return tasks.value
+
+  return tasks.value.filter(
+    (task) => task.created_by_user_id === userId || task.assigned_to_user_id === userId,
+  )
+})
 
 const agentOptions = computed(() => {
   return agentStore.agents.map((agent) => agent.name)
 })
 
 const filteredTasks = computed(() => {
-  // First filter by product if one is selected
-  let filteredList = productStore.currentProductId
-    ? taskStore.tasks.filter((t) => t.product_id === productStore.currentProductId)
-    : taskStore.tasks
+  // Start with user-filtered tasks (Phase 4)
+  let filteredList = userFilteredTasks.value
+
+  // Then filter by product if one is selected
+  if (productStore.currentProductId) {
+    filteredList = filteredList.filter((t) => t.product_id === productStore.currentProductId)
+  }
 
   if (statusFilter.value) {
     filteredList = filteredList.filter((t) => t.status === statusFilter.value)
@@ -706,6 +829,7 @@ function cancelTask() {
     priority: 'medium',
     category: 'general',
     assigned_to: null,
+    assigned_to_user_id: null, // Phase 4
     due_date: null,
   }
 }
@@ -877,12 +1001,32 @@ async function saveTask() {
       await taskStore.createTask(currentTask.value)
     }
     cancelTask()
+    // Phase 4: Refresh tasks to show updates
+    await fetchTasks()
   } catch (error) {
     console.error('Failed to save task:', error)
   } finally {
     saving.value = false
   }
 }
+
+// Phase 4: Fetch tasks with user filter
+async function fetchTasks() {
+  const params = {
+    filter_type: taskFilter.value,
+  }
+
+  if (productStore.currentProductId) {
+    params.product_id = productStore.currentProductId
+  }
+
+  await taskStore.fetchTasks(params)
+}
+
+// Phase 4: Watch filter changes
+watch(taskFilter, () => {
+  fetchTasks()
+})
 
 // Watch for dialog trigger
 onMounted(() => {
@@ -893,7 +1037,7 @@ onMounted(() => {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([taskStore.fetchTasks(), agentStore.fetchAgents()])
+  await Promise.all([fetchTasks(), agentStore.fetchAgents(), fetchTenantUsers()])
 })
 </script>
 
@@ -994,5 +1138,15 @@ onMounted(async () => {
 
 .stats-card:hover {
   transform: translateY(-2px);
+}
+
+/* Phase 4: User assignment highlight */
+.task-row-content.assigned-to-me {
+  background-color: rgba(76, 175, 80, 0.08);
+  border-left: 3px solid #4caf50;
+}
+
+.task-row-content.assigned-to-me:hover {
+  background-color: rgba(76, 175, 80, 0.12);
 }
 </style>
