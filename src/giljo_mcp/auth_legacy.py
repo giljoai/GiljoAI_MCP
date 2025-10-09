@@ -1,6 +1,6 @@
 """
 Authentication Middleware for GiljoAI MCP
-Supports LOCAL (no auth), LAN (API key), and WAN (JWT) modes
+Supports auto-login for localhost and JWT/API key for network clients
 """
 
 import json
@@ -13,9 +13,11 @@ from typing import Any, Optional
 
 import jwt
 from cryptography.fernet import Fernet
+from fastapi import Request
 from fastmcp import FastMCP
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .config_manager import DeploymentMode, get_config
+from .config_manager import get_config
 from .database import DatabaseManager
 from .models import Configuration
 
@@ -24,21 +26,27 @@ logger = logging.getLogger(__name__)
 
 
 class AuthManager:
-    """Manages authentication across different deployment modes"""
+    """
+    Manages authentication with mode-independent logic.
 
-    def __init__(self, config=None):
-        """Initialize authentication manager"""
+    - Localhost clients (127.0.0.1, ::1): Auto-login as "localhost" user
+    - Network clients: Require JWT Bearer token or API key
+    """
+
+    def __init__(self, config=None, db: Optional[AsyncSession] = None):
+        """
+        Initialize authentication manager.
+
+        Args:
+            config: Optional configuration object
+            db: Optional async database session for auto-login user management
+        """
         self.config = config or get_config()
-        self.mode = self.config.server.mode
+        self.db = db
         self.jwt_secret = self._get_or_create_jwt_secret()
         self.api_keys: dict[str, dict[str, Any]] = {}
         self.encryption_key = self._get_or_create_encryption_key()
         self.cipher = Fernet(self.encryption_key)
-
-    def is_enabled(self) -> bool:
-        """Check if authentication is enabled based on deployment mode"""
-        # Authentication is disabled in LOCAL mode, enabled in LAN and WAN modes
-        return self.mode != DeploymentMode.LOCAL
 
     def _get_or_create_jwt_secret(self) -> str:
         """Get or create JWT secret for token signing"""
@@ -315,68 +323,212 @@ class AuthManager:
             logger.warning(f"Invalid JWT token: {e}")
             return None
 
-    async def authenticate_request(
-        self, authorization: Optional[str] = None, api_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def authenticate_request(self, request: Request) -> dict[str, Any]:
         """
-        Authenticate a request based on deployment mode
+        Authenticate incoming request.
+
+        Uses mode-independent authentication:
+        - Localhost clients (127.0.0.1, ::1): Auto-login as "localhost" user
+        - Network clients: Require JWT Bearer token or API key
 
         Args:
-            authorization: Authorization header value
-            api_key: API key from header or query parameter
+            request: FastAPI Request object
 
         Returns:
-            Authentication result with user info and permissions
-        """
-        # LOCAL mode - no authentication required
-        if self.mode == DeploymentMode.LOCAL:
-            return {
-                "authenticated": True,
-                "mode": "LOCAL",
-                "user": "local",
-                "permissions": ["*"],
-            }
+            dict: Authentication result with keys:
+                - authenticated: bool
+                - user: str (username)
+                - user_id: str (username for consistency)
+                - is_auto_login: bool (if localhost auto-login)
+                - tenant_key: str (tenant key)
+                - error: str (if authentication failed)
+                - user_obj: User (if authenticated via database)
 
-        # LAN mode - API key authentication
-        if self.mode == DeploymentMode.LAN:
-            if not api_key:
-                return {
-                    "authenticated": False,
-                    "error": "API key required for LAN mode",
+        Example:
+            >>> result = await auth_manager.authenticate_request(request)
+            >>> if result["authenticated"]:
+            ...     print(f"User: {result['user']}")
+        """
+        from .auth.auto_login import LOCALHOST_IPS
+
+        # Get client IP using helper method
+        client_ip = self._get_client_ip(request)
+
+        # Check for auto-login (localhost clients)
+        if client_ip in LOCALHOST_IPS:
+            logger.debug(f"Localhost client detected: {client_ip}")
+
+            # Get db_manager from app state (per-request session)
+            db_manager = getattr(request.app.state, "db_manager", None)
+            if not db_manager:
+                logger.error("db_manager not available in app state")
+                return {"authenticated": False, "error": "Database not configured"}
+
+            # Use async context manager for request-scoped session
+            from .auth.localhost_user import ensure_localhost_user
+
+            try:
+                async with db_manager.get_session_async() as session:
+                    # Create/retrieve localhost user
+                    localhost_user = await ensure_localhost_user(session)
+
+                    # Set request state
+                    request.state.user = localhost_user
+                    request.state.user_id = localhost_user.username
+                    request.state.authenticated = True
+                    request.state.is_auto_login = True
+                    request.state.tenant_key = localhost_user.tenant_key
+
+                    return {
+                        "authenticated": True,
+                        "user": localhost_user.username,
+                        "user_id": localhost_user.username,
+                        "user_obj": localhost_user,
+                        "is_auto_login": True,
+                        "tenant_key": localhost_user.tenant_key,
+                    }
+            except Exception as e:
+                logger.error(f"Failed to authenticate localhost user: {e}", exc_info=True)
+                return {"authenticated": False, "error": f"Localhost authentication failed: {str(e)}"}
+
+        # Network clients require credentials
+        return await self._validate_network_credentials(request)
+
+    def _get_client_ip(self, request: Request) -> str:
+        """
+        Get client IP from request (handles proxies).
+
+        Args:
+            request: FastAPI Request object
+
+        Returns:
+            str: Client IP address
+        """
+        # Check X-Forwarded-For (reverse proxy)
+        forwarded_for = request.headers.get("X-Forwarded-For", "").strip()
+        if forwarded_for:
+            # Take first IP (original client)
+            return forwarded_for.split(",")[0].strip()
+
+        # Check X-Real-IP (nginx)
+        real_ip = request.headers.get("X-Real-IP", "").strip()
+        if real_ip:
+            return real_ip
+
+        # Direct connection
+        if hasattr(request, "client") and request.client:
+            return request.client.host
+
+        return "unknown"
+
+    async def _validate_network_credentials(self, request: Request) -> dict[str, Any]:
+        """
+        Validate JWT token or API key for network clients.
+
+        Priority:
+        1. JWT Bearer token (Authorization: Bearer <token>)
+        2. API key (X-API-Key header)
+        3. Unauthenticated (return error)
+
+        Args:
+            request: FastAPI Request object
+
+        Returns:
+            dict: Authentication result with consistent user_id and user_obj
+        """
+        from sqlalchemy import select
+
+        from .models import User
+
+        # Try JWT first (Bearer token)
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]  # Remove "Bearer " prefix
+
+            # Check if it's a JWT token
+            token_info = self.validate_jwt_token(token)
+            if token_info:
+                jwt_result = {
+                    "authenticated": True,
+                    "user": token_info.get("user_id"),
+                    "user_id": token_info.get("user_id"),
+                    "tenant_key": token_info.get("tenant_key", "default"),
+                    "is_auto_login": False,
+                    "permissions": ["*"],
                 }
 
+                # Get user object from database for consistency
+                db_manager = getattr(request.app.state, "db_manager", None)
+                if db_manager:
+                    try:
+                        async with db_manager.get_session_async() as session:
+                            result = await session.execute(
+                                select(User).where(User.username == token_info.get("user_id"))
+                            )
+                            user_obj = result.scalar_one_or_none()
+
+                            if user_obj:
+                                jwt_result["user_obj"] = user_obj
+                    except Exception as e:
+                        logger.warning(f"Failed to load user object for JWT: {e}")
+
+                return jwt_result
+
+            # If JWT validation failed, try as API key
+            key_info = self.validate_api_key(token)
+            if key_info:
+                return await self._build_api_key_result(key_info, request)
+
+        # Try API key (X-API-Key header)
+        api_key = request.headers.get("X-API-Key")
+        if api_key:
             key_info = self.validate_api_key(api_key)
             if key_info:
-                return {
-                    "authenticated": True,
-                    "mode": "LAN",
-                    "user": key_info["name"],
-                    "permissions": key_info.get("permissions", ["*"]),
-                }
-            return {"authenticated": False, "error": "Invalid API key"}
+                return await self._build_api_key_result(key_info, request)
 
-        # WAN mode - JWT authentication
-        if self.mode == DeploymentMode.WAN:
-            if not authorization or not authorization.startswith("Bearer "):
-                return {
-                    "authenticated": False,
-                    "error": "Bearer token required for WAN mode",
-                }
+        # No valid credentials
+        return {"authenticated": False, "error": "Authentication required for network access"}
 
-            token = authorization.replace("Bearer ", "")
-            token_info = self.validate_jwt_token(token)
+    async def _build_api_key_result(self, key_info: dict[str, Any], request: Request) -> dict[str, Any]:
+        """
+        Build authentication result for API key with user object lookup.
 
-            if token_info:
-                return {
-                    "authenticated": True,
-                    "mode": "WAN",
-                    "user": token_info["user_id"],
-                    "tenant_key": token_info.get("tenant_key"),
-                    "permissions": ["*"],  # Could be extended with role-based permissions
-                }
-            return {"authenticated": False, "error": "Invalid or expired token"}
+        Args:
+            key_info: API key information
+            request: FastAPI Request object
 
-        return {"authenticated": False, "error": "Unknown deployment mode"}
+        Returns:
+            dict: Authentication result with user_obj if available
+        """
+        from sqlalchemy import select
+
+        from .models import User
+
+        result = {
+            "authenticated": True,
+            "user": key_info["name"],
+            "user_id": key_info["name"],
+            "tenant_key": "default",  # API keys use default tenant for now
+            "is_auto_login": False,
+            "permissions": key_info.get("permissions", ["*"]),
+        }
+
+        # Try to get user object from database
+        # Note: API keys might not have associated user accounts
+        # This is best-effort for consistency
+        db_manager = getattr(request.app.state, "db_manager", None)
+        if db_manager:
+            try:
+                async with db_manager.get_session_async() as session:
+                    db_result = await session.execute(select(User).where(User.username == key_info["name"]))
+                    user_obj = db_result.scalar_one_or_none()
+
+                    if user_obj:
+                        result["user_obj"] = user_obj
+            except Exception as e:
+                logger.debug(f"No user object found for API key: {e}")
+
+        return result
 
 
 def create_auth_middleware(auth_manager: AuthManager):
@@ -420,7 +572,7 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
     @mcp.tool()
     async def generate_api_key(name: str) -> dict[str, Any]:
         """
-        Generate a new API key for LAN mode access
+        Generate a new API key for network access
 
         Args:
             name: Name/description for the API key
@@ -428,11 +580,6 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
         Returns:
             Generated API key
         """
-        if auth_manager.mode != DeploymentMode.LAN:
-            return {
-                "success": False,
-                "error": f"API keys are only used in LAN mode (current: {auth_manager.mode.value})",
-            }
 
         try:
             api_key = auth_manager.generate_api_key(name)
@@ -512,7 +659,7 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
         user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600
     ) -> dict[str, Any]:
         """
-        Generate JWT token for WAN mode
+        Generate JWT token for network access
 
         Args:
             user_id: User identifier
@@ -522,11 +669,6 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
         Returns:
             Generated JWT token
         """
-        if auth_manager.mode != DeploymentMode.WAN:
-            return {
-                "success": False,
-                "error": f"JWT tokens are only used in WAN mode (current: {auth_manager.mode.value})",
-            }
 
         try:
             token = auth_manager.generate_jwt_token(user_id, tenant_key, expires_in)
