@@ -58,6 +58,7 @@
                 autofocus
                 autocomplete="username"
                 @keyup.enter="handleLogin"
+                @input="error = ''"
               />
 
               <v-text-field
@@ -73,6 +74,7 @@
                 class="mt-4"
                 @click:append-inner="showPassword = !showPassword"
                 @keyup.enter="handleLogin"
+                @input="error = ''"
               />
 
               <v-checkbox
@@ -90,11 +92,11 @@
                 size="large"
                 block
                 :loading="loading"
-                :disabled="!username || !password"
+                :disabled="!username || !password || loading"
                 class="mt-4"
               >
-                <v-icon start>mdi-login</v-icon>
-                Sign In
+                <v-icon start v-if="!loading">mdi-login</v-icon>
+                {{ loading ? 'Logging in...' : 'Sign In' }}
               </v-btn>
             </v-form>
           </v-card-text>
@@ -168,8 +170,10 @@ async function handleLogin() {
     // Store remember me preference
     if (rememberMe.value) {
       localStorage.setItem('remember_me', 'true')
+      localStorage.setItem('remembered_username', username.value)
     } else {
       localStorage.removeItem('remember_me')
+      localStorage.removeItem('remembered_username')
     }
 
     // Show success message briefly
@@ -182,13 +186,23 @@ async function handleLogin() {
     const redirect = route.query.redirect || '/'
     router.push(redirect)
   } catch (err) {
-    // Handle specific error types
+    // Handle specific error types with user-friendly messages
     if (err.response?.status === 401) {
-      error.value = 'Invalid username or password'
+      // Check if there's a specific detail about inactive account
+      const detail = err.response?.data?.detail || ''
+      if (detail.toLowerCase().includes('inactive')) {
+        error.value = 'Account is inactive. Please contact your administrator.'
+      } else {
+        error.value = 'Invalid username or password'
+      }
     } else if (err.response?.status === 403) {
       error.value = 'Access forbidden. Please contact your administrator.'
+    } else if (err.response?.status === 429) {
+      error.value = 'Too many login attempts. Please try again later.'
     } else if (err.response?.data?.detail) {
       error.value = err.response.data.detail
+    } else if (err.code === 'ERR_NETWORK' || !err.response) {
+      error.value = 'Network error - please check your connection and try again'
     } else if (err.message) {
       error.value = `Login failed: ${err.message}`
     } else {
@@ -204,6 +218,15 @@ async function handleLogin() {
 
 // Check if already authenticated on mount
 onMounted(async () => {
+  // Restore remembered username if available
+  const rememberedUsername = localStorage.getItem('remembered_username')
+  const rememberMeFlag = localStorage.getItem('remember_me')
+  
+  if (rememberedUsername && rememberMeFlag === 'true') {
+    username.value = rememberedUsername
+    rememberMe.value = true
+  }
+
   try {
     // Try to access a protected endpoint to check if already logged in
     await api.auth.me()

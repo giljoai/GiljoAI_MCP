@@ -64,6 +64,31 @@ export const useUserStore = defineStore('user', () => {
       // Always clear local state
       currentUser.value = null
       isLoading.value = false
+      
+      // Clear remember me data
+      localStorage.removeItem('remembered_username')
+    }
+  }
+
+  async function checkAuth() {
+    isLoading.value = true
+    try {
+      const response = await api.auth.me()
+      currentUser.value = response.data
+      return true
+    } catch (error) {
+      console.error('[UserStore] Auth check failed:', error)
+      currentUser.value = null
+      
+      // Check if we're on localhost - bypass authentication
+      const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+      if (!isLocalhost) {
+        return false
+      }
+      
+      return true // Localhost bypasses auth
+    } finally {
+      isLoading.value = false
     }
   }
 
@@ -78,5 +103,6 @@ export const useUserStore = defineStore('user', () => {
     fetchCurrentUser,
     login,
     logout,
+    checkAuth,
   }
 })
