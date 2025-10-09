@@ -25,43 +25,54 @@ class AuthMiddleware(BaseHTTPMiddleware):
     with a unified approach that always authenticates requests.
     """
 
-    def __init__(self, app, db=None):
+    def __init__(self, app, auth_manager: Callable = None):
         """
         Initialize authentication middleware.
 
         Args:
             app: FastAPI application
-            db: Optional async database session for authentication
+            auth_manager: Optional callable that returns AuthManager instance
+                         (e.g., lambda: state.auth)
         """
         super().__init__(app)
-        self.db = db
-        self.auth_manager = None
+        # Store callable that returns auth manager
+        self.get_auth_manager = auth_manager
+        self._auth_manager = None
 
     async def dispatch(self, request: Request, call_next):
         """Process all requests through authentication"""
-        from src.giljo_mcp.auth_legacy import AuthManager
-
-        # Lazy init auth manager
-        if not self.auth_manager:
-            self.auth_manager = AuthManager(db=self.db)
+        # Get auth manager (from callable or fallback to app state)
+        if self.get_auth_manager:
+            auth_manager = self.get_auth_manager()
+        else:
+            # Fallback: get from app state
+            auth_manager = getattr(request.app.state, 'auth', None)
+            if not auth_manager:
+                logger.error("AuthManager not configured in middleware or app state")
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": "Authentication system error",
+                        "detail": "AuthManager not configured",
+                    },
+                )
 
         # Public endpoints bypass auth
         if self._is_public_endpoint(request.url.path):
             return await call_next(request)
 
         # Authenticate (auto-login or credentials)
-        auth_result = await self.auth_manager.authenticate_request(request)
+        auth_result = await auth_manager.authenticate_request(request)
 
-        # Set request state
+        # Set request state consistently
         request.state.authenticated = auth_result.get("authenticated", False)
 
         if auth_result.get("authenticated"):
-            request.state.user_id = auth_result.get("user")
+            # Always set both user_id (string) and user (object if available)
+            request.state.user_id = auth_result.get("user_id") or auth_result.get("user")
+            request.state.user = auth_result.get("user_obj")  # User object or None
             request.state.is_auto_login = auth_result.get("is_auto_login", False)
             request.state.tenant_key = auth_result.get("tenant_key", "default")
-
-            if "user_obj" in auth_result:
-                request.state.user = auth_result["user_obj"]
         else:
             # Auth failed - return 401
             return JSONResponse(
