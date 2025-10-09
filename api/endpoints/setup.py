@@ -81,7 +81,9 @@ class SetupCompleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether setup completion was successful")
     message: str = Field(..., description="Human-readable status message")
-    api_key: Optional[str] = Field(None, description="API key for tool integrations (created separately in Attach Tools step)")
+    api_key: Optional[str] = Field(
+        None, description="API key for tool integrations (created separately in Attach Tools step)"
+    )
     requires_restart: bool = Field(False, description="Whether service restart is required")
     mode: Optional[str] = Field(None, description="Installation mode (localhost, lan, wan)")
     server_url: Optional[str] = Field(None, description="Server URL for API access")
@@ -166,23 +168,16 @@ def validate_lan_config(lan_config: LANConfig) -> None:
 
     # Validate username
     if len(lan_config.admin_username) < 3:
-        raise HTTPException(
-            status_code=400,
-            detail="Admin username must be at least 3 characters long"
-        )
+        raise HTTPException(status_code=400, detail="Admin username must be at least 3 characters long")
 
     if not lan_config.admin_username.replace("_", "").replace("-", "").isalnum():
         raise HTTPException(
-            status_code=400,
-            detail="Admin username must contain only alphanumeric characters, hyphens, and underscores"
+            status_code=400, detail="Admin username must contain only alphanumeric characters, hyphens, and underscores"
         )
 
     # Validate password
     if len(lan_config.admin_password) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="Admin password must be at least 8 characters long"
-        )
+        raise HTTPException(status_code=400, detail="Admin password must be at least 8 characters long")
 
     # Validate IP address
     try:
@@ -192,24 +187,23 @@ def validate_lan_config(lan_config: LANConfig) -> None:
         if ip.is_link_local:
             raise HTTPException(
                 status_code=400,
-                detail="Link-local IP addresses (169.254.x.x) are not allowed. Please use a valid LAN IP address."
+                detail="Link-local IP addresses (169.254.x.x) are not allowed. Please use a valid LAN IP address.",
             )
 
         # Reject loopback addresses
         if ip.is_loopback:
             raise HTTPException(
                 status_code=400,
-                detail="Loopback addresses (127.x.x.x) are not allowed. Please use a valid LAN IP address."
+                detail="Loopback addresses (127.x.x.x) are not allowed. Please use a valid LAN IP address.",
             )
 
     except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid IP address format: {lan_config.server_ip}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid IP address format: {lan_config.server_ip}")
 
 
-def update_cors_origins(config: dict[str, Any], server_ip: str = None, hostname: str = None, mode: str = "localhost") -> None:
+def update_cors_origins(
+    config: dict[str, Any], server_ip: str = None, hostname: str = None, mode: str = "localhost"
+) -> None:
     """
     Update CORS origins (DESTRUCTIVE - replaces all non-localhost origins).
 
@@ -375,7 +369,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             if not request_body.lan_config:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"{request_body.network_mode.value.upper()} mode requires lan_config with admin credentials and server IP"
+                    detail=f"{request_body.network_mode.value.upper()} mode requires lan_config with admin credentials and server IP",
                 )
 
             # Validate LAN configuration
@@ -386,7 +380,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                 config,
                 server_ip=request_body.lan_config.server_ip,
                 hostname=request_body.lan_config.hostname,
-                mode=request_body.network_mode.value
+                mode=request_body.network_mode.value,
             )
 
             # 2. Create admin user in database with hashed password
@@ -400,14 +394,14 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                 if not (request and hasattr(request.app, "state") and hasattr(request.app.state, "api_state")):
                     raise HTTPException(
                         status_code=500,
-                        detail="Database connection not available. Please restart the API server and try again."
+                        detail="Database connection not available. Please restart the API server and try again.",
                     )
 
                 db_manager = request.app.state.api_state.db_manager
                 if not db_manager:
                     raise HTTPException(
                         status_code=500,
-                        detail="Database manager not initialized. Please restart the API server and try again."
+                        detail="Database manager not initialized. Please restart the API server and try again.",
                     )
 
                 async with db_manager.get_session_async() as session:
@@ -434,7 +428,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                             role="admin",
                             tenant_key=tenant_key,
                             is_active=True,
-                            created_at=datetime.now(timezone.utc)
+                            created_at=datetime.now(timezone.utc),
                         )
                         session.add(new_user)
                         await session.flush()  # Get user.id
@@ -469,7 +463,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                     "name": request_body.lan_config.adapter_name,
                     "id": request_body.lan_config.adapter_id,
                     "initial_ip": request_body.lan_config.server_ip,
-                    "detected_at": datetime.now(timezone.utc).isoformat()
+                    "detected_at": datetime.now(timezone.utc).isoformat(),
                 }
                 logger.info(
                     f"Saved adapter info: {request_body.lan_config.adapter_name} "
@@ -549,6 +543,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         try:
             # Create config snapshot for rollback capability (convert to JSON-serializable)
             import json
+
             config_snapshot = json.loads(json.dumps(config, default=str))
 
             # Track configured features
@@ -563,10 +558,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             setup_version = config.get("installation", {}).get("version", "2.0.0")
 
             # Mark as completed with version tracking
-            state_manager.mark_completed(
-                setup_version=setup_version,
-                config_snapshot=config_snapshot
-            )
+            state_manager.mark_completed(setup_version=setup_version, config_snapshot=config_snapshot)
 
             # Update additional state fields
             state_manager.update_state(
@@ -577,9 +569,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                 validation_failures=[],
             )
 
-            logger.info(
-                f"✅ Setup state saved to SetupStateManager for tenant {tenant_key}"
-            )
+            logger.info(f"✅ Setup state saved to SetupStateManager for tenant {tenant_key}")
 
         except Exception as e:
             # Non-fatal - log but don't fail the setup
@@ -607,7 +597,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             "requires_restart": requires_restart,
             "mode": request_body.network_mode.value,
             "server_url": server_url,
-            "admin_username": admin_username
+            "admin_username": admin_username,
         }
 
         return SetupCompleteResponse(**response_data)
@@ -645,9 +635,7 @@ async def migrate_setup_state():
 
         # Initialize SetupStateManager with current versions
         state_manager = SetupStateManager.get_instance(
-            tenant_key=tenant_key,
-            current_version=current_setup_version,
-            required_db_version=current_db_version
+            tenant_key=tenant_key, current_version=current_setup_version, required_db_version=current_db_version
         )
 
         # Check if migration is needed
@@ -662,23 +650,15 @@ async def migrate_setup_state():
             }
 
         # Perform migration
-        logger.info(
-            f"Migrating setup state to version {current_setup_version} "
-            f"for tenant {tenant_key}"
-        )
+        logger.info(f"Migrating setup state to version {current_setup_version} " f"for tenant {tenant_key}")
 
-        state_manager.migrate_state(
-            new_setup_version=current_setup_version,
-            new_database_version=current_db_version
-        )
+        state_manager.migrate_state(new_setup_version=current_setup_version, new_database_version=current_db_version)
 
         # Validate state after migration
         valid, failures = state_manager.validate_state()
 
         if not valid:
-            logger.warning(
-                f"Setup state validation failed after migration: {failures}"
-            )
+            logger.warning(f"Setup state validation failed after migration: {failures}")
             return {
                 "message": "State migrated with validation warnings",
                 "migrated": True,
@@ -1007,9 +987,7 @@ async def create_admin_user(request: AdminUserRequest = Body(...)):
             from sqlalchemy import select, delete
 
             # Delete any existing API keys for users we're about to delete
-            stmt = select(User.id).where(
-                (User.username == request.username) | (User.email == request.email)
-            )
+            stmt = select(User.id).where((User.username == request.username) | (User.email == request.email))
             result = await db.execute(stmt)
             existing_user_ids = [row[0] for row in result.fetchall()]
 
@@ -1022,7 +1000,7 @@ async def create_admin_user(request: AdminUserRequest = Body(...)):
                 await db.flush()
 
             # Hash password
-            password_hash = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            password_hash = bcrypt.hashpw(request.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
             # Create admin user
             tenant_key = generate_tenant_key(project_name=f"admin_{request.username}")
@@ -1030,8 +1008,8 @@ async def create_admin_user(request: AdminUserRequest = Body(...)):
                 username=request.username,
                 email=request.email,
                 password_hash=password_hash,
-                role='admin',
-                tenant_key=tenant_key
+                role="admin",
+                tenant_key=tenant_key,
             )
 
             db.add(admin_user)
@@ -1049,7 +1027,7 @@ async def create_admin_user(request: AdminUserRequest = Body(...)):
                 key_prefix=key_prefix,
                 name=f"Admin Setup Key - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
                 permissions=["*"],  # Grant full admin access
-                tenant_key=tenant_key
+                tenant_key=tenant_key,
             )
 
             db.add(api_key)
@@ -1058,9 +1036,7 @@ async def create_admin_user(request: AdminUserRequest = Body(...)):
             logger.info(f"Admin user '{request.username}' created with API key")
 
             return AdminUserResponse(
-                success=True,
-                api_key=plaintext_key,
-                message=f"Admin user '{request.username}' created successfully"
+                success=True, api_key=plaintext_key, message=f"Admin user '{request.username}' created successfully"
             )
 
     except Exception as e:
