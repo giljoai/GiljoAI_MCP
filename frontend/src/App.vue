@@ -134,8 +134,15 @@
                 <v-list-item-title class="font-weight-medium">
                   {{ currentUser.username }}
                 </v-list-item-title>
-                <v-list-item-subtitle v-if="currentUser.role">
-                  {{ currentUser.role }}
+                <v-list-item-subtitle v-if="currentUser.role" class="d-flex align-center mt-1">
+                  <v-chip 
+                    :color="getRoleColor(currentUser.role)" 
+                    size="small" 
+                    variant="flat"
+                    class="text-caption"
+                  >
+                    {{ currentUser.role }}
+                  </v-chip>
                 </v-list-item-subtitle>
               </v-list-item>
 
@@ -289,6 +296,18 @@ const toggleTheme = () => {
   localStorage.setItem('theme-preference', theme.global.name.value)
 }
 
+const getRoleColor = (role) => {
+  if (!role) return 'grey'
+  const roleLower = role.toLowerCase()
+  
+  // Color coding: Admin=Red/Pink, Developer=Blue, Viewer=Green
+  if (roleLower === 'admin') return 'error'
+  if (roleLower === 'developer' || roleLower === 'dev') return 'primary'
+  if (roleLower === 'viewer') return 'success'
+  
+  return 'grey' // Default for unknown roles
+}
+
 const navigateToSettings = () => {
   router.push('/settings')
 }
@@ -322,11 +341,31 @@ const loadCurrentUser = async () => {
   try {
     const response = await api.auth.me()
     currentUser.value = response.data
+    
+    // Also update user store for consistency
+    userStore.currentUser = response.data
+    
     console.log('[Auth] Current user loaded:', currentUser.value.username)
+    return true
   } catch (error) {
     // Not authenticated or error occurred
     console.log('[Auth] Not authenticated or error loading user')
     currentUser.value = null
+    userStore.currentUser = null
+    
+    // Check if we're on localhost - if so, bypass authentication
+    const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+    
+    // If not localhost and not already on login page, redirect to login
+    if (!isLocalhost && !window.location.pathname.includes('/login')) {
+      console.log('[Auth] Not on localhost, redirecting to login')
+      router.push({
+        path: '/login',
+        query: { redirect: window.location.pathname + window.location.search }
+      })
+    }
+    
+    return false
   }
 }
 
