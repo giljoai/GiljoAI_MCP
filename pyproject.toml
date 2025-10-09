@@ -220,4 +220,6 @@ markers = [
     "unit: marks tests as unit tests",
     "e2e: marks tests as end-to-end tests",
     "stress: marks tests as stress/performance tests",
+    "network: marks tests requiring network connectivity",
+    "server_mode: marks tests requiring server mode",
 ]
