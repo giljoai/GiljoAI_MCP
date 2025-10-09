@@ -230,6 +230,11 @@ class Task(Base):
     """
     Task model - work items tracked across sessions.
     Tasks can be assigned to agents and tracked through completion.
+
+    Phase 4 Enhancement: User assignment support
+    - created_by_user_id: User who created the task
+    - assigned_to_user_id: User responsible for completing the task
+    - Nullable fields for backward compatibility and MCP tool creation
     """
 
     __tablename__ = "tasks"
@@ -240,6 +245,14 @@ class Task(Base):
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
     assigned_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
+
+    # Phase 4: User ownership and assignment
+    created_by_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    assigned_to_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+
+    # Phase 4: Task-to-project conversion tracking
+    converted_to_project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
+
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
@@ -259,6 +272,10 @@ class Task(Base):
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])
 
+    # Phase 4: User relationships
+    created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")
+    assigned_to_user = relationship("User", foreign_keys=[assigned_to_user_id], back_populates="assigned_tasks")
+
     __table_args__ = (
         Index("idx_task_tenant", "tenant_key"),
         Index("idx_task_product", "product_id"),
@@ -266,6 +283,12 @@ class Task(Base):
         Index("idx_task_status", "status"),
         Index("idx_task_priority", "priority"),
         Index("idx_task_assigned", "assigned_agent_id"),
+        # Phase 4: User assignment indexes for performance
+        Index("idx_task_created_by_user", "created_by_user_id"),
+        Index("idx_task_assigned_to_user", "assigned_to_user_id"),
+        Index("idx_task_tenant_assigned_user", "tenant_key", "assigned_to_user_id"),  # Composite for "My Tasks"
+        Index("idx_task_tenant_created_user", "tenant_key", "created_by_user_id"),  # Composite for "Created by Me"
+        Index("idx_task_converted_to_project", "converted_to_project_id"),  # Conversion tracking
     )
 
 
@@ -1121,6 +1144,10 @@ class User(Base):
     Users are the primary authentication entity in LAN/WAN deployment modes.
     Each user can have multiple API keys for different applications/contexts.
 
+    Phase 4 Enhancement: Task ownership and assignment tracking
+    - created_tasks: Tasks created by this user
+    - assigned_tasks: Tasks assigned to this user for completion
+
     Multi-tenant isolation: Users belong to a tenant_key namespace.
     """
 
@@ -1150,6 +1177,10 @@ class User(Base):
 
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+
+    # Phase 4: Task relationships
+    created_tasks = relationship("Task", foreign_keys="Task.created_by_user_id", back_populates="created_by_user")
+    assigned_tasks = relationship("Task", foreign_keys="Task.assigned_to_user_id", back_populates="assigned_to_user")
 
     __table_args__ = (
         Index("idx_user_tenant", "tenant_key"),
