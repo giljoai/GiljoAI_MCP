@@ -134,8 +134,8 @@ async def test_auth_manager_localhost_ipv4_auto_login(mock_config, mock_db_sessi
     request.state = Mock()
     request.headers = {}
 
-    # Mock auto-login middleware behavior
-    with patch("src.giljo_mcp.auth_legacy.AutoLoginMiddleware") as mock_auto_login_cls:
+    # Mock auto-login middleware behavior (patch the import inside the method)
+    with patch("src.giljo_mcp.auth.auto_login.AutoLoginMiddleware") as mock_auto_login_cls:
         mock_auto_login = Mock()
         mock_auto_login.authenticate_request = AsyncMock(return_value=True)
         mock_auto_login_cls.return_value = mock_auto_login
@@ -167,8 +167,8 @@ async def test_auth_manager_localhost_ipv6_auto_login(mock_config, mock_db_sessi
     request.state = Mock()
     request.headers = {}
 
-    # Mock auto-login
-    with patch("src.giljo_mcp.auth_legacy.AutoLoginMiddleware") as mock_auto_login_cls:
+    # Mock auto-login (patch the import inside the method)
+    with patch("src.giljo_mcp.auth.auto_login.AutoLoginMiddleware") as mock_auto_login_cls:
         mock_auto_login = Mock()
         mock_auto_login.authenticate_request = AsyncMock(return_value=True)
         mock_auto_login_cls.return_value = mock_auto_login
@@ -370,18 +370,17 @@ async def test_auth_manager_api_key_fallback_when_jwt_invalid(mock_config, mock_
     request.headers = {"Authorization": "Bearer invalid_token", "X-API-Key": test_user.api_key}
 
     # Mock JWT validation to fail, API key to succeed
-    with patch.object(auth_manager, "validate_jwt_token", return_value=None):
-        with patch.object(
-            auth_manager,
-            "validate_api_key",
-            return_value={"name": test_user.username, "active": True, "permissions": ["*"]},
-        ):
-            # Act
-            result = await auth_manager.authenticate_request(request)
+    with patch.object(auth_manager, "validate_jwt_token", return_value=None), patch.object(
+        auth_manager,
+        "validate_api_key",
+        return_value={"name": test_user.username, "active": True, "permissions": ["*"]},
+    ):
+        # Act
+        result = await auth_manager.authenticate_request(request)
 
-            # Assert
-            assert result["authenticated"] is True
-            assert result["user"] == test_user.username
+        # Assert
+        assert result["authenticated"] is True
+        assert result["user"] == test_user.username
 
 
 # Test: Cross-platform path handling
@@ -487,7 +486,7 @@ async def test_auth_manager_full_flow_localhost_then_network(mock_config, mock_d
     localhost_request.state = Mock()
     localhost_request.headers = {}
 
-    with patch("src.giljo_mcp.auth_legacy.AutoLoginMiddleware") as mock_auto_login_cls:
+    with patch("src.giljo_mcp.auth.auto_login.AutoLoginMiddleware") as mock_auto_login_cls:
         mock_auto_login = Mock()
         mock_auto_login.authenticate_request = AsyncMock(return_value=True)
         mock_auto_login_cls.return_value = mock_auto_login

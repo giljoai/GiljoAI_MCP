@@ -1,6 +1,6 @@
 """
 Authentication Middleware for GiljoAI MCP
-Supports LOCAL (no auth), LAN (API key), and WAN (JWT) modes
+Supports auto-login for localhost and JWT/API key for network clients
 """
 
 import json
@@ -13,9 +13,11 @@ from typing import Any, Optional
 
 import jwt
 from cryptography.fernet import Fernet
+from fastapi import Request
 from fastmcp import FastMCP
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .config_manager import DeploymentMode, get_config
+from .config_manager import get_config
 from .database import DatabaseManager
 from .models import Configuration
 
@@ -24,21 +26,27 @@ logger = logging.getLogger(__name__)
 
 
 class AuthManager:
-    """Manages authentication across different deployment modes"""
+    """
+    Manages authentication with mode-independent logic.
 
-    def __init__(self, config=None):
-        """Initialize authentication manager"""
+    - Localhost clients (127.0.0.1, ::1): Auto-login as "localhost" user
+    - Network clients: Require JWT Bearer token or API key
+    """
+
+    def __init__(self, config=None, db: Optional[AsyncSession] = None):
+        """
+        Initialize authentication manager.
+
+        Args:
+            config: Optional configuration object
+            db: Optional async database session for auto-login user management
+        """
         self.config = config or get_config()
-        self.mode = self.config.server.mode
+        self.db = db
         self.jwt_secret = self._get_or_create_jwt_secret()
         self.api_keys: dict[str, dict[str, Any]] = {}
         self.encryption_key = self._get_or_create_encryption_key()
         self.cipher = Fernet(self.encryption_key)
-
-    def is_enabled(self) -> bool:
-        """Check if authentication is enabled based on deployment mode"""
-        # Authentication is disabled in LOCAL mode, enabled in LAN and WAN modes
-        return self.mode != DeploymentMode.LOCAL
 
     def _get_or_create_jwt_secret(self) -> str:
         """Get or create JWT secret for token signing"""
@@ -315,68 +323,99 @@ class AuthManager:
             logger.warning(f"Invalid JWT token: {e}")
             return None
 
-    async def authenticate_request(
-        self, authorization: Optional[str] = None, api_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def authenticate_request(self, request: Request) -> dict[str, Any]:
         """
-        Authenticate a request based on deployment mode
+        Authenticate incoming request.
+
+        Uses mode-independent authentication:
+        - Localhost clients (127.0.0.1, ::1): Auto-login as "localhost" user
+        - Network clients: Require JWT Bearer token or API key
 
         Args:
-            authorization: Authorization header value
-            api_key: API key from header or query parameter
+            request: FastAPI Request object
 
         Returns:
-            Authentication result with user info and permissions
+            dict: Authentication result with keys:
+                - authenticated: bool
+                - user: str (username)
+                - is_auto_login: bool (if localhost auto-login)
+                - tenant_key: str (tenant key)
+                - error: str (if authentication failed)
+
+        Example:
+            >>> result = await auth_manager.authenticate_request(request)
+            >>> if result["authenticated"]:
+            ...     print(f"User: {result['user']}")
         """
-        # LOCAL mode - no authentication required
-        if self.mode == DeploymentMode.LOCAL:
-            return {
-                "authenticated": True,
-                "mode": "LOCAL",
-                "user": "local",
-                "permissions": ["*"],
-            }
+        from .auth.auto_login import LOCALHOST_IPS, AutoLoginMiddleware
 
-        # LAN mode - API key authentication
-        if self.mode == DeploymentMode.LAN:
-            if not api_key:
-                return {
-                    "authenticated": False,
-                    "error": "API key required for LAN mode",
-                }
+        # Get client IP - handle missing client gracefully
+        try:
+            client_ip = request.client.host if request.client else None
+        except (AttributeError, Exception):
+            client_ip = None
 
-            key_info = self.validate_api_key(api_key)
-            if key_info:
-                return {
-                    "authenticated": True,
-                    "mode": "LAN",
-                    "user": key_info["name"],
-                    "permissions": key_info.get("permissions", ["*"]),
-                }
-            return {"authenticated": False, "error": "Invalid API key"}
+        # Check for auto-login (localhost clients)
+        if client_ip in LOCALHOST_IPS:
+            logger.debug(f"Localhost client detected: {client_ip}")
 
-        # WAN mode - JWT authentication
-        if self.mode == DeploymentMode.WAN:
-            if not authorization or not authorization.startswith("Bearer "):
-                return {
-                    "authenticated": False,
-                    "error": "Bearer token required for WAN mode",
-                }
+            if self.db:
+                auto_login = AutoLoginMiddleware(self.db)
+                is_auto = await auto_login.authenticate_request(request)
 
-            token = authorization.replace("Bearer ", "")
+                if is_auto:
+                    return {
+                        "authenticated": True,
+                        "user": "localhost",
+                        "is_auto_login": True,
+                        "tenant_key": "default",  # Localhost uses default tenant
+                    }
+
+        # Network clients require credentials
+        return await self._validate_network_credentials(request)
+
+    async def _validate_network_credentials(self, request: Request) -> dict[str, Any]:
+        """
+        Validate JWT token or API key for network clients.
+
+        Priority:
+        1. JWT Bearer token (Authorization: Bearer <token>)
+        2. API key (X-API-Key header)
+        3. Unauthenticated (return error)
+
+        Args:
+            request: FastAPI Request object
+
+        Returns:
+            dict: Authentication result
+        """
+        # Try JWT first
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]  # Remove "Bearer " prefix
             token_info = self.validate_jwt_token(token)
 
             if token_info:
                 return {
                     "authenticated": True,
-                    "mode": "WAN",
-                    "user": token_info["user_id"],
+                    "user": token_info.get("user_id"),
                     "tenant_key": token_info.get("tenant_key"),
-                    "permissions": ["*"],  # Could be extended with role-based permissions
+                    "permissions": ["*"],
                 }
-            return {"authenticated": False, "error": "Invalid or expired token"}
 
-        return {"authenticated": False, "error": "Unknown deployment mode"}
+        # Try API key
+        api_key = request.headers.get("X-API-Key")
+        if api_key:
+            key_info = self.validate_api_key(api_key)
+            if key_info:
+                return {
+                    "authenticated": True,
+                    "user": key_info["name"],
+                    "permissions": key_info.get("permissions", ["*"]),
+                }
+
+        # No valid credentials
+        return {"authenticated": False, "error": "Authentication required for network access"}
 
 
 def create_auth_middleware(auth_manager: AuthManager):
@@ -420,7 +459,7 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
     @mcp.tool()
     async def generate_api_key(name: str) -> dict[str, Any]:
         """
-        Generate a new API key for LAN mode access
+        Generate a new API key for network access
 
         Args:
             name: Name/description for the API key
@@ -428,11 +467,6 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
         Returns:
             Generated API key
         """
-        if auth_manager.mode != DeploymentMode.LAN:
-            return {
-                "success": False,
-                "error": f"API keys are only used in LAN mode (current: {auth_manager.mode.value})",
-            }
 
         try:
             api_key = auth_manager.generate_api_key(name)
@@ -512,7 +546,7 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
         user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600
     ) -> dict[str, Any]:
         """
-        Generate JWT token for WAN mode
+        Generate JWT token for network access
 
         Args:
             user_id: User identifier
@@ -522,11 +556,6 @@ def register_auth_tools(mcp: FastMCP, db_manager: DatabaseManager, auth_manager:
         Returns:
             Generated JWT token
         """
-        if auth_manager.mode != DeploymentMode.WAN:
-            return {
-                "success": False,
-                "error": f"JWT tokens are only used in WAN mode (current: {auth_manager.mode.value})",
-            }
 
         try:
             token = auth_manager.generate_jwt_token(user_id, tenant_key, expires_in)
