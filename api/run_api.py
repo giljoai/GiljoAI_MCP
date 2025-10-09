@@ -118,10 +118,14 @@ def get_port_from_sources() -> int:
 
 
 def get_default_host() -> str:
-    """Get default host based on config mode
+    """Get default host from config or mode-based default
+
+    Priority:
+    1. services.api.host from config.yaml (user-configured adapter IP)
+    2. Mode-based default (127.0.0.1 for localhost, 0.0.0.0 for LAN/WAN)
 
     Returns:
-        Default host: 127.0.0.1 for localhost mode, 0.0.0.0 for server mode
+        Host to bind to
     """
     try:
         # Import here to avoid circular dependencies
@@ -131,17 +135,23 @@ def get_default_host() -> str:
         if config_path.exists():
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
-                mode = config.get('installation', {}).get('mode', 'localhost')
 
-                # Server mode (LAN/WAN) binds to all interfaces, localhost mode binds to loopback only
+                # FIRST: Check if user configured a specific host
+                configured_host = config.get('services', {}).get('api', {}).get('host')
+                if configured_host:
+                    logging.info(f"Using configured API host: {configured_host}")
+                    return configured_host
+
+                # FALLBACK: Use mode-based default only if not configured
+                mode = config.get('installation', {}).get('mode', 'localhost')
                 if mode in ('server', 'lan', 'wan'):
-                    logging.info(f"Detected {mode} mode - binding to 0.0.0.0 for network access")
+                    logging.info(f"No host configured, using mode-based default for {mode}: 0.0.0.0")
                     return "0.0.0.0"
                 else:
-                    logging.info(f"Detected {mode} mode - binding to 127.0.0.1 for localhost only")
+                    logging.info(f"No host configured, using mode-based default for {mode}: 127.0.0.1")
                     return "127.0.0.1"
     except Exception as e:
-        logging.warning(f"Could not detect mode from config: {e}, defaulting to localhost")
+        logging.warning(f"Could not read config: {e}, defaulting to localhost")
 
     # Safe default: localhost only
     return "127.0.0.1"
