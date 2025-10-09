@@ -5,9 +5,11 @@ Provides helper functions to map GiljoAI MCP agents to Claude Code sub-agent typ
 and generate orchestrator prompts that can spawn the appropriate sub-agents.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict
+
 from ..database import get_db_session
 from ..models import Agent, Project
+
 
 # Mapping of MCP agent roles to Claude Code agent types
 CLAUDE_CODE_AGENT_TYPES = {
@@ -66,40 +68,35 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
     """
     with get_db_session() as session:
         # Get project
-        project = session.query(Project).filter_by(
-            id=project_id,
-            tenant_key=tenant_key
-        ).first()
+        project = session.query(Project).filter_by(id=project_id, tenant_key=tenant_key).first()
 
         if not project:
             return {"error": "Project not found"}
 
         # Get all active agents for this project
-        agents = session.query(Agent).filter_by(
-            project_id=project_id,
-            tenant_key=tenant_key,
-            status="active"
-        ).all()
+        agents = session.query(Agent).filter_by(project_id=project_id, tenant_key=tenant_key, status="active").all()
 
         agent_instructions = []
         for agent in agents:
             claude_type = get_claude_code_agent_type(agent.role)
 
-            agent_instructions.append({
-                "mcp_agent_id": agent.id,
-                "mcp_agent_name": agent.name,
-                "mcp_role": agent.role,
-                "claude_code_type": claude_type,
-                "mission": agent.mission or f"Work on {project.name} as {agent.role}",
-                "context_budget": agent.meta_data.get("context_budget", 50000) if agent.meta_data else 50000
-            })
+            agent_instructions.append(
+                {
+                    "mcp_agent_id": agent.id,
+                    "mcp_agent_name": agent.name,
+                    "mcp_role": agent.role,
+                    "claude_code_type": claude_type,
+                    "mission": agent.mission or f"Work on {project.name} as {agent.role}",
+                    "context_budget": agent.meta_data.get("context_budget", 50000) if agent.meta_data else 50000,
+                }
+            )
 
         return {
             "project_id": project_id,
             "project_name": project.name,
             "project_mission": project.mission,
             "total_agents": len(agent_instructions),
-            "agents": agent_instructions
+            "agents": agent_instructions,
         }
 
 
@@ -142,7 +139,7 @@ You are coordinating a multi-agent project from GiljoAI MCP. Follow these steps:
 
 """
 
-    for i, agent in enumerate(instructions['agents'], 1):
+    for i, agent in enumerate(instructions["agents"], 1):
         prompt += f"""
 ### {i}. {agent['mcp_agent_name']} ({agent['mcp_role']})
 - **Claude Code Agent Type**: `{agent['claude_code_type']}`
@@ -186,6 +183,7 @@ def register_claude_code_tools(server):
         """
         # In real implementation, get tenant_key from context
         from ..tenant import get_current_tenant_key
+
         tenant_key = get_current_tenant_key()
 
         return generate_orchestrator_prompt(project_id, tenant_key)
@@ -205,5 +203,5 @@ def register_claude_code_tools(server):
         return {
             "mcp_role": mcp_role,
             "claude_code_type": claude_type,
-            "available_types": list(set(CLAUDE_CODE_AGENT_TYPES.values()))
+            "available_types": list(set(CLAUDE_CODE_AGENT_TYPES.values())),
         }

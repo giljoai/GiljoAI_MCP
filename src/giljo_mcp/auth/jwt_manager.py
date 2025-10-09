@@ -51,13 +51,7 @@ class JWTManager:
     ACCESS_TOKEN_EXPIRE_HOURS = 24
 
     @classmethod
-    def create_access_token(
-        cls,
-        user_id: UUID,
-        username: str,
-        role: str,
-        tenant_key: str = "default"
-    ) -> str:
+    def create_access_token(cls, user_id: UUID, username: str, role: str, tenant_key: str = "default") -> str:
         """
         Create JWT access token for authenticated user.
 
@@ -94,7 +88,7 @@ class JWTManager:
             "tenant_key": tenant_key,
             "exp": expire,  # Expiration time
             "iat": datetime.now(timezone.utc),  # Issued at
-            "type": "access"  # Token type
+            "type": "access",  # Token type
         }
         return jwt.encode(payload, cls.SECRET_KEY, algorithm=cls.ALGORITHM)
 
@@ -126,8 +120,7 @@ class JWTManager:
         """
         if not cls.SECRET_KEY:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="JWT secret key not configured on server"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="JWT secret key not configured on server"
             )
 
         try:
@@ -135,22 +128,17 @@ class JWTManager:
 
             # Verify token type (if present)
             if payload.get("type") != "access":
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token type"
-                )
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
             return payload
 
         except jwt.ExpiredSignatureError:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired. Please login again."
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired. Please login again."
             )
         except jwt.InvalidTokenError as e:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Could not validate credentials: {str(e)}"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials: {e!s}"
             )
 
     @classmethod
@@ -185,10 +173,7 @@ class JWTManager:
         payload = cls.verify_token(token)
         exp_timestamp = payload.get("exp")
         if not exp_timestamp:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token missing expiration claim"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing expiration claim")
         return datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
 
     @classmethod

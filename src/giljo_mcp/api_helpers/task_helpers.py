@@ -27,6 +27,7 @@ def get_db_manager():
     global _db_manager
     if _db_manager is None:
         import os
+
         db_url = os.getenv("DATABASE_URL")
         if not db_url:
             raise ValueError("DATABASE_URL environment variable is required")

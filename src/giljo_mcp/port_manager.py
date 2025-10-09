@@ -18,6 +18,7 @@ from typing import List, Optional
 
 import yaml
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -139,7 +140,7 @@ class PortManager:
             return False
 
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
 
             # Support both old 'server' structure and new 'services' structure
@@ -168,7 +169,7 @@ class PortManager:
                 return True
 
             # Fallback: old 'server' structure
-            elif "server" in data:
+            if "server" in data:
                 server = data["server"]
 
                 # Handle both flat and nested structures
@@ -193,9 +194,8 @@ class PortManager:
                 logger.info(f"Loaded port configuration from {self.config_path}")
                 return True
 
-            else:
-                logger.debug("No 'services' or 'server' section found in config")
-                return False
+            logger.debug("No 'services' or 'server' section found in config")
+            return False
 
         except Exception as e:
             logger.error(f"Error loading port configuration from {self.config_path}: {e}")

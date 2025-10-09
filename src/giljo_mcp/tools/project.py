@@ -24,7 +24,13 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
     """Register project management tools with the MCP server"""
 
     @mcp.tool()
-    async def create_project(name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def create_project(
+        name: str,
+        mission: str,
+        agents: Optional[list[str]] = None,
+        product_id: Optional[str] = None,
+        tenant_key: Optional[str] = None,
+    ) -> dict[str, Any]:
         """
         Create a new project with mission and optional agent sequence
 
@@ -80,7 +86,10 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 # Set as current project in tenant manager
                 tenant_manager.set_current_tenant(tenant_key)
 
-                logger.info(f"Created project '{name}' with ID {project.id}" + (f" under product {product_id}" if product_id else ""))
+                logger.info(
+                    f"Created project '{name}' with ID {project.id}"
+                    + (f" under product {product_id}" if product_id else "")
+                )
 
                 return {
                     "success": True,

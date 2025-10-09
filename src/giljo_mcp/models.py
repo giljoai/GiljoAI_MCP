@@ -5,10 +5,9 @@ All models include tenant_key for project isolation.
 Supports PostgreSQL (production).
 """
 
-from uuid import uuid4
-
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -53,13 +52,13 @@ class Product(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     meta_data = Column(JSON, default=dict)
-    
+
     # Rich configuration data (JSONB for PostgreSQL performance)
     config_data = Column(
         JSONB,
         nullable=True,
         default=dict,
-        comment="Rich project configuration: architecture, tech_stack, features, etc."
+        comment="Rich project configuration: architecture, tech_stack, features, etc.",
     )
 
     # Relationships
@@ -91,7 +90,7 @@ class Product(Base):
         if not self.config_data:
             return default
 
-        keys = field_path.split('.')
+        keys = field_path.split(".")
         value = self.config_data
 
         for key in keys:
@@ -899,45 +898,22 @@ class SetupState(Base):
         JSONB,
         default=dict,
         nullable=False,
-        comment="Nested dict of configured features: {database: true, api: {enabled: true, port: 7272}}"
+        comment="Nested dict of configured features: {database: true, api: {enabled: true, port: 7272}}",
     )
-    tools_enabled = Column(
-        JSONB,
-        default=list,
-        nullable=False,
-        comment="Array of enabled MCP tool names"
-    )
+    tools_enabled = Column(JSONB, default=list, nullable=False, comment="Array of enabled MCP tool names")
 
     # Configuration snapshot
-    config_snapshot = Column(
-        JSONB,
-        nullable=True,
-        comment="Snapshot of config.yaml at setup completion"
-    )
+    config_snapshot = Column(JSONB, nullable=True, comment="Snapshot of config.yaml at setup completion")
 
     # Validation tracking
     validation_passed = Column(Boolean, default=True, nullable=False)
-    validation_failures = Column(
-        JSONB,
-        default=list,
-        nullable=False,
-        comment="Array of validation failure messages"
-    )
-    validation_warnings = Column(
-        JSONB,
-        default=list,
-        nullable=False,
-        comment="Array of validation warning messages"
-    )
+    validation_failures = Column(JSONB, default=list, nullable=False, comment="Array of validation failure messages")
+    validation_warnings = Column(JSONB, default=list, nullable=False, comment="Array of validation warning messages")
     last_validation_at = Column(DateTime(timezone=True), nullable=True)
 
     # Installation metadata
     installer_version = Column(String(20), nullable=True)
-    install_mode = Column(
-        String(20),
-        nullable=True,
-        comment="Installation mode: localhost, server, lan, wan"
-    )
+    install_mode = Column(String(20), nullable=True, comment="Installation mode: localhost, server, lan, wan")
     install_path = Column(Text, nullable=True, comment="Installation directory path")
 
     # Timestamps
@@ -951,21 +927,20 @@ class SetupState(Base):
         # Version format constraint (semantic versioning)
         CheckConstraint(
             "setup_version IS NULL OR setup_version ~ '^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9\\.\\-]+)?$'",
-            name="ck_setup_version_format"
+            name="ck_setup_version_format",
         ),
         CheckConstraint(
             "database_version IS NULL OR database_version ~ '^[0-9]+(\\.([0-9]+|[0-9]+\\.[0-9]+))?$'",
-            name="ck_database_version_format"
+            name="ck_database_version_format",
         ),
         # Install mode constraint
         CheckConstraint(
             "install_mode IS NULL OR install_mode IN ('localhost', 'server', 'lan', 'wan')",
-            name="ck_install_mode_values"
+            name="ck_install_mode_values",
         ),
         # Completed_at must be set when completed=true
         CheckConstraint(
-            "(completed = false) OR (completed = true AND completed_at IS NOT NULL)",
-            name="ck_completed_at_required"
+            "(completed = false) OR (completed = true AND completed_at IS NOT NULL)", name="ck_completed_at_required"
         ),
         # Regular indexes
         Index("idx_setup_tenant", "tenant_key"),  # Primary lookup index
@@ -1024,12 +999,7 @@ class SetupState(Base):
         return session.query(cls).filter(cls.tenant_key == tenant_key).first()
 
     @classmethod
-    def create_or_update(
-        cls,
-        session: Session,
-        tenant_key: str,
-        **kwargs
-    ) -> "SetupState":
+    def create_or_update(cls, session: Session, tenant_key: str, **kwargs) -> "SetupState":
         """
         Create or update SetupState for a tenant.
 
@@ -1079,10 +1049,7 @@ class SetupState(Base):
             self.validation_failures = []
 
         failures = list(self.validation_failures)  # Convert to mutable list
-        failures.append({
-            "message": message,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        failures.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
         self.validation_failures = failures
         self.validation_passed = False
         self.last_validation_at = datetime.utcnow()
@@ -1098,10 +1065,7 @@ class SetupState(Base):
             self.validation_warnings = []
 
         warnings = list(self.validation_warnings)  # Convert to mutable list
-        warnings.append({
-            "message": message,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        warnings.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
         self.validation_warnings = warnings
         self.last_validation_at = datetime.utcnow()
 
@@ -1153,50 +1117,48 @@ class SetupState(Base):
 class User(Base):
     """
     User model - user accounts for authentication (LAN/WAN modes).
-    
+
     Users are the primary authentication entity in LAN/WAN deployment modes.
     Each user can have multiple API keys for different applications/contexts.
-    
+
     Multi-tenant isolation: Users belong to a tenant_key namespace.
     """
+
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
-    
+
     # Credentials
     username = Column(String(64), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=True, index=True)
     password_hash = Column(String(255), nullable=False)
-    
+
     # Profile
     full_name = Column(String(255), nullable=True)
-    
+
     # Authorization
     role = Column(String(32), nullable=False, default="developer")
     # Roles: "admin", "developer", "viewer"
-    
+
     # Status
     is_active = Column(Boolean, default=True, nullable=False)
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
-    
+
     __table_args__ = (
         Index("idx_user_tenant", "tenant_key"),
         Index("idx_user_username", "username"),
         Index("idx_user_email", "email"),
         Index("idx_user_active", "is_active"),
-        CheckConstraint(
-            "role IN ('admin', 'developer', 'viewer')",
-            name="ck_user_role"
-        ),
+        CheckConstraint("role IN ('admin', 'developer', 'viewer')", name="ck_user_role"),
     )
-    
+
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username}, role={self.role})>"
 
@@ -1204,44 +1166,45 @@ class User(Base):
 class APIKey(Base):
     """
     API Key model - personal API keys for MCP tool authentication.
-    
+
     API keys enable programmatic access to the MCP server in LAN/WAN modes.
     Each key is scoped to a user and can have specific permissions.
-    
+
     Security:
     - Keys are hashed using bcrypt before storage (never stored in plaintext)
     - key_prefix stores first 12 chars for display purposes only
     - Actual key is only returned once at creation time
-    
+
     Multi-tenant isolation: API keys inherit tenant_key from their user.
     """
+
     __tablename__ = "api_keys"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
-    
+
     # Foreign key to user
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    
+
     # Key details
     name = Column(String(255), nullable=False)  # Description/label
     key_hash = Column(String(255), nullable=False, unique=True, index=True)  # Hashed API key (bcrypt)
     key_prefix = Column(String(16), nullable=False)  # First 12 chars for display (e.g., "gk_abc12...")
-    
+
     # Permissions (JSON array)
     permissions = Column(JSONB, nullable=False, default=list)
-    
+
     # Status
     is_active = Column(Boolean, default=True, nullable=False)
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_used = Column(DateTime(timezone=True), nullable=True)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Relationships
     user = relationship("User", back_populates="api_keys")
-    
+
     __table_args__ = (
         Index("idx_apikey_tenant", "tenant_key"),
         Index("idx_apikey_user", "user_id"),
@@ -1251,14 +1214,13 @@ class APIKey(Base):
         Index("idx_apikey_permissions_gin", "permissions", postgresql_using="gin"),
         # Ensure revoked_at is set when is_active=false
         CheckConstraint(
-            "(is_active = true AND revoked_at IS NULL) OR (is_active = false)",
-            name="ck_apikey_revoked_consistency"
+            "(is_active = true AND revoked_at IS NULL) OR (is_active = false)", name="ck_apikey_revoked_consistency"
         ),
     )
-    
+
     def __repr__(self):
         return f"<APIKey(id={self.id}, name={self.name}, user_id={self.user_id}, active={self.is_active})>"
-    
+
     @property
     def display_key(self) -> str:
         """Get display-friendly version of key (prefix only)"""

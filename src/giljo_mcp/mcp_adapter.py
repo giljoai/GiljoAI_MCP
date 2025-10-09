@@ -23,12 +23,14 @@ from urllib.parse import urljoin
 
 import httpx
 
+
 # Add src to path
 src_dir = Path(__file__).parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 from giljo_mcp.config_manager import get_config
+
 
 # Configure logging to file only (not stderr which would interfere with stdio)
 log_dir = Path.home() / ".giljo_mcp" / "logs"
@@ -38,7 +40,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler(log_dir / "mcp_adapter.log"),
-    ]
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -89,12 +91,7 @@ class MCPAdapter:
             headers["X-API-Key"] = self.api_key
 
         try:
-            response = await self.client.request(
-                method=method,
-                url=url,
-                headers=headers,
-                **kwargs
-            )
+            response = await self.client.request(method=method, url=url, headers=headers, **kwargs)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
@@ -126,8 +123,8 @@ class MCPAdapter:
                     "tool": tool_name,
                     "arguments": arguments,
                     "tenant_key": self.tenant_key,
-                    "project_id": self.project_id
-                }
+                    "project_id": self.project_id,
+                },
             )
             if result.get("success") and result.get("result"):
                 self.tenant_key = result["result"].get("tenant_key")
@@ -135,15 +132,10 @@ class MCPAdapter:
                 logger.info(f"Set tenant context: {self.tenant_key}, project: {self.project_id}")
             return result
 
-        elif tool_name == "switch_project":
+        if tool_name == "switch_project":
             # Update project context
             result = await self.call_api(
-                "/mcp/tools/execute",
-                json={
-                    "tool": tool_name,
-                    "arguments": arguments,
-                    "tenant_key": self.tenant_key
-                }
+                "/mcp/tools/execute", json={"tool": tool_name, "arguments": arguments, "tenant_key": self.tenant_key}
             )
             if result.get("success") and result.get("result"):
                 self.project_id = result["result"].get("project_id")
@@ -151,17 +143,16 @@ class MCPAdapter:
                 logger.info(f"Switched to project: {self.project_id}")
             return result
 
-        else:
-            # Standard tool execution
-            return await self.call_api(
-                "/mcp/tools/execute",
-                json={
-                    "tool": tool_name,
-                    "arguments": arguments,
-                    "tenant_key": self.tenant_key,
-                    "project_id": self.project_id
-                }
-            )
+        # Standard tool execution
+        return await self.call_api(
+            "/mcp/tools/execute",
+            json={
+                "tool": tool_name,
+                "arguments": arguments,
+                "tenant_key": self.tenant_key,
+                "project_id": self.project_id,
+            },
+        )
 
     async def handle_list_tools(self) -> Dict[str, Any]:
         """Get list of available tools from the server"""
@@ -191,17 +182,12 @@ class MCPAdapter:
                     "id": msg_id,
                     "result": {
                         "protocolVersion": "2025-06-18",
-                        "serverInfo": {
-                            "name": "GiljoAI MCP Adapter",
-                            "version": "2.0.0"
-                        },
-                        "capabilities": {
-                            "tools": {}
-                        }
-                    }
+                        "serverInfo": {"name": "GiljoAI MCP Adapter", "version": "2.0.0"},
+                        "capabilities": {"tools": {}},
+                    },
                 }
 
-            elif method == "tools/list":
+            if method == "tools/list":
                 # List available tools
                 tools_data = await self.handle_list_tools()
                 tools_list = []
@@ -209,28 +195,24 @@ class MCPAdapter:
                 # Flatten the categorized tools into MCP format
                 for category, tools in tools_data.get("tools", {}).items():
                     for tool in tools:
-                        tools_list.append({
-                            "name": tool["name"],
-                            "description": tool["description"],
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    name: {"type": "string", "description": desc}
-                                    for name, desc in tool.get("arguments", {}).items()
+                        tools_list.append(
+                            {
+                                "name": tool["name"],
+                                "description": tool["description"],
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        name: {"type": "string", "description": desc}
+                                        for name, desc in tool.get("arguments", {}).items()
+                                    },
+                                    "required": list(tool.get("arguments", {}).keys()),
                                 },
-                                "required": list(tool.get("arguments", {}).keys())
                             }
-                        })
+                        )
 
-                return {
-                    "jsonrpc": "2.0",
-                    "id": msg_id,
-                    "result": {
-                        "tools": tools_list
-                    }
-                }
+                return {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": tools_list}}
 
-            elif method == "tools/call":
+            if method == "tools/call":
                 # Execute a tool
                 tool_name = message.get("params", {}).get("name")
                 arguments = message.get("params", {}).get("arguments", {})
@@ -241,47 +223,21 @@ class MCPAdapter:
                     return {
                         "jsonrpc": "2.0",
                         "id": msg_id,
-                        "result": {
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": str(result.get("result", {}))
-                                }
-                            ]
-                        }
+                        "result": {"content": [{"type": "text", "text": str(result.get("result", {}))}]},
                     }
-                else:
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": msg_id,
-                        "error": {
-                            "code": -32603,
-                            "message": result.get("error", "Tool execution failed")
-                        }
-                    }
-
-            else:
-                # Unknown method
-                logger.warning(f"Unknown method: {method}")
                 return {
                     "jsonrpc": "2.0",
                     "id": msg_id,
-                    "error": {
-                        "code": -32601,
-                        "message": f"Method not found: {method}"
-                    }
+                    "error": {"code": -32603, "message": result.get("error", "Tool execution failed")},
                 }
+
+            # Unknown method
+            logger.warning(f"Unknown method: {method}")
+            return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}
 
         except Exception as e:
             logger.exception(f"Error handling message: {e}")
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "error": {
-                    "code": -32603,
-                    "message": str(e)
-                }
-            }
+            return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32603, "message": str(e)}}
 
     async def run_stdio(self):
         """
@@ -300,8 +256,8 @@ class MCPAdapter:
                 "jsonrpc": "2.0",
                 "error": {
                     "code": -32603,
-                    "message": f"Cannot connect to GiljoAI server at {self.server_url}. Is it running?"
-                }
+                    "message": f"Cannot connect to GiljoAI server at {self.server_url}. Is it running?",
+                },
             }
             print(json.dumps(error_msg), flush=True)
             return
@@ -334,13 +290,7 @@ class MCPAdapter:
 
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON received: {e}")
-                    error_response = {
-                        "jsonrpc": "2.0",
-                        "error": {
-                            "code": -32700,
-                            "message": "Invalid JSON"
-                        }
-                    }
+                    error_response = {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Invalid JSON"}}
                     print(json.dumps(error_response), flush=True)
 
         except KeyboardInterrupt:
@@ -368,11 +318,11 @@ async def main():
         # Try to load config if available (but don't fail if it's not valid)
         try:
             config = get_config()
-            if hasattr(config, 'server'):
+            if hasattr(config, "server"):
                 api_port = getattr(config.server, "port", None) or getattr(config.server, "api_port", api_port)
                 # Get API key from config if not in environment
-                if not api_key and hasattr(config.server, 'mode'):
-                    mode = getattr(config.server.mode, 'value', 'LOCAL')
+                if not api_key and hasattr(config.server, "mode"):
+                    mode = getattr(config.server.mode, "value", "LOCAL")
                     if mode != "LOCAL":
                         logger.warning("No API key provided for non-LOCAL mode")
         except Exception as e:

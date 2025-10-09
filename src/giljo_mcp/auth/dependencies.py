@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 async def get_db_session():
     """Get database session dependency"""
     import os
+
     from giljo_mcp.database import DatabaseManager
 
     db_url = os.getenv("DATABASE_URL")
@@ -61,7 +62,7 @@ async def get_current_user(
     request: Request,
     access_token: Optional[str] = Cookie(None),
     x_api_key: Optional[str] = Header(None),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> Optional[User]:
     """
     Get current user from JWT cookie or API key header.
@@ -105,6 +106,7 @@ async def get_current_user(
 
             # Query user from database
             from sqlalchemy import select
+
             stmt = select(User).where(User.id == user_id, User.is_active == True)
             result = await db.execute(stmt)
             user = result.scalar_one_or_none()
@@ -112,8 +114,7 @@ async def get_current_user(
             if user:
                 logger.debug(f"Authenticated via JWT: {user.username}")
                 return user
-            else:
-                logger.warning(f"JWT valid but user not found: {user_id}")
+            logger.warning(f"JWT valid but user not found: {user_id}")
         except HTTPException:
             # Token verification failed - continue to API key check
             logger.debug("JWT verification failed, trying API key")
@@ -125,6 +126,7 @@ async def get_current_user(
         try:
             # Query all active API keys (optimized with index)
             from sqlalchemy import select
+
             stmt = select(APIKey).where(APIKey.is_active == True)
             result = await db.execute(stmt)
             api_keys = result.scalars().all()
@@ -144,11 +146,10 @@ async def get_current_user(
                     if user and user.is_active:
                         logger.debug(f"Authenticated via API key: {user.username} ({key_record.name})")
                         return user
-                    else:
-                        logger.warning(f"API key valid but user inactive: {key_record.user_id}")
-                        break
+                    logger.warning(f"API key valid but user inactive: {key_record.user_id}")
+                    break
 
-            logger.warning(f"Invalid API key provided")
+            logger.warning("Invalid API key provided")
         except Exception as e:
             logger.error(f"API key authentication error: {e}")
 
@@ -156,13 +157,11 @@ async def get_current_user(
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated. Please login or provide a valid API key.",
-        headers={"WWW-Authenticate": "Bearer"}
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 
-async def get_current_active_user(
-    current_user: Optional[User] = Depends(get_current_user)
-) -> User:
+async def get_current_active_user(current_user: Optional[User] = Depends(get_current_user)) -> User:
     """
     Get current user and verify they are active.
 
@@ -186,21 +185,16 @@ async def get_current_active_user(
     if current_user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="This endpoint requires authentication (not available in localhost mode)"
+            detail="This endpoint requires authentication (not available in localhost mode)",
         )
 
     if not current_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is inactive"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is inactive")
 
     return current_user
 
 
-async def require_admin(
-    current_user: User = Depends(get_current_active_user)
-) -> User:
+async def require_admin(current_user: User = Depends(get_current_active_user)) -> User:
     """
     Require admin role for endpoint access.
 
@@ -223,8 +217,7 @@ async def require_admin(
     """
     if current_user.role != "admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required. Your role: " + current_user.role
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required. Your role: " + current_user.role
         )
     return current_user
 
@@ -233,7 +226,7 @@ async def get_current_user_optional(
     request: Request,
     access_token: Optional[str] = Cookie(None),
     x_api_key: Optional[str] = Header(None),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ) -> Optional[User]:
     """
     Get current user if authenticated, otherwise return None.

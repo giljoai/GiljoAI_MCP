@@ -27,7 +27,14 @@ class ToolAccessor:
 
     # Project Tools
 
-    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def create_project(
+        self,
+        name: str,
+        mission: str,
+        agents: Optional[list[str]] = None,
+        product_id: Optional[str] = None,
+        tenant_key: Optional[str] = None,
+    ) -> dict[str, Any]:
         """Create a new project"""
         try:
             async with self.db_manager.get_session_async() as session:
@@ -149,7 +156,7 @@ class ToolAccessor:
                         "context_used": project.context_used,
                         "created_at": project.created_at.isoformat() if project.created_at else None,
                         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                    }
+                    },
                 }
 
         except Exception as e:
@@ -177,8 +184,7 @@ class ToolAccessor:
 
                 # Create new session if needed
                 session_query = select(SessionModel).where(
-                    SessionModel.project_id == project.id,
-                    SessionModel.status == "active"
+                    SessionModel.project_id == project.id, SessionModel.status == "active"
                 )
                 session_result = await db_session.execute(session_query)
                 active_session = session_result.scalar_one_or_none()
@@ -485,15 +491,17 @@ class ToolAccessor:
 
                 agent_list = []
                 for agent in agents:
-                    agent_list.append({
-                        "id": str(agent.id),
-                        "name": agent.name,
-                        "role": agent.role,
-                        "status": agent.status,
-                        "context_used": agent.context_used,
-                        "mission": agent.mission,
-                        "created_at": agent.created_at.isoformat() if agent.created_at else None,
-                    })
+                    agent_list.append(
+                        {
+                            "id": str(agent.id),
+                            "name": agent.name,
+                            "role": agent.role,
+                            "status": agent.status,
+                            "context_used": agent.context_used,
+                            "mission": agent.mission,
+                            "created_at": agent.created_at.isoformat() if agent.created_at else None,
+                        }
+                    )
 
                 return {"success": True, "agents": agent_list, "count": len(agent_list)}
 
@@ -522,10 +530,7 @@ class ToolAccessor:
                     return {"success": False, "error": "Project not found"}
 
                 # Find agent
-                agent_query = select(Agent).where(
-                    Agent.project_id == project.id,
-                    Agent.name == agent_name
-                )
+                agent_query = select(Agent).where(Agent.project_id == project.id, Agent.name == agent_name)
                 agent_result = await session.execute(agent_query)
                 agent = agent_result.scalar_one_or_none()
 
@@ -539,11 +544,7 @@ class ToolAccessor:
 
                 await session.commit()
 
-                return {
-                    "success": True,
-                    "agent_name": agent_name,
-                    "updated_fields": list(kwargs.keys())
-                }
+                return {"success": True, "agent_name": agent_name, "updated_fields": list(kwargs.keys())}
 
         except Exception as e:
             logger.exception(f"Failed to update agent: {e}")
@@ -770,16 +771,18 @@ class ToolAccessor:
 
                 message_list = []
                 for msg in messages:
-                    message_list.append({
-                        "id": str(msg.id),
-                        "from_agent": msg.from_agent,
-                        "to_agent": msg.to_agent,
-                        "type": msg.type,
-                        "content": msg.content,
-                        "status": msg.status,
-                        "priority": msg.priority,
-                        "created_at": msg.created_at.isoformat() if msg.created_at else None,
-                    })
+                    message_list.append(
+                        {
+                            "id": str(msg.id),
+                            "from_agent": msg.from_agent,
+                            "to_agent": msg.to_agent,
+                            "type": msg.type,
+                            "content": msg.content,
+                            "status": msg.status,
+                            "priority": msg.priority,
+                            "created_at": msg.created_at.isoformat() if msg.created_at else None,
+                        }
+                    )
 
                 return {"success": True, "messages": message_list, "count": len(message_list)}
 
@@ -835,7 +838,9 @@ class ToolAccessor:
             logger.exception(f"Failed to log task: {e}")
             return {"success": False, "error": str(e)}
 
-    async def create_task(self, title: str, description: str, priority: str = "medium", assigned_to: Optional[str] = None) -> dict[str, Any]:
+    async def create_task(
+        self, title: str, description: str, priority: str = "medium", assigned_to: Optional[str] = None
+    ) -> dict[str, Any]:
         """Create a new task"""
         return await self.log_task(description, category=title, priority=priority)
 
@@ -865,13 +870,15 @@ class ToolAccessor:
 
                 task_list = []
                 for task in tasks:
-                    task_list.append({
-                        "id": str(task.id),
-                        "description": task.description,
-                        "status": task.status,
-                        "priority": task.priority,
-                        "created_at": task.created_at.isoformat() if task.created_at else None,
-                    })
+                    task_list.append(
+                        {
+                            "id": str(task.id),
+                            "description": task.description,
+                            "status": task.status,
+                            "priority": task.priority,
+                            "created_at": task.created_at.isoformat() if task.created_at else None,
+                        }
+                    )
 
                 return {"success": True, "tasks": task_list, "count": len(task_list)}
 

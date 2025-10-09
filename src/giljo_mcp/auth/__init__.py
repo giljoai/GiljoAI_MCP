@@ -14,24 +14,25 @@ Components:
 """
 
 # Import from the auth/ subdirectory modules
-from .jwt_manager import JWTManager
-from .dependencies import (
-    get_current_user,
-    get_current_active_user,
-    get_current_user_optional,
-    require_admin,
-    get_db_session
-)
-
 # Import AuthManager from the legacy auth module (renamed from auth.py to auth_legacy.py)
 from giljo_mcp.auth_legacy import AuthManager
+
+from .dependencies import (
+    get_current_active_user,
+    get_current_user,
+    get_current_user_optional,
+    get_db_session,
+    require_admin,
+)
+from .jwt_manager import JWTManager
+
 
 __all__ = [
     "AuthManager",  # Legacy
     "JWTManager",
-    "get_current_user",
     "get_current_active_user",
+    "get_current_user",
     "get_current_user_optional",
+    "get_db_session",
     "require_admin",
-    "get_db_session"
 ]
