@@ -1,0 +1,56 @@
+{
+  "total_scenarios": 5,
+  "passed": 3,
+  "failed": 2,
+  "duration_seconds": 0.29,
+  "scenarios": {
+    "scenario_1_orchestrator_full_context": {
+      "result": "PASS",
+      "fields_delivered": 14,
+      "expected_fields": 14,
+      "estimated_tokens": 620,
+      "reduction_percent": 0,
+      "fields": [
+        "stack_info",
+        "key_features",
+        "project_name",
+        "api_endpoints",
+        "database_schema",
+        "repository_info",
+        "coding_standards",
+        "deployment_modes",
+        "testing_strategy",
+        "future_enhancements",
+        "performance_targets",
+        "architecture_overview",
+        "security_requirements",
+        "monitoring_and_logging"
+      ]
+    },
+    "scenario_2_worker_filtered_context": {
+      "result": "FAIL",
+      "error": "Expected 9 fields, got 1"
+    },
+    "scenario_3_specialized_minimal_context": {
+      "result": "FAIL",
+      "error": "Expected 5-6 fields, got 0"
+    },
+    "scenario_4_multi_tenant_isolation": {
+      "result": "PASS",
+      "tenant_a_products": 1,
+      "tenant_b_products": 1,
+      "isolation_verified": true,
+      "cross_tenant_leakage": false
+    },
+    "scenario_5_gin_index_performance": {
+      "result": "PASS",
+      "queries_executed": 10,
+      "avg_time_ms": 0.0,
+      "min_time_ms": 0.0,
+      "max_time_ms": 0.0,
+      "p95_time_ms": 0.0,
+      "target_met": true,
+      "target_ms": 100
+    }
+  }
+}
