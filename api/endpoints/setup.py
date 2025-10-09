@@ -24,12 +24,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class NetworkMode(str, Enum):
-    """Valid network deployment modes"""
+class DeploymentContext(str, Enum):
+    """
+    Deployment context - INFORMATIONAL ONLY.
 
-    LOCALHOST = "localhost"
-    LAN = "lan"
-    WAN = "wan"
+    In v3.0, this is purely metadata. Server always binds to 0.0.0.0,
+    with firewall controlling access. No behavioral differences.
+    """
+
+    LOCALHOST = "localhost"  # Developer workstation
+    LAN = "lan"  # Team network
+    WAN = "wan"  # Internet access
 
 
 class LANConfig(BaseModel):
@@ -50,20 +55,23 @@ class SetupCompleteRequest(BaseModel):
     tools_attached: list[str] = Field(
         default_factory=list, description="List of MCP tools that have been attached (e.g., ['claude-code'])"
     )
-    network_mode: NetworkMode = Field(..., description="Network deployment mode (localhost, lan, or wan)")
+    deployment_context: DeploymentContext = Field(
+        DeploymentContext.LOCALHOST,
+        description="Deployment context (metadata only - doesn't affect server behavior in v3.0)",
+    )
     serena_enabled: bool = Field(False, description="Whether Serena MCP instructions are enabled")
     lan_config: Optional[LANConfig] = Field(None, description="LAN-specific configuration (optional)")
 
-    @field_validator("network_mode")
+    @field_validator("deployment_context")
     @classmethod
-    def validate_network_mode(cls, v):
-        """Ensure network_mode is valid"""
+    def validate_deployment_context(cls, v):
+        """Ensure deployment_context is valid"""
         if isinstance(v, str):
             try:
-                return NetworkMode(v)
+                return DeploymentContext(v)
             except ValueError:
-                valid_modes = [mode.value for mode in NetworkMode]
-                raise ValueError(f"network_mode must be one of: {valid_modes}")
+                valid_contexts = [ctx.value for ctx in DeploymentContext]
+                raise ValueError(f"deployment_context must be one of: {valid_contexts}")
         return v
 
 

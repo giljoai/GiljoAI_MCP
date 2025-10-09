@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         logger.info("Initializing configuration...")
         state.config = get_config()  # Use the singleton getter
         logger.info(f"Configuration loaded successfully")
-        logger.debug(f"Config mode: {state.config.mode if hasattr(state.config, 'mode') else 'unknown'}")
+        # v3.0: DeploymentMode removed - server always binds 0.0.0.0, firewall controls access
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}", exc_info=True)
         raise

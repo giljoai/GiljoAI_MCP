@@ -62,7 +62,7 @@ try:
     from giljo_mcp.config_manager import get_config
     config = get_config()
     print(f"   ✅ Config loaded successfully")
-    print(f"   Mode: {config.mode if hasattr(config, 'mode') else 'unknown'}")
+    print(f"   v3.0: DeploymentMode removed (server always binds 0.0.0.0)")
 
     if config.database:
         print(f"   Database: {config.database.type}")
