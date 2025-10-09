@@ -1,669 +1,1056 @@
-# GiljoAI MCP v3.0 Migration Guide
+# Migration Guide: v2.x to v3.0
 
-**Version:** v3.0.0
-**Status:** DRAFT
-**Date:** 2025-10-09
-**Target Audience:** Users upgrading from v2.x to v3.0
+**From**: GiljoAI MCP v2.x (any 2.x release)
+**To**: GiljoAI MCP v3.0.0
+**Migration Time**: 30-60 minutes
+**Difficulty**: Medium
+**Risk Level**: Low (rollback available)
 
----
+## Executive Summary
 
-## Overview
+GiljoAI MCP v3.0.0 represents a major architectural shift from a three-mode deployment system (LOCAL/LAN/WAN) to a unified single-product architecture. This migration is **required** for all v2.x users and introduces **breaking changes** that necessitate configuration updates and firewall reconfiguration.
 
-GiljoAI MCP v3.0 represents a significant architectural simplification, consolidating the three-mode system (LOCAL/LAN/WAN) into a unified single-product architecture with firewall-based access control and automatic localhost authentication.
+### What's Changing
 
-**Key Changes:**
-- Deployment modes removed (LOCAL/LAN/WAN → unified architecture)
-- Auto-login for localhost connections
-- Firewall-based network access control
-- Simplified configuration
-- Automatic configuration migration
+**Removed**:
+- DeploymentMode enum (LOCAL/LAN/WAN modes)
+- Mode-based network binding
+- Mode-based authentication toggling
+- `installation.mode` configuration field
 
-**Impact:** This is a **non-breaking upgrade** with automatic configuration migration. Your existing v2.x installation will continue to work, with deprecation warnings guiding you to the new approach.
+**New**:
+- Unified network binding (always `0.0.0.0`)
+- Auto-login for localhost clients (127.0.0.1, ::1)
+- Firewall-controlled access (replaces mode-based binding)
+- Simplified configuration structure
 
----
+### Why This Matters
 
-## What Changed in v3.0
+The v2.x architecture maintained three separate deployment modes with 87% code duplication. v3.0 consolidates this into a single, unified architecture where:
+- The application always binds to all interfaces
+- Your operating system firewall controls who can access it
+- Authentication is always enabled (but auto-grants for localhost)
 
-### 1. Unified Architecture
-
-**Before (v2.x):** Three separate deployment modes
-```
-LOCAL Mode:  127.0.0.1 binding, no auth
-LAN Mode:    0.0.0.0 binding, JWT auth
-WAN Mode:    0.0.0.0 binding, JWT auth + TLS
-```
-
-**After (v3.0):** Single unified architecture
-```
-Unified:     0.0.0.0 binding, auto-login for localhost + JWT for network
-             Firewall controls external access
-```
-
-### 2. Authentication Changes
-
-**Before (v2.x):**
-- LOCAL mode: No authentication
-- LAN mode: JWT + API keys required
-- WAN mode: JWT + API keys + TLS required
-
-**After (v3.0):**
-- Localhost (127.0.0.1): Auto-login (zero friction)
-- Network access: JWT + API keys required
-- TLS: Configured via reverse proxy (recommended for internet)
-
-### 3. Configuration Format
-
-**Before (v2.x config.yaml):**
-```yaml
-installation:
-  mode: local  # or lan, wan
-
-services:
-  api:
-    host: 127.0.0.1  # Changes based on mode
-```
-
-**After (v3.0 config.yaml):**
-```yaml
-installation:
-  version: "3.0.0"
-  deployment_context: "localhost"  # Metadata only
-
-services:
-  api:
-    host: 0.0.0.0  # Always listens on all interfaces
-```
-
-### 4. Security Model
-
-**Before (v2.x):**
-- Security enforced at application layer
-- Mode selection determines authentication
-- Network binding varies by mode
-
-**After (v3.0):**
-- Security enforced at multiple layers (defense in depth)
-- OS firewall blocks external access by default
-- Application authenticates network clients
-- Auto-login for localhost (trusted environment)
+This provides better security (defense in depth), simpler maintenance, and consistent behavior across all deployment contexts.
 
 ---
 
-## Upgrade Process
+## Pre-Migration Checklist
 
-### Option 1: Automatic Migration (Recommended)
+Before beginning migration, complete these steps:
 
-The v3.0 system automatically migrates v2.x configurations on startup.
+- [ ] **Backup your database**
+  ```bash
+  pg_dump -U postgres giljo_mcp > giljo_mcp_backup_$(date +%Y%m%d).sql
+  ```
 
-**Steps:**
-1. **Backup your configuration**
-   ```bash
-   cp ~/.giljo-mcp/config.yaml ~/.giljo-mcp/config.yaml.backup
-   ```
+- [ ] **Export current configuration**
+  ```bash
+  cp config.yaml config.yaml.v2_backup
+  cp .env .env.v2_backup
+  ```
 
-2. **Update to v3.0**
-   ```bash
-   git pull origin master
-   pip install --upgrade giljo-mcp
-   ```
+- [ ] **Document custom modifications**
+  - List any custom code changes
+  - Note any non-standard configurations
+  - Record any third-party integrations
 
-3. **Start the server**
-   ```bash
-   giljo-mcp start
-   ```
+- [ ] **Test on staging environment**
+  - If possible, test migration on non-production system first
+  - Validate rollback procedures work
 
-4. **Review deprecation warnings**
-   ```
-   WARNING: Config field 'installation.mode: local' is deprecated
-            in v3.0 and will be ignored. Network access is now
-            controlled by your firewall.
-   ```
+- [ ] **Review breaking changes** (see below)
 
-5. **Configure firewall (if needed)**
-   - See [Firewall Configuration](#firewall-configuration) section
-
-**That's it!** Your v2.x config will work with deprecation warnings.
-
----
-
-### Option 2: Manual Migration (Advanced)
-
-For users who want to clean up their configuration:
-
-**Steps:**
-1. **Backup configuration**
-   ```bash
-   cp ~/.giljo-mcp/config.yaml ~/.giljo-mcp/config.yaml.v2.backup
-   ```
-
-2. **Run migration script** (available after Phase 1 Step 8 complete)
-   ```bash
-   python scripts/migrate_to_v3.py --config ~/.giljo-mcp/config.yaml
-   ```
-
-3. **Review migration report**
-   ```
-   ✅ Migrated config.yaml from v2.x to v3.0
-   📝 Changes made:
-      - Removed: installation.mode
-      - Added: installation.deployment_context
-      - Updated: services.api.host = 0.0.0.0
-   ⚠️  Action required:
-      - Configure firewall to allow/block network access
-   ```
-
-4. **Update environment variables** (if any)
-   ```bash
-   # Remove deprecated env vars from .env
-   # GILJO_MCP_MODE=local  # ← Remove this line
-   ```
-
-5. **Configure firewall**
-   - See [Firewall Configuration](#firewall-configuration) section
+- [ ] **Schedule maintenance window**
+  - Migration requires 30-60 minutes
+  - Services will be offline during migration
+  - Plan for rollback time if needed
 
 ---
 
 ## Breaking Changes
 
-### Configuration API
+### 1. DeploymentMode Enum Removed
 
-**Removed:**
-- `DeploymentMode` enum
-- `config.installation.mode` field
-- `ConfigManager._detect_mode()` method
-- `ConfigManager._apply_mode_settings()` method
-
-**Changed:**
-- `services.api.host` always set to `0.0.0.0` (was mode-dependent)
-
-**Added:**
-- `config.installation.deployment_context` (metadata field)
-- `config.installation.version` (v3.0.0)
-
-### Python API
-
-**Removed:**
+**v2.x Code**:
 ```python
-# v2.x - NO LONGER VALID
 from giljo_mcp.config_manager import DeploymentMode
 
-auth = AuthManager(db=session, mode=DeploymentMode.LOCAL)
-if auth.is_enabled():
-    await auth.authenticate_request(request)
+if config.deployment.mode == DeploymentMode.LOCAL:
+    # localhost-specific logic
+elif config.deployment.mode == DeploymentMode.LAN:
+    # LAN-specific logic
 ```
 
-**New:**
+**v3.0 Code**:
 ```python
-# v3.0 - CORRECT
-auth = AuthManager()  # No mode parameter
-await auth.authenticate_request(request)  # Always authenticates
-# Auto-login handled by middleware for localhost clients
+# DeploymentMode no longer exists
+# Use feature detection instead
+
+from giljo_mcp.config_manager import config
+
+# Check if request is from localhost
+if request.client.host in ("127.0.0.1", "::1"):
+    # Auto-authenticated localhost client
+    pass
+else:
+    # Network client - requires authentication
+    pass
 ```
 
-### Environment Variables
+**Impact**: Code importing `DeploymentMode` will fail with `ImportError`
 
-**Deprecated:**
-- `GILJO_MCP_MODE` - Ignored with warning
-
-**Removed:**
-- Mode-specific environment variables
-
-**No Changes:**
-- Database connection variables
-- API configuration variables
-- Feature flags
-
-### Command-Line Interface
-
-**Removed:**
-- `giljo-mcp install --mode <mode>` flag
-
-**Changed:**
-- `giljo-mcp start` - No longer accepts `--mode` flag
-
-**Added:**
-- Firewall configuration commands (in installer)
+**Migration**: Remove mode-checking logic, use IP-based detection or feature flags
 
 ---
 
-## Firewall Configuration
+### 2. Network Binding Always `0.0.0.0`
 
-v3.0 uses OS-level firewall rules to control network access instead of application-level binding.
+**v2.x Behavior**:
+- LOCAL mode: Binds to `127.0.0.1` (localhost only)
+- LAN mode: Binds to `0.0.0.0` (all interfaces)
+- WAN mode: Binds to `127.0.0.1` (expects reverse proxy)
 
-### Why Firewall-Based?
+**v3.0 Behavior**:
+- Always binds to `0.0.0.0` (all interfaces)
+- Firewall controls who can connect
+- No mode-based binding changes
 
-**Benefits:**
-- Defense in depth (OS layer + app layer)
-- Standard security practice
-- More reliable than binding
-- Centralized access control
-- Better logging and auditing
+**Impact**:
+- Services now listen on all network interfaces by default
+- **CRITICAL**: Without firewall configuration, services are network-accessible
 
-### Default Configuration
-
-**After fresh v3.0 install:**
-- Firewall blocks external access (localhost only)
-- Application binds to 0.0.0.0 (ready for network)
-- Localhost clients auto-authenticate
-- Network clients see connection refused
-
-### Allow LAN Access
-
-**Windows (PowerShell as Administrator):**
-```powershell
-# Allow LAN access on ports 7272 (API) and 7274 (frontend)
-New-NetFirewallRule -DisplayName "GiljoAI MCP - LAN Access" `
-  -Direction Inbound `
-  -Action Allow `
-  -Protocol TCP `
-  -LocalPort 7272,7274 `
-  -RemoteAddress LocalSubnet
-```
-
-**Linux (Ubuntu/Debian with UFW):**
-```bash
-# Allow LAN access
-sudo ufw allow from 192.168.0.0/16 to any port 7272 proto tcp
-sudo ufw allow from 192.168.0.0/16 to any port 7274 proto tcp
-sudo ufw reload
-```
-
-**macOS (Application Firewall):**
-```bash
-# Allow GiljoAI MCP through firewall
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /path/to/python
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /path/to/python
-```
-
-### Allow Internet Access (WAN)
-
-**Requirements:**
-- Reverse proxy (nginx, caddy, traefik)
-- TLS certificate (Let's Encrypt recommended)
-- Rate limiting
-- DDoS protection
-
-**Not recommended to expose directly to internet.**
-
-See `docs/FIREWALL_CONFIGURATION.md` for detailed instructions.
+**Migration**:
+1. Application binding requires no changes (automatically `0.0.0.0`)
+2. **MUST** configure firewall to control access (see Firewall Configuration section)
 
 ---
 
-## Localhost Auto-Login
+### 3. Auto-Login for Localhost Clients
 
-### How It Works
+**v2.x Behavior**:
+- LOCAL mode: No authentication required
+- LAN mode: Authentication required for all clients
+- WAN mode: Authentication required for all clients
 
-v3.0 introduces automatic authentication for localhost connections:
+**v3.0 Behavior**:
+- Authentication always enabled
+- Localhost clients (127.0.0.1, ::1) auto-authenticated as "localhost" user
+- Network clients require JWT or API key authentication
 
-```
-1. Request arrives from 127.0.0.1
-2. AutoLoginMiddleware detects localhost IP
-3. Middleware authenticates as "localhost" user
-4. Request proceeds with full authentication
-5. No login screen shown to user
-```
+**Impact**:
+- Localhost users see instant access (no login screen) - **same as v2.x LOCAL mode**
+- Network users must authenticate - **same as v2.x LAN/WAN modes**
+- Database always includes user management tables (no schema differences by mode)
 
-### Security
+**Migration**: No code changes needed - behavior is backward-compatible
 
-**Is auto-login secure?**
-Yes, because:
-- IP detection happens at TCP layer (cannot be spoofed)
-- Firewall blocks external access
-- Network clients still require credentials
-- Localhost access implies physical machine access
+---
 
-**Can I disable auto-login?**
-Not recommended, but possible:
+### 4. Configuration File Structure Changed
+
+**v2.x config.yaml**:
 ```yaml
-# config.yaml
-features:
-  auto_login_localhost: false  # Force login even for localhost
+installation:
+  mode: local  # or 'lan', 'wan'
+
+server:
+  api_host: 127.0.0.1  # Changes based on mode
+  api_port: 7272
+
+security:
+  authentication_enabled: false  # Disabled in LOCAL mode
 ```
 
-### User Experience
+**v3.0 config.yaml**:
+```yaml
+installation:
+  version: 3.0.0
+  deployment_context: localhost  # Descriptive only, not functional
 
-**Before (v2.x LOCAL mode):**
-- No login required
-- No user concept
-- Limited features
+server:
+  api_host: 0.0.0.0  # Always all interfaces
+  api_port: 7272
 
-**After (v3.0 localhost):**
-- Auto-login as "localhost" user
-- Full user features available
-- Multi-user ready (add team members)
-- API key available for scripts
+security:
+  authentication_enabled: true  # Always enabled
+  auto_login_localhost: true  # New feature
+```
+
+**Impact**:
+- `installation.mode` field removed
+- `server.api_host` must be `0.0.0.0`
+- `security.authentication_enabled` must be `true`
+
+**Migration**: See Configuration Migration section below
 
 ---
 
-## Migration by Original Mode
+### 5. Database Schema Changes
 
-### From LOCAL Mode
+**New Column**: `users.is_system_user` (boolean)
 
-**v2.x Configuration:**
+**Purpose**: Marks auto-created "localhost" user as system-managed
+
+**Impact**: Existing databases need migration
+
+**Migration**: Alembic migration automatically applies this change
+
+---
+
+## Migration Steps
+
+### Step 1: Stop Services
+
+Stop all GiljoAI MCP services before migration:
+
+**Windows**:
+```bash
+# If using service scripts
+stop_giljo.bat
+
+# Or manually stop processes
+taskkill /F /IM python.exe /FI "WINDOWTITLE eq *giljo*"
+```
+
+**Linux/macOS**:
+```bash
+# If using systemd
+sudo systemctl stop giljoai-api
+sudo systemctl stop giljoai-dashboard
+
+# Or manually
+pkill -f "giljo_mcp"
+```
+
+Verify services stopped:
+```bash
+# No output means services stopped
+netstat -ano | findstr "7272 7274"  # Windows
+netstat -tlnp | grep -E "7272|7274"  # Linux/macOS
+```
+
+---
+
+### Step 2: Backup Current State
+
+**Database**:
+```bash
+# Full database backup
+pg_dump -U postgres giljo_mcp > giljo_mcp_backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Verify backup created
+ls -lh giljo_mcp_backup_*.sql
+```
+
+**Configuration**:
+```bash
+# Backup config files
+cp config.yaml config.yaml.v2_backup
+cp .env .env.v2_backup
+
+# Backup entire installation (optional but recommended)
+tar -czf giljoai_backup_$(date +%Y%m%d).tar.gz \
+    config.yaml .env data/ logs/
+```
+
+---
+
+### Step 3: Upgrade GiljoAI MCP
+
+**Using pip**:
+```bash
+cd F:/GiljoAI_MCP
+
+# Activate virtual environment
+source venv/bin/activate  # Linux/macOS
+# or
+venv\Scripts\activate  # Windows
+
+# Upgrade to v3.0.0
+pip install --upgrade giljo-mcp==3.0.0
+
+# Verify version
+python -m giljo_mcp --version
+# Expected output: 3.0.0
+```
+
+**Using git** (if installed from source):
+```bash
+cd F:/GiljoAI_MCP
+
+# Fetch latest changes
+git fetch origin
+
+# Checkout v3.0.0 tag
+git checkout v3.0.0
+
+# Install updated dependencies
+pip install -r requirements.txt
+```
+
+---
+
+### Step 4: Migrate Configuration
+
+Use the provided migration script:
+
+```bash
+python scripts/migrate_config_v3.py config.yaml
+```
+
+Or manually update `config.yaml`:
+
+**Remove these fields**:
+```yaml
+installation:
+  mode: local  # DELETE THIS LINE
+```
+
+**Add/Update these fields**:
+```yaml
+installation:
+  version: 3.0.0  # ADD THIS
+  deployment_context: localhost  # ADD THIS (descriptive only)
+
+server:
+  api_host: 0.0.0.0  # CHANGE FROM 127.0.0.1 TO 0.0.0.0
+
+security:
+  authentication_enabled: true  # MUST BE TRUE
+  auto_login_localhost: true  # ADD THIS
+```
+
+**Example before/after**:
+
+**v2.x config.yaml**:
 ```yaml
 installation:
   mode: local
+  version: 2.9.0
 
-services:
-  api:
-    host: 127.0.0.1
-```
+server:
+  api_host: 127.0.0.1
+  api_port: 7272
+  api_key: null
 
-**Migration:**
-1. Configuration auto-migrated on first start
-2. Firewall configured to block external access
-3. Auto-login enabled for localhost
-4. Network binding changed to 0.0.0.0 (firewall controls access)
-
-**User Impact:**
-- Zero-click access maintained (auto-login)
-- Can now add team members if needed
-- Can expose to LAN by updating firewall
-
-**Action Required:**
-- None (works automatically)
-
----
-
-### From LAN Mode
-
-**v2.x Configuration:**
-```yaml
-installation:
-  mode: lan
-
-services:
-  api:
-    host: 0.0.0.0
-```
-
-**Migration:**
-1. Configuration auto-migrated on first start
-2. Firewall allows LAN access (configured by installer)
-3. Auto-login for localhost, JWT for network
-4. API keys continue to work
-
-**User Impact:**
-- Localhost browser gets auto-login
-- Network clients still require login
-- Same LAN access as before
-
-**Action Required:**
-- Update firewall rules (see [Allow LAN Access](#allow-lan-access))
-
----
-
-### From WAN Mode
-
-**v2.x Configuration:**
-```yaml
-installation:
-  mode: wan
-
-services:
-  api:
-    host: 0.0.0.0
+database:
+  type: postgresql
+  host: localhost
+  port: 5432
+  name: giljo_mcp
 
 security:
-  ssl:
-    enabled: true
+  authentication_enabled: false
 ```
 
-**Migration:**
-1. Configuration auto-migrated on first start
-2. Firewall configured for reverse proxy
-3. Auto-login for localhost admin access
-4. Network clients require JWT + TLS
+**v3.0 config.yaml**:
+```yaml
+installation:
+  version: 3.0.0
+  deployment_context: localhost
 
-**User Impact:**
-- Localhost admin gets auto-login
-- Internet clients still require login + TLS
-- Same security as before
+server:
+  api_host: 0.0.0.0  # CHANGED
+  api_port: 7272
+  # api_key field removed (now per-user)
 
-**Action Required:**
-- Update firewall for reverse proxy (see [Allow Internet Access](#allow-internet-access-wan))
-- Verify TLS configuration
+database:
+  type: postgresql
+  host: localhost
+  port: 5432
+  name: giljo_mcp
+
+security:
+  authentication_enabled: true  # CHANGED
+  auto_login_localhost: true  # NEW
+```
+
+Save the file after editing.
 
 ---
 
-## Rollback Instructions
+### Step 5: Update Environment Variables
 
-If you encounter issues with v3.0, you can rollback to v2.x:
+Edit `.env` file:
 
-### Option 1: Git Rollback
+**Remove**:
+```bash
+GILJO_MCP_MODE=local  # DELETE THIS
+```
+
+**Add** (if not present):
+```bash
+GILJO_AUTO_LOGIN_LOCALHOST=true
+GILJO_NETWORK_BINDING=0.0.0.0
+```
+
+**Verify** `.env` contents:
+```bash
+cat .env | grep -E "GILJO_AUTO_LOGIN|GILJO_NETWORK_BINDING"
+```
+
+---
+
+### Step 6: Run Database Migration
+
+Apply Alembic migrations to add new schema changes:
 
 ```bash
-# Checkout the backup branch
-git checkout retired_multi_network_architecture
+cd F:/GiljoAI_MCP
 
-# Reinstall dependencies
-pip install -e .
+# Check current migration version
+alembic current
 
-# Restore v2.x config
-cp ~/.giljo-mcp/config.yaml.backup ~/.giljo-mcp/config.yaml
+# Apply all pending migrations
+alembic upgrade head
 
-# Restart server
-giljo-mcp start --mode local  # or lan, wan
+# Verify migration successful
+alembic current
+# Should show: 003_system_user (head), 2ff9170e5524 (head)
 ```
 
-### Option 2: Version Rollback
+**Verify database changes**:
+```bash
+psql -U postgres -d giljo_mcp -c "\d users"
+```
+
+Expected output should include:
+```
+ is_system_user | boolean | not null | default false
+```
+
+---
+
+### Step 7: Configure Firewall
+
+**CRITICAL**: v3.0 always binds to `0.0.0.0`, so you must configure your firewall to control access.
+
+#### For Localhost Development (Block External Access)
+
+**Windows PowerShell (as Administrator)**:
+```powershell
+# Block external connections
+New-NetFirewallRule -DisplayName "GiljoAI MCP - Block External API" `
+    -Direction Inbound -Action Block -Protocol TCP -LocalPort 7272 `
+    -RemoteAddress Any -Profile Domain,Private,Public
+
+# Allow localhost connections
+New-NetFirewallRule -DisplayName "GiljoAI MCP - Allow Localhost API" `
+    -Direction Inbound -Action Allow -Protocol TCP -LocalPort 7272 `
+    -RemoteAddress 127.0.0.1,::1 -Profile Domain,Private,Public
+
+# Repeat for Dashboard (7274) and WebSocket (6001)
+```
+
+**Linux (UFW)**:
+```bash
+sudo ufw deny 7272/tcp
+sudo ufw deny 7274/tcp
+sudo ufw deny 6001/tcp
+sudo ufw reload
+# Localhost connections bypass UFW by default
+```
+
+**macOS (pf)**:
+```bash
+# Create /etc/pf.anchors/giljoai with rules
+# See FIREWALL_CONFIGURATION.md for details
+sudo pfctl -f /etc/pf.conf
+```
+
+#### For Team LAN (Allow Specific Subnet)
+
+Replace `192.168.1.0/24` with your actual LAN subnet:
+
+**Windows**:
+```powershell
+New-NetFirewallRule -DisplayName "GiljoAI MCP - LAN Access" `
+    -Direction Inbound -Action Allow -Protocol TCP `
+    -LocalPort 7272,7274,6001 `
+    -RemoteAddress 192.168.1.0/24 -Profile Domain,Private
+```
+
+**Linux (UFW)**:
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 7272 proto tcp
+sudo ufw allow from 192.168.1.0/24 to any port 7274 proto tcp
+sudo ufw allow from 192.168.1.0/24 to any port 6001 proto tcp
+sudo ufw reload
+```
+
+**See**: `docs/guides/FIREWALL_CONFIGURATION.md` for comprehensive firewall setup instructions.
+
+---
+
+### Step 8: Create Localhost User (If Fresh Install)
+
+For fresh v3.0 installs, the localhost user is auto-created on first startup.
+
+For migrations, verify the user exists:
 
 ```bash
-# Install last v2.x release
-pip install giljo-mcp==2.9.9
-
-# Restore v2.x config
-cp ~/.giljo-mcp/config.yaml.backup ~/.giljo-mcp/config.yaml
-
-# Restart server
-giljo-mcp start
+psql -U postgres -d giljo_mcp -c "SELECT username, is_system_user FROM users WHERE username='localhost';"
 ```
 
-**Database Compatibility:**
-- v3.0 database schema is compatible with v2.x
-- No data migration required for rollback
-- Localhost user will exist but won't be used in v2.x LOCAL mode
+If not present, create manually:
+
+```sql
+INSERT INTO users (username, email, is_system_user, created_at)
+VALUES ('localhost', 'localhost@local', true, NOW());
+```
 
 ---
 
-## Troubleshooting
+### Step 9: Start Services
 
-### "Config field 'installation.mode' is deprecated"
+Start GiljoAI MCP services:
 
-**Cause:** Using v2.x config format with v3.0
+**Windows**:
+```bash
+start_giljo.bat
+```
 
-**Solution:**
-- This is just a warning, not an error
-- Application continues to work
-- Run manual migration to clean up config (optional)
+**Linux/macOS**:
+```bash
+# Using systemd
+sudo systemctl start giljoai-api
+sudo systemctl start giljoai-dashboard
 
----
+# Or directly
+python api/run_api.py &
+npm run dev --prefix frontend &
+```
 
-### "Cannot connect from network machine"
+**Verify services started**:
+```bash
+# Check processes
+netstat -ano | findstr "7272 7274"  # Windows
+netstat -tlnp | grep -E "7272|7274"  # Linux/macOS
 
-**Cause:** Firewall blocking external access (default in v3.0)
-
-**Solution:**
-1. Check firewall rules:
-   ```bash
-   # Windows
-   Get-NetFirewallRule -DisplayName "*GiljoAI*"
-
-   # Linux
-   sudo ufw status
-
-   # macOS
-   sudo /usr/libexec/ApplicationFirewall/socketfilterfw --listapps
-   ```
-
-2. Allow LAN access (see [Allow LAN Access](#allow-lan-access))
-
----
-
-### "Localhost browser shows login screen"
-
-**Cause:** Auto-login not working
-
-**Solution:**
-1. Check server logs for auto-login middleware:
-   ```bash
-   tail -f ~/.giljo-mcp/logs/server.log | grep "auto-login"
-   ```
-
-2. Verify browser is accessing via localhost:
-   ```
-   http://127.0.0.1:7274  ✅ (auto-login works)
-   http://192.168.1.100:7274  ❌ (requires login)
-   ```
-
-3. Check config.yaml:
-   ```yaml
-   features:
-     auto_login_localhost: true  # Should be true
-   ```
+# Test API
+curl http://localhost:7272/health
+# Expected: {"status": "healthy"}
+```
 
 ---
 
-### "API returns 401 Unauthorized"
+### Step 10: Verify Migration
 
-**Cause:** Network client requires authentication
+**Test Localhost Access**:
 
-**Solution:**
-1. Generate API key:
-   ```bash
-   giljo-mcp user create-api-key
-   ```
+1. Open browser: `http://localhost:7274`
+2. Should auto-login as "localhost" user (no login screen)
+3. Dashboard should load normally
 
-2. Use API key in requests:
-   ```bash
-   curl -H "Authorization: Bearer gk_xxx" http://server:7272/api/projects
-   ```
+**Test API Access**:
 
----
+```bash
+# Health check
+curl http://localhost:7272/health
 
-### "Migration script fails"
+# API endpoint (should auto-authenticate)
+curl http://localhost:7272/api/projects
+```
 
-**Cause:** Corrupted config or filesystem issue
+**Test Network Access** (if LAN configured):
 
-**Solution:**
-1. Restore backup:
-   ```bash
-   cp ~/.giljo-mcp/config.yaml.backup ~/.giljo-mcp/config.yaml
-   ```
+From another machine on your network:
 
-2. Start server (auto-migration will run):
-   ```bash
-   giljo-mcp start
-   ```
+```bash
+# Replace with server IP
+curl http://192.168.1.100:7272/health
+```
 
-3. If still failing, check logs:
-   ```bash
-   tail -f ~/.giljo-mcp/logs/migration.log
-   ```
+Should require authentication (401 Unauthorized if not authenticated).
 
----
+**Check Firewall Blocking**:
 
-## Feature Comparison
+From an external IP (or simulate by blocking your IP):
 
-| Feature | v2.x LOCAL | v2.x LAN/WAN | v3.0 Localhost | v3.0 Network |
-|---------|-----------|--------------|----------------|--------------|
-| Authentication | None | Required | Auto-login | Required |
-| User Management | No | Yes | Yes | Yes |
-| Multi-tenant | No | Yes | Yes | Yes |
-| API Keys | No | Yes | Yes | Yes |
-| Network Binding | 127.0.0.1 | 0.0.0.0 | 0.0.0.0 (firewall) | 0.0.0.0 (firewall) |
-| Firewall | N/A | Optional | Required | Required |
-| TLS | No | Optional | Optional | Recommended |
-| Zero-click Access | Yes | No | Yes (localhost) | No |
+```bash
+# Should be blocked (connection timeout or refused)
+curl http://YOUR_PUBLIC_IP:7272/health
+```
 
 ---
 
-## Post-Migration Checklist
+## Feature Flag Mapping
 
-After upgrading to v3.0, verify:
+If you had custom code checking deployment mode, here's how to migrate:
 
-- [ ] Server starts without errors
-- [ ] Localhost browser auto-authenticates
-- [ ] Network access works (if needed)
-- [ ] Firewall rules configured
-- [ ] API keys work for scripts
-- [ ] Database migrations applied
-- [ ] Deprecation warnings reviewed
-- [ ] Documentation updated (if custom)
+### v2.x LOCAL Mode
+
+**Old Code**:
+```python
+if config.deployment.mode == DeploymentMode.LOCAL:
+    api_key_required = False
+    network_binding = "127.0.0.1"
+```
+
+**v3.0 Code**:
+```python
+# Auto-login middleware handles localhost detection
+# No mode checking needed
+# Check request IP if custom logic required:
+if request.client.host in ("127.0.0.1", "::1"):
+    # Localhost client - auto-authenticated
+    pass
+```
+
+---
+
+### v2.x LAN Mode
+
+**Old Code**:
+```python
+if config.deployment.mode == DeploymentMode.LAN:
+    api_key_required = True
+    network_binding = "0.0.0.0"
+    cors_origins = ["http://192.168.1.0/24"]
+```
+
+**v3.0 Code**:
+```python
+# Authentication always enabled
+# Network binding always 0.0.0.0
+# Configure CORS in config.yaml:
+security:
+  cors:
+    allowed_origins:
+      - http://192.168.1.100:7274
+      - http://192.168.1.101:7274
+```
+
+---
+
+### v2.x WAN Mode
+
+**Old Code**:
+```python
+if config.deployment.mode == DeploymentMode.WAN:
+    require_https = True
+    api_key_required = True
+    rate_limiting_enabled = True
+```
+
+**v3.0 Code**:
+```python
+# Use feature flags instead of mode:
+from giljo_mcp.config_manager import config
+
+if config.security.require_https:
+    # HTTPS enforcement
+    pass
+
+if config.security.rate_limiting.enabled:
+    # Rate limiting
+    pass
+```
+
+---
+
+## API Endpoint Changes
+
+### Removed Endpoints
+
+None. All v2.x API endpoints remain functional in v3.0.
+
+### New Endpoints
+
+**MCP Installer** (Phase 2 feature):
+- `GET /api/mcp-installer/windows` - Download Windows installer script
+- `GET /api/mcp-installer/unix` - Download Unix installer script
+- `POST /api/mcp-installer/share-link` - Generate secure download links
+- `GET /download/mcp/{token}/{platform}` - Public download via token
+
+---
+
+## Testing Your Migration
+
+### Smoke Test Checklist
+
+- [ ] **Services Running**: Verify API and Dashboard processes active
+- [ ] **Localhost Access**: Open `http://localhost:7274`, auto-login works
+- [ ] **API Health**: `curl http://localhost:7272/health` returns 200 OK
+- [ ] **Database Connection**: API can query database successfully
+- [ ] **Firewall Blocking**: External access blocked (test from another device)
+- [ ] **LAN Access** (if configured): Team members can access via LAN IP
+- [ ] **Authentication**: Network clients require API key/JWT
+- [ ] **WebSocket**: Real-time updates work in Dashboard
+- [ ] **Existing Projects**: All projects load correctly
+- [ ] **Existing Agents**: Agent history preserved
+
+### Integration Test
+
+Run the test suite:
+
+```bash
+pytest tests/ -v --tb=short
+```
+
+Expected results:
+- Unit tests: 18-21 passing (86-100%)
+- Template tests: 47 passing (100%)
+- Integration tests: May be blocked (see KNOWN_ISSUES.md)
+
+### Load Test (Optional)
+
+```bash
+# Test API can handle load
+ab -n 1000 -c 10 http://localhost:7272/health
+```
+
+---
+
+## Rollback Procedures
+
+If migration fails or issues arise, rollback to v2.x:
+
+### Step 1: Stop v3.0 Services
+
+```bash
+# Stop services
+stop_giljo.bat  # Windows
+sudo systemctl stop giljoai-*  # Linux
+```
+
+### Step 2: Restore Database
+
+```bash
+# Drop v3.0 database
+dropdb -U postgres giljo_mcp
+
+# Restore v2.x backup
+createdb -U postgres giljo_mcp
+psql -U postgres -d giljo_mcp < giljo_mcp_backup_YYYYMMDD.sql
+```
+
+### Step 3: Restore Configuration
+
+```bash
+# Restore config files
+cp config.yaml.v2_backup config.yaml
+cp .env.v2_backup .env
+```
+
+### Step 4: Downgrade Application
+
+```bash
+# If using pip
+pip install giljo-mcp==2.9.0
+
+# If using git
+git checkout v2.9.0
+pip install -r requirements.txt
+```
+
+### Step 5: Remove Firewall Rules
+
+**Windows**:
+```powershell
+Get-NetFirewallRule | Where-Object {$_.DisplayName -like "*GiljoAI*"} | Remove-NetFirewallRule
+```
+
+**Linux**:
+```bash
+sudo ufw delete allow 7272/tcp
+sudo ufw delete deny 7272/tcp
+# Repeat for other ports
+```
+
+### Step 6: Restart v2.x Services
+
+```bash
+start_giljo.bat  # Windows
+sudo systemctl start giljoai-*  # Linux
+```
+
+### Step 7: Verify v2.x Functional
+
+Test v2.x works as expected:
+
+```bash
+curl http://localhost:7272/health
+```
+
+Open Dashboard: `http://localhost:7274`
+
+---
+
+## Common Migration Issues
+
+### Issue 1: "DeploymentMode not found" Import Error
+
+**Error**:
+```python
+ImportError: cannot import name 'DeploymentMode' from 'giljo_mcp.config_manager'
+```
+
+**Cause**: Custom code still importing `DeploymentMode` enum
+
+**Solution**:
+1. Search codebase for `DeploymentMode` imports:
+   ```bash
+   grep -r "DeploymentMode" src/
+   ```
+2. Remove or replace with IP-based detection
+3. Restart services
+
+---
+
+### Issue 2: Services Accessible from Internet (Security Risk)
+
+**Symptoms**: Services accessible from public internet after migration
+
+**Cause**: Firewall not configured, application bound to `0.0.0.0`
+
+**Solution**:
+1. **IMMEDIATELY** stop services:
+   ```bash
+   stop_giljo.bat
+   ```
+2. Configure firewall (see Step 7 above)
+3. Verify firewall blocks external access:
+   ```bash
+   # From external IP
+   curl http://YOUR_PUBLIC_IP:7272/health
+   # Should timeout or refuse connection
+   ```
+4. Restart services only after firewall configured
+
+---
+
+### Issue 3: Localhost Auto-Login Not Working
+
+**Symptoms**: Login screen appears when accessing `http://localhost:7274`
+
+**Causes**:
+1. `auto_login_localhost: true` not in config.yaml
+2. Accessing via network IP instead of localhost
+3. Browser cached old session
+
+**Solutions**:
+1. Verify config.yaml has `security.auto_login_localhost: true`
+2. Access via `http://localhost:7274` (not `http://127.0.0.1:7274` or IP)
+3. Clear browser cache and cookies
+4. Restart API server
+
+---
+
+### Issue 4: Database Migration Fails
+
+**Error**:
+```
+alembic.util.exc.CommandError: Can't locate revision identified by 'xxxxx'
+```
+
+**Cause**: Migration history inconsistency
+
+**Solution**:
+1. Check current migration:
+   ```bash
+   alembic current
+   ```
+2. Manually stamp to latest revision:
+   ```bash
+   alembic stamp head
+   ```
+3. Try migration again:
+   ```bash
+   alembic upgrade head
+   ```
+4. If still failing, check migration files in `alembic/versions/`
+
+---
+
+### Issue 5: Network Clients Get 401 Unauthorized
+
+**Symptoms**: LAN clients cannot access API, receive 401 errors
+
+**Causes**:
+1. API key not provided in request
+2. JWT token expired
+3. User doesn't have valid API key
+
+**Solutions**:
+1. Generate API key for user:
+   ```sql
+   UPDATE users SET api_key = 'gk_user_xxx' WHERE username = 'alice';
+   ```
+2. Include API key in requests:
+   ```bash
+   curl -H "X-API-Key: gk_user_xxx" http://192.168.1.100:7272/api/projects
+   ```
+3. Or use JWT authentication (login first)
+
+---
+
+## Migration Verification Checklist
+
+After completing migration, verify all items:
+
+### Functionality
+- [ ] Dashboard loads at `http://localhost:7274`
+- [ ] Auto-login works (no login screen for localhost)
+- [ ] API responds to health check
+- [ ] Database connection successful
+- [ ] Existing projects visible
+- [ ] Agent history preserved
+- [ ] WebSocket updates work
+- [ ] Can create new project
+- [ ] Can spawn new agent
+
+### Security
+- [ ] External access blocked (firewall configured)
+- [ ] Localhost access allowed
+- [ ] LAN access works (if configured)
+- [ ] Network clients require authentication
+- [ ] PostgreSQL not accessible from network (port 5432 blocked)
+- [ ] API keys work correctly
+- [ ] JWT authentication functional
+
+### Configuration
+- [ ] `config.yaml` has `version: 3.0.0`
+- [ ] `installation.mode` field removed
+- [ ] `server.api_host` is `0.0.0.0`
+- [ ] `security.authentication_enabled` is `true`
+- [ ] `security.auto_login_localhost` is `true`
+- [ ] `.env` file updated (no `GILJO_MCP_MODE`)
+
+### Database
+- [ ] Alembic migrations applied (`alembic current` shows heads)
+- [ ] `users.is_system_user` column exists
+- [ ] Localhost user created
+- [ ] All existing data preserved
+
+### Services
+- [ ] API server running on port 7272
+- [ ] Dashboard running on port 7274
+- [ ] WebSocket running on port 6001
+- [ ] PostgreSQL running on port 5432 (localhost only)
+- [ ] All services auto-start on reboot (if configured)
 
 ---
 
 ## Getting Help
 
-**Documentation:**
-- Full plan: `docs/SINGLEPRODUCT_RECALIBRATION.md`
-- Architecture: `docs/TECHNICAL_ARCHITECTURE.md`
-- Firewall config: `docs/FIREWALL_CONFIGURATION.md`
+### Migration Support
 
-**Community:**
-- GitHub Issues: https://github.com/giljoai/mcp-orchestrator/issues
-- Discord: https://discord.gg/giljoai (if available)
+If you encounter issues during migration:
 
-**Support:**
-- Email: support@giljo.ai (if available)
-- Documentation: https://docs.giljo.ai (if available)
+1. **Check documentation**:
+   - This migration guide
+   - `docs/KNOWN_ISSUES.md`
+   - `docs/guides/FIREWALL_CONFIGURATION.md`
 
----
+2. **Review logs**:
+   ```bash
+   tail -f logs/api.log
+   tail -f logs/dashboard.log
+   ```
 
-## FAQ
+3. **Run diagnostics**:
+   ```bash
+   python scripts/diagnose.py
+   ```
 
-### Will my existing projects work?
+4. **Open GitHub issue**:
+   - [github.com/patrik-giljoai/GiljoAI_MCP/issues](https://github.com/patrik-giljoai/GiljoAI_MCP/issues)
+   - Include: GiljoAI version, OS, error logs, steps taken
 
-**Yes.** Database schema is fully compatible. Projects, agents, and tasks continue to work without changes.
+### Community Resources
 
----
-
-### Do I need to reconfigure my MCP clients?
-
-**No.** MCP client configurations remain the same. API endpoints unchanged.
-
----
-
-### Can I still use LOCAL mode?
-
-**Technically yes** (via `deployment_context` metadata), but it's now a misnomer. v3.0 doesn't have modes - it has a unified architecture with firewall-based access control. Localhost access gets auto-login, network access requires authentication.
+- **GitHub Discussions**: Community Q&A
+- **Documentation**: Full docs at `docs/README_FIRST.md`
+- **Issue Tracker**: Bug reports and feature requests
 
 ---
 
-### What if I don't want to use the firewall?
+## Post-Migration Recommendations
 
-The firewall is **strongly recommended** for security. However, if you must:
-1. Leave firewall open (not recommended)
-2. Application will authenticate all non-localhost clients
-3. Security relies solely on application layer (less secure)
+After successful migration:
+
+1. **Update documentation**: Document any custom configurations
+2. **Test thoroughly**: Run full test suite in production environment
+3. **Monitor logs**: Watch for errors or warnings in first 24 hours
+4. **Update team**: Inform team members of changes (especially firewall)
+5. **Review firewall rules**: Audit firewall configuration quarterly
+6. **Plan for v3.0.1**: Track `docs/KNOWN_ISSUES.md` for upcoming fixes
 
 ---
 
-### How do I add team members now?
+## Version Comparison
 
-Same as before:
-```bash
-# Create user via CLI
-giljo-mcp user create --username alice --email alice@example.com
-
-# Or via web UI (if localhost or authenticated)
-http://localhost:7274/settings/users
+### v2.x Architecture
+```
+User Request
+    ↓
+Mode Check (LOCAL/LAN/WAN)
+    ↓
+Conditional Binding (127.0.0.1 or 0.0.0.0)
+    ↓
+Conditional Authentication (on/off)
+    ↓
+Application Logic
 ```
 
-Team members access via network (firewall must allow their IPs).
+### v3.0 Architecture
+```
+User Request
+    ↓
+Network Binding (always 0.0.0.0)
+    ↓
+OS Firewall Check
+    ↓
+Auto-Login Middleware (localhost detection)
+    ↓
+Authentication Layer (always active)
+    ↓
+Application Logic
+```
 
 ---
 
-## Version History
+## Summary
 
-| Version | Date | Status | Notes |
-|---------|------|--------|-------|
-| v3.0.0 | 2025-10-09 | In Development | Unified architecture |
-| v2.9.x | 2025-10-01 | Stable | Last v2.x release |
-| v2.0.0 | 2025-09-01 | Legacy | Multi-mode architecture |
+### Key Takeaways
+
+1. **Mode concept removed**: No more LOCAL/LAN/WAN modes
+2. **Always bind to 0.0.0.0**: Network interface binding simplified
+3. **Firewall controls access**: OS firewall replaces mode-based binding
+4. **Auto-login for localhost**: Seamless localhost developer experience
+5. **Authentication always on**: Network clients require credentials
+6. **Configuration simplified**: Fewer mode-specific settings
+
+### Migration Effort
+
+- **Time**: 30-60 minutes
+- **Risk**: Low (rollback available)
+- **Complexity**: Medium (configuration changes + firewall setup)
+- **Downtime**: 30-60 minutes
+
+### Benefits of v3.0
+
+- **Better security**: Defense in depth (firewall + auth)
+- **Simpler code**: No mode-switching logic
+- **Consistent behavior**: Same code path for all deployments
+- **Easier maintenance**: Single architecture to support
+- **New features**: MCP integration system (Phase 2)
 
 ---
 
-**Migration Guide Version:** v3.0.0-draft
-**Last Updated:** 2025-10-09
-**Next Update:** After Phase 1 completion
+## Related Documentation
+
+- **Firewall Configuration**: `docs/guides/FIREWALL_CONFIGURATION.md`
+- **Production Deployment**: `docs/deployment/PRODUCTION_DEPLOYMENT_V3.md`
+- **Known Issues**: `docs/KNOWN_ISSUES.md`
+- **Release Notes**: `docs/RELEASE_NOTES_V3.0.0.md`
+- **Changelog**: `CHANGELOG.md`
+
+---
+
+**Document Version**: 1.0
+**Last Updated**: 2025-10-09
+**Maintained By**: Documentation Manager Agent
+**Next Review**: v3.1.0 release

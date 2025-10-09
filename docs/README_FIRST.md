@@ -64,6 +64,22 @@ GiljoAI MCP now supports secure LAN deployment with comprehensive security measu
 - **[Security Fixes Report](deployment/SECURITY_FIXES_REPORT.md)** - Security implementation details
 - **[LAN Test Report](deployment/LAN_TEST_REPORT.md)** - Validation results
 
+### 🔧 MCP Tool Integration (October 2025)
+
+**Status**: Complete (Phase 2.1)
+
+GiljoAI MCP now provides seamless integration with AI development tools through automated installer scripts:
+
+- **Supported Tools**: Claude Code, Cursor, Windsurf
+- **Distribution**: Dashboard download, share links, API-based deployment
+- **Automation**: Installer scripts with auto-detection, config merging, and backup creation
+- **Documentation**: Complete user, admin, and API reference guides
+
+**Quick Links**:
+- **[MCP Integration Guide](guides/MCP_INTEGRATION_GUIDE.md)** - End-user setup instructions
+- **[Admin MCP Setup](guides/ADMIN_MCP_SETUP.md)** - Team deployment and management
+- **[MCP Installer API](api/MCP_INSTALLER_API.md)** - API reference for programmatic access
+
 ## 🗂️ Directory Structure & Contents
 
 ### Core Documentation
@@ -119,9 +135,16 @@ GiljoAI MCP now supports secure LAN deployment with comprehensive security measu
 4. Development logs: [devlog/](devlog/)
 
 **For End Users**:
-1. Client setup: [LAN Quick Start Guide - End Users Section](deployment/LAN_QUICK_START.md#for-end-users-client-setup)
-2. Access URLs: [LAN Access URLs](deployment/LAN_ACCESS_URLS.md)
-3. API documentation: http://YOUR_SERVER_IP:7272/docs
+1. MCP integration setup: [MCP Integration Guide](guides/MCP_INTEGRATION_GUIDE.md)
+2. Client setup: [LAN Quick Start Guide - End Users Section](deployment/LAN_QUICK_START.md#for-end-users-client-setup)
+3. Access URLs: [LAN Access URLs](deployment/LAN_ACCESS_URLS.md)
+4. API documentation: http://YOUR_SERVER_IP:7272/docs
+
+**For Team Administrators**:
+1. Deployment: [Admin MCP Setup](guides/ADMIN_MCP_SETUP.md)
+2. API integration: [MCP Installer API](api/MCP_INSTALLER_API.md)
+3. Team onboarding: See Admin guide onboarding workflow
+4. Security best practices: See Admin guide security section
 
 ## 📊 Project Status
 
