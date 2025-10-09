@@ -32,7 +32,9 @@ apiClient.interceptors.request.use(
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config
+
     if (error.response?.status === 401) {
       // Handle unauthorized access
       // Clear any cached user state
@@ -40,12 +42,26 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('user')
 
       // Only redirect to login if not already on the login page
-      if (!window.location.pathname.includes('/login')) {
+      if (!window.location.pathname.includes('/login') && !originalRequest._retry) {
+        // Mark request as retried to prevent infinite loops
+        originalRequest._retry = true
+
         // Store the current path to redirect back after login
         const currentPath = window.location.pathname + window.location.search
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
       }
     }
+
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      console.error('[API] Access forbidden:', error.response.data)
+    }
+
+    // Handle network errors
+    if (!error.response) {
+      console.error('[API] Network error - server may be unreachable')
+    }
+
     return Promise.reject(error)
   },
 )

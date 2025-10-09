@@ -30,6 +30,23 @@ This is the root directory for the **GiljoAI MCP Coding Orchestrator** project -
 
 GiljoAI-MCP now serves as the **persistent brain** for AI development teams, while Claude Code provides the **execution engine** through sub-agents.
 
+### 🧠 Orchestrator Upgrade (October 2025)
+
+**Status**: Complete
+
+GiljoAI MCP has received a major upgrade to its orchestration capabilities with hierarchical context management:
+
+- **Context Optimization**: 60% token reduction for worker agents through role-based filtering
+- **Hierarchical Loading**: Orchestrators receive full context, workers receive filtered context
+- **Enhanced Discovery**: Discovery-first workflow with 30-80-10 principle enforcement
+- **Database-Backed Config**: Rich project configuration stored in PostgreSQL JSONB fields
+- **Performance**: Sub-2-second context loading with GIN indexing
+
+**Quick Links**:
+- **[Orchestrator Discovery Guide](guides/ORCHESTRATOR_DISCOVERY_GUIDE.md)** - Discovery workflow patterns
+- **[Role-Based Context Filtering](guides/ROLE_BASED_CONTEXT_FILTERING.md)** - Understanding context optimization
+- **[Config Data Migration](deployment/CONFIG_DATA_MIGRATION.md)** - Deployment migration guide
+
 ### 🌐 LAN Deployment Capability (October 2025)
 
 **Status**: Production-Ready (95% Complete)
@@ -61,6 +78,9 @@ GiljoAI MCP now supports secure LAN deployment with comprehensive security measu
 - **[manuals/QUICK_START.md](manuals/QUICK_START.md)** - Quick start guide
 
 ### Deployment Documentation
+
+**Network Topology & Architecture**:
+- **[deployment/NETWORK_TOPOLOGY_GUIDE.md](deployment/NETWORK_TOPOLOGY_GUIDE.md)** - ⭐ Essential: Deployment modes vs database topology explained
 
 **LAN Deployment** (Phase 1 - Complete):
 - **[deployment/LAN_QUICK_START.md](deployment/LAN_QUICK_START.md)** - Fast-track 15-minute deployment
@@ -114,9 +134,10 @@ GiljoAI MCP now supports secure LAN deployment with comprehensive security measu
 - WAN Mode: Planned (future mission)
 
 **Recent Milestones**:
+- October 2025: Orchestrator upgrade with hierarchical context management
 - October 2025: LAN deployment capability complete
 - October 2025: Full stack integration complete
 - January 2025: Sub-agent architecture integration
 
-**Last Updated**: October 2025 (LAN Deployment Complete)
+**Last Updated**: October 8, 2025 (Orchestrator Upgrade Complete)
 **Version**: 2.0.0

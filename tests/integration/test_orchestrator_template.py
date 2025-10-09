@@ -10,19 +10,11 @@ Tests complete workflow:
 """
 
 import pytest
+import pytest_asyncio
 from pathlib import Path
-from src.giljo_mcp.database import get_db_manager
 from src.giljo_mcp.models import Product, Project, Agent, AgentTemplate
 from src.giljo_mcp.template_manager import get_template_manager
 from src.giljo_mcp.context_manager import get_full_config, get_filtered_config
-
-
-@pytest.fixture
-def db_session():
-    """Get database session"""
-    db = get_db_manager()
-    with db.get_session() as session:
-        yield session
 
 
 @pytest.fixture

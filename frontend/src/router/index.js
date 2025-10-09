@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import setupService from '@/services/setupService'
 import { useUserStore } from '@/stores/user'
+import api from '@/services/api'
 
 // Route definitions - views will be implemented after analyzer results
 const routes = [
@@ -159,29 +160,24 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.meta.requiresAuth !== false
   if (requiresAuth) {
     try {
-      // Try to get current user to verify authentication
-      const response = await fetch('/api/auth/me', {
-        credentials: 'include', // Include cookies
-      })
+      // Use API client to get current user (includes Bearer token from localStorage)
+      const response = await api.auth.me()
 
-      if (!response.ok) {
-        // Not authenticated, redirect to login
-        console.log('User not authenticated, redirecting to login')
-        next({
-          path: '/login',
-          query: { redirect: to.fullPath },
-        })
-        return
-      }
+      // Get user data from response
+      const userData = response.data
 
-      // If we don't have user data in store, fetch it
+      // If we don't have user data in store, set it
       if (!userStore.currentUser) {
-        await userStore.fetchCurrentUser()
+        userStore.currentUser = userData
       }
     } catch (error) {
-      // Network error or API not available
-      // In localhost mode, this might be expected, so allow through
-      console.warn('Auth check failed, allowing navigation:', error.message)
+      // Not authenticated or network error, redirect to login
+      console.log('User not authenticated, redirecting to login')
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath },
+      })
+      return
     }
   }
 

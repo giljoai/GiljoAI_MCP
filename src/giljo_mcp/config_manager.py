@@ -474,10 +474,24 @@ class ConfigManager:
             with open(self.config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
 
+            # Read deployment mode from installation section first (new config.yaml format)
+            # Fall back to server section for backwards compatibility
+            if "installation" in data and "mode" in data["installation"]:
+                mode_value = data["installation"]["mode"]
+                self.server.mode = DeploymentMode(mode_value)
+                logger.debug(f"Read mode from installation section: {mode_value}")
+            elif "server" in data and "mode" in data["server"]:
+                mode_value = data["server"]["mode"]
+                self.server.mode = DeploymentMode(mode_value)
+                logger.debug(f"Read mode from server section (legacy): {mode_value}")
+
             # Server configuration
             if "server" in data:
                 srv = data["server"]
-                self.server.mode = DeploymentMode(srv.get("mode", "local"))
+                # Don't override mode if already set from installation section
+                if "installation" not in data or "mode" not in data["installation"]:
+                    if "mode" in srv:
+                        self.server.mode = DeploymentMode(srv.get("mode", "local"))
                 self.server.debug = srv.get("debug", self.server.debug)
 
                 if "mcp" in srv:
@@ -682,12 +696,19 @@ class ConfigManager:
             self.server.api_key = None  # No auth in local mode
 
         elif self.server.mode == DeploymentMode.LAN:
-            # LAN mode: bind to all interfaces for network access, require API key for security
-            # Note: 0.0.0.0 binding is intentional for LAN deployment
+            # LAN mode: Use selected adapter IP from setup wizard
+            # Only default to 0.0.0.0 if still set to localhost (backwards compatibility)
             if self.server.api_host in ("127.0.0.1", "localhost"):
+                # No selected adapter IP, default to all interfaces for backwards compatibility
+                logger.info("LAN mode: No specific adapter selected, binding to 0.0.0.0 (all interfaces)")
                 self.server.api_host = "0.0.0.0"  # noqa: S104
+            else:
+                # Specific adapter IP selected via wizard - use it
+                logger.info(f"LAN mode: Binding to selected adapter IP: {self.server.api_host}")
+
             if self.server.dashboard_host in ("127.0.0.1", "localhost"):
-                self.server.dashboard_host = "0.0.0.0"  # noqa: S104
+                # Frontend inherits API host behavior for consistency
+                self.server.dashboard_host = self.server.api_host
 
             # Generate API key if not set
             if not self.server.api_key:
