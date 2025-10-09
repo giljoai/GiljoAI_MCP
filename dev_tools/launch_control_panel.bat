@@ -1,28 +1,27 @@
 @echo off
 REM ============================================================
-REM Launch Control Panel from Isolated Dev Tools Environment
+REM Launch Control Panel using System Python
 REM ============================================================
 
 cd /d "%~dp0"
 
-REM Check if dev tools venv exists
-if not exist "venv_devtools\Scripts\python.exe" (
+REM Check if Python is available in system PATH
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
     echo.
-    echo Dev tools environment not found!
-    echo.
-    echo Please run setup first:
-    echo   dev_tools\setup_devtools_venv.bat
+    echo ERROR: Python is not installed or not in system PATH
+    echo Please install Python or add it to your PATH
     echo.
     pause
     exit /b 1
 )
 
-REM Launch control panel from isolated venv
+REM Launch control panel using system Python
 echo Starting GiljoAI MCP Developer Control Panel...
-echo Using isolated environment: dev_tools\venv_devtools\
+echo Using system Python from PATH
 echo.
 
-venv_devtools\Scripts\python.exe control_panel.py
+python "%~dp0control_panel.py"
 
 if %errorlevel% neq 0 (
     echo.
