@@ -106,12 +106,35 @@ const routes = [
   },
   {
     path: '/settings',
-    name: 'Settings',
-    component: () => import('@/views/SettingsView.vue'),
+    name: 'UserSettings',
+    component: () => import('@/views/UserSettings.vue'),
     meta: {
-      title: 'Settings',
+      title: 'My Settings',
       icon: 'mdi-cog',
-      showInNav: true,
+      showInNav: false, // Now in profile menu, not main nav
+      requiresAuth: true,
+    },
+  },
+  {
+    path: '/api-keys',
+    name: 'ApiKeys',
+    component: () => import('@/views/ApiKeysView.vue'),
+    meta: {
+      title: 'My API Keys',
+      showInNav: false, // Now in profile menu
+      requiresAuth: true,
+    },
+  },
+  {
+    path: '/admin/settings',
+    name: 'SystemSettings',
+    component: () => import('@/views/SystemSettings.vue'),
+    meta: {
+      title: 'System Settings',
+      icon: 'mdi-cog-outline',
+      showInNav: true, // Show in main nav for admins
+      requiresAuth: true,
+      requiresAdmin: true,
     },
   },
   {
