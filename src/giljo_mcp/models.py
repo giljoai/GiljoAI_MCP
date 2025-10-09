@@ -1159,7 +1159,10 @@ class User(Base):
     # Credentials
     username = Column(String(64), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=True, index=True)
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=True)  # Nullable for system users (auto-login only)
+
+    # System user flag (for auto-login localhost user)
+    is_system_user = Column(Boolean, default=False, nullable=False)
 
     # Profile
     full_name = Column(String(255), nullable=True)
@@ -1187,6 +1190,7 @@ class User(Base):
         Index("idx_user_username", "username"),
         Index("idx_user_email", "email"),
         Index("idx_user_active", "is_active"),
+        Index("idx_user_system", "is_system_user"),  # Index for system user queries
         CheckConstraint("role IN ('admin', 'developer', 'viewer')", name="ck_user_role"),
     )
 

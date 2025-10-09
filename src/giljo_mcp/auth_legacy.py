@@ -359,13 +359,10 @@ class AuthManager:
             logger.debug(f"Localhost client detected: {client_ip}")
 
             # Get db_manager from app state (per-request session)
-            db_manager = getattr(request.app.state, 'db_manager', None)
+            db_manager = getattr(request.app.state, "db_manager", None)
             if not db_manager:
                 logger.error("db_manager not available in app state")
-                return {
-                    "authenticated": False,
-                    "error": "Database not configured"
-                }
+                return {"authenticated": False, "error": "Database not configured"}
 
             # Use async context manager for request-scoped session
             from .auth.localhost_user import ensure_localhost_user
@@ -388,14 +385,11 @@ class AuthManager:
                         "user_id": localhost_user.username,
                         "user_obj": localhost_user,
                         "is_auto_login": True,
-                        "tenant_key": localhost_user.tenant_key
+                        "tenant_key": localhost_user.tenant_key,
                     }
             except Exception as e:
                 logger.error(f"Failed to authenticate localhost user: {e}", exc_info=True)
-                return {
-                    "authenticated": False,
-                    "error": f"Localhost authentication failed: {str(e)}"
-                }
+                return {"authenticated": False, "error": f"Localhost authentication failed: {str(e)}"}
 
         # Network clients require credentials
         return await self._validate_network_credentials(request)
@@ -422,7 +416,7 @@ class AuthManager:
             return real_ip
 
         # Direct connection
-        if hasattr(request, 'client') and request.client:
+        if hasattr(request, "client") and request.client:
             return request.client.host
 
         return "unknown"
@@ -444,6 +438,8 @@ class AuthManager:
         """
         from sqlalchemy import select
 
+        from .models import User
+
         # Try JWT first (Bearer token)
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
@@ -462,7 +458,7 @@ class AuthManager:
                 }
 
                 # Get user object from database for consistency
-                db_manager = getattr(request.app.state, 'db_manager', None)
+                db_manager = getattr(request.app.state, "db_manager", None)
                 if db_manager:
                     try:
                         async with db_manager.get_session_async() as session:
@@ -493,11 +489,7 @@ class AuthManager:
         # No valid credentials
         return {"authenticated": False, "error": "Authentication required for network access"}
 
-    async def _build_api_key_result(
-        self,
-        key_info: dict[str, Any],
-        request: Request
-    ) -> dict[str, Any]:
+    async def _build_api_key_result(self, key_info: dict[str, Any], request: Request) -> dict[str, Any]:
         """
         Build authentication result for API key with user object lookup.
 
@@ -509,6 +501,8 @@ class AuthManager:
             dict: Authentication result with user_obj if available
         """
         from sqlalchemy import select
+
+        from .models import User
 
         result = {
             "authenticated": True,
@@ -522,13 +516,11 @@ class AuthManager:
         # Try to get user object from database
         # Note: API keys might not have associated user accounts
         # This is best-effort for consistency
-        db_manager = getattr(request.app.state, 'db_manager', None)
+        db_manager = getattr(request.app.state, "db_manager", None)
         if db_manager:
             try:
                 async with db_manager.get_session_async() as session:
-                    db_result = await session.execute(
-                        select(User).where(User.username == key_info["name"])
-                    )
+                    db_result = await session.execute(select(User).where(User.username == key_info["name"]))
                     user_obj = db_result.scalar_one_or_none()
 
                     if user_obj:
