@@ -127,7 +127,7 @@ class Project(Base):
     product = relationship("Product", back_populates="projects")
     agents = relationship("Agent", back_populates="project", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
-    tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
+    tasks = relationship("Task", foreign_keys="Task.project_id", back_populates="project", cascade="all, delete-orphan")  # Specify FK to avoid ambiguity
     sessions = relationship("Session", back_populates="project", cascade="all, delete-orphan")
     visions = relationship("Vision", back_populates="project", cascade="all, delete-orphan")
     context_indexes = relationship("ContextIndex", back_populates="project", cascade="all, delete-orphan")
@@ -268,7 +268,7 @@ class Task(Base):
 
     # Relationships
     product = relationship("Product", back_populates="tasks", foreign_keys=[product_id])
-    project = relationship("Project", back_populates="tasks")
+    project = relationship("Project", back_populates="tasks", foreign_keys=[project_id])  # Specify FK to avoid ambiguity with converted_to_project_id
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])
 
