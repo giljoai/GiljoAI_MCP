@@ -130,7 +130,9 @@ class EnhancedToolAccessor:
 
     @measure_performance("create_project")
     @with_retry(max_attempts=3)
-    async def create_project(self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def create_project(
+        self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None
+    ) -> dict[str, Any]:
         """Create a new project with transaction rollback on failure"""
         try:
             async with self._get_transactional_session() as session:
@@ -251,7 +253,7 @@ class EnhancedToolAccessor:
                         "context_used": project.context_used,
                         "created_at": project.created_at.isoformat() if project.created_at else None,
                         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                    }
+                    },
                 }
 
         except SQLAlchemyError as e:

@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 # Helper functions for testing and internal use
-async def _ensure_agent(project_id: str, agent_name: str, mission: Optional[str] = None, session=None) -> dict[str, Any]:
+async def _ensure_agent(
+    project_id: str, agent_name: str, mission: Optional[str] = None, session=None
+) -> dict[str, Any]:
     """Internal helper for ensure_agent - used by tests"""
     from giljo_mcp.database import DatabaseManager
 
@@ -33,7 +35,9 @@ async def _ensure_agent(project_id: str, agent_name: str, mission: Optional[str]
         return await _ensure_agent_with_session(session, project_id, agent_name, mission)
 
 
-async def _ensure_agent_with_session(session, project_id: str, agent_name: str, mission: Optional[str] = None) -> dict[str, Any]:
+async def _ensure_agent_with_session(
+    session, project_id: str, agent_name: str, mission: Optional[str] = None
+) -> dict[str, Any]:
     """Internal helper with session for ensure_agent"""
     # Check if project exists
     project_query = select(Project).where(Project.id == project_id)
@@ -84,7 +88,9 @@ async def _ensure_agent_with_session(session, project_id: str, agent_name: str, 
     }
 
 
-async def _decommission_agent(agent_name: str, project_id: str, reason: str = "completed", session=None) -> dict[str, Any]:
+async def _decommission_agent(
+    agent_name: str, project_id: str, reason: str = "completed", session=None
+) -> dict[str, Any]:
     """Internal helper for decommission_agent - used by tests"""
     from giljo_mcp.database import DatabaseManager
 
@@ -96,7 +102,9 @@ async def _decommission_agent(agent_name: str, project_id: str, reason: str = "c
         return await _decommission_agent_with_session(session, agent_name, project_id, reason)
 
 
-async def _decommission_agent_with_session(session, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
+async def _decommission_agent_with_session(
+    session, agent_name: str, project_id: str, reason: str = "completed"
+) -> dict[str, Any]:
     """Internal helper with session for decommission_agent"""
     agent_query = select(Agent).where(and_(Agent.name == agent_name, Agent.project_id == project_id))
     agent_result = await session.execute(agent_query)
@@ -170,7 +178,9 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
     }
 
 
-async def _handoff_agent_work(from_agent: str, to_agent: str, project_id: str, context: dict[str, Any], session=None) -> dict[str, Any]:
+async def _handoff_agent_work(
+    from_agent: str, to_agent: str, project_id: str, context: dict[str, Any], session=None
+) -> dict[str, Any]:
     """Internal helper for handoff - used by tests"""
     from giljo_mcp.database import DatabaseManager
 
@@ -182,7 +192,9 @@ async def _handoff_agent_work(from_agent: str, to_agent: str, project_id: str, c
         return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
 
 
-async def _handoff_agent_work_with_session(session, from_agent: str, to_agent: str, project_id: str, context: dict[str, Any]) -> dict[str, Any]:
+async def _handoff_agent_work_with_session(
+    session, from_agent: str, to_agent: str, project_id: str, context: dict[str, Any]
+) -> dict[str, Any]:
     """Internal helper with session for handoff"""
     # Check both agents exist
     from_query = select(Agent).where(and_(Agent.name == from_agent, Agent.project_id == project_id))

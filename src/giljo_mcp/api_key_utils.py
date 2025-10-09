@@ -29,6 +29,7 @@ Usage Example:
 """
 
 import secrets
+
 from passlib.hash import bcrypt
 
 

@@ -4,11 +4,10 @@ Handles product configuration access and updates with role-based filtering
 """
 
 import logging
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from fastmcp import FastMCP
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.context_manager import (
     get_filtered_config,

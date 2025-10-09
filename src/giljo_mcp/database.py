@@ -5,11 +5,10 @@ Provides connection pooling, tenant isolation, and production-ready database man
 """
 
 from contextlib import asynccontextmanager, contextmanager
-from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from sqlalchemy import Engine, create_engine, event, pool
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -54,7 +53,6 @@ class DatabaseManager:
         else:
             self.engine = self._create_sync_engine()
             self.SessionLocal = scoped_session(sessionmaker(self.engine, expire_on_commit=False))
-
 
     def _create_sync_engine(self) -> Engine:
         """Create synchronous PostgreSQL engine with optimized settings."""
@@ -207,7 +205,6 @@ class DatabaseManager:
             return f"postgresql://{username}:{password}@{host}:{port}/{database}"
         return f"postgresql://{username}@{host}:{port}/{database}"
 
-
     def get_tenant_filter(self, tenant_key: str) -> dict[str, Any]:
         """
         Get filter dictionary for tenant isolation.
@@ -358,6 +355,7 @@ def set_db_manager(manager: DatabaseManager):
     """Set the global DatabaseManager instance."""
     global _db_manager
     _db_manager = manager
+
 
 async def init_db(database_url: Optional[str] = None) -> DatabaseManager:
     """

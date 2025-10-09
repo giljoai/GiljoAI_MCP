@@ -15,17 +15,22 @@ import logging
 import sys
 from typing import Optional
 
+
 try:
-    from colorama import Fore, Back, Style, init as colorama_init
+    from colorama import Back, Fore, Style
+    from colorama import init as colorama_init
+
     # Initialize colorama for Windows support
     colorama_init(autoreset=True)
     COLORAMA_AVAILABLE = True
 except ImportError:
     COLORAMA_AVAILABLE = False
+
     # Fallback: no colors
     class _DummyColor:
         def __getattr__(self, name):
             return ""
+
     Fore = Back = Style = _DummyColor()
 
 
@@ -34,10 +39,10 @@ class ColoredFormatter(logging.Formatter):
 
     # Color mapping for log levels
     COLORS = {
-        logging.DEBUG: Fore.WHITE,       # Trivial text in white
-        logging.INFO: Fore.BLUE,         # General information in blue
-        logging.WARNING: Fore.YELLOW,    # Warnings in yellow
-        logging.ERROR: Fore.RED,         # Errors in red
+        logging.DEBUG: Fore.WHITE,  # Trivial text in white
+        logging.INFO: Fore.BLUE,  # General information in blue
+        logging.WARNING: Fore.YELLOW,  # Warnings in yellow
+        logging.ERROR: Fore.RED,  # Errors in red
         logging.CRITICAL: Fore.RED + Style.BRIGHT,  # Critical errors in bright red
     }
 
@@ -117,11 +122,7 @@ class ColoredLogger(logging.Logger):
             self._log(ColoredFormatter.SUCCESS, message, args, **kwargs)
 
 
-def get_colored_logger(
-    name: str,
-    level: int = logging.INFO,
-    add_handler: bool = True
-) -> ColoredLogger:
+def get_colored_logger(name: str, level: int = logging.INFO, add_handler: bool = True) -> ColoredLogger:
     """Get a colored logger instance.
 
     Args:
@@ -196,11 +197,7 @@ class LogFilter(logging.Filter):
         return not any(pattern.lower() in message for pattern in self.exclude_patterns)
 
 
-def create_filtered_logger(
-    name: str,
-    exclude_patterns: list[str] = None,
-    level: int = logging.INFO
-) -> ColoredLogger:
+def create_filtered_logger(name: str, exclude_patterns: list[str] = None, level: int = logging.INFO) -> ColoredLogger:
     """Create a colored logger with message filtering.
 
     Args:

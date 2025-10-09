@@ -76,7 +76,6 @@ class DatabaseConfig:
     database_name: str = "giljo_mcp.db"
     database_url: Optional[str] = None
 
-
     # PostgreSQL settings
     host: str = "localhost"
     port: int = 5432
@@ -521,7 +520,6 @@ class ConfigManager:
                 db = data["database"]
                 self.database.type = db.get("type", self.database.type)
 
-
                 if "postgresql" in db:
                     pg = db["postgresql"]
                     self.database.pg_host = pg.get("host", self.database.pg_host)
@@ -645,7 +643,6 @@ class ConfigManager:
         if log_level := os.getenv("LOG_LEVEL"):
             self.logging.level = log_level
 
-
         # Feature flags from environment
         if val := os.getenv("ENABLE_VISION_CHUNKING"):
             self.features.vision_chunking = val.lower() in ("true", "1", "yes")
@@ -750,7 +747,7 @@ class ConfigManager:
             # Only require password if no database URL is provided
             if not self.database.database_url and not self.database.pg_password and not os.getenv("DB_PASSWORD"):
                 # Check if we're in setup mode (allows placeholder password during initial setup)
-                if not getattr(self, 'setup_mode', False):
+                if not getattr(self, "setup_mode", False):
                     errors.append("PostgreSQL password is required")
 
         # Agent configuration validation
@@ -1080,6 +1077,7 @@ def generate_sample_config(path: Optional[Path] = None) -> Path:
 # Product config_data Population Functions
 # ========================================
 
+
 def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
     """
     Extract architecture description from CLAUDE.md.
@@ -1095,19 +1093,20 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
         return None
 
     try:
-        content = claude_md_path.read_text(encoding='utf-8')
+        content = claude_md_path.read_text(encoding="utf-8")
     except Exception as e:
         logger.error(f"Failed to read CLAUDE.md: {e}")
         return None
 
     # Look for architecture section
     import re
+
     arch_patterns = [
-        r'## Architecture Overview\s*\n+(.+?)(?=\n##|\n###|\Z)',
-        r'### Architecture Overview\s*\n+(.+?)(?=\n##|\n###|\Z)',
-        r'## Architecture\s*\n+(.+?)(?=\n##|\n###|\Z)',
-        r'Architecture:\s*(.+?)(?=\n|$)',
-        r'System:\s*(.+?)(?=\n|$)'
+        r"## Architecture Overview\s*\n+(.+?)(?=\n##|\n###|\Z)",
+        r"### Architecture Overview\s*\n+(.+?)(?=\n##|\n###|\Z)",
+        r"## Architecture\s*\n+(.+?)(?=\n##|\n###|\Z)",
+        r"Architecture:\s*(.+?)(?=\n|$)",
+        r"System:\s*(.+?)(?=\n|$)",
     ]
 
     for pattern in arch_patterns:
@@ -1115,18 +1114,17 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
         if match:
             arch = match.group(1).strip()
             # Clean up (take first line if multi-line)
-            lines = [line.strip() for line in arch.split('\n') if line.strip()]
+            lines = [line.strip() for line in arch.split("\n") if line.strip()]
             if lines:
                 return lines[0]
 
     # Fallback: try to infer from content
-    if 'FastAPI' in content and 'PostgreSQL' in content:
-        if 'Vue' in content:
+    if "FastAPI" in content and "PostgreSQL" in content:
+        if "Vue" in content:
             return "FastAPI + PostgreSQL + Vue.js"
-        elif 'React' in content:
+        if "React" in content:
             return "FastAPI + PostgreSQL + React"
-        else:
-            return "FastAPI + PostgreSQL"
+        return "FastAPI + PostgreSQL"
 
     return None
 
@@ -1145,7 +1143,7 @@ def extract_tech_stack_from_claude_md(claude_md_path: Path) -> list[str]:
         return []
 
     try:
-        content = claude_md_path.read_text(encoding='utf-8')
+        content = claude_md_path.read_text(encoding="utf-8")
     except Exception as e:
         logger.error(f"Failed to read CLAUDE.md: {e}")
         return []
@@ -1154,33 +1152,34 @@ def extract_tech_stack_from_claude_md(claude_md_path: Path) -> list[str]:
 
     # Common patterns
     import re
-    python_match = re.search(r'Python\s+([\d\.]+)', content, re.IGNORECASE)
+
+    python_match = re.search(r"Python\s+([\d\.]+)", content, re.IGNORECASE)
     if python_match:
         tech_stack.append(f"Python {python_match.group(1)}")
 
-    postgres_match = re.search(r'PostgreSQL\s+([\d\.]+)', content, re.IGNORECASE)
+    postgres_match = re.search(r"PostgreSQL\s+([\d\.]+)", content, re.IGNORECASE)
     if postgres_match:
         tech_stack.append(f"PostgreSQL {postgres_match.group(1)}")
 
     # Frontend frameworks
-    for framework in ['Vue 3', 'Vue.js', 'React', 'Angular', 'Svelte']:
+    for framework in ["Vue 3", "Vue.js", "React", "Angular", "Svelte"]:
         if framework in content:
             tech_stack.append(framework)
             break
 
     # Backend frameworks
-    for framework in ['FastAPI', 'Django', 'Flask', 'Express.js']:
+    for framework in ["FastAPI", "Django", "Flask", "Express.js"]:
         if framework in content:
             tech_stack.append(framework)
             break
 
     # Tools
-    if 'Docker' in content:
-        tech_stack.append('Docker')
-    if 'Alembic' in content:
-        tech_stack.append('Alembic')
-    if 'SQLAlchemy' in content:
-        tech_stack.append('SQLAlchemy')
+    if "Docker" in content:
+        tech_stack.append("Docker")
+    if "Alembic" in content:
+        tech_stack.append("Alembic")
+    if "SQLAlchemy" in content:
+        tech_stack.append("SQLAlchemy")
 
     return tech_stack
 
@@ -1199,7 +1198,7 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> list[str]:
         return []
 
     try:
-        content = claude_md_path.read_text(encoding='utf-8')
+        content = claude_md_path.read_text(encoding="utf-8")
     except Exception as e:
         logger.error(f"Failed to read CLAUDE.md: {e}")
         return []
@@ -1208,20 +1207,21 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> list[str]:
 
     # Look for test command patterns
     import re
-    pytest_match = re.search(r'pytest\s+[^\n]+', content)
+
+    pytest_match = re.search(r"pytest\s+[^\n]+", content)
     if pytest_match:
         test_commands.append(pytest_match.group(0).strip())
 
-    npm_test_match = re.search(r'npm\s+run\s+test[^\n]*', content)
+    npm_test_match = re.search(r"npm\s+run\s+test[^\n]*", content)
     if npm_test_match:
         test_commands.append(npm_test_match.group(0).strip())
 
     # Fallback defaults
     if not test_commands:
-        if 'pytest' in content.lower():
-            test_commands.append('pytest tests/')
-        if 'npm' in content.lower():
-            test_commands.append('npm run test')
+        if "pytest" in content.lower():
+            test_commands.append("pytest tests/")
+        if "npm" in content.lower():
+            test_commands.append("npm run test")
 
     return test_commands
 
@@ -1237,6 +1237,7 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
         Frontend framework name or None
     """
     import json
+
     package_json = root_path / "package.json"
 
     if not package_json.exists():
@@ -1247,21 +1248,21 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
         return None
 
     try:
-        with open(package_json, encoding='utf-8') as f:
+        with open(package_json, encoding="utf-8") as f:
             data = json.load(f)
 
-        dependencies = {**data.get('dependencies', {}), **data.get('devDependencies', {})}
+        dependencies = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
 
-        if 'vue' in dependencies:
-            version = dependencies['vue']
-            if version.startswith('^3') or version.startswith('3.'):
+        if "vue" in dependencies:
+            version = dependencies["vue"]
+            if version.startswith("^3") or version.startswith("3."):
                 return "Vue 3"
             return "Vue.js"
-        elif 'react' in dependencies:
+        if "react" in dependencies:
             return "React"
-        elif '@angular/core' in dependencies:
+        if "@angular/core" in dependencies:
             return "Angular"
-        elif 'svelte' in dependencies:
+        if "svelte" in dependencies:
             return "Svelte"
 
     except Exception as e:
@@ -1284,13 +1285,13 @@ def detect_backend_framework(root_path: Path) -> Optional[str]:
 
     if requirements_txt.exists():
         try:
-            content = requirements_txt.read_text(encoding='utf-8').lower()
+            content = requirements_txt.read_text(encoding="utf-8").lower()
 
-            if 'fastapi' in content:
+            if "fastapi" in content:
                 return "FastAPI"
-            elif 'django' in content:
+            if "django" in content:
                 return "Django"
-            elif 'flask' in content:
+            if "flask" in content:
                 return "Flask"
         except Exception as e:
             logger.warning(f"Failed to read requirements.txt: {e}")
@@ -1299,13 +1300,13 @@ def detect_backend_framework(root_path: Path) -> Optional[str]:
     pyproject_toml = root_path / "pyproject.toml"
     if pyproject_toml.exists():
         try:
-            content = pyproject_toml.read_text(encoding='utf-8').lower()
+            content = pyproject_toml.read_text(encoding="utf-8").lower()
 
-            if 'fastapi' in content:
+            if "fastapi" in content:
                 return "FastAPI"
-            elif 'django' in content:
+            if "django" in content:
                 return "Django"
-            elif 'flask' in content:
+            if "flask" in content:
                 return "Flask"
         except Exception as e:
             logger.warning(f"Failed to read pyproject.toml: {e}")
@@ -1327,16 +1328,16 @@ def detect_codebase_structure(root_path: Path) -> dict[str, str]:
 
     # Common directories to check
     dirs_to_check = {
-        'api': 'REST API endpoints',
-        'frontend': 'Frontend application',
-        'src': 'Core application code',
-        'tests': 'Test suites',
-        'docs': 'Documentation',
-        'installer': 'Installation scripts',
-        'scripts': 'Utility scripts',
-        'migrations': 'Database migrations',
-        'static': 'Static assets',
-        'templates': 'Templates'
+        "api": "REST API endpoints",
+        "frontend": "Frontend application",
+        "src": "Core application code",
+        "tests": "Test suites",
+        "docs": "Documentation",
+        "installer": "Installation scripts",
+        "scripts": "Utility scripts",
+        "migrations": "Database migrations",
+        "static": "Static assets",
+        "templates": "Templates",
     }
 
     for dir_name, description in dirs_to_check.items():
@@ -1349,7 +1350,7 @@ def detect_codebase_structure(root_path: Path) -> dict[str, str]:
     if src_path.exists():
         # Find main package
         for item in src_path.iterdir():
-            if item.is_dir() and not item.name.startswith('.'):
+            if item.is_dir() and not item.name.startswith("."):
                 structure[f"src/{item.name}"] = f"{item.name.replace('_', ' ').title()} package"
                 break
 
@@ -1366,6 +1367,7 @@ def check_serena_mcp_available() -> bool:
     try:
         # Check if serena-mcp package is importable
         import importlib.util
+
         spec = importlib.util.find_spec("serena_mcp")
         return spec is not None
     except Exception:

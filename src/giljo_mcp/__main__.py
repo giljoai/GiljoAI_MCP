@@ -6,7 +6,6 @@ Entry point for the MCP stdio adapter when invoked as 'python -m giljo_mcp'
 This allows Claude Code to communicate with the GiljoAI backend via MCP protocol.
 """
 
-import sys
 import asyncio
 
 
