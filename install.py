@@ -236,6 +236,7 @@ class UnifiedInstaller:
         Checks:
         1. psql in PATH
         2. Platform-specific common locations
+        3. User-provided custom path (if auto-discovery fails)
 
         Returns:
             Discovery result with found status and paths
@@ -278,9 +279,100 @@ class UnifiedInstaller:
 
                 return result
 
-        # Not found
+        # Method 3: Ask for custom path
         self._print_warning("PostgreSQL not found in common locations")
+
+        # Skip prompt in headless mode
+        if self.settings.get('headless'):
+            return result
+
+        print(f"\n{Fore.YELLOW}Do you have PostgreSQL installed at a custom location? (y/n): {Style.RESET_ALL}", end='')
+        response = input().strip().lower()
+
+        if response not in ['y', 'yes']:
+            return result
+
+        # Prompt for custom path (max 3 attempts)
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            print(f"\n{Fore.YELLOW}Enter the full path to your PostgreSQL bin directory{Style.RESET_ALL}")
+            print(f"{Fore.WHITE}Example: C:\\custom\\postgres\\bin or /opt/custom/postgres/bin{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}Path: {Style.RESET_ALL}", end='')
+
+            custom_path = input().strip()
+
+            if not custom_path:
+                self._print_warning("Empty path provided")
+                continue
+
+            # Validate custom path
+            if self.check_custom_postgresql_path(custom_path):
+                # Custom path is valid
+                system = platform.system()
+                if system == "Windows":
+                    psql_path = Path(custom_path) / "psql.exe"
+                else:
+                    psql_path = Path(custom_path) / "psql"
+
+                result['found'] = True
+                result['psql_path'] = str(psql_path)
+                self.psql_path = psql_path
+                self.postgresql_found = True
+
+                # Add to PATH for session
+                os.environ['PATH'] = f"{custom_path}{os.pathsep}{os.environ['PATH']}"
+
+                return result
+
+            # Invalid path - show remaining attempts
+            remaining = max_attempts - attempt - 1
+            if remaining > 0:
+                self._print_warning(f"Invalid path. {remaining} attempt(s) remaining.")
+            else:
+                self._print_error("Maximum attempts exceeded.")
+
+        # All attempts failed
         return result
+
+    def check_custom_postgresql_path(self, path_str: str) -> bool:
+        """
+        Check if custom PostgreSQL path is valid
+
+        Validates:
+        1. Path exists
+        2. Contains psql or psql.exe executable
+
+        Args:
+            path_str: Path to PostgreSQL bin directory
+
+        Returns:
+            True if path is valid, False otherwise
+        """
+        try:
+            path = Path(path_str)
+
+            # Check if directory exists
+            if not path.exists():
+                self._print_error(f"Path does not exist: {path}")
+                return False
+
+            # Check for psql executable (platform-specific)
+            system = platform.system()
+            if system == "Windows":
+                psql_path = path / "psql.exe"
+            else:
+                psql_path = path / "psql"
+
+            if not psql_path.exists():
+                self._print_error(f"psql executable not found in: {path}")
+                return False
+
+            self._print_success(f"Valid PostgreSQL installation found: {psql_path}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Invalid path: {e}")
+            return False
 
     def _get_postgresql_scan_paths(self) -> List[Path]:
         """
