@@ -358,8 +358,8 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
 
         # Verbose mode: show console window on Windows
         if verbose and platform.system() == "Windows":
-            # CREATE_NEW_CONSOLE flag = 0x00000010
-            popen_kwargs["creationflags"] = 0x00000010
+            # CREATE_NEW_CONSOLE flag to open in new window
+            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
             print_success("API server will open in new console window")
         else:
             # Background mode: hide output
@@ -410,7 +410,7 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
 
         # Verbose mode: show console window on Windows
         if verbose and platform.system() == "Windows":
-            popen_kwargs["creationflags"] = 0x00000010
+            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
             print_success("Frontend server will open in new console window")
         else:
             # Background mode: hide output
