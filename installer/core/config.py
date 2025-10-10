@@ -1,6 +1,7 @@
 """
-FIXED Configuration file generation for .env and config.yaml
-Ensures perfect harmony with application expectations
+v3.0 Configuration file generation for .env and config.yaml
+Unified architecture: Always binds to 0.0.0.0, firewall controls access
+Authentication always enabled with IP-based auto-login for localhost
 """
 
 import os
@@ -13,11 +14,19 @@ from datetime import datetime
 
 
 class ConfigManager:
-    """Generate and manage configuration files with application compatibility"""
+    """
+    Generate and manage configuration files for v3.0 unified architecture.
+
+    Key v3.0 principles:
+    - No deployment modes (local/server/lan/wan)
+    - Always bind to 0.0.0.0 (firewall controls access)
+    - Database always on localhost (security principle)
+    - Authentication always enabled (IP-based auto-login for 127.0.0.1)
+    - deployment_context is metadata only (not a mode)
+    """
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.mode = settings.get("mode", "local")
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Allow override of file paths for testing
@@ -25,7 +34,12 @@ class ConfigManager:
         self.env_file = Path(".env")
 
     def generate_all(self) -> Dict[str, Any]:
-        """Generate all configuration files"""
+        """
+        Generate all configuration files for v3.0 unified architecture.
+
+        Returns:
+            Result dict with success status and any errors
+        """
         result = {"success": False, "errors": []}
 
         try:
@@ -42,13 +56,6 @@ class ConfigManager:
             if not yaml_result["success"]:
                 result["errors"].extend(yaml_result.get("errors", []))
                 return result
-
-            # Generate additional configs for server mode
-            if self.mode == "server":
-                server_result = self.generate_server_configs()
-                if not server_result["success"]:
-                    result["errors"].extend(server_result.get("errors", []))
-                    return result
 
             result["success"] = True
             self.logger.info("All configuration files generated successfully")
@@ -68,7 +75,17 @@ class ConfigManager:
         return self.generate_config_yaml()
 
     def generate_env_file(self) -> Dict[str, Any]:
-        """Generate .env file with application-compatible variables"""
+        """
+        Generate .env file for v3.0 unified architecture.
+
+        v3.0 changes:
+        - Always binds to 0.0.0.0 (no mode-based branching)
+        - DEPLOYMENT_CONTEXT is metadata only
+        - Authentication always enabled
+
+        Returns:
+            Result dict with success status and any errors
+        """
         result = {"success": False, "errors": []}
 
         try:
@@ -77,22 +94,18 @@ class ConfigManager:
             user_password = self.settings.get("user_password", "4010")
 
             # Get configuration values with correct defaults
-            pg_host = self.settings.get("pg_host", "localhost")
+            pg_host = self.settings.get("pg_host", "localhost")  # ALWAYS localhost
             pg_port = self.settings.get("pg_port", 5432)
-            api_port = self.settings.get("api_port", 7272)  # FIXED: Correct default
-            frontend_port = self.settings.get("dashboard_port", 7274)  # FIXED: Correct default
+            api_port = self.settings.get("api_port", 7272)
+            frontend_port = self.settings.get("dashboard_port", 7274)
 
-            # Determine bind address
-            if self.mode == "local":
-                bind_address = "127.0.0.1"
-                api_url_host = "localhost"
-            else:
-                bind_address = self.settings.get("bind", "0.0.0.0")
-                api_url_host = self.settings.get("server_name", "localhost")
+            # v3.0: Always bind to 0.0.0.0 (firewall controls access)
+            bind_address = "0.0.0.0"
+            api_url_host = "localhost"  # Default for frontend connections
 
             env_content = f"""# GiljoAI MCP Environment Configuration v3.0
 # Generated: {datetime.now().isoformat()}
-# Deployment Context: localhost (informational only)
+# Deployment Context: localhost (informational only - not a mode)
 
 # =============================================================================
 # PORT CONFIGURATION (v2.0+ Unified Architecture)
@@ -148,22 +161,22 @@ SERVICE_BIND=0.0.0.0
 # API URL for frontend (WebSocket uses same port in v2.0)
 VITE_API_URL=http://{api_url_host}:{api_port}
 VITE_WS_URL=ws://{api_url_host}:{api_port}
-VITE_APP_MODE={'local' if self.mode == 'local' else 'server'}
+VITE_APP_MODE=localhost
 VITE_API_PORT={api_port}
 
 # =============================================================================
 # ENVIRONMENT SETTINGS
 # =============================================================================
-ENVIRONMENT={'development' if self.mode == 'local' else 'production'}
-DEBUG={'true' if self.mode == 'local' else 'false'}
-LOG_LEVEL={'DEBUG' if self.mode == 'local' else 'INFO'}
+ENVIRONMENT=development
+DEBUG=true
+LOG_LEVEL=DEBUG
 LOG_FILE=./logs/giljo_mcp.log
 
 # =============================================================================
-# SECURITY
+# SECURITY (v3.0: Authentication always enabled)
 # =============================================================================
-# API Key for authentication (required for LAN/WAN modes)
-GILJO_MCP_API_KEY={self.settings.get('api_key', '') if self.mode == 'server' else ''}
+# API Key for network clients (optional - generated at runtime if needed)
+GILJO_MCP_API_KEY=
 
 # Secret keys for session management
 GILJO_MCP_SECRET_KEY={self.generate_secret_key()}
@@ -174,10 +187,10 @@ SESSION_SECRET={self.generate_secret_key()}
 # =============================================================================
 # CORS CONFIGURATION
 # =============================================================================
-CORS_ORIGINS=http://localhost:*
+CORS_ORIGINS=http://localhost:*,http://127.0.0.1:*
 
 # =============================================================================
-# FEATURE FLAGS
+# FEATURE FLAGS (v3.0: Core features always enabled)
 # =============================================================================
 # Core features
 ENABLE_VISION_CHUNKING=true
@@ -186,10 +199,12 @@ ENABLE_WEBSOCKET=true
 ENABLE_AUTO_HANDOFF=true
 ENABLE_DYNAMIC_DISCOVERY=true
 
-# Security features
-ENABLE_SSL={'true' if self.mode == 'server' and self.settings.get('features', {}).get('ssl', False) else 'false'}
-ENABLE_API_KEYS={'true' if self.mode == 'server' else 'false'}
-ENABLE_MULTI_USER={'true' if self.mode == 'server' else 'false'}
+# Security features (v3.0: Authentication always enabled, IP-based auto-login)
+ENABLE_AUTHENTICATION=true
+ENABLE_AUTO_LOGIN_LOCALHOST=true
+ENABLE_SSL=false
+ENABLE_API_KEYS=false
+ENABLE_MULTI_USER=false
 
 # =============================================================================
 # AGENT CONFIGURATION
@@ -224,38 +239,18 @@ TEMP_DIR=./temp
 # =============================================================================
 # PERFORMANCE
 # =============================================================================
-WORKER_COUNT={'1' if self.mode == 'local' else '4'}
-CONNECTION_POOL_SIZE={'5' if self.mode == 'local' else '20'}
+WORKER_COUNT=1
+CONNECTION_POOL_SIZE=5
 
 # =============================================================================
 # DOCKER BUILD CONFIGURATION
 # =============================================================================
-BUILD_TARGET={'development' if self.mode == 'local' else 'production'}
+BUILD_TARGET=development
 
 # =============================================================================
 # ACTIVE PRODUCT
 # =============================================================================
 ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
-"""
-
-            # Add server-specific settings
-            if self.mode == "server":
-                env_content += f"""
-# =============================================================================
-# SERVER MODE ADDITIONAL SETTINGS
-# =============================================================================
-ADMIN_USER={self.settings.get('admin_username', 'admin')}
-ADMIN_EMAIL={self.settings.get('admin_email', 'admin@localhost')}
-SERVER_NAME={self.settings.get('server_name', 'GiljoAI MCP Server')}
-ALLOWED_HOSTS={self.settings.get('allowed_hosts', '["*"]')}
-
-# SSL Configuration
-SSL_CERT_PATH={self.settings.get('ssl_cert_path', './certs/server.crt')}
-SSL_KEY_PATH={self.settings.get('ssl_key_path', './certs/server.key')}
-
-# Rate limiting
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_REQUESTS_PER_MINUTE=60
 """
 
             # Write .env file (use configured path)
@@ -275,7 +270,19 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
             return result
 
     def generate_config_yaml(self) -> Dict[str, Any]:
-        """Generate config.yaml with installation details"""
+        """
+        Generate config.yaml for v3.0 unified architecture.
+
+        v3.0 changes:
+        - No mode field anywhere
+        - deployment_context is metadata only
+        - Always bind to 0.0.0.0
+        - Database always on localhost
+        - Authentication always enabled
+
+        Returns:
+            Result dict with success status and any errors
+        """
         result = {"success": False, "errors": []}
 
         try:
@@ -298,16 +305,16 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                 },
                 "database": {
                     "type": "postgresql",
-                    "version": "16",  # Updated to match actual PostgreSQL version
-                    # CRITICAL: Database host is ALWAYS localhost regardless of deployment mode
+                    "version": "18",  # PostgreSQL 18
+                    # CRITICAL: Database host is ALWAYS localhost (security principle)
                     # The database is co-located with the backend and NEVER exposed to network
-                    # This is a security principle - only the API layer is network-accessible
-                    "host": self.settings.get("pg_host", "localhost"),  # ALWAYS localhost
+                    # Only the API layer is network-accessible (binds to 0.0.0.0)
+                    "host": "localhost",  # ALWAYS localhost (never changes)
                     "port": self.settings.get("pg_port", 5432),
                     "name": "giljo_mcp",
                     "user": "giljo_user",
                     "owner": "giljo_owner",
-                    "pool_size": 5 if self.mode == "localhost" else 20,
+                    "pool_size": 5,  # v3.0: Fixed pool size (no mode-based scaling)
                 },
                 "server": {
                     # v3.0: Always bind to 0.0.0.0 (all interfaces)
@@ -359,10 +366,10 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                     "temp": str(Path(install_dir) / "temp"),
                     "static": str(Path(install_dir) / "frontend" / "dist"),
                     "templates": str(Path(install_dir) / "frontend" / "templates"),
-                    "certs": str(Path(install_dir) / "certs") if self.mode == "server" else None,
+                    "certs": None,  # v3.0: SSL cert path removed (use docs for SSL setup)
                 },
                 "logging": {
-                    "level": "DEBUG" if self.mode == "localhost" else "INFO",
+                    "level": "DEBUG",  # v3.0: Default to DEBUG for localhost
                     "file": "./logs/giljo_mcp.log",
                     "max_size": "10MB",
                     "backup_count": 5,
@@ -378,7 +385,7 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                     "timeout_seconds": 3600,
                     "max_concurrent": 10,
                     "cleanup_interval": 300,
-                    "cookie_secure": self.mode == "server",
+                    "cookie_secure": False,  # v3.0: Set to False for localhost
                 },
                 "message_queue": {
                     "max_size": 1000,
@@ -396,28 +403,8 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                 },
             }
 
-            # Add security configuration (ALWAYS included, mode-dependent settings)
+            # Add security configuration (v3.0: Always included, no mode dependency)
             config["security"] = self._generate_security_config()
-
-            # Add server-specific configuration
-            if self.mode == "server":
-                config["server"] = {
-                    "admin_user": self.settings.get("admin_username", "admin"),
-                    "admin_email": self.settings.get("admin_email", "admin@localhost"),
-                    "allowed_ips": self.settings.get("allowed_ips", []),
-                    "rate_limiting": {"enabled": True, "requests_per_minute": 60, "burst_size": 10},
-                    "session": {"timeout_minutes": 30, "remember_me_days": 30, "secure_cookies": True},
-                    "monitoring": {"enabled": True, "health_check_interval": 60, "metrics_enabled": True},
-                }
-
-                if config["features"]["ssl_enabled"]:
-                    config["ssl"] = {
-                        "cert_path": self.settings.get("ssl_cert_path", "./certs/server.crt"),
-                        "key_path": self.settings.get("ssl_key_path", "./certs/server.key"),
-                        "self_signed": self.settings.get("ssl", {}).get("type") == "self-signed",
-                        "force_https": True,
-                        "hsts_enabled": True,
-                    }
 
             # Write config.yaml (use configured path)
             with open(self.config_file, "w") as f:
@@ -433,7 +420,13 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
             return result
 
     def _generate_security_config(self) -> Dict[str, Any]:
-        """Generate security configuration based on deployment mode
+        """
+        Generate security configuration for v3.0 unified architecture.
+
+        v3.0 changes:
+        - No mode-based branching
+        - CORS defaults to localhost only
+        - API keys optional (generated at runtime if needed)
 
         Returns:
             Security configuration dictionary with CORS, API keys, and rate limiting
@@ -442,22 +435,18 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
         api_port = self.settings.get("api_port", 7272)
         frontend_port = self.settings.get("dashboard_port", 7274)
 
-        # Build CORS allowed origins based on mode
-        cors_origins = [f"http://127.0.0.1:{frontend_port}", f"http://localhost:{frontend_port}"]
+        # v3.0: Default CORS to localhost only (firewall controls network access)
+        cors_origins = [
+            f"http://127.0.0.1:{frontend_port}",
+            f"http://localhost:{frontend_port}",
+            f"http://127.0.0.1:{api_port}",
+            f"http://localhost:{api_port}",
+        ]
 
-        # Add server-specific CORS origins
-        if self.mode == "server":
-            # Get server IP if provided
-            server_ip = self.settings.get("server_ip")
-            if server_ip:
-                cors_origins.append(f"http://{server_ip}:{frontend_port}")
-
-            # Add custom origins if provided
-            custom_origins = self.settings.get("cors_origins", [])
+        # Add custom origins if provided (advanced users)
+        custom_origins = self.settings.get("cors_origins", [])
+        if custom_origins:
             cors_origins.extend(custom_origins)
-
-            # Add comment for users to add more IPs
-            # (Will be added as a YAML comment in future enhancement)
 
         security_config = {
             "cors": {
@@ -466,204 +455,19 @@ RATE_LIMIT_REQUESTS_PER_MINUTE=60
                 # Add specific IPs instead: 'http://192.168.1.100:7274'
             },
             "api_keys": {
-                # API keys required based on deployment mode
-                "require_for_modes": ["server", "lan", "wan"]
-                # Generate keys using: python -c "import secrets; print(f'giljo_lan_{secrets.token_urlsafe(32)}')"
+                # API keys documentation (not enforced in v3.0 localhost mode)
+                "info": "API keys optional for localhost (auto-login enabled)",
+                "generate_command": "python -c \"import secrets; print(f'giljo_{secrets.token_urlsafe(32)}')\"",
             },
             "rate_limiting": {
                 "enabled": True,
-                "requests_per_minute": 60 if self.mode == "localhost" else 60,
+                "requests_per_minute": 60,
                 # Adjust per-endpoint limits in api/middleware.py if needed
             },
         }
 
         return security_config
 
-    def generate_server_configs(self) -> Dict[str, Any]:
-        """Generate additional configuration files for server mode"""
-        result = {"success": False, "errors": []}
-
-        try:
-            # Generate nginx config example
-            self.generate_nginx_config()
-
-            # Generate systemd service file
-            self.generate_systemd_service()
-
-            # Generate API keys file if enabled
-            if self.settings.get("features", {}).get("api_keys", False):
-                self.generate_api_keys()
-
-            result["success"] = True
-            return result
-
-        except Exception as e:
-            result["errors"].append(str(e))
-            self.logger.error(f"Failed to generate server configs: {e}")
-            return result
-
-    def generate_nginx_config(self):
-        """Generate example nginx configuration for v2.0 unified architecture"""
-        api_port = self.settings.get("api_port", 7272)
-        frontend_port = self.settings.get("dashboard_port", 7274)
-
-        nginx_config = f"""# GiljoAI MCP Nginx Configuration (v2.0)
-# Place this in /etc/nginx/sites-available/giljo-mcp
-
-upstream giljo_api {{
-    server 127.0.0.1:{api_port};
-    keepalive 64;
-}}
-
-upstream giljo_frontend {{
-    server 127.0.0.1:{frontend_port};
-}}
-
-server {{
-    listen 80;
-    server_name _;  # Replace with your domain
-
-    # Frontend (development server or static files)
-    location / {{
-        proxy_pass http://giljo_frontend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }}
-
-    # API endpoints
-    location /api {{
-        proxy_pass http://giljo_api;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Timeouts for long-running operations
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }}
-
-    # WebSocket (v2.0 uses same port as API)
-    location /ws {{
-        proxy_pass http://giljo_api;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket timeouts
-        proxy_connect_timeout 7d;
-        proxy_send_timeout 7d;
-        proxy_read_timeout 7d;
-    }}
-
-    # Health check endpoint
-    location /health {{
-        proxy_pass http://giljo_api/health;
-        access_log off;
-    }}
-}}
-
-# HTTPS configuration (if SSL enabled)
-server {{
-    listen 443 ssl http2;
-    server_name _;  # Replace with your domain
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    # Modern SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    ssl_prefer_server_ciphers off;
-
-    # HSTS
-    add_header Strict-Transport-Security "max-age=63072000" always;
-
-    # Same location blocks as above...
-}}
-"""
-        config_dir = Path("installer/configs")
-        config_dir.mkdir(exist_ok=True)
-
-        nginx_path = config_dir / "nginx.conf.example"
-        nginx_path.write_text(nginx_config)
-        self.logger.info(f"Generated nginx config example: {nginx_path}")
-
-    def generate_systemd_service(self):
-        """Generate systemd service file for v2.0"""
-        service_content = f"""[Unit]
-Description=GiljoAI MCP Orchestrator Service
-After=network.target postgresql.service
-Wants=postgresql.service
-
-[Service]
-Type=simple
-User=giljo
-Group=giljo
-WorkingDirectory=/opt/giljo-mcp
-Environment="PATH=/opt/giljo-mcp/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHONPATH=/opt/giljo-mcp"
-
-# Start the main orchestrator (handles API, WebSocket, and frontend)
-ExecStart=/opt/giljo-mcp/venv/bin/python -m api.run_api
-
-# Restart policy
-Restart=always
-RestartSec=10
-StandardOutput=append:/var/log/giljo-mcp/service.log
-StandardError=append:/var/log/giljo-mcp/error.log
-
-# Security hardening
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/opt/giljo-mcp/data /opt/giljo-mcp/logs /opt/giljo-mcp/uploads
-
-[Install]
-WantedBy=multi-user.target
-"""
-        config_dir = Path("installer/configs")
-        config_dir.mkdir(exist_ok=True)
-
-        service_path = config_dir / "giljo-mcp.service"
-        service_path.write_text(service_content)
-        self.logger.info(f"Generated systemd service file: {service_path}")
-
-    def generate_api_keys(self):
-        """Generate initial API keys for server mode"""
-        import secrets
-
-        api_keys = {
-            "version": "1.0",
-            "keys": [
-                {
-                    "name": "default",
-                    "key": secrets.token_urlsafe(32),
-                    "created": datetime.now().isoformat(),
-                    "permissions": ["read", "write", "admin"],
-                    "rate_limit_override": None,
-                }
-            ],
-        }
-
-        keys_path = Path("api_keys.yaml")
-        with open(keys_path, "w") as f:
-            yaml.dump(api_keys, f, default_flow_style=False)
-
-        # Secure the file
-        if platform.system() != "Windows":
-            os.chmod(keys_path, 0o600)
-
-        self.logger.info(f"Generated API keys file: {keys_path}")
-        self.logger.info(f"Default API key: {api_keys['keys'][0]['key']}")
 
     def generate_secret_key(self, length: int = 32) -> str:
         """Generate a secure random secret key"""
