@@ -26,15 +26,32 @@ router = APIRouter()
 
 class DeploymentContext(str, Enum):
     """
-    Deployment context - INFORMATIONAL ONLY.
+    Deployment context - METADATA ONLY (v3.0 unified architecture).
 
-    In v3.0, this is purely metadata. Server always binds to 0.0.0.0,
-    with firewall controlling access. No behavioral differences.
+    IMPORTANT: In v3.0, this enum does NOT affect server behavior.
+    All deployments use identical configuration:
+    - Server ALWAYS binds to 0.0.0.0 (firewall controls access)
+    - Authentication ALWAYS enabled (auto-login for localhost clients)
+    - Admin user created based on lan_config (not context)
+
+    This enum is saved to config.yaml for informational purposes only:
+    - Helps users understand their deployment context
+    - Used in documentation and UI labels
+    - Does NOT trigger different code paths
+
+    Values:
+    - localhost: Developer workstation (firewall allows localhost only)
+    - lan: Team network (firewall configured for LAN access)
+    - wan: Internet access (firewall configured for WAN access)
+
+    The ONLY behavioral difference is:
+    - Admin user creation depends on lan_config (not context)
+    - CORS origins added based on lan_config (not context)
     """
 
-    LOCALHOST = "localhost"  # Developer workstation
-    LAN = "lan"  # Team network
-    WAN = "wan"  # Internet access
+    LOCALHOST = "localhost"  # Metadata: localhost-only deployment
+    LAN = "lan"  # Metadata: LAN deployment (firewall configured)
+    WAN = "wan"  # Metadata: WAN deployment (firewall configured)  # Internet access
 
 
 class LANConfig(BaseModel):
@@ -209,48 +226,55 @@ def validate_lan_config(lan_config: LANConfig) -> None:
         raise HTTPException(status_code=400, detail=f"Invalid IP address format: {lan_config.server_ip}")
 
 
-def update_cors_origins(
-    config: dict[str, Any], server_ip: str = None, hostname: str = None, mode: str = "localhost"
-) -> None:
+def update_cors_origins_additive(config: dict[str, Any], server_ip: str = None, hostname: str = None) -> None:
     """
-    Update CORS origins (DESTRUCTIVE - replaces all non-localhost origins).
+    Update CORS origins additively (preserves existing origins, adds new ones).
 
-    Wizard is destructive by design - always starts fresh with base localhost origins
-    and adds LAN/WAN origins only for network modes.
+    v3.0 architecture: CORS management is additive to support both localhost
+    and network access simultaneously.
 
     Args:
         config: Configuration dictionary to update
         server_ip: Server IP address for LAN/WAN mode (optional)
         hostname: Optional hostname for LAN/WAN access
-        mode: Deployment mode (localhost, lan, wan)
     """
     # Get frontend port from config
-    frontend_port = config.get("services", {}).get("frontend", {}).get("port", 7274)
+    frontend_port = config.get("services", {}).get("dashboard", {}).get("port", 7274)
 
-    # ALWAYS start with base localhost origins (preserved across all modes)
-    origins = [
-        f"http://127.0.0.1:{frontend_port}",
-        f"http://localhost:{frontend_port}",
-    ]
-
-    # Add LAN/WAN-specific origins ONLY in network modes
-    if mode in ["lan", "wan"]:
-        if server_ip:
-            origins.append(f"http://{server_ip}:{frontend_port}")
-            logger.info(f"Added CORS origin for {mode} mode: {server_ip}")
-
-        if hostname:
-            origins.append(f"http://{hostname}:{frontend_port}")
-            logger.info(f"Added CORS origin for {mode} mode: {hostname}")
-
-    # DESTRUCTIVE: Replace entire origins list
+    # Ensure CORS config exists
     if "security" not in config:
         config["security"] = {}
     if "cors" not in config["security"]:
         config["security"]["cors"] = {}
+    if "allowed_origins" not in config["security"]["cors"]:
+        config["security"]["cors"]["allowed_origins"] = []
 
-    config["security"]["cors"]["allowed_origins"] = origins
-    logger.info(f"CORS origins set for {mode} mode: {origins}")
+    # Get existing origins
+    existing_origins = set(config["security"]["cors"]["allowed_origins"])
+
+    # ALWAYS ensure base localhost origins are present
+    localhost_origins = {
+        f"http://127.0.0.1:{frontend_port}",
+        f"http://localhost:{frontend_port}",
+    }
+    existing_origins.update(localhost_origins)
+
+    # Add network origins if provided (additive)
+    if server_ip:
+        network_origin = f"http://{server_ip}:{frontend_port}"
+        existing_origins.add(network_origin)
+        logger.info(f"Added CORS origin for network access: {server_ip}")
+
+    if hostname:
+        hostname_origin = f"http://{hostname}:{frontend_port}"
+        existing_origins.add(hostname_origin)
+        logger.info(f"Added CORS origin for hostname access: {hostname}")
+
+    # Update config with combined origins (sorted for consistency)
+    config["security"]["cors"]["allowed_origins"] = sorted(list(existing_origins))
+    logger.info(f"CORS origins updated (additive): {len(existing_origins)} total")(
+        f"CORS origins set for {mode} mode: {origins}"
+    )
 
 
 @router.get("/status", response_model=SetupStatusResponse)
@@ -369,34 +393,50 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         requires_restart = False
         server_url = None
 
-        # Handle LAN/WAN mode configuration
-        if request_body.deployment_context in [DeploymentContext.LAN, DeploymentContext.WAN]:
-            logger.info(f"Configuring {request_body.deployment_context.value.upper()} mode setup...")
+        # ========================================================================
+        # v3.0 UNIFIED CONFIGURATION - NO MODE-DRIVEN BRANCHING
+        # ========================================================================
+        # In v3.0, ALL deployments use the same core configuration:
+        # - API binds to 0.0.0.0 (firewall controls access)
+        # - Authentication ALWAYS enabled
+        # - Auto-login ALWAYS enabled for localhost clients
+        # - Admin user created ONLY when lan_config provided
+        # - CORS origins managed additively
+        # - DeploymentContext saved as metadata only
+        # ========================================================================
 
-            # Validate lan_config is provided
-            if not request_body.lan_config:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"{request_body.deployment_context.value.upper()} mode requires lan_config with admin credentials and server IP",
-                )
+        # 1. ALWAYS set network binding to 0.0.0.0 (v3.0 unified architecture)
+        if "services" not in config:
+            config["services"] = {}
+        if "api" not in config["services"]:
+            config["services"]["api"] = {}
+        if "dashboard" not in config["services"]:
+            config["services"]["dashboard"] = {}
+
+        config["services"]["api"]["host"] = "0.0.0.0"
+        config["services"]["dashboard"]["host"] = "0.0.0.0"
+        logger.info("v3.0: API and dashboard bound to 0.0.0.0 (firewall controls access)")
+
+        # 2. ALWAYS enable authentication with auto-login for localhost
+        if "features" not in config:
+            config["features"] = {}
+
+        config["features"]["authentication"] = True
+        config["features"]["auto_login_localhost"] = True
+        logger.info("v3.0: Authentication enabled with auto-login for localhost clients")
+
+        # 3. OPTIONAL: Create admin user if lan_config provided
+        if request_body.lan_config:
+            logger.info("Creating admin user with lan_config credentials...")
 
             # Validate LAN configuration
             validate_lan_config(request_body.lan_config)
 
-            # 1. Update CORS origins for network access (destructive - replaces old origins)
-            update_cors_origins(
-                config,
-                server_ip=request_body.lan_config.server_ip,
-                hostname=request_body.lan_config.hostname,
-                mode=request_body.deployment_context.value,
-            )
-
-            # 2. Create admin user in database with hashed password
+            # Create or update admin user in database
             try:
                 from passlib.hash import bcrypt
                 from sqlalchemy import select
-                from src.giljo_mcp.models import User, APIKey
-                from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key, get_key_prefix
+                from src.giljo_mcp.models import User
 
                 # Get database session from request app state
                 if not (request and hasattr(request.app, "state") and hasattr(request.app.state, "api_state")):
@@ -424,7 +464,6 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                         existing_user.is_active = True
                         existing_user.role = "admin"
                         await session.flush()
-                        user_id = existing_user.id
                         admin_username = existing_user.username
                         logger.info(f"Updated existing admin user in database: {admin_username}")
                     else:
@@ -439,24 +478,30 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                             created_at=datetime.now(timezone.utc),
                         )
                         session.add(new_user)
-                        await session.flush()  # Get user.id
-                        user_id = new_user.id
+                        await session.flush()
                         admin_username = new_user.username
                         logger.info(f"Created admin user in database: {admin_username}")
 
-                    # Commit user creation (no API key needed - JWT auth for dashboard)
+                    # Commit user creation
                     await session.commit()
 
-                logger.info(f"LAN/WAN mode: Admin user configured successfully (JWT auth enabled)")
+                logger.info("Admin user configured successfully (JWT auth enabled)")
 
             except HTTPException:
                 # Re-raise HTTP exceptions
                 raise
             except Exception as e:
-                logger.error(f"Failed to configure LAN/WAN authentication: {e}", exc_info=True)
+                logger.error(f"Failed to configure admin user: {e}", exc_info=True)
                 raise HTTPException(status_code=500, detail=f"Failed to configure authentication: {str(e)}")
 
-            # 4. Save LAN server configuration
+            # Update CORS origins additively (ADD network origins)
+            update_cors_origins_additive(
+                config,
+                server_ip=request_body.lan_config.server_ip,
+                hostname=request_body.lan_config.hostname,
+            )
+
+            # Save LAN server metadata (informational only)
             if "server" not in config:
                 config["server"] = {}
 
@@ -465,7 +510,7 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             config["server"]["admin_user"] = request_body.lan_config.admin_username
             config["server"]["firewall_configured"] = request_body.lan_config.firewall_configured
 
-            # 4a. Save selected adapter information if provided
+            # Save selected adapter information if provided
             if request_body.lan_config.adapter_name and request_body.lan_config.adapter_id:
                 config["server"]["selected_adapter"] = {
                     "name": request_body.lan_config.adapter_name,
@@ -478,58 +523,35 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
                     f"({request_body.lan_config.server_ip})"
                 )
 
-            # 5. Set API host to selected adapter IP for LAN/WAN access
-            if "services" not in config:
-                config["services"] = {}
-            if "api" not in config["services"]:
-                config["services"]["api"] = {}
+            # Enable API keys for network access (optional feature)
+            config["features"]["api_keys_enabled"] = True
+            logger.info("API keys enabled for network access")
 
-            # Use selected adapter IP instead of hardcoded 0.0.0.0
-            # This allows the API to bind to the specific network interface
-            config["services"]["api"]["host"] = request_body.lan_config.server_ip
-            requires_restart = True
-            logger.info(f"Set API host to selected adapter IP: {request_body.lan_config.server_ip}")
+        else:
+            # No lan_config - localhost-only metadata
+            logger.info("No lan_config provided - localhost-only deployment")
 
-            # 6. Enable API key authentication for LAN/WAN mode
-            if "features" not in config:
-                config["features"] = {}
-            config["features"]["api_keys_required"] = True
-            config["features"]["multi_user"] = True
-
-            # 7. Build server URL for response
-            api_port = config.get("services", {}).get("api", {}).get("port", 7272)
-            server_url = f"http://{request_body.lan_config.server_ip}:{api_port}"
-
-            logger.info(f"{request_body.deployment_context.value.upper()} mode configuration complete - restart required")
-
-        # Handle localhost mode configuration
-        if request_body.deployment_context == DeploymentContext.LOCALHOST:
-            if "services" not in config:
-                config["services"] = {}
-            if "api" not in config["services"]:
-                config["services"]["api"] = {}
-
-            config["services"]["api"]["host"] = "127.0.0.1"
-
-            # Disable API key authentication for localhost mode
-            if "features" not in config:
-                config["features"] = {}
-            config["features"]["api_keys_required"] = False
-            config["features"]["multi_user"] = False
-
-            # Remove orphaned server section (from previous LAN mode)
+            # Remove server section if switching from LAN to localhost
             if "server" in config:
                 del config["server"]
-                logger.info("Removed orphaned server section (switched from LAN to localhost)")
+                logger.info("Removed server metadata (switched to localhost-only)")
 
-            # Clear LAN/WAN CORS origins (destructive cleanup)
-            update_cors_origins(config, mode="localhost")
+            # Ensure base localhost CORS origins are present
+            update_cors_origins_additive(config)
 
-            # Build localhost server URL
-            api_port = config.get("services", {}).get("api", {}).get("port", 7272)
+            # API keys optional for localhost-only
+            config["features"]["api_keys_enabled"] = False
+
+        # 4. Build server URL for response
+        api_port = config.get("services", {}).get("api", {}).get("port", 7272)
+        if request_body.lan_config:
+            server_url = f"http://{request_body.lan_config.server_ip}:{api_port}"
+        else:
             server_url = f"http://127.0.0.1:{api_port}"
 
-            logger.info("Localhost mode: API key authentication disabled, LAN config cleaned up")
+        # 5. No restart required in v3.0 (already bound to 0.0.0.0)
+        requires_restart = False
+        logger.info("v3.0: No restart required (already bound to 0.0.0.0)")
 
         # Toggle Serena MCP instructions if requested
         try:

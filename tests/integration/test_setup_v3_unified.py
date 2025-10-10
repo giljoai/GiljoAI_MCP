@@ -621,10 +621,15 @@ async def test_client():
         class APIState:
             def __init__(self):
                 self.db_manager = None
+                self.auth_manager = None  # Initialize auth_manager to None
 
         app.state.api_state = APIState()
 
     app.state.api_state.db_manager = test_db_manager
+    
+    # Initialize auth_manager to None (setup endpoint doesn't need it)
+    # The middleware will check for None and skip auth for setup endpoints
+    app.state.api_state.auth_manager = None
 
     # Create async client
     transport = ASGITransport(app=app)
@@ -635,6 +640,7 @@ async def test_client():
     app.dependency_overrides.clear()
     if hasattr(app.state, "api_state"):
         app.state.api_state.db_manager = None
+        app.state.api_state.auth_manager = None
     await test_db_manager.close_async()
 
 

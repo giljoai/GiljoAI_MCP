@@ -138,7 +138,7 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
 import DatabaseCheckStep from '@/components/setup/DatabaseCheckStep.vue'
-import DeploymentModeStep from '@/components/setup/DeploymentModeStep.vue'
+// Deployment Mode selection removed for v3.0
 import AdminAccountStep from '@/components/setup/AdminAccountStep.vue'
 import AttachToolsStep from '@/components/setup/AttachToolsStep.vue'
 import SerenaAttachStep from '@/components/setup/SerenaAttachStep.vue'
@@ -149,20 +149,9 @@ const theme = useTheme()
 // Step configuration with conditional rendering
 const allSteps = [
   {
-    component: DatabaseCheckStep,
-    title: 'Database Test',
-    name: 'database',
-  },
-  {
-    component: DeploymentModeStep,
-    title: 'Deployment Mode',
-    name: 'deploymentMode',
-  },
-  {
     component: AdminAccountStep,
     title: 'Admin Setup',
     name: 'adminSetup',
-    showIf: (config) => config.deploymentMode === 'lan' || config.deploymentMode === 'wan',
   },
   {
     component: AttachToolsStep,
@@ -175,6 +164,11 @@ const allSteps = [
     name: 'serena',
   },
   {
+    component: DatabaseCheckStep,
+    title: 'Database Test',
+    name: 'database',
+  },
+  {
     component: SetupCompleteStep,
     title: 'Complete',
     name: 'complete',
@@ -183,19 +177,14 @@ const allSteps = [
 
 // Reactive configuration state
 const config = reactive({
-  deploymentMode: 'localhost', // Selected mode
-  adminUsername: '', // Admin username (LAN only)
-  adminPassword: '', // Admin password (LAN only)
-  adminEmail: '', // Admin email (LAN only)
-  serverIp: '', // Server IP (LAN only)
-  port: 7272, // API port (LAN only)
-  hostname: '', // Optional hostname (LAN only)
-  apiKey: '', // Generated API key (LAN only)
+  adminUsername: '', // Optional admin username
+  adminPassword: '', // Optional admin password
+  adminEmail: '', // Optional admin email
+  apiKey: '', // Generated API key
   serenaEnabled: false, // Serena enabled flag
   dbTestPassed: false, // Database test status
   aiTools: [], // Configured AI tools
-  adapterName: '', // Network adapter name (LAN only)
-  adapterId: '', // Network adapter ID (LAN only)
+  // Removed deployment mode and LAN-specific configuration
 })
 
 // State
@@ -235,14 +224,8 @@ const progressPercent = computed(() => {
   return Math.round((current / total) * 100)
 })
 
-// Computed: Server URL based on deployment mode
-const serverUrl = computed(() => {
-  if (config.deploymentMode === 'lan' || config.deploymentMode === 'wan') {
-    const ip = config.serverIp || 'localhost'
-    return `http://${ip}:7272`
-  }
-  return 'http://127.0.0.1:7272'
-})
+// Computed: Always use localhost URL for v3.0
+const serverUrl = computed(() => 'http://127.0.0.1:7272')
 
 // Computed: Platform
 const platform = computed(() => {
@@ -288,34 +271,19 @@ const getStepProps = (step) => {
     case 'database':
       baseProps.dbTestPassed = config.dbTestPassed
       break
-    case 'deploymentMode':
-      baseProps.modelValue = config.deploymentMode
-      baseProps['onUpdate:modelValue'] = (value) => {
-        config.deploymentMode = value
-      }
-      break
     case 'adminSetup':
       baseProps.modelValue = {
         username: config.adminUsername,
         password: config.adminPassword,
         email: config.adminEmail,
-        serverIp: config.serverIp,
-        adapterName: config.adapterName,
-        adapterId: config.adapterId,
       }
       baseProps['onUpdate:modelValue'] = (value) => {
         config.adminUsername = value.username
         config.adminPassword = value.password
         config.adminEmail = value.email || ''
-        config.serverIp = value.serverIp || ''
-        config.adapterName = value.adapterName || ''
-        config.adapterId = value.adapterId || ''
         console.log('[WIZARD] Admin setup updated:', {
           username: config.adminUsername,
           email: config.adminEmail,
-          serverIp: config.serverIp,
-          adapterName: config.adapterName,
-          adapterId: config.adapterId,
         })
       }
       break
@@ -324,7 +292,6 @@ const getStepProps = (step) => {
       baseProps['onUpdate:modelValue'] = (value) => {
         config.aiTools = value
       }
-      baseProps.deploymentMode = config.deploymentMode
       baseProps.apiKey = config.apiKey
       baseProps.serverUrl = serverUrl.value
       break
@@ -382,24 +349,11 @@ const handleAdminSetupComplete = async (data) => {
 }
 
 const handleFinish = async () => {
-  // For LAN mode, show confirmation modal first
-  if (config.deploymentMode === 'lan') {
-    showLanConfirmModal.value = true
-    return
-  }
-
-  // For localhost mode, proceed directly
+  // Always proceed to save setup config
   await saveSetupConfig()
 }
 
-const cancelLanConfig = () => {
-  showLanConfirmModal.value = false
-}
-
-const confirmLanConfig = async () => {
-  showLanConfirmModal.value = false
-  await saveSetupConfig()
-}
+// Removed LAN-specific config methods
 
 const saveSetupConfig = async () => {
   try {
@@ -409,23 +363,15 @@ const saveSetupConfig = async () => {
     isRestarting.value = true
     restartMessage.value = 'Saving configuration...'
 
-    // Save setup completion
+    // Save setup completion with v3.0 unified configuration
     const result = await setupService.completeSetup({
-      deploymentMode: config.deploymentMode,
       aiTools: config.aiTools,
       serenaEnabled: config.serenaEnabled,
-      lanSettings:
-        config.deploymentMode === 'lan'
-          ? {
-              adminUsername: config.adminUsername,
-              adminPassword: config.adminPassword,
-              serverIp: config.serverIp,
-              port: config.port,
-              hostname: config.hostname,
-              adapterName: config.adapterName,
-              adapterId: config.adapterId,
-            }
-          : null,
+      adminAccount: config.adminUsername ? {
+        username: config.adminUsername,
+        password: config.adminPassword,
+        email: config.adminEmail
+      } : null
     })
 
     console.log('[WIZARD] Setup marked as complete:', result)
@@ -433,8 +379,8 @@ const saveSetupConfig = async () => {
     // Hide completion overlay
     isRestarting.value = false
 
+    // Always show restart modal to standardize flow
     if (result.requires_restart) {
-      // LAN mode or localhost mode - show restart modal
       showRestartModal.value = true
     } else {
       // Localhost mode - skip to completion
@@ -460,10 +406,6 @@ const saveSetupConfig = async () => {
 
 const finishSetup = () => {
   showRestartModal.value = false
-  // Set flag in localStorage to show LAN welcome banner
-  if (config.deploymentMode === 'lan') {
-    localStorage.setItem('giljo_lan_setup_complete', 'true')
-  }
   window.location.href = 'http://localhost:7274'
 }
 
