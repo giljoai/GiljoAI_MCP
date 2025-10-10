@@ -272,9 +272,7 @@ def update_cors_origins_additive(config: dict[str, Any], server_ip: str = None, 
 
     # Update config with combined origins (sorted for consistency)
     config["security"]["cors"]["allowed_origins"] = sorted(list(existing_origins))
-    logger.info(f"CORS origins updated (additive): {len(existing_origins)} total")(
-        f"CORS origins set for {mode} mode: {origins}"
-    )
+    logger.info(f"CORS origins updated (additive): {len(existing_origins)} total")
 
 
 @router.get("/status", response_model=SetupStatusResponse)
@@ -381,7 +379,10 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
         config["setup"]["tools_attached"] = request_body.tools_attached
         config["setup"]["completed_at"] = datetime.now(timezone.utc).isoformat()
 
-        # Update installation mode
+        # Save deployment_context as metadata (top-level for easy access)
+        config["deployment_context"] = request_body.deployment_context.value
+
+        # Also save in installation section for backward compatibility
         if "installation" not in config:
             config["installation"] = {}
 
