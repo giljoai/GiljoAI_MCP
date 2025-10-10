@@ -324,9 +324,12 @@ def get_config_ports() -> Tuple[int, int]:
     return DEFAULT_API_PORT, DEFAULT_FRONTEND_PORT
 
 
-def start_api_server() -> Optional[subprocess.Popen]:
+def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
     """
     Start the API server.
+
+    Args:
+        verbose: If True, show console window with output (Windows only)
 
     Returns:
         Popen process object or None if failed
@@ -348,12 +351,25 @@ def start_api_server() -> Optional[subprocess.Popen]:
         else:
             python_executable = sys.executable
 
+        # Configure process creation for verbose mode
+        popen_kwargs = {
+            "cwd": str(Path.cwd()),
+        }
+
+        # Verbose mode: show console window on Windows
+        if verbose and platform.system() == "Windows":
+            # CREATE_NEW_CONSOLE flag = 0x00000010
+            popen_kwargs["creationflags"] = 0x00000010
+            print_success("API server will open in new console window")
+        else:
+            # Background mode: hide output
+            popen_kwargs["stdout"] = subprocess.PIPE
+            popen_kwargs["stderr"] = subprocess.PIPE
+
         # Start API server
         process = subprocess.Popen(
             [python_executable, str(api_script)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=str(Path.cwd()),
+            **popen_kwargs
         )
 
         print_success(f"API server started (PID: {process.pid})")
@@ -364,9 +380,12 @@ def start_api_server() -> Optional[subprocess.Popen]:
         return None
 
 
-def start_frontend_server() -> Optional[subprocess.Popen]:
+def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
     """
     Start the frontend development server.
+
+    Args:
+        verbose: If True, show console window with output (Windows only)
 
     Returns:
         Popen process object or None if failed
@@ -384,12 +403,24 @@ def start_frontend_server() -> Optional[subprocess.Popen]:
             print_info("Installing frontend dependencies...")
             subprocess.run(["npm", "install"], cwd=str(frontend_dir), check=True)
 
+        # Configure process creation for verbose mode
+        popen_kwargs = {
+            "cwd": str(frontend_dir),
+        }
+
+        # Verbose mode: show console window on Windows
+        if verbose and platform.system() == "Windows":
+            popen_kwargs["creationflags"] = 0x00000010
+            print_success("Frontend server will open in new console window")
+        else:
+            # Background mode: hide output
+            popen_kwargs["stdout"] = subprocess.PIPE
+            popen_kwargs["stderr"] = subprocess.PIPE
+
         # Start frontend server
         process = subprocess.Popen(
             ["npm", "run", "dev"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=str(frontend_dir),
+            **popen_kwargs
         )
 
         print_success(f"Frontend server started (PID: {process.pid})")
@@ -401,6 +432,43 @@ def start_frontend_server() -> Optional[subprocess.Popen]:
     except Exception as e:
         print_error(f"Failed to start frontend server: {e}")
         return None
+
+
+def wait_for_api_ready(port: int, max_attempts: int = 60, interval: float = 0.5) -> bool:
+    """
+    Wait for API server to be ready by checking /health endpoint.
+
+    Args:
+        port: API port number
+        max_attempts: Maximum number of attempts (default 60 = 30 seconds)
+        interval: Interval between attempts in seconds
+
+    Returns:
+        True if API is ready, False if timeout
+    """
+    import urllib.request
+    import urllib.error
+
+    url = f"http://localhost:{port}/health"
+    print_info(f"Waiting for API to be ready (max {max_attempts * interval:.0f}s)...")
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=1) as response:
+                if response.status == 200:
+                    print_success(f"API ready after {attempt * interval:.1f}s")
+                    return True
+        except (urllib.error.URLError, ConnectionError, OSError):
+            # API not ready yet, wait and retry
+            if attempt % 10 == 0:  # Show progress every 5 seconds
+                print_info(f"Still waiting... ({attempt * interval:.0f}s elapsed)")
+            time.sleep(interval)
+        except Exception as e:
+            print_warning(f"Unexpected error checking API health: {e}")
+            time.sleep(interval)
+
+    print_error(f"API did not become ready within {max_attempts * interval:.0f}s timeout")
+    return False
 
 
 def open_browser(url: str, delay: int = 3) -> None:
@@ -542,12 +610,13 @@ def install_requirements() -> bool:
         return False
 
 
-def run_startup(check_only: bool = False) -> int:
+def run_startup(check_only: bool = False, verbose: bool = False) -> int:
     """
     Main startup function.
 
     Args:
         check_only: If True, only check dependencies without starting services
+        verbose: If True, show console windows for API/frontend (Windows only)
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -614,15 +683,26 @@ def run_startup(check_only: bool = False) -> int:
     # Step 7: Start services
     print_header("Starting Services")
 
+    if verbose:
+        print_info("Verbose mode enabled - services will open in separate console windows")
+
     print_info("Starting API server...")
-    api_process = start_api_server()
+    api_process = start_api_server(verbose=verbose)
 
     if not api_process:
         print_error("Failed to start API server")
         return 1
 
     print_info("Starting frontend server...")
-    frontend_process = start_frontend_server()
+    frontend_process = start_frontend_server(verbose=verbose)
+
+    # Step 7.5: Wait for API to be ready before opening browser
+    print_header("Waiting for Services")
+    api_ready = wait_for_api_ready(api_port, max_attempts=60, interval=0.5)
+
+    if not api_ready:
+        print_warning("API did not respond to health check, but continuing anyway")
+        print_warning("You may see connection errors in the browser initially")
 
     # Step 8: Open browser
     print_header("Opening Browser")
@@ -631,12 +711,12 @@ def run_startup(check_only: bool = False) -> int:
         # Open setup wizard
         setup_url = f"http://localhost:{frontend_port}/setup"
         print_info("First-run detected - opening setup wizard...")
-        open_browser(setup_url)
+        open_browser(setup_url, delay=2)
     else:
         # Open dashboard
         dashboard_url = f"http://localhost:{frontend_port}"
         print_info("Opening dashboard...")
-        open_browser(dashboard_url)
+        open_browser(dashboard_url, delay=2)
 
     # Step 9: Display status
     print_header("Services Running")
@@ -663,7 +743,7 @@ def run_startup(check_only: bool = False) -> int:
 
 @click.command()
 @click.option("--check-only", is_flag=True, help="Only check dependencies without starting services")
-@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output (show console windows on Windows)")
 def main(check_only: bool, verbose: bool) -> None:
     """
     GiljoAI MCP - Unified Startup Script
@@ -672,7 +752,7 @@ def main(check_only: bool, verbose: bool) -> None:
     including dependency checking, database verification, and service launching.
     """
     try:
-        exit_code = run_startup(check_only=check_only)
+        exit_code = run_startup(check_only=check_only, verbose=verbose)
         sys.exit(exit_code)
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")

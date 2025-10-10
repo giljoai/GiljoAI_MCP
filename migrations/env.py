@@ -35,9 +35,11 @@ if not db_url:
         db_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
     else:
         raise ValueError(
-            "PostgreSQL database URL not configured!\n"
-            "Set DATABASE_URL or POSTGRES_PASSWORD in .env file.\n"
-            "SQLite is NOT supported - PostgreSQL 14-18 is required."
+            "PostgreSQL connection not configured!\n\n"
+            "The installer should have created .env with POSTGRES_PASSWORD.\n"
+            "If running migrations manually, ensure .env exists with:\n"
+            "  POSTGRES_PASSWORD=<your_password>\n\n"
+            "Note: Only PostgreSQL 14-18 is supported."
         )
 
 config.set_main_option("sqlalchemy.url", db_url)

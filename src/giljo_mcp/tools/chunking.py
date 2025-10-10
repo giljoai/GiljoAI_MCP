@@ -143,7 +143,6 @@ class EnhancedChunker:
             "Context",
             "Vision",
             "MCP",
-            "SQLite",
             "PostgreSQL",
             "FastAPI",
             "WebSocket",

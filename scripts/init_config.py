@@ -24,7 +24,7 @@ def init_local_config():
     config = ConfigManager(auto_reload=False)
 
     # Local defaults (v3.0: server always binds 0.0.0.0, firewall controls access)
-    config.database.type = "sqlite"
+    config.database.type = "postgresql"
     config.server.api_key = None
 
     config.save_to_file()

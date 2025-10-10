@@ -24,6 +24,7 @@ const routes = [
       title: 'Setup Wizard',
       showInNav: false,
       requiresSetup: false, // Skip setup check for this route
+      requiresAuth: false, // No authentication required - fresh install flow
     },
   },
   {
@@ -188,10 +189,36 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // CRITICAL: Check setup status FIRST (before auth check)
+  // This allows fresh installs to redirect to setup wizard without requiring authentication
+  if (to.meta.requiresSetup !== false) {
+    try {
+      const status = await setupService.checkStatus()
+
+      if (!status.completed && to.path !== '/setup') {
+        // Setup not complete, redirect to wizard (NO AUTH REQUIRED)
+        console.log('Setup not completed, redirecting to setup wizard')
+        next('/setup')
+        return
+      }
+    } catch (error) {
+      // If setup status check fails (API unreachable on fresh install),
+      // redirect to setup wizard instead of login page
+      // This handles the case where API hasn't started yet
+      if (to.path !== '/setup' && to.path !== '/login') {
+        console.log('Setup status check unavailable - assuming fresh install, redirecting to setup wizard')
+        next('/setup')
+        return
+      }
+      // If already navigating to setup or login, allow it
+      console.log('Setup status check unavailable, but navigating to', to.path)
+    }
+  }
+
   // Get user store for role checking
   const userStore = useUserStore()
 
-  // Check authentication (unless explicitly disabled)
+  // Check authentication (AFTER setup check - only for routes that completed setup)
   const requiresAuth = to.meta.requiresAuth !== false
   if (requiresAuth) {
     try {
@@ -221,24 +248,6 @@ router.beforeEach(async (to, from, next) => {
     console.log('Admin access required, redirecting to dashboard')
     next({ name: 'Dashboard' })
     return
-  }
-
-  // Check if setup is complete (for authenticated routes)
-  if (to.meta.requiresSetup !== false) {
-    try {
-      const status = await setupService.checkStatus()
-
-      if (!status.completed && to.path !== '/setup') {
-        // Setup not complete, redirect to wizard
-        console.log('Setup not completed, redirecting to setup wizard')
-        next('/setup')
-        return
-      }
-    } catch (error) {
-      // If setup status check fails (endpoint doesn't exist yet),
-      // continue anyway to avoid blocking navigation
-      console.log('Setup status check unavailable, continuing with navigation')
-    }
   }
 
   // All checks passed, allow navigation

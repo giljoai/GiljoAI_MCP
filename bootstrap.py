@@ -172,6 +172,7 @@ class Bootstrap:
         try:
             import tkinter
             import tkinter.ttk
+
             return True
         except ImportError:
             return False
@@ -195,7 +196,7 @@ class Bootstrap:
             "config.yaml",  # Generated during install
             ".giljo_install_manifest.json",  # Created after install
             "venv",  # Virtual environment
-            "data/giljo.db",  # Database created on first run
+            "data/",  # PostgreSQL data directory created on first run
         ]
 
         found = []
@@ -261,9 +262,7 @@ class Bootstrap:
             f.write(f"GILJO_MCP_MODE=server\n")
             f.write(f"GILJO_MCP_PORT=7272\n")
 
-        print(
-            f"\n{self.colors['GREEN']}Server configuration saved to .env.server{self.colors['ENDC']}"
-        )
+        print(f"\n{self.colors['GREEN']}Server configuration saved to .env.server{self.colors['ENDC']}")
 
     def post_installation_setup(self) -> bool:
         """Perform post-installation setup tasks"""
@@ -303,9 +302,7 @@ class Bootstrap:
                     "deployment_mode": "local",
                 }
 
-                config = config_manager.generate_configuration(
-                    profile_type="developer", user_inputs=profile_data
-                )
+                config = config_manager.generate_configuration(profile_type="developer", user_inputs=profile_data)
 
                 # Save the configuration
                 config_path = config_manager.save_configuration(config, self.install_dir / ".env")
@@ -409,11 +406,9 @@ class Bootstrap:
 
         try:
             import subprocess
+
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "psycopg2-binary"],
-                capture_output=True,
-                text=True,
-                timeout=60
+                [sys.executable, "-m", "pip", "install", "psycopg2-binary"], capture_output=True, text=True, timeout=60
             )
 
             if result.returncode == 0:
@@ -430,6 +425,7 @@ class Bootstrap:
         """Check if test dependencies (psycopg2) are available"""
         try:
             import psycopg2
+
             return True
         except ImportError:
             return False
@@ -453,12 +449,18 @@ class Bootstrap:
             if not self.check_test_dependencies():
                 self.print_status("PostgreSQL test dependencies not found", "warning")
                 print(f"\n{self.colors['YELLOW']}For PostgreSQL connection testing during setup:{self.colors['ENDC']}")
-                response = input(f"{self.colors['BLUE']}Install test dependencies now? [Y/n]: {self.colors['ENDC']}").strip().lower()
+                response = (
+                    input(f"{self.colors['BLUE']}Install test dependencies now? [Y/n]: {self.colors['ENDC']}")
+                    .strip()
+                    .lower()
+                )
 
-                if response in ['', 'y', 'yes']:
+                if response in ["", "y", "yes"]:
                     self.install_test_dependencies()
                 else:
-                    print(f"{self.colors['YELLOW']}You can install later or test connections after full installation.{self.colors['ENDC']}")
+                    print(
+                        f"{self.colors['YELLOW']}You can install later or test connections after full installation.{self.colors['ENDC']}"
+                    )
 
             self.print_status("Opening GUI installer window...", "info")
             print("A GUI window should appear shortly. If no window appears, close this and try CLI mode.")
@@ -466,20 +468,10 @@ class Bootstrap:
             # Run setup_gui.py with proper GUI handling
             if self.os_type == "windows":
                 # Windows: Launch GUI in separate window
-                result = subprocess.run(
-                    [sys.executable, "setup_gui.py"],
-                    capture_output=False,
-                    text=True,
-                    check=False
-                )
+                result = subprocess.run([sys.executable, "setup_gui.py"], capture_output=False, text=True, check=False)
             else:
                 # Unix-like: Standard execution
-                result = subprocess.run(
-                    [sys.executable, "setup_gui.py"],
-                    capture_output=False,
-                    text=True,
-                    check=False
-                )
+                result = subprocess.run([sys.executable, "setup_gui.py"], capture_output=False, text=True, check=False)
 
             # If installation succeeded, run post-installation setup
             if result.returncode == 0:
@@ -520,7 +512,9 @@ class Bootstrap:
 
         try:
             # Run installer/cli/install.py in interactive CLI mode (without --non-interactive flag)
-            result = subprocess.run([sys.executable, "installer/cli/install.py"], capture_output=False, text=True, check=False)
+            result = subprocess.run(
+                [sys.executable, "installer/cli/install.py"], capture_output=False, text=True, check=False
+            )
 
             # If installation succeeded, run post-installation setup
             if result.returncode == 0:
@@ -625,7 +619,9 @@ For detailed instructions, see INSTALL.md
                 self.print_status(f"Python module '{module}' missing", "error")
 
         if missing_required:
-            print(f"\n{self.colors['RED']}Critical Python modules missing: {', '.join(missing_required)}{self.colors['ENDC']}")
+            print(
+                f"\n{self.colors['RED']}Critical Python modules missing: {', '.join(missing_required)}{self.colors['ENDC']}"
+            )
             print(f"{self.colors['RED']}Your Python installation may be incomplete.{self.colors['ENDC']}")
             return False
 
@@ -641,7 +637,7 @@ For detailed instructions, see INSTALL.md
             # Check critical components only
             critical_components = {
                 "config_manager": "installer.config.config_manager.ConfigurationManager",
-                "service_manager": "installer.services.service_manager.ServiceManager"
+                "service_manager": "installer.services.service_manager.ServiceManager",
             }
 
             missing = []
