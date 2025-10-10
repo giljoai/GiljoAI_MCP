@@ -20,6 +20,8 @@ async def test_auto_login_localhost_ipv4(db_session):
     request.client = Mock()
     request.client.host = "127.0.0.1"
     request.state = Mock()
+    request.headers = Mock()
+    request.headers.get = Mock(return_value=None)  # No proxy headers
 
     middleware = AutoLoginMiddleware(db_session)
 
@@ -43,6 +45,8 @@ async def test_auto_login_localhost_ipv6(db_session):
     request.client = Mock()
     request.client.host = "::1"
     request.state = Mock()
+    request.headers = Mock()
+    request.headers.get = Mock(return_value=None)  # No proxy headers
 
     middleware = AutoLoginMiddleware(db_session)
 
@@ -69,9 +73,14 @@ async def test_no_auto_login_network_client(db_session):
     class MockClient:
         host = "192.168.1.100"
 
+    class MockHeaders:
+        def get(self, key, default=None):
+            return None
+
     class MockRequest:
         client = MockClient()
         state = MockState()
+        headers = MockHeaders()
 
     request = MockRequest()
     middleware = AutoLoginMiddleware(db_session)
@@ -96,9 +105,14 @@ async def test_no_auto_login_public_ip(db_session):
     class MockClient:
         host = "203.0.113.45"  # Example public IP
 
+    class MockHeaders:
+        def get(self, key, default=None):
+            return None
+
     class MockRequest:
         client = MockClient()
         state = MockState()
+        headers = MockHeaders()
 
     request = MockRequest()
     middleware = AutoLoginMiddleware(db_session)
@@ -129,6 +143,8 @@ async def test_auto_login_creates_localhost_user_if_missing(db_session):
     request.client = Mock()
     request.client.host = "127.0.0.1"
     request.state = Mock()
+    request.headers = Mock()
+    request.headers.get = Mock(return_value=None)  # No proxy headers
 
     middleware = AutoLoginMiddleware(db_session)
 
@@ -155,11 +171,15 @@ async def test_auto_login_idempotent_multiple_requests(db_session):
     request1.client = Mock()
     request1.client.host = "127.0.0.1"
     request1.state = Mock()
+    request1.headers = Mock()
+    request1.headers.get = Mock(return_value=None)  # No proxy headers
 
     request2 = Mock()
     request2.client = Mock()
     request2.client.host = "127.0.0.1"
     request2.state = Mock()
+    request2.headers = Mock()
+    request2.headers.get = Mock(return_value=None)  # No proxy headers
 
     middleware = AutoLoginMiddleware(db_session)
 
@@ -183,6 +203,8 @@ async def test_auto_login_sets_all_required_state(db_session):
     request.client = Mock()
     request.client.host = "127.0.0.1"
     request.state = Mock()
+    request.headers = Mock()
+    request.headers.get = Mock(return_value=None)  # No proxy headers
 
     middleware = AutoLoginMiddleware(db_session)
 

@@ -3,145 +3,25 @@
     <h2 class="text-h5 mb-2">Network Configuration</h2>
     <p class="text-body-1 mb-6">Configure how your team will access GiljoAI MCP</p>
 
-    <!-- Mode Selection -->
-    <v-radio-group v-model="selectedMode" class="mb-4">
-      <v-row dense>
-        <!-- Localhost Mode -->
-        <v-col cols="12" md="4">
-          <v-card
-            variant="outlined"
-            class="h-100 mode-card"
-            :class="{ selected: selectedMode === 'localhost' }"
-            @click="selectedMode = 'localhost'"
-            role="button"
-            tabindex="0"
-            aria-label="Select localhost mode for single user"
-          >
-            <v-card-text class="pa-4">
-              <v-radio value="localhost">
-                <template #label>
-                  <div class="ml-2">
-                    <div class="text-h6 d-flex align-center">
-                      <v-icon class="mr-2">mdi-laptop</v-icon>
-                      Localhost
-                    </div>
-                    <div class="text-caption text-medium-emphasis">(Recommended)</div>
-                  </div>
-                </template>
-              </v-radio>
+    <!-- Localhost Configuration -->
+    <v-card variant="outlined" class="h-100 mode-card selected">
+      <v-card-text class="pa-4">
+        <div class="d-flex align-center mb-1">
+          <v-icon class="mr-2">mdi-laptop</v-icon>
+          <div>
+            <div class="text-h6">Localhost</div>
+            <div class="text-caption text-medium-emphasis">(Recommended)</div>
+          </div>
+        </div>
 
-              <v-list density="compact" class="mt-3 bg-transparent">
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="No network configuration"
-                  class="text-caption"
-                />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="No authentication"
-                  class="text-caption"
-                />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Fastest performance"
-                  class="text-caption"
-                />
-                <v-list-item prepend-icon="mdi-check" title="Most secure" class="text-caption" />
-              </v-list>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
-        <!-- LAN Mode -->
-        <v-col cols="12" md="4">
-          <v-card
-            variant="outlined"
-            class="h-100 mode-card"
-            :class="{ selected: selectedMode === 'lan' }"
-            @click="selectedMode = 'lan'"
-            role="button"
-            tabindex="0"
-            aria-label="Select LAN mode for team access"
-          >
-            <v-card-text class="pa-4">
-              <v-radio value="lan">
-                <template #label>
-                  <div class="ml-2">
-                    <div class="text-h6 d-flex align-center">
-                      <v-icon class="mr-2">mdi-network</v-icon>
-                      LAN
-                    </div>
-                    <div class="text-caption text-medium-emphasis">Team access on your network</div>
-                  </div>
-                </template>
-              </v-radio>
-
-              <v-list density="compact" class="mt-3 bg-transparent">
-                <v-list-item prepend-icon="mdi-check" title="Multiple users" class="text-caption" />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Network configuration"
-                  class="text-caption"
-                />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Authentication enabled"
-                  class="text-caption"
-                />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Small teams (2-10)"
-                  class="text-caption"
-                />
-              </v-list>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
-        <!-- WAN/Hosted Mode (Future) -->
-        <v-col cols="12" md="4">
-          <v-card
-            variant="outlined"
-            class="h-100 mode-card disabled-card"
-            disabled
-            aria-label="WAN/Hosted mode coming soon"
-          >
-            <v-card-text class="pa-4">
-              <div class="d-flex align-center mb-1">
-                <v-icon class="mr-2" color="disabled" size="large">mdi-cloud</v-icon>
-                <div>
-                  <div class="text-h6 text-disabled">WAN/Hosted</div>
-                  <v-chip size="small" color="info" class="mt-1">Future</v-chip>
-                </div>
-              </div>
-
-              <v-list density="compact" class="mt-3 bg-transparent">
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Global internet access"
-                  class="text-caption text-disabled"
-                />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Cloud deployment"
-                  class="text-caption text-disabled"
-                />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Enterprise security"
-                  class="text-caption text-disabled"
-                />
-                <v-list-item
-                  prepend-icon="mdi-check"
-                  title="Unlimited users"
-                  class="text-caption text-disabled"
-                />
-              </v-list>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-    </v-radio-group>
+        <v-list density="compact" class="mt-3 bg-transparent">
+          <v-list-item prepend-icon="mdi-check" title="No network configuration" class="text-caption" />
+          <v-list-item prepend-icon="mdi-check" title="No authentication" class="text-caption" />
+          <v-list-item prepend-icon="mdi-check" title="Fastest performance" class="text-caption" />
+          <v-list-item prepend-icon="mdi-check" title="Most secure" class="text-caption" />
+        </v-list>
+      </v-card-text>
+    </v-card>
 
     <!-- LAN Configuration Panel (Expandable) -->
     <v-expand-transition>
@@ -448,81 +328,23 @@ import setupService from '@/services/setupService'
 const props = defineProps({
   mode: {
     type: String,
-    required: true,
-    validator: (value) => ['localhost', 'lan'].includes(value),
-  },
-  lanSettings: {
-    type: Object,
-    default: null,
+    default: 'localhost', // Now single mode
   },
 })
 
-const emit = defineEmits(['update:mode', 'update:lanSettings', 'next', 'back'])
+const emit = defineEmits(['next', 'back'])
 
 // State
-const selectedMode = ref(props.mode)
-const detectingIp = ref(false)
+const selectedMode = ref('localhost')
 const showFirewallHelp = ref(false)
 
-const lanConfig = ref({
-  serverIp: props.lanSettings?.serverIp || '',
-  port: props.lanSettings?.port || 7272,
-  adminUsername: props.lanSettings?.adminUsername || '',
-  adminPassword: props.lanSettings?.adminPassword || '',
-  firewallConfigured: props.lanSettings?.firewallConfigured || false,
-  hostname: props.lanSettings?.hostname || '',
-})
-
-// Validation rules
-const rules = {
-  required: (value) => !!value || 'This field is required',
-  ipAddress: (value) => {
-    if (!value) return true
-    const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
-    return ipPattern.test(value) || 'Invalid IP address format'
-  },
-  port: (value) => {
-    const port = parseInt(value)
-    return (port >= 1 && port <= 65535) || 'Port must be between 1 and 65535'
-  },
-  password: (value) => {
-    if (!value) return true
-    return value.length >= 8 || 'Password must be at least 8 characters'
-  },
-}
-
 // Computed
-const canProceed = computed(() => {
-  if (selectedMode.value === 'localhost') {
-    return true
-  }
-
-  // For LAN mode, require all required fields (hostname is optional)
-  return !!(
-    lanConfig.value.serverIp &&
-    lanConfig.value.port &&
-    lanConfig.value.adminUsername &&
-    lanConfig.value.adminPassword &&
-    lanConfig.value.adminPassword.length >= 8 &&
-    lanConfig.value.firewallConfigured
-  )
-})
+const canProceed = computed(() => true)
 
 // Watch for mode changes
-watch(selectedMode, (newMode) => {
-  emit('update:mode', newMode)
+watch(selectedMode, () => {
+  emit('update:mode', 'localhost')
 })
-
-// Watch for LAN config changes
-watch(
-  lanConfig,
-  (newConfig) => {
-    if (selectedMode.value === 'lan') {
-      emit('update:lanSettings', { ...newConfig })
-    }
-  },
-  { deep: true },
-)
 
 // Methods
 const copyToClipboard = async (text, id) => {
@@ -536,66 +358,13 @@ const copyToClipboard = async (text, id) => {
 
 const handleNext = () => {
   // Emit final configuration
-  if (selectedMode.value === 'lan') {
-    const settings = { ...lanConfig.value }
-    console.log('[NETWORK_CONFIG] Emitting lanSettings:', settings)
-    console.log('[NETWORK_CONFIG] serverIp value:', settings.serverIp)
-    emit('update:lanSettings', settings)
-  } else {
-    emit('update:lanSettings', null)
-  }
-
-  console.log('[NETWORK_CONFIG] Moving to next step with mode:', selectedMode.value)
   emit('next')
 }
 
 // Lifecycle - load existing config
 onMounted(async () => {
   console.log('[NETWORK_CONFIG] Loading existing configuration')
-
-  try {
-    const status = await setupService.checkStatus()
-    console.log('[NETWORK_CONFIG] Current status:', status)
-
-    // Set mode from existing config
-    if (status.network_mode) {
-      selectedMode.value = status.network_mode
-      console.log('[NETWORK_CONFIG] Loaded mode:', status.network_mode)
-    }
-
-    // Load existing config from config.yaml
-    const response = await fetch(`${setupService.baseURL}/api/v1/config`)
-    if (response.ok) {
-      const config = await response.json()
-      console.log('[NETWORK_CONFIG] Loaded config:', config)
-
-      // If LAN mode, populate EMPTY fields from server config (don't override user input)
-      if (config.server) {
-        // Only use backend IP as fallback if user hasn't entered one
-        if (!lanConfig.value.serverIp) {
-          lanConfig.value.serverIp = config.server.ip || ''
-        }
-        // Only use backend hostname as fallback if user hasn't entered one
-        if (!lanConfig.value.hostname) {
-          lanConfig.value.hostname = config.server.hostname || ''
-        }
-        // Only use backend admin username as fallback if user hasn't entered one
-        if (!lanConfig.value.adminUsername) {
-          lanConfig.value.adminUsername = config.server.admin_user || ''
-        }
-        lanConfig.value.firewallConfigured = config.server.firewall_configured || false
-        console.log('[NETWORK_CONFIG] Loaded LAN settings from config (as fallbacks only)')
-      }
-
-      // Load API port if available
-      if (config.services?.api?.port) {
-        lanConfig.value.port = config.services.api.port
-      }
-    }
-  } catch (error) {
-    console.error('[NETWORK_CONFIG] Failed to load existing config:', error)
-    // Non-fatal, continue with defaults
-  }
+  // Simplified for v3.0 unified architecture
 })
 
 // Download LAN setup guide

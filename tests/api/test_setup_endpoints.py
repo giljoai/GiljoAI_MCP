@@ -87,31 +87,22 @@ class TestToolDetectionEndpoint:
 
 
 class TestMCPConfigGenerationEndpoint:
-    """Test /api/setup/generate-mcp-config endpoint."""
+    """Test /api/setup/generate-mcp-config endpoint (v3.0 unified architecture)."""
 
     def test_generate_config_requires_tool_parameter(self, client):
         """Test that tool parameter is required."""
         response = client.post(
             "/api/setup/generate-mcp-config",
-            json={"mode": "localhost"}
+            json={}
         )
         assert response.status_code == 422  # Validation error
 
-    def test_generate_config_requires_mode_parameter(self, client):
-        """Test that mode parameter is required."""
-        response = client.post(
-            "/api/setup/generate-mcp-config",
-            json={"tool": "Claude Code"}
-        )
-        assert response.status_code == 422  # Validation error
-
-    def test_generate_config_for_claude_code_localhost(self, client):
-        """Test MCP config generation for Claude Code in localhost mode."""
+    def test_generate_config_for_claude_code(self, client):
+        """Test MCP config generation for Claude Code (v3.0 unified architecture)."""
         response = client.post(
             "/api/setup/generate-mcp-config",
             json={
-                "tool": "Claude Code",
-                "mode": "localhost"
+                "tool": "Claude Code"
             }
         )
 
@@ -127,37 +118,20 @@ class TestMCPConfigGenerationEndpoint:
         assert "args" in config
         assert "env" in config
 
-        # Localhost should use localhost URL
-        assert "GILJO_API_URL" in config["env"]
-        assert "localhost" in config["env"]["GILJO_API_URL"]
+        # v3.0: Always uses localhost URL (firewall controls access)
+        # Environment variable may be GILJO_SERVER_URL or GILJO_API_URL
+        assert "GILJO_SERVER_URL" in config["env"] or "GILJO_API_URL" in config["env"]
 
-    def test_generate_config_for_claude_code_lan(self, client):
-        """Test MCP config generation for Claude Code in LAN mode."""
-        response = client.post(
-            "/api/setup/generate-mcp-config",
-            json={
-                "tool": "Claude Code",
-                "mode": "lan"
-            }
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-
-        config = data["mcpServers"]["giljo-mcp"]
-
-        # LAN should include API key and LAN IP
-        assert "GILJO_API_KEY" in config["env"]
-        # Should NOT use localhost
-        assert "localhost" not in config["env"]["GILJO_API_URL"]
+        # Verify localhost URL is used
+        url = config["env"].get("GILJO_SERVER_URL") or config["env"].get("GILJO_API_URL")
+        assert "localhost" in url or "127.0.0.1" in url
 
     def test_generate_config_for_unknown_tool_returns_400(self, client):
         """Test that unknown tool returns 400 error."""
         response = client.post(
             "/api/setup/generate-mcp-config",
             json={
-                "tool": "NonExistentTool",
-                "mode": "localhost"
+                "tool": "NonExistentTool"
             }
         )
 
@@ -320,47 +294,6 @@ class TestMCPConnectionTestEndpoint:
         assert data["success"] is True
         assert "status" in data
         assert data["status"] == "connected"
-
-
-class TestDeploymentModeConfigEndpoint:
-    """Test /api/setup/configure-deployment-mode endpoint."""
-
-    def test_configure_mode_requires_mode_parameter(self, client):
-        """Test that mode parameter is required."""
-        response = client.post("/api/setup/configure-deployment-mode", json={})
-        assert response.status_code == 422
-
-    def test_configure_localhost_mode(self, client):
-        """Test configuring localhost deployment mode."""
-        response = client.post(
-            "/api/setup/configure-deployment-mode",
-            json={"mode": "localhost"}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["success"] is True
-        assert data["mode"] == "localhost"
-        assert "api_url" in data
-        assert "localhost" in data["api_url"]
-
-    def test_configure_lan_mode_with_ip(self, client):
-        """Test configuring LAN deployment mode with custom IP."""
-        response = client.post(
-            "/api/setup/configure-deployment-mode",
-            json={
-                "mode": "lan",
-                "lan_ip": "192.168.1.100"
-            }
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["success"] is True
-        assert data["mode"] == "lan"
-        assert "192.168.1.100" in data["api_url"]
 
 
 class TestSetupCompletionEndpoint:
