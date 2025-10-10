@@ -39,3 +39,7 @@ aiofiles>=24.1.0           # Async file I/O operations (required for product vis
 
 # Platform-Specific
 pywin32>=306; sys_platform == "win32"  # Windows service management (Windows only)
+
+PyJWT>=2.8.0
+watchdog>=3.0.0
+aiohttp>=3.8.0

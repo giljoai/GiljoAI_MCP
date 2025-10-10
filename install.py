@@ -106,6 +106,12 @@ class UnifiedInstaller:
             self.welcome_screen()
             result['steps'].append('welcome_shown')
 
+            # Step 1.5: Ask installation questions (NEW)
+            if not self.settings.get('headless'):
+                self._print_header("Installation Configuration")
+                self.ask_installation_questions()
+                result['steps'].append('configuration_gathered')
+
             # Step 2: Check Python version
             self._print_header("Checking Python Version")
             if not self.check_python_version():
@@ -153,21 +159,31 @@ class UnifiedInstaller:
             self.database_credentials = db_result.get('credentials', {})
             result['steps'].append('database_created')
 
-            # Step 7: Launch services
-            self._print_header("Launching Services")
-            launch_result = self.launch_services()
-            if not launch_result['success']:
-                self._print_error("Service launch failed")
-                result['error'] = launch_result.get('error', 'Unknown error')
-                return result
-            result['steps'].append('services_launched')
-            result['api_pid'] = launch_result.get('api_pid')
-            result['frontend_pid'] = launch_result.get('frontend_pid')
+            # Step 7: Launch services (if requested)
+            if self.settings.get('start_services', True):
+                self._print_header("Launching Services")
+                launch_result = self.launch_services()
+                if not launch_result['success']:
+                    self._print_error("Service launch failed")
+                    result['error'] = launch_result.get('error', 'Unknown error')
+                    return result
+                result['steps'].append('services_launched')
+                result['api_pid'] = launch_result.get('api_pid')
+                result['frontend_pid'] = launch_result.get('frontend_pid')
 
-            # Step 8: Open browser
-            self._print_header("Opening Dashboard")
-            self.open_browser()
-            result['steps'].append('browser_opened')
+                # Step 8: Open browser (if requested and services started)
+                if self.settings.get('open_browser', True):
+                    self._print_header("Opening Dashboard")
+                    self.open_browser()
+                    result['steps'].append('browser_opened')
+            else:
+                self._print_info("Skipping service launch (per user preference)")
+
+            # Step 9: Create desktop shortcuts (if requested - Windows only)
+            if self.settings.get('create_shortcuts', False):
+                self._print_header("Creating Desktop Shortcuts")
+                self.create_desktop_shortcuts()
+                result['steps'].append('shortcuts_created')
 
             # Success
             result['success'] = True
@@ -205,6 +221,55 @@ class UnifiedInstaller:
 
         print(f"{Fore.YELLOW}Platform: {platform.system()} {platform.release()}{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
+
+    def ask_installation_questions(self) -> None:
+        """Gather user preferences for installation"""
+        import getpass
+
+        # PostgreSQL password
+        print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
+        print(f"Enter the password for PostgreSQL 'postgres' user")
+        print(f"(press Enter to use default '4010')")
+        pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
+        if pg_pass:
+            self.settings['pg_password'] = pg_pass
+        else:
+            self.settings['pg_password'] = '4010'
+            self._print_info("Using default password '4010'")
+
+        # Start services after installation
+        print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
+        print(f"Would you like to start services automatically after installation?")
+        start_response = input(f"{Fore.YELLOW}Start services? (Y/n): {Style.RESET_ALL}").strip().lower()
+        self.settings['start_services'] = start_response != 'n'
+
+        # Create desktop shortcuts
+        if platform.system() == "Windows":
+            print(f"\nWould you like to create desktop shortcuts?")
+            shortcuts_response = input(f"{Fore.YELLOW}Create shortcuts? (Y/n): {Style.RESET_ALL}").strip().lower()
+            self.settings['create_shortcuts'] = shortcuts_response != 'n'
+        else:
+            self.settings['create_shortcuts'] = False
+
+        # Verbose mode for first run
+        print(f"\nWould you like to open console windows for debugging?")
+        print(f"(recommended for first-time installation)")
+        verbose_response = input(f"{Fore.YELLOW}Enable verbose mode? (y/N): {Style.RESET_ALL}").strip().lower()
+        self.settings['verbose_mode'] = verbose_response == 'y'
+
+        # Open browser after installation
+        print(f"\nWould you like to open the dashboard in your browser after installation?")
+        browser_response = input(f"{Fore.YELLOW}Open browser? (Y/n): {Style.RESET_ALL}").strip().lower()
+        self.settings['open_browser'] = browser_response != 'n'
+
+        # Summary
+        print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
+        print(f"  • PostgreSQL password: {'(default)' if self.settings['pg_password'] == '4010' else '(custom)'}")
+        print(f"  • Start services: {self.settings['start_services']}")
+        if platform.system() == "Windows":
+            print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")
+        print(f"  • Verbose mode: {self.settings['verbose_mode']}")
+        print(f"  • Open browser: {self.settings['open_browser']}")
 
     def check_python_version(self) -> bool:
         """
@@ -663,14 +728,24 @@ class UnifiedInstaller:
                 return result
 
             self._print_info("Starting API server...")
-            api_process = subprocess.Popen(
-                [str(python_executable), str(api_script)],
-                cwd=str(self.install_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
 
-            self._print_success(f"API server started (PID: {api_process.pid})")
+            # Verbose mode: Open in new console window
+            if self.settings.get('verbose_mode', False) and platform.system() == "Windows":
+                api_process = subprocess.Popen(
+                    [str(python_executable), str(api_script)],
+                    cwd=str(self.install_dir),
+                    creationflags=subprocess.CREATE_NEW_CONSOLE
+                )
+                self._print_success(f"API server started in new console (PID: {api_process.pid})")
+            else:
+                api_process = subprocess.Popen(
+                    [str(python_executable), str(api_script)],
+                    cwd=str(self.install_dir),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                self._print_success(f"API server started (PID: {api_process.pid})")
+
             result['api_pid'] = api_process.pid
 
             # Launch frontend (if npm available)
@@ -698,15 +773,25 @@ class UnifiedInstaller:
                     npm_cmd = ['npm', 'run', 'dev']
                     use_shell = platform.system() == "Windows"
 
-                    frontend_process = subprocess.Popen(
-                        npm_cmd,
-                        cwd=str(frontend_dir),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        shell=use_shell
-                    )
+                    # Verbose mode: Open in new console window
+                    if self.settings.get('verbose_mode', False) and platform.system() == "Windows":
+                        frontend_process = subprocess.Popen(
+                            npm_cmd,
+                            cwd=str(frontend_dir),
+                            creationflags=subprocess.CREATE_NEW_CONSOLE,
+                            shell=use_shell
+                        )
+                        self._print_success(f"Frontend server started in new console (PID: {frontend_process.pid})")
+                    else:
+                        frontend_process = subprocess.Popen(
+                            npm_cmd,
+                            cwd=str(frontend_dir),
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            shell=use_shell
+                        )
+                        self._print_success(f"Frontend server started (PID: {frontend_process.pid})")
 
-                    self._print_success(f"Frontend server started (PID: {frontend_process.pid})")
                     result['frontend_pid'] = frontend_process.pid
                 else:
                     self._print_warning("Frontend directory not found")
@@ -740,6 +825,80 @@ class UnifiedInstaller:
         except Exception as e:
             self._print_warning(f"Could not open browser: {e}")
             self._print_info(f"Please manually open: http://localhost:{frontend_port}")
+
+    def create_desktop_shortcuts(self) -> None:
+        """Create desktop shortcuts for Windows"""
+        if platform.system() != "Windows":
+            self._print_warning("Desktop shortcuts are only supported on Windows")
+            return
+
+        try:
+            # Try to use win32com.client for proper shortcuts
+            try:
+                import win32com.client
+                shell = win32com.client.Dispatch("WScript.Shell")
+                desktop = shell.SpecialFolders("Desktop")
+
+                # Main application shortcut
+                shortcut_path = Path(desktop) / "GiljoAI MCP.lnk"
+                shortcut = shell.CreateShortcut(str(shortcut_path))
+                shortcut.TargetPath = str(sys.executable)
+                shortcut.Arguments = str(self.install_dir / "startup.py")
+                shortcut.WorkingDirectory = str(self.install_dir)
+                shortcut.IconLocation = str(self.install_dir / "frontend" / "public" / "favicon.ico")
+                shortcut.Description = "Launch GiljoAI MCP Orchestrator"
+                shortcut.save()
+                self._print_success("Created main application shortcut")
+
+                # Dev control panel shortcut
+                dev_panel_path = self.install_dir / "dev_tools" / "GiljoAI_Control_Panel.vbs"
+                if dev_panel_path.exists():
+                    dev_shortcut_path = Path(desktop) / "GiljoAI Dev Panel.lnk"
+                    dev_shortcut = shell.CreateShortcut(str(dev_shortcut_path))
+                    dev_shortcut.TargetPath = str(dev_panel_path)
+                    dev_shortcut.WorkingDirectory = str(self.install_dir / "dev_tools")
+                    dev_shortcut.Description = "GiljoAI Developer Control Panel"
+                    dev_shortcut.save()
+                    self._print_success("Created developer panel shortcut")
+
+            except ImportError:
+                # Fallback: Create .bat files if pywin32 not available
+                self._print_warning("pywin32 not installed - creating .bat file shortcuts instead")
+                self._create_batch_shortcuts()
+
+        except Exception as e:
+            self._print_error(f"Failed to create shortcuts: {e}")
+            self._print_info("You can manually create shortcuts to:")
+            self._print_info(f"  • Main app: python {self.install_dir / 'startup.py'}")
+            self._print_info(f"  • Dev panel: {self.install_dir / 'dev_tools' / 'GiljoAI_Control_Panel.vbs'}")
+
+    def _create_batch_shortcuts(self) -> None:
+        """Create .bat file shortcuts as fallback"""
+        try:
+            import os
+            desktop = Path.home() / "Desktop"
+
+            # Main application batch file
+            main_bat = desktop / "GiljoAI MCP.bat"
+            with open(main_bat, 'w') as f:
+                f.write('@echo off\n')
+                f.write(f'cd /d "{self.install_dir}"\n')
+                f.write(f'"{sys.executable}" startup.py\n')
+                f.write('pause\n')
+            self._print_success("Created main application batch file")
+
+            # Dev panel batch file
+            dev_panel_vbs = self.install_dir / "dev_tools" / "GiljoAI_Control_Panel.vbs"
+            if dev_panel_vbs.exists():
+                dev_bat = desktop / "GiljoAI Dev Panel.bat"
+                with open(dev_bat, 'w') as f:
+                    f.write('@echo off\n')
+                    f.write(f'cd /d "{self.install_dir / "dev_tools"}"\n')
+                    f.write(f'wscript GiljoAI_Control_Panel.vbs\n')
+                self._print_success("Created developer panel batch file")
+
+        except Exception as e:
+            self._print_warning(f"Could not create batch files: {e}")
 
     def _print_success_summary(self) -> None:
         """Print installation success summary"""
