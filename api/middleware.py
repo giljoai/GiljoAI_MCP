@@ -86,14 +86,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
     def _is_public_endpoint(self, path: str) -> bool:
-        """Check if endpoint is public"""
+        """Check if endpoint is public (no authentication required)"""
         PUBLIC_PATHS = [
             "/health",
             "/docs",
             "/redoc",
             "/openapi.json",
-            "/api/setup/status",
-            "/api/auth/login",
+            "/api/setup",  # All setup endpoints (setup wizard)
+            "/api/auth/login",  # Login endpoint
         ]
         return any(path.startswith(p) for p in PUBLIC_PATHS)
 
