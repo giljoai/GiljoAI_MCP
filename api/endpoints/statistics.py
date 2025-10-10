@@ -134,13 +134,9 @@ async def get_system_statistics():
             peak_context = await session.scalar(select(func.max(Project.context_used))) or 0
 
             # Get database size (approximate)
+            # PostgreSQL database size would require querying pg_database_size()
+            # For now, we use 0 as placeholder (can be enhanced with PostgreSQL-specific query)
             db_size = 0
-            if state.config.get("database.type") == "sqlite":
-                import os
-
-                db_path = state.config.get("database.url", "").replace("sqlite:///", "")
-                if os.path.exists(db_path):
-                    db_size = os.path.getsize(db_path) / (1024 * 1024)  # Convert to MB
 
             # Calculate uptime
             uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()

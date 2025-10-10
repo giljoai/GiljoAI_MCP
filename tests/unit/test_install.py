@@ -732,6 +732,95 @@ class TestDependencyManagement:
                     # (Implementation will check bin/python on Unix)
 
 
+class TestInstallationOrderBugFix:
+    """Test that config generation happens BEFORE database setup"""
+
+    def test_config_generation_before_database_setup(self, tmp_path: Path) -> None:
+        """
+        Test that generate_configs() is called BEFORE setup_database()
+
+        This is CRITICAL because:
+        1. setup_database() runs migrations which need .env file with DATABASE_URL
+        2. generate_configs() creates the .env file
+        3. If we run migrations before creating .env, migrations fail
+        """
+        from install import UnifiedInstaller
+
+        settings = {'install_dir': str(tmp_path)}
+        installer = UnifiedInstaller(settings=settings)
+
+        # Track call order
+        call_order = []
+
+        def mock_generate_configs():
+            call_order.append('generate_configs')
+            return {'success': True}
+
+        def mock_setup_database():
+            call_order.append('setup_database')
+            return {'success': True, 'credentials': {}}
+
+        with patch.object(installer, 'generate_configs', side_effect=mock_generate_configs):
+            with patch.object(installer, 'setup_database', side_effect=mock_setup_database):
+                with patch.multiple(
+                    installer,
+                    welcome_screen=Mock(),
+                    check_python_version=Mock(return_value=True),
+                    discover_postgresql=Mock(return_value={'found': True}),
+                    install_dependencies=Mock(return_value={'success': True}),
+                    launch_services=Mock(return_value={'success': True, 'api_pid': 123, 'frontend_pid': 456}),
+                    open_browser=Mock()
+                ):
+                    result = installer.run()
+
+                    # CRITICAL: Config generation MUST happen before database setup
+                    assert call_order.index('generate_configs') < call_order.index('setup_database'), \
+                        "generate_configs() must be called before setup_database() to avoid migration failures"
+
+                    assert result['success'] is True
+
+    def test_env_file_exists_before_migrations(self, tmp_path: Path) -> None:
+        """
+        Test that .env file is created before migrations run
+
+        This ensures DATABASE_URL is available when Alembic runs
+        """
+        from install import UnifiedInstaller
+
+        settings = {'install_dir': str(tmp_path)}
+        installer = UnifiedInstaller(settings=settings)
+
+        env_created_before_db_setup = {'value': False}
+
+        def mock_generate_configs():
+            # Simulate creating .env file
+            env_file = tmp_path / '.env'
+            env_file.write_text('DATABASE_URL=postgresql://test:test@localhost/test\n')
+            env_created_before_db_setup['value'] = True
+            return {'success': True}
+
+        def mock_setup_database():
+            # Verify .env exists when database setup runs
+            env_file = tmp_path / '.env'
+            assert env_file.exists(), ".env file must exist before database setup runs"
+            assert env_created_before_db_setup['value'], "Config generation must complete before database setup"
+            return {'success': True, 'credentials': {}}
+
+        with patch.object(installer, 'generate_configs', side_effect=mock_generate_configs):
+            with patch.object(installer, 'setup_database', side_effect=mock_setup_database):
+                with patch.multiple(
+                    installer,
+                    welcome_screen=Mock(),
+                    check_python_version=Mock(return_value=True),
+                    discover_postgresql=Mock(return_value={'found': True}),
+                    install_dependencies=Mock(return_value={'success': True}),
+                    launch_services=Mock(return_value={'success': True, 'api_pid': 123, 'frontend_pid': 456}),
+                    open_browser=Mock()
+                ):
+                    result = installer.run()
+                    assert result['success'] is True
+
+
 class TestV3UnifiedArchitecture:
     """Test v3.0 unified architecture compliance"""
 

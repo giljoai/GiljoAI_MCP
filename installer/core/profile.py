@@ -152,7 +152,7 @@ class ProfileManager:
                     "allow_external": False,
                 },
                 storage_settings={
-                    "database_path": "~/.giljo-mcp/data.db",
+                    "database_path": "~/.giljo-mcp/data/postgresql",
                     "log_path": "~/.giljo-mcp/logs",
                     "temp_path": "~/.giljo-mcp/temp",
                 },

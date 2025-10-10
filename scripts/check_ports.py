@@ -15,14 +15,11 @@ import yaml
 PORT_ASSIGNMENTS = {
     # Primary service - unified HTTP server
     "GiljoAI Orchestrator": 7272,  # Main server (API + MCP + WebSocket) - changed from 8000
-
     # Optional services
     "Frontend Dev Server": 6000,  # Vite dev server (development only)
-    "PostgreSQL": 5432,  # If using PostgreSQL instead of SQLite
-
+    "PostgreSQL": 5432,  # PostgreSQL database server
     # Alternative ports if 7272 is occupied
     "alternatives": [7273, 7274, 8747, 8823, 9456, 9789],
-
     # Legacy ports (deprecated in v0.2 Beta)
     # These are checked for migration purposes only
     "Legacy MCP Server": 6001,  # Old stdio server (deprecated)
@@ -35,7 +32,7 @@ PORT_ASSIGNMENTS = {
 DEFAULT_CONFIG = {
     "server_port": 7272,  # Changed from 8000 to avoid conflicts
     "enable_frontend_dev": False,
-    "database_type": "sqlite",
+    "database_type": "postgresql",
 }
 
 
@@ -61,6 +58,7 @@ def load_config() -> dict:
     config_path = Path(__file__).parent.parent / "config.json"
     if config_path.exists():
         import json
+
         with open(config_path) as f:
             return json.load(f)
 

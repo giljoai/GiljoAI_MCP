@@ -16,8 +16,8 @@ Architecture:
     2. Check Python version (3.10+)
     3. Discover PostgreSQL (cross-platform)
     4. Install dependencies (venv + requirements.txt)
-    5. Setup database (create DB, roles, migrations)
-    6. Generate configs (.env + config.yaml v3.0)
+    5. Generate configs (.env + config.yaml v3.0) - BEFORE migrations!
+    6. Setup database (create DB, roles, migrations) - needs .env from step 5
     7. Launch services (API + Frontend)
     8. Open browser (http://localhost:7274)
 
@@ -133,7 +133,17 @@ class UnifiedInstaller:
                 return result
             result['steps'].append('dependencies_installed')
 
-            # Step 5: Setup database
+            # Step 5: Generate configs (MUST happen before database setup!)
+            # Migrations in step 6 need .env file with DATABASE_URL
+            self._print_header("Generating Configuration Files")
+            config_result = self.generate_configs()
+            if not config_result['success']:
+                self._print_error("Configuration generation failed")
+                result['error'] = '; '.join(config_result.get('errors', ['Unknown error']))
+                return result
+            result['steps'].append('configs_generated')
+
+            # Step 6: Setup database (runs migrations which need .env from step 5)
             self._print_header("Setting Up Database")
             db_result = self.setup_database()
             if not db_result['success']:
@@ -142,15 +152,6 @@ class UnifiedInstaller:
                 return result
             self.database_credentials = db_result.get('credentials', {})
             result['steps'].append('database_created')
-
-            # Step 6: Generate configs
-            self._print_header("Generating Configuration Files")
-            config_result = self.generate_configs()
-            if not config_result['success']:
-                self._print_error("Configuration generation failed")
-                result['error'] = '; '.join(config_result.get('errors', ['Unknown error']))
-                return result
-            result['steps'].append('configs_generated')
 
             # Step 7: Launch services
             self._print_header("Launching Services")
@@ -533,6 +534,24 @@ class UnifiedInstaller:
                     self._print_success("Migrations completed")
                 elif migration_result.get('warnings'):
                     self._print_warning("Migrations skipped: " + migration_result['warnings'][0])
+
+                # Initialize setup state to trigger first-time setup wizard
+                self._print_info("Initializing setup state...")
+                try:
+                    from src.giljo_mcp.setup.state_manager import SetupStateManager
+
+                    state_manager = SetupStateManager.get_instance(tenant_key="default")
+                    state_manager.update_state(
+                        completed=False,  # Setup wizard required
+                        installer_version="3.0",
+                        install_mode="localhost",
+                        install_path=str(self.install_dir)
+                    )
+                    self._print_success("Setup state initialized - wizard will open on first launch")
+                except Exception as e:
+                    self._print_warning(f"Could not initialize setup state: {e}")
+                    self._print_warning("You may need to manually access the setup wizard at /setup")
+
             else:
                 self._print_error("Database setup failed")
                 for error in result.get('errors', []):
@@ -553,6 +572,9 @@ class UnifiedInstaller:
 
         Uses ConfigManager with v3.0 architecture (no mode field)
 
+        CRITICAL: This runs BEFORE setup_database() so migrations can read .env
+        Therefore, we use default passwords from settings, not database credentials.
+
         Returns:
             Configuration generation result
         """
@@ -561,14 +583,15 @@ class UnifiedInstaller:
             from installer.core.config import ConfigManager
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
+            # NOTE: database_credentials not available yet - using defaults/settings
             config_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
                 'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
                 'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
                 'install_dir': str(self.install_dir),
-                'owner_password': self.database_credentials.get('owner_password') if self.database_credentials else '4010',
-                'user_password': self.database_credentials.get('user_password') if self.database_credentials else '4010',
+                'owner_password': self.settings.get('pg_password', '4010'),
+                'user_password': self.settings.get('pg_password', '4010'),
                 'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
                 # NO 'mode' field - v3.0 unified architecture
             }
@@ -659,19 +682,28 @@ class UnifiedInstaller:
                     # Check if node_modules exists
                     if not (frontend_dir / 'node_modules').exists():
                         self._print_info("Installing frontend dependencies...")
+
+                        # Windows needs shell=True for npm batch file
                         subprocess.run(
                             ['npm', 'install'],
                             cwd=str(frontend_dir),
                             check=True,
-                            capture_output=True
+                            capture_output=True,
+                            shell=(platform.system() == "Windows")
                         )
 
                     self._print_info("Starting frontend server...")
+
+                    # Windows needs shell=True or npm.cmd for batch files
+                    npm_cmd = ['npm', 'run', 'dev']
+                    use_shell = platform.system() == "Windows"
+
                     frontend_process = subprocess.Popen(
-                        ['npm', 'run', 'dev'],
+                        npm_cmd,
                         cwd=str(frontend_dir),
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE
+                        stderr=subprocess.PIPE,
+                        shell=use_shell
                     )
 
                     self._print_success(f"Frontend server started (PID: {frontend_process.pid})")
@@ -727,9 +759,12 @@ class UnifiedInstaller:
         print()
 
         print(f"{Fore.YELLOW}Next Steps:{Style.RESET_ALL}")
-        print(f"  1. Open the dashboard at http://localhost:{frontend_port}")
-        print(f"  2. Create your first project")
-        print(f"  3. Start orchestrating your AI coding team!")
+        print(f"  1. Dashboard will open automatically (or visit http://localhost:{frontend_port})")
+        print(f"  2. Complete the first-time setup wizard:")
+        print(f"     • Choose deployment mode (Localhost/LAN/WAN)")
+        print(f"     • Create admin account (if LAN/WAN mode)")
+        print(f"     • Connect AI tools (Claude Code, etc.)")
+        print(f"  3. Create your first product and start orchestrating!")
         print()
 
         print(f"{Fore.WHITE}Press Ctrl+C to stop services{Style.RESET_ALL}\n")
