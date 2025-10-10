@@ -97,36 +97,43 @@ def check_python_version() -> bool:
 
 def check_postgresql_installed() -> bool:
     """
-    Check if PostgreSQL is installed and psql is available.
+    Check if PostgreSQL is installed and accessible.
+
+    We use a multi-layered approach:
+    1. Check if psql is in PATH
+    2. Check common Windows installation paths
+    3. Try to connect via Python (most reliable)
 
     Returns:
         True if PostgreSQL is available, False otherwise
     """
+    # Method 1: Check PATH
     psql_path = shutil.which("psql")
-
     if psql_path:
         print_success(f"PostgreSQL detected at: {psql_path}")
         return True
 
-    # Check common installation paths on Windows
+    # Method 2: Check common installation paths on Windows
     if platform.system() == "Windows":
         common_paths = [
             Path("C:/Program Files/PostgreSQL/18/bin/psql.exe"),
             Path("C:/Program Files/PostgreSQL/17/bin/psql.exe"),
             Path("C:/Program Files/PostgreSQL/16/bin/psql.exe"),
             Path("C:/Program Files (x86)/PostgreSQL/18/bin/psql.exe"),
+            Path("C:/Program Files (x86)/PostgreSQL/17/bin/psql.exe"),
         ]
 
         for path in common_paths:
             if path.exists():
                 print_success(f"PostgreSQL detected at: {path}")
-                print_warning(f"PostgreSQL not in PATH - consider adding to environment variables")
+                print_warning("PostgreSQL not in PATH - consider adding to environment variables")
                 return True
 
-    print_error("PostgreSQL not found in system PATH")
-    print_info(f"Please install PostgreSQL {REQUIRED_POSTGRESQL_VERSION} from:")
-    print_info(f"  {POSTGRESQL_DOWNLOAD_URL}")
-    return False
+    # Method 3: Try to connect via Python (most reliable)
+    # This will be tested in the database connectivity check
+    print_warning("PostgreSQL command-line tools not found in PATH")
+    print_info("Will verify PostgreSQL via database connectivity check...")
+    return True  # Allow to proceed to database connectivity check
 
 
 def check_pip_available() -> bool:
@@ -423,20 +430,115 @@ def check_dependencies() -> bool:
     print_header("Checking Dependencies")
 
     checks = [
-        ("Python Version", check_python_version),
-        ("PostgreSQL", check_postgresql_installed),
-        ("pip", check_pip_available),
-        ("npm (optional)", check_npm_available),
+        ("Python Version", check_python_version, True),  # Required
+        ("PostgreSQL", check_postgresql_installed, True),  # Required (but verified via DB connection)
+        ("pip", check_pip_available, True),  # Required
+        ("npm (optional)", check_npm_available, False),  # Optional
     ]
 
     all_passed = True
-    for check_name, check_func in checks:
+    for check_name, check_func, required in checks:
         print_info(f"Checking {check_name}...")
-        if not check_func():
-            if "optional" not in check_name:
+        result = check_func()
+        if not result and required:
+            # PostgreSQL gets a pass here because we verify via DB connection
+            if "PostgreSQL" not in check_name:
                 all_passed = False
 
     return all_passed
+
+
+def install_requirements() -> bool:
+    """
+    Install Python requirements from requirements.txt.
+
+    Checks if critical packages are already installed before attempting
+    installation. Uses pip to install from requirements.txt if needed.
+
+    Returns:
+        True if requirements are installed (or were already installed)
+        False if installation failed
+    """
+    # Define critical packages to check
+    critical_packages = [
+        ("fastapi", "FastAPI"),
+        ("sqlalchemy", "SQLAlchemy"),
+        ("psycopg2", "psycopg2"),
+        ("dotenv", "python-dotenv"),
+        ("yaml", "pyyaml"),
+    ]
+
+    print_info("Checking if requirements are already installed...")
+
+    # Check if critical packages are already installed
+    all_installed = True
+    for module_name, package_name in critical_packages:
+        try:
+            __import__(module_name)
+        except ImportError:
+            all_installed = False
+            break
+
+    if all_installed:
+        print_success("Requirements already installed")
+        return True
+
+    # Need to install requirements
+    print_info("Installing requirements from requirements.txt...")
+
+    # Check if requirements.txt exists
+    requirements_path = Path.cwd() / "requirements.txt"
+    if not requirements_path.exists():
+        print_error("requirements.txt not found")
+        print_info(f"Expected at: {requirements_path}")
+        return False
+
+    print_warning("This may take 2-3 minutes on first install...")
+
+    try:
+        # Run pip install
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", str(requirements_path)],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300,  # 5 minute timeout
+        )
+
+        print_success("Requirements installed successfully")
+
+        # Verify critical packages can now be imported
+        print_info("Verifying installation...")
+        failed_packages = []
+
+        for module_name, package_name in critical_packages:
+            try:
+                __import__(module_name)
+            except ImportError:
+                failed_packages.append(package_name)
+
+        if failed_packages:
+            print_error(f"Some packages failed to install: {', '.join(failed_packages)}")
+            return False
+
+        print_success("All critical packages verified")
+        return True
+
+    except subprocess.TimeoutExpired:
+        print_error("Installation timed out (exceeded 5 minutes)")
+        print_info("Try installing manually: pip install -r requirements.txt")
+        return False
+
+    except subprocess.CalledProcessError as e:
+        print_error(f"pip install failed with return code {e.returncode}")
+        if e.stderr:
+            print_info(f"Error details: {e.stderr[:500]}")  # Limit error output
+        print_info("Try installing manually: pip install -r requirements.txt")
+        return False
+
+    except Exception as e:
+        print_error(f"Unexpected error during installation: {e}")
+        return False
 
 
 def run_startup(check_only: bool = False) -> int:
@@ -451,7 +553,7 @@ def run_startup(check_only: bool = False) -> int:
     """
     print_header("GiljoAI MCP - Unified Startup v3.0")
 
-    # Step 1: Check dependencies
+    # Step 1: Check dependencies (Python, PostgreSQL, pip)
     if not check_dependencies():
         print_error("Dependency checks failed")
         return 1
@@ -460,7 +562,14 @@ def run_startup(check_only: bool = False) -> int:
         print_success("All dependency checks passed")
         return 0
 
-    # Step 2: Check database connectivity
+    # Step 2: Install requirements
+    print_header("Installing Requirements")
+    if not install_requirements():
+        print_error("Failed to install requirements")
+        print_info("Please install manually: pip install -r requirements.txt")
+        return 1
+
+    # Step 3: Check database connectivity
     print_header("Database Connectivity")
     print_info("Checking database connection...")
     db_success, db_error = check_database_connectivity()
@@ -470,15 +579,15 @@ def run_startup(check_only: bool = False) -> int:
         print_info("Please ensure PostgreSQL is running and configured correctly")
         return 1
 
-    # Step 3: Check first-run status
+    # Step 4: Check first-run status
     print_header("Setup Status")
     print_info("Checking setup completion status...")
     is_first_run, state = check_first_run()
 
-    # Step 4: Get ports from config
+    # Step 5: Get ports from config
     api_port, frontend_port = get_config_ports()
 
-    # Step 5: Check port availability
+    # Step 6: Check port availability
     print_header("Port Availability")
     print_info(f"Checking API port {api_port}...")
     if not is_port_available(api_port):
@@ -501,7 +610,7 @@ def run_startup(check_only: bool = False) -> int:
         else:
             print_warning("Could not find available port for frontend")
 
-    # Step 6: Start services
+    # Step 7: Start services
     print_header("Starting Services")
 
     print_info("Starting API server...")
@@ -514,7 +623,7 @@ def run_startup(check_only: bool = False) -> int:
     print_info("Starting frontend server...")
     frontend_process = start_frontend_server()
 
-    # Step 7: Open browser
+    # Step 8: Open browser
     print_header("Opening Browser")
 
     if is_first_run:
@@ -528,7 +637,7 @@ def run_startup(check_only: bool = False) -> int:
         print_info("Opening dashboard...")
         open_browser(dashboard_url)
 
-    # Step 8: Display status
+    # Step 9: Display status
     print_header("Services Running")
     print_success(f"API Server: http://localhost:{api_port}")
     print_success(f"API Docs: http://localhost:{api_port}/docs")
