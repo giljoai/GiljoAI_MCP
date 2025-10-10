@@ -5,7 +5,7 @@
  * - Tool detection
  * - MCP configuration generation
  * - Database testing
- * - Deployment mode configuration
+ * - System setup
  * - Setup completion
  */
 
@@ -102,25 +102,7 @@ class SetupService {
     return response.json()
   }
 
-  /**
-   * Generate MCP configuration for a tool
-   * @param {string} tool - Tool name (e.g., 'Claude Code')
-   * @param {string} mode - Deployment mode: 'localhost', 'lan', or 'wan'
-   * @returns {Promise<Object>} Generated MCP configuration
-   */
-  async generateMcpConfig(tool, mode) {
-    const response = await fetch(`${this.baseURL}/api/setup/generate-mcp-config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool, mode }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
+  // Deployment mode configuration removed for v3.0 unified architecture
 
   /**
    * Register MCP server with AI tool (writes config file)
@@ -175,33 +157,12 @@ class SetupService {
     return response.json()
   }
 
-  /**
-   * Configure deployment mode
-   * @param {string} mode - Deployment mode: 'localhost', 'lan', or 'wan'
-   * @param {string} [lanIp] - LAN IP address (required for LAN mode)
-   * @param {string} [wanUrl] - WAN URL (required for WAN mode)
-   * @returns {Promise<{success: boolean, mode: string, api_url: string}>}
-   */
-  async configureDeploymentMode(mode, lanIp = null, wanUrl = null) {
-    const response = await fetch(`${this.baseURL}/api/setup/configure-deployment-mode`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, lan_ip: lanIp, wan_url: wanUrl }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
+  // LAN/network configuration removed for v3.0 unified architecture
 
   /**
    * Mark setup as complete
    * @param {Object} config - Complete wizard configuration
-   * @param {string} config.deploymentMode - Deployment mode ('localhost', 'lan', 'wan')
    * @param {Array<string>} config.aiTools - List of attached AI tools
-   * @param {Object|null} config.lanSettings - LAN configuration settings
    * @returns {Promise<{success: boolean, message: string}>}
    */
   async completeSetup(config) {
@@ -216,22 +177,7 @@ class SetupService {
 
     const payload = {
       tools_attached: toolIds,
-      network_mode: config.deploymentMode || 'localhost',
       serena_enabled: config.serenaEnabled || false,
-      lan_config: null,
-    }
-
-    // Add LAN config if provided
-    if (config.lanSettings && config.deploymentMode === 'lan') {
-      payload.lan_config = {
-        server_ip: config.lanSettings.serverIp || '',
-        firewall_configured: config.lanSettings.firewallConfigured || false,
-        admin_username: config.lanSettings.adminUsername || 'admin',
-        admin_password: config.lanSettings.adminPassword || '',
-        hostname: config.lanSettings.hostname || 'giljo.local',
-        adapter_name: config.lanSettings.adapterName || null,
-        adapter_id: config.lanSettings.adapterId || null,
-      }
     }
 
     console.log('[SETUP_SERVICE] Sending payload:', payload)
@@ -343,19 +289,7 @@ class SetupService {
     return response.json()
   }
 
-  /**
-   * Get network adapters for LAN mode configuration
-   * @returns {Promise<{adapters: Array<{name: string, interface_id: string, ip_address: string, is_active: boolean, is_virtual: boolean, is_loopback: boolean}>, recommended: Object}>}
-   */
-  async getAdapters() {
-    const response = await fetch(`${this.baseURL}/api/network/adapters`)
-
-    if (!response.ok) {
-      throw new Error('Network adapter detection failed')
-    }
-
-    return response.json()
-  }
+  // Network adapters detection removed for v3.0 unified architecture
 
   /**
    * Toggle Serena MCP prompt injection on/off
@@ -400,28 +334,7 @@ class SetupService {
     }
   }
 
-  /**
-   * Create admin user for LAN mode
-   * @param {Object} adminData - Admin user data
-   * @param {string} adminData.username - Admin username
-   * @param {string} adminData.password - Admin password
-   * @param {string} adminData.email - Admin email
-   * @returns {Promise<{success: boolean, api_key: string, message: string}>}
-   */
-  async createAdminUser(adminData) {
-    const response = await fetch(`${this.baseURL}/api/setup/admin-user`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(adminData),
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
+  // Admin user creation removed for v3.0 unified architecture
 }
 
 export default new SetupService()
