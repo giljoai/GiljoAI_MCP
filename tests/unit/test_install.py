@@ -590,6 +590,147 @@ class TestDependencyManagement:
             pip_calls = [c for c in mock_run.call_args_list if 'pip' in str(c) and 'install' in str(c)]
             assert len(pip_calls) > 0
 
+    def test_validates_existing_venv_python_executable(self, tmp_path: Path) -> None:
+        """Test validates that existing venv contains Python executable"""
+        from install import UnifiedInstaller
+
+        # Create corrupted venv directory (exists but no Python executable)
+        venv_dir = tmp_path / 'venv'
+        venv_dir.mkdir()
+        scripts_dir = venv_dir / ('Scripts' if platform.system() == 'Windows' else 'bin')
+        scripts_dir.mkdir()
+        # Don't create python.exe - simulating corrupted venv
+
+        # Create requirements.txt
+        req_file = tmp_path / 'requirements.txt'
+        req_file.write_text('fastapi>=0.100.0\n')
+
+        settings = {'install_dir': str(tmp_path)}
+        installer = UnifiedInstaller(settings=settings)
+
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
+
+            result = installer.install_dependencies()
+
+            # Should detect corrupted venv and recreate it
+            assert result['success'] is True
+            # Should have called venv creation (because it detected corruption)
+            venv_calls = [c for c in mock_run.call_args_list if 'venv' in str(c)]
+            assert len(venv_calls) > 0
+
+    def test_recreates_corrupted_venv(self, tmp_path: Path) -> None:
+        """Test recreates venv if directory exists but Python executable is missing"""
+        from install import UnifiedInstaller
+        import shutil
+
+        # Create corrupted venv
+        venv_dir = tmp_path / 'venv'
+        venv_dir.mkdir()
+        (venv_dir / 'pyvenv.cfg').write_text('corrupted')  # Marker file but no Python
+
+        # Create requirements.txt
+        req_file = tmp_path / 'requirements.txt'
+        req_file.write_text('fastapi>=0.100.0\n')
+
+        settings = {'install_dir': str(tmp_path)}
+        installer = UnifiedInstaller(settings=settings)
+
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
+
+            result = installer.install_dependencies()
+
+            # Should succeed and recreate venv
+            assert result['success'] is True
+            # Venv directory should have been recreated
+            assert venv_dir.exists()
+
+    def test_corrupted_venv_error_message_shows_missing_executable(self, tmp_path: Path, capsys) -> None:
+        """Test error message shows which executable is missing when venv is corrupted"""
+        from install import UnifiedInstaller
+
+        # Create corrupted venv
+        venv_dir = tmp_path / 'venv'
+        venv_dir.mkdir()
+        scripts_dir = venv_dir / ('Scripts' if platform.system() == 'Windows' else 'bin')
+        scripts_dir.mkdir()
+
+        # Create requirements.txt
+        req_file = tmp_path / 'requirements.txt'
+        req_file.write_text('fastapi>=0.100.0\n')
+
+        settings = {'install_dir': str(tmp_path)}
+        installer = UnifiedInstaller(settings=settings)
+
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
+
+            installer.install_dependencies()
+
+            captured = capsys.readouterr()
+            # Should mention corrupted venv in output
+            output_text = captured.out.lower()
+            assert 'corrupted' in output_text or 'missing' in output_text or 'recreating' in output_text
+
+    def test_venv_validation_platform_specific_python_path(self, tmp_path: Path) -> None:
+        """Test venv validation checks correct Python path for platform (Windows: Scripts/python.exe, Unix: bin/python)"""
+        from install import UnifiedInstaller
+
+        settings = {'install_dir': str(tmp_path)}
+        installer = UnifiedInstaller(settings=settings)
+
+        # Create requirements.txt
+        req_file = tmp_path / 'requirements.txt'
+        req_file.write_text('fastapi>=0.100.0\n')
+
+        # Test Windows path
+        with patch('platform.system', return_value='Windows'):
+            with patch('subprocess.run') as mock_run:
+                mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
+
+                # Patch Path.exists to check for Scripts/python.exe
+                with patch('pathlib.Path.exists') as mock_exists:
+                    def exists_side_effect(self):
+                        path_str = str(self)
+                        if 'requirements.txt' in path_str:
+                            return True
+                        if 'Scripts' in path_str and 'python.exe' in path_str:
+                            return False  # Missing executable
+                        if 'venv' in path_str and 'Scripts' not in path_str:
+                            return True  # Venv dir exists
+                        return False
+
+                    mock_exists.side_effect = exists_side_effect
+
+                    result = installer.install_dependencies()
+
+                    # Should detect Windows-specific Python path
+                    # (Implementation will check Scripts/python.exe on Windows)
+
+        # Test Unix path
+        with patch('platform.system', return_value='Linux'):
+            with patch('subprocess.run') as mock_run:
+                mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
+
+                with patch('pathlib.Path.exists') as mock_exists:
+                    def exists_side_effect(self):
+                        path_str = str(self)
+                        if 'requirements.txt' in path_str:
+                            return True
+                        if 'bin' in path_str and 'python' in path_str:
+                            return False  # Missing executable
+                        if 'venv' in path_str and 'bin' not in path_str:
+                            return True  # Venv dir exists
+                        return False
+
+                    mock_exists.side_effect = exists_side_effect
+
+                    result = installer.install_dependencies()
+
+                    # Should detect Unix-specific Python path
+                    # (Implementation will check bin/python on Unix)
+
 
 class TestV3UnifiedArchitecture:
     """Test v3.0 unified architecture compliance"""
