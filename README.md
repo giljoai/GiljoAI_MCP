@@ -48,12 +48,11 @@ cd GiljoAI_MCP
 # 2. Run startup script (automatic first-run detection)
 python startup.py
 
-# First Run: Setup wizard opens in browser
-# - Database connection verification
-# - Admin account creation
-# - Deployment mode selection (Localhost/LAN/WAN)
-# - MCP tool integration (Claude Code, Cline, Cursor)
-# - Firewall configuration (if LAN/WAN)
+# First Run: Setup wizard opens in browser (v3.0)
+# - Admin account creation (FIRST - required)
+# - MCP tool integration (Claude Code, Cursor, Windsurf)
+# - Serena enhancement (optional)
+# - Database connectivity test (courtesy check)
 # - Service startup
 
 # Subsequent Runs: Dashboard opens directly
@@ -96,14 +95,18 @@ python startup.py --verbose    # Detailed logging
 
 **For complete details**, see [Startup Simplification Guide](docs/guides/STARTUP_SIMPLIFICATION.md)
 
-### Installation Modes
+### Architecture (v3.0)
 
-Choose the mode that best fits your needs:
+GiljoAI MCP v3.0 uses a **unified architecture** with no deployment modes:
 
-| Mode         | Best For                        | Database        | Auth      | Network            |
-| ------------ | ------------------------------- | --------------- | --------- | ------------------ |
-| **Localhost** | Individual development          | PostgreSQL 18   | None      | Localhost only     |
-| **Server**   | Teams, LAN/WAN deployment       | PostgreSQL 18   | API Keys  | Network accessible |
+| Component      | Configuration                           | Access Control                        |
+| -------------- | --------------------------------------- | ------------------------------------- |
+| **API Server** | Always binds to `0.0.0.0` (all interfaces) | Controlled by OS firewall             |
+| **Database**   | Always on `localhost` (never exposed)   | Local socket only (maximum security)  |
+| **Auth**       | Always enabled                          | Auto-login for localhost, API keys for network |
+| **Network**    | Firewall controls access                | Localhost-only by default, configurable for LAN/WAN |
+
+**No deployment modes** - one codebase, all contexts. See [v3.0 Architecture](docs/VERIFICATION_OCT9.md) for details.
 
 ### Next Steps
 
