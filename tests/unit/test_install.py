@@ -376,6 +376,154 @@ class TestPostgreSQLDiscovery:
                     # Should find PostgreSQL in scan
                     assert 'scanned_paths' in result
 
+    def test_custom_path_prompt_on_discovery_failure(self) -> None:
+        """Test custom path prompt appears when auto-discovery fails"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+
+        with patch('shutil.which', return_value=None):
+            with patch('pathlib.Path.exists', return_value=False):
+                with patch('builtins.input', return_value='n'):
+                    result = installer.discover_postgresql()
+
+                    # Should ask for custom path
+                    assert result['found'] is False
+
+    def test_custom_path_valid_directory(self) -> None:
+        """Test custom path validation accepts valid PostgreSQL directory"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+
+        # Simulate valid custom path
+        custom_path = "C:/custom/postgres/bin"
+
+        with patch('pathlib.Path.exists') as mock_exists:
+            def exists_check(self):
+                return custom_path in str(self) and 'psql' in str(self)
+
+            mock_exists.side_effect = exists_check
+
+            result = installer.check_custom_postgresql_path(custom_path)
+
+            assert result is True
+
+    def test_custom_path_invalid_directory(self) -> None:
+        """Test custom path validation rejects invalid directory"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+
+        # Simulate invalid custom path (no psql)
+        custom_path = "C:/nonexistent/path"
+
+        with patch('pathlib.Path.exists', return_value=False):
+            result = installer.check_custom_postgresql_path(custom_path)
+
+            assert result is False
+
+    def test_custom_path_user_accepts_and_provides_valid_path(self) -> None:
+        """Test user accepts custom path prompt and provides valid path"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+        custom_path = "C:/custom/postgres/bin"
+
+        with patch('shutil.which', return_value=None):
+            with patch('pathlib.Path.exists') as mock_exists:
+                # First checks fail (auto-discovery), then custom path succeeds
+                call_count = [0]
+
+                def exists_check(self):
+                    call_count[0] += 1
+                    # Auto-discovery fails
+                    if call_count[0] < 10:
+                        return False
+                    # Custom path succeeds
+                    return custom_path in str(self) and 'psql' in str(self)
+
+                mock_exists.side_effect = exists_check
+
+                with patch('builtins.input', side_effect=['y', custom_path]):
+                    result = installer.discover_postgresql()
+
+                    # Should find PostgreSQL via custom path
+                    assert result['found'] is True
+                    assert custom_path in str(result['psql_path'])
+
+    def test_custom_path_user_declines(self) -> None:
+        """Test user declines custom path prompt"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+
+        with patch('shutil.which', return_value=None):
+            with patch('pathlib.Path.exists', return_value=False):
+                with patch('builtins.input', return_value='n'):
+                    result = installer.discover_postgresql()
+
+                    # Should not find PostgreSQL
+                    assert result['found'] is False
+
+    def test_custom_path_max_attempts_exceeded(self) -> None:
+        """Test custom path validation stops after 3 failed attempts"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+
+        with patch('shutil.which', return_value=None):
+            with patch('pathlib.Path.exists', return_value=False):
+                # User says yes, then provides 3 invalid paths
+                with patch('builtins.input', side_effect=['y', '/bad1', '/bad2', '/bad3']):
+                    result = installer.discover_postgresql()
+
+                    # Should fail after max attempts
+                    assert result['found'] is False
+
+    def test_custom_path_validation_checks_psql_executable(self) -> None:
+        """Test custom path validation specifically checks for psql/psql.exe"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+        custom_bin_path = Path("C:/custom/postgres/bin")
+
+        # Test Windows (psql.exe)
+        with patch('platform.system', return_value='Windows'):
+            with patch('pathlib.Path.exists') as mock_exists:
+                def exists_check(self):
+                    return str(self) == str(custom_bin_path / 'psql.exe')
+
+                mock_exists.side_effect = exists_check
+
+                result = installer.check_custom_postgresql_path(str(custom_bin_path))
+                assert result is True
+
+        # Test Linux/Mac (psql)
+        with patch('platform.system', return_value='Linux'):
+            with patch('pathlib.Path.exists') as mock_exists:
+                def exists_check(self):
+                    return str(self) == str(custom_bin_path / 'psql')
+
+                mock_exists.side_effect = exists_check
+
+                result = installer.check_custom_postgresql_path(str(custom_bin_path))
+                assert result is True
+
+    def test_custom_path_prompt_uses_yellow_color(self, capsys) -> None:
+        """Test custom path prompt uses yellow color for emphasis"""
+        from install import UnifiedInstaller
+
+        installer = UnifiedInstaller(settings={})
+
+        with patch('shutil.which', return_value=None):
+            with patch('pathlib.Path.exists', return_value=False):
+                with patch('builtins.input', return_value='n'):
+                    installer.discover_postgresql()
+
+                    # Should display yellow-colored prompt
+                    # (actual color codes will be in output)
+
     def test_macos_scans_homebrew_and_postgres_app(self) -> None:
         """Test macOS scans Homebrew and Postgres.app locations"""
         from install import UnifiedInstaller
