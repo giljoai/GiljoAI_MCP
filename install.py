@@ -226,16 +226,37 @@ class UnifiedInstaller:
         """Gather user preferences for installation"""
         import getpass
 
-        # PostgreSQL password
+        # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
         print(f"Enter the password for PostgreSQL 'postgres' user")
         print(f"(press Enter to use default '4010')")
-        pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
-        if pg_pass:
-            self.settings['pg_password'] = pg_pass
-        else:
-            self.settings['pg_password'] = '4010'
-            self._print_info("Using default password '4010'")
+
+        # Ask twice to confirm
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
+
+            # If empty, use default
+            if not pg_pass:
+                self.settings['pg_password'] = '4010'
+                self._print_info("Using default password '4010'")
+                break
+
+            # Ask for confirmation
+            pg_pass_confirm = getpass.getpass(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
+
+            # Check if they match
+            if pg_pass == pg_pass_confirm:
+                self.settings['pg_password'] = pg_pass
+                self._print_success("Password confirmed")
+                break
+            else:
+                remaining = max_attempts - attempt - 1
+                if remaining > 0:
+                    self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
+                else:
+                    self._print_error("Passwords do not match. Using default password '4010'.")
+                    self.settings['pg_password'] = '4010'
 
         # Start services after installation
         print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")

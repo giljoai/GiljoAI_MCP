@@ -9,7 +9,7 @@ import platform
 import yaml
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 
 
@@ -70,6 +70,50 @@ class ConfigManager:
         """Alias for generate_env_file for testing compatibility"""
         return self.generate_env_file()
 
+    def _read_latest_credentials(self) -> Optional[Dict[str, str]]:
+        """
+        Read the most recent database credentials file.
+        
+        Returns:
+            Dictionary with credential keys and values, or None if not found
+        """
+        try:
+            credentials_dir = Path("installer/credentials")
+            
+            if not credentials_dir.exists():
+                self.logger.warning(f"Credentials directory not found: {credentials_dir}")
+                return None
+            
+            # Find all credential files
+            credential_files = list(credentials_dir.glob("db_credentials_*.txt"))
+            
+            if not credential_files:
+                self.logger.warning("No credential files found in installer/credentials/")
+                return None
+            
+            # Get the most recent file (by modification time)
+            latest_file = max(credential_files, key=lambda p: p.stat().st_mtime)
+            self.logger.info(f"Reading credentials from: {latest_file}")
+            
+            # Parse the credentials file
+            credentials = {}
+            with open(latest_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip comments and empty lines
+                    if not line or line.startswith('#'):
+                        continue
+                    # Parse key=value pairs
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        credentials[key.strip()] = value.strip()
+            
+            return credentials
+            
+        except Exception as e:
+            self.logger.error(f"Failed to read credentials file: {e}")
+            return None
+
     def generate_config(self) -> Dict[str, Any]:
         """Alias for generate_config_yaml for testing compatibility"""
         return self.generate_config_yaml()
@@ -89,9 +133,31 @@ class ConfigManager:
         result = {"success": False, "errors": []}
 
         try:
-            # Get database credentials
-            owner_password = self.settings.get("owner_password", "4010")
-            user_password = self.settings.get("user_password", "4010")
+            # Get database credentials - try multiple sources
+            owner_password = None
+            user_password = None
+            
+            # Source 1: From settings (if passed from DatabaseInstaller)
+            if "owner_password" in self.settings and "user_password" in self.settings:
+                owner_password = self.settings.get("owner_password")
+                user_password = self.settings.get("user_password")
+                self.logger.info("Using database passwords from settings")
+            
+            # Source 2: Read from most recent credentials file
+            if not owner_password or not user_password:
+                credentials = self._read_latest_credentials()
+                if credentials:
+                    owner_password = credentials.get("OWNER_PASSWORD")
+                    user_password = credentials.get("USER_PASSWORD")
+                    self.logger.info("Using database passwords from credentials file")
+            
+            # Source 3: Fallback to default (for backward compatibility)
+            if not owner_password:
+                owner_password = "4010"
+                self.logger.warning("No owner password found, using default: 4010")
+            if not user_password:
+                user_password = "4010"
+                self.logger.warning("No user password found, using default: 4010")
 
             # Get configuration values with correct defaults
             pg_host = self.settings.get("pg_host", "localhost")  # ALWAYS localhost

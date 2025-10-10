@@ -27,8 +27,15 @@ if exist "venv\Scripts\python.exe" (
     python start_giljo.py --backend-only %*
 )
 
+REM Always pause to show output, even on success
 if errorlevel 1 (
     echo.
-    echo Backend launch failed. Check the error messages above.
-    pause
+    echo ===============================================
+    echo ERROR: Backend launch failed!
+    echo ===============================================
+    echo Check the error messages above.
+    echo.
 )
+echo.
+echo Press any key to close this window...
+pause >nul
