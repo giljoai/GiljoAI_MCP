@@ -208,7 +208,8 @@ def check_database_connectivity() -> Tuple[bool, Optional[str]]:
         # Try to create a session to verify connection
         with db_manager.get_session() as session:
             # Simple query to verify connection
-            session.execute("SELECT 1")
+            from sqlalchemy import text
+            session.execute(text("SELECT 1"))
 
         print_success("Database connection successful")
         return True, None
