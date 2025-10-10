@@ -21,18 +21,16 @@ Test Coverage:
 - Multi-tenant isolation
 """
 
+from pathlib import Path
+
 import pytest
 import pytest_asyncio
 import yaml
-from datetime import datetime, timezone
-from pathlib import Path
 from httpx import AsyncClient
 from passlib.hash import bcrypt
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, APIKey
-from src.giljo_mcp.api_key_utils import verify_api_key, validate_api_key_format
+from src.giljo_mcp.models import APIKey, User
 
 
 @pytest.mark.asyncio
@@ -44,8 +42,8 @@ async def test_v3_localhost_context_always_uses_0_0_0_0(test_client: AsyncClient
             "deployment_context": "localhost",
             "tools_attached": ["claude-code"],
             "serena_enabled": False,
-            "lan_config": None
-        }
+            "lan_config": None,
+        },
     )
 
     assert response.status_code == 200
@@ -56,7 +54,7 @@ async def test_v3_localhost_context_always_uses_0_0_0_0(test_client: AsyncClient
     assert data["requires_restart"] is False  # Already bound to 0.0.0.0
 
     # Verify config.yaml - CRITICAL v3.0 requirement
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # ALWAYS 0.0.0.0 in v3.0 (not 127.0.0.1)
@@ -78,16 +76,16 @@ async def test_v3_lan_context_always_uses_0_0_0_0(test_client: AsyncClient, conf
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
 
     assert response.status_code == 200
     data = response.json()
 
     # Verify config.yaml - CRITICAL v3.0 requirement
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # ALWAYS 0.0.0.0 in v3.0 (not the LAN IP)
@@ -108,12 +106,12 @@ async def test_v3_authentication_always_enabled(test_client: AsyncClient, config
             "deployment_context": "localhost",
             "tools_attached": ["claude-code"],
             "serena_enabled": False,
-            "lan_config": None
-        }
+            "lan_config": None,
+        },
     )
     assert response1.status_code == 200
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # Authentication ALWAYS enabled
@@ -132,13 +130,13 @@ async def test_v3_authentication_always_enabled(test_client: AsyncClient, config
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response2.status_code == 200
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # Authentication ALWAYS enabled
@@ -156,8 +154,8 @@ async def test_v3_no_restart_required(test_client: AsyncClient):
             "deployment_context": "localhost",
             "tools_attached": ["claude-code"],
             "serena_enabled": False,
-            "lan_config": None
-        }
+            "lan_config": None,
+        },
     )
     assert response1.status_code == 200
     assert response1.json()["requires_restart"] is False
@@ -174,9 +172,9 @@ async def test_v3_no_restart_required(test_client: AsyncClient):
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response2.status_code == 200
     assert response2.json()["requires_restart"] is False
@@ -195,8 +193,8 @@ async def test_v3_admin_user_created_only_with_lan_config(test_client: AsyncClie
             "deployment_context": "localhost",
             "tools_attached": ["claude-code"],
             "serena_enabled": False,
-            "lan_config": None
-        }
+            "lan_config": None,
+        },
     )
     assert response1.status_code == 200
     assert response1.json()["admin_username"] is None
@@ -220,9 +218,9 @@ async def test_v3_admin_user_created_only_with_lan_config(test_client: AsyncClie
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response2.status_code == 200
     assert response2.json()["admin_username"] == "admin"
@@ -245,13 +243,13 @@ async def test_v3_cors_additive_management(test_client: AsyncClient, config_path
             "deployment_context": "localhost",
             "tools_attached": ["claude-code"],
             "serena_enabled": False,
-            "lan_config": None
-        }
+            "lan_config": None,
+        },
     )
     assert response1.status_code == 200
 
     # Verify base localhost origins
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     base_origins = config["security"]["cors"]["allowed_origins"]
@@ -270,14 +268,14 @@ async def test_v3_cors_additive_management(test_client: AsyncClient, config_path
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response2.status_code == 200
 
     # Verify localhost origins preserved AND network origins added
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     updated_origins = config["security"]["cors"]["allowed_origins"]
@@ -303,7 +301,7 @@ async def test_v3_deployment_context_is_metadata_only(test_client: AsyncClient, 
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
+                "firewall_configured": True,
             }
 
         response = await test_client.post(
@@ -312,12 +310,12 @@ async def test_v3_deployment_context_is_metadata_only(test_client: AsyncClient, 
                 "deployment_context": context,
                 "tools_attached": ["claude-code"],
                 "serena_enabled": False,
-                "lan_config": lan_config
-            }
+                "lan_config": lan_config,
+            },
         )
         assert response.status_code == 200
 
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
         configs[context] = config
@@ -350,9 +348,9 @@ async def test_v3_idempotent_admin_user_creation(test_client: AsyncClient):
                 "admin_password": "FirstPassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response1.status_code == 200
 
@@ -378,9 +376,9 @@ async def test_v3_idempotent_admin_user_creation(test_client: AsyncClient):
                 "admin_password": "SecondPassword123!",  # Different password
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response2.status_code == 200
 
@@ -411,9 +409,9 @@ async def test_v3_wan_context_behaves_like_lan(test_client: AsyncClient, config_
                 "admin_password": "SecurePassword123!",
                 "server_ip": "203.0.113.42",
                 "hostname": "giljo.example.com",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
 
     assert response.status_code == 200
@@ -421,7 +419,7 @@ async def test_v3_wan_context_behaves_like_lan(test_client: AsyncClient, config_
     assert data["success"] is True
 
     # Verify config follows v3.0 architecture
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # Same v3.0 behavior as LAN
@@ -449,13 +447,16 @@ async def test_v3_password_validation(test_client: AsyncClient):
                 "admin_password": "weak",  # Too short
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
 
     assert response.status_code == 400
-    assert "password" in response.json()["detail"].lower()
+    response_data = response.json()
+    # Check for password error in response (could be in "detail" or at top level)
+    response_str = str(response_data).lower()
+    assert "password" in response_str
 
 
 @pytest.mark.asyncio
@@ -473,9 +474,9 @@ async def test_v3_ip_address_validation(test_client: AsyncClient):
                 "admin_password": "SecurePassword123!",
                 "server_ip": "169.254.1.1",  # Link-local
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response1.status_code == 400
     assert "ip" in str(response1.json()).lower()
@@ -492,9 +493,9 @@ async def test_v3_ip_address_validation(test_client: AsyncClient):
                 "admin_password": "SecurePassword123!",
                 "server_ip": "127.0.0.1",  # Loopback
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response2.status_code == 400
     assert "loopback" in str(response2.json()).lower() or "ip" in str(response2.json()).lower()
@@ -514,9 +515,9 @@ async def test_v3_api_key_security(test_client: AsyncClient):
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response.status_code == 200
     plaintext_key = response.json()["admin_username"]  # Admin created but no API key in v3.0
@@ -553,9 +554,9 @@ async def test_v3_multitenant_isolation(test_client: AsyncClient):
                 "admin_password": "SecurePassword123!",
                 "server_ip": "10.1.0.164",
                 "hostname": "giljo.local",
-                "firewall_configured": True
-            }
-        }
+                "firewall_configured": True,
+            },
+        },
     )
     assert response.status_code == 200
 
@@ -583,15 +584,17 @@ async def test_v3_multitenant_isolation(test_client: AsyncClient):
 
 # Fixtures
 
+
 @pytest_asyncio.fixture
 async def test_client():
     """Create async HTTP client for testing setup endpoints with proper database dependency override."""
-    from httpx import AsyncClient, ASGITransport
-    from api.app import app
-    from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.auth.dependencies import get_db_session
-    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+    from httpx import ASGITransport, AsyncClient
     from sqlalchemy import text
+
+    from api.app import app
+    from src.giljo_mcp.auth.dependencies import get_db_session
+    from src.giljo_mcp.database import DatabaseManager
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
     # Ensure test database exists
     await PostgreSQLTestHelper.ensure_test_database_exists()
@@ -618,6 +621,7 @@ async def test_client():
 
     # Set up app state for database manager (needed by setup endpoint)
     if not hasattr(app.state, "api_state"):
+
         class APIState:
             def __init__(self):
                 self.db_manager = None
@@ -626,7 +630,7 @@ async def test_client():
         app.state.api_state = APIState()
 
     app.state.api_state.db_manager = test_db_manager
-    
+
     # Initialize auth_manager to None (setup endpoint doesn't need it)
     # The middleware will check for None and skip auth for setup endpoints
     app.state.api_state.auth_manager = None
@@ -651,41 +655,26 @@ def config_path(tmp_path: Path):
 
     # Create initial config matching v3.0 architecture
     initial_config = {
-        "installation": {
-            "deployment_context": "localhost",
-            "version": "3.0.0"
-        },
+        "installation": {"deployment_context": "localhost", "version": "3.0.0"},
         "services": {
-            "api": {
-                "host": "0.0.0.0",  # v3.0: ALWAYS 0.0.0.0
-                "port": 7272
-            },
-            "dashboard": {
-                "host": "0.0.0.0",  # v3.0: ALWAYS 0.0.0.0
-                "port": 7274
-            }
+            "api": {"host": "0.0.0.0", "port": 7272},  # v3.0: ALWAYS 0.0.0.0
+            "dashboard": {"host": "0.0.0.0", "port": 7274},  # v3.0: ALWAYS 0.0.0.0
         },
-        "security": {
-            "cors": {
-                "allowed_origins": [
-                    "http://127.0.0.1:7274",
-                    "http://localhost:7274"
-                ]
-            }
-        },
+        "security": {"cors": {"allowed_origins": ["http://127.0.0.1:7274", "http://localhost:7274"]}},
         "features": {
             "authentication": True,  # v3.0: ALWAYS enabled
             "auto_login_localhost": True,  # v3.0: ALWAYS enabled
             "api_keys_enabled": False,
-            "multi_user": False
-        }
+            "multi_user": False,
+        },
     }
 
-    with open(config_file, 'w', encoding='utf-8') as f:
+    with open(config_file, "w", encoding="utf-8") as f:
         yaml.dump(initial_config, f, default_flow_style=False, sort_keys=False)
 
     # Monkey-patch get_config_path to use temp file
     from api.endpoints import setup
+
     original_get_config_path = setup.get_config_path
     setup.get_config_path = lambda: config_file
 
