@@ -31,7 +31,6 @@ import socket
 import subprocess
 import sys
 import time
-import webbrowser
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -181,12 +180,6 @@ class UnifiedInstaller:
                 result['steps'].append('services_launched')
                 result['api_pid'] = launch_result.get('api_pid')
                 result['frontend_pid'] = launch_result.get('frontend_pid')
-
-                # Step 8: Open browser (if requested and services started)
-                if self.settings.get('open_browser', True):
-                    self._print_header("Opening Dashboard")
-                    self.open_browser()
-                    result['steps'].append('browser_opened')
             else:
                 self._print_info("Skipping service launch (per user preference)")
 
@@ -289,11 +282,6 @@ class UnifiedInstaller:
         verbose_response = input(f"{Fore.YELLOW}Enable verbose mode? (y/N): {Style.RESET_ALL}").strip().lower()
         self.settings['verbose_mode'] = verbose_response == 'y'
 
-        # Open browser after installation
-        print(f"\nWould you like to open the dashboard in your browser after installation?")
-        browser_response = input(f"{Fore.YELLOW}Open browser? (Y/n): {Style.RESET_ALL}").strip().lower()
-        self.settings['open_browser'] = browser_response != 'n'
-
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
         print(f"  • PostgreSQL password: {'(default)' if self.settings['pg_password'] == '4010' else '(custom)'}")
@@ -301,7 +289,6 @@ class UnifiedInstaller:
         if platform.system() == "Windows":
             print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")
         print(f"  • Verbose mode: {self.settings['verbose_mode']}")
-        print(f"  • Open browser: {self.settings['open_browser']}")
 
     def check_python_version(self) -> bool:
         """
@@ -891,21 +878,6 @@ class UnifiedInstaller:
             result['error'] = str(e)
             return result
 
-    def open_browser(self) -> None:
-        """Open browser to dashboard"""
-        try:
-            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
-            url = f"http://localhost:{frontend_port}"
-
-            self._print_info(f"Opening browser to {url}...")
-            time.sleep(2)  # Brief delay for services to fully start
-
-            webbrowser.open(url)
-            self._print_success("Browser opened")
-
-        except Exception as e:
-            self._print_warning(f"Could not open browser: {e}")
-            self._print_info(f"Please manually open: http://localhost:{frontend_port}")
 
     def create_desktop_shortcuts(self) -> None:
         """Create desktop shortcuts for Windows"""
@@ -953,6 +925,23 @@ class UnifiedInstaller:
             self._print_info(f"  • Main app: python {self.install_dir / 'startup.py'}")
             self._print_info(f"  • Dev panel: {self.install_dir / 'dev_tools' / 'GiljoAI_Control_Panel.vbs'}")
 
+    def _get_all_network_ips(self) -> List[str]:
+        """Get all non-loopback IPv4 addresses"""
+        try:
+            import psutil
+            ips = []
+
+            for interface_name, addresses in psutil.net_if_addrs().items():
+                for addr in addresses:
+                    if addr.family == 2:  # IPv4
+                        ip = addr.address
+                        if not ip.startswith("127.") and not ip.startswith("169.254."):
+                            ips.append(ip)
+
+            return sorted(set(ips))  # Deduplicate and sort
+        except Exception:
+            return []  # Graceful fallback
+
     def _create_batch_shortcuts(self) -> None:
         """Create .bat file shortcuts as fallback"""
         try:
@@ -989,22 +978,32 @@ class UnifiedInstaller:
         print(f"{Fore.GREEN}{Style.BRIGHT}  Installation Complete!{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
 
-        api_port = self.settings.get('api_port', DEFAULT_API_PORT)
+        # Detect all network IPs
+        network_ips = self._get_all_network_ips()
         frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
+        api_port = self.settings.get('api_port', DEFAULT_API_PORT)
 
-        print(f"{Fore.CYAN}Services Running:{Style.RESET_ALL}")
-        print(f"  • API Server:  http://localhost:{api_port}")
-        print(f"  • API Docs:    http://localhost:{api_port}/docs")
-        print(f"  • Dashboard:   http://localhost:{frontend_port}")
-        print()
+        print(f"{Fore.YELLOW}To continue setup, launch your browser at:{Style.RESET_ALL}\n")
 
-        print(f"{Fore.YELLOW}Next Steps:{Style.RESET_ALL}")
-        print(f"  1. Dashboard will open automatically (or visit http://localhost:{frontend_port})")
+        # List network IPs (if any)
+        if network_ips:
+            for ip in network_ips:
+                print(f"  • http://{ip}:{frontend_port}")
+
+        # Always show localhost
+        print(f"  • http://localhost:{frontend_port}")
+        print(f"  • http://127.0.0.1:{frontend_port}")
+
+        print(f"\n{Fore.CYAN}API Documentation:{Style.RESET_ALL}")
+        print(f"  • http://localhost:{api_port}/docs")
+
+        print(f"\n{Fore.WHITE}Next Steps:{Style.RESET_ALL}")
+        print(f"  1. Open your browser to one of the URLs above")
         print(f"  2. Complete the first-time setup wizard:")
-        print(f"     • Choose deployment mode (Localhost/LAN/WAN)")
-        print(f"     • Create admin account (if LAN/WAN mode)")
+        print(f"     • Create admin account")
         print(f"     • Connect AI tools (Claude Code, etc.)")
-        print(f"  3. Create your first product and start orchestrating!")
+        print(f"  3. (Optional) Configure firewall to allow network access")
+        print(f"  4. Create your first product and start orchestrating!")
         print()
 
         print(f"{Fore.WHITE}Press Ctrl+C to stop services{Style.RESET_ALL}\n")

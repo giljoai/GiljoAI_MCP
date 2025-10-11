@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.0.0] - 2025-10-09
+## [3.0.0] - 2025-10-10
 
 ### 🚀 Major Changes
 - **BREAKING**: Removed DeploymentMode enum (LOCAL/LAN/WAN)
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Firewall-based access control (replaces mode-based binding)
 - Automatic localhost user creation
 - Cross-platform installer script templates
+- **Runtime network IP detection** for fresh installs (remote SSH support)
 
 ### 🔧 Changes
 - Authentication always enabled (no mode-based toggling)
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mock fixture corrections in test suite
 - Timezone handling in share link expiration
 - Template variable substitution edge cases
+- **Remote SSH installation**: Network IP detection for setup wizard access
 
 ### 📚 Documentation
 - MCP Integration Guide for end users
@@ -80,6 +82,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consistent behavior across all deployments
 - Better error messages and logging
 - Improved test infrastructure
+- **Remote SSH installations**: Auto-detect network IP for setup wizard access
+- **Intelligent adapter filtering**: Prefers physical over virtual network adapters
+- **Zero configuration**: Works out-of-the-box on fresh installs
 
 ---
 
