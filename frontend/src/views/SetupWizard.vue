@@ -38,7 +38,6 @@
                 v-bind="getStepProps(step)"
                 @next="handleNext"
                 @back="handlePrevious"
-                @admin-setup-complete="handleAdminSetupComplete"
                 @finish="handleFinish"
               />
             </v-window-item>
@@ -47,77 +46,26 @@
       </v-col>
     </v-row>
 
-    <!-- LAN Confirmation Modal -->
-    <v-dialog v-model="showLanConfirmModal" max-width="600" persistent>
-      <v-card>
-        <v-card-title class="text-h5">
-          <v-icon start color="warning">mdi-alert</v-icon>
-          Confirm LAN Mode Configuration
-        </v-card-title>
-
-        <v-card-text>
-          <v-alert type="warning" variant="tonal" class="mb-4">
-            <div class="text-body-1 mb-2">
-              <strong>You are about to configure GiljoAI for LAN/Network access.</strong>
-            </div>
-            <div class="text-body-2">
-              When you restart the backend services, this application will be accessible over your
-              local network.
-            </div>
-          </v-alert>
-
-          <div class="text-body-2">
-            <p class="mb-2"><strong>This will:</strong></p>
-            <ul class="ml-4 mb-3">
-              <li>Bind the API server to your selected network adapter</li>
-              <li>Enable user authentication (username/password login)</li>
-              <li>Allow network devices to access this server</li>
-              <li>Require a service restart to take effect</li>
-            </ul>
-            <p class="text-medium-emphasis">
-              Make sure your firewall is configured and your network is trusted.
-            </p>
-          </div>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-btn variant="outlined" @click="cancelLanConfig"> Cancel </v-btn>
-          <v-spacer />
-          <v-btn color="warning" @click="confirmLanConfig">
-            <span class="text-white">Yes, Configure for LAN</span>
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Restart Instructions Modal -->
     <v-dialog v-model="showRestartModal" max-width="700" persistent>
       <v-card>
         <v-card-title class="text-h5">
           <v-icon start color="info">mdi-restart</v-icon>
-          Restart Services Required
+          Setup Complete
         </v-card-title>
 
         <v-card-text>
           <v-alert type="success" variant="tonal" class="mb-4">
-            <strong>Setup Complete!</strong> Configuration has been saved. Please restart services
-            to activate LAN mode.
+            <strong>Setup Complete!</strong> Configuration has been saved and the application is ready to use.
           </v-alert>
 
-          <h3 class="mb-2">Restart Instructions ({{ platform }})</h3>
-          <v-list density="compact">
-            <v-list-item v-for="(step, index) in restartInstructions" :key="index">
-              <template v-slot:prepend>
-                <v-avatar color="primary" size="24">{{ index + 1 }}</v-avatar>
-              </template>
-              <v-list-item-title>{{ step }}</v-list-item-title>
-            </v-list-item>
-          </v-list>
-
-          <v-alert type="warning" variant="tonal" class="mt-4">
+          <v-alert type="info" variant="tonal" class="mt-4">
             <div class="text-body-2">
-              <strong>Note:</strong> After restarting, this browser window will reconnect and show a
-              welcome message confirming LAN mode is active.
+              <strong>Next Steps:</strong>
+              <ul class="mt-2">
+                <li>Dashboard will open automatically</li>
+                <li>First-time login uses the admin account you just created</li>
+              </ul>
             </div>
           </v-alert>
         </v-card-text>
@@ -125,7 +73,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn color="primary" @click="finishSetup">
-            <span class="text-white">I've Restarted - Go to Dashboard</span>
+            <span class="text-white">Go to Dashboard</span>
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -137,39 +85,26 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
-import DatabaseCheckStep from '@/components/setup/DatabaseCheckStep.vue'
-// Deployment Mode selection removed for v3.0
-import AdminAccountStep from '@/components/setup/AdminAccountStep.vue'
-import AttachToolsStep from '@/components/setup/AttachToolsStep.vue'
-import SerenaAttachStep from '@/components/setup/SerenaAttachStep.vue'
-import SetupCompleteStep from '@/components/setup/SetupCompleteStep.vue'
+import McpConfigStep from '@/components/setup/McpConfigStep.vue'
+import SerenaConfigStep from '@/components/setup/SerenaConfigStep.vue'
+import CompletionStep from '@/components/setup/CompletionStep.vue'
 
 const theme = useTheme()
 
-// Step configuration with conditional rendering
+// Step configuration - simplified to 3 steps
 const allSteps = [
   {
-    component: AdminAccountStep,
-    title: 'Admin Setup',
-    name: 'adminSetup',
-  },
-  {
-    component: AttachToolsStep,
+    component: McpConfigStep,
     title: 'MCP Configuration',
-    name: 'attachTools',
+    name: 'mcpConfig',
   },
   {
-    component: SerenaAttachStep,
-    title: 'Serena Enhancement',
-    name: 'serena',
+    component: SerenaConfigStep,
+    title: 'Serena Activation',
+    name: 'serenaConfig',
   },
   {
-    component: DatabaseCheckStep,
-    title: 'Database Test',
-    name: 'database',
-  },
-  {
-    component: SetupCompleteStep,
+    component: CompletionStep,
     title: 'Complete',
     name: 'complete',
   },
@@ -177,33 +112,20 @@ const allSteps = [
 
 // Reactive configuration state
 const config = reactive({
-  adminUsername: '', // Optional admin username
-  adminPassword: '', // Optional admin password
-  adminEmail: '', // Optional admin email
-  apiKey: '', // Generated API key
+  mcpConfigured: false, // Whether MCP was configured
   serenaEnabled: false, // Serena enabled flag
-  dbTestPassed: false, // Database test status
-  aiTools: [], // Configured AI tools
-  // Removed deployment mode and LAN-specific configuration
+  aiTools: [], // Configured AI tools (for backward compatibility)
 })
 
 // State
 const currentStepIndex = ref(0)
 const isRestarting = ref(false)
 const restartMessage = ref('Saving configuration...')
-const showLanConfirmModal = ref(false)
 const showRestartModal = ref(false)
-const installationPath = ref('(project directory)')
-const detectedPlatform = ref('windows')
 const setupError = ref(null)
 
-// Computed: Visible steps based on current configuration
-const visibleSteps = computed(() => {
-  return allSteps.filter((step) => {
-    if (!step.showIf) return true
-    return step.showIf(config)
-  })
-})
+// Computed: Visible steps - simplified to 2 steps
+const visibleSteps = computed(() => allSteps)
 
 // Computed: Current visible step
 const currentVisibleStep = computed(() => {
@@ -227,76 +149,16 @@ const progressPercent = computed(() => {
 // Computed: Always use localhost URL for v3.0
 const serverUrl = computed(() => 'http://127.0.0.1:7272')
 
-// Computed: Platform
-const platform = computed(() => {
-  return detectedPlatform.value
-})
-
-// Computed: Restart instructions
-const restartInstructions = computed(() => {
-  const instructions = {
-    windows: [
-      'Open Command Prompt or PowerShell',
-      `Navigate to ${installationPath.value}`,
-      'Stop BACKEND only: stop_backend.bat',
-      'Start BACKEND only: start_backend.bat',
-      'Wait 10-15 seconds for backend to start',
-      '(Frontend does NOT need restart)',
-    ],
-    macos: [
-      'Open Terminal',
-      `Navigate to ${installationPath.value}`,
-      'Stop BACKEND only: ./stop_backend.sh',
-      'Start BACKEND only: ./start_backend.sh',
-      'Wait 10-15 seconds for backend to start',
-      '(Frontend does NOT need restart)',
-    ],
-    linux: [
-      'Open Terminal',
-      `Navigate to ${installationPath.value}`,
-      'Stop BACKEND only: ./stop_backend.sh',
-      'Start BACKEND only: ./start_backend.sh',
-      'Wait 10-15 seconds for backend to start',
-      '(Frontend does NOT need restart)',
-    ],
-  }
-  return instructions[platform.value]
-})
-
 // Get props for current step
 const getStepProps = (step) => {
   const baseProps = {}
 
   switch (step.name) {
-    case 'database':
-      baseProps.dbTestPassed = config.dbTestPassed
+    case 'mcpConfig':
+      // MCP Config step has no props - manages its own state
       break
-    case 'adminSetup':
-      baseProps.modelValue = {
-        username: config.adminUsername,
-        password: config.adminPassword,
-        email: config.adminEmail,
-      }
-      baseProps['onUpdate:modelValue'] = (value) => {
-        config.adminUsername = value.username
-        config.adminPassword = value.password
-        config.adminEmail = value.email || ''
-        console.log('[WIZARD] Admin setup updated:', {
-          username: config.adminUsername,
-          email: config.adminEmail,
-        })
-      }
-      break
-    case 'attachTools':
-      baseProps.modelValue = config.aiTools
-      baseProps['onUpdate:modelValue'] = (value) => {
-        config.aiTools = value
-      }
-      baseProps.apiKey = config.apiKey
-      baseProps.serverUrl = serverUrl.value
-      break
-    case 'serena':
-      // Serena step doesn't use modelValue, it emits next with data
+    case 'serenaConfig':
+      // Serena Config step has no props - manages its own state
       break
     case 'complete':
       baseProps.config = config
@@ -312,13 +174,19 @@ const currentStepProps = computed(() => {
 })
 
 // Navigation methods
-const handleNext = (data) => {
-  // Handle data from steps that emit it (like SerenaAttachStep)
-  if (data && 'serenaEnabled' in data) {
-    config.serenaEnabled = data.serenaEnabled
-    console.log('[WIZARD] Serena enabled:', data.serenaEnabled)
+const handleNext = (stepData = {}) => {
+  // Update config with data from current step
+  if (currentStepIndex.value === 0) {
+    // MCP Config step
+    config.mcpConfigured = stepData.mcpConfigured || false
+    console.log('[WIZARD] MCP config updated:', config.mcpConfigured)
+  } else if (currentStepIndex.value === 1) {
+    // Serena Config step
+    config.serenaEnabled = stepData.serenaEnabled || false
+    console.log('[WIZARD] Serena config updated:', config.serenaEnabled)
   }
 
+  // Move to next step
   if (currentStepIndex.value < visibleSteps.value.length - 1) {
     currentStepIndex.value++
   }
@@ -330,30 +198,12 @@ const handlePrevious = () => {
   }
 }
 
-// Special handlers
-const handleAdminSetupComplete = async (data) => {
-  // Call API to create admin user and get API key
-  try {
-    const response = await setupService.createAdminUser({
-      username: config.adminUsername,
-      password: config.adminPassword,
-      email: config.adminEmail,
-    })
-
-    config.apiKey = response.api_key
-    console.log('[WIZARD] Admin user created, API key received')
-  } catch (error) {
-    console.error('[WIZARD] Failed to create admin user:', error)
-    setupError.value = 'Failed to create admin user. Please try again.'
-  }
-}
-
 const handleFinish = async () => {
-  // Always proceed to save setup config
+  // Complete setup
   await saveSetupConfig()
 }
 
-// Removed LAN-specific config methods
+// LAN-specific configuration removed for v3.0
 
 const saveSetupConfig = async () => {
   try {
@@ -363,15 +213,13 @@ const saveSetupConfig = async () => {
     isRestarting.value = true
     restartMessage.value = 'Saving configuration...'
 
-    // Save setup completion with v3.0 unified configuration
+    // Build tools list - if MCP configured, add 'claude-code'
+    const toolsAttached = config.mcpConfigured ? ['claude-code'] : []
+
+    // Save setup completion with simplified configuration
     const result = await setupService.completeSetup({
-      aiTools: config.aiTools,
-      serenaEnabled: config.serenaEnabled,
-      adminAccount: config.adminUsername ? {
-        username: config.adminUsername,
-        password: config.adminPassword,
-        email: config.adminEmail
-      } : null
+      serenaEnabled: config.serenaEnabled || false,
+      aiTools: toolsAttached,
     })
 
     console.log('[WIZARD] Setup marked as complete:', result)
@@ -379,20 +227,15 @@ const saveSetupConfig = async () => {
     // Hide completion overlay
     isRestarting.value = false
 
-    // Always show restart modal to standardize flow
-    if (result.requires_restart) {
-      showRestartModal.value = true
-    } else {
-      // Localhost mode - skip to completion
-      restartMessage.value = 'Setup complete! Redirecting to dashboard...'
-      isRestarting.value = true
+    // Always redirect to dashboard
+    restartMessage.value = 'Setup complete! Redirecting to dashboard...'
+    isRestarting.value = true
 
-      // Wait 1 second to show success message
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Wait 1 second to show success message
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Redirect to main dashboard
-      window.location.href = 'http://localhost:7274'
-    }
+    // Redirect to main dashboard
+    window.location.href = 'http://localhost:7274'
   } catch (error) {
     console.error('[WIZARD] Setup completion failed:', error)
     isRestarting.value = false
@@ -410,29 +253,7 @@ const finishSetup = () => {
 }
 
 // Lifecycle
-onMounted(async () => {
-  console.log('[WIZARD] Component mounted')
-
-  // Fetch installation info for dynamic restart instructions
-  try {
-    const response = await fetch(`${setupService.baseURL}/api/setup/installation-info`)
-    if (response.ok) {
-      const info = await response.json()
-      installationPath.value = info.installation_path
-      detectedPlatform.value = info.platform
-      console.log('[WIZARD] Loaded installation info:', info)
-    } else {
-      console.warn('[WIZARD] Installation info API returned error:', response.status)
-    }
-  } catch (error) {
-    console.warn('[WIZARD] Could not fetch installation info, using fallback:', error)
-    // Fallback to browser detection if API fails
-    const ua = window.navigator.userAgent.toLowerCase()
-    if (ua.includes('win')) detectedPlatform.value = 'windows'
-    else if (ua.includes('mac')) detectedPlatform.value = 'macos'
-    else detectedPlatform.value = 'linux'
-  }
-
+onMounted(() => {
   console.log('[WIZARD] Wizard ready for configuration')
 })
 </script>

@@ -1,12 +1,10 @@
 """
 Auto-login middleware for localhost clients.
 
-This module provides middleware that automatically authenticates requests
-from localhost (127.0.0.1, ::1) as the system "localhost" user, enabling
-zero-click authentication for local development and single-user setups.
+DEPRECATED: Phase 2 unified authentication removes auto-login.
+This module is kept for backwards compatibility but should not be used.
 
-This replaces the legacy LOCAL mode from the 3-mode architecture, providing
-the same user experience with a cleaner, more maintainable implementation.
+Use the new unified auth flow with setup mode instead.
 """
 
 import logging
@@ -14,12 +12,11 @@ import logging
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .localhost_user import ensure_localhost_user
-
 
 logger = logging.getLogger(__name__)
 
 # Localhost IP addresses (IPv4 and IPv6)
+# DEPRECATED: No longer used in Phase 2 unified auth
 LOCALHOST_IPS: set[str] = {"127.0.0.1", "::1"}
 
 
@@ -94,19 +91,10 @@ class AutoLoginMiddleware:
 
         # Check if localhost client
         if client_ip in LOCALHOST_IPS:
-            # Auto-login as localhost user
-            logger.info(f"Auto-login: Authenticating localhost client ({client_ip})")
-
-            user = await ensure_localhost_user(self.db)
-
-            # Set request state
-            request.state.user = user
-            request.state.is_auto_login = True
-            request.state.authenticated = True
-
-            logger.debug(f"Auto-login successful: user_id={user.id}, username={user.username}")
-
-            return True
+            # DEPRECATED: Auto-login removed in Phase 2
+            # All connections now require credentials
+            logger.warning(f"Localhost auto-login is deprecated - client must use credentials: {client_ip}")
+            return False
 
         # Network client - requires manual authentication
         logger.debug(f"Network client detected ({client_ip}) - manual auth required")

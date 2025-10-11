@@ -46,7 +46,28 @@ apiClient.interceptors.response.use(
         // Mark request as retried to prevent infinite loops
         originalRequest._retry = true
 
-        // Store the current path to redirect back after login
+        // CRITICAL FIX: Check setup status BEFORE redirecting to login
+        // This prevents the bug where fresh installs redirect to /login instead of /setup
+        try {
+          // Use plain fetch to avoid circular dependency with axios
+          const setupResponse = await fetch('/api/setup/status')
+          if (setupResponse.ok) {
+            const setupStatus = await setupResponse.json()
+
+            // If setup is NOT complete, don't redirect to login
+            // Let the router handle the redirect to /setup
+            if (!setupStatus.completed) {
+              console.log('[API] Setup incomplete - skipping login redirect')
+              return Promise.reject(error)
+            }
+          }
+        } catch (e) {
+          // If setup status check fails, assume fresh install (don't redirect)
+          console.log('[API] Setup status check failed - assuming fresh install')
+          return Promise.reject(error)
+        }
+
+        // Setup is complete - proceed with login redirect (existing behavior)
         const currentPath = window.location.pathname + window.location.search
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
       }
@@ -203,6 +224,7 @@ export const api = {
     logout: () => apiClient.post('/api/auth/logout'),
     me: () => apiClient.get('/api/auth/me'),
     register: (data) => apiClient.post('/api/auth/register', data),
+    changePassword: (data) => apiClient.post('/api/auth/change-password', data),
     listUsers: () => apiClient.get('/api/auth/users'),
     updateUser: (userId, data) => apiClient.put(`/api/auth/users/${userId}`, data),
     deleteUser: (userId) => apiClient.delete(`/api/auth/users/${userId}`),

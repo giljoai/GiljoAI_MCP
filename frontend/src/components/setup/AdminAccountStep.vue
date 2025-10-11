@@ -407,41 +407,16 @@ const adapterItems = computed(() => {
   }))
 })
 
-// Lifecycle: Fetch adapters on mount
+// Lifecycle: Setup on mount
 onMounted(async () => {
-  await fetchAdapters()
+  // v3.0: Network adapter detection removed - use manual IP entry
+  showManualIpEntry.value = true
 })
 
-// Methods
-const fetchAdapters = async () => {
-  try {
-    loadingAdapters.value = true
-    adapterError.value = null
-
-    const response = await setupService.getAdapters()
-    adapters.value = response.adapters || []
-
-    // Auto-select recommended adapter
-    if (response.recommended) {
-      formData.value.selectedAdapter = response.recommended.ip_address
-      formData.value.selectedAdapterObject = response.recommended
-      formData.value.serverIp = response.recommended.ip_address
-    } else if (adapters.value.length > 0) {
-      // Fallback: select first adapter if no recommendation
-      formData.value.selectedAdapter = adapters.value[0].ip_address
-      formData.value.selectedAdapterObject = adapters.value[0]
-      formData.value.serverIp = adapters.value[0].ip_address
-    }
-
-  } catch (error) {
-    console.error('Failed to fetch network adapters:', error)
-    adapterError.value = error.message || 'Failed to detect network adapters'
-    // Fallback to manual entry on error
-    showManualIpEntry.value = true
-  } finally {
-    loadingAdapters.value = false
-  }
-}
+// Methods (network adapter detection removed in v3.0)
+// const fetchAdapters = async () => {
+//   // Removed in v3.0 unified architecture
+// }
 
 const toggleManualEntry = () => {
   showManualIpEntry.value = !showManualIpEntry.value

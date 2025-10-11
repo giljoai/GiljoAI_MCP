@@ -31,7 +31,6 @@ import socket
 import subprocess
 import sys
 import time
-import webbrowser
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -159,6 +158,18 @@ class UnifiedInstaller:
             self.database_credentials = db_result.get('credentials', {})
             result['steps'].append('database_created')
 
+            # Step 6b: Update .env with real database credentials (NEW - fixes password bug)
+            if self.database_credentials:
+                self._print_header("Updating Configuration with Database Credentials")
+                env_update_result = self.update_env_with_real_credentials()
+                if not env_update_result['success']:
+                    self._print_warning("Failed to update .env with real credentials")
+                    for error in env_update_result.get('errors', []):
+                        self._print_warning(f"  • {error}")
+                else:
+                    result['steps'].append('env_updated_with_credentials')
+
+
             # Step 7: Launch services (if requested)
             if self.settings.get('start_services', True):
                 self._print_header("Launching Services")
@@ -170,14 +181,9 @@ class UnifiedInstaller:
                 result['steps'].append('services_launched')
                 result['api_pid'] = launch_result.get('api_pid')
                 result['frontend_pid'] = launch_result.get('frontend_pid')
-
-                # Step 8: Open browser (if requested and services started)
-                if self.settings.get('open_browser', True):
-                    self._print_header("Opening Dashboard")
-                    self.open_browser()
-                    result['steps'].append('browser_opened')
             else:
                 self._print_info("Skipping service launch (per user preference)")
+
 
             # Step 9: Create desktop shortcuts (if requested - Windows only)
             if self.settings.get('create_shortcuts', False):
@@ -226,22 +232,105 @@ class UnifiedInstaller:
         """Gather user preferences for installation"""
         import getpass
 
-        # PostgreSQL password
+        # Network Configuration (NEW)
+        print(f"\n{Fore.CYAN}[Network Configuration]{Style.RESET_ALL}")
+        print(f"Configuring external access for frontend connections...")
+
+        # Detect network interfaces
+        network_ips = self._get_all_network_ips()
+
+        print(f"\nDetected network interfaces:")
+        print(f"  1. localhost (local access only)")
+
+        # Add detected IPs
+        for i, ip in enumerate(network_ips, 2):
+            print(f"  {i}. {ip}")
+
+        # Add custom option
+        custom_option = len(network_ips) + 2
+        print(f"  {custom_option}. Enter custom address (domain or IP)")
+
+        # Get user choice
+        while True:
+            choice = input(f"\n{Fore.YELLOW}Select network interface [1]: {Style.RESET_ALL}").strip()
+
+            if not choice:
+                # Default to localhost
+                self.settings['external_host'] = 'localhost'
+                self._print_info("Using localhost for frontend connections")
+                break
+
+            try:
+                choice_num = int(choice)
+                if choice_num == 1:
+                    self.settings['external_host'] = 'localhost'
+                    self._print_info("Using localhost for frontend connections")
+                    break
+                elif 2 <= choice_num < custom_option:
+                    selected_ip = network_ips[choice_num - 2]
+                    self.settings['external_host'] = selected_ip
+                    self._print_success(f"Using {selected_ip} for frontend connections")
+                    break
+                elif choice_num == custom_option:
+                    custom_addr = input(f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}").strip()
+                    if custom_addr:
+                        self.settings['external_host'] = custom_addr
+                        self._print_success(f"Using {custom_addr} for frontend connections")
+                        break
+                    else:
+                        self._print_warning("Empty address provided")
+                else:
+                    self._print_warning(f"Invalid choice. Please select 1-{custom_option}")
+            except ValueError:
+                self._print_warning(f"Invalid input. Please enter a number 1-{custom_option}")
+
+        # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
         print(f"Enter the password for PostgreSQL 'postgres' user")
         print(f"(press Enter to use default '4010')")
-        pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
-        if pg_pass:
-            self.settings['pg_password'] = pg_pass
-        else:
-            self.settings['pg_password'] = '4010'
-            self._print_info("Using default password '4010'")
+
+        # Ask twice to confirm
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
+
+            # If empty, use default
+            if not pg_pass:
+                self.settings['pg_password'] = '4010'
+                self._print_info("Using default password '4010'")
+                break
+
+            # Ask for confirmation
+            pg_pass_confirm = getpass.getpass(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
+
+            # Check if they match
+            if pg_pass == pg_pass_confirm:
+                self.settings['pg_password'] = pg_pass
+                self._print_success("Password confirmed")
+                break
+            else:
+                remaining = max_attempts - attempt - 1
+                if remaining > 0:
+                    self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
+                else:
+                    self._print_error("Passwords do not match. Using default password '4010'.")
+                    self.settings['pg_password'] = '4010'
 
         # Start services after installation
         print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
         print(f"Would you like to start services automatically after installation?")
         start_response = input(f"{Fore.YELLOW}Start services? (Y/n): {Style.RESET_ALL}").strip().lower()
         self.settings['start_services'] = start_response != 'n'
+
+        # Database table creation (NEW - Enhancement 1)
+        print(f"\nWould you like to create database tables now?")
+        print(f"(runs Alembic migrations to initialize schema)")
+        create_tables_response = input(f"{Fore.YELLOW}Create database tables? (Y/n): {Style.RESET_ALL}").strip().lower()
+        self.settings['create_tables'] = create_tables_response != 'n'
+
+        # Set defaults for MCP and Serena (will be configured in setup wizard)
+        self.settings['register_mcp_tools'] = False
+        self.settings['enable_serena'] = False
 
         # Create desktop shortcuts
         if platform.system() == "Windows":
@@ -257,19 +346,15 @@ class UnifiedInstaller:
         verbose_response = input(f"{Fore.YELLOW}Enable verbose mode? (y/N): {Style.RESET_ALL}").strip().lower()
         self.settings['verbose_mode'] = verbose_response == 'y'
 
-        # Open browser after installation
-        print(f"\nWould you like to open the dashboard in your browser after installation?")
-        browser_response = input(f"{Fore.YELLOW}Open browser? (Y/n): {Style.RESET_ALL}").strip().lower()
-        self.settings['open_browser'] = browser_response != 'n'
-
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
+        print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
         print(f"  • PostgreSQL password: {'(default)' if self.settings['pg_password'] == '4010' else '(custom)'}")
         print(f"  • Start services: {self.settings['start_services']}")
+        print(f"  • Create database tables: {self.settings['create_tables']}")
         if platform.system() == "Windows":
             print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")
         print(f"  • Verbose mode: {self.settings['verbose_mode']}")
-        print(f"  • Open browser: {self.settings['open_browser']}")
 
     def check_python_version(self) -> bool:
         """
@@ -415,11 +500,23 @@ class UnifiedInstaller:
             True if path is valid, False otherwise
         """
         try:
-            path = Path(path_str)
+            # Normalize path (handle backslashes, forward slashes, quotes, etc.)
+            path_str = path_str.strip().strip('"').strip("'")
+            path = Path(path_str).resolve()
 
             # Check if directory exists
             if not path.exists():
                 self._print_error(f"Path does not exist: {path}")
+                # Try to be helpful
+                parent = path.parent
+                if parent.exists():
+                    self._print_info(f"Parent directory exists: {parent}")
+                    self._print_info("Did you mean to include the 'bin' subdirectory?")
+                return False
+
+            # Check if it's a directory
+            if not path.is_dir():
+                self._print_error(f"Path is not a directory: {path}")
                 return False
 
             # Check for psql executable (platform-specific)
@@ -431,6 +528,14 @@ class UnifiedInstaller:
 
             if not psql_path.exists():
                 self._print_error(f"psql executable not found in: {path}")
+                # Try to be helpful - check if psql exists without extension
+                psql_no_ext = path / "psql"
+                if psql_no_ext.exists() and system == "Windows":
+                    self._print_info("Found 'psql' without .exe extension - this may not work on Windows")
+                # Check if user provided the full path to psql.exe instead of bin directory
+                if path.name == "psql.exe" and path.exists():
+                    self._print_info("You provided the path to psql.exe directly")
+                    self._print_info(f"Please provide the bin directory instead: {path.parent}")
                 return False
 
             self._print_success(f"Valid PostgreSQL installation found: {psql_path}")
@@ -591,14 +696,23 @@ class UnifiedInstaller:
             if result['success']:
                 self._print_success("Database created successfully")
 
-                # Run migrations if available
-                self._print_info("Running database migrations...")
-                migration_result = db_installer.run_migrations()
+                # Run migrations if user opted in (Enhancement 1)
+                if self.settings.get('create_tables', True):
+                    self._print_info("Running database migrations...")
+                    migration_result = db_installer.run_migrations()
 
-                if migration_result['success']:
-                    self._print_success("Migrations completed")
-                elif migration_result.get('warnings'):
-                    self._print_warning("Migrations skipped: " + migration_result['warnings'][0])
+                    if migration_result['success']:
+                        self._print_success("Migrations completed")
+                        result['migrations_run'] = True
+                    elif migration_result.get('warnings'):
+                        self._print_warning("Migrations skipped: " + migration_result['warnings'][0])
+                        result['migration_warnings'] = migration_result.get('warnings', [])
+                    elif migration_result.get('errors'):
+                        self._print_warning("Migrations failed: " + migration_result['errors'][0])
+                        result['migration_warnings'] = migration_result.get('errors', [])
+                else:
+                    self._print_info("Skipping database migrations (per user preference)")
+                    result['migrations_skipped'] = True
 
                 # Initialize setup state to trigger first-time setup wizard
                 self._print_info("Initializing setup state...")
@@ -658,6 +772,7 @@ class UnifiedInstaller:
                 'owner_password': self.settings.get('pg_password', '4010'),
                 'user_password': self.settings.get('pg_password', '4010'),
                 'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
+                'external_host': self.settings.get('external_host', 'localhost'),  # Frontend connection host
                 # NO 'mode' field - v3.0 unified architecture
             }
 
@@ -679,6 +794,55 @@ class UnifiedInstaller:
 
         except Exception as e:
             self._print_error(f"Config generation failed: {e}")
+            return {
+                'success': False,
+                'errors': [str(e)]
+            }
+
+    def update_env_with_real_credentials(self) -> Dict[str, Any]:
+        """
+        Update .env file with real database credentials after database setup
+
+        This fixes the password synchronization bug where .env was generated
+        with admin password instead of the randomly-generated database passwords.
+
+        Returns:
+            Update result with success status
+        """
+        try:
+            # Import ConfigManager from existing module
+            from installer.core.config import ConfigManager
+
+            # Prepare settings with REAL database credentials
+            config_settings = {
+                'pg_host': self.settings.get('pg_host', 'localhost'),
+                'pg_port': self.settings.get('pg_port', 5432),
+                'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
+                'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
+                'install_dir': str(self.install_dir),
+                'owner_password': self.database_credentials.get('owner_password'),
+                'user_password': self.database_credentials.get('user_password'),
+                'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
+            }
+
+            # Create config manager
+            config_manager = ConfigManager(settings=config_settings)
+
+            # Regenerate .env with real credentials
+            self._print_info("Regenerating .env with real database passwords...")
+            env_result = config_manager.generate_env_file()
+
+            if env_result['success']:
+                self._print_success("Configuration updated with database credentials")
+            else:
+                self._print_error("Failed to update configuration")
+                for error in env_result.get('errors', []):
+                    self._print_error(f"  • {error}")
+
+            return env_result
+
+        except Exception as e:
+            self._print_error(f"Credential update failed: {e}")
             return {
                 'success': False,
                 'errors': [str(e)]
@@ -719,6 +883,10 @@ class UnifiedInstaller:
             else:
                 python_executable = self.venv_dir / 'bin' / 'python'
 
+            # Get ports from settings
+            api_port = self.settings.get('api_port', DEFAULT_API_PORT)
+            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
+            
             # Launch API server
             api_script = self.install_dir / 'api' / 'run_api.py'
 
@@ -732,14 +900,14 @@ class UnifiedInstaller:
             # Verbose mode: Open in new console window
             if self.settings.get('verbose_mode', False) and platform.system() == "Windows":
                 api_process = subprocess.Popen(
-                    [str(python_executable), str(api_script)],
+                    [str(python_executable), str(api_script), "--port", str(api_port)],
                     cwd=str(self.install_dir),
                     creationflags=subprocess.CREATE_NEW_CONSOLE
                 )
                 self._print_success(f"API server started in new console (PID: {api_process.pid})")
             else:
                 api_process = subprocess.Popen(
-                    [str(python_executable), str(api_script)],
+                    [str(python_executable), str(api_script), "--port", str(api_port)],
                     cwd=str(self.install_dir),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
@@ -770,7 +938,7 @@ class UnifiedInstaller:
                     self._print_info("Starting frontend server...")
 
                     # Windows needs shell=True or npm.cmd for batch files
-                    npm_cmd = ['npm', 'run', 'dev']
+                    npm_cmd = ['npm', 'run', 'dev', '--', '--port', str(frontend_port), '--strictPort']
                     use_shell = platform.system() == "Windows"
 
                     # Verbose mode: Open in new console window
@@ -810,21 +978,7 @@ class UnifiedInstaller:
             result['error'] = str(e)
             return result
 
-    def open_browser(self) -> None:
-        """Open browser to dashboard"""
-        try:
-            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
-            url = f"http://localhost:{frontend_port}"
 
-            self._print_info(f"Opening browser to {url}...")
-            time.sleep(2)  # Brief delay for services to fully start
-
-            webbrowser.open(url)
-            self._print_success("Browser opened")
-
-        except Exception as e:
-            self._print_warning(f"Could not open browser: {e}")
-            self._print_info(f"Please manually open: http://localhost:{frontend_port}")
 
     def create_desktop_shortcuts(self) -> None:
         """Create desktop shortcuts for Windows"""
@@ -872,6 +1026,23 @@ class UnifiedInstaller:
             self._print_info(f"  • Main app: python {self.install_dir / 'startup.py'}")
             self._print_info(f"  • Dev panel: {self.install_dir / 'dev_tools' / 'GiljoAI_Control_Panel.vbs'}")
 
+    def _get_all_network_ips(self) -> List[str]:
+        """Get all non-loopback IPv4 addresses"""
+        try:
+            import psutil
+            ips = []
+
+            for interface_name, addresses in psutil.net_if_addrs().items():
+                for addr in addresses:
+                    if addr.family == 2:  # IPv4
+                        ip = addr.address
+                        if not ip.startswith("127.") and not ip.startswith("169.254."):
+                            ips.append(ip)
+
+            return sorted(set(ips))  # Deduplicate and sort
+        except Exception:
+            return []  # Graceful fallback
+
     def _create_batch_shortcuts(self) -> None:
         """Create .bat file shortcuts as fallback"""
         try:
@@ -908,22 +1079,32 @@ class UnifiedInstaller:
         print(f"{Fore.GREEN}{Style.BRIGHT}  Installation Complete!{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
 
-        api_port = self.settings.get('api_port', DEFAULT_API_PORT)
+        # Detect all network IPs
+        network_ips = self._get_all_network_ips()
         frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
+        api_port = self.settings.get('api_port', DEFAULT_API_PORT)
 
-        print(f"{Fore.CYAN}Services Running:{Style.RESET_ALL}")
-        print(f"  • API Server:  http://localhost:{api_port}")
-        print(f"  • API Docs:    http://localhost:{api_port}/docs")
-        print(f"  • Dashboard:   http://localhost:{frontend_port}")
-        print()
+        print(f"{Fore.YELLOW}To continue setup, launch your browser at:{Style.RESET_ALL}\n")
 
-        print(f"{Fore.YELLOW}Next Steps:{Style.RESET_ALL}")
-        print(f"  1. Dashboard will open automatically (or visit http://localhost:{frontend_port})")
+        # List network IPs (if any)
+        if network_ips:
+            for ip in network_ips:
+                print(f"  • http://{ip}:{frontend_port}")
+
+        # Always show localhost
+        print(f"  • http://localhost:{frontend_port}")
+        print(f"  • http://127.0.0.1:{frontend_port}")
+
+        print(f"\n{Fore.CYAN}API Documentation:{Style.RESET_ALL}")
+        print(f"  • http://localhost:{api_port}/docs")
+
+        print(f"\n{Fore.WHITE}Next Steps:{Style.RESET_ALL}")
+        print(f"  1. Open your browser to one of the URLs above")
         print(f"  2. Complete the first-time setup wizard:")
-        print(f"     • Choose deployment mode (Localhost/LAN/WAN)")
-        print(f"     • Create admin account (if LAN/WAN mode)")
+        print(f"     • Create admin account")
         print(f"     • Connect AI tools (Claude Code, etc.)")
-        print(f"  3. Create your first product and start orchestrating!")
+        print(f"  3. (Optional) Configure firewall to allow network access")
+        print(f"  4. Create your first product and start orchestrating!")
         print()
 
         print(f"{Fore.WHITE}Press Ctrl+C to stop services{Style.RESET_ALL}\n")
