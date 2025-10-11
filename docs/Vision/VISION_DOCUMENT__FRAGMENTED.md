@@ -2,6 +2,27 @@
 
 ## Vision Document
 
+### 2025-10-11 Update (Architecture V3)
+- Why: Deliver a secure, simple, and fast local-first coding orchestrator with clear APIs and reliable setup.
+- How: FastAPI backend with explicit CORS and setup-mode gating; PostgreSQL + SQLAlchemy; JWT/API keys; Vue 3 UI; LAN-safe WebSockets.
+- What: REST endpoints under `/api`, WebSocket at `/ws/{client_id}`, simplified setup wizard, and adapter IP detection to support LAN access.
+
+Key Changes
+- Setup wizard redirect fix: axios interceptor checks `/api/setup/status` before redirecting to `/login` on 401.
+- Network IP detection enhances CORS origins without introducing wildcards; keeps localhost defaults.
+- WebSocket authentication hardened: credentials validated before `accept()`, with proper close codes for unauthorized clients.
+- Installation flow clarified: environment validation, DB bootstrap, service start, and wizard steps streamlined.
+
+Capabilities
+- Multi-tenant isolation using `X-Tenant-Key`, enforced across API and WebSocket subscriptions.
+- Extensible tool access via `ToolAccessor`, designed for per-tenant operations.
+- Health monitoring via `/health` with API/DB/WebSocket status.
+
+Next Milestones
+- Expand role-based permissions and UI for tenant-aware admin operations.
+- Increase test coverage for LAN flows (CORS/IP changes) and WebSocket Subscribe/Authorize paths.
+- Formalize production hardening: rate limits, security headers, and Docker profiles.
+
 ### CRITICAL: Development Approach
 
 **We are building GiljoAI MCP through self-orchestrated development across 20 focused projects over 4 weeks.**

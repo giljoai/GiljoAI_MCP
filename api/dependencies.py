@@ -21,6 +21,14 @@ async def get_tenant_key(request: Request) -> str:
     import yaml
     from pathlib import Path
     from fastapi import HTTPException
+    from api.app import state
+
+    # Check if we're in setup mode first
+    if hasattr(state, "api_state") and hasattr(state.api_state, "config"):
+        setup_mode = getattr(state.api_state.config, "setup_mode", False)
+        if setup_mode:
+            # In setup mode, just return default without validation
+            return "default"
 
     # For OPTIONS requests (CORS preflight), return default tenant without validation
     # OPTIONS requests should not fail due to missing tenant context
@@ -32,8 +40,10 @@ async def get_tenant_key(request: Request) -> str:
     tenant_key = getattr(request.state, "tenant_key", None)
 
     if tenant_key:
-        # Ensure context is set (in case it was lost)
-        TenantManager.set_current_tenant(tenant_key)
+        # Only validate tenant if we have a database
+        if hasattr(state, "db_manager") and state.db_manager:
+            # Ensure context is set (in case it was lost)
+            TenantManager.set_current_tenant(tenant_key)
         return tenant_key
 
     # Fallback: try to get from context
@@ -62,7 +72,9 @@ async def get_tenant_key(request: Request) -> str:
 
     # Fallback to default tenant (localhost mode only)
     default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
-    TenantManager.set_current_tenant(default_tenant)
+    # Only validate tenant if we have a database
+    if hasattr(state, "db_manager") and state.db_manager:
+        TenantManager.set_current_tenant(default_tenant)
     return default_tenant
 
 

@@ -1,202 +1,608 @@
-# 📋 README_FIRST - GiljoAI MCP Project Index
+# README FIRST - GiljoAI MCP Architecture Overview
 
-## Welcome to GiljoAI MCP Development!
+> **Central navigation hub for understanding GiljoAI MCP v3.0 architecture, fresh installation flow, security model, and system design.**
 
-This is the root directory for the **GiljoAI MCP Coding Orchestrator** project - a complete multi-agent orchestration system with multi-tenant architecture and enhanced capabilities.
+## Table of Contents
 
-### 🎉 v3.0 UNIFIED ARCHITECTURE - COMPLETE (October 2025)
+1. [System Architecture Summary](#system-architecture-summary)
+2. [Fresh Factory Installation Flow](#fresh-factory-installation-flow)
+3. [v3.0 Unified Authentication](#v30-unified-authentication)
+4. [Security Setup](#security-setup)
+5. [Network Topology & Implementation](#network-topology--implementation)
+6. [Core Components](#core-components)
+7. [Context Management Logic](#context-management-logic)
+8. [Additional Documentation](#additional-documentation)
 
-**Status**: ✅ 100% COMPLIANT - PRODUCTION READY
+---
 
-GiljoAI MCP v3.0 introduces a revolutionary **unified architecture** that eliminates deployment mode complexity while enhancing security and simplicity:
+## System Architecture Summary
 
-**Key Achievements**:
-- **Single Unified Architecture**: Replaced 3 deployment modes with 1 clean code path
-- **Auto-Login for Localhost**: Zero-click access for developers (IP-based, cannot be spoofed)
-- **Defense in Depth Security**: Firewall + IP detection + authentication + authorization
-- **Simplified Configuration**: Metadata-driven deployment context (no mode-based logic)
-- **Production Ready**: Fresh install verified, all core tests passing
+GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that transforms AI coding assistants into coordinated development teams. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks.
 
-**What Changed**:
-- ❌ **REMOVED**: DeploymentMode enum and all mode-based conditional logic (~500 lines)
-- ✅ **ADDED**: AutoLoginMiddleware for seamless localhost access
-- ✅ **UNIFIED**: Single network binding (0.0.0.0), firewall controls access
-- ✅ **SECURED**: Authentication always enabled, auto-login for trusted localhost only
+### Core Components
 
-**Quick Links**:
-- **[v3.0 Compliance Checklist](V3_COMPLIANCE_CHECKLIST.md)** - Complete verification checklist
-- **[v3.0 Architecture Fix Session](sessions/2025-10-10_v3_architecture_fix_completion.md)** - Implementation details
-- **[v3.0 Architecture Fix Devlog](devlogs/2025-10-10_v3_architecture_fix.md)** - Completion report
+1. **Orchestrator** (`src/giljo_mcp/orchestrator.py`)
+   - Multi-agent coordination engine
+   - Agent spawning with role templates
+   - Intelligent handoff mechanism
+   - Context usage tracking
+   - Multi-project support with tenant isolation
 
-### 🚀 Full Stack Integration Milestone (October 2025)
+2. **Database** (PostgreSQL 18 - Required)
+   - Connection pooling via SQLAlchemy
+   - Multi-tenant isolation through filtered queries
+   - Async and sync session support
+   - Alembic migrations for schema versioning
 
-**Key Achievements**:
-- Complete backend-frontend integration
-- Modern tenant key system implementation
-- Upgraded to latest dependency versions
-- Zero deprecation warnings
-- Comprehensive multi-tenant architecture
-- Performance: Backend startup <2s, Frontend build <11s
+3. **API Server** (FastAPI - REST + WebSocket)
+   - RESTful endpoints for all resources
+   - WebSocket for real-time updates
+   - JWT-based authentication
+   - CORS and rate limiting
 
-#### Architecture Update
-- **Backend**: FastAPI 0.117.1, Python 3.13.7
-- **Frontend**: Vue 3.4.0, Vite 7.1.9
-- **Database**: PostgreSQL 18
-- **Tenant Management**: Advanced multi-tenant key system
+4. **Frontend** (Vue 3 + Vuetify)
+   - Real-time agent monitoring
+   - Project and task management UI
+   - WebSocket integration for live updates
+   - Responsive design (mobile, tablet, desktop)
 
-### 🚀 ARCHITECTURAL UPDATE: Sub-Agent Integration (January 2025)
+5. **MCP Integration Layer**
+   - 22+ MCP tools for agent coordination
+   - Project, agent, message, task, context management
+   - Template system for agent roles
+   - Git integration for version control
 
-**Major Simplification**: We've discovered Claude Code's native sub-agent capabilities, which fundamentally simplifies our architecture:
+### v3.0 Unified Architecture Principles
 
-- **Before**: Complex multi-terminal orchestration requiring 4 weeks to MVP
-- **After**: Elegant sub-agent delegation requiring only 2 weeks to MVP
-- **Result**: 70% token reduction, 95% reliability, 30% less code
+**ONE Authentication Flow**:
+- NO localhost auto-login
+- Same authentication for localhost, LAN, WAN
+- Default credentials: admin/admin (fresh install only)
+- Forced password change on first access
+- JWT-based session management
 
-GiljoAI-MCP now serves as the **persistent brain** for AI development teams, while Claude Code provides the **execution engine** through sub-agents.
+**Network Binding**:
+- API always binds to 0.0.0.0 (all network interfaces)
+- OS firewall controls access (defense in depth)
+- Database always on localhost (never exposed to network)
 
-### 🧠 Orchestrator Upgrade (October 2025)
+**Multi-Tenant Isolation**:
+- All database queries filtered by `tenant_key`
+- Default tenant: "default"
+- Tenant scoping for projects, agents, messages, tasks
 
-**Status**: Complete
+---
 
-GiljoAI MCP has received a major upgrade to its orchestration capabilities with hierarchical context management:
+## Fresh Factory Installation Flow
 
-- **Context Optimization**: 60% token reduction for worker agents through role-based filtering
-- **Hierarchical Loading**: Orchestrators receive full context, workers receive filtered context
-- **Enhanced Discovery**: Discovery-first workflow with 30-80-10 principle enforcement
-- **Database-Backed Config**: Rich project configuration stored in PostgreSQL JSONB fields
-- **Performance**: Sub-2-second context loading with GIN indexing
+### 1. Installation (install.py)
 
-**Quick Links**:
-- **[Orchestrator Discovery Guide](guides/ORCHESTRATOR_DISCOVERY_GUIDE.md)** - Discovery workflow patterns
-- **[Role-Based Context Filtering](guides/ROLE_BASED_CONTEXT_FILTERING.md)** - Understanding context optimization
-- **[Config Data Migration](deployment/CONFIG_DATA_MIGRATION.md)** - Deployment migration guide
+**Command**:
+```bash
+python installer/cli/install.py
+```
 
-### 🌐 LAN Deployment Capability (October 2025)
+**What Happens**:
 
-**Status**: Production-Ready (95% Complete)
+**1. Environment Detection**:
+- Detects PostgreSQL 18 installation
+- Validates database connectivity (password: 4010)
+- Checks port availability (7272, 7274)
 
-GiljoAI MCP now supports secure LAN deployment with comprehensive security measures:
+**2. Database Setup**:
+- Creates `giljo_mcp` database
+- Runs Alembic migrations to create tables
+- Initializes setup state
 
-- **Security**: 7 critical security fixes implemented (API key auth, rate limiting, CORS, encryption)
-- **Network**: Firewall configuration, mode-based binding, PostgreSQL isolation
-- **Testing**: 19/19 configuration tests passed, runtime validation pending
-- **Documentation**: Complete deployment runbook and quick start guide
+**3. Default Admin Account Creation**:
+- Creates user with username: `admin`, password: `admin`
+- Password hashed with bcrypt
+- Sets `default_password_active: true` in setup_state table
+- Displays credentials in terminal:
+  ```
+  ====================================
+  Default Admin Credentials:
+    Username: admin
+    Password: admin
 
-**Quick Links**:
-- **[LAN Quick Start Guide](deployment/LAN_QUICK_START.md)** - 15-minute deployment
-- **[LAN Deployment Runbook](deployment/LAN_DEPLOYMENT_RUNBOOK.md)** - Complete operational guide
-- **[Security Fixes Report](deployment/SECURITY_FIXES_REPORT.md)** - Security implementation details
-- **[LAN Test Report](deployment/LAN_TEST_REPORT.md)** - Validation results
+  ⚠️ IMPORTANT: Change this password on first login!
+  ====================================
+  ```
 
-### 🔧 MCP Tool Integration (October 2025)
+**4. Configuration Generation**:
+- Creates `config.yaml` at project root
+- Creates `.env` with database credentials
+- Both files are gitignored (local only)
 
-**Status**: Complete (Phase 2.1)
+**5. Service Startup**:
+- Starts API server on port 7272 (binds to 0.0.0.0)
+- Starts frontend dev server on port 7274
+- Opens browser to `http://localhost:7274`
 
-GiljoAI MCP now provides seamless integration with AI development tools through automated installer scripts:
+### 2. First Access (Any IP)
 
-- **Supported Tools**: Claude Code, Cursor, Windsurf
-- **Distribution**: Dashboard download, share links, API-based deployment
-- **Automation**: Installer scripts with auto-detection, config merging, and backup creation
-- **Documentation**: Complete user, admin, and API reference guides
+**User visits**: `http://localhost:7274` OR `http://<network-ip>:7274`
 
-**Quick Links**:
-- **[MCP Integration Guide](guides/MCP_INTEGRATION_GUIDE.md)** - End-user setup instructions
-- **[Admin MCP Setup](guides/ADMIN_MCP_SETUP.md)** - Team deployment and management
-- **[MCP Installer API](api/MCP_INSTALLER_API.md)** - API reference for programmatic access
+**Flow**:
 
-## 🗂️ Directory Structure & Contents
+**1. Router Navigation Guard**:
+- Checks setup state via `GET /api/setup/status`
+- If `default_password_active: true`, redirects to `/change-password`
+
+**2. Password Change Screen** (`/change-password`):
+- Forced password change form (cannot skip)
+- Pre-filled username: `admin`
+- Current password hint: `admin`
+- New password requirements:
+  - Minimum 12 characters
+  - At least 1 uppercase letter
+  - At least 1 lowercase letter
+  - At least 1 digit
+  - At least 1 special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+- Real-time password strength meter
+- Confirmation field (must match)
+
+**3. Password Change Submission**:
+- `POST /api/auth/change-password`
+- Backend validates current password is `admin`
+- Validates new password meets requirements
+- Updates admin user password_hash (bcrypt)
+- Sets `default_password_active: false`
+- Records `password_changed_at` timestamp
+- Returns JWT token for immediate login
+- Token stored in localStorage
+
+**4. Redirect to Setup Wizard**:
+- User redirected to `/setup`
+- WebSocket connection established (setup mode - no auth required)
+
+### 3. Setup Wizard (3 Steps)
+
+**Step 1: MCP Configuration** (Optional)
+- Configure Model Context Protocol integration
+- Download setup scripts:
+  - Claude Desktop MCP config (`.claude.json`)
+  - VS Code MCP config (`.vscode/settings.json`)
+  - CLI setup scripts
+- Enable/disable toggle
+- Skip button allowed
+- Saves state: `mcp_configured: true/false`
+
+**Step 2: Serena Activation** (Optional)
+- Enable/disable Serena MCP server
+- Serena provides:
+  - Advanced code analysis
+  - Symbolic navigation
+  - Semantic search
+- Installation guide (uvx or local)
+- Skip button allowed
+- Saves state: `serena_enabled: true/false`
+
+**Step 3: Complete** (Summary)
+- Configuration summary:
+  - MCP Integration: Enabled/Disabled
+  - Serena MCP Server: Enabled/Disabled
+- Links to documentation
+- "Go to Dashboard" button
+- Marks `setup_completed: true`
+- `POST /api/setup/complete`
+
+### 4. Normal Operation
+
+**Login Flow** (after setup):
+- User visits application
+- Router redirects to `/login` (if not authenticated)
+- Login with new password (not default)
+- `POST /api/auth/login`
+- JWT token returned and stored
+- Redirected to `/dashboard`
+- WebSocket connection requires JWT token
+
+**Dashboard**:
+- Real-time agent monitoring
+- Project and task management
+- Live updates via WebSocket
+- Multi-tenant data isolation
+
+---
+
+## v3.0 Unified Authentication
+
+### Architecture
+
+**ONE Authentication Flow for ALL Connections**:
+- Localhost (`127.0.0.1`): Requires authentication
+- LAN (`10.x.x.x`, `192.168.x.x`): Requires authentication
+- WAN (public IP/domain): Requires authentication
+- **No IP-based special treatment**
+
+### Authentication Mechanism
+
+**JWT Tokens**:
+- Issued on successful login or password change
+- Stored in localStorage (client-side)
+- Included in API requests via `Authorization: Bearer <token>` header
+- Included in WebSocket connections via query params or headers
+- Expiration: Configurable (default: 24 hours)
+
+**Password Security**:
+- bcrypt hashing (cost factor: 12)
+- Minimum 12 characters
+- Complexity requirements enforced
+- Default password forced change
+
+### WebSocket Authentication
+
+**Setup Mode** (`setup_completed: false`):
+```javascript
+// Allow WebSocket without authentication for setup progress updates
+if (!setup_completed && path === '/ws/setup') {
+  return { allowed: true, context: 'setup' }
+}
+```
+
+**Post-Setup** (`setup_completed: true`):
+```javascript
+// Require JWT token for ALL WebSocket connections
+const token = websocket.query_params.get('token')
+if (!token || !validate_token(token)) {
+  close_connection(code=1008, reason='Authentication required')
+}
+```
+
+---
+
+## Security Setup
+
+### User Management
+
+**Default Admin Account**:
+- Created during installation
+- Username: `admin`
+- Password: `admin` (temporary, must change)
+- Role: `admin`
+- Tenant: `default`
+
+**Password Policy**:
+- Minimum 12 characters
+- At least 1 uppercase letter
+- At least 1 lowercase letter
+- At least 1 digit
+- At least 1 special character
+- bcrypt hashing
+
+**Role-Based Access Control (RBAC)**:
+- Admin: Full system access
+- User: Project-level access (coming soon)
+
+### Multi-Tenancy
+
+**Tenant Isolation at Database Level**:
+- All queries filtered by `tenant_key`
+- Default tenant: `"default"`
+- Projects, agents, messages, tasks scoped to tenant
+- No cross-tenant data leakage
+
+**Tenant Structure**:
+```sql
+-- All tables have tenant_key column
+SELECT * FROM projects WHERE tenant_key = 'default';
+SELECT * FROM agents WHERE tenant_key = 'default';
+SELECT * FROM messages WHERE tenant_key = 'default';
+```
+
+### Orchestration Security
+
+**Agent Authentication**:
+- Agents authenticated via parent project
+- Project validates tenant_key
+- Agent spawning requires valid project context
+
+**Message Queue Validation**:
+- All messages validated for tenant_key
+- No cross-tenant message passing
+- Priority-based queue per tenant
+
+**Context Access Isolation**:
+- Context chunks scoped to tenant
+- Vision documents tenant-isolated
+- Template tenant scoping
+
+### User/Project Roles
+
+**Status**: Coming soon (v3.1)
+- User roles per project (owner, contributor, viewer)
+- Permission inheritance
+- Project-level access control
+- Fine-grained permissions
+
+---
+
+## Network Topology & Implementation
+
+### v3.0 Architecture Diagram
+
+```
+User Access (controlled by OS firewall):
+┌──────────────────────────────────────────┐
+│ Localhost:    http://127.0.0.1:7272      │
+│ LAN (if fw):  http://10.1.0.164:7272     │
+│ WAN (if fw):  https://example.com:443    │
+└───────────────────┬──────────────────────┘
+                    │
+                    ▼
+       ┌────────────────────────┐
+       │  API Server (FastAPI)  │
+       │  Binds to: 0.0.0.0     │ ← ALWAYS all interfaces
+       │  Port: 7272            │
+       │  Auth: JWT Required    │
+       └────────────┬───────────┘
+                    │
+                    │ ALWAYS localhost (security)
+                    ▼
+       ┌────────────────────────┐
+       │  PostgreSQL Database   │
+       │  Host: localhost       │ ← NEVER exposed to network
+       │  Port: 5432            │
+       │  Binding: 127.0.0.1    │
+       └────────────────────────┘
+```
+
+### Security Layers (Defense in Depth)
+
+**1. OS Firewall** - First layer
+- Blocks unauthorized network access
+- Configurable rules per deployment
+- Default: Localhost only
+
+**2. Application Authentication** - Second layer
+- JWT token validation
+- Password-based login
+- Session management
+
+**3. Password Policy** - Third layer
+- Complexity requirements
+- Forced change from default
+- bcrypt hashing
+
+**4. Database Isolation** - Fourth layer
+- PostgreSQL on localhost only
+- Never exposed to network
+- Multi-tenant row-level isolation
+
+**5. HTTPS/TLS** - Fifth layer (WAN deployments)
+- Encrypted transport
+- Certificate validation
+- Reverse proxy (nginx, Caddy)
+
+### Network Configuration
+
+**Configured during install.py**:
+- User selects `external_host`:
+  - `localhost` - Local development
+  - `<LAN IP>` - LAN access (e.g., `10.1.0.164`)
+  - `<domain>` - WAN access (e.g., `example.com`)
+- Frontend uses `external_host` for API/WebSocket connections
+- Backend always `localhost` for database
+
+**Example config.yaml**:
+```yaml
+services:
+  api:
+    host: 0.0.0.0       # Always bind to all interfaces
+    port: 7272
+    external_host: localhost  # How clients connect
+
+database:
+  host: localhost     # Always localhost
+  port: 5432
+```
+
+---
+
+## Core Components
+
+### Orchestrator
+
+**File**: `src/giljo_mcp/orchestrator.py`
+
+**Responsibilities**:
+- Multi-agent coordination
+- Agent spawning with role templates
+- Intelligent handoff mechanism
+- Context usage tracking
+- Project lifecycle management
+
+**Key Features**:
+- Template-based agent creation
+- Message queue for inter-agent communication
+- Context chunking for large files
+- Tenant isolation
+- Graceful error handling
+
+### Database Layer
+
+**File**: `src/giljo_mcp/database.py`
+
+**Architecture**:
+- PostgreSQL 18 (required)
+- SQLAlchemy ORM
+- Connection pooling
+- Async and sync sessions
+- Alembic migrations
+
+**Models** (`src/giljo_mcp/models.py`):
+- User, Project, Agent, Message, Task
+- Context, ContextChunk, Template
+- SetupState, SystemConfig
+
+### MCP Tools
+
+**Location**: `src/giljo_mcp/tools/`
+
+**Categories**:
+- Project management (`project.py`)
+- Agent management (`agent.py`)
+- Message passing (`message.py`)
+- Task management (`task.py`, `task_templates.py`)
+- Context management (`context.py`, `chunking.py`, `context_manager.py`)
+- Template management (`template.py`)
+- Git integration (`git.py`)
+
+**Total**: 22+ tools for agent coordination
+
+### API Layer
+
+**File**: `api/app.py`
+
+**Endpoints**:
+- `/auth/*` - Authentication (login, password change)
+- `/projects/*` - Project CRUD
+- `/agents/*` - Agent management
+- `/tasks/*` - Task management
+- `/messages/*` - Message queue
+- `/setup/*` - Setup wizard state
+- `/ws` - WebSocket for real-time updates
+
+**Technologies**:
+- FastAPI framework
+- Pydantic models for validation
+- JWT authentication
+- CORS middleware
+- Rate limiting
+
+### Frontend
+
+**Location**: `frontend/`
+
+**Stack**:
+- Vue 3 (Composition API)
+- Vuetify 3 (Material Design 3)
+- Vue Router for navigation
+- Axios for API calls
+- WebSocket for real-time updates
+
+**Views**:
+- Login (`/login`)
+- Password Change (`/change-password`)
+- Setup Wizard (`/setup`)
+- Dashboard (`/dashboard`)
+- Projects, Agents, Tasks, Messages
+
+---
+
+## Context Management Logic
+
+**Status**: Core feature, actively used
+
+### Hierarchical Context Loading
+
+**Purpose**: Reduce token usage by 60% via smart loading
+
+**Strategy**:
+1. Load base context (project info, current task)
+2. Load role-specific context (only relevant templates)
+3. Load related context (parent agent, recent messages)
+4. Skip irrelevant context (other projects, old messages)
+
+### Vision Document Chunking
+
+**Purpose**: Handle large files that exceed token limits
+
+**Process**:
+1. Detect file size > threshold (default: 100KB)
+2. Split into semantic chunks (functions, classes, sections)
+3. Store chunks with metadata (file, line range, hash)
+4. Load relevant chunks only (based on query/task)
+
+### Context Usage Tracking
+
+**Purpose**: Monitor and optimize token consumption
+
+**Metrics**:
+- Total tokens used per agent
+- Tokens per message
+- Context size per request
+- Chunking efficiency
+
+**Optimization**:
+- Adaptive chunk sizing
+- Cache frequently accessed chunks
+- Expire old context automatically
+
+---
+
+## Additional Documentation
 
 ### Core Documentation
 
-**Project Overview**:
-- **[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)** - System architecture and design principles
-- **[README_FIRST.md](README_FIRST.md)** - This file - project navigation hub
+- **`CLAUDE.md`** - Agent context and coding guidelines for Claude Code
+- **`docs/TECHNICAL_ARCHITECTURE.md`** - Detailed system design and patterns
+- **`docs/deployment/`** - Deployment guides (LAN, WAN, Docker)
+- **`docs/guides/`** - Setup and configuration guides
 
-**Manuals & Guides**:
-- **[manuals/MCP_TOOLS_MANUAL.md](manuals/MCP_TOOLS_MANUAL.md)** - MCP tools reference
-- **[manuals/INSTALL.md](manuals/INSTALL.md)** - Installation guide
-- **[manuals/QUICK_START.md](manuals/QUICK_START.md)** - Quick start guide
+### Development Documentation
 
-### Deployment Documentation
+- **`docs/manuals/MCP_TOOLS_MANUAL.md`** - MCP tools reference
+- **`docs/manuals/TESTING_MANUAL.md`** - Testing strategies and guides
+- **`docs/devlog/`** - Development logs and completion reports
+- **`docs/sessions/`** - Agent session memories
 
-**Network Topology & Architecture**:
-- **[deployment/NETWORK_TOPOLOGY_GUIDE.md](deployment/NETWORK_TOPOLOGY_GUIDE.md)** - ⭐ Essential: Deployment modes vs database topology explained
+### Migration Guides
 
-**LAN Deployment** (Phase 1 - Complete):
-- **[deployment/LAN_QUICK_START.md](deployment/LAN_QUICK_START.md)** - Fast-track 15-minute deployment
-- **[deployment/LAN_DEPLOYMENT_RUNBOOK.md](deployment/LAN_DEPLOYMENT_RUNBOOK.md)** - Complete operational guide
-- **[deployment/SECURITY_FIXES_REPORT.md](deployment/SECURITY_FIXES_REPORT.md)** - Security hardening details
-- **[deployment/NETWORK_DEPLOYMENT_CHECKLIST.md](deployment/NETWORK_DEPLOYMENT_CHECKLIST.md)** - Network configuration
-- **[deployment/LAN_ACCESS_URLS.md](deployment/LAN_ACCESS_URLS.md)** - Access information
-- **[deployment/LAN_TEST_REPORT.md](deployment/LAN_TEST_REPORT.md)** - Testing validation results
-- **[deployment/RUNTIME_TESTING_QUICKSTART.md](deployment/RUNTIME_TESTING_QUICKSTART.md)** - Runtime test procedures
+- **`docs/MIGRATION_GUIDE_V3.md`** - v2.x to v3.0 upgrade guide (if exists)
+- **`docs/VERIFICATION_OCT9.md`** - v3.0 architecture verification
 
-**Future Deployment** (Planned):
-- **[deployment/LAN_MISSION_PROMPT.md](deployment/LAN_MISSION_PROMPT.md)** - LAN deployment mission
-- **[deployment/WAN_MISSION_PROMPT.md](deployment/WAN_MISSION_PROMPT.md)** - WAN deployment mission (future)
-- **[deployment/LAN_UX_MISSION_PROMPT.md](deployment/LAN_UX_MISSION_PROMPT.md)** - LAN UX improvements (Phase 2)
+### API Documentation
 
-### Development Logs
+- **Interactive docs**: `http://localhost:7272/docs` (Swagger UI)
+- **ReDoc**: `http://localhost:7272/redoc`
+- **OpenAPI spec**: `http://localhost:7272/openapi.json`
 
-**Mission Completion Reports**:
-- **[devlog/2025-10-05_LAN_Core_Deployment_Complete.md](devlog/2025-10-05_LAN_Core_Deployment_Complete.md)** - LAN deployment mission completion
+---
 
-**Session Memories**:
-- **[sessions/2025-10-05_LAN_Core_Deployment_Session.md](sessions/2025-10-05_LAN_Core_Deployment_Session.md)** - LAN deployment session memory
+## Quick Start
 
-### Quick Navigation
+**Fresh Installation**:
+```bash
+# 1. Clone repository
+git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
+cd GiljoAI_MCP
 
-**For System Administrators**:
-1. Start here: [LAN Quick Start Guide](deployment/LAN_QUICK_START.md)
-2. Full procedures: [LAN Deployment Runbook](deployment/LAN_DEPLOYMENT_RUNBOOK.md)
-3. Security details: [Security Fixes Report](deployment/SECURITY_FIXES_REPORT.md)
-4. Troubleshooting: See Runbook troubleshooting section
+# 2. Install dependencies
+pip install -r requirements.txt
 
-**For Developers**:
-1. Architecture: [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)
-2. MCP Tools: [manuals/MCP_TOOLS_MANUAL.md](manuals/MCP_TOOLS_MANUAL.md)
-3. Installation: [manuals/INSTALL.md](manuals/INSTALL.md)
-4. Development logs: [devlog/](devlog/)
+# 3. Run installer
+python installer/cli/install.py
 
-**For End Users**:
-1. MCP integration setup: [MCP Integration Guide](guides/MCP_INTEGRATION_GUIDE.md)
-2. Client setup: [LAN Quick Start Guide - End Users Section](deployment/LAN_QUICK_START.md#for-end-users-client-setup)
-3. Access URLs: [LAN Access URLs](deployment/LAN_ACCESS_URLS.md)
-4. API documentation: http://YOUR_SERVER_IP:7272/docs
+# 4. Access application
+# Browser opens to http://localhost:7274
+# Change default password (admin/admin)
+# Complete setup wizard
+# Start building!
+```
 
-**For Team Administrators**:
-1. Deployment: [Admin MCP Setup](guides/ADMIN_MCP_SETUP.md)
-2. API integration: [MCP Installer API](api/MCP_INSTALLER_API.md)
-3. Team onboarding: See Admin guide onboarding workflow
-4. Security best practices: See Admin guide security section
+**Service Management**:
+```bash
+# Start all services
+python start_giljo.py
 
-## 📊 Project Status
+# Start API only
+python api/run_api.py
 
-**Current Version**: 3.0.0 ✅
-**Architecture**: Unified (no deployment modes)
-**Production Status**: Ready for Release
+# Start frontend only
+cd frontend/ && npm run dev
+```
 
-**v3.0 Unified Architecture**:
-- ✅ Single code path (no mode-based branching)
-- ✅ Auto-login for localhost (127.0.0.1, ::1)
-- ✅ JWT + API keys for network access
-- ✅ Defense in depth security (firewall + auth)
-- ✅ Fresh install verified
-- ✅ Core tests passing (auto-login: 8/8)
+---
 
-**Production Readiness**:
-- ✅ Localhost Access: Zero-click auto-login
-- ✅ Network Access: JWT/API key authentication
-- ✅ Security Model: Defense in depth
-- ⚠️ Fresh Install: Needs final verification
-- ⚠️ Documentation: Minor updates pending
+## Support & Contribution
 
-**Recent Milestones**:
-- **October 10, 2025**: v3.0 unified architecture COMPLETE ✅
-- October 2025: Orchestrator upgrade with hierarchical context management
-- October 2025: LAN deployment capability complete
-- October 2025: Full stack integration complete
-- January 2025: Sub-agent architecture integration
+- **Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
+- **Documentation**: `docs/README_FIRST.md` (this file)
+- **License**: See LICENSE file
+- **Contributing**: See CONTRIBUTING.md
 
-**Last Updated**: October 10, 2025 (v3.0 Unified Architecture Complete)
-**Version**: 3.0.0
+---
+
+**Last Updated**: October 11, 2025 (v3.0.0)

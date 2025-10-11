@@ -99,6 +99,7 @@ class SetupStatusResponse(BaseModel):
     database_configured: bool = Field(..., description="Whether database is configured (always true)")
     tools_attached: list[str] = Field(default_factory=list, description="List of attached MCP tools")
     network_mode: str = Field(..., description="Current network deployment mode")
+    default_password_active: bool = Field(default=False, description="Whether default admin password is still active")
 
 
 class SetupCompleteResponse(BaseModel):
@@ -276,7 +277,7 @@ def update_cors_origins_additive(config: dict[str, Any], server_ip: str = None, 
 
 
 @router.get("/status", response_model=SetupStatusResponse)
-async def get_setup_status():
+async def get_setup_status(request: Request = None):
     """
     Get setup completion status.
 
@@ -285,6 +286,7 @@ async def get_setup_status():
     - Database configuration status (always true - configured by installer)
     - List of attached MCP tools
     - Current network deployment mode
+    - Whether default password is still active (requires password change)
 
     The database is always configured by the CLI installer in Phase 0,
     so database_configured will always be true.
@@ -315,11 +317,41 @@ async def get_setup_status():
         # Get attached tools from state manager
         tools_attached = state.get("tools_enabled", [])
 
+        # Check default password status from database
+        default_password_active = False
+        try:
+            # Get database session from request app state
+            if request and hasattr(request.app, "state") and hasattr(request.app.state, "api_state"):
+                db_manager = request.app.state.api_state.db_manager
+                if db_manager:
+                    from sqlalchemy import select
+                    from src.giljo_mcp.models import SetupState as SetupStateModel
+
+                    async with db_manager.get_session_async() as session:
+                        stmt = select(SetupStateModel).where(SetupStateModel.tenant_key == tenant_key)
+                        result = await session.execute(stmt)
+                        setup_state_db = result.scalar_one_or_none()
+
+                        if setup_state_db:
+                            default_password_active = setup_state_db.default_password_active or False
+                        else:
+                            # No setup state in DB yet - assume default password active if admin user exists
+                            from src.giljo_mcp.models import User
+                            stmt_user = select(User).where(User.username == 'admin')
+                            result_user = await session.execute(stmt_user)
+                            admin_user = result_user.scalar_one_or_none()
+                            default_password_active = admin_user is not None
+        except Exception as e:
+            logger.warning(f"Failed to check default password status: {e}")
+            # Default to False (don't force password change on error)
+            default_password_active = False
+
         return SetupStatusResponse(
             completed=completed,
             database_configured=database_configured,
             tools_attached=tools_attached,
             network_mode=network_mode,
+            default_password_active=default_password_active,
         )
 
     except Exception as e:

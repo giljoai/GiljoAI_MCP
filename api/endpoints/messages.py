@@ -91,6 +91,11 @@ async def list_messages(
     """List all messages with optional filters"""
     from api.app import state
 
+    # Check if database is available (not in setup mode)
+    if not state.db_manager:
+        # In setup mode, return empty list
+        return []
+
     try:
         # Use the existing get_messages tool but adapt for listing
         if agent_name:

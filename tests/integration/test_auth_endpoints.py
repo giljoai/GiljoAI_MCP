@@ -393,6 +393,40 @@ async def test_jwt_token_expiry(test_client: AsyncClient, test_user: User):
     assert payload["exp"] > datetime.now(timezone.utc).timestamp()
 
 
+@pytest.mark.asyncio
+async def test_get_me_setup_mode(test_client: AsyncClient):
+    """Test /me endpoint returns setup mode status when in setup mode."""
+    from api.app import app
+
+    # Mock the config to enable setup mode
+    api_state = app.state.api_state
+    original_setup_mode = api_state.config.setup_mode
+
+    try:
+        # Enable setup mode
+        api_state.config.setup_mode = True
+
+        # Call /me endpoint
+        response = await test_client.get("/api/auth/me")
+
+        # Should return 200 with setup mode status (not 401)
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify setup mode response format
+        assert data.get("setup_mode") is True
+        assert "setup" in data.get("message", "").lower()
+        assert data.get("requires_setup") is True
+
+        # Should NOT return user profile fields
+        assert "username" not in data
+        assert "role" not in data
+
+    finally:
+        # Restore original setup mode
+        api_state.config.setup_mode = original_setup_mode
+
+
 # Fixtures
 
 @pytest_asyncio.fixture
