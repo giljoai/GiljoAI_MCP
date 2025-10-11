@@ -122,7 +122,7 @@
               <!-- Password Requirements -->
               <div id="password-requirements" class="text-caption text-medium-emphasis mb-4">
                 <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
-                Requirements: 12+ characters, uppercase, lowercase, number, special character
+                Requirements: 8+ characters, uppercase, lowercase, number, special character
               </div>
 
               <!-- Confirm Password -->
@@ -231,7 +231,7 @@ const passwordStrengthLabel = computed(() => {
 // Validation rules
 const rules = {
   required: (v) => !!v || 'This field is required',
-  minLength: (v) => (v && v.length >= 12) || 'Password must be at least 12 characters',
+  minLength: (v) => (v && v.length >= 8) || 'Password must be at least 8 characters',
   hasUppercase: (v) => /[A-Z]/.test(v) || 'Password must contain at least 1 uppercase letter',
   hasLowercase: (v) => /[a-z]/.test(v) || 'Password must contain at least 1 lowercase letter',
   hasDigit: (v) => /\d/.test(v) || 'Password must contain at least 1 number',
@@ -276,7 +276,7 @@ function updatePasswordStrength() {
   let strength = 0
 
   // Length scoring
-  if (newPassword.value.length >= 12) strength += 20
+  if (newPassword.value.length >= 8) strength += 20
   if (newPassword.value.length >= 16) strength += 10
   if (newPassword.value.length >= 20) strength += 5
 

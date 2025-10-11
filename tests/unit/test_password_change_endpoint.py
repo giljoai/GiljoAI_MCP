@@ -310,27 +310,27 @@ class TestLoginWithDefaultPassword:
 class TestPasswordChangeValidation:
     """Test password validation rules"""
 
-    def test_password_min_length_12(self):
-        """Test minimum password length of 12 characters"""
+    def test_password_min_length_8(self):
+        """Test minimum password length of 8 characters"""
         from api.endpoints.auth import PasswordChangeRequest
         from pydantic import ValidationError
 
-        # 11 characters - should fail
+        # 7 characters - should fail
         with pytest.raises(ValidationError) as exc_info:
             PasswordChangeRequest(
                 current_password='admin',
-                new_password='ValidPwd1!',  # 10 chars
-                confirm_password='ValidPwd1!'
+                new_password='Short1!',  # 7 chars
+                confirm_password='Short1!'
             )
-        assert '12' in str(exc_info.value)
+        assert '8' in str(exc_info.value)
 
-        # 12 characters - should pass
+        # 8 characters - should pass
         request = PasswordChangeRequest(
             current_password='admin',
-            new_password='ValidPword1!',  # 12 chars
-            confirm_password='ValidPword1!'
+            new_password='Valid1!a',  # 8 chars
+            confirm_password='Valid1!a'
         )
-        assert request.new_password == 'ValidPword1!'
+        assert request.new_password == 'Valid1!a'
 
     def test_password_requires_all_character_types(self):
         """Test that password requires uppercase, lowercase, digit, and special char"""
@@ -349,13 +349,13 @@ class TestPasswordChangeValidation:
         """Test edge cases in password validation"""
         from api.endpoints.auth import PasswordChangeRequest
 
-        # Exactly 12 characters with all requirements
+        # Exactly 8 characters with all requirements
         request = PasswordChangeRequest(
             current_password='admin',
-            new_password='aA1!aA1!aA1!',  # Exactly 12
-            confirm_password='aA1!aA1!aA1!'
+            new_password='aA1!aA1!',  # Exactly 8
+            confirm_password='aA1!aA1!'
         )
-        assert len(request.new_password) == 12
+        assert len(request.new_password) == 8
 
         # Longer passwords should also work
         request = PasswordChangeRequest(
@@ -363,4 +363,4 @@ class TestPasswordChangeValidation:
             new_password='ThisIsAVeryLongAndSecurePassword123!',
             confirm_password='ThisIsAVeryLongAndSecurePassword123!'
         )
-        assert len(request.new_password) > 12
+        assert len(request.new_password) > 8

@@ -761,7 +761,7 @@ class UnifiedInstaller:
                         setup_state = SetupState(
                             id=str(uuid4()),
                             tenant_key='default',
-                            completed=False,
+                            completed=True,
                             default_password_active=True,
                             password_changed_at=None,
                             setup_version='3.0.0',
