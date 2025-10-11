@@ -33,10 +33,13 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `api/templates__FRAGMENTED.md` — templates documentation for GiljoAI MCP (api) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `api/USER_ENDPOINTS__FRAGMENTED.md` — USER ENDPOINTS documentation for GiljoAI MCP (api) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `architecture/api_endpoints_specification__URGENT.md` — api endpoints specification documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
+- `architecture/ARCHITECTURE_V3__URGENT.md` — ARCHITECTURE documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `architecture/component_extraction_design__URGENT.md` — component extraction design documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `architecture/FRESH_INSTALL_FIX_PROMPT__URGENT.md` — FRESH INSTALL FIX PROMPT documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `architecture/installer_responsibilities__URGENT.md` — installer responsibilities documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `architecture/MIGRATION_NOTES__URGENT.md` — MIGRATION NOTES documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
+- `architecture/NETWORK_ARCHITECTURE__URGENT.md` — NETWORK ARCHITECTURE documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
+- `architecture/ORGANIZATION_TENANCY__URGENT.md` — ORGANIZATION TENANCY documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `architecture/phase0_installer_wizard_architecture__URGENT.md` — phase0 installer wizard architecture documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `architecture/phase0_main__URGENT.md` — phase0 main documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `architecture/PROJECT_CONNECTION__URGENT.md` — PROJECT CONNECTION documentation for GiljoAI MCP (architecture) purpose, usage, and context for maintainers and agents. — Tag: URGENT
@@ -80,9 +83,9 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `CRITICAL_RELEASE-NOTES__FRAGMENTED.MD` — CRITICAL RELEASE NOTES documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `CROSS_PLATFORM_COMPATIBILITY_REVIEW__FRAGMENTED.md` — CROSS PLATFORM COMPATIBILITY REVIEW documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `CROSS_PLATFORM_GUIDE__FRAGMENTED.md` — CROSS PLATFORM documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
-- `DEPENDENCIES__FRAGMENTED.md` — DEPENDENCIES documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `dependencies/api__FRAGMENTED.md` — api documentation for GiljoAI MCP (dependencies) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `dependencies/websocket__FRAGMENTED.md` — websocket documentation for GiljoAI MCP (dependencies) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
+- `DEPENDENCIES__FRAGMENTED.md` — DEPENDENCIES documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `deployment/AUTHENTICATION_REFACTOR_SUMMARY__FRAGMENTED.md` — AUTHENTICATION REFACTOR SUMMARY documentation for GiljoAI MCP (deployment) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `deployment/CONFIG_DATA_MIGRATION__FRAGMENTED.md` — CONFIG DATA MIGRATION documentation for GiljoAI MCP (deployment) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `deployment/FIREWALL_SETUP__FRAGMENTED.md` — FIREWALL SETUP documentation for GiljoAI MCP (deployment) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
@@ -258,6 +261,7 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `install_project/DOCUMENTATION_UPDATE_HANDOFF__URGENT.md` — UPDATE HANDOFF documentation for GiljoAI MCP (install_project) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `install_project/HARMONY_VALIDATION_HANDOFF__URGENT.md` — HARMONY VALIDATION HANDOFF documentation for GiljoAI MCP (install_project) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `install_project/SESSION_HANDOFF_PHASE3__URGENT.md` — SESSION HANDOFF PHASE3 documentation for GiljoAI MCP (install_project) purpose, usage, and context for maintainers and agents. — Tag: URGENT
+- `INSTALLATION_FLOW__FRAGMENTED.md` — INSTALLATION FLOW documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `installer_developer_guide__URGENT.md` — installer developer documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `Installer_Devlog_Summary__URGENT.md` — Installer Devlog Summary documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `INSTALLER_ERROR_HANDLING_IMPROVEMENTS__URGENT.md` — INSTALLER ERROR HANDLING IMPROVEMENTS documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: URGENT
