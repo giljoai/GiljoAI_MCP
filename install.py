@@ -787,6 +787,10 @@ class UnifiedInstaller:
             else:
                 python_executable = self.venv_dir / 'bin' / 'python'
 
+            # Get ports from settings
+            api_port = self.settings.get('api_port', DEFAULT_API_PORT)
+            frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
+            
             # Launch API server
             api_script = self.install_dir / 'api' / 'run_api.py'
 
@@ -800,14 +804,14 @@ class UnifiedInstaller:
             # Verbose mode: Open in new console window
             if self.settings.get('verbose_mode', False) and platform.system() == "Windows":
                 api_process = subprocess.Popen(
-                    [str(python_executable), str(api_script)],
+                    [str(python_executable), str(api_script), "--port", str(api_port)],
                     cwd=str(self.install_dir),
                     creationflags=subprocess.CREATE_NEW_CONSOLE
                 )
                 self._print_success(f"API server started in new console (PID: {api_process.pid})")
             else:
                 api_process = subprocess.Popen(
-                    [str(python_executable), str(api_script)],
+                    [str(python_executable), str(api_script), "--port", str(api_port)],
                     cwd=str(self.install_dir),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
@@ -838,7 +842,7 @@ class UnifiedInstaller:
                     self._print_info("Starting frontend server...")
 
                     # Windows needs shell=True or npm.cmd for batch files
-                    npm_cmd = ['npm', 'run', 'dev']
+                    npm_cmd = ['npm', 'run', 'dev', '--', '--port', str(frontend_port), '--strictPort']
                     use_shell = platform.system() == "Windows"
 
                     # Verbose mode: Open in new console window
