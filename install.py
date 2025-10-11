@@ -169,6 +169,7 @@ class UnifiedInstaller:
                 else:
                     result['steps'].append('env_updated_with_credentials')
 
+
             # Step 7: Launch services (if requested)
             if self.settings.get('start_services', True):
                 self._print_header("Launching Services")
@@ -182,6 +183,7 @@ class UnifiedInstaller:
                 result['frontend_pid'] = launch_result.get('frontend_pid')
             else:
                 self._print_info("Skipping service launch (per user preference)")
+
 
             # Step 9: Create desktop shortcuts (if requested - Windows only)
             if self.settings.get('create_shortcuts', False):
@@ -230,6 +232,58 @@ class UnifiedInstaller:
         """Gather user preferences for installation"""
         import getpass
 
+        # Network Configuration (NEW)
+        print(f"\n{Fore.CYAN}[Network Configuration]{Style.RESET_ALL}")
+        print(f"Configuring external access for frontend connections...")
+
+        # Detect network interfaces
+        network_ips = self._get_all_network_ips()
+
+        print(f"\nDetected network interfaces:")
+        print(f"  1. localhost (local access only)")
+
+        # Add detected IPs
+        for i, ip in enumerate(network_ips, 2):
+            print(f"  {i}. {ip}")
+
+        # Add custom option
+        custom_option = len(network_ips) + 2
+        print(f"  {custom_option}. Enter custom address (domain or IP)")
+
+        # Get user choice
+        while True:
+            choice = input(f"\n{Fore.YELLOW}Select network interface [1]: {Style.RESET_ALL}").strip()
+
+            if not choice:
+                # Default to localhost
+                self.settings['external_host'] = 'localhost'
+                self._print_info("Using localhost for frontend connections")
+                break
+
+            try:
+                choice_num = int(choice)
+                if choice_num == 1:
+                    self.settings['external_host'] = 'localhost'
+                    self._print_info("Using localhost for frontend connections")
+                    break
+                elif 2 <= choice_num < custom_option:
+                    selected_ip = network_ips[choice_num - 2]
+                    self.settings['external_host'] = selected_ip
+                    self._print_success(f"Using {selected_ip} for frontend connections")
+                    break
+                elif choice_num == custom_option:
+                    custom_addr = input(f"{Fore.YELLOW}Enter custom address (IP or domain): {Style.RESET_ALL}").strip()
+                    if custom_addr:
+                        self.settings['external_host'] = custom_addr
+                        self._print_success(f"Using {custom_addr} for frontend connections")
+                        break
+                    else:
+                        self._print_warning("Empty address provided")
+                else:
+                    self._print_warning(f"Invalid choice. Please select 1-{custom_option}")
+            except ValueError:
+                self._print_warning(f"Invalid input. Please enter a number 1-{custom_option}")
+
         # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
         print(f"Enter the password for PostgreSQL 'postgres' user")
@@ -268,6 +322,16 @@ class UnifiedInstaller:
         start_response = input(f"{Fore.YELLOW}Start services? (Y/n): {Style.RESET_ALL}").strip().lower()
         self.settings['start_services'] = start_response != 'n'
 
+        # Database table creation (NEW - Enhancement 1)
+        print(f"\nWould you like to create database tables now?")
+        print(f"(runs Alembic migrations to initialize schema)")
+        create_tables_response = input(f"{Fore.YELLOW}Create database tables? (Y/n): {Style.RESET_ALL}").strip().lower()
+        self.settings['create_tables'] = create_tables_response != 'n'
+
+        # Set defaults for MCP and Serena (will be configured in setup wizard)
+        self.settings['register_mcp_tools'] = False
+        self.settings['enable_serena'] = False
+
         # Create desktop shortcuts
         if platform.system() == "Windows":
             print(f"\nWould you like to create desktop shortcuts?")
@@ -284,8 +348,10 @@ class UnifiedInstaller:
 
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
+        print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
         print(f"  • PostgreSQL password: {'(default)' if self.settings['pg_password'] == '4010' else '(custom)'}")
         print(f"  • Start services: {self.settings['start_services']}")
+        print(f"  • Create database tables: {self.settings['create_tables']}")
         if platform.system() == "Windows":
             print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")
         print(f"  • Verbose mode: {self.settings['verbose_mode']}")
@@ -434,11 +500,23 @@ class UnifiedInstaller:
             True if path is valid, False otherwise
         """
         try:
-            path = Path(path_str)
+            # Normalize path (handle backslashes, forward slashes, quotes, etc.)
+            path_str = path_str.strip().strip('"').strip("'")
+            path = Path(path_str).resolve()
 
             # Check if directory exists
             if not path.exists():
                 self._print_error(f"Path does not exist: {path}")
+                # Try to be helpful
+                parent = path.parent
+                if parent.exists():
+                    self._print_info(f"Parent directory exists: {parent}")
+                    self._print_info("Did you mean to include the 'bin' subdirectory?")
+                return False
+
+            # Check if it's a directory
+            if not path.is_dir():
+                self._print_error(f"Path is not a directory: {path}")
                 return False
 
             # Check for psql executable (platform-specific)
@@ -450,6 +528,14 @@ class UnifiedInstaller:
 
             if not psql_path.exists():
                 self._print_error(f"psql executable not found in: {path}")
+                # Try to be helpful - check if psql exists without extension
+                psql_no_ext = path / "psql"
+                if psql_no_ext.exists() and system == "Windows":
+                    self._print_info("Found 'psql' without .exe extension - this may not work on Windows")
+                # Check if user provided the full path to psql.exe instead of bin directory
+                if path.name == "psql.exe" and path.exists():
+                    self._print_info("You provided the path to psql.exe directly")
+                    self._print_info(f"Please provide the bin directory instead: {path.parent}")
                 return False
 
             self._print_success(f"Valid PostgreSQL installation found: {psql_path}")
@@ -610,14 +696,23 @@ class UnifiedInstaller:
             if result['success']:
                 self._print_success("Database created successfully")
 
-                # Run migrations if available
-                self._print_info("Running database migrations...")
-                migration_result = db_installer.run_migrations()
+                # Run migrations if user opted in (Enhancement 1)
+                if self.settings.get('create_tables', True):
+                    self._print_info("Running database migrations...")
+                    migration_result = db_installer.run_migrations()
 
-                if migration_result['success']:
-                    self._print_success("Migrations completed")
-                elif migration_result.get('warnings'):
-                    self._print_warning("Migrations skipped: " + migration_result['warnings'][0])
+                    if migration_result['success']:
+                        self._print_success("Migrations completed")
+                        result['migrations_run'] = True
+                    elif migration_result.get('warnings'):
+                        self._print_warning("Migrations skipped: " + migration_result['warnings'][0])
+                        result['migration_warnings'] = migration_result.get('warnings', [])
+                    elif migration_result.get('errors'):
+                        self._print_warning("Migrations failed: " + migration_result['errors'][0])
+                        result['migration_warnings'] = migration_result.get('errors', [])
+                else:
+                    self._print_info("Skipping database migrations (per user preference)")
+                    result['migrations_skipped'] = True
 
                 # Initialize setup state to trigger first-time setup wizard
                 self._print_info("Initializing setup state...")
@@ -677,6 +772,7 @@ class UnifiedInstaller:
                 'owner_password': self.settings.get('pg_password', '4010'),
                 'user_password': self.settings.get('pg_password', '4010'),
                 'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
+                'external_host': self.settings.get('external_host', 'localhost'),  # Frontend connection host
                 # NO 'mode' field - v3.0 unified architecture
             }
 
@@ -881,6 +977,7 @@ class UnifiedInstaller:
             self._print_error(f"Service launch failed: {e}")
             result['error'] = str(e)
             return result
+
 
 
     def create_desktop_shortcuts(self) -> None:

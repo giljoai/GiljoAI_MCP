@@ -405,6 +405,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                         "dev_server": True,
                         "auto_open": self.settings.get("open_browser", True),
                     },
+                    "external_host": self.settings.get("external_host", "localhost"),  # Host for frontend connections
                 },
                 "features": {
                     # v3.0 feature flags

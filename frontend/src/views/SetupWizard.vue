@@ -218,7 +218,7 @@ const handleFinish = async () => {
   await saveSetupConfig()
 }
 
-// Removed LAN-specific config methods
+// LAN-specific configuration removed for v3.0
 
 const saveSetupConfig = async () => {
   try {
