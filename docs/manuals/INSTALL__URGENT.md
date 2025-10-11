@@ -102,10 +102,6 @@ git clone https://github.com/patrik-giljoai/GiljoAI-MCP.git
 cd GiljoAI_MCP
 
 # 2. Run installer
-# Windows:
-install.bat
-
-# Linux/macOS:
 python install.py
 ```
 
@@ -129,13 +125,20 @@ The CLI installer automates all system-level setup tasks:
    - Installs all Python dependencies from `requirements.txt`
    - Installs GiljoAI package in editable mode
 
-4. **Service Configuration**
+4. **Database Table Creation**
+   - **Uses DatabaseManager.create_tables_async()** (same as api/app.py:186)
+   - Creates all tables via Base.metadata.create_all()
+   - **NOT using Alembic migrations**
+   - Creates admin user (admin/admin)
+   - Creates setup_state record
+
+5. **Service Configuration**
    - Creates `.env` file from template
    - Generates `config.yaml` with defaults
    - Configures database connection
    - Sets default ports (API: 7272, Dashboard: 7274)
 
-5. **Service Startup**
+6. **Service Startup**
    - Starts backend API server
    - Starts frontend dashboard server
    - Verifies services are running
