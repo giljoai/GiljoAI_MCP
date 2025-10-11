@@ -16,8 +16,8 @@ Architecture:
     2. Check Python version (3.10+)
     3. Discover PostgreSQL (cross-platform)
     4. Install dependencies (venv + requirements.txt)
-    5. Generate configs (.env + config.yaml v3.0) - BEFORE migrations!
-    6. Setup database (create DB, roles, migrations) - needs .env from step 5
+    5. Generate configs (.env + config.yaml v3.0) - BEFORE table creation!
+    6. Setup database (create DB, roles, tables via DatabaseManager) - needs .env from step 5
     7. Launch services (API + Frontend)
     8. Open browser (http://localhost:7274)
 
@@ -139,7 +139,7 @@ class UnifiedInstaller:
             result['steps'].append('dependencies_installed')
 
             # Step 5: Generate configs (MUST happen before database setup!)
-            # Migrations in step 6 need .env file with DATABASE_URL
+            # Table creation in step 6 needs .env file with DATABASE_URL
             self._print_header("Generating Configuration Files")
             config_result = self.generate_configs()
             if not config_result['success']:
@@ -322,9 +322,9 @@ class UnifiedInstaller:
         start_response = input(f"{Fore.YELLOW}Start services? (Y/n): {Style.RESET_ALL}").strip().lower()
         self.settings['start_services'] = start_response != 'n'
 
-        # Database table creation (NEW - Enhancement 1)
+        # Database table creation (uses DatabaseManager.create_tables_async())
         print(f"\nWould you like to create database tables now?")
-        print(f"(runs Alembic migrations to initialize schema)")
+        print(f"(uses DatabaseManager.create_tables_async() - same as API startup)")
         create_tables_response = input(f"{Fore.YELLOW}Create database tables? (Y/n): {Style.RESET_ALL}").strip().lower()
         self.settings['create_tables'] = create_tables_response != 'n'
 
@@ -820,7 +820,7 @@ class UnifiedInstaller:
 
         Uses ConfigManager with v3.0 architecture (no mode field)
 
-        CRITICAL: This runs BEFORE setup_database() so migrations can read .env
+        CRITICAL: This runs BEFORE setup_database() so table creation can read .env
         Therefore, we use default passwords from settings, not database credentials.
 
         Returns:
