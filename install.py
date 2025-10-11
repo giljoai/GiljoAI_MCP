@@ -159,18 +159,6 @@ class UnifiedInstaller:
             result['steps'].append('database_created')
             result['steps'].append('tables_created')  # Added by inline table creation
 
-            # Step 6b: Update .env with real database credentials (NEW - fixes password bug)
-            if self.database_credentials:
-                self._print_header("Updating Configuration with Database Credentials")
-                env_update_result = self.update_env_with_real_credentials()
-                if not env_update_result['success']:
-                    self._print_warning("Failed to update .env with real credentials")
-                    for error in env_update_result.get('errors', []):
-                        self._print_warning(f"  • {error}")
-                else:
-                    result['steps'].append('env_updated_with_credentials')
-
-
             # Step 7: Launch services (if requested)
             if self.settings.get('start_services', True):
                 self._print_header("Launching Services")
@@ -669,30 +657,32 @@ class UnifiedInstaller:
 
     def setup_database(self) -> Dict[str, Any]:
         """
-        Setup PostgreSQL database using DatabaseInstaller, then create tables directly
+        Setup PostgreSQL database with correct credential flow
 
-        Uses the SAME method as the rest of the application:
-        DatabaseManager.create_tables_async() -> Base.metadata.create_all()
+        Sequence:
+        1. Create database and roles (DatabaseInstaller)
+        2. Update .env with REAL credentials
+        3. Reload environment variables
+        4. Create tables using DatabaseManager
+        5. Create admin account and setup_state
 
         Returns:
             Database setup result
         """
         try:
-            # Import DatabaseInstaller from existing module
             from installer.core.database import DatabaseInstaller
 
             # Prepare settings for DatabaseInstaller
             db_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
-                'pg_password': self.settings.get('pg_password'),  # No default - REQUIRED
+                'pg_password': self.settings.get('pg_password'),
                 'pg_user': self.settings.get('pg_user', 'postgres')
             }
 
-            # Create installer instance
             db_installer = DatabaseInstaller(settings=db_settings)
 
-            # Run database setup (creates DB + roles)
+            # STEP 1: Create database and roles
             self._print_info("Creating database and roles...")
             result = db_installer.setup()
 
@@ -704,7 +694,41 @@ class UnifiedInstaller:
 
             self._print_success("Database and roles created successfully")
 
-            # Create tables using DatabaseManager (SAME AS API/APP.PY LINE 186)
+            # STEP 2: Store real credentials
+            self.database_credentials = result.get('credentials', {})
+
+            if not self.database_credentials:
+                result['errors'] = ["Database credentials not returned by DatabaseInstaller"]
+                result['success'] = False
+                return result
+
+            # STEP 3: Update .env with REAL database credentials
+            self._print_info("Generating .env with real database credentials...")
+            env_result = self.update_env_with_real_credentials()
+
+            if not env_result['success']:
+                self._print_error("Failed to generate .env file")
+                for error in env_result.get('errors', []):
+                    self._print_error(f"  • {error}")
+                result['success'] = False
+                return result
+
+            self._print_success(".env file generated with database credentials")
+
+            # STEP 4: Reload environment variables
+            import os
+            from dotenv import load_dotenv
+            load_dotenv(override=True)  # Force reload to pick up new DATABASE_URL
+
+            db_url = os.getenv("DATABASE_URL")
+            if not db_url:
+                result['errors'] = ["DATABASE_URL not found in .env after regeneration"]
+                result['success'] = False
+                return result
+
+            self._print_info(f"Loaded DATABASE_URL from .env: {db_url.split('@')[0]}@...")
+
+            # STEP 5: Create tables using DatabaseManager (with correct credentials)
             if self.settings.get('create_tables', True):
                 self._print_info("Creating database tables...")
                 import asyncio
@@ -714,23 +738,11 @@ class UnifiedInstaller:
                 # Add src to path
                 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-                # Import after path is set
                 from giljo_mcp.database import DatabaseManager
                 from giljo_mcp.models import User, SetupState
                 from datetime import datetime, timezone
                 from uuid import uuid4
                 from passlib.hash import bcrypt
-
-                # Get DATABASE_URL from .env (generated in step 5)
-                import os
-                from dotenv import load_dotenv
-                load_dotenv()
-                db_url = os.getenv("DATABASE_URL")
-
-                if not db_url:
-                    result['errors'] = ["DATABASE_URL not found in .env"]
-                    result['success'] = False
-                    return result
 
                 # Create tables using async DatabaseManager
                 async def create_tables_and_init():
@@ -816,51 +828,41 @@ class UnifiedInstaller:
 
     def generate_configs(self) -> Dict[str, Any]:
         """
-        Generate configuration files (.env and config.yaml)
+        Generate configuration files (config.yaml ONLY)
 
-        Uses ConfigManager with v3.0 architecture (no mode field)
-
-        CRITICAL: This runs BEFORE setup_database() so table creation can read .env
-        Therefore, we use default passwords from settings, not database credentials.
+        .env generation happens AFTER database setup when real credentials exist.
 
         Returns:
             Configuration generation result
         """
         try:
-            # Import ConfigManager from existing module
             from installer.core.config import ConfigManager
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
-            # NOTE: database_credentials not available yet - using admin password temporarily
-            # Will be updated with real DB credentials after database setup in step 6b
             config_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
                 'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
                 'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
                 'install_dir': str(self.install_dir),
-                'owner_password': self.settings.get('pg_password'),  # No default - REQUIRED
-                'user_password': self.settings.get('pg_password'),  # No default - REQUIRED
-                'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
-                'external_host': self.settings.get('external_host', 'localhost'),  # Frontend connection host
-                # NO 'mode' field - v3.0 unified architecture
+                'bind': '0.0.0.0',
+                'external_host': self.settings.get('external_host', 'localhost'),
             }
 
-            # Create config manager
             config_manager = ConfigManager(settings=config_settings)
 
-            # Generate all configs
-            self._print_info("Generating .env and config.yaml...")
-            result = config_manager.generate_all()
+            # Generate config.yaml ONLY (no .env yet)
+            self._print_info("Generating config.yaml...")
+            yaml_result = config_manager.generate_config_yaml()
 
-            if result['success']:
-                self._print_success("Configuration files generated")
+            if yaml_result['success']:
+                self._print_success("Configuration file generated (config.yaml)")
             else:
                 self._print_error("Configuration generation failed")
-                for error in result.get('errors', []):
+                for error in yaml_result.get('errors', []):
                     self._print_error(f"  • {error}")
 
-            return result
+            return yaml_result
 
         except Exception as e:
             self._print_error(f"Config generation failed: {e}")
