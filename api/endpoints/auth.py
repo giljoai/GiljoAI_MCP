@@ -16,6 +16,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
@@ -253,7 +254,7 @@ async def get_me(
             config = getattr(config, "config", None)
             if config:
                 setup_mode = getattr(config, "setup_mode", False)
-    except Exception as e:
+    except (AttributeError, TypeError) as e:
         logger.warning(f"Could not check setup mode in /me endpoint: {e}")
 
     # If in setup mode, return setup mode status instead of fake user
