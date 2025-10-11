@@ -1,1 +1,0 @@
-"""GiljoAI MCP Installer Package."""
