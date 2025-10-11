@@ -10,24 +10,23 @@ DOCS_DIR = Path(__file__).resolve().parents[1] / "docs"
 INDEX_FILE = DOCS_DIR / "index.md"
 
 
-EXCLUDE_NAMES = {
-    "index.md",
-    "index_files.md",
-    "CHANGELOG.md",
-}
-
-EXCLUDE_PATTERNS = [
+EXCLUDE_INDEX_NAMES = {"index.md", "index_files.md"}
+EXCLUDE_RENAME_PATTERNS = [
     re.compile(r"(^|/)README\.md$", re.IGNORECASE),
     re.compile(r"\.(png|jpg|jpeg|gif|svg|webp|ico)$", re.IGNORECASE),
 ]
 
 
-def should_exclude(path: Path) -> bool:
-    name = path.name
-    if name in EXCLUDE_NAMES:
+def should_skip_index(path: Path) -> bool:
+    return path.name in EXCLUDE_INDEX_NAMES
+
+
+def should_skip_rename(path: Path) -> bool:
+    # do not rename index files or READMEs/images
+    if path.name in EXCLUDE_INDEX_NAMES:
         return True
     p_str = str(path).replace("\\", "/")
-    for pat in EXCLUDE_PATTERNS:
+    for pat in EXCLUDE_RENAME_PATTERNS:
         if pat.search(p_str):
             return True
     return False
@@ -134,7 +133,7 @@ def collect_files(root: Path):
     for dirpath, _, filenames in os.walk(root):
         for fn in filenames:
             path = Path(dirpath) / fn
-            if should_exclude(path):
+            if should_skip_index(path):
                 continue
             files.append(path)
     return sorted(files, key=lambda p: str(p).lower())
@@ -156,8 +155,8 @@ def main(argv):
             tag = "DELETE"
         desc = describe(f)
         new_path = append_tag_to_filename(f, tag)
-        entries.append((new_path if do_rename else f, tag, desc))
-        if do_rename and new_path != f:
+        entries.append((new_path if (do_rename and not should_skip_rename(f)) else f, tag, desc))
+        if do_rename and new_path != f and not should_skip_rename(f):
             rename_pairs.append((f, new_path))
 
     # Perform renames first so index reflects new names
