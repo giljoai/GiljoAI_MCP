@@ -32,7 +32,7 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
    - Connection pooling via SQLAlchemy
    - Multi-tenant isolation through filtered queries
    - Async and sync session support
-   - Alembic migrations for schema versioning
+   - **Tables created via Base.metadata.create_all()** (NOT Alembic)
 
 3. **API Server** (FastAPI - REST + WebSocket)
    - RESTful endpoints for all resources
@@ -79,8 +79,10 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 
 **Command**:
 ```bash
-python installer/cli/install.py
+python install.py
 ```
+
+**CRITICAL**: Uses `DatabaseManager.create_tables_async()` (same as api/app.py:186)
 
 **What Happens**:
 
@@ -91,7 +93,7 @@ python installer/cli/install.py
 
 **2. Database Setup**:
 - Creates `giljo_mcp` database
-- Runs Alembic migrations to create tables
+- **Creates all tables using Base.metadata.create_all()** (NOT Alembic)
 - Initializes setup state
 
 **3. Default Admin Account Creation**:
@@ -436,6 +438,11 @@ database:
 - Context, ContextChunk, Template
 - SetupState, SystemConfig
 
+**Table Creation**:
+- Uses DatabaseManager.create_tables_async()
+- Called during install.py and api/app.py startup
+- **NOT using Alembic migrations**
+
 ### MCP Tools
 
 **Location**: `src/giljo_mcp/tools/`
@@ -573,7 +580,7 @@ cd GiljoAI_MCP
 pip install -r requirements.txt
 
 # 3. Run installer
-python installer/cli/install.py
+python install.py
 
 # 4. Access application
 # Browser opens to http://localhost:7274
