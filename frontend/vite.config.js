@@ -8,28 +8,26 @@ import yaml from 'js-yaml'
 // Load frontend port from environment or use default
 const FRONTEND_PORT = parseInt(process.env.VITE_FRONTEND_PORT || process.env.GILJO_FRONTEND_PORT || '7274', 10)
 
-// Load selected adapter IP from config.yaml for LAN mode binding
-let selectedAdapterIP = null
+// v3.0 Unified Architecture: Always read dashboard_host from config.yaml
+// Default to 0.0.0.0 (firewall controls access, not binding)
+let dashboardHost = '0.0.0.0'
 try {
   const configPath = resolve(__dirname, '../config.yaml')
   if (fs.existsSync(configPath)) {
     const configData = yaml.load(fs.readFileSync(configPath, 'utf8'))
-    const mode = configData?.installation?.mode
-    if (mode === 'lan' || mode === 'server' || mode === 'wan') {
-      selectedAdapterIP = configData?.server?.ip || configData?.security?.network?.initial_ip
-      console.log(`[Vite] LAN mode detected - binding to selected adapter IP: ${selectedAdapterIP}`)
-    } else {
-      console.log(`[Vite] Localhost mode detected - binding to localhost only`)
-    }
+    // v3.0: Read from server.dashboard_host (no mode-based logic)
+    dashboardHost = configData?.server?.dashboard_host || '0.0.0.0'
+    console.log(`[Vite] v3.0 binding to: ${dashboardHost}:${FRONTEND_PORT}`)
+  } else {
+    console.log(`[Vite] config.yaml not found, using default: ${dashboardHost}:${FRONTEND_PORT}`)
   }
 } catch (err) {
-  console.warn('[Vite] Could not read config.yaml, using default host settings:', err.message)
+  console.warn('[Vite] Could not read config.yaml, using default 0.0.0.0:', err.message)
 }
 
-// Determine host binding based on mode
-// - LAN/Server mode: Bind to selected adapter IP only
-// - Localhost mode: Bind to localhost only (not 0.0.0.0)
-const HOST = selectedAdapterIP || 'localhost'
+// v3.0 Architecture: Always bind to what's in config (default 0.0.0.0)
+// Firewall controls actual network access (defense in depth)
+const HOST = dashboardHost
 
 export default defineConfig({
   plugins: [vue()],
