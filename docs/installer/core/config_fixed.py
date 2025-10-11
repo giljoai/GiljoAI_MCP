@@ -72,9 +72,12 @@ class ConfigManager:
         result = {'success': False, 'errors': []}
 
         try:
-            # Get database credentials
-            owner_password = self.settings.get('owner_password', '4010')
-            user_password = self.settings.get('user_password', '4010')
+            # Get database credentials - no defaults allowed
+            owner_password = self.settings.get('owner_password')
+            user_password = self.settings.get('user_password')
+
+            if not owner_password or not user_password:
+                raise ValueError("Database passwords are required - no defaults allowed for production security")
 
             # Get configuration values with correct defaults
             pg_host = self.settings.get('pg_host', 'localhost')

@@ -148,7 +148,7 @@ class UnifiedInstaller:
                 return result
             result['steps'].append('configs_generated')
 
-            # Step 6: Setup database (runs migrations which need .env from step 5)
+            # Step 6: Setup database (create DB, roles, tables, admin user, setup_state)
             self._print_header("Setting Up Database")
             db_result = self.setup_database()
             if not db_result['success']:
@@ -157,6 +157,7 @@ class UnifiedInstaller:
                 return result
             self.database_credentials = db_result.get('credentials', {})
             result['steps'].append('database_created')
+            result['steps'].append('tables_created')  # Added by inline table creation
 
             # Step 6b: Update .env with real database credentials (NEW - fixes password bug)
             if self.database_credentials:
@@ -287,18 +288,17 @@ class UnifiedInstaller:
         # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
         print(f"Enter the password for PostgreSQL 'postgres' user")
-        print(f"(press Enter to use default '4010')")
+        print(f"{Fore.RED}(Required - no defaults allowed){Style.RESET_ALL}")
 
         # Ask twice to confirm
         max_attempts = 3
         for attempt in range(max_attempts):
             pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
 
-            # If empty, use default
+            # Require password - no defaults
             if not pg_pass:
-                self.settings['pg_password'] = '4010'
-                self._print_info("Using default password '4010'")
-                break
+                self._print_error("Password cannot be empty. Please enter your actual PostgreSQL admin password.")
+                continue
 
             # Ask for confirmation
             pg_pass_confirm = getpass.getpass(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
@@ -313,8 +313,8 @@ class UnifiedInstaller:
                 if remaining > 0:
                     self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
                 else:
-                    self._print_error("Passwords do not match. Using default password '4010'.")
-                    self.settings['pg_password'] = '4010'
+                    self._print_error("Too many failed attempts. Installation cannot continue without valid PostgreSQL password.")
+                    raise ValueError("PostgreSQL password required for installation")
 
         # Start services after installation
         print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
@@ -349,7 +349,7 @@ class UnifiedInstaller:
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
         print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
-        print(f"  • PostgreSQL password: {'(default)' if self.settings['pg_password'] == '4010' else '(custom)'}")
+        print(f"  • PostgreSQL password: {'*' * 8} (secured)")
         print(f"  • Start services: {self.settings['start_services']}")
         print(f"  • Create database tables: {self.settings['create_tables']}")
         if platform.system() == "Windows":
@@ -669,10 +669,13 @@ class UnifiedInstaller:
 
     def setup_database(self) -> Dict[str, Any]:
         """
-        Setup PostgreSQL database using DatabaseInstaller
+        Setup PostgreSQL database using DatabaseInstaller, then create tables directly
+
+        Uses the SAME method as the rest of the application:
+        DatabaseManager.create_tables_async() -> Base.metadata.create_all()
 
         Returns:
-            Database setup result from DatabaseInstaller
+            Database setup result
         """
         try:
             # Import DatabaseInstaller from existing module
@@ -682,64 +685,130 @@ class UnifiedInstaller:
             db_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
-                'pg_password': self.settings.get('pg_password', '4010'),
+                'pg_password': self.settings.get('pg_password'),  # No default - REQUIRED
                 'pg_user': self.settings.get('pg_user', 'postgres')
             }
 
             # Create installer instance
             db_installer = DatabaseInstaller(settings=db_settings)
 
-            # Run database setup
+            # Run database setup (creates DB + roles)
             self._print_info("Creating database and roles...")
             result = db_installer.setup()
 
-            if result['success']:
-                self._print_success("Database created successfully")
-
-                # Run migrations if user opted in (Enhancement 1)
-                if self.settings.get('create_tables', True):
-                    self._print_info("Running database migrations...")
-                    migration_result = db_installer.run_migrations()
-
-                    if migration_result['success']:
-                        self._print_success("Migrations completed")
-                        result['migrations_run'] = True
-                    elif migration_result.get('warnings'):
-                        self._print_warning("Migrations skipped: " + migration_result['warnings'][0])
-                        result['migration_warnings'] = migration_result.get('warnings', [])
-                    elif migration_result.get('errors'):
-                        self._print_warning("Migrations failed: " + migration_result['errors'][0])
-                        result['migration_warnings'] = migration_result.get('errors', [])
-                else:
-                    self._print_info("Skipping database migrations (per user preference)")
-                    result['migrations_skipped'] = True
-
-                # Initialize setup state to trigger first-time setup wizard
-                self._print_info("Initializing setup state...")
-                try:
-                    from src.giljo_mcp.setup.state_manager import SetupStateManager
-
-                    state_manager = SetupStateManager.get_instance(tenant_key="default")
-                    state_manager.update_state(
-                        completed=False,  # Setup wizard required
-                        installer_version="3.0",
-                        install_mode="localhost",
-                        install_path=str(self.install_dir)
-                    )
-                    self._print_success("Setup state initialized - wizard will open on first launch")
-                except Exception as e:
-                    self._print_warning(f"Could not initialize setup state: {e}")
-                    self._print_warning("You may need to manually access the setup wizard at /setup")
-
-            else:
-                self._print_error("Database setup failed")
+            if not result['success']:
+                self._print_error("Database creation failed")
                 for error in result.get('errors', []):
                     self._print_error(f"  • {error}")
+                return result
+
+            self._print_success("Database and roles created successfully")
+
+            # Create tables using DatabaseManager (SAME AS API/APP.PY LINE 186)
+            if self.settings.get('create_tables', True):
+                self._print_info("Creating database tables...")
+                import asyncio
+                import sys
+                from pathlib import Path
+
+                # Add src to path
+                sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+                # Import after path is set
+                from giljo_mcp.database import DatabaseManager
+                from giljo_mcp.models import User, SetupState
+                from datetime import datetime, timezone
+                from uuid import uuid4
+                from passlib.hash import bcrypt
+
+                # Get DATABASE_URL from .env (generated in step 5)
+                import os
+                from dotenv import load_dotenv
+                load_dotenv()
+                db_url = os.getenv("DATABASE_URL")
+
+                if not db_url:
+                    result['errors'] = ["DATABASE_URL not found in .env"]
+                    result['success'] = False
+                    return result
+
+                # Create tables using async DatabaseManager
+                async def create_tables_and_init():
+                    db_manager = DatabaseManager(db_url, is_async=True)
+
+                    # Create all tables (SAME AS api/app.py:186)
+                    await db_manager.create_tables_async()
+
+                    # Create admin user
+                    async with db_manager.get_session_async() as session:
+                        from sqlalchemy import select
+
+                        # Check if admin exists
+                        stmt = select(User).where(User.username == 'admin')
+                        result_user = await session.execute(stmt)
+                        existing = result_user.scalar_one_or_none()
+
+                        if not existing:
+                            admin_user = User(
+                                id=str(uuid4()),
+                                username='admin',
+                                email=None,
+                                full_name='Administrator',
+                                password_hash=bcrypt.hash('admin'),
+                                role='admin',
+                                tenant_key='default',
+                                is_active=True,
+                                created_at=datetime.now(timezone.utc)
+                            )
+                            session.add(admin_user)
+                            await session.commit()
+
+                        # Create setup_state
+                        stmt = select(SetupState).where(SetupState.tenant_key == 'default')
+                        result_state = await session.execute(stmt)
+                        existing_state = result_state.scalar_one_or_none()
+
+                        if not existing_state:
+                            setup_state = SetupState(
+                                id=str(uuid4()),
+                                tenant_key='default',
+                                completed=False,
+                                default_password_active=True,
+                                password_changed_at=None,
+                                setup_version='3.0.0',
+                                created_at=datetime.now(timezone.utc),
+                                updated_at=datetime.now(timezone.utc)
+                            )
+                            session.add(setup_state)
+                            await session.commit()
+
+                    await db_manager.close_async()
+                    return True
+
+                # Run async table creation
+                tables_created = asyncio.run(create_tables_and_init())
+
+                if tables_created:
+                    self._print_success("Database tables created successfully")
+                    self._print_success("Admin user created (username: admin, password: admin)")
+                    self._print_success("Setup state initialized")
+                    result['tables_created'] = True
+                    result['admin_created'] = True
+                    result['setup_state_created'] = True
+                else:
+                    self._print_error("Table creation failed")
+                    result['success'] = False
+                    return result
+            else:
+                self._print_info("Skipping table creation (per user preference)")
+                result['tables_skipped'] = True
 
             return result
 
         except Exception as e:
+            import traceback
             self._print_error(f"Database setup failed: {e}")
+            traceback.print_exc()
             return {
                 'success': False,
                 'errors': [str(e)]
@@ -762,15 +831,16 @@ class UnifiedInstaller:
             from installer.core.config import ConfigManager
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
-            # NOTE: database_credentials not available yet - using defaults/settings
+            # NOTE: database_credentials not available yet - using admin password temporarily
+            # Will be updated with real DB credentials after database setup in step 6b
             config_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
                 'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
                 'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
                 'install_dir': str(self.install_dir),
-                'owner_password': self.settings.get('pg_password', '4010'),
-                'user_password': self.settings.get('pg_password', '4010'),
+                'owner_password': self.settings.get('pg_password'),  # No default - REQUIRED
+                'user_password': self.settings.get('pg_password'),  # No default - REQUIRED
                 'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
                 'external_host': self.settings.get('external_host', 'localhost'),  # Frontend connection host
                 # NO 'mode' field - v3.0 unified architecture
@@ -1188,7 +1258,7 @@ class UnifiedInstaller:
 
 @click.command()
 @click.option('--headless', is_flag=True, help='Non-interactive mode (use defaults)')
-@click.option('--pg-password', default='4010', help='PostgreSQL admin password')
+@click.option('--pg-password', default=None, help='PostgreSQL admin password (REQUIRED)')
 @click.option('--api-port', default=DEFAULT_API_PORT, type=int, help='API server port')
 @click.option('--frontend-port', default=DEFAULT_FRONTEND_PORT, type=int, help='Frontend port')
 def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) -> None:
