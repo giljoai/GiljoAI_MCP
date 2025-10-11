@@ -98,6 +98,8 @@ def classify(path: Path) -> str:
     if "/devlog/" in p or "/devlogs/" in p:
         return "OUTDATED"
 
+    if "installation_flow" in name:
+        return "URGENT"
     if "v3" in name:
         return "URGENT"
     if any(d in p for d in urgent_dirs):
@@ -182,4 +184,3 @@ def main(argv):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-

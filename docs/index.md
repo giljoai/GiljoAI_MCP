@@ -261,7 +261,7 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `install_project/DOCUMENTATION_UPDATE_HANDOFF__URGENT.md` — UPDATE HANDOFF documentation for GiljoAI MCP (install_project) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `install_project/HARMONY_VALIDATION_HANDOFF__URGENT.md` — HARMONY VALIDATION HANDOFF documentation for GiljoAI MCP (install_project) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `install_project/SESSION_HANDOFF_PHASE3__URGENT.md` — SESSION HANDOFF PHASE3 documentation for GiljoAI MCP (install_project) purpose, usage, and context for maintainers and agents. — Tag: URGENT
-- `INSTALLATION_FLOW__FRAGMENTED.md` — INSTALLATION FLOW documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
+- `INSTALLATION_FLOW__URGENT.md` — INSTALLATION FLOW documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `installer_developer_guide__URGENT.md` — installer developer documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `Installer_Devlog_Summary__URGENT.md` — Installer Devlog Summary documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `INSTALLER_ERROR_HANDLING_IMPROVEMENTS__URGENT.md` — INSTALLER ERROR HANDLING IMPROVEMENTS documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: URGENT
