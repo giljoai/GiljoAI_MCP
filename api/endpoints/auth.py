@@ -564,7 +564,8 @@ async def register_user(
 
 @router.post("/change-password", response_model=PasswordChangeResponse, tags=["auth"])
 async def change_password(
-    request: PasswordChangeRequest = Body(...),
+    request_body: PasswordChangeRequest = Body(...),
+    request: Request = None,
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -593,7 +594,7 @@ async def change_password(
     from src.giljo_mcp.models import SetupState
 
     # Validate passwords match
-    if request.new_password != request.confirm_password:
+    if request_body.new_password != request_body.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Passwords do not match"
@@ -611,7 +612,7 @@ async def change_password(
         )
 
     # Verify current password
-    if not bcrypt.verify(request.current_password, admin_user.password_hash):
+    if not bcrypt.verify(request_body.current_password, admin_user.password_hash):
         logger.warning("Password change failed: incorrect current password")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -619,7 +620,7 @@ async def change_password(
         )
 
     # Hash new password
-    new_password_hash = bcrypt.hash(request.new_password)
+    new_password_hash = bcrypt.hash(request_body.new_password)
 
     # Update user
     admin_user.password_hash = new_password_hash

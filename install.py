@@ -287,18 +287,17 @@ class UnifiedInstaller:
         # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
         print(f"Enter the password for PostgreSQL 'postgres' user")
-        print(f"(press Enter to use default '4010')")
+        print(f"{Fore.RED}(Required - no defaults allowed){Style.RESET_ALL}")
 
         # Ask twice to confirm
         max_attempts = 3
         for attempt in range(max_attempts):
             pg_pass = getpass.getpass(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
 
-            # If empty, use default
+            # Require password - no defaults
             if not pg_pass:
-                self.settings['pg_password'] = '4010'
-                self._print_info("Using default password '4010'")
-                break
+                self._print_error("Password cannot be empty. Please enter your actual PostgreSQL admin password.")
+                continue
 
             # Ask for confirmation
             pg_pass_confirm = getpass.getpass(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
@@ -313,8 +312,8 @@ class UnifiedInstaller:
                 if remaining > 0:
                     self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
                 else:
-                    self._print_error("Passwords do not match. Using default password '4010'.")
-                    self.settings['pg_password'] = '4010'
+                    self._print_error("Too many failed attempts. Installation cannot continue without valid PostgreSQL password.")
+                    raise ValueError("PostgreSQL password required for installation")
 
         # Start services after installation
         print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
@@ -349,7 +348,7 @@ class UnifiedInstaller:
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
         print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
-        print(f"  • PostgreSQL password: {'(default)' if self.settings['pg_password'] == '4010' else '(custom)'}")
+        print(f"  • PostgreSQL password: {'*' * 8} (secured)")
         print(f"  • Start services: {self.settings['start_services']}")
         print(f"  • Create database tables: {self.settings['create_tables']}")
         if platform.system() == "Windows":
@@ -682,7 +681,7 @@ class UnifiedInstaller:
             db_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
-                'pg_password': self.settings.get('pg_password', '4010'),
+                'pg_password': self.settings.get('pg_password'),  # No default - REQUIRED
                 'pg_user': self.settings.get('pg_user', 'postgres')
             }
 
@@ -762,15 +761,16 @@ class UnifiedInstaller:
             from installer.core.config import ConfigManager
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
-            # NOTE: database_credentials not available yet - using defaults/settings
+            # NOTE: database_credentials not available yet - using admin password temporarily
+            # Will be updated with real DB credentials after database setup in step 6b
             config_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
                 'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
                 'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
                 'install_dir': str(self.install_dir),
-                'owner_password': self.settings.get('pg_password', '4010'),
-                'user_password': self.settings.get('pg_password', '4010'),
+                'owner_password': self.settings.get('pg_password'),  # No default - REQUIRED
+                'user_password': self.settings.get('pg_password'),  # No default - REQUIRED
                 'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
                 'external_host': self.settings.get('external_host', 'localhost'),  # Frontend connection host
                 # NO 'mode' field - v3.0 unified architecture
@@ -1188,7 +1188,7 @@ class UnifiedInstaller:
 
 @click.command()
 @click.option('--headless', is_flag=True, help='Non-interactive mode (use defaults)')
-@click.option('--pg-password', default='4010', help='PostgreSQL admin password')
+@click.option('--pg-password', default=None, help='PostgreSQL admin password (REQUIRED)')
 @click.option('--api-port', default=DEFAULT_API_PORT, type=int, help='API server port')
 @click.option('--frontend-port', default=DEFAULT_FRONTEND_PORT, type=int, help='Frontend port')
 def main(headless: bool, pg_password: str, api_port: int, frontend_port: int) -> None:
