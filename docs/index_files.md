@@ -1,8 +1,8 @@
 # docs\
 AGENT_INSTRUCTIONS.md - Critical information for development agents, including port configuration, project structure, development environment, and core features implemented. Critical information for all development agents.
 AI_CODING_TOOLS_COMPARISON.md - Comparison of AI coding tools, including Claude Code, Gemini CLI, Cursor, Continue.dev, Windsurf, Codex CLI, and Aider, highlighting their multi-agent capabilities and architecture requirements.
-AI_TOOL_INTEGRATION.md - Comprehensive guide to integrating AI coding tools with GiljoAI MCP, including registration, configuration, troubleshooting, and best practices for optimal results.
-AKE_MCP_ORCHESTRATOR_ANALYSIS.md - Analysis of AKE MCP orchestrator.
+AI_TOOL_INTEGRATION.md - Comprehensive guide to integrating AI coding tools with GiljoAI MCP, for registration, configuration, troubleshooting, and best practices, including Claude Code, Codex CLI, Gemini CLI, and Grok CLI.
+AKE_MCP_ORCHESTRATOR_ANALYSIS.md - Orchestrator analysis for AI and machine learning model integration, focusing on architecture and implementation details with 40 characters.
 ARCHITECTURE_V2.md - Architecture version 2.
 archive_prompt.md - Archive prompt.
 backend_enhancements_phase3.md - Backend enhancements phase 3.
@@ -119,4 +119,4 @@ docs/archive/backup_pre_subagent/ - Backup pre sub agent.
 docs/archive/SerenaOverkill-deprecation/ - Serena Overkill deprecation.
 
 ## docs
-AI_TOOL_INTEGRATION.md - Comprehensive guide to integrating AI coding tools with GiljoAI MCP, including registration, configuration, troubleshooting, and best practices for optimal results.
+AI_TOOL_INTEGRATION.md - Comprehensive guide to integrating AI coding tools with GiljoAI MCP, for registration, configuration, troubleshooting, and best practices, including Claude Code, Codex CLI, Gemini CLI, and Grok CLI.
