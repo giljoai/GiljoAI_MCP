@@ -43,17 +43,37 @@ from giljo_mcp.models import APIKey, User
 logger = logging.getLogger(__name__)
 
 
-async def get_db_session():
-    """Get database session dependency"""
-    import os
+async def get_db_session(request: Request = None):
+    """Get database session dependency from app state
 
-    from giljo_mcp.database import DatabaseManager
+    Args:
+        request: FastAPI request (to access app state)
 
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        raise RuntimeError("DATABASE_URL environment variable is required")
+    Yields:
+        Database session from shared app state db_manager
 
-    db_manager = DatabaseManager(database_url=db_url, is_async=True)
+    Raises:
+        HTTPException: 503 if database not initialized (setup mode)
+    """
+    # Get db_manager from app state (shared instance)
+    try:
+        db_manager = request.app.state.api_state.db_manager
+    except AttributeError:
+        # Fallback if app state not available
+        logger.error("db_manager not available in app state")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database not initialized - system may be in setup mode"
+        )
+
+    if db_manager is None:
+        logger.error("db_manager is None - setup mode active")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database not initialized - complete setup wizard first"
+        )
+
+    # Use the shared db_manager instance
     async with db_manager.get_session_async() as session:
         yield session
 

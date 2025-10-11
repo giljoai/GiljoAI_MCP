@@ -151,13 +151,11 @@ class ConfigManager:
                     user_password = credentials.get("USER_PASSWORD")
                     self.logger.info("Using database passwords from credentials file")
             
-            # Source 3: Fallback to default (for backward compatibility)
+            # Source 3: Raise error if password missing (production security)
             if not owner_password:
-                owner_password = "4010"
-                self.logger.warning("No owner password found, using default: 4010")
+                raise ValueError("Owner password is required - no defaults allowed for production security")
             if not user_password:
-                user_password = "4010"
-                self.logger.warning("No user password found, using default: 4010")
+                raise ValueError("User password is required - no defaults allowed for production security")
 
             # Get configuration values with correct defaults
             pg_host = self.settings.get("pg_host", "localhost")  # ALWAYS localhost

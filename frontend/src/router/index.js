@@ -247,12 +247,12 @@ router.beforeEach(async (to, from, next) => {
       }
 
     } catch (error) {
-      // If setup status check fails (API unreachable on fresh install),
-      // redirect to setup wizard instead of login page
-      // This handles the case where API hasn't started yet
+      // SECURITY FAIL-SAFE: If setup status check fails (pristine database, API unreachable),
+      // redirect to password change modal instead of setup wizard
+      // This ensures we ALWAYS require password change on fresh install, even if status check fails
       if (to.path !== '/setup' && to.path !== '/login' && to.path !== '/change-password') {
-        console.log('[ROUTER] Setup status check unavailable - assuming fresh install, redirecting to setup wizard')
-        next('/setup')
+        console.log('[ROUTER] Setup status check failed - assuming fresh install, redirecting to password change (FAIL-SAFE)')
+        next('/change-password')
         return
       }
       // If already navigating to setup, login, or change-password, allow it

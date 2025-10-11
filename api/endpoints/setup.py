@@ -318,7 +318,8 @@ async def get_setup_status(request: Request = None):
         tools_attached = state.get("tools_enabled", [])
 
         # Check default password status from database
-        default_password_active = False
+        # SECURITY: Default to True (force password change when uncertain)
+        default_password_active = True
         try:
             # Get database session from request app state
             if request and hasattr(request.app, "state") and hasattr(request.app.state, "api_state"):
@@ -333,18 +334,20 @@ async def get_setup_status(request: Request = None):
                         setup_state_db = result.scalar_one_or_none()
 
                         if setup_state_db:
-                            default_password_active = setup_state_db.default_password_active or False
+                            # Found setup_state - use its value
+                            default_password_active = setup_state_db.default_password_active
                         else:
                             # No setup state in DB yet - assume default password active if admin user exists
                             from src.giljo_mcp.models import User
                             stmt_user = select(User).where(User.username == 'admin')
                             result_user = await session.execute(stmt_user)
                             admin_user = result_user.scalar_one_or_none()
-                            default_password_active = admin_user is not None
+                            # If admin user exists, password change required; if not, also require it (pristine DB)
+                            default_password_active = True  # Always True until password is changed
         except Exception as e:
             logger.warning(f"Failed to check default password status: {e}")
-            # Default to False (don't force password change on error)
-            default_password_active = False
+            # SECURITY: Default to True (force password change on error - fail-safe)
+            default_password_active = True
 
         return SetupStatusResponse(
             completed=completed,
