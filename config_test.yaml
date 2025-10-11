@@ -1,0 +1,106 @@
+agent:
+  context_limit: 150000
+  default_role: orchestrator
+  handoff_threshold: 140000
+  max_per_project: 20
+database:
+  host: localhost
+  name: giljo_mcp
+  owner: giljo_owner
+  pool_size: 5
+  port: 5432
+  type: postgresql
+  user: giljo_user
+  version: '18'
+deployment_context: localhost
+features:
+  api_keys_enabled: false
+  authentication: true
+  auto_handoff: true
+  auto_login_localhost: true
+  dynamic_discovery: true
+  firewall_configured: false
+  multi_tenant: true
+  multi_user: false
+  ssl_enabled: false
+  vision_chunking: true
+  websocket: true
+installation:
+  install_dir: F:\GiljoAI_MCP
+  platform: Windows
+  python_version: 3.11.9
+  timestamp: '2025-10-10T20:11:35.076865'
+logging:
+  backup_count: 5
+  file: ./logs/giljo_mcp.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: DEBUG
+  max_size: 10MB
+message_queue:
+  batch_size: 10
+  max_size: 1000
+  priority_levels:
+  - low
+  - normal
+  - high
+  - critical
+  retry_attempts: 3
+  retry_delay: 1.0
+paths:
+  certs: null
+  data: F:\GiljoAI_MCP\data
+  install_dir: F:\GiljoAI_MCP
+  logs: F:\GiljoAI_MCP\logs
+  static: F:\GiljoAI_MCP\frontend\dist
+  temp: F:\GiljoAI_MCP\temp
+  templates: F:\GiljoAI_MCP\frontend\templates
+  uploads: F:\GiljoAI_MCP\uploads
+security:
+  api_keys:
+    generate_command: python -c "import secrets; print(f'giljo_{secrets.token_urlsafe(32)}')"
+    info: API keys optional for localhost (auto-login enabled)
+  cors:
+    allowed_origins:
+    - http://127.0.0.1:7274
+    - http://localhost:7274
+    - http://127.0.0.1:7275
+    - http://localhost:7275
+    - http://127.0.0.1:7272
+    - http://localhost:7272
+    - http://10.1.0.164:7274
+    - http://10.1.0.164:7275
+    - http://10.1.0.164:7272
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+server:
+  api_host: 0.0.0.0
+  api_key: null
+  api_port: 7272
+  dashboard_host: 0.0.0.0
+  dashboard_port: 7274
+  ip: 192.168.1.100
+  mcp_host: 0.0.0.0
+  mcp_port: 7272
+services:
+  api:
+    description: Main API server (REST + WebSocket + MCP)
+    host: 0.0.0.0
+    port: 7272
+    unified_port: true
+  frontend:
+    auto_open: true
+    dev_server: true
+    port: 7274
+session:
+  cleanup_interval: 300
+  cookie_secure: false
+  max_concurrent: 10
+  timeout_seconds: 3600
+status:
+  database_created: true
+  installation_complete: true
+  migrations_run: false
+  ready_to_launch: true
+  services_configured: true
+version: 3.0.0
