@@ -302,14 +302,6 @@ class DatabaseInstaller:
             # Save credentials
             self.save_credentials()
 
-            # Create default admin account (only on fresh install or if not exists)
-            admin_result = self.create_default_admin_account()
-            if not admin_result['success']:
-                result['warnings'].append(f"Failed to create admin account: {admin_result.get('errors', [])}")
-            else:
-                if not admin_result.get('already_exists'):
-                    self.logger.info("Default admin account created")
-
             result['success'] = True
             result['credentials'] = {
                 'owner_password': self.owner_password,
