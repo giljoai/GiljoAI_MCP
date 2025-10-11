@@ -186,7 +186,8 @@ async def list_products(
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        # In setup mode, return empty list instead of error
+        return []
 
     try:
         async with state.db_manager.get_session_async() as db:
@@ -230,7 +231,8 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
     from api.app import state
 
     if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+        # In setup mode, return 404 since we can't look up the product
+        raise HTTPException(status_code=404, detail="Product not found (setup mode)")
 
     try:
         async with state.db_manager.get_session_async() as db:

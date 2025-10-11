@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
@@ -224,23 +224,50 @@ async def logout(response: Response):
     return LogoutResponse(message="Logout successful")
 
 
-@router.get("/me", response_model=UserProfileResponse, tags=["auth"])
+@router.get("/me", tags=["auth"])
 async def get_me(
+    request: Request,
     current_user: Optional[User] = Depends(get_current_user)
 ):
     """
-    Get current user profile from JWT.
+    Get current user profile from JWT or setup mode status.
 
-    This endpoint returns the authenticated user's profile information.
-    In localhost mode (127.0.0.1), returns a default dev user.
+    This endpoint returns:
+    - Setup mode status if system is in setup mode
+    - User profile if authenticated
+    - Localhost dev user if in localhost mode (127.0.0.1) and NOT in setup mode
 
     Args:
+        request: FastAPI request (to check setup mode)
         current_user: User from JWT token or None (localhost bypass)
 
     Returns:
-        User profile data
+        User profile data or setup mode status
     """
-    # Localhost mode bypass - return default dev user
+    # Check if system is in setup mode
+    setup_mode = False
+    try:
+        # Get config from app state
+        config = getattr(request.app.state, "api_state", None)
+        if config:
+            config = getattr(config, "config", None)
+            if config:
+                setup_mode = getattr(config, "setup_mode", False)
+    except Exception as e:
+        logger.warning(f"Could not check setup mode in /me endpoint: {e}")
+
+    # If in setup mode, return setup mode status instead of fake user
+    if setup_mode:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "setup_mode": True,
+                "message": "System in setup mode - authentication not available",
+                "requires_setup": True
+            }
+        )
+
+    # Localhost mode bypass - return default dev user (only when NOT in setup mode)
     if current_user is None:
         return UserProfileResponse(
             id="00000000-0000-0000-0000-000000000000",
@@ -254,6 +281,7 @@ async def get_me(
             last_login=None
         )
 
+    # Return authenticated user profile
     return UserProfileResponse(
         id=str(current_user.id),
         username=current_user.username,

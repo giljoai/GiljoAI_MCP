@@ -121,9 +121,34 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         logger.error(f"Failed to load configuration: {e}", exc_info=True)
         raise
 
+    # Check setup completion status (v3.0 fix: check SetupStateManager, not just config)
+    setup_mode = False
+    try:
+        from src.giljo_mcp.setup.state_manager import SetupStateManager
+
+        # Try to check if setup is complete
+        state_manager = SetupStateManager.get_instance(tenant_key="default")
+        setup_state = state_manager.get_state()
+        setup_completed = setup_state.get("completed", False)
+
+        if not setup_completed:
+            logger.info("Setup wizard not completed - entering setup mode")
+            setup_mode = True
+        else:
+            logger.info("Setup wizard completed - proceeding with full initialization")
+            setup_mode = False
+    except Exception as e:
+        # If we can't check setup state (first run, missing file, etc.), check config fallback
+        logger.warning(f"Could not check setup state: {e}")
+        logger.info("Falling back to config.setup_mode check")
+        setup_mode = getattr(state.config, "setup_mode", False)
+
+    # Store setup_mode in config for middleware access
+    state.config.setup_mode = setup_mode
+
     # Initialize database (skip if in setup mode)
-    if getattr(state.config, "setup_mode", False):
-        logger.info("Setup mode detected - skipping database initialization")
+    if setup_mode:
+        logger.info("Setup mode active - skipping database initialization")
         logger.info("Database will be configured through the setup wizard")
         state.db_manager = None
         state.tenant_manager = None
@@ -164,7 +189,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             raise
 
     # Initialize tenant manager (skip if in setup mode)
-    if not getattr(state.config, "setup_mode", False):
+    if not setup_mode:
         try:
             logger.info("Initializing tenant manager...")
             state.tenant_manager = TenantManager()  # TenantManager uses static methods
@@ -228,7 +253,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)
 
     # Ensure system users exist (localhost user for auto-login)
-    if not getattr(state.config, "setup_mode", False) and state.db_manager:
+    if not setup_mode and state.db_manager:
         try:
             logger.info("Ensuring system users exist...")
             from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
@@ -242,7 +267,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             logger.warning("Continuing startup despite localhost user creation failure")
 
     # Check setup state on startup (version tracking and validation)
-    if not getattr(state.config, "setup_mode", False) and state.db_manager:
+    if not setup_mode and state.db_manager:
         try:
             logger.info("Checking setup state...")
             from src.giljo_mcp.setup.state_manager import SetupStateManager
