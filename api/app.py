@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 
 try:
     from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+    from fastapi.exceptions import WebSocketException
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import JSONResponse
     from sqlalchemy import select, text
@@ -592,12 +593,6 @@ def create_app() -> FastAPI:
         # STEP 1: Authenticate using unified WebSocket authentication
         # Handle setup mode (db_manager can be None)
         try:
-            websocket.query_params = websocket.query_params or {}
-            if token:
-                websocket.query_params['token'] = token
-            if api_key:
-                websocket.query_params['api_key'] = api_key
-
             # Get database session (None during setup mode)
             session = None
             if state.db_manager:
@@ -614,8 +609,13 @@ def create_app() -> FastAPI:
                     'user': auth_result.get('user', {}),
                     'context': auth_result.get('context', 'normal')  # 'setup' or 'normal'
                 }
-                if 'token' in websocket.query_params or 'api_key' in websocket.query_params:
-                    auth_context['auth_type'] = 'jwt' if 'token' in websocket.query_params else 'api_key'
+                # Determine auth type from query parameters
+                if token:
+                    auth_context['auth_type'] = 'jwt'
+                elif api_key:
+                    auth_context['auth_type'] = 'api_key'
+                else:
+                    auth_context['auth_type'] = 'setup'
 
                 await state.websocket_manager.connect(websocket, client_id, auth_context=auth_context)
                 state.connections[client_id] = websocket
