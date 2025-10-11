@@ -54,7 +54,7 @@ except ImportError as e:
     raise
 
 try:
-    from .auth_utils import extract_credentials, get_websocket_close_code, validate_websocket_auth
+    from .auth_utils import authenticate_websocket
     from .endpoints import (
         agents,
         auth,
@@ -589,31 +589,51 @@ def create_app() -> FastAPI:
     ):
         """WebSocket endpoint for real-time updates with authentication"""
 
-        # STEP 1: Extract credentials
-        auth_credentials = await extract_credentials(websocket, api_key, token)
+        # STEP 1: Authenticate using unified WebSocket authentication
+        # Handle setup mode (db_manager can be None)
+        try:
+            websocket.query_params = websocket.query_params or {}
+            if token:
+                websocket.query_params['token'] = token
+            if api_key:
+                websocket.query_params['api_key'] = api_key
 
-        # STEP 2: Validate BEFORE accepting connection
-        auth_result = await validate_websocket_auth(auth_credentials, state.auth)
+            # Get database session (None during setup mode)
+            session = None
+            if state.db_manager:
+                session = await state.db_manager.get_session_async().__aenter__()
 
-        if not auth_result.is_valid:
+            try:
+                auth_result = await authenticate_websocket(websocket, db=session)
+
+                # STEP 2: Accept connection with authentication result
+                await websocket.accept()
+
+                # STEP 3: Store connection with authentication context
+                auth_context = {
+                    'user': auth_result.get('user', {}),
+                    'context': auth_result.get('context', 'normal')  # 'setup' or 'normal'
+                }
+                if 'token' in websocket.query_params or 'api_key' in websocket.query_params:
+                    auth_context['auth_type'] = 'jwt' if 'token' in websocket.query_params else 'api_key'
+
+                await state.websocket_manager.connect(websocket, client_id, auth_context=auth_context)
+                state.connections[client_id] = websocket
+
+                # Log successful connection
+                auth_type = auth_context.get('auth_type', 'setup')
+                logger.info(f"WebSocket connected: {client_id} (context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})")
+
+            finally:
+                # Clean up session if created
+                if session and state.db_manager:
+                    await state.db_manager.get_session_async().__aexit__(None, None, None)
+
+        except WebSocketException as e:
             # REJECT CONNECTION IMMEDIATELY
-            logger.warning(f"WebSocket authentication failed for {client_id}: " f"{auth_result.error_message}")
-            close_code = get_websocket_close_code("unauthorized")
-            await websocket.close(code=close_code, reason=auth_result.error_message or "Unauthorized")
+            logger.warning(f"WebSocket authentication failed for {client_id}: {e.reason}")
+            await websocket.close(code=1008, reason=e.reason or "Unauthorized")
             return
-
-        # STEP 3: Accept connection with auth context
-        await websocket.accept()
-
-        # STEP 4: Store auth context with connection
-        await state.websocket_manager.connect(websocket, client_id, auth_context=auth_result.context)
-        state.connections[client_id] = websocket
-
-        # Log successful connection
-        logger.info(
-            f"WebSocket authenticated connection: {client_id} "
-            f"(auth_type: {auth_result.context.get('auth_type', 'unknown')})"
-        )
 
         try:
             while True:

@@ -302,6 +302,14 @@ class DatabaseInstaller:
             # Save credentials
             self.save_credentials()
 
+            # Create default admin account (only on fresh install or if not exists)
+            admin_result = self.create_default_admin_account()
+            if not admin_result['success']:
+                result['warnings'].append(f"Failed to create admin account: {admin_result.get('errors', [])}")
+            else:
+                if not admin_result.get('already_exists'):
+                    self.logger.info("Default admin account created")
+
             result['success'] = True
             result['credentials'] = {
                 'owner_password': self.owner_password,
@@ -781,6 +789,119 @@ echo ""
                 pass
 
         return False
+
+    def create_default_admin_account(self) -> Dict[str, Any]:
+        """
+        Create default admin account on fresh install.
+
+        Credentials:
+        - Username: admin
+        - Password: admin (bcrypt hashed)
+
+        Sets default_password_active: true in setup state
+
+        Returns:
+            Dict with success status and admin user info
+        """
+        result = {'success': False, 'errors': []}
+
+        try:
+            # Import bcrypt
+            try:
+                import bcrypt
+            except ImportError:
+                result['errors'].append("bcrypt not installed - cannot hash password")
+                return result
+
+            # Connect to giljo_mcp database
+            conn = psycopg2.connect(
+                host=self.pg_host,
+                port=self.pg_port,
+                database=self.db_name,
+                user='giljo_owner',
+                password=self.owner_password,
+                connect_timeout=10
+            )
+            conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+
+            with conn.cursor() as cur:
+                # Check if admin user already exists (idempotent)
+                cur.execute("SELECT 1 FROM users WHERE username = %s", ('admin',))
+                if cur.fetchone():
+                    self.logger.info("Admin user already exists, skipping creation")
+                    result['success'] = True
+                    result['already_exists'] = True
+                    return result
+
+                # Hash the default password 'admin'
+                password_hash = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode('utf-8')
+
+                # Generate UUID for admin user
+                import uuid
+                admin_id = str(uuid.uuid4())
+
+                # Create admin user
+                cur.execute("""
+                    INSERT INTO users (
+                        id, tenant_key, username, password_hash,
+                        email, role, is_active, created_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, NOW()
+                    )
+                """, (
+                    admin_id,
+                    'default',
+                    'admin',
+                    password_hash,
+                    'admin@localhost',
+                    'admin',
+                    True
+                ))
+
+                # Update setup state to mark default password as active
+                cur.execute("""
+                    UPDATE setup_state
+                    SET default_password_active = true
+                    WHERE tenant_key = 'default'
+                """)
+
+                # If no setup_state exists, create one
+                if cur.rowcount == 0:
+                    setup_id = str(uuid.uuid4())
+                    cur.execute("""
+                        INSERT INTO setup_state (
+                            id, tenant_key, completed, default_password_active,
+                            setup_version, created_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, NOW()
+                        )
+                    """, (
+                        setup_id,
+                        'default',
+                        False,
+                        True,
+                        '3.0.0'
+                    ))
+
+            conn.close()
+
+            # Display credentials in terminal
+            print("\n" + "="*60)
+            print("Default Admin Credentials:")
+            print("  Username: admin")
+            print("  Password: admin")
+            print("\n  IMPORTANT: Change this password on first login!")
+            print("="*60 + "\n")
+
+            self.logger.info("Default admin account created successfully")
+            result['success'] = True
+            result['username'] = 'admin'
+            return result
+
+        except Exception as e:
+            result['errors'].append(f"Failed to create admin account: {str(e)}")
+            self.logger.error(f"Admin account creation failed: {e}", exc_info=True)
+            return result
 
     def save_credentials(self):
         """Save database credentials securely"""

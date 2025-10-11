@@ -127,6 +127,37 @@ class RegisterUserResponse(BaseModel):
     message: str
 
 
+class PasswordChangeRequest(BaseModel):
+    """Request to change password from default"""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=12)
+    confirm_password: str = Field(..., min_length=12)
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password_strength(cls, v):
+        """Validate password meets security requirements"""
+        if len(v) < 12:
+            raise ValueError('Password must be at least 12 characters')
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least 1 uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least 1 lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least 1 number')
+        if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in v):
+            raise ValueError('Password must contain at least 1 special character')
+        return v
+
+
+class PasswordChangeResponse(BaseModel):
+    """Response after changing password"""
+    success: bool
+    message: str
+    token: str
+    user: dict
+
+
 # Auth Endpoints
 
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
@@ -141,6 +172,9 @@ async def login(
     This endpoint authenticates a user and sets an httpOnly cookie
     containing a JWT access token valid for 24 hours.
 
+    If default_password_active is true, returns 403 error directing
+    user to change password first.
+
     Args:
         request: Login credentials (username, password)
         response: FastAPI response (to set cookie)
@@ -151,6 +185,7 @@ async def login(
 
     Raises:
         HTTPException: 401 if credentials are invalid
+        HTTPException: 403 if default password must be changed
     """
     # Find user by username
     stmt = select(User).where(User.username == request.username)
@@ -170,6 +205,22 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
+        )
+
+    # Check if default password is still active (for admin user)
+    from src.giljo_mcp.models import SetupState
+    stmt_setup = select(SetupState).where(SetupState.tenant_key == user.tenant_key)
+    result_setup = await db.execute(stmt_setup)
+    setup_state = result_setup.scalar_one_or_none()
+
+    if setup_state and setup_state.default_password_active and user.username == 'admin':
+        logger.warning(f"Login blocked for {user.username}: default password must be changed")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "must_change_password",
+                "message": "You must change the default password before proceeding"
+            }
         )
 
     # Generate JWT token
@@ -508,4 +559,112 @@ async def register_user(
         role=new_user.role,
         tenant_key=new_user.tenant_key,
         message="User registered successfully"
+    )
+
+
+@router.post("/change-password", response_model=PasswordChangeResponse, tags=["auth"])
+async def change_password(
+    request: PasswordChangeRequest = Body(...),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Change password from default admin/admin.
+
+    This endpoint allows changing the default admin password.
+    Requirements:
+    - Current password must be 'admin'
+    - New password must meet complexity requirements (12+ chars, uppercase, lowercase, digit, special char)
+    - Passwords must match
+    - Sets default_password_active: false on success
+    - Returns JWT token for immediate login
+
+    Args:
+        request: Password change request
+        db: Database session
+
+    Returns:
+        Password change success with JWT token
+
+    Raises:
+        HTTPException: 400 if passwords don't match
+        HTTPException: 401 if current password is incorrect
+        HTTPException: 404 if admin user not found
+    """
+    from src.giljo_mcp.models import SetupState
+
+    # Validate passwords match
+    if request.new_password != request.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+
+    # Get admin user
+    stmt = select(User).where(User.username == 'admin')
+    result = await db.execute(stmt)
+    admin_user = result.scalar_one_or_none()
+
+    if not admin_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Admin user not found"
+        )
+
+    # Verify current password
+    if not bcrypt.verify(request.current_password, admin_user.password_hash):
+        logger.warning("Password change failed: incorrect current password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect"
+        )
+
+    # Hash new password
+    new_password_hash = bcrypt.hash(request.new_password)
+
+    # Update user
+    admin_user.password_hash = new_password_hash
+
+    # Update setup state
+    stmt_setup = select(SetupState).where(SetupState.tenant_key == admin_user.tenant_key)
+    result_setup = await db.execute(stmt_setup)
+    setup_state = result_setup.scalar_one_or_none()
+
+    if setup_state:
+        setup_state.default_password_active = False
+        setup_state.password_changed_at = datetime.now(timezone.utc)
+    else:
+        # Create setup state if it doesn't exist
+        from uuid import uuid4
+        setup_state = SetupState(
+            id=str(uuid4()),
+            tenant_key=admin_user.tenant_key,
+            completed=True,
+            default_password_active=False,
+            password_changed_at=datetime.now(timezone.utc),
+            setup_version='3.0.0'
+        )
+        db.add(setup_state)
+
+    await db.commit()
+
+    # Generate JWT token for immediate login
+    token = JWTManager.create_access_token(
+        user_id=admin_user.id,
+        username=admin_user.username,
+        role=admin_user.role,
+        tenant_key=admin_user.tenant_key
+    )
+
+    logger.info(f"Password changed successfully for user: {admin_user.username}")
+
+    return PasswordChangeResponse(
+        success=True,
+        message="Password changed successfully",
+        token=token,
+        user={
+            "id": str(admin_user.id),
+            "username": admin_user.username,
+            "role": admin_user.role,
+            "tenant_key": admin_user.tenant_key
+        }
     )

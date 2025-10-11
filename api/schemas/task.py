@@ -10,7 +10,7 @@ Provides request/response models for:
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TaskUpdate(BaseModel):
@@ -29,8 +29,7 @@ class TaskUpdate(BaseModel):
     estimated_effort: Optional[float] = Field(None, ge=0, description="Estimated effort in hours")
     actual_effort: Optional[float] = Field(None, ge=0, description="Actual effort in hours")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskConversionRequest(BaseModel):
@@ -57,8 +56,7 @@ class TaskConversionRequest(BaseModel):
         description="Include subtasks in conversion"
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectConversionResponse(BaseModel):
@@ -71,8 +69,7 @@ class ProjectConversionResponse(BaseModel):
     conversion_strategy: str = Field(..., description="Strategy used for conversion")
     created_at: datetime = Field(..., description="Project creation timestamp")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskResponse(BaseModel):
@@ -110,5 +107,4 @@ class TaskResponse(BaseModel):
     estimated_effort: Optional[float] = Field(None, description="Estimated effort in hours")
     actual_effort: Optional[float] = Field(None, description="Actual effort in hours")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

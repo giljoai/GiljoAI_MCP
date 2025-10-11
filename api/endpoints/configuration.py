@@ -583,9 +583,13 @@ async def get_frontend_configuration():
         mode = config.get("installation", {}).get("mode", "localhost")
         api_keys_required = config.get("features", {}).get("api_keys_required", False)
 
-        # Fix 0.0.0.0 binding address for frontend connection
-        # If API is bound to 0.0.0.0 (all interfaces), frontend needs to connect to localhost
-        frontend_host = "localhost" if api_host == "0.0.0.0" else api_host
+        # Get external host configuration (from install.py network configuration)
+        # This is what the frontend should use to connect to the API
+        external_host = config.get("services", {}).get("external_host", "localhost")
+
+        # Use external_host for frontend connections
+        # This was configured during installation based on user choice
+        frontend_host = external_host
 
         # Build WebSocket URL (use ws:// for http, wss:// for https)
         ws_protocol = "wss" if config.get("features", {}).get("ssl_enabled", False) else "ws"
