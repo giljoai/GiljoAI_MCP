@@ -6,9 +6,8 @@ Simplify the GiljoAI MCP setup flow by removing unnecessary complexity while pre
 ## Current Problems
 1. Setup wizard makes unnecessary API calls (products) during fresh install
 2. Auth/me endpoint returns fake localhost user during setup mode
-3. Database table creation happens in web UI instead of install.py (where it used to be)
-4. MCP integration and Serena toggle already exist but aren't properly integrated into flow
-5. Too many steps for what should be a simple process
+3. Products endpoint fails with tenant validation errors during setup mode
+4. Too many steps for what should be a simple process
 
 ## Required Fixes
 
@@ -24,27 +23,26 @@ Simplify the GiljoAI MCP setup flow by removing unnecessary complexity while pre
 - Should return proper setup mode status instead of pretending to be a user
 - Current fake user confuses the authentication state
 
-### 3. Move Database Table Creation Back to install.py
-**Location**: `installer/cli/install.py`
-- Database tables (via Alembic migrations) should be created during install.py execution
-- This used to work and was removed - bring it back
-- Add after database creation step (around line where database is configured)
-- Use existing `DatabaseManager` and `alembic upgrade head` command
-- Keep user choice toggle for this step (don't force it)
+### 3. Fix Tenant Dependency for Setup Mode
+**Location**: `api/dependencies.py`
+- The `get_tenant_key()` function should check for setup mode first
+- In setup mode, return "default" without validation
+- Only validate tenant when database is available
+- This prevents "Invalid tenant key" errors during setup
 
-### 4. Integrate Existing MCP Script
-**Location**: Already exists at `scripts/integrate_mcp.py`
-- This script already detects Claude, Codex, Gemini CLI tools
-- Add option in install.py to run MCP integration
-- Keep as optional user choice
-- Script modifies installers to add UniversalMCPInstaller support
+### 4. Keep MCP Configuration in Web UI
+**Location**: Already exists in the web UI as modal/page
+- MCP configuration has been in the UI for a week now
+- DO NOT add to install.py CLI
+- Users configure MCP through the web interface after setup
+- Has clickable links for downloading scripts
 
-### 5. Integrate Existing Serena Toggle
-**Location**: Already exists at `api/endpoints/serena.py`
-- POST `/api/serena/toggle` - enables/disables Serena in config.yaml
-- GET `/api/serena/status` - returns current Serena status
-- Add option in install.py to enable Serena
-- Keep as optional user choice
+### 5. Keep Serena Toggle in Web UI
+**Location**: Already exists in the web UI as modal/page
+- Serena toggle has been in the UI for a week now
+- DO NOT add to install.py CLI
+- Users enable/disable Serena through the web interface after setup
+- POST `/api/serena/toggle` endpoint already exists
 
 ### 6. Simplify Setup Wizard
 **Location**: `frontend/src/views/SetupWizard.vue`
@@ -56,7 +54,6 @@ Simplify the GiljoAI MCP setup flow by removing unnecessary complexity while pre
   - Products step (not needed for fresh install)
   - Database configuration (already in install.py)
   - Database test (already in install.py)
-  - MCP setup (already in install.py via integrate_mcp.py)
 
 ## Implementation Notes
 
@@ -65,38 +62,31 @@ Simplify the GiljoAI MCP setup flow by removing unnecessary complexity while pre
 - **DO NOT** force any automatic actions
 - Each step should remain optional with clear prompts
 - "Start services" toggle already exists - keep it
-- Add new toggles for:
-  - Create database tables (via Alembic)
-  - Integrate MCP tools
-  - Enable Serena
+- Database table creation already exists in install.py - keep it
+- MCP configuration stays in web UI - NOT in CLI
+- Serena toggle stays in web UI - NOT in CLI
 
-### install.py Flow (Enhanced)
+### install.py Flow (Keep As Is)
 ```python
-# Existing flow with additions:
+# Current flow is already correct:
 1. Check prerequisites
 2. Configure database (existing)
-3. Create database tables (RESTORE THIS - used to exist)
+3. Create database tables (already there)
    - Run: alembic upgrade head
-   - Keep as optional choice
+   - Optional choice toggle
 4. Configure ports (existing)
 5. Start services (existing - keep toggle)
-6. Integrate MCP tools (NEW - use scripts/integrate_mcp.py)
-   - Optional choice
-   - Run existing integration script
-7. Enable Serena (NEW - use api/endpoints/serena.py)
-   - Optional choice
-   - Call toggle endpoint or modify config.yaml directly
 
-# Each step has user confirmation/choice
+# MCP and Serena are configured through web UI after setup
 ```
 
 ### Simplified Architecture
 ```
-install.py (CLI)          →  Setup complete, services running
+install.py (CLI)          →  Database/services configured
     ↓
-Web UI (if needed)        →  Only for admin account creation
+Web UI                    →  Admin account creation
     ↓
-Ready to use
+Dashboard                 →  Configure MCP and Serena (UI modals)
 ```
 
 Instead of:
@@ -112,22 +102,22 @@ install.py → Web Setup Wizard (7 steps) → Multiple API calls → Confusion �
 4. Verify:
    - Database and tables created
    - Services start
-   - Can access web UI
+   - Can access web UI without errors
    - Can create admin account
-   - MCP tools available (if chosen)
-   - Serena enabled (if chosen)
+   - MCP configuration available in dashboard
+   - Serena toggle available in dashboard
 
 ## Benefits
 - Faster setup for new users
 - Less confusion about what's happening
-- All configuration in one place (install.py)
-- Web UI only for admin account (simple and clear)
-- Preserves user control and choices
-- Uses existing code that was already built
+- Database setup in install.py (where it belongs)
+- Web UI for admin account creation
+- MCP and Serena in dashboard UI (where users expect them)
+- No duplicate functionality between CLI and UI
 
 ## Remember
-- The code for MCP integration already exists: `scripts/integrate_mcp.py`
-- The code for Serena toggle already exists: `api/endpoints/serena.py`
-- Database table creation used to be in install.py - restore it
-- Don't remove user choices - enhance them
+- MCP configuration modal already exists in the web UI (for a week)
+- Serena toggle already exists in the web UI (for a week)
+- Database table creation already exists in install.py
+- Don't add UI features to CLI
 - Keep the flow simple and linear
