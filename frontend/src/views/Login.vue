@@ -188,14 +188,24 @@ async function handleLogin() {
   } catch (err) {
     // Handle specific error types with user-friendly messages
     if (err.response?.status === 401) {
-      // Check if there's a specific detail about inactive account
+      // Check if there's a specific detail about inactive account or password change required
       const detail = err.response?.data?.detail || ''
       if (detail.toLowerCase().includes('inactive')) {
         error.value = 'Account is inactive. Please contact your administrator.'
+      } else if (detail.toLowerCase().includes('must_change_password') || detail.toLowerCase().includes('change password')) {
+        // Redirect to password change page
+        router.push('/change-password')
+        return
       } else {
         error.value = 'Invalid username or password'
       }
     } else if (err.response?.status === 403) {
+      const detail = err.response?.data?.detail || ''
+      if (detail.toLowerCase().includes('must_change_password') || detail.toLowerCase().includes('change password')) {
+        // Redirect to password change page
+        router.push('/change-password')
+        return
+      }
       error.value = 'Access forbidden. Please contact your administrator.'
     } else if (err.response?.status === 429) {
       error.value = 'Too many login attempts. Please try again later.'

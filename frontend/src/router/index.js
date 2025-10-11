@@ -14,6 +14,19 @@ const routes = [
       showInNav: false,
       requiresAuth: false, // Public route, no auth required
       requiresSetup: false, // Skip setup check for this route
+      requiresPasswordChange: false, // Skip password change check for this route
+    },
+  },
+  {
+    path: '/change-password',
+    name: 'ChangePassword',
+    component: () => import('@/views/ChangePassword.vue'),
+    meta: {
+      title: 'Change Default Password',
+      showInNav: false,
+      requiresAuth: false, // Allow access without auth - first-time setup
+      requiresSetup: false, // Skip setup check for this route
+      requiresPasswordChange: false, // Skip password change check for this route
     },
   },
   {
@@ -25,6 +38,7 @@ const routes = [
       showInNav: false,
       requiresSetup: false, // Skip setup check for this route
       requiresAuth: false, // No authentication required - fresh install flow
+      requiresPasswordChange: false, // Skip password change check for this route
     },
   },
   {
@@ -178,40 +192,71 @@ const router = createRouter({
   routes,
 })
 
-// Navigation guard for page titles, authentication, setup check, and role-based access
+// Navigation guard for page titles, authentication, setup check, password change check, and role-based access
 router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
 
   // Skip all checks for routes that explicitly don't require them
-  if (to.meta.requiresSetup === false && to.meta.requiresAuth === false) {
+  if (to.meta.requiresSetup === false && to.meta.requiresAuth === false && to.meta.requiresPasswordChange === false) {
     next()
     return
   }
 
-  // CRITICAL: Check setup status FIRST (before auth check)
-  // This allows fresh installs to redirect to setup wizard without requiring authentication
+  // CRITICAL: Check setup status and password requirements
+  // Priority order: Password Change → Setup Wizard → Normal Auth
   if (to.meta.requiresSetup !== false) {
     try {
       const status = await setupService.checkStatus()
 
-      if (!status.completed && to.path !== '/setup') {
-        // Setup not complete, redirect to wizard (NO AUTH REQUIRED)
-        console.log('Setup not completed, redirecting to setup wizard')
+      // HIGHEST PRIORITY: Check for default password requirement FIRST
+      // This ensures password change happens before setup wizard
+      if (to.meta.requiresPasswordChange !== false && status.default_password_active) {
+        if (to.path !== '/change-password') {
+          console.log('[ROUTER] Default password active, redirecting to password change')
+          next('/change-password')
+          return
+        }
+      }
+
+      // SECOND PRIORITY: If password has been changed, check setup completion
+      if (!status.default_password_active && !status.completed && to.path !== '/setup') {
+        // Password changed but setup not complete, redirect to wizard
+        console.log('[ROUTER] Setup not completed, redirecting to setup wizard')
         next('/setup')
         return
       }
+
+      // If password has been changed and user is on change-password page, redirect to setup or dashboard
+      if (to.path === '/change-password' && !status.default_password_active) {
+        if (!status.completed) {
+          console.log('[ROUTER] Password changed, redirecting to setup wizard')
+          next('/setup')
+        } else {
+          console.log('[ROUTER] Password already changed and setup complete, redirecting to dashboard')
+          next('/')
+        }
+        return
+      }
+
+      // If on setup wizard but default password still active, redirect to password change
+      if (to.path === '/setup' && status.default_password_active) {
+        console.log('[ROUTER] Must change password before setup, redirecting to password change')
+        next('/change-password')
+        return
+      }
+
     } catch (error) {
       // If setup status check fails (API unreachable on fresh install),
       // redirect to setup wizard instead of login page
       // This handles the case where API hasn't started yet
-      if (to.path !== '/setup' && to.path !== '/login') {
-        console.log('Setup status check unavailable - assuming fresh install, redirecting to setup wizard')
+      if (to.path !== '/setup' && to.path !== '/login' && to.path !== '/change-password') {
+        console.log('[ROUTER] Setup status check unavailable - assuming fresh install, redirecting to setup wizard')
         next('/setup')
         return
       }
-      // If already navigating to setup or login, allow it
-      console.log('Setup status check unavailable, but navigating to', to.path)
+      // If already navigating to setup, login, or change-password, allow it
+      console.log('[ROUTER] Setup status check unavailable, but navigating to', to.path)
     }
   }
 

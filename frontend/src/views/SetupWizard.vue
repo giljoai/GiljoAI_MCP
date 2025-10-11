@@ -38,7 +38,6 @@
                 v-bind="getStepProps(step)"
                 @next="handleNext"
                 @back="handlePrevious"
-                @admin-setup-complete="handleAdminSetupComplete"
                 @finish="handleFinish"
               />
             </v-window-item>
@@ -86,20 +85,26 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
-import AdminAccountStep from '@/components/setup/AdminAccountStep.vue'
-import SetupCompleteStep from '@/components/setup/SetupCompleteStep.vue'
+import McpConfigStep from '@/components/setup/McpConfigStep.vue'
+import SerenaConfigStep from '@/components/setup/SerenaConfigStep.vue'
+import CompletionStep from '@/components/setup/CompletionStep.vue'
 
 const theme = useTheme()
 
-// Step configuration reduced to 3 steps
+// Step configuration - simplified to 3 steps
 const allSteps = [
   {
-    component: AdminAccountStep,
-    title: 'Admin Setup',
-    name: 'adminSetup',
+    component: McpConfigStep,
+    title: 'MCP Configuration',
+    name: 'mcpConfig',
   },
   {
-    component: SetupCompleteStep,
+    component: SerenaConfigStep,
+    title: 'Serena Activation',
+    name: 'serenaConfig',
+  },
+  {
+    component: CompletionStep,
     title: 'Complete',
     name: 'complete',
   },
@@ -107,12 +112,9 @@ const allSteps = [
 
 // Reactive configuration state
 const config = reactive({
-  adminUsername: '', // Optional admin username
-  adminPassword: '', // Optional admin password
-  adminEmail: '', // Optional admin email
-  apiKey: '', // Generated API key
+  mcpConfigured: false, // Whether MCP was configured
   serenaEnabled: false, // Serena enabled flag
-  aiTools: [], // Configured AI tools (minimal support)
+  aiTools: [], // Configured AI tools (for backward compatibility)
 })
 
 // State
@@ -152,21 +154,11 @@ const getStepProps = (step) => {
   const baseProps = {}
 
   switch (step.name) {
-    case 'adminSetup':
-      baseProps.modelValue = {
-        username: config.adminUsername,
-        password: config.adminPassword,
-        email: config.adminEmail,
-      }
-      baseProps['onUpdate:modelValue'] = (value) => {
-        config.adminUsername = value.username
-        config.adminPassword = value.password
-        config.adminEmail = value.email || ''
-        console.log('[WIZARD] Admin setup updated:', {
-          username: config.adminUsername,
-          email: config.adminEmail,
-        })
-      }
+    case 'mcpConfig':
+      // MCP Config step has no props - manages its own state
+      break
+    case 'serenaConfig':
+      // Serena Config step has no props - manages its own state
       break
     case 'complete':
       baseProps.config = config
@@ -182,7 +174,19 @@ const currentStepProps = computed(() => {
 })
 
 // Navigation methods
-const handleNext = () => {
+const handleNext = (stepData = {}) => {
+  // Update config with data from current step
+  if (currentStepIndex.value === 0) {
+    // MCP Config step
+    config.mcpConfigured = stepData.mcpConfigured || false
+    console.log('[WIZARD] MCP config updated:', config.mcpConfigured)
+  } else if (currentStepIndex.value === 1) {
+    // Serena Config step
+    config.serenaEnabled = stepData.serenaEnabled || false
+    console.log('[WIZARD] Serena config updated:', config.serenaEnabled)
+  }
+
+  // Move to next step
   if (currentStepIndex.value < visibleSteps.value.length - 1) {
     currentStepIndex.value++
   }
@@ -194,27 +198,8 @@ const handlePrevious = () => {
   }
 }
 
-// Special handlers
-const handleAdminSetupComplete = async (data) => {
-  // Call API to create admin user
-  try {
-    const response = await setupService.createAdminUser({
-      username: config.adminUsername,
-      password: config.adminPassword,
-      email: config.adminEmail,
-    })
-
-    // Keep minimal tracking of the API key
-    config.apiKey = response.api_key
-    console.log('[WIZARD] Admin user created')
-  } catch (error) {
-    console.error('[WIZARD] Failed to create admin user:', error)
-    setupError.value = 'Failed to create admin user. Please try again.'
-  }
-}
-
 const handleFinish = async () => {
-  // Always proceed to save setup config
+  // Complete setup
   await saveSetupConfig()
 }
 
@@ -228,16 +213,13 @@ const saveSetupConfig = async () => {
     isRestarting.value = true
     restartMessage.value = 'Saving configuration...'
 
-    // Save setup completion with minimal configuration
+    // Build tools list - if MCP configured, add 'claude-code'
+    const toolsAttached = config.mcpConfigured ? ['claude-code'] : []
+
+    // Save setup completion with simplified configuration
     const result = await setupService.completeSetup({
-      adminAccount: config.adminUsername ? {
-        username: config.adminUsername,
-        password: config.adminPassword,
-        email: config.adminEmail
-      } : null,
-      // Minimal support for serena and tools
       serenaEnabled: config.serenaEnabled || false,
-      aiTools: config.aiTools || []
+      aiTools: toolsAttached,
     })
 
     console.log('[WIZARD] Setup marked as complete:', result)
