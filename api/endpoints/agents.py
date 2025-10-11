@@ -92,37 +92,44 @@ async def create_agent(agent: AgentCreate):
 @router.get("/", response_model=list[AgentResponse])
 async def list_agents(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
-    session: AsyncSession = Depends(get_db_session),  # noqa: B008
 ):
     """List all agents with optional project filter"""
+    from api.app import state
+
+    # Check if database is available (not in setup mode)
+    if not state.db_manager:
+        # In setup mode, return empty list
+        return []
+
     try:
         from src.giljo_mcp.models import Agent
 
-        stmt = select(Agent)
+        async with state.db_manager.get_session_async() as session:
+            stmt = select(Agent)
 
-        if project_id:
-            stmt = stmt.where(Agent.project_id == project_id)
+            if project_id:
+                stmt = stmt.where(Agent.project_id == project_id)
 
-        stmt = stmt.order_by(Agent.created_at.desc())
+            stmt = stmt.order_by(Agent.created_at.desc())
 
-        result = await session.execute(stmt)
-        agents = result.scalars().all()
+            result = await session.execute(stmt)
+            agents = result.scalars().all()
 
-        return [
-            AgentResponse(
-                id=agent.id,
-                name=agent.name,
-                project_id=agent.project_id,
-                status=agent.status,
-                mission=agent.mission,
-                created_at=agent.created_at,
-                health={
-                    "status": agent.status,
-                    "context_used": agent.context_used or 0,
-                },
-            )
-            for agent in agents
-        ]
+            return [
+                AgentResponse(
+                    id=agent.id,
+                    name=agent.name,
+                    project_id=agent.project_id,
+                    status=agent.status,
+                    mission=agent.mission,
+                    created_at=agent.created_at,
+                    health={
+                        "status": agent.status,
+                        "context_used": agent.context_used or 0,
+                    },
+                )
+                for agent in agents
+            ]
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e

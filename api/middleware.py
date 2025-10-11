@@ -57,6 +57,28 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     },
                 )
 
+        # Check if system is in setup mode
+        setup_mode = False
+        try:
+            # Get config from app state
+            config = getattr(request.app.state, "api_state", None)
+            if config:
+                config = getattr(config, "config", None)
+                if config:
+                    setup_mode = getattr(config, "setup_mode", False)
+        except Exception as e:
+            logger.warning(f"Could not check setup mode in AuthMiddleware: {e}")
+
+        # In setup mode, allow additional endpoints that setup wizard needs
+        if setup_mode and self._is_setup_allowed_endpoint(request.url.path):
+            # Set minimal request state for setup mode
+            request.state.authenticated = True
+            request.state.user_id = "setup-mode"
+            request.state.user = None
+            request.state.is_auto_login = True
+            request.state.tenant_key = "default"
+            return await call_next(request)
+
         # Public endpoints bypass auth
         if self._is_public_endpoint(request.url.path):
             return await call_next(request)
@@ -96,6 +118,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/auth/login",  # Login endpoint
         ]
         return any(path.startswith(p) for p in PUBLIC_PATHS)
+
+    def _is_setup_allowed_endpoint(self, path: str) -> bool:
+        """Check if endpoint is allowed during setup mode"""
+        SETUP_ALLOWED_PATHS = [
+            "/api/v1/config/frontend",  # Frontend needs this for API connection info
+            "/api/v1/products",  # Product listing may be needed
+            "/api/v1/agents",  # Agent listing (returns empty in setup mode)
+            "/api/v1/messages",  # Message listing (returns empty in setup mode)
+            "/api/auth/me",  # Auth status check
+            "/api/setup",  # All setup endpoints
+            "/ws",  # WebSocket connections
+        ]
+        return any(path.startswith(p) for p in SETUP_ALLOWED_PATHS)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
