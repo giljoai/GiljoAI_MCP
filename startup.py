@@ -209,6 +209,7 @@ def check_database_connectivity() -> Tuple[bool, Optional[str]]:
         with db_manager.get_session() as session:
             # Simple query to verify connection
             from sqlalchemy import text
+
             session.execute(text("SELECT 1"))
 
         print_success("Database connection successful")
@@ -324,6 +325,103 @@ def get_config_ports() -> Tuple[int, int]:
     return DEFAULT_API_PORT, DEFAULT_FRONTEND_PORT
 
 
+def get_network_ip() -> Optional[str]:
+    """
+    Get network IP address for display purposes.
+
+    Tries multiple sources in order:
+    1. config.yaml (server.ip or security.network.initial_ip)
+    2. Runtime detection using psutil (fallback for fresh installs)
+
+    Returns:
+        Network IP address or None if not available
+    """
+    # Try config.yaml first (existing behavior - backward compatibility)
+    try:
+        import yaml
+
+        config_path = Path.cwd() / "config.yaml"
+
+        if config_path.exists():
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+
+            # Try server.ip first (legacy), then security.network.initial_ip
+            network_ip = config.get("server", {}).get("ip")
+            if not network_ip:
+                network_ip = config.get("security", {}).get("network", {}).get("initial_ip")
+
+            if network_ip:
+                return network_ip
+
+    except Exception as e:
+        print_warning(f"Could not read network IP from config.yaml: {e}")
+
+    # Fallback: Detect primary network IP at runtime (for fresh installs)
+    try:
+        import psutil
+
+        # Virtual adapter patterns (reuse from api/endpoints/network.py)
+        virtual_patterns = [
+            "docker",
+            "veth",
+            "br-",
+            "vmnet",
+            "vboxnet",
+            "virbr",
+            "tun",
+            "tap",
+            "vEthernet",
+            "Hyper-V",
+            "WSL",
+        ]
+        loopback_patterns = ["lo", "Loopback"]
+
+        interfaces = psutil.net_if_addrs()
+        interface_stats = psutil.net_if_stats()
+
+        candidates = []
+
+        for interface_name, addresses in interfaces.items():
+            # Check if virtual or loopback
+            is_virtual = any(pattern.lower() in interface_name.lower() for pattern in virtual_patterns)
+            is_loopback = any(pattern.lower() in interface_name.lower() for pattern in loopback_patterns)
+
+            # Check if interface is active
+            stats = interface_stats.get(interface_name)
+            is_active = stats.isup if stats else False
+
+            # Get IPv4 addresses
+            for addr in addresses:
+                if addr.family == 2:  # AF_INET (IPv4)
+                    ip = addr.address
+
+                    # Filter out loopback and link-local
+                    if not ip.startswith("127.") and not ip.startswith("169.254.") and is_active and not is_loopback:
+                        candidates.append({"name": interface_name, "ip": ip, "is_virtual": is_virtual})
+
+        if candidates:
+            # Prefer physical adapters over virtual ones
+            physical = [c for c in candidates if not c["is_virtual"]]
+
+            if physical:
+                selected = physical[0]
+                print_info(f"Detected primary network adapter: {selected['name']} ({selected['ip']})")
+                return selected["ip"]
+            else:
+                # Fall back to first virtual adapter if no physical found
+                selected = candidates[0]
+                print_info(f"Detected network adapter: {selected['name']} ({selected['ip']})")
+                return selected["ip"]
+
+    except ImportError:
+        print_warning("psutil not available for network detection")
+    except Exception as e:
+        print_warning(f"Could not detect network IP: {e}")
+
+    return None
+
+
 def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
     """
     Start the API server.
@@ -367,10 +465,7 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             popen_kwargs["stderr"] = subprocess.PIPE
 
         # Start API server
-        process = subprocess.Popen(
-            [python_executable, str(api_script)],
-            **popen_kwargs
-        )
+        process = subprocess.Popen([python_executable, str(api_script)], **popen_kwargs)
 
         print_success(f"API server started (PID: {process.pid})")
         return process
@@ -418,10 +513,7 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             popen_kwargs["stderr"] = subprocess.PIPE
 
         # Start frontend server
-        process = subprocess.Popen(
-            ["npm", "run", "dev"],
-            **popen_kwargs
-        )
+        process = subprocess.Popen(["npm", "run", "dev"], **popen_kwargs)
 
         print_success(f"Frontend server started (PID: {process.pid})")
         return process
@@ -610,13 +702,14 @@ def install_requirements() -> bool:
         return False
 
 
-def run_startup(check_only: bool = False, verbose: bool = False) -> int:
+def run_startup(check_only: bool = False, verbose: bool = False, no_browser: bool = False) -> int:
     """
     Main startup function.
 
     Args:
         check_only: If True, only check dependencies without starting services
         verbose: If True, show console windows for API/frontend (Windows only)
+        no_browser: If True, skip automatic browser launch
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -707,16 +800,39 @@ def run_startup(check_only: bool = False, verbose: bool = False) -> int:
     # Step 8: Open browser
     print_header("Opening Browser")
 
-    if is_first_run:
-        # Open setup wizard
-        setup_url = f"http://localhost:{frontend_port}/setup"
-        print_info("First-run detected - opening setup wizard...")
-        open_browser(setup_url, delay=2)
+    if no_browser:
+        # User chose not to auto-launch browser
+        network_ip = get_network_ip()
+        if network_ip:
+            print_info(f"Login to your published IP on your PC to begin setup!")
+            print_success(f"Setup URL: http://{network_ip}:{frontend_port}/setup")
+        else:
+            print_info(f"Login to your published IP on your PC to begin setup!")
+            print_success(f"Localhost URL: http://localhost:{frontend_port}/setup")
+
+        print_header("Welcome to GiljoAI's Agent Orchestration MCP Server! -Gil")
     else:
-        # Open dashboard
-        dashboard_url = f"http://localhost:{frontend_port}"
-        print_info("Opening dashboard...")
-        open_browser(dashboard_url, delay=2)
+        # Auto-launch browser
+        # v3.0 Enhancement: Use network IP for fresh installs (better UX than localhost)
+        # Localhost triggers auto-login which confuses setup wizard
+        network_ip = get_network_ip() if is_first_run else None
+
+        if is_first_run:
+            # Open setup wizard - use network IP if available (avoids localhost auto-login)
+            if network_ip:
+                setup_url = f"http://{network_ip}:{frontend_port}/setup"
+                print_info("First-run detected - opening setup wizard at network IP...")
+                print_info("(Using network IP avoids localhost auto-login)")
+            else:
+                setup_url = f"http://localhost:{frontend_port}/setup"
+                print_info("First-run detected - opening setup wizard...")
+
+            open_browser(setup_url, delay=2)
+        else:
+            # Open dashboard - localhost is fine for existing users
+            dashboard_url = f"http://localhost:{frontend_port}"
+            print_info("Opening dashboard...")
+            open_browser(dashboard_url, delay=2)
 
     # Step 9: Display status
     print_header("Services Running")
@@ -744,7 +860,8 @@ def run_startup(check_only: bool = False, verbose: bool = False) -> int:
 @click.command()
 @click.option("--check-only", is_flag=True, help="Only check dependencies without starting services")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output (show console windows on Windows)")
-def main(check_only: bool, verbose: bool) -> None:
+@click.option("--no-browser", is_flag=True, help="Skip automatic browser launch (show URLs instead)")
+def main(check_only: bool, verbose: bool, no_browser: bool) -> None:
     """
     GiljoAI MCP - Unified Startup Script
 
@@ -752,7 +869,7 @@ def main(check_only: bool, verbose: bool) -> None:
     including dependency checking, database verification, and service launching.
     """
     try:
-        exit_code = run_startup(check_only=check_only, verbose=verbose)
+        exit_code = run_startup(check_only=check_only, verbose=verbose, no_browser=no_browser)
         sys.exit(exit_code)
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")
