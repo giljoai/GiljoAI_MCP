@@ -5,7 +5,7 @@ This document outlines the end‑to‑end installation sequence, including an ex
 ## Executive Brief
 - Verify Python, pip, npm, and PostgreSQL availability.
 - Generate or load database credentials; verify connectivity.
-- Install backend dependencies and prepare migrations.
+- Install backend dependencies and **create database tables** (NO Alembic).
 - Start backend (Uvicorn) and frontend (Vite/served UI).
 - Detect network adapter IP; set safe CORS origins with localhost and adapter IP.
 - Launch setup wizard at `http://127.0.0.1:7274/setup`.
@@ -20,7 +20,9 @@ This document outlines the end‑to‑end installation sequence, including an ex
 2) Database Configuration
    - Loads `.env` and environment variables; constructs `DATABASE_URL` if missing.
    - Writes installer credentials under `installer/credentials/` for audit and support.
-   - Initializes an async SQLAlchemy engine and ensures tables exist; Alembic migrations are available for versioning.
+   - Initializes an async SQLAlchemy engine
+   - **Creates tables using DatabaseManager.create_tables_async()** (Base.metadata.create_all())
+   - **NOT using Alembic migrations** - project uses direct table creation
 
 3) Dependency Installation
    - Installs Python requirements from `requirements.txt`.
