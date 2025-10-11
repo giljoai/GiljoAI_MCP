@@ -130,15 +130,15 @@ class RegisterUserResponse(BaseModel):
 class PasswordChangeRequest(BaseModel):
     """Request to change password from default"""
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=12)
-    confirm_password: str = Field(..., min_length=12)
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
 
     @field_validator('new_password')
     @classmethod
     def validate_password_strength(cls, v):
         """Validate password meets security requirements"""
-        if len(v) < 12:
-            raise ValueError('Password must be at least 12 characters')
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
         if not any(c.isupper() for c in v):
             raise ValueError('Password must contain at least 1 uppercase letter')
         if not any(c.islower() for c in v):

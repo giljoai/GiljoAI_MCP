@@ -185,7 +185,7 @@ class TestPasswordStrengthValidation:
     """Test password strength validation for password change endpoint"""
 
     def test_password_too_short(self):
-        """Test that passwords under 12 characters are rejected"""
+        """Test that passwords under 8 characters are rejected"""
         from api.endpoints.auth import PasswordChangeRequest
         from pydantic import ValidationError
 
@@ -196,7 +196,7 @@ class TestPasswordStrengthValidation:
                 confirm_password='Short1!'
             )
 
-        assert 'at least 12 characters' in str(exc_info.value)
+        assert 'at least 8 characters' in str(exc_info.value)
 
     def test_password_missing_uppercase(self):
         """Test that passwords without uppercase are rejected"""
