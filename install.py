@@ -159,6 +159,17 @@ class UnifiedInstaller:
             self.database_credentials = db_result.get('credentials', {})
             result['steps'].append('database_created')
 
+            # Step 6b: Update .env with real database credentials (NEW - fixes password bug)
+            if self.database_credentials:
+                self._print_header("Updating Configuration with Database Credentials")
+                env_update_result = self.update_env_with_real_credentials()
+                if not env_update_result['success']:
+                    self._print_warning("Failed to update .env with real credentials")
+                    for error in env_update_result.get('errors', []):
+                        self._print_warning(f"  • {error}")
+                else:
+                    result['steps'].append('env_updated_with_credentials')
+
             # Step 7: Launch services (if requested)
             if self.settings.get('start_services', True):
                 self._print_header("Launching Services")
@@ -700,6 +711,55 @@ class UnifiedInstaller:
 
         except Exception as e:
             self._print_error(f"Config generation failed: {e}")
+            return {
+                'success': False,
+                'errors': [str(e)]
+            }
+
+    def update_env_with_real_credentials(self) -> Dict[str, Any]:
+        """
+        Update .env file with real database credentials after database setup
+
+        This fixes the password synchronization bug where .env was generated
+        with admin password instead of the randomly-generated database passwords.
+
+        Returns:
+            Update result with success status
+        """
+        try:
+            # Import ConfigManager from existing module
+            from installer.core.config import ConfigManager
+
+            # Prepare settings with REAL database credentials
+            config_settings = {
+                'pg_host': self.settings.get('pg_host', 'localhost'),
+                'pg_port': self.settings.get('pg_port', 5432),
+                'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
+                'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
+                'install_dir': str(self.install_dir),
+                'owner_password': self.database_credentials.get('owner_password'),
+                'user_password': self.database_credentials.get('user_password'),
+                'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
+            }
+
+            # Create config manager
+            config_manager = ConfigManager(settings=config_settings)
+
+            # Regenerate .env with real credentials
+            self._print_info("Regenerating .env with real database passwords...")
+            env_result = config_manager.generate_env_file()
+
+            if env_result['success']:
+                self._print_success("Configuration updated with database credentials")
+            else:
+                self._print_error("Failed to update configuration")
+                for error in env_result.get('errors', []):
+                    self._print_error(f"  • {error}")
+
+            return env_result
+
+        except Exception as e:
+            self._print_error(f"Credential update failed: {e}")
             return {
                 'success': False,
                 'errors': [str(e)]
