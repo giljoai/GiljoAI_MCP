@@ -75,13 +75,24 @@ async def authenticate_websocket(
     """
     # Check setup state
     setup_state = await get_setup_state(db)
+    setup_completed = setup_state.get('setup_completed', True)
+    default_password_active = setup_state.get('default_password_active', False)
 
-    # Setup mode: Allow connection without auth
-    if not setup_state.get('setup_completed', True):
-        logger.info("WebSocket connection allowed during setup mode")
+    # Allow connection without auth during:
+    # 1. Initial setup (database not initialized)
+    # 2. Password change phase (database ready but default password active)
+    if not setup_completed:
+        logger.info("WebSocket connection allowed: initial setup mode (database not initialized)")
         return {
             'authenticated': True,
             'context': 'setup'
+        }
+
+    if default_password_active:
+        logger.info("WebSocket connection allowed: password change phase (default password active)")
+        return {
+            'authenticated': True,
+            'context': 'password_change'
         }
 
     # Post-setup: Require credentials for ALL connections
