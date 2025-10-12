@@ -761,8 +761,8 @@ class UnifiedInstaller:
                         setup_state = SetupState(
                             id=str(uuid4()),
                             tenant_key='default',
-                            completed=True,
-                            completed_at=datetime.now(timezone.utc),  # REQUIRED by ck_completed_at_required constraint
+                            database_initialized=True,
+                            database_initialized_at=datetime.now(timezone.utc),  # REQUIRED by ck_database_initialized_at_required constraint
                             default_password_active=True,
                             password_changed_at=None,
                             setup_version='3.0.0',
