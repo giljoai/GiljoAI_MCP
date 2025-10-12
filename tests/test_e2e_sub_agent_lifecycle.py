@@ -93,7 +93,7 @@ class TestSubAgentLifecycle:
 
         # Verify completion
         assert complete_result["success"]
-        assert complete_result["status"] == "completed"
+        assert complete_result["status"] == "database_initialized"
         assert "duration_seconds" in complete_result
 
         # Verify completion WebSocket event
@@ -163,7 +163,7 @@ class TestSubAgentLifecycle:
         assert len(complete_results) == 5
         for result in complete_results:
             assert result["success"]
-            assert result["status"] == "completed"
+            assert result["status"] == "database_initialized"
 
     @pytest.mark.asyncio
     async def test_sub_agent_error_handling(self, db_session, mock_websocket_manager):
@@ -272,7 +272,7 @@ class TestSubAgentLifecycle:
 
         # Verify all completed successfully
         for interaction in interactions:
-            assert interaction.interaction_type == "completed"
+            assert interaction.interaction_type == "database_initialized"
             assert interaction.result is not None
             assert interaction.duration_seconds > 0
 

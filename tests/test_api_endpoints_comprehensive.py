@@ -238,7 +238,7 @@ class TestAPIEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["success"]
-        assert data["status"] == "completed"
+        assert data["status"] == "database_initialized"
 
     # ==================== CONFIGURATION ENDPOINTS ====================
 

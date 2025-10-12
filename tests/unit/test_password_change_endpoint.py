@@ -44,7 +44,7 @@ class TestPasswordChangeEndpoint:
         # Create setup state with default_password_active
         setup_state = SetupState(
             tenant_key='default',
-            completed=False,
+            database_initialized=False,
             meta_data={'default_password_active': True}
         )
         db_session.add(setup_state)
@@ -240,7 +240,7 @@ class TestLoginWithDefaultPassword:
         # Setup state with default password active
         setup_state = SetupState(
             tenant_key='default',
-            completed=False,
+            database_initialized=False,
             meta_data={'default_password_active': True}
         )
         db_session.add(setup_state)
@@ -289,7 +289,7 @@ class TestLoginWithDefaultPassword:
         # Setup state with default password inactive
         setup_state = SetupState(
             tenant_key='default',
-            completed=True,
+            database_initialized=True,
             meta_data={'default_password_active': False}
         )
         db_session.add(setup_state)

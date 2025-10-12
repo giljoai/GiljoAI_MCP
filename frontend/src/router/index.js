@@ -219,21 +219,21 @@ router.beforeEach(async (to, from, next) => {
         }
       }
 
-      // SECOND PRIORITY: If password has been changed, check setup completion
-      if (!status.default_password_active && !status.completed && to.path !== '/setup') {
-        // Password changed but setup not complete, redirect to wizard
-        console.log('[ROUTER] Setup not completed, redirecting to setup wizard')
+      // SECOND PRIORITY: If password has been changed, check database initialization
+      if (!status.default_password_active && !status.database_initialized && to.path !== '/setup') {
+        // Password changed but database not initialized, redirect to wizard
+        console.log('[ROUTER] Database not initialized, redirecting to setup wizard')
         next('/setup')
         return
       }
 
       // If password has been changed and user is on change-password page, redirect to setup or dashboard
       if (to.path === '/change-password' && !status.default_password_active) {
-        if (!status.completed) {
+        if (!status.database_initialized) {
           console.log('[ROUTER] Password changed, redirecting to setup wizard')
           next('/setup')
         } else {
-          console.log('[ROUTER] Password already changed and setup complete, redirecting to dashboard')
+          console.log('[ROUTER] Password already changed and database initialized, redirecting to dashboard')
           next('/')
         }
         return

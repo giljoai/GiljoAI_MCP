@@ -137,7 +137,7 @@ class TestGUIWizard(unittest.TestCase):
         # Mock long-running operation
         def long_operation():
             time.sleep(0.1)
-            return "completed"
+            return "database_initialized"
 
         result = wizard.run_async(long_operation)
         assert result is not None

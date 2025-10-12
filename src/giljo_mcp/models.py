@@ -906,9 +906,9 @@ class SetupState(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, unique=True, index=True)
 
-    # Completion status
-    completed = Column(Boolean, default=False, nullable=False, index=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    # Database initialization status (set when install.py creates tables)
+    database_initialized = Column(Boolean, default=False, nullable=False, index=True)
+    database_initialized_at = Column(DateTime(timezone=True), nullable=True)
 
     # Version tracking
     setup_version = Column(String(20), nullable=True)  # e.g., "2.0.0"
@@ -965,19 +965,20 @@ class SetupState(Base):
             "install_mode IS NULL OR install_mode IN ('localhost', 'server', 'lan', 'wan')",
             name="ck_install_mode_values",
         ),
-        # Completed_at must be set when completed=true
+        # Database initialized timestamp must be set when database_initialized=true
         CheckConstraint(
-            "(completed = false) OR (completed = true AND completed_at IS NOT NULL)", name="ck_completed_at_required"
+            "(database_initialized = false) OR (database_initialized = true AND database_initialized_at IS NOT NULL)",
+            name="ck_database_initialized_at_required"
         ),
         # Regular indexes
         Index("idx_setup_tenant", "tenant_key"),  # Primary lookup index
-        Index("idx_setup_completed", "completed"),  # Filter by completion status
+        Index("idx_setup_database_initialized", "database_initialized"),  # Filter by database init status
         Index("idx_setup_mode", "install_mode"),  # Filter by installation mode
         # GIN indexes for JSONB columns (enables efficient queries on nested JSON)
         Index("idx_setup_features_gin", "features_configured", postgresql_using="gin"),
         Index("idx_setup_tools_gin", "tools_enabled", postgresql_using="gin"),
-        # Partial index for incomplete setups (frequently queried)
-        Index("idx_setup_incomplete", "tenant_key", "completed", postgresql_where="completed = false"),
+        # Partial index for incomplete database initialization (frequently queried)
+        Index("idx_setup_database_incomplete", "tenant_key", "database_initialized", postgresql_where="database_initialized = false"),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -990,8 +991,8 @@ class SetupState(Base):
         return {
             "id": self.id,
             "tenant_key": self.tenant_key,
-            "completed": self.completed,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "database_initialized": self.database_initialized,
+            "database_initialized_at": self.database_initialized_at.isoformat() if self.database_initialized_at else None,
             "setup_version": self.setup_version,
             "database_version": self.database_version,
             "python_version": self.python_version,

@@ -76,29 +76,45 @@ export const useProductStore = defineStore('products', () => {
       return
     }
 
-    currentProductId.value = productId
-
-    if (productId) {
-      // Fetch full product details
-      const product = await fetchProductById(productId)
-      currentProduct.value = product
-
-      // Store in localStorage for persistence
-      localStorage.setItem('currentProductId', productId)
-
-      // Fetch metrics for this product
-      await fetchProductMetrics(productId)
-
-      // Emit event for other stores to react
-      window.dispatchEvent(
-        new CustomEvent('product-changed', {
-          detail: { productId, product },
-        }),
-      )
-    } else {
-      currentProduct.value = null
-      localStorage.removeItem('currentProductId')
+    // If no products exist, do nothing
+    await fetchProducts()
+    if (products.value.length === 0) {
+      console.warn('No products available to set as current product')
+      return
     }
+
+    // Validate the product ID
+    const product = await fetchProductById(productId)
+    if (!product) {
+      console.warn(`Product ${productId} not found`)
+
+      // If the requested product doesn't exist, set the first available product
+      if (products.value.length > 0) {
+        productId = products.value[0].id
+      } else {
+        // Clear current product if no products exist
+        currentProductId.value = null
+        currentProduct.value = null
+        localStorage.removeItem('currentProductId')
+        return
+      }
+    }
+
+    currentProductId.value = productId
+    currentProduct.value = product
+
+    // Store in localStorage for persistence
+    localStorage.setItem('currentProductId', productId)
+
+    // Fetch metrics for this product
+    await fetchProductMetrics(productId)
+
+    // Emit event for other stores to react
+    window.dispatchEvent(
+      new CustomEvent('product-changed', {
+        detail: { productId, product },
+      }),
+    )
   }
 
   async function fetchProductMetrics(productId) {
@@ -191,10 +207,54 @@ export const useProductStore = defineStore('products', () => {
   }
 
   // Initialize from localStorage
-  function initializeFromStorage() {
+  async function initializeFromStorage() {
+    try {
+      // CRITICAL: Check setup status before attempting to fetch products
+      // During setup flow (password change or wizard), skip product initialization
+      const setupResponse = await fetch('/api/setup/status')
+      if (setupResponse.ok) {
+        const setupStatus = await setupResponse.json()
+
+        // Skip product fetch during:
+        // 1. Password change phase (default_password_active=True)
+        // 2. Setup wizard phase (completed=False)
+        if (setupStatus.default_password_active || !setupStatus.database_initialized) {
+          console.log('[PRODUCTS] Skipping product initialization during setup flow')
+          localStorage.removeItem('currentProductId')
+          return
+        }
+      }
+    } catch (error) {
+      console.warn('[PRODUCTS] Failed to check setup status, skipping product initialization:', error)
+      return
+    }
+
     const storedProductId = localStorage.getItem('currentProductId')
+
+    // First, check if any products exist
+    await fetchProducts()
+
+    // If no products exist, clear localStorage and do nothing
+    if (products.value.length === 0) {
+      localStorage.removeItem('currentProductId')
+      return
+    }
+
+    // If a stored product ID exists and there are products, try to set it
     if (storedProductId) {
-      setCurrentProduct(storedProductId)
+      const product = await fetchProductById(storedProductId)
+      if (product) {
+        await setCurrentProduct(storedProductId)
+      } else {
+        // If the specific product doesn't exist, clear localStorage and optionally set first product
+        localStorage.removeItem('currentProductId')
+        if (products.value.length > 0) {
+          await setCurrentProduct(products.value[0].id)
+        }
+      }
+    } else if (products.value.length > 0) {
+      // If no stored product but products exist, set the first product
+      await setCurrentProduct(products.value[0].id)
     }
   }
 

@@ -160,8 +160,8 @@ def test_complete_message_with_notes(db_manager, results):
             msg_id = message.id
 
             # Complete with notes
-            message.status = "completed"
-            message.completed_at = datetime.now(timezone.utc)
+            message.status = "database_initialized"
+            message.database_initialized_at = datetime.now(timezone.utc)
 
             if not message.completed_by:
                 message.completed_by = []
@@ -431,8 +431,8 @@ def test_no_message_deletion(db_manager, results):
             msg_id = message.id
 
             # Complete the message
-            message.status = "completed"
-            message.completed_at = datetime.now(timezone.utc)
+            message.status = "database_initialized"
+            message.database_initialized_at = datetime.now(timezone.utc)
             message.completed_by.append(
                 {"agent_name": "agent1", "timestamp": datetime.now(timezone.utc).isoformat(), "notes": "Completed"}
             )

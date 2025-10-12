@@ -98,7 +98,7 @@ class TestCompleteAuthFlow:
         # Setup state with default_password_active
         setup_state = SetupState(
             tenant_key='default',
-            completed=False,
+            database_initialized=False,
             meta_data={'default_password_active': True}
         )
         test_db.add(setup_state)
@@ -131,7 +131,7 @@ class TestCompleteAuthFlow:
         # Setup state
         setup_state = SetupState(
             tenant_key='default',
-            completed=False,
+            database_initialized=False,
             meta_data={'default_password_active': True}
         )
         test_db.add(setup_state)
@@ -183,7 +183,7 @@ class TestCompleteAuthFlow:
         # Setup state with password changed
         setup_state = SetupState(
             tenant_key='default',
-            completed=True,
+            database_initialized=True,
             meta_data={'default_password_active': False}
         )
         test_db.add(setup_state)
@@ -210,7 +210,7 @@ class TestCompleteAuthFlow:
         # Setup completed
         setup_state = SetupState(
             tenant_key='default',
-            completed=True,
+            database_initialized=True,
             meta_data={'default_password_active': False}
         )
         test_db.add(setup_state)
@@ -241,7 +241,7 @@ class TestCompleteAuthFlow:
         # Setup completed
         setup_state = SetupState(
             tenant_key='default',
-            completed=True,
+            database_initialized=True,
             meta_data={'default_password_active': False}
         )
         test_db.add(setup_state)
@@ -289,7 +289,7 @@ class TestLocalhostNetworkEquality:
         # Setup completed
         setup_state = SetupState(
             tenant_key='default',
-            completed=True,
+            database_initialized=True,
             meta_data={'default_password_active': False}
         )
         test_db.add(setup_state)
@@ -323,7 +323,7 @@ class TestSetupModeWebSocket:
         # Setup NOT completed
         setup_state = SetupState(
             tenant_key='default',
-            completed=False,
+            database_initialized=False,
             meta_data={'default_password_active': True}
         )
         test_db.add(setup_state)
@@ -382,7 +382,7 @@ class TestErrorHandling:
         # Setup completed
         setup_state = SetupState(
             tenant_key='default',
-            completed=True,
+            database_initialized=True,
             meta_data={'default_password_active': False}
         )
         test_db.add(setup_state)

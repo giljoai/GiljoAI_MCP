@@ -111,8 +111,8 @@ async def test_message_acknowledgment():
 
         for msg in messages:
             if "implementer" in msg.to_agents and msg.status == "acknowledged":
-                msg.status = "completed"
-                msg.completed_at = datetime.now(timezone.utc)
+                msg.status = "database_initialized"
+                msg.database_initialized_at = datetime.now(timezone.utc)
 
                 if not msg.completed_by:
                     msg.completed_by = []

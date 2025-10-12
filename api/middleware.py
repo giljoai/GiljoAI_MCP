@@ -117,6 +117,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/setup",  # All setup endpoints (setup wizard)
             "/api/auth/login",  # Login endpoint
             "/api/auth/change-password",  # Password change (first-time setup)
+            "/api/v1/config/frontend",  # Frontend config (needed during setup)
+            "/api/v1/products",  # Product listing (needed during setup)
+            "/api/v1/agents",  # Agent listing (returns empty during setup)
+            "/api/v1/messages",  # Message listing (returns empty during setup)
+            "/api/auth/me",  # Auth status check
         ]
         return any(path.startswith(p) for p in PUBLIC_PATHS)
 

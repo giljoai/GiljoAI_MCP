@@ -96,7 +96,7 @@ class TestFinalIntegration:
         time.sleep(0.1)  # Ensure some duration
 
         # Update to completed
-        interaction.interaction_type = "completed"
+        interaction.interaction_type = "database_initialized"
         interaction.end_time = datetime.now(timezone.utc)
         interaction.duration_seconds = int((interaction.end_time - interaction.start_time).total_seconds())
         interaction.result = "Task completed successfully"
@@ -107,7 +107,7 @@ class TestFinalIntegration:
         # Verify completion
         result = test_session.query(AgentInteraction).filter_by(id=interaction.id).first()
 
-        assert result.interaction_type == "completed"
+        assert result.interaction_type == "database_initialized"
         assert result.end_time is not None
         assert result.duration_seconds > 0
         assert result.result == "Task completed successfully"
@@ -176,7 +176,7 @@ class TestFinalIntegration:
 
         # Complete all sub-agents
         for interaction in interactions:
-            interaction.interaction_type = "completed"
+            interaction.interaction_type = "database_initialized"
             interaction.end_time = datetime.now(timezone.utc)
             interaction.duration_seconds = 1
             interaction.result = f"Completed {interaction.sub_agent_name}"
@@ -187,7 +187,7 @@ class TestFinalIntegration:
         # Verify all completed
         completed = (
             test_session.query(AgentInteraction)
-            .filter_by(project_id=test_project.id, interaction_type="completed")
+            .filter_by(project_id=test_project.id, interaction_type="database_initialized")
             .all()
         )
 
@@ -258,7 +258,7 @@ class TestFinalIntegration:
                 project_id=test_project.id,
                 parent_agent_id="orchestrator",
                 sub_agent_name=f"metrics_worker_{i}",
-                interaction_type="completed",
+                interaction_type="database_initialized",
                 mission=f"Metrics task {i}",
                 start_time=datetime.now(timezone.utc),
                 end_time=datetime.now(timezone.utc),
@@ -273,7 +273,7 @@ class TestFinalIntegration:
         # Query and aggregate metrics
         results = (
             test_session.query(AgentInteraction)
-            .filter_by(project_id=test_project.id, interaction_type="completed")
+            .filter_by(project_id=test_project.id, interaction_type="database_initialized")
             .all()
         )
 

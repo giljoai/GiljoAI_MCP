@@ -18,7 +18,7 @@ class SetupService {
 
   /**
    * Check setup completion status
-   * @returns {Promise<{completed: boolean}>}
+   * @returns {Promise<{database_initialized: boolean}>}
    */
   async checkStatus() {
     const response = await fetch(`${this.baseURL}/api/setup/status`)

@@ -448,7 +448,7 @@ class TestAgentTools:
         )
 
         AssertionHelpers.assert_success_response(result, ["log_id", "status", "completion_time"])
-        assert result["status"] == "completed"
+        assert result["status"] == "database_initialized"
 
     @pytest.mark.asyncio
     async def test_log_sub_agent_completion_not_found(self):

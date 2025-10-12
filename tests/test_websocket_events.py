@@ -109,7 +109,7 @@ async def test_agent_complete_event():
         project_id="project-001",
         tenant_key="tenant-1",
         duration_seconds=45.6,
-        final_status="completed",
+        final_status="database_initialized",
         context_usage=12500,
         completion_reason="All tasks completed successfully",
     )

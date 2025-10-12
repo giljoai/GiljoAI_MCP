@@ -389,7 +389,7 @@ class TestAPIComprehensive:
         if test_data["task_id"]:
             bulk_data = {
                 "task_ids": [test_data["task_id"]],
-                "updates": {"status": "completed", "priority": "low"},
+                "updates": {"status": "database_initialized", "priority": "low"},
                 "operation_type": "update",
             }
 
