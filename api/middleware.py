@@ -116,6 +116,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/api/setup",  # All setup endpoints (setup wizard)
             "/api/auth/login",  # Login endpoint
+            "/api/auth/change-password",  # Password change (first-time setup)
         ]
         return any(path.startswith(p) for p in PUBLIC_PATHS)
 

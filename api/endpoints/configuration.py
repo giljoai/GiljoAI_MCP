@@ -358,8 +358,8 @@ class DatabaseConfigResponse(BaseModel):
 class DatabasePasswordUpdate(BaseModel):
     password: str = Field(
         ...,
-        description="New database password (min 12 chars, must contain uppercase, lowercase, number, and special char)",
-        min_length=12
+        description="New database password (min 8 chars, must contain uppercase, lowercase, number, and special char)",
+        min_length=8
     )
 
 
@@ -407,7 +407,7 @@ async def update_database_password(update: DatabasePasswordUpdate):
     Update database password for giljo_user in both PostgreSQL and .env file
 
     Password Requirements:
-    - Minimum 12 characters
+    - Minimum 8 characters
     - At least one uppercase letter
     - At least one lowercase letter
     - At least one number
@@ -425,10 +425,10 @@ async def update_database_password(update: DatabasePasswordUpdate):
             raise HTTPException(status_code=404, detail=".env file not found")
 
         # Validate password strength (Pydantic already does this, but double-check)
-        if len(update.password) < 12:
+        if len(update.password) < 8:
             raise HTTPException(
                 status_code=400,
-                detail="Password must be at least 12 characters long"
+                detail="Password must be at least 8 characters long"
             )
 
         if not re.search(r'[A-Z]', update.password):
