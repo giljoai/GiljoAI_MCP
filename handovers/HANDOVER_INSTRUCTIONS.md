@@ -370,6 +370,84 @@ Closes #[issue number if applicable]"
 
 ---
 
+## Handover Completion Protocol
+
+**When a handover is COMPLETED, move it to the archive folder:**
+
+### Steps:
+
+1. **Update handover status** in Progress Updates section:
+   ```markdown
+   ### [Date] - [Agent/Session]
+   **Status:** Completed
+   **Work Done:**
+   - [All completed tasks]
+   - [All tests passed]
+   - [Final verification complete]
+
+   **Final Notes:**
+   - [Any lessons learned]
+   - [Future considerations]
+   ```
+
+2. **Create completed folder** if it doesn't exist:
+   ```bash
+   mkdir -p handovers/completed
+   ```
+
+3. **Move and rename the handover file:**
+   ```bash
+   # Format: [SEQUENCE]_HANDOVER_YYYYMMDD_[TASK_NAME]-C.md
+   # The "-C" suffix indicates COMPLETED
+
+   # Example:
+   mv handovers/0002_HANDOVER_20251012_REMOVE_LOCALHOST_BYPASS_COMPLETE_V3_UNIFICATION.md \
+      handovers/completed/0002_HANDOVER_20251012_REMOVE_LOCALHOST_BYPASS_COMPLETE_V3_UNIFICATION-C.md
+   ```
+
+4. **Commit the archive:**
+   ```bash
+   git add handovers/completed/
+   git commit -m "docs: Archive completed handover 0002 - Localhost bypass removal complete"
+   ```
+
+### Naming Convention for Completed Handovers:
+
+**Format:**
+```
+handovers/completed/[SEQUENCE]_HANDOVER_YYYYMMDD_[TASK_NAME]-C.md
+```
+
+**Examples:**
+- `handovers/completed/0001_HANDOVER_20251012_REMOVE_DYNAMIC_IP_DETECTION-C.md`
+- `handovers/completed/0002_HANDOVER_20251012_REMOVE_LOCALHOST_BYPASS_COMPLETE_V3_UNIFICATION-C.md`
+- `handovers/completed/0003_HANDOVER_20251013_INSTALLER_CORS_FIX-C.md`
+
+### Why Archive Completed Handovers?
+
+- ✅ Keeps `/handovers/` clean (active tasks only)
+- ✅ `-C` suffix clearly indicates completion
+- ✅ `/handovers/completed/` serves as implementation history
+- ✅ Easy to reference past solutions
+- ✅ Maintains chronological order (sequence numbers preserved)
+
+### Active vs Completed Handovers:
+
+**Active Handovers (`/handovers/`):**
+- Not Started
+- In Progress
+- Blocked
+- Ready for Testing
+
+**Completed Handovers (`/handovers/completed/`):**
+- Fully implemented
+- All tests passing
+- Committed to git
+- Documented in devlog
+- Archived with `-C` suffix
+
+---
+
 ## Cross-Platform Reminder
 
 **ALWAYS use pathlib.Path() for file operations:**
@@ -387,6 +465,7 @@ config_path = 'F:\\GiljoAI_MCP\\config.yaml'
 
 ## Final Checklist Before Completing Handover
 
+**Before Starting Work:**
 - [ ] Git status checked and documented
 - [ ] Relevant sub-agent profiles reviewed
 - [ ] Project resources referenced (/docs/sessions, /docs/devlog)
@@ -399,6 +478,15 @@ config_path = 'F:\\GiljoAI_MCP\\config.yaml'
 - [ ] Rollback plan documented
 - [ ] File naming convention followed
 - [ ] Progress tracking added to handover document
+
+**After Completing Work:**
+- [ ] All implementation phases completed
+- [ ] All tests passing (unit, integration, manual)
+- [ ] Code committed to git with descriptive message
+- [ ] Documentation updated (devlog, technical docs)
+- [ ] Progress Updates section marked as "Completed"
+- [ ] Handover file moved to `/handovers/completed/` with `-C` suffix
+- [ ] Archive commit created: `git commit -m "docs: Archive completed handover [SEQUENCE]"`
 
 ---
 
