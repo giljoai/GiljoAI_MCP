@@ -172,7 +172,7 @@ class TestOrchestratorIntegration:
             )
 
         assert handoff_result["success"] is True
-        assert analyzer_agent.status == "completed"
+        assert analyzer_agent.status == "database_initialized"
         assert implementer_agent.status == "active"
         assert mock_message.from_agent == "analyzer_1"
         assert mock_message.to_agent == "implementer_1"

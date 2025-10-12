@@ -149,7 +149,7 @@ class TestTaskTools:
         async with self.db_manager.get_session_async() as session:
             await ToolsTestHelper.create_test_task(session, self.project.id, "Task 1", "pending")
             await ToolsTestHelper.create_test_task(session, self.project.id, "Task 2", "in_progress")
-            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 3", "completed")
+            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 3", "database_initialized")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         list_tasks = registrar.get_registered_tool("list_tasks")
@@ -170,7 +170,7 @@ class TestTaskTools:
         async with self.db_manager.get_session_async() as session:
             await ToolsTestHelper.create_test_task(session, self.project.id, "Task 1", "pending")
             await ToolsTestHelper.create_test_task(session, self.project.id, "Task 2", "pending")
-            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 3", "completed")
+            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 3", "database_initialized")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         list_tasks = registrar.get_registered_tool("list_tasks")
@@ -291,7 +291,7 @@ class TestTaskTools:
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         update_task = registrar.get_registered_tool("update_task")
 
-        result = await update_task(task_id=str(uuid.uuid4()), status="completed")
+        result = await update_task(task_id=str(uuid.uuid4()), status="database_initialized")
 
         AssertionHelpers.assert_error_response(result, "Task not found")
 
@@ -306,8 +306,8 @@ class TestTaskTools:
         async with self.db_manager.get_session_async() as session:
             await ToolsTestHelper.create_test_task(session, self.project.id, "Task 1", "pending")
             await ToolsTestHelper.create_test_task(session, self.project.id, "Task 2", "in_progress")
-            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 3", "completed")
-            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 4", "completed")
+            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 3", "database_initialized")
+            await ToolsTestHelper.create_test_task(session, self.project.id, "Task 4", "database_initialized")
 
         register_task_tools(mock_server, self.db_manager, self.tenant_manager)
         get_summary = registrar.get_registered_tool("get_product_task_summary")
@@ -318,7 +318,7 @@ class TestTaskTools:
         assert result["summary"]["total_tasks"] == 4
         assert result["summary"]["pending"] == 1
         assert result["summary"]["in_progress"] == 1
-        assert result["summary"]["completed"] == 2
+        assert result["summary"]["database_initialized"] == 2
 
     # get_task_dependencies tests
     @pytest.mark.asyncio
@@ -423,7 +423,7 @@ class TestTaskTools:
 
         updates = [
             {"task_id": task1.id, "status": "in_progress", "priority": "high"},
-            {"task_id": task2.id, "status": "completed", "priority": "medium"},
+            {"task_id": task2.id, "status": "database_initialized", "priority": "medium"},
         ]
 
         result = await bulk_update(updates=updates)
@@ -447,7 +447,7 @@ class TestTaskTools:
 
         updates = [
             {"task_id": task1.id, "status": "in_progress"},
-            {"task_id": str(uuid.uuid4()), "status": "completed"},  # Invalid ID
+            {"task_id": str(uuid.uuid4()), "status": "database_initialized"},  # Invalid ID
         ]
 
         result = await bulk_update(updates=updates)
@@ -595,7 +595,7 @@ class TestTaskTools:
         result1 = await update_task(task_id=task.id, status="in_progress")
         AssertionHelpers.assert_success_response(result1)
 
-        result2 = await update_task(task_id=task.id, status="completed")
+        result2 = await update_task(task_id=task.id, status="database_initialized")
         AssertionHelpers.assert_success_response(result2)
 
         # Test that completed tasks can be reopened

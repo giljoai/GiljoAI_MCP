@@ -222,8 +222,6 @@ class SetupModeMiddleware(BaseHTTPMiddleware):
             "/api/setup/database",  # Database setup endpoints
             "/api/setup/reset",
             "/api/setup/detect-tools",
-            "/api/setup/generate-mcp-config",
-            "/api/setup/register-mcp",
             "/api/setup/test-mcp-connection",
             "/api/setup/configure-deployment-mode",
             "/api/setup/complete",

@@ -86,7 +86,7 @@ class TestOrchestratorNinetyPlusCoverage:
         # Complete without summary
         completed = await orchestrator.complete_project(project.id)
         assert completed.status == ProjectStatus.COMPLETED.value
-        assert completed.completed_at is not None
+        assert completed.database_initialized_at is not None
         # meta_data should exist but not have completion_summary
         assert completed.meta_data is not None
         assert "completion_summary" not in completed.meta_data

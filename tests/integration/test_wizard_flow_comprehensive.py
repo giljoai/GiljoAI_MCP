@@ -78,18 +78,18 @@ class TestLocalhostWizardFlow:
 
             mock_read_config.return_value = {
                 "installation": {"mode": "localhost"},
-                "setup": {"completed": False}
+                "setup": {"database_initialized": False}
             }
 
             mock_state = MagicMock()
-            mock_state.get_state.return_value = {"completed": False, "tools_enabled": []}
+            mock_state.get_state.return_value = {"database_initialized": False, "tools_enabled": []}
             mock_state_mgr.get_instance.return_value = mock_state
 
             response = client.get("/api/setup/status")
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
-            assert data["completed"] is False
+            assert data["database_initialized"] is False
             assert data["database_configured"] is True
             assert data["network_mode"] == "localhost"
 
@@ -219,11 +219,11 @@ class TestLANWizardFlow:
 
             mock_read_config.return_value = {
                 "installation": {"mode": "lan"},
-                "setup": {"completed": False}
+                "setup": {"database_initialized": False}
             }
 
             mock_state = MagicMock()
-            mock_state.get_state.return_value = {"completed": False, "tools_enabled": []}
+            mock_state.get_state.return_value = {"database_initialized": False, "tools_enabled": []}
             mock_state_mgr.get_instance.return_value = mock_state
 
             response = client.get("/api/setup/status")

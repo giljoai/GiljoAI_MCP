@@ -226,13 +226,13 @@ async def test_update_task_admin_can_update_any(async_client: AsyncClient, admin
     """Test that admins can update any task in their tenant"""
     response = await async_client.patch(
         f"/api/v1/tasks/{other_user_task.id}",
-        json={"status": "completed"},
+        json={"status": "database_initialized"},
         cookies={"access_token": admin_user.token}
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "completed"
+    assert data["status"] == "database_initialized"
 
 
 @pytest.mark.asyncio
@@ -491,7 +491,7 @@ async def test_list_tasks_status_filter(async_client: AsyncClient, test_user: Us
         project_id=test_project.id,
         product_id=test_product.id,
         tenant_key="test_tenant",
-        status="completed",
+        status="database_initialized",
         created_by_user_id=test_user.id
     )
     db_session.add_all([pending_task, completed_task])

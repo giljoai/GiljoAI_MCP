@@ -439,13 +439,13 @@ class TestACIDCompliance:
         # Valid transitions
         valid_tests = [
             ("pending", "acknowledged"),
-            ("acknowledged", "completed"),
+            ("acknowledged", "database_initialized"),
             ("failed", "pending"),  # Retry
         ]
 
         # Invalid transitions
         invalid_tests = [
-            ("completed", "pending"),  # Can't restart completed
+            ("database_initialized", "pending"),  # Can't restart completed
             ("dead_letter", "pending"),  # Terminal state
         ]
 
@@ -608,7 +608,7 @@ class TestMessageQueueErrorHandling:
         session_mock = db_manager.get_session.return_value.__aenter__.return_value
 
         # Create message with invalid status for processing
-        invalid_msg = Mock(id="invalid-123", status="completed", meta_data={})
+        invalid_msg = Mock(id="invalid-123", status="database_initialized", meta_data={})
 
         result_mock = Mock()
         result_mock.scalar_one_or_none.return_value = invalid_msg
