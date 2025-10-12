@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_current_user, require_admin, get_db_session
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.models import APIKey, User
 
@@ -34,14 +34,17 @@ router = APIRouter()
 
 # Pydantic Models for Request/Response
 
+
 class LoginRequest(BaseModel):
     """Login request with username and password"""
+
     username: str = Field(..., min_length=3, max_length=64)
     password: str = Field(..., min_length=1)  # Allow default "admin" password (5 chars)
 
 
 class LoginResponse(BaseModel):
     """Login response with user info"""
+
     message: str
     username: str
     role: str
@@ -50,11 +53,13 @@ class LoginResponse(BaseModel):
 
 class LogoutResponse(BaseModel):
     """Logout response"""
+
     message: str
 
 
 class UserProfileResponse(BaseModel):
     """User profile response"""
+
     id: str
     username: str
     email: Optional[str]
@@ -68,6 +73,7 @@ class UserProfileResponse(BaseModel):
 
 class APIKeyResponse(BaseModel):
     """API key response (masked for security)"""
+
     id: str
     name: str
     key_prefix: str
@@ -80,12 +86,14 @@ class APIKeyResponse(BaseModel):
 
 class APIKeyCreateRequest(BaseModel):
     """Request to create new API key"""
+
     name: str = Field(..., min_length=3, max_length=255, description="Description of API key purpose")
     permissions: List[str] = Field(default=["*"], description="List of permissions (default: all)")
 
 
 class APIKeyCreateResponse(BaseModel):
     """Response after creating API key (includes plaintext key ONCE)"""
+
     id: str
     name: str
     api_key: str  # Plaintext key - only shown once!
@@ -95,6 +103,7 @@ class APIKeyCreateResponse(BaseModel):
 
 class APIKeyRevokeResponse(BaseModel):
     """Response after revoking API key"""
+
     id: str
     name: str
     message: str
@@ -102,6 +111,7 @@ class APIKeyRevokeResponse(BaseModel):
 
 class RegisterUserRequest(BaseModel):
     """Request to register new user (admin only)"""
+
     username: str = Field(..., min_length=3, max_length=64)
     password: str = Field(..., min_length=8)
     email: Optional[EmailStr] = None
@@ -119,6 +129,7 @@ class RegisterUserRequest(BaseModel):
 
 class RegisterUserResponse(BaseModel):
     """Response after registering new user"""
+
     id: str
     username: str
     email: Optional[str]
@@ -129,29 +140,31 @@ class RegisterUserResponse(BaseModel):
 
 class PasswordChangeRequest(BaseModel):
     """Request to change password from default"""
+
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
 
-    @field_validator('new_password')
+    @field_validator("new_password")
     @classmethod
     def validate_password_strength(cls, v):
         """Validate password meets security requirements"""
         if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters')
+            raise ValueError("Password must be at least 8 characters")
         if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least 1 uppercase letter')
+            raise ValueError("Password must contain at least 1 uppercase letter")
         if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least 1 lowercase letter')
+            raise ValueError("Password must contain at least 1 lowercase letter")
         if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least 1 number')
-        if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in v):
-            raise ValueError('Password must contain at least 1 special character')
+            raise ValueError("Password must contain at least 1 number")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
+            raise ValueError("Password must contain at least 1 special character")
         return v
 
 
 class PasswordChangeResponse(BaseModel):
     """Response after changing password"""
+
     success: bool
     message: str
     token: str
@@ -160,11 +173,10 @@ class PasswordChangeResponse(BaseModel):
 
 # Auth Endpoints
 
+
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
 async def login(
-    request: LoginRequest = Body(...),
-    response: Response = None,
-    db: AsyncSession = Depends(get_db_session)
+    request: LoginRequest = Body(...), response: Response = None, db: AsyncSession = Depends(get_db_session)
 ):
     """
     Login with username/password, returns JWT in httpOnly cookie.
@@ -194,41 +206,33 @@ async def login(
 
     if not user or not user.is_active:
         logger.warning(f"Login failed for username: {request.username} (user not found or inactive)")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     # Verify password
     if not bcrypt.verify(request.password, user.password_hash):
         logger.warning(f"Login failed for username: {request.username} (invalid password)")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     # Check if default password is still active (for admin user)
     from src.giljo_mcp.models import SetupState
+
     stmt_setup = select(SetupState).where(SetupState.tenant_key == user.tenant_key)
     result_setup = await db.execute(stmt_setup)
     setup_state = result_setup.scalar_one_or_none()
 
-    if setup_state and setup_state.default_password_active and user.username == 'admin':
+    if setup_state and setup_state.default_password_active and user.username == "admin":
         logger.warning(f"Login blocked for {user.username}: default password must be changed")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
                 "error": "must_change_password",
-                "message": "You must change the default password before proceeding"
-            }
+                "message": "You must change the default password before proceeding",
+            },
         )
 
     # Generate JWT token
     token = JWTManager.create_access_token(
-        user_id=user.id,
-        username=user.username,
-        role=user.role,
-        tenant_key=user.tenant_key
+        user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
     )
 
     # Set httpOnly cookie
@@ -238,7 +242,7 @@ async def login(
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
-        max_age=86400  # 24 hours
+        max_age=86400,  # 24 hours
     )
 
     # Update last_login
@@ -247,12 +251,7 @@ async def login(
 
     logger.info(f"User logged in successfully: {user.username} (role: {user.role})")
 
-    return LoginResponse(
-        message="Login successful",
-        username=user.username,
-        role=user.role,
-        tenant_key=user.tenant_key
-    )
+    return LoginResponse(message="Login successful", username=user.username, role=user.role, tenant_key=user.tenant_key)
 
 
 @router.post("/logout", response_model=LogoutResponse, tags=["auth"])
@@ -277,29 +276,24 @@ async def logout(response: Response):
 
 
 @router.get("/me", tags=["auth"])
-async def get_me(
-    request: Request,
-    current_user: Optional[User] = Depends(get_current_user)
-):
+async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
     """
-    Get current user profile from JWT or setup mode status.
+    Get current user profile or return 401 if not authenticated.
 
-    This endpoint returns:
-    - Setup mode status if system is in setup mode
-    - User profile if authenticated
-    - Localhost dev user if in localhost mode (127.0.0.1) and NOT in setup mode
+    This endpoint returns the authenticated user's profile information.
+    Uses optional authentication to avoid raising exceptions during
+    fresh installation (cleaner console output).
 
     Args:
-        request: FastAPI request (to check setup mode)
-        current_user: User from JWT token or None (localhost bypass)
+        request: FastAPI request
+        db: Database session
 
     Returns:
-        User profile data or setup mode status
+        User profile data if authenticated, 401 JSON response otherwise
     """
     # Check if system is in setup mode
     setup_mode = False
     try:
-        # Get config from app state
         config = getattr(request.app.state, "api_state", None)
         if config:
             config = getattr(config, "config", None)
@@ -308,29 +302,31 @@ async def get_me(
     except (AttributeError, TypeError) as e:
         logger.warning(f"Could not check setup mode in /me endpoint: {e}")
 
-    # If in setup mode, return setup mode status instead of fake user
+    # If in setup mode, return setup mode status
     if setup_mode:
         return JSONResponse(
             status_code=200,
             content={
                 "setup_mode": True,
                 "message": "System in setup mode - authentication not available",
-                "requires_setup": True
-            }
+                "requires_setup": True,
+            },
         )
 
-    # Localhost mode bypass - return default dev user (only when NOT in setup mode)
+    # Try to get current user (optional - doesn't raise exceptions)
+    from src.giljo_mcp.auth.dependencies import get_current_user_optional
+
+    current_user = await get_current_user_optional(
+        request=request,
+        access_token=request.cookies.get("access_token"),
+        x_api_key=request.headers.get("x-api-key"),
+        db=db,
+    )
+
+    # If no authenticated user, return clean 401 JSON response
     if current_user is None:
-        return UserProfileResponse(
-            id="00000000-0000-0000-0000-000000000000",
-            username="localhost",
-            email=None,
-            full_name="Localhost Developer",
-            role="admin",
-            tenant_key="default",
-            is_active=True,
-            created_at=datetime.now(timezone.utc).isoformat(),
-            last_login=None
+        return JSONResponse(
+            status_code=401, content={"detail": "Not authenticated. Please login or provide a valid API key."}
         )
 
     # Return authenticated user profile
@@ -343,14 +339,13 @@ async def get_me(
         tenant_key=current_user.tenant_key,
         is_active=current_user.is_active,
         created_at=current_user.created_at.isoformat(),
-        last_login=current_user.last_login.isoformat() if current_user.last_login else None
+        last_login=current_user.last_login.isoformat() if current_user.last_login else None,
     )
 
 
 @router.get("/api-keys", response_model=List[APIKeyResponse], tags=["auth"])
 async def list_api_keys(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     List all API keys for current user.
@@ -379,7 +374,7 @@ async def list_api_keys(
             is_active=key.is_active,
             created_at=key.created_at.isoformat(),
             last_used=key.last_used.isoformat() if key.last_used else None,
-            revoked_at=key.revoked_at.isoformat() if key.revoked_at else None
+            revoked_at=key.revoked_at.isoformat() if key.revoked_at else None,
         )
         for key in api_keys
     ]
@@ -389,7 +384,7 @@ async def list_api_keys(
 async def create_api_key(
     request: APIKeyCreateRequest = Body(...),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Generate a new API key for current user.
@@ -419,7 +414,7 @@ async def create_api_key(
         key_prefix=key_prefix,
         permissions=request.permissions,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     db.add(new_key)
@@ -433,15 +428,13 @@ async def create_api_key(
         name=new_key.name,
         api_key=api_key,  # Plaintext key - only shown once!
         key_prefix=key_prefix,
-        message="API key created successfully. Store this key securely - it will not be shown again!"
+        message="API key created successfully. Store this key securely - it will not be shown again!",
     )
 
 
 @router.delete("/api-keys/{key_id}", response_model=APIKeyRevokeResponse, tags=["auth"])
 async def revoke_api_key(
-    key_id: UUID,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    key_id: UUID, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Revoke an API key.
@@ -466,10 +459,7 @@ async def revoke_api_key(
     api_key = result.scalar_one_or_none()
 
     if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="API key not found or access denied"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found or access denied")
 
     # Revoke key
     api_key.is_active = False
@@ -478,18 +468,14 @@ async def revoke_api_key(
 
     logger.info(f"API key revoked: {api_key.name} (user: {current_user.username})")
 
-    return APIKeyRevokeResponse(
-        id=str(api_key.id),
-        name=api_key.name,
-        message="API key revoked successfully"
-    )
+    return APIKeyRevokeResponse(id=str(api_key.id), name=api_key.name, message="API key revoked successfully")
 
 
 @router.post("/register", response_model=RegisterUserResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def register_user(
     request: RegisterUserRequest = Body(...),
     current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     Register a new user (admin only).
@@ -515,8 +501,7 @@ async def register_user(
 
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Username '{request.username}' already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Username '{request.username}' already exists"
         )
 
     # Check if email already exists (if provided)
@@ -527,8 +512,7 @@ async def register_user(
 
         if existing_email:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email '{request.email}' already exists"
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Email '{request.email}' already exists"
             )
 
     # Hash password
@@ -543,7 +527,7 @@ async def register_user(
         role=request.role,
         tenant_key=request.tenant_key,
         is_active=True,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
     db.add(new_user)
@@ -558,15 +542,13 @@ async def register_user(
         email=new_user.email,
         role=new_user.role,
         tenant_key=new_user.tenant_key,
-        message="User registered successfully"
+        message="User registered successfully",
     )
 
 
 @router.post("/change-password", response_model=PasswordChangeResponse, tags=["auth"])
 async def change_password(
-    request_body: PasswordChangeRequest = Body(...),
-    request: Request = None,
-    db: AsyncSession = Depends(get_db_session)
+    request_body: PasswordChangeRequest = Body(...), request: Request = None, db: AsyncSession = Depends(get_db_session)
 ):
     """
     Change password from default admin/admin.
@@ -595,29 +577,20 @@ async def change_password(
 
     # Validate passwords match
     if request_body.new_password != request_body.confirm_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Passwords do not match"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
 
     # Get admin user
-    stmt = select(User).where(User.username == 'admin')
+    stmt = select(User).where(User.username == "admin")
     result = await db.execute(stmt)
     admin_user = result.scalar_one_or_none()
 
     if not admin_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Admin user not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found")
 
     # Verify current password
     if not bcrypt.verify(request_body.current_password, admin_user.password_hash):
         logger.warning("Password change failed: incorrect current password")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Current password is incorrect"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
 
     # Hash new password
     new_password_hash = bcrypt.hash(request_body.new_password)
@@ -636,13 +609,14 @@ async def change_password(
     else:
         # Create setup state if it doesn't exist
         from uuid import uuid4
+
         setup_state = SetupState(
             id=str(uuid4()),
             tenant_key=admin_user.tenant_key,
             database_initialized=True,
             default_password_active=False,
             password_changed_at=datetime.now(timezone.utc),
-            setup_version='3.0.0'
+            setup_version="3.0.0",
         )
         db.add(setup_state)
 
@@ -650,10 +624,7 @@ async def change_password(
 
     # Generate JWT token for immediate login
     token = JWTManager.create_access_token(
-        user_id=admin_user.id,
-        username=admin_user.username,
-        role=admin_user.role,
-        tenant_key=admin_user.tenant_key
+        user_id=admin_user.id, username=admin_user.username, role=admin_user.role, tenant_key=admin_user.tenant_key
     )
 
     logger.info(f"Password changed successfully for user: {admin_user.username}")
@@ -666,6 +637,6 @@ async def change_password(
             "id": str(admin_user.id),
             "username": admin_user.username,
             "role": admin_user.role,
-            "tenant_key": admin_user.tenant_key
-        }
+            "tenant_key": admin_user.tenant_key,
+        },
     )
