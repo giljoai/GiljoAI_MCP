@@ -1,0 +1,414 @@
+# Handover Instructions for GiljoAI MCP Development
+
+## Purpose
+This document provides standardized instructions for creating effective handovers between development agents/sessions working on the GiljoAI MCP project.
+
+---
+
+## Pre-Handover Checklist
+
+### 1. Git Status Check
+**ALWAYS check git status before creating a handover:**
+
+```bash
+git status
+git diff
+git log --oneline -5
+```
+
+**Document:**
+- Current branch
+- Uncommitted changes
+- Recent commits relevant to the task
+- Any merge conflicts or pending PRs
+
+### 2. Review Sub-Agent Profiles
+**Location:** `.claude/agent_profiles/`
+
+**Read the relevant profiles:**
+- `orchestrator-coordinator.md` - Project planning and multi-agent coordination
+- `system-architect.md` - Architecture decisions and system design
+- `database-expert.md` - Database schema and optimization
+- `tdd-implementor.md` - Test-driven development implementation
+- `network-security-engineer.md` - Network configuration and security
+- `installation-flow-agent.md` - Installation and deployment
+- `frontend-tester.md` - Frontend testing and validation
+- `ux-designer.md` - UI/UX design and accessibility
+- `backend-integration-tester.md` - Backend integration testing
+- `documentation-manager.md` - Documentation creation and maintenance
+- `deep-researcher.md` - Research and investigation
+
+**Purpose:** Understanding which sub-agents should handle specific aspects of the handover task.
+
+### 3. Project Resources Awareness
+
+**Essential Documentation Folders:**
+
+**a) `/docs/sessions/`**
+- Previous agent session memories
+- Context from earlier work
+- Lessons learned
+- Known issues and solutions
+
+**b) `/docs/devlog/`**
+- Development timeline
+- Feature implementation logs
+- Architectural decision records
+- Completion reports
+
+**c) `/docs/guides/`**
+- Implementation guides
+- Best practices
+- Architecture patterns
+
+**d) `/docs/manuals/`**
+- MCP tools manual
+- API reference
+- Testing manuals
+
+**e) `/handovers/`**
+- Previous handover documents
+- Active task assignments
+
+### 4. Serena MCP Tools
+
+**Serena MCP Server provides advanced code navigation:**
+
+Available tools:
+- `mcp__serena__find_symbol` - Find code symbols by name path
+- `mcp__serena__get_symbols_overview` - Get file overview
+- `mcp__serena__find_referencing_symbols` - Find references
+- `mcp__serena__replace_symbol_body` - Edit code symbols
+- `mcp__serena__search_for_pattern` - Pattern search
+- `mcp__serena__read_memory` - Read project memories
+- `mcp__serena__write_memory` - Write project memories
+
+**Use Serena for:**
+- Understanding codebase structure
+- Finding related code sections
+- Analyzing dependencies
+- Researching implementation patterns
+
+### 5. Git Repository Research
+
+**CRITICAL: Always check GitHub for:**
+- Open issues related to the task
+- Recent PRs that may affect the work
+- Contributor discussions
+- Release notes and changelogs
+
+**Repository:** `https://github.com/patrik-giljoai/GiljoAI-MCP`
+
+---
+
+## Handover Document Structure
+
+Every handover document MUST contain:
+
+### 1. Handover Metadata
+
+```markdown
+# Handover: [Task Name]
+
+**Date:** YYYY-MM-DD
+**From Agent:** [Agent name/session ID]
+**To Agent:** [Target agent profile or "Next Session"]
+**Priority:** [Critical | High | Medium | Low]
+**Estimated Complexity:** [Hours/Days]
+**Status:** [Not Started | In Progress | Blocked | Ready for Testing]
+```
+
+### 2. Task Summary
+
+**Brief Overview (2-3 sentences):**
+- What needs to be done
+- Why it's important
+- Expected outcome
+
+### 3. Context and Background
+
+**Include:**
+- Previous discussion that led to this task
+- Related issues or features
+- Architectural decisions already made
+- User requirements and constraints
+
+### 4. Technical Details
+
+**Files to Modify:**
+- List all files that need changes
+- Explain what changes are needed in each file
+- Note any file dependencies
+
+**Key Code Sections:**
+- Reference specific line numbers
+- Include relevant code snippets
+- Explain current implementation
+
+**Database Changes:**
+- Schema modifications needed
+- Migration strategy
+- Data impact assessment
+
+**API Changes:**
+- New endpoints or modifications
+- Request/response format changes
+- Authentication/authorization impact
+
+**Frontend Changes:**
+- UI components affected
+- State management updates
+- WebSocket integration needs
+
+### 5. Implementation Plan
+
+**Step-by-Step Approach:**
+1. Phase 1: [Description]
+   - Specific actions
+   - Expected outcome
+   - Testing criteria
+
+2. Phase 2: [Description]
+   - Specific actions
+   - Expected outcome
+   - Testing criteria
+
+3. Phase 3: [Description]
+   - Specific actions
+   - Expected outcome
+   - Testing criteria
+
+**Recommended Sub-Agent:**
+- Which agent profile is best suited
+- Why this agent should handle it
+
+### 6. Testing Requirements
+
+**Unit Tests:**
+- Which tests need to be written
+- Test coverage expectations
+
+**Integration Tests:**
+- Component integration testing
+- API endpoint testing
+
+**Manual Testing:**
+- Step-by-step manual test procedure
+- Expected results for each step
+- Known edge cases
+
+### 7. Dependencies and Blockers
+
+**Dependencies:**
+- Tasks that must complete first
+- External library requirements
+- Infrastructure needs
+
+**Known Blockers:**
+- Issues preventing progress
+- Questions needing answers
+- Decisions requiring user input
+
+### 8. Success Criteria
+
+**Definition of Done:**
+- Feature works as specified
+- All tests pass
+- Code reviewed and approved
+- Documentation updated
+- Deployed/merged to appropriate branch
+
+### 9. Rollback Plan
+
+**If Things Go Wrong:**
+- How to revert changes
+- Backup/restore procedures
+- Fallback configuration
+
+### 10. Additional Resources
+
+**Links:**
+- Related GitHub issues
+- Documentation references
+- External resources
+- Similar implementations
+
+---
+
+## Handover File Naming Convention
+
+**Format:**
+```
+[SEQUENCE]_HANDOVER_YYYYMMDD_[TASK_NAME].md
+```
+
+**Sequential Prefix Rules:**
+- Use 4-digit zero-padded sequence number: `0001`, `0002`, `0003`, etc.
+- Sequence numbers are project-wide and increment for each new handover
+- Check `/handovers/` directory for the highest existing number before creating new handover
+- Sequence ensures chronological ordering and easy reference
+
+**Examples:**
+- `0001_HANDOVER_20251012_REMOVE_DYNAMIC_IP_DETECTION.md`
+- `0002_HANDOVER_20251012_ADD_NETWORK_SETTINGS_UI.md`
+- `0003_HANDOVER_20251013_INSTALLER_CORS_FIX.md`
+
+**How to Determine Next Sequence Number:**
+```bash
+# List existing handovers to find highest number
+ls handovers/ | grep "^[0-9]" | sort -n | tail -1
+
+# Next handover should use: [highest + 1]
+```
+
+---
+
+## Agent Communication Protocol
+
+### When Creating a Handover
+
+**DO:**
+- ✅ Be explicit and detailed
+- ✅ Include code snippets and line numbers
+- ✅ Document your reasoning
+- ✅ List open questions
+- ✅ Provide testing steps
+- ✅ Reference related files and docs
+
+**DON'T:**
+- ❌ Assume knowledge of previous discussions
+- ❌ Use vague language ("fix the thing", "update that file")
+- ❌ Skip testing requirements
+- ❌ Ignore edge cases
+- ❌ Forget to document blockers
+
+### When Receiving a Handover
+
+**DO:**
+- ✅ Read the entire handover document first
+- ✅ Check git status and recent changes
+- ✅ Review referenced documentation
+- ✅ Use Serena MCP to explore codebase
+- ✅ Ask questions if anything is unclear
+- ✅ Update the handover with your progress
+
+**DON'T:**
+- ❌ Start coding immediately
+- ❌ Ignore the implementation plan
+- ❌ Skip the context section
+- ❌ Make assumptions about requirements
+- ❌ Forget to test thoroughly
+
+---
+
+## Handover Update Protocol
+
+**As work progresses, update the handover document:**
+
+```markdown
+## Progress Updates
+
+### [Date] - [Agent/Session]
+**Status:** [In Progress | Completed | Blocked]
+**Work Done:**
+- [Specific changes made]
+- [Tests added/passed]
+- [Issues discovered]
+
+**Next Steps:**
+- [What's remaining]
+- [New blockers]
+- [Questions for user]
+```
+
+---
+
+## Special Cases
+
+### Blocked Handovers
+
+If blocked, document:
+1. **What's blocking:** Specific blocker description
+2. **Who can unblock:** User decision, external dependency, etc.
+3. **Workarounds:** Temporary solutions if available
+4. **Impact:** What can't proceed until unblocked
+
+### Emergency Handovers
+
+For critical bugs or production issues:
+1. Use priority: **CRITICAL**
+2. Include reproduction steps
+3. Document impact on users
+4. Provide immediate workaround if available
+5. Escalation path
+
+### Research Handovers
+
+When research is needed before implementation:
+1. Define research questions
+2. List sources to investigate
+3. Document findings format
+4. Set research scope/time limit
+
+---
+
+## Git Commit Standards for Handover Work
+
+```bash
+# When completing a handover task
+git add .
+git commit -m "feat: [task name] - [brief description]
+
+Completes handover: handovers/HANDOVER_YYYYMMDD_TASK_NAME.md
+
+- [Bullet point of major change 1]
+- [Bullet point of major change 2]
+- [Bullet point of major change 3]
+
+Closes #[issue number if applicable]"
+```
+
+---
+
+## Cross-Platform Reminder
+
+**ALWAYS use pathlib.Path() for file operations:**
+
+```python
+# ✅ CORRECT
+from pathlib import Path
+config_path = Path.cwd() / 'config.yaml'
+
+# ❌ WRONG
+config_path = 'F:\\GiljoAI_MCP\\config.yaml'
+```
+
+---
+
+## Final Checklist Before Completing Handover
+
+- [ ] Git status checked and documented
+- [ ] Relevant sub-agent profiles reviewed
+- [ ] Project resources referenced (/docs/sessions, /docs/devlog)
+- [ ] Serena MCP tools used for code exploration
+- [ ] GitHub repository checked for related issues/PRs
+- [ ] Handover document complete with all sections
+- [ ] Implementation plan clear and actionable
+- [ ] Testing requirements specified
+- [ ] Success criteria defined
+- [ ] Rollback plan documented
+- [ ] File naming convention followed
+- [ ] Progress tracking added to handover document
+
+---
+
+## Questions?
+
+If anything is unclear about the handover process, ask the user or check:
+- `/docs/README_FIRST.md` - Project navigation
+- `/CLAUDE.md` - Development environment guidance
+- Previous handovers in `/handovers/` - Examples and patterns
+
+---
+
+**Remember:** A good handover enables the next agent to succeed. Take the time to be thorough.
