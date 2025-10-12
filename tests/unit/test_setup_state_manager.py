@@ -29,7 +29,7 @@ class TestBootstrapPhase:
             state = manager.get_state()
 
             assert state is not None
-            assert state.get("completed") is False
+            assert state.get("database_initialized") is False
             assert state.get("tenant_key") == "test_tenant"
             assert state.get("setup_version") is None
 
@@ -49,10 +49,10 @@ class TestBootstrapPhase:
             with open(state_file, 'r') as f:
                 data = json.load(f)
 
-            assert data["completed"] is True
+            assert data["database_initialized"] is True
             assert data["setup_version"] == "2.0.0"
             assert data["tenant_key"] == "test_tenant"
-            assert "completed_at" in data
+            assert "database_initialized_at" in data
 
     def test_file_permissions_secure(self, tmp_path):
         """File should be created with 0600 permissions (owner read/write only)"""
@@ -119,7 +119,7 @@ class TestBootstrapPhase:
             state = manager.get_state()
 
             # Should return default state
-            assert state.get("completed") is False
+            assert state.get("database_initialized") is False
 
 
 class TestDatabasePhase:
@@ -136,8 +136,8 @@ class TestDatabasePhase:
         # Create database state
         db_state = setup_state_factory(
             tenant_key=tenant_key,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="2.0.0"
         )
         sync_db_session.commit()
@@ -149,7 +149,7 @@ class TestDatabasePhase:
         )
         state = manager.get_state()
 
-        assert state["completed"] is True
+        assert state["database_initialized"] is True
         assert state["setup_version"] == "2.0.0"
         assert state["tenant_key"] == tenant_key
 
@@ -161,7 +161,7 @@ class TestDatabasePhase:
         tenant_key = f"db_tenant_mark_{uuid4().hex[:8]}"
 
         # Create incomplete state
-        db_state = setup_state_factory(tenant_key=tenant_key, completed=False)
+        db_state = setup_state_factory(tenant_key=tenant_key, database_initialized=False)
         sync_db_session.commit()
 
         # Mark as completed
@@ -173,9 +173,9 @@ class TestDatabasePhase:
 
         # Refresh and verify
         sync_db_session.refresh(db_state)
-        assert db_state.completed is True
+        assert db_state.database_initialized is True
         assert db_state.setup_version == "2.0.0"
-        assert db_state.completed_at is not None
+        assert db_state.database_initialized_at is not None
 
     def test_database_creates_row_if_missing(self, sync_db_session):
         """If no database row exists, create one when marking completed"""
@@ -194,7 +194,7 @@ class TestDatabasePhase:
         # Verify row was created
         state = SetupState.get_by_tenant(sync_db_session, tenant_key)
         assert state is not None
-        assert state.completed is True
+        assert state.database_initialized is True
         assert state.setup_version == "2.0.0"
 
 
@@ -219,7 +219,7 @@ class TestHybridFallback:
             manager.mark_completed(setup_version="2.0.0")
             state = manager.get_state()
 
-            assert state["completed"] is True
+            assert state["database_initialized"] is True
             assert state["setup_version"] == "2.0.0"
 
     def test_migrate_from_file_to_database(self, tmp_path, sync_db_session):
@@ -248,7 +248,7 @@ class TestHybridFallback:
             from src.giljo_mcp.models import SetupState
             state = SetupState.get_by_tenant(sync_db_session, "migrate_tenant")
             assert state is not None
-            assert state.completed is True
+            assert state.database_initialized is True
             assert state.setup_version == "1.0.0"
 
     def test_prefer_database_over_file(self, tmp_path, sync_db_session, setup_state_factory):
@@ -267,8 +267,8 @@ class TestHybridFallback:
             # Create database state (different version)
             db_state = setup_state_factory(
                 tenant_key=tenant_key,
-                completed=True,
-                completed_at=datetime.utcnow(),
+                database_initialized=True,
+                database_initialized_at=datetime.utcnow(),
                 setup_version="2.0.0"
             )
             sync_db_session.commit()
@@ -296,8 +296,8 @@ class TestVersionTracking:
 
         db_state = setup_state_factory(
             tenant_key=tenant_key,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="1.0.0"
         )
         sync_db_session.commit()
@@ -320,8 +320,8 @@ class TestVersionTracking:
 
         db_state = setup_state_factory(
             tenant_key=tenant_key,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="2.0.0"
         )
         sync_db_session.commit()
@@ -344,8 +344,8 @@ class TestVersionTracking:
 
         db_state = setup_state_factory(
             tenant_key=tenant_key,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="1.0.0",
             database_version="17"
         )
@@ -374,8 +374,8 @@ class TestVersionTracking:
 
         db_state = setup_state_factory(
             tenant_key=tenant_key,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="1.0.0",
             database_version="17"
         )
@@ -414,7 +414,7 @@ class TestStateMachine:
         manager.update_state(install_mode="localhost")
         state = manager.get_state()
 
-        assert state["completed"] is False
+        assert state["database_initialized"] is False
         assert state["install_mode"] == "localhost"
 
     def test_transition_in_progress_to_completed(self, sync_db_session, setup_state_factory):
@@ -426,7 +426,7 @@ class TestStateMachine:
 
         db_state = setup_state_factory(
             tenant_key=tenant_key,
-            completed=False,
+            database_initialized=False,
             install_mode="localhost"
         )
         sync_db_session.commit()
@@ -445,8 +445,8 @@ class TestStateMachine:
         # Refresh to get updated data
         sync_db_session.refresh(db_state)
         state = manager.get_state()
-        assert state["completed"] is True
-        assert db_state.completed is True
+        assert state["database_initialized"] is True
+        assert db_state.database_initialized is True
 
     def test_validation_state_tracking(self, sync_db_session, setup_state_factory):
         """Track validation state through setup process"""
@@ -506,8 +506,8 @@ class TestMultiTenantIsolation:
         # Create state for tenant1
         db_state = setup_state_factory(
             tenant_key=tenant1,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="1.0.0"
         )
         sync_db_session.commit()
@@ -518,7 +518,7 @@ class TestMultiTenantIsolation:
 
         # Should get default state, not tenant1's state
         assert state2["tenant_key"] == tenant2
-        assert state2["completed"] is False
+        assert state2["database_initialized"] is False
         assert state2["setup_version"] is None
 
 
@@ -622,7 +622,7 @@ class TestConcurrentAccess:
             # Final state should be valid (one of the versions)
             manager = SetupStateManager(tenant_key="concurrent_tenant")
             state = manager.get_state()
-            assert state["completed"] is True
+            assert state["database_initialized"] is True
             assert state["setup_version"] in [f"{i}.0.0" for i in range(5)]
 
 
@@ -662,8 +662,8 @@ class TestConfigSnapshot:
 
         db_state = setup_state_factory(
             tenant_key=tenant_key,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="2.0.0",
             config_snapshot=config_data
         )
@@ -689,8 +689,8 @@ class TestResetState:
 
         db_state = setup_state_factory(
             tenant_key="reset_tenant",
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version="2.0.0"
         )
         sync_db_session.commit()

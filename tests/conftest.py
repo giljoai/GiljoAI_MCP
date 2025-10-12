@@ -537,7 +537,7 @@ def setup_state_factory(sync_db_session):
     Factory for creating test setup states.
 
     Usage:
-        state = setup_state_factory(tenant_key="test", completed=True)
+        state = setup_state_factory(tenant_key="test", database_initialized=True)
     """
     from uuid import uuid4
 
@@ -560,7 +560,7 @@ def setup_state_factory(sync_db_session):
         # Set defaults if not provided
         defaults = {
             "id": str(uuid4()),
-            "completed": False,
+            "database_initialized": False,
             "features_configured": {},
             "tools_enabled": [],
             "validation_passed": True,
@@ -587,7 +587,7 @@ def completed_setup_state(sync_db_session, setup_state_factory):
     Create a completed setup state for testing.
 
     This fixture provides a fully configured setup state with:
-    - completed=True
+    - database_initialized=True
     - setup_version set
     - features configured
     - validation passed
@@ -596,8 +596,8 @@ def completed_setup_state(sync_db_session, setup_state_factory):
 
     state = setup_state_factory(
         tenant_key="completed_tenant",
-        completed=True,
-        completed_at=datetime.utcnow(),
+        database_initialized=True,
+        database_initialized_at=datetime.utcnow(),
         setup_version="2.0.0",
         database_version="18",
         python_version="3.11",
@@ -618,14 +618,14 @@ def incomplete_setup_state(sync_db_session, setup_state_factory):
     Create an incomplete setup state for testing.
 
     This fixture provides a setup state with:
-    - completed=False
+    - database_initialized=False
     - No version info
     - Minimal configuration
     - Validation warnings
     """
     state = setup_state_factory(
         tenant_key="incomplete_tenant",
-        completed=False,
+        database_initialized=False,
         validation_warnings=[
             {"message": "Database not fully configured", "timestamp": "2025-01-01T00:00:00"}
         ],
@@ -646,7 +646,7 @@ def failed_validation_setup_state(sync_db_session, setup_state_factory):
     """
     state = setup_state_factory(
         tenant_key="failed_tenant",
-        completed=False,
+        database_initialized=False,
         validation_passed=False,
         validation_failures=[
             {"message": "PostgreSQL connection failed", "timestamp": "2025-01-01T00:00:00"},

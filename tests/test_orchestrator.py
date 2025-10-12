@@ -94,7 +94,7 @@ class TestProjectLifecycle:
         completed = await orchestrator.complete_project(project.id, summary="Project completed successfully")
 
         assert completed.status == ProjectStatus.COMPLETED.value
-        assert completed.completed_at is not None
+        assert completed.database_initialized_at is not None
         assert completed.meta_data["completion_summary"] == "Project completed successfully"
         assert project.id not in orchestrator._active_projects
         assert project.id not in orchestrator._context_monitors

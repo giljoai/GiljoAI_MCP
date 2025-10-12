@@ -85,7 +85,7 @@ def fresh_config_file(tmp_path, monkeypatch):
             }
         },
         "setup": {
-            "completed": False,  # Start uncompleted - wizard will complete it
+            "database_initialized": False,  # Start uncompleted - wizard will complete it
         },
     }
 
@@ -172,7 +172,7 @@ class TestFreshLocalhostInstall:
         assert config["installation"]["mode"] == "localhost"
 
         # Verify setup completion
-        assert config["setup"]["completed"] is True
+        assert config["setup"]["database_initialized"] is True
 
         # Verify CORS origins (should be localhost only)
         cors_origins = config["security"]["cors"]["allowed_origins"]

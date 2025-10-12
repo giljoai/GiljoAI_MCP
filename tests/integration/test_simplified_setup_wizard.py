@@ -67,7 +67,7 @@ def mock_setup_state_manager():
     with patch('src.giljo_mcp.setup.state_manager.SetupStateManager') as mock:
         instance = MagicMock()
         instance.get_state.return_value = {
-            'completed': False,
+            'database_initialized': False,
             'tools_enabled': [],
             'setup_version': '3.0.0'
         }
@@ -86,7 +86,7 @@ class TestSetupWizardStatus:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["completed"] is False
+        assert data["database_initialized"] is False
         assert data["database_configured"] is True  # Always true (CLI installer)
         assert isinstance(data["tools_attached"], list)
         assert data["network_mode"] == "localhost"
@@ -95,7 +95,7 @@ class TestSetupWizardStatus:
         """Test GET /api/setup/status when setup completed"""
         # Mock completed state
         mock_setup_state_manager.get_state.return_value = {
-            'completed': True,
+            'database_initialized': True,
             'tools_enabled': ['claude-code'],
             'setup_version': '3.0.0'
         }
@@ -104,7 +104,7 @@ class TestSetupWizardStatus:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["completed"] is True
+        assert data["database_initialized"] is True
         assert data["tools_attached"] == ['claude-code']
 
 
@@ -366,7 +366,7 @@ class TestSetupStateValidation:
         """Test setup state persists between API calls"""
         # Mock state with tools
         mock_setup_state_manager.get_state.return_value = {
-            'completed': True,
+            'database_initialized': True,
             'tools_enabled': ['claude-code'],
             'setup_version': '3.0.0'
         }

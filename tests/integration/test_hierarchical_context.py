@@ -372,7 +372,7 @@ class TestMultiAgentCoordination:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="completed"
+            status="database_initialized"
         )
 
         implementer = Agent(

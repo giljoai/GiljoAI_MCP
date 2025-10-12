@@ -54,10 +54,10 @@ apiClient.interceptors.response.use(
           if (setupResponse.ok) {
             const setupStatus = await setupResponse.json()
 
-            // If setup is NOT complete, don't redirect to login
+            // If database is NOT initialized, don't redirect to login
             // Let the router handle the redirect to /setup
-            if (!setupStatus.completed) {
-              console.log('[API] Setup incomplete - skipping login redirect')
+            if (!setupStatus.database_initialized) {
+              console.log('[API] Database not initialized - skipping login redirect')
               return Promise.reject(error)
             }
           }

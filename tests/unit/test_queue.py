@@ -240,7 +240,7 @@ class TestMessageQueue(BaseAsyncTest):
         assert result["status"] == "success"
         assert mock_message.status == MessageStatus.COMPLETED.value
         assert mock_message.metadata["result"] == result_data
-        assert "completed_at" in mock_message.metadata
+        assert "database_initialized_at" in mock_message.metadata
         mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -333,7 +333,7 @@ class TestMessageQueue(BaseAsyncTest):
 
         assert result["pending"] == 10
         assert result["acknowledged"] == 5
-        assert result["completed"] == 20
+        assert result["database_initialized"] == 20
         assert result["failed"] == 2
         assert result["total"] == 37
 

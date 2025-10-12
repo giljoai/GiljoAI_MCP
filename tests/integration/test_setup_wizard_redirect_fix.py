@@ -43,20 +43,20 @@ class TestSetupWizardRedirectFix:
         """
         # Mock setup status endpoint (setup incomplete)
         with patch('api.endpoints.setup.check_setup_status') as mock_status:
-            mock_status.return_value = {"completed": False, "steps": {}}
+            mock_status.return_value = {"database_initialized": False, "steps": {}}
 
             # Check setup status
             response = await client.get("/api/setup/status")
             assert response.status_code == 200
             data = response.json()
-            assert data["completed"] is False
+            assert data["database_initialized"] is False
 
             # Simulate frontend requesting config (triggers 401)
             config_response = await client.get("/api/v1/config/frontend")
 
             # On fresh install, config endpoint may return 401 or setup-related error
             # The key is that setup status is incomplete
-            assert data["completed"] is False  # Setup incomplete
+            assert data["database_initialized"] is False  # Setup incomplete
 
             # Frontend axios interceptor should:
             # 1. Catch 401
@@ -75,13 +75,13 @@ class TestSetupWizardRedirectFix:
         """
         # Mock setup status endpoint (setup incomplete)
         with patch('api.endpoints.setup.check_setup_status') as mock_status:
-            mock_status.return_value = {"completed": False, "steps": {}}
+            mock_status.return_value = {"database_initialized": False, "steps": {}}
 
             # Check setup status (from network IP perspective)
             response = await client.get("/api/setup/status")
             assert response.status_code == 200
             data = response.json()
-            assert data["completed"] is False
+            assert data["database_initialized"] is False
 
             # Network IP access behaves same as localhost
             # Both should see /setup when setup incomplete
@@ -103,7 +103,7 @@ class TestSetupWizardRedirectFix:
         # Mock setup status endpoint (setup complete)
         with patch('api.endpoints.setup.check_setup_status') as mock_status:
             mock_status.return_value = {
-                "completed": True,
+                "database_initialized": True,
                 "steps": {
                     "database": True,
                     "admin_user": True,
@@ -115,7 +115,7 @@ class TestSetupWizardRedirectFix:
             response = await client.get("/api/setup/status")
             assert response.status_code == 200
             data = response.json()
-            assert data["completed"] is True
+            assert data["database_initialized"] is True
 
             # axios interceptor should redirect to /login when:
             # - 401 error occurs
@@ -132,7 +132,7 @@ class TestSetupWizardRedirectFix:
             const setupResponse = await fetch('/api/setup/status')
             const setupStatus = await setupResponse.json()
 
-            if (!setupStatus.completed) {
+            if (!setupStatus.database_initialized) {
                 return Promise.reject(error)  // Don't redirect
             }
 
@@ -141,22 +141,22 @@ class TestSetupWizardRedirectFix:
         """
         # Test 1: Setup incomplete → no redirect
         with patch('api.endpoints.setup.check_setup_status') as mock_status:
-            mock_status.return_value = {"completed": False}
+            mock_status.return_value = {"database_initialized": False}
 
             response = await client.get("/api/setup/status")
             data = response.json()
-            assert data["completed"] is False
+            assert data["database_initialized"] is False
 
             # axios should NOT redirect to /login
             # (frontend logic validated via this API contract)
 
         # Test 2: Setup complete → redirect
         with patch('api.endpoints.setup.check_setup_status') as mock_status:
-            mock_status.return_value = {"completed": True}
+            mock_status.return_value = {"database_initialized": True}
 
             response = await client.get("/api/setup/status")
             data = response.json()
-            assert data["completed"] is True
+            assert data["database_initialized"] is True
 
             # axios SHOULD redirect to /login
             # (frontend logic validated via this API contract)
@@ -175,8 +175,8 @@ class TestSetupWizardRedirectFix:
         data = response.json()
 
         # Check response structure
-        assert "completed" in data
-        assert isinstance(data["completed"], bool)
+        assert "database_initialized" in data
+        assert isinstance(data["database_initialized"], bool)
 
         # If steps included, verify structure
         if "steps" in data:
@@ -191,7 +191,7 @@ class TestSetupWizardRedirectFix:
         This test verifies no regressions in router logic.
         """
         # Router logic (from router/index.js):
-        # if (!status.completed && to.path !== '/setup') {
+        # if (!status.database_initialized && to.path !== '/setup') {
         #     next('/setup')
         # }
 
@@ -201,7 +201,7 @@ class TestSetupWizardRedirectFix:
         data = response.json()
 
         # Router uses this to decide /setup redirect
-        assert "completed" in data
+        assert "database_initialized" in data
 
     @pytest.mark.asyncio
     async def test_install_py_network_ip_detection(self):
@@ -298,13 +298,13 @@ class TestOriginalBugScenario:
         """
         # Simulate original bug scenario
         with patch('api.endpoints.setup.check_setup_status') as mock_status:
-            mock_status.return_value = {"completed": False, "steps": {}}
+            mock_status.return_value = {"database_initialized": False, "steps": {}}
 
             # Backend returns setup incomplete
             setup_response = await client.get("/api/setup/status")
             assert setup_response.status_code == 200
             setup_data = setup_response.json()
-            assert setup_data["completed"] is False  # Setup incomplete!
+            assert setup_data["database_initialized"] is False  # Setup incomplete!
 
             # Frontend gets 401 on config request
             config_response = await client.get("/api/v1/config/frontend")
@@ -315,7 +315,7 @@ class TestOriginalBugScenario:
             # Should let router redirect to /setup
 
             # This validates the API contract the fix depends on
-            assert setup_data["completed"] is False
+            assert setup_data["database_initialized"] is False
 
     @pytest.mark.asyncio
     async def test_original_bug_network_ip_worked_correctly(self, client: AsyncClient):
@@ -329,11 +329,11 @@ class TestOriginalBugScenario:
         """
         # Same setup status check
         with patch('api.endpoints.setup.check_setup_status') as mock_status:
-            mock_status.return_value = {"completed": False, "steps": {}}
+            mock_status.return_value = {"database_initialized": False, "steps": {}}
 
             response = await client.get("/api/setup/status")
             data = response.json()
-            assert data["completed"] is False
+            assert data["database_initialized"] is False
 
             # Network IP scenario worked correctly (shows /setup)
             # Now localhost also works correctly (same behavior)

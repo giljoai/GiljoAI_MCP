@@ -281,13 +281,13 @@ class TestDatabaseOperations:
         # Update
         with db_manager.get_session() as session:
             project = session.query(Project).filter_by(id=project_id).first()
-            project.status = "completed"
+            project.status = "database_initialized"
             session.commit()
 
         # Verify update
         with db_manager.get_session() as session:
             found = session.query(Project).filter_by(id=project_id).first()
-            assert found.status == "completed"
+            assert found.status == "database_initialized"
 
         # Delete
         with db_manager.get_session() as session:

@@ -168,7 +168,7 @@ class TestProjectTools:
             mock_project.id = str(uuid.uuid4())
             mock_project.name = "Test Project"
             mock_project.status = "active"
-            mock_project.completed_at = None
+            mock_project.database_initialized_at = None
 
             mock_result = MagicMock()
             mock_result.scalar_one_or_none.return_value = mock_project
@@ -375,7 +375,7 @@ class TestProjectTools:
             mock_project = MagicMock()
             mock_project.id = str(uuid.uuid4())
             mock_project.name = "Completed Project"
-            mock_project.status = "completed"  # Not active
+            mock_project.status = "database_initialized"  # Not active
 
             mock_result = MagicMock()
             mock_result.scalar_one_or_none.return_value = mock_project

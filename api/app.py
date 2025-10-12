@@ -147,8 +147,8 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                     SetupState.tenant_key == 'default'
                 ).first()
 
-                if setup_state_record and setup_state_record.completed:
-                    logger.info(f"Setup completed - database initialized (completed_at: {setup_state_record.completed_at})")
+                if setup_state_record and setup_state_record.database_initialized:
+                    logger.info(f"Database initialized (initialized_at: {setup_state_record.database_initialized_at})")
                     setup_mode = False
                 else:
                     logger.info("Setup not completed - entering setup mode")
@@ -319,6 +319,10 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             logger.error(f"Startup setup check failed: {e}", exc_info=True)
             # Don't crash the app on startup check failure
             logger.warning("Continuing startup despite setup check failure")
+
+    # Expose db_manager directly on app.state for auth middleware compatibility
+    # This must be done AFTER initialization, not in create_app()
+    app.state.db_manager = state.db_manager
 
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
@@ -601,8 +605,11 @@ def create_app() -> FastAPI:
         try:
             # Get database session (None during setup mode)
             session = None
+            session_cm = None  # Store context manager instance
             if state.db_manager:
-                session = await state.db_manager.get_session_async().__aenter__()
+                # CRITICAL: Store the context manager instance
+                session_cm = state.db_manager.get_session_async()
+                session = await session_cm.__aenter__()
 
             try:
                 auth_result = await authenticate_websocket(websocket, db=session)
@@ -631,9 +638,9 @@ def create_app() -> FastAPI:
                 logger.info(f"WebSocket connected: {client_id} (context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})")
 
             finally:
-                # Clean up session if created
-                if session and state.db_manager:
-                    await state.db_manager.get_session_async().__aexit__(None, None, None)
+                # Clean up session if created - use SAME context manager instance
+                if session_cm is not None:
+                    await session_cm.__aexit__(None, None, None)
 
         except WebSocketException as e:
             # REJECT CONNECTION IMMEDIATELY
@@ -723,6 +730,9 @@ def create_app() -> FastAPI:
 
     # Store state reference in app
     app.state.api_state = state
+
+    # Note: db_manager is exposed on app.state in lifespan() AFTER initialization
+    # Setting it here would be None since lifespan hasn't run yet
 
     return app
 
