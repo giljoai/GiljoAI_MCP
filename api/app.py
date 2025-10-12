@@ -605,8 +605,11 @@ def create_app() -> FastAPI:
         try:
             # Get database session (None during setup mode)
             session = None
+            session_cm = None  # Store context manager instance
             if state.db_manager:
-                session = await state.db_manager.get_session_async().__aenter__()
+                # CRITICAL: Store the context manager instance
+                session_cm = state.db_manager.get_session_async()
+                session = await session_cm.__aenter__()
 
             try:
                 auth_result = await authenticate_websocket(websocket, db=session)
@@ -635,9 +638,9 @@ def create_app() -> FastAPI:
                 logger.info(f"WebSocket connected: {client_id} (context: {auth_result.get('context', 'normal')}, auth_type: {auth_type})")
 
             finally:
-                # Clean up session if created
-                if session and state.db_manager:
-                    await state.db_manager.get_session_async().__aexit__(None, None, None)
+                # Clean up session if created - use SAME context manager instance
+                if session_cm is not None:
+                    await session_cm.__aexit__(None, None, None)
 
         except WebSocketException as e:
             # REJECT CONNECTION IMMEDIATELY
