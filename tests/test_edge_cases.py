@@ -276,15 +276,15 @@ class TestEdgeCases:
         db_session.commit()
 
         # Update job status
-        job.status = "completed"
-        job.completed_at = datetime.now(timezone.utc)
+        job.status = "database_initialized"
+        job.database_initialized_at = datetime.now(timezone.utc)
         job.meta_data = {"completion_notes": "All tasks completed successfully", "lines_of_code": 1500}
         db_session.commit()
 
         # Verify job and agent relationship
         db_session.refresh(agent)
         assert len(agent.jobs) == 1
-        assert agent.jobs[0].status == "completed"
+        assert agent.jobs[0].status == "database_initialized"
         assert len(agent.jobs[0].tasks) == 3
 
     def test_session_numbering_uniqueness(self, db_session):

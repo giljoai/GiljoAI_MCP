@@ -67,7 +67,7 @@ class ProductIsolationTestSuite:
                     title=f"Product 1 Task {i}",
                     description=f"Task {i} for Product 1",
                     priority=["low", "medium", "high"][i % 3],
-                    status=["pending", "in_progress", "completed"][i % 3],
+                    status=["pending", "in_progress", "database_initialized"][i % 3],
                     category="development",
                 )
                 for i in range(5)
@@ -193,7 +193,7 @@ class ProductIsolationTestSuite:
             result1 = await session.execute(query1)
             metrics1 = {row.status: row.count for row in result1}
 
-            expected_metrics1 = {"pending": 2, "in_progress": 2, "completed": 1}
+            expected_metrics1 = {"pending": 2, "in_progress": 2, "database_initialized": 1}
             metrics_match = all(metrics1.get(status, 0) == count for status, count in expected_metrics1.items())
 
             self.log_test("Product 1 Metrics", metrics_match, f"Status counts: {metrics1}")
@@ -263,7 +263,7 @@ class ProductIsolationTestSuite:
             task_id = task.id
 
             # Update the task
-            task.status = "completed"
+            task.status = "database_initialized"
             task.priority = "critical"
             await session.commit()
 

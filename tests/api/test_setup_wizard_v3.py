@@ -74,7 +74,7 @@ class TestSetupStatusEndpoint:
         # Mock state manager
         mock_instance = MagicMock()
         mock_instance.get_state.return_value = {
-            "completed": False,
+            "database_initialized": False,
             "tools_enabled": [],
         }
         mock_state_manager.get_instance.return_value = mock_instance
@@ -102,7 +102,7 @@ class TestSetupStatusEndpoint:
 
         mock_instance = MagicMock()
         mock_instance.get_state.return_value = {
-            "completed": True,
+            "database_initialized": True,
             "tools_enabled": ["claude-code"],
         }
         mock_state_manager.get_instance.return_value = mock_instance
@@ -167,7 +167,7 @@ class TestSetupCompleteEndpoint:
         }
 
         mock_instance = MagicMock()
-        mock_instance.get_state.return_value = {"completed": False}
+        mock_instance.get_state.return_value = {"database_initialized": False}
         mock_state_manager.get_instance.return_value = mock_instance
 
         # Mock localhost user
@@ -220,7 +220,7 @@ class TestSetupCompleteEndpoint:
         }
 
         mock_instance = MagicMock()
-        mock_instance.get_state.return_value = {"completed": False}
+        mock_instance.get_state.return_value = {"database_initialized": False}
         mock_state_manager.get_instance.return_value = mock_instance
 
         mock_localhost_user = MagicMock(spec=User)
@@ -389,7 +389,7 @@ class TestSetupResponse:
         }
 
         mock_instance = MagicMock()
-        mock_instance.get_state.return_value = {"completed": False}
+        mock_instance.get_state.return_value = {"database_initialized": False}
         mock_state_manager.get_instance.return_value = mock_instance
 
         mock_localhost_user = MagicMock(spec=User)

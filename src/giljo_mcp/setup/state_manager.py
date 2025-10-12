@@ -173,8 +173,8 @@ class SetupStateManager:
         """Get default state structure."""
         return {
             "tenant_key": self.tenant_key,
-            "completed": False,
-            "completed_at": None,
+            "database_initialized": False,
+            "database_initialized_at": None,
             "setup_version": None,
             "database_version": None,
             "python_version": None,
@@ -192,13 +192,13 @@ class SetupStateManager:
             "meta_data": {},
         }
 
-    def mark_completed(
+    def mark_database_initialized(
         self,
         setup_version: Optional[str] = None,
         config_snapshot: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
-        Mark setup as completed.
+        Mark database as initialized (tables created and ready for use).
 
         Args:
             setup_version: Version to set (validates semantic versioning)
@@ -214,44 +214,44 @@ class SetupStateManager:
         # Try database first
         if self.db_session is not None:
             try:
-                self._mark_completed_in_database(setup_version, config_snapshot)
-                logger.info(f"Marked setup completed in database for tenant {self.tenant_key}")
+                self._mark_database_initialized_in_database(setup_version, config_snapshot)
+                logger.info(f"Marked database initialized in database for tenant {self.tenant_key}")
                 return
             except Exception as e:
                 logger.warning(
-                    f"Failed to mark completed in database for tenant {self.tenant_key}: {e}. "
+                    f"Failed to mark database initialized in database for tenant {self.tenant_key}: {e}. "
                     "Falling back to file storage."
                 )
 
         # Fall back to file
-        self._mark_completed_in_file(setup_version, config_snapshot)
-        logger.info(f"Marked setup completed in file for tenant {self.tenant_key}")
+        self._mark_database_initialized_in_file(setup_version, config_snapshot)
+        logger.info(f"Marked database initialized in file for tenant {self.tenant_key}")
 
-    def _mark_completed_in_database(
+    def _mark_database_initialized_in_database(
         self,
         setup_version: Optional[str],
         config_snapshot: Optional[Dict[str, Any]],
     ) -> None:
-        """Mark completed in database."""
+        """Mark database initialized in database."""
         from src.giljo_mcp.models import SetupState
 
         state = SetupState.create_or_update(
             self.db_session,
             tenant_key=self.tenant_key,
-            completed=True,
-            completed_at=datetime.utcnow(),
+            database_initialized=True,
+            database_initialized_at=datetime.utcnow(),
             setup_version=setup_version,
             config_snapshot=config_snapshot,
         )
 
         self.db_session.commit()
 
-    def _mark_completed_in_file(
+    def _mark_database_initialized_in_file(
         self,
         setup_version: Optional[str],
         config_snapshot: Optional[Dict[str, Any]],
     ) -> None:
-        """Mark completed in file."""
+        """Mark database initialized in file."""
         # Ensure directory exists
         self.state_dir.mkdir(parents=True, exist_ok=True)
 
@@ -261,8 +261,8 @@ class SetupStateManager:
             state = self._get_default_state()
 
         # Update state
-        state["completed"] = True
-        state["completed_at"] = datetime.utcnow().isoformat()
+        state["database_initialized"] = True
+        state["database_initialized_at"] = datetime.utcnow().isoformat()
         if setup_version:
             state["setup_version"] = setup_version
         if config_snapshot:
@@ -361,9 +361,9 @@ class SetupStateManager:
             SetupState.create_or_update(
                 self.db_session,
                 tenant_key=self.tenant_key,
-                completed=file_state.get("completed", False),
-                completed_at=(
-                    datetime.fromisoformat(file_state["completed_at"]) if file_state.get("completed_at") else None
+                database_initialized=file_state.get("database_initialized", False),
+                database_initialized_at=(
+                    datetime.fromisoformat(file_state["database_initialized_at"]) if file_state.get("database_initialized_at") else None
                 ),
                 setup_version=file_state.get("setup_version"),
                 database_version=file_state.get("database_version"),

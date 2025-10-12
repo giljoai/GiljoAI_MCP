@@ -227,7 +227,7 @@ class TestOrchestratorComprehensiveCoverage:
         completed = await orchestrator.complete_project(project.id, summary=summary)
 
         assert completed.status == ProjectStatus.COMPLETED.value
-        assert completed.completed_at is not None
+        assert completed.database_initialized_at is not None
         assert completed.meta_data["completion_summary"] == summary
 
         # Test archiving the completed project

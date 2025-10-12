@@ -201,7 +201,7 @@ class TestToolsIntegration:
         # 3. Simulate workflow progression
         # Complete analysis task
         await _update_task_status(
-            self.db_manager, self.tenant_manager, analysis_task["task_id"], "completed", agents[0]
+            self.db_manager, self.tenant_manager, analysis_task["task_id"], "database_initialized", agents[0]
         )
 
         # Send handoff message
@@ -469,7 +469,7 @@ class TestToolsIntegration:
             )
 
             # Complete task
-            await _update_task_status(self.db_manager, self.tenant_manager, task["task_id"], "completed", agent)
+            await _update_task_status(self.db_manager, self.tenant_manager, task["task_id"], "database_initialized", agent)
 
         # 5. Verification phase
         # All tasks should be completed

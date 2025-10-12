@@ -16,7 +16,7 @@ import SettingsView from '@/views/SettingsView.vue'
 // Mock setupService
 vi.mock('@/services/setupService', () => ({
   default: {
-    checkStatus: vi.fn().mockResolvedValue({ completed: true }),
+    checkStatus: vi.fn().mockResolvedValue({ database_initialized: true }),
     getSerenaStatus: vi.fn().mockResolvedValue({ enabled: false }),
     toggleSerena: vi.fn().mockResolvedValue({ success: true, enabled: true }),
   },

@@ -1002,7 +1002,7 @@ const navigateToSetupWizard = () => {
 const checkSetupStatus = async () => {
   try {
     const status = await setupService.checkStatus()
-    setupCompleted.value = status.completed || false
+    setupCompleted.value = status.database_initialized || false
     console.log('[SETTINGS] Setup status:', setupCompleted.value ? 'completed' : 'not completed')
   } catch (error) {
     console.error('[SETTINGS] Failed to check setup status:', error)

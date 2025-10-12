@@ -317,9 +317,9 @@ async function handleSubmit() {
       confirm_password: confirmPassword.value,
     })
 
-    // Store JWT token if provided
-    if (response.data?.access_token) {
-      localStorage.setItem('auth_token', response.data.access_token)
+    // Store JWT token if provided (backend returns "token" not "access_token")
+    if (response.data?.token) {
+      localStorage.setItem('auth_token', response.data.token)
     }
 
     // Store user data if provided

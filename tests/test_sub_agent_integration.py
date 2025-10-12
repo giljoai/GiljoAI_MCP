@@ -467,7 +467,7 @@ class TestWebSocketEvents:
             mock_broadcast.assert_called_once()
             call_args = mock_broadcast.call_args
 
-            assert call_args[0][0] == "completed"  # event_type
+            assert call_args[0][0] == "database_initialized"  # event_type
             assert "interaction_id" in call_args[1]
             assert call_args[1]["tokens_used"] == 1000
 
@@ -546,7 +546,7 @@ class TestIntegrationScenarios:
         # Complete the interaction
         complete_result = await log_sub_agent_completion(
             interaction_id=interaction_id,
-            result=json.dumps({"status": "completed", "files_processed": 10, "tests_passed": 8}),
+            result=json.dumps({"status": "database_initialized", "files_processed": 10, "tests_passed": 8}),
             tokens_used=2500,
             meta_data={"performance": "good"},
         )
