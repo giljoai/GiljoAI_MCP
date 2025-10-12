@@ -320,6 +320,10 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             # Don't crash the app on startup check failure
             logger.warning("Continuing startup despite setup check failure")
 
+    # Expose db_manager directly on app.state for auth middleware compatibility
+    # This must be done AFTER initialization, not in create_app()
+    app.state.db_manager = state.db_manager
+
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
     logger.info("=" * 70)
@@ -723,6 +727,9 @@ def create_app() -> FastAPI:
 
     # Store state reference in app
     app.state.api_state = state
+
+    # Note: db_manager is exposed on app.state in lifespan() AFTER initialization
+    # Setting it here would be None since lifespan hasn't run yet
 
     return app
 
