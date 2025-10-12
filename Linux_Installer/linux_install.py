@@ -36,6 +36,13 @@ import click
 from colorama import Fore, Style, init
 
 
+# Ensure project root is on sys.path so Linux_Installer package is importable
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
 
@@ -88,6 +95,23 @@ class UnifiedInstaller:
         self.psql_path: Optional[Path] = None
         self.venv_created = False
         self.database_credentials: Optional[Dict[str, str]] = None
+
+    def _ensure_venv_site_packages(self) -> None:
+        """Ensure virtualenv site-packages are available on sys.path."""
+        venv_paths = []
+
+        # Windows site-packages
+        venv_paths.append(self.venv_dir / "Lib" / "site-packages")
+
+        # POSIX site-packages with python version
+        py_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+        venv_paths.append(self.venv_dir / "lib" / py_version / "site-packages")
+
+        for path in venv_paths:
+            if path.exists():
+                str_path = str(path)
+                if str_path not in sys.path:
+                    sys.path.insert(0, str_path)
 
     def run(self) -> Dict[str, Any]:
         """
@@ -615,6 +639,7 @@ class UnifiedInstaller:
             Database setup result
         """
         try:
+            self._ensure_venv_site_packages()
             from Linux_Installer.core.database import DatabaseInstaller
 
             # Prepare settings for DatabaseInstaller
@@ -779,6 +804,7 @@ class UnifiedInstaller:
             Configuration generation result
         """
         try:
+            self._ensure_venv_site_packages()
             from Linux_Installer.core.config import ConfigManager
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
@@ -825,6 +851,7 @@ class UnifiedInstaller:
             Update result with success status
         """
         try:
+            self._ensure_venv_site_packages()
             # Import ConfigManager from existing module
             from Linux_Installer.core.config import ConfigManager
 
