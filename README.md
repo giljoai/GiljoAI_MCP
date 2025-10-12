@@ -156,4 +156,18 @@ install.bat              # Windows
 quickstart.sh            # Linux/macOS
 ```
 
+### Linux Installer Package
+
+```bash
+# Dedicated Linux installer workflow
+python Linux_Installer/linux_install.py
+```
+
+The `Linux_Installer/` directory mirrors the Windows installer flow with Linux-specific logic. It includes:
+- `linux_install.py` – interactive CLI installer optimized for Linux environments
+- `Linux_Installer/core/` – configuration and database setup modules reused by the installer
+- `Linux_Installer/credentials/` and `Linux_Installer/scripts/` – runtime outputs (database credentials and elevated setup scripts)
+
+Use this when you want a Linux-first installation experience without relying on the cross-platform bootstrapper.
+
 [... rest of the README remains the same ...]
