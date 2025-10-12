@@ -27,7 +27,7 @@ import time
 import webbrowser
 from pathlib import Path
 from tkinter import BooleanVar, Tk, messagebox, ttk
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 
 try:
@@ -445,6 +445,47 @@ class GiljoDevControlPanel:
 
         raise OSError(f"Unsupported operating system: {system}")
 
+    def _get_main_python_executable(self) -> Path:
+        """
+        Locate the Python executable inside the main project virtual environment.
+
+        Returns:
+            Path to Python interpreter inside venv.
+
+        Raises:
+            FileNotFoundError if the interpreter cannot be located.
+        """
+        venv_dir = self.project_root / "venv"
+
+        if not venv_dir.exists():
+            raise FileNotFoundError(
+                f"Virtual environment not found at {venv_dir}. "
+                "Run the installer to create the environment before using the control panel."
+            )
+
+        system = platform.system()
+        candidates: List[Path] = []
+
+        if system == "Windows":
+            candidates.append(venv_dir / "Scripts" / "python.exe")
+        else:
+            candidates.extend(
+                [
+                    venv_dir / "bin" / "python",
+                    venv_dir / "bin" / "python3",
+                ]
+            )
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        raise FileNotFoundError(
+            "Could not locate the Python interpreter inside the project virtual environment.\n"
+            "Expected one of:\n"
+            + "\n".join(str(path) for path in candidates)
+        )
+
     def _is_port_available(self, port: int) -> bool:
         """
         Check if a port is available for binding.
@@ -650,12 +691,7 @@ class GiljoDevControlPanel:
                 raise FileNotFoundError(f"API script not found: {api_script}")
 
             # Build command - use main venv Python, not dev tools venv
-            main_venv_python = self.project_root / "venv" / "Scripts" / "python.exe"
-            if not main_venv_python.exists():
-                raise FileNotFoundError(
-                    f"Main venv Python not found: {main_venv_python}\n\n"
-                    "Please run the installer first to create the virtual environment."
-                )
+            main_venv_python = self._get_main_python_executable()
             command = [str(main_venv_python), str(api_script), "--port", str(api_port)]
 
             # Launch in terminal window with verbose output
