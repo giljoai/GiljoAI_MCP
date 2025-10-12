@@ -365,15 +365,6 @@ async def test_register_user_as_non_admin(test_client: AsyncClient, authenticate
 
 
 @pytest.mark.asyncio
-async def test_localhost_bypass(test_client: AsyncClient):
-    """Test localhost requests bypass authentication (127.0.0.1)."""
-    # Note: This test depends on test client configuration
-    # In production, requests from 127.0.0.1 should bypass auth
-    # For testing, we'd need to mock the request.client.host value
-    pass  # TODO: Mock request.client.host for localhost testing
-
-
-@pytest.mark.asyncio
 async def test_jwt_token_expiry(test_client: AsyncClient, test_user: User):
     """Test JWT tokens expire after 24 hours."""
     # This would require mocking time or waiting 24 hours
@@ -463,8 +454,8 @@ async def test_client():
     
     app.dependency_overrides[get_db_session] = override_get_db_session
     
-    # IMPORTANT: Disable localhost bypass for tests
-    # We need to patch the get_current_user to not treat test requests as localhost
+    # IMPORTANT: Mock client IP for tests
+    # We need to mock the request.client to ensure tests use authentication
     from unittest.mock import patch
     
     # Patch directly in the auth module

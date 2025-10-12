@@ -4,10 +4,9 @@ FastAPI dependencies for authentication.
 This module provides dependency functions for extracting and validating
 user authentication from JWT cookies or API key headers.
 
-Authentication Methods:
+Authentication Methods (v3.0 Unified):
 1. JWT Cookie (web users): httpOnly cookie containing access token
 2. API Key Header (MCP tools): X-API-Key header with gk_ prefixed key
-3. Localhost Bypass: Requests from 127.0.0.1 bypass authentication
 
 Multi-Tenant Isolation:
 All authenticated users are scoped to a tenant_key, which is used to
@@ -63,14 +62,14 @@ async def get_db_session(request: Request = None):
         logger.error("db_manager not available in app state")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database not initialized - system may be in setup mode"
+            detail="Database not initialized - system may be in setup mode",
         )
 
     if db_manager is None:
         logger.error("db_manager is None - setup mode active")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database not initialized - complete setup wizard first"
+            detail="Database not initialized - complete setup wizard first",
         )
 
     # Use the shared db_manager instance
@@ -83,15 +82,14 @@ async def get_current_user(
     access_token: Optional[str] = Cookie(None),
     x_api_key: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session),
-) -> Optional[User]:
+) -> User:
     """
     Get current user from JWT cookie or API key header.
 
-    Authentication Priority:
-    1. Check if localhost bypass (127.0.0.1 = no auth required)
-    2. Try JWT cookie (web users)
-    3. Try API key header (MCP tools)
-    4. Return None if no valid authentication found
+    Authentication Priority (v3.0 Unified):
+    1. Try JWT cookie (web users)
+    2. Try API key header (MCP tools)
+    3. Return 401 if no valid authentication found
 
     Args:
         request: FastAPI request (to check client IP)
@@ -100,24 +98,16 @@ async def get_current_user(
         db: Database session
 
     Returns:
-        User object if authenticated, None if localhost bypass
+        User object if authenticated
 
     Raises:
-        HTTPException: 401 if authentication fails (not localhost)
+        HTTPException: 401 if authentication fails
 
     Example:
         >>> user = await get_current_user(request, access_token="jwt_token", ...)
         >>> user.username
         'admin'
     """
-    # Check if localhost bypass (127.0.0.1 = no auth)
-    client_host = request.client.host if request.client else None
-    if client_host in ["127.0.0.1", "localhost", "::1"]:
-        logger.debug(f"Localhost bypass: {client_host}")
-        # Return None to indicate localhost bypass (no user required)
-        # Endpoints can check `if user is None:` for localhost mode
-        return None
-
     # Try JWT cookie first (web users)
     if access_token:
         try:
@@ -186,7 +176,7 @@ async def get_current_active_user(current_user: Optional[User] = Depends(get_cur
     Get current user and verify they are active.
 
     This dependency ensures user exists and is_active=True.
-    Use this for endpoints that require a real user (not localhost bypass).
+    Use this for endpoints that require an authenticated user.
 
     Args:
         current_user: User from get_current_user dependency
