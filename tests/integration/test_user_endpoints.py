@@ -498,7 +498,7 @@ async def test_multi_tenant_isolation_list(test_client: AsyncClient, admin_heade
 
 @pytest.mark.asyncio
 async def test_require_authentication(test_client: AsyncClient):
-    """Test all user endpoints require authentication (no localhost bypass)."""
+    """Test all user endpoints require authentication."""
     # List users
     response = await test_client.get("/api/users/")
     assert response.status_code == 401
@@ -561,8 +561,8 @@ async def test_client():
 
     app.dependency_overrides[get_db_session] = override_get_db_session
 
-    # IMPORTANT: Disable localhost bypass for tests
-    # We need to patch the get_current_user to not treat test requests as localhost
+    # IMPORTANT: Mock client IP for tests
+    # We need to mock the request.client to ensure tests use authentication
     from functools import wraps
     from fastapi import Request, Cookie, Header, Depends
     from typing import Optional
