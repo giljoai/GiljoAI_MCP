@@ -343,8 +343,9 @@ class DatabaseInstaller:
             self.owner_password = self.generate_password()
             self.user_password = self.generate_password()
 
-            # Create scripts directory for Linux scripts
-            scripts_dir = Path("Linux_Installer/scripts")
+            # Create scripts directory for Linux scripts (absolute path)
+            base_dir = Path(__file__).resolve().parent.parent
+            scripts_dir = base_dir / "scripts"
             scripts_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate Linux script for elevated execution
@@ -554,7 +555,12 @@ echo ""
 
         print("Please run the following command:")
         print()
-        print(f"  sudo bash {script_path.relative_to(Path.cwd())}")
+        resolved_path = script_path.resolve()
+        try:
+            display_path = resolved_path.relative_to(Path.cwd())
+        except ValueError:
+            display_path = resolved_path
+        print(f"  sudo bash {display_path}")
         print()
 
         print()
@@ -705,7 +711,8 @@ echo ""
 
     def save_credentials(self):
         """Save database credentials securely"""
-        credentials_dir = Path("Linux_Installer/credentials")
+        base_dir = Path(__file__).resolve().parent.parent
+        credentials_dir = base_dir / "credentials"
         credentials_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
