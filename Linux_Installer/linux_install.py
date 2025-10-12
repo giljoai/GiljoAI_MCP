@@ -754,8 +754,8 @@ class UnifiedInstaller:
                         setup_state = SetupState(
                             id=str(uuid4()),
                             tenant_key='default',
-                            completed=True,
-                            completed_at=datetime.now(timezone.utc),  # REQUIRED by ck_completed_at_required constraint
+                            database_initialized=True,
+                            database_initialized_at=datetime.now(timezone.utc),  # REQUIRED by ck_database_initialized_at_required constraint
                             default_password_active=True,
                             password_changed_at=None,
                             setup_version='3.0.0',
@@ -1017,28 +1017,37 @@ class UnifiedInstaller:
             desktop_dir.mkdir(parents=True, exist_ok=True)
             applications_dir.mkdir(parents=True, exist_ok=True)
 
-            icon_path: Optional[Path] = None
-            for candidate in [
-                self.install_dir / "frontend" / "public" / "favicon.png",
-                self.install_dir / "frontend" / "public" / "favicon.ico",
+            icon_candidates = [
                 self.install_dir / "giljo.ico",
-            ]:
-                if candidate.exists():
-                    icon_path = candidate
-                    break
+                self.install_dir / "frontend" / "public" / "giljologo_full.png",
+                self.install_dir / "frontend" / "public" / "favicon.ico",
+                self.install_dir / "frontend" / "public" / "favicon.png",
+            ]
+            icon_path: Optional[Path] = next((path for path in icon_candidates if path.exists()), None)
 
-            launcher_name = "GiljoAI MCP"
-            exec_path = self.install_dir / "start_giljo.sh"
-            if not exec_path.exists():
-                exec_path = self.install_dir / "run_giljo.py"
+            python_exec = self.venv_dir / "bin" / "python"
+            if not python_exec.exists():
+                python_exec = Path(sys.executable).resolve()
+
+            control_panel = self.install_dir / "dev_tools" / "control_panel.py"
+            if not control_panel.exists():
+                self._print_warning("Developer control panel not found; skipping launcher creation.")
+                return
+
+            launcher_name = "GiljoAI MCP Dev Control Panel"
 
             desktop_entry = [
                 "[Desktop Entry]",
+                "Version=1.0",
                 "Type=Application",
                 f"Name={launcher_name}",
-                f"Exec={exec_path}",
-                "Terminal=true",
-                "Categories=Development;IDE;",
+                "Comment=Launch the GiljoAI MCP developer control panel",
+                f"TryExec={python_exec}",
+                f"Exec={python_exec} {control_panel}",
+                f"Path={self.install_dir}",
+                "Terminal=false",
+                "StartupNotify=false",
+                "Categories=Development;Utility;",
             ]
 
             if icon_path:
@@ -1046,20 +1055,33 @@ class UnifiedInstaller:
 
             desktop_entry_content = "\n".join(desktop_entry) + "\n"
 
-            desktop_shortcut = desktop_dir / f"{launcher_name}.desktop"
-            desktop_shortcut.write_text(desktop_entry_content)
-            os.chmod(desktop_shortcut, 0o755)
+            desktop_shortcut = desktop_dir / "GiljoAI_Dev_Control_Panel.desktop"
+            applications_shortcut = applications_dir / desktop_shortcut.name
 
-            applications_shortcut = applications_dir / f"{launcher_name}.desktop"
-            applications_shortcut.write_text(desktop_entry_content)
-            os.chmod(applications_shortcut, 0o755)
+            for target in (desktop_shortcut, applications_shortcut):
+                target.write_text(desktop_entry_content)
+                os.chmod(target, 0o755)
+                try:
+                    subprocess.run(
+                        ["gio", "set", "-t", "string", str(target), "metadata::trusted", "true"],
+                        check=True,
+                        capture_output=True,
+                    )
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    self._print_warning(
+                        f"Launcher created at {target}, but trust flag could not be set automatically."
+                        " You may need to right-click the file and choose 'Allow Launching'."
+                    )
 
             self._print_success(f"Created desktop launcher: {desktop_shortcut}")
             self._print_success(f"Registered launcher: {applications_shortcut}")
 
         except Exception as e:
             self._print_error(f"Failed to create desktop launchers: {e}")
-            self._print_info("You can manually create a .desktop file pointing to start_giljo.sh or run_giljo.py")
+            self._print_info(
+                "You can manually create a .desktop file pointing to "
+                f"venv/bin/python {self.install_dir / 'dev_tools' / 'control_panel.py'}"
+            )
 
     def _get_all_network_ips(self) -> List[str]:
         """Get all non-loopback IPv4 addresses with graceful fallbacks"""
