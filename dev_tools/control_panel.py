@@ -1498,89 +1498,99 @@ DROP DATABASE IF EXISTS giljo_mcp;
 
     def reset_to_fresh(self):
         """
-        Reset to fresh state by removing venv, configs, etc.
+        Reset to fresh state for testing setup flow.
 
-        Simulates a fresh GitHub release download by removing all
-        installation-generated files and directories.
+        Resets the admin user to default password (admin/admin) and
+        sets default_password_active=True so you can test the complete
+        setup flow without reinstalling.
 
-        Uses aggressive Windows deletion methods to handle locked files.
+        Does NOT delete venv or configs - only resets authentication state.
         """
-        # Build list of targets
-        targets = []
-        venv_path = self.project_root / "venv"
-        if venv_path.exists():
-            targets.append(("venv/", "Virtual environment directory"))
-
-        config_path = self.project_root / "config.yaml"
-        if config_path.exists():
-            targets.append(("config.yaml", "Configuration file"))
-
-        env_path = self.project_root / ".env"
-        if env_path.exists():
-            targets.append((".env", "Environment variables file"))
-
-        install_config_path = self.project_root / "install_config.yaml"
-        if install_config_path.exists():
-            targets.append(("install_config.yaml", "Installer configuration"))
-
-        if not targets:
-            messagebox.showinfo("Nothing to Reset", "No files/directories found to reset.")
-            return
-
-        # Show confirmation with list
-        target_list = "\n".join([f"- {name}: {desc}" for name, desc in targets])
+        # Confirmation dialog
         confirm = messagebox.askyesno(
             "Confirm Reset to Fresh State",
-            f"This will DELETE the following:\n\n{target_list}\n\n"
-            "This simulates a fresh download.\n"
-            "You will need to run the installer again.\n\n"
-            "IMPORTANT: Close all terminals and Python processes first!\n\n"
+            "This will reset the admin user for testing setup flow:\n\n"
+            "- Reset admin password to 'admin'\n"
+            "- Set default_password_active = True\n"
+            "- Set password_changed_at = NULL\n\n"
+            "This allows you to test:\n"
+            "1. Password change flow (/change-password)\n"
+            "2. Setup wizard (/setup)\n"
+            "3. Complete installation experience\n\n"
+            "WITHOUT reinstalling the application!\n\n"
             "Continue?",
-            icon="warning",
+            icon="question",
         )
 
         if not confirm:
             return
 
-        self.update_status_message("Resetting to fresh state...")
+        self.update_status_message("Resetting admin user to default state...")
 
-        # Remove targets with aggressive Windows deletion
-        errors = []
-        for name, desc in targets:
-            try:
-                target = self.project_root / name
-                if target.is_dir():
-                    # Special handling for venv on Windows (use rmdir /s /q)
-                    if name == "venv/":
-                        success = self._aggressive_delete_venv(target)
-                        if not success:
-                            errors.append(f"{name}: Failed to delete (files may be locked)")
-                    else:
-                        import shutil
-                        shutil.rmtree(target)
-                else:
-                    target.unlink()
-            except Exception as e:
-                errors.append(f"{name}: {e}")
-
-        if errors:
-            error_msg = "\n".join(errors)
+        # Reset admin user in database
+        if psycopg2 is None:
             messagebox.showerror(
-                "Partial Success",
-                f"Some items could not be removed:\n\n{error_msg}\n\n"
-                "Solutions:\n"
-                "1. Close all Python processes and terminals\n"
-                "2. Manually delete remaining files\n"
-                "3. Restart computer and try again\n"
-                "4. Run control panel as Administrator",
+                "Missing Dependency",
+                "psycopg2 is not installed.\n\nInstall with: pip install psycopg2"
             )
-        else:
-            self.update_status_message("Reset complete")
+            return
+
+        try:
+            credentials = self.get_db_credentials()
+            conn = psycopg2.connect(
+                host=credentials["host"],
+                port=credentials["port"],
+                user=credentials["user"],
+                password=credentials["password"],
+                database="giljo_mcp",
+                connect_timeout=5,
+            )
+            conn.autocommit = True
+
+            with conn.cursor() as cur:
+                # Step 1: Reset admin user password to 'admin' (bcrypt hash)
+                self.update_status_message("Resetting admin password to 'admin'...")
+                # This is the bcrypt hash for 'admin' - same hash used in install.py
+                admin_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5oPfL0fJLKZ9S"
+
+                cur.execute("""
+                    UPDATE users
+                    SET password_hash = %s
+                    WHERE username = 'admin'
+                """, (admin_hash,))
+
+                # Step 2: Reset setup_state to default_password_active=True
+                self.update_status_message("Setting default_password_active = True...")
+                cur.execute("""
+                    UPDATE setup_state
+                    SET default_password_active = TRUE,
+                        password_changed_at = NULL
+                    WHERE tenant_key = 'default'
+                """)
+
+            conn.close()
+
+            self.update_status_message("Reset complete - ready for testing!")
             messagebox.showinfo(
                 "Reset Complete",
-                "Reset to fresh state complete!\n\n"
-                "All installation files removed.\n\n"
-                "You can now run install.bat to set up again.",
+                "Admin user reset successfully!\n\n"
+                "You can now test the setup flow:\n\n"
+                "1. Visit http://localhost:7274\n"
+                "2. Login with admin/admin\n"
+                "3. Change password (forced)\n"
+                "4. Complete setup wizard\n\n"
+                "No reinstallation needed!"
+            )
+
+        except Exception as e:
+            self.update_status_message(f"Reset failed: {e}")
+            messagebox.showerror(
+                "Reset Failed",
+                f"Failed to reset admin user:\n\n{e}\n\n"
+                "Make sure:\n"
+                "1. PostgreSQL is running\n"
+                "2. giljo_mcp database exists\n"
+                "3. Backend services are stopped"
             )
 
     def reset_to_pristine(self):

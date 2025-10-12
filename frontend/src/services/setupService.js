@@ -102,41 +102,9 @@ class SetupService {
     return response.json()
   }
 
-  // Deployment mode configuration removed for v3.0 unified architecture
-
-  /**
-   * Register MCP server with AI tool (writes config file)
-   * @param {string} tool - Tool name
-   * @param {Object} config - MCP configuration to write
-   * @returns {Promise<{success: boolean, config_path: string, backup_path: string}>}
-   */
-  async registerMcp(tool, config) {
-    const response = await fetch(`${this.baseURL}/api/setup/register-mcp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool, config }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
-
-  /**
-   * Check if giljo-mcp is already configured in Claude Code
-   * @returns {Promise<{configured: boolean, message: string, config?: Object}>}
-   */
-  async checkMcpConfigured() {
-    const response = await fetch(`${this.baseURL}/api/setup/check-mcp-configured`)
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
-  }
+  // AUTO-INJECTION METHODS REMOVED (v3.0 unified architecture)
+  // registerMcp() and checkMcpConfigured() removed
+  // Use downloadable setup scripts instead for all users (localhost and remote)
 
   /**
    * Test MCP connection for a tool
