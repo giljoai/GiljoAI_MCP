@@ -146,8 +146,8 @@ const progressPercent = computed(() => {
   return Math.round((current / total) * 100)
 })
 
-// Computed: Always use localhost URL for v3.0
-const serverUrl = computed(() => 'http://127.0.0.1:7272')
+// v3.0 Unified: Dynamic server URL for all IPs
+const serverUrl = computed(() => `${window.location.protocol}//${window.location.hostname}:7272`)
 
 // Get props for current step
 const getStepProps = (step) => {
@@ -234,22 +234,22 @@ const saveSetupConfig = async () => {
     // Wait 1 second to show success message
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Redirect to main dashboard
-    window.location.href = 'http://localhost:7274'
+    // Redirect to main dashboard (dynamic URL)
+    window.location.href = `${window.location.protocol}//${window.location.hostname}:7274`
   } catch (error) {
     console.error('[WIZARD] Setup completion failed:', error)
     isRestarting.value = false
     restartMessage.value = 'Error during setup completion. Redirecting...'
 
-    // Wait 2 seconds then redirect anyway
+    // Wait 2 seconds then redirect anyway (dynamic URL)
     await new Promise((resolve) => setTimeout(resolve, 2000))
-    window.location.href = 'http://localhost:7274'
+    window.location.href = `${window.location.protocol}//${window.location.hostname}:7274`
   }
 }
 
 const finishSetup = () => {
   showRestartModal.value = false
-  window.location.href = 'http://localhost:7274'
+  window.location.href = `${window.location.protocol}//${window.location.hostname}:7274`
 }
 
 // Lifecycle

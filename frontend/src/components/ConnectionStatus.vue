@@ -297,7 +297,7 @@ const connectionState = computed(() => wsStore.connectionState)
 const subscriptions = computed(() => wsStore.subscriptions)
 
 const wsUrl = computed(() => {
-  const baseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:7272'
+  const baseUrl = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:7272`
   return `${baseUrl}/ws/${clientId.value || '{client_id}'}`
 })
 
