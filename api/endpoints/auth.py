@@ -639,7 +639,7 @@ async def change_password(
         setup_state = SetupState(
             id=str(uuid4()),
             tenant_key=admin_user.tenant_key,
-            completed=True,
+            database_initialized=True,
             default_password_active=False,
             password_changed_at=datetime.now(timezone.utc),
             setup_version='3.0.0'

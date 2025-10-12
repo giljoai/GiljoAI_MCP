@@ -337,7 +337,7 @@ class TestFullProjectLifecycle:
             project_id=sample_project.id,
             name="orchestrator",
             role="orchestrator",
-            status="completed"
+            status="database_initialized"
         )
 
         # Phase 2: Implementation
@@ -346,7 +346,7 @@ class TestFullProjectLifecycle:
             project_id=sample_project.id,
             name="implementer-1",
             role="implementer",
-            status="completed"
+            status="database_initialized"
         )
 
         # Phase 3: Testing

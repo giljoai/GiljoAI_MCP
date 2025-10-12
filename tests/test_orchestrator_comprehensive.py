@@ -176,7 +176,7 @@ class TestProjectLifecycle:
         assert result == mock_project
         assert mock_project.status == ProjectStatus.COMPLETED.value
         assert mock_project.completion_summary == "Project completed"
-        assert mock_agents[0].status == "completed"
+        assert mock_agents[0].status == "database_initialized"
 
     @pytest.mark.asyncio
     async def test_archive_completed_project(self, orchestrator, mock_project):
@@ -342,7 +342,7 @@ class TestHandoffMechanism:
             )
 
         assert result["success"] is True
-        assert from_agent.status == "completed"
+        assert from_agent.status == "database_initialized"
         assert to_agent.status == "active"
 
         # Check message was created

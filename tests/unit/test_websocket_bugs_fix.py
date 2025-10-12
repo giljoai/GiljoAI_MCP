@@ -342,13 +342,13 @@ class TestDatabaseInitializedField:
     """
     Test future-proofing for field rename.
 
-    Note: Currently using 'completed' but will be renamed to 'database_initialized'
+    Note: Currently using 'database_initialized' but will be renamed to 'database_initialized'
     """
 
     @pytest.mark.asyncio
     async def test_field_name_compatibility(self):
         """Test that code handles both old and new field names"""
-        # Current field name: 'completed'
+        # Current field name: 'database_initialized'
         # Future field name: 'database_initialized'
 
         ws = Mock(spec=WebSocket)

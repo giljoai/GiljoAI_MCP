@@ -73,8 +73,8 @@ class TestFreshInstallFlow:
         assert response.status_code == 200
 
         data = response.json()
-        assert "completed" in data
-        assert isinstance(data["completed"], bool)
+        assert "database_initialized" in data
+        assert isinstance(data["database_initialized"], bool)
         assert "database_configured" in data
         assert data["database_configured"] is True  # Always true (CLI installer)
 
@@ -84,7 +84,7 @@ class TestFreshInstallFlow:
         assert response.status_code == 200
 
         data = response.json()
-        required_fields = ["completed", "database_configured", "tools_attached", "network_mode"]
+        required_fields = ["database_initialized", "database_configured", "tools_attached", "network_mode"]
 
         for field in required_fields:
             assert field in data, f"Missing required field: {field}"
@@ -109,7 +109,7 @@ class TestFreshInstallFlow:
         status_response = client.get("/api/setup/status")
         assert status_response.status_code == 200
         status_data = status_response.json()
-        assert status_data["completed"] is True
+        assert status_data["database_initialized"] is True
 
     def test_post_complete_stores_tools_attached(self, client, reset_state_manager):
         """POST /api/setup/complete stores tools_attached in state"""
@@ -305,7 +305,7 @@ class TestHybridStorageFallback:
         assert response.status_code == 200
 
         data = response.json()
-        assert "completed" in data
+        assert "database_initialized" in data
         # Should return default state or file-based state
 
 
@@ -392,7 +392,7 @@ class TestBackwardCompatibility:
 
         status_data = status_response.json()
         # Frontend expects these exact fields
-        assert "completed" in status_data
+        assert "database_initialized" in status_data
         assert "database_configured" in status_data
         assert "tools_attached" in status_data
         assert "network_mode" in status_data
@@ -447,7 +447,7 @@ class TestE2ESetupFlow:
         status2 = client.get("/api/setup/status")
         assert status2.status_code == 200
         final_data = status2.json()
-        assert final_data["completed"] is True
+        assert final_data["database_initialized"] is True
         assert final_data["network_mode"] == "localhost"
 
     def test_complete_lan_setup_workflow(self, client, reset_state_manager):
@@ -485,7 +485,7 @@ class TestE2ESetupFlow:
         status = client.get("/api/setup/status")
         assert status.status_code == 200
         status_data = status.json()
-        assert status_data["completed"] is True
+        assert status_data["database_initialized"] is True
         assert status_data["network_mode"] == "lan"
 
 

@@ -997,7 +997,7 @@ class TestMCPTemplateToolsIntegration:
                     template_id=template_ids["analyzer"],
                     generation_ms=0.03,
                     tokens_used=80,
-                    agent_completed=True,
+                    agent_database_initialized=True,
                     used_at=datetime.now(timezone.utc) - timedelta(days=i),
                 )
                 session.add(stats)

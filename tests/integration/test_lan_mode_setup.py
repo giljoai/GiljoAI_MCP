@@ -65,7 +65,7 @@ def clean_config(tmp_path, monkeypatch):
             }
         },
         "setup": {
-            "completed": False
+            "database_initialized": False
         }
     }
 

@@ -377,7 +377,7 @@ describe('SetupWizard.vue', () => {
       global.fetch = vi.fn(() =>
         Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ completed: true })
+          json: () => Promise.resolve({ database_initialized: true })
         })
       )
 

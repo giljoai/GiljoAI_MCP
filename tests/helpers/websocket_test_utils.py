@@ -144,7 +144,7 @@ class MessageValidator:
     SCHEMAS = {
         "agent_status_update": {
             "required": ["type", "agent_id", "status", "timestamp"],
-            "status_values": ["pending", "in_progress", "completed", "error"],
+            "status_values": ["pending", "in_progress", "database_initialized", "error"],
         },
         "new_message": {
             "required": ["type", "id", "from", "to", "content", "timestamp"],

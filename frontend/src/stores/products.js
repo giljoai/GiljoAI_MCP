@@ -218,7 +218,7 @@ export const useProductStore = defineStore('products', () => {
         // Skip product fetch during:
         // 1. Password change phase (default_password_active=True)
         // 2. Setup wizard phase (completed=False)
-        if (setupStatus.default_password_active || !setupStatus.completed) {
+        if (setupStatus.default_password_active || !setupStatus.database_initialized) {
           console.log('[PRODUCTS] Skipping product initialization during setup flow')
           localStorage.removeItem('currentProductId')
           return

@@ -73,7 +73,7 @@ describe('Setup Wizard - Backend Integration Tests', () => {
 
       try {
         const status = await setupService.checkStatus()
-        if (!status.completed && to.path !== '/setup') {
+        if (!status.database_initialized && to.path !== '/setup') {
           next('/setup')
         } else {
           next()
@@ -503,7 +503,7 @@ describe('Setup Wizard - Backend Integration Tests', () => {
     it('should allow navigation to /setup when setup not completed', async () => {
       // Mock setup status check
       vi.spyOn(setupService, 'checkStatus').mockResolvedValue({
-        completed: false,
+        database_initialized: false,
       })
 
       await router.push('/setup')
@@ -515,7 +515,7 @@ describe('Setup Wizard - Backend Integration Tests', () => {
     it('should allow navigation to /setup even when setup completed (for re-running)', async () => {
       // Mock setup status check
       vi.spyOn(setupService, 'checkStatus').mockResolvedValue({
-        completed: true,
+        database_initialized: true,
       })
 
       await router.push('/setup')
@@ -528,7 +528,7 @@ describe('Setup Wizard - Backend Integration Tests', () => {
     it('should redirect to /setup when accessing dashboard with incomplete setup', async () => {
       // Mock setup status check
       vi.spyOn(setupService, 'checkStatus').mockResolvedValue({
-        completed: false,
+        database_initialized: false,
       })
 
       await router.push('/')
@@ -541,7 +541,7 @@ describe('Setup Wizard - Backend Integration Tests', () => {
     it('should allow dashboard access when setup completed', async () => {
       // Mock setup status check
       vi.spyOn(setupService, 'checkStatus').mockResolvedValue({
-        completed: true,
+        database_initialized: true,
       })
 
       await router.push('/')

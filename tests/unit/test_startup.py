@@ -108,7 +108,7 @@ class TestFirstRunDetection:
     def test_first_run_not_completed(self, mock_state_manager):
         """Test detection when setup is not completed."""
         mock_manager = MagicMock()
-        mock_manager.get_state.return_value = {"completed": False}
+        mock_manager.get_state.return_value = {"database_initialized": False}
         mock_state_manager.return_value = mock_manager
 
         from src.giljo_mcp.setup.state_manager import SetupStateManager
@@ -116,13 +116,13 @@ class TestFirstRunDetection:
         manager = SetupStateManager.get_instance(tenant_key="default")
         state = manager.get_state()
 
-        assert state["completed"] is False
+        assert state["database_initialized"] is False
 
     @patch("src.giljo_mcp.setup.state_manager.SetupStateManager.get_instance")
     def test_first_run_completed(self, mock_state_manager):
         """Test detection when setup is completed."""
         mock_manager = MagicMock()
-        mock_manager.get_state.return_value = {"completed": True}
+        mock_manager.get_state.return_value = {"database_initialized": True}
         mock_state_manager.return_value = mock_manager
 
         from src.giljo_mcp.setup.state_manager import SetupStateManager
@@ -130,7 +130,7 @@ class TestFirstRunDetection:
         manager = SetupStateManager.get_instance(tenant_key="default")
         state = manager.get_state()
 
-        assert state["completed"] is True
+        assert state["database_initialized"] is True
 
 
 class TestServiceManagement:

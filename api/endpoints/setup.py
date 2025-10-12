@@ -95,7 +95,7 @@ class SetupCompleteRequest(BaseModel):
 class SetupStatusResponse(BaseModel):
     """Response model for setup status"""
 
-    completed: bool = Field(..., description="Whether setup wizard has been completed")
+    database_initialized: bool = Field(..., description="Whether database tables have been created and initialized")
     database_configured: bool = Field(..., description="Whether database is configured (always true)")
     tools_attached: list[str] = Field(default_factory=list, description="List of attached MCP tools")
     network_mode: str = Field(..., description="Current network deployment mode")
@@ -311,8 +311,8 @@ async def get_setup_status(request: Request = None):
         # Database is always configured by CLI installer
         database_configured = True
 
-        # Get completion status from state manager
-        completed = state.get("completed", False)
+        # Get database initialization status from state manager
+        database_initialized = state.get("database_initialized", False)
 
         # Get attached tools from state manager
         tools_attached = state.get("tools_enabled", [])
@@ -350,7 +350,7 @@ async def get_setup_status(request: Request = None):
             default_password_active = True
 
         return SetupStatusResponse(
-            completed=completed,
+            database_initialized=database_initialized,
             database_configured=database_configured,
             tools_attached=tools_attached,
             network_mode=network_mode,
@@ -410,9 +410,9 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             config["setup"] = {}
 
         # Update setup section
-        config["setup"]["completed"] = True
+        config["setup"]["database_initialized"] = True
         config["setup"]["tools_attached"] = request_body.tools_attached
-        config["setup"]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        config["setup"]["database_initialized_at"] = datetime.now(timezone.utc).isoformat()
 
         # Save deployment_context as metadata (top-level for easy access)
         config["deployment_context"] = request_body.deployment_context.value
@@ -623,8 +623,8 @@ async def complete_setup(request_body: SetupCompleteRequest = Body(...), request
             # Get version for tracking
             setup_version = config.get("installation", {}).get("version", "2.0.0")
 
-            # Mark as completed with version tracking
-            state_manager.mark_completed(setup_version=setup_version, config_snapshot=config_snapshot)
+            # Mark database as initialized with version tracking
+            state_manager.mark_database_initialized(setup_version=setup_version, config_snapshot=config_snapshot)
 
             # Update additional state fields
             state_manager.update_state(

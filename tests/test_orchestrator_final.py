@@ -92,7 +92,7 @@ class TestProjectLifecycle:
         mock_agents[0].status = "active"
         await orchestrator.complete_project(mock_project.id, "Done")
         assert mock_project.status == ProjectStatus.COMPLETED.value
-        assert mock_agents[0].status == "completed"
+        assert mock_agents[0].status == "database_initialized"
 
         # Completed -> Archived
         mock_session.execute.return_value.scalars.return_value.all.return_value = []
@@ -239,7 +239,7 @@ class TestHandoffMechanism:
         )
 
         assert result["success"] is True
-        assert from_agent.status == "completed"
+        assert from_agent.status == "database_initialized"
         assert to_agent.status == "active"
         assert created_message.from_agent == "analyzer"
         assert created_message.to_agent == "implementer"
