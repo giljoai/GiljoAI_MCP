@@ -49,6 +49,7 @@ class LoginResponse(BaseModel):
     username: str
     role: str
     tenant_key: str
+    password_change_required: Optional[bool] = None  # v3.0 Unified: UX improvement
 
 
 class LogoutResponse(BaseModel):
@@ -213,22 +214,16 @@ async def login(
         logger.warning(f"Login failed for username: {request.username} (invalid password)")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    # Check if default password is still active (for admin user)
+    # Check if default password is still active (for admin user) - v3.0 Unified UX
     from src.giljo_mcp.models import SetupState
 
     stmt_setup = select(SetupState).where(SetupState.tenant_key == user.tenant_key)
     result_setup = await db.execute(stmt_setup)
     setup_state = result_setup.scalar_one_or_none()
 
-    if setup_state and setup_state.default_password_active and user.username == "admin":
-        logger.warning(f"Login blocked for {user.username}: default password must be changed")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": "must_change_password",
-                "message": "You must change the default password before proceeding",
-            },
-        )
+    # v3.0 Unified: Allow admin/admin login but indicate password change required
+    # No longer block with 403 - that's terrible UX. Login succeeds, frontend handles redirect.
+    password_change_required = setup_state and setup_state.default_password_active and user.username == "admin"
 
     # Generate JWT token
     token = JWTManager.create_access_token(
@@ -249,9 +244,21 @@ async def login(
     user.last_login = datetime.now(timezone.utc)
     await db.commit()
 
-    logger.info(f"User logged in successfully: {user.username} (role: {user.role})")
+    logger.info(f"User logged in successfully: {user.username} (role: {user.role}) (password_change_required: {password_change_required})")
 
-    return LoginResponse(message="Login successful", username=user.username, role=user.role, tenant_key=user.tenant_key)
+    # v3.0 Unified: Include password change requirement in response for frontend handling
+    response_data = {
+        "message": "Login successful",
+        "username": user.username,
+        "role": user.role,
+        "tenant_key": user.tenant_key
+    }
+
+    if password_change_required:
+        response_data["password_change_required"] = True
+        response_data["message"] = "Login successful - password change required"
+
+    return LoginResponse(**response_data)
 
 
 @router.post("/logout", response_model=LogoutResponse, tags=["auth"])
