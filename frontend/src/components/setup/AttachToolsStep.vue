@@ -5,8 +5,8 @@
       Connect AI coding assistants to GiljoAI MCP using the Model Context Protocol
     </p>
 
-    <!-- Localhost Mode: Auto-configuration -->
-    <div v-if="deploymentMode === 'localhost'">
+    <!-- Unified Mode: Auto-configuration for all IPs -->
+    <div>
       <v-row>
         <!-- Claude Code - Active -->
         <v-col cols="12" md="4">
@@ -138,18 +138,17 @@
         </v-col>
       </v-row>
 
-      <!-- Localhost Success Message -->
+      <!-- Success Message -->
       <v-alert v-if="claudeCodeConfigured" type="success" variant="tonal" class="mt-4">
         <v-icon start>mdi-check-circle</v-icon>
         <strong>Claude Code configured successfully</strong>
         <div class="text-caption mt-2">
-          Server URL: <code>{{ serverUrl || 'http://127.0.0.1:7272' }}</code>
+          Server URL: <code>{{ serverUrl || `${window.location.protocol}//${window.location.hostname}:7272` }}</code>
         </div>
       </v-alert>
-    </div>
 
-    <!-- LAN/WAN Mode: Manual Configuration -->
-    <div v-else>
+      <!-- Manual Configuration Section (when needed) -->
+      <div v-if="false" style="display: none">
       <v-alert type="info" variant="tonal" class="mb-4">
         <v-icon start>mdi-information</v-icon>
         <strong>LAN Mode: Manual Configuration Required</strong>
@@ -395,11 +394,7 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  deploymentMode: {
-    type: String,
-    required: true,
-    validator: (value) => ['localhost', 'lan', 'wan'].includes(value),
-  },
+  // deploymentMode removed - v3.0 unified approach for all IPs
   apiKey: {
     type: String,
     default: null,
@@ -422,7 +417,8 @@ const instructionStep = ref(1)
 
 // Computed
 const mcpConfigJson = computed(() => {
-  const serverUrlValue = props.serverUrl || 'http://localhost:7272'
+  // v3.0 Unified: Default to current host if no URL provided
+  const serverUrlValue = props.serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
   const apiKeyValue = props.apiKey || 'YOUR_API_KEY_HERE'
 
   // Generate the MCP configuration JSON for LAN mode
@@ -498,8 +494,8 @@ const attachClaudeCode = async () => {
   errorMessage.value = ''
 
   try {
-    // Generate MCP configuration for Claude Code in localhost mode
-    const mcpConfig = await setupService.generateMcpConfig('Claude Code', 'localhost')
+    // Generate MCP configuration for Claude Code (v3.0 unified approach)
+    const mcpConfig = await setupService.generateMcpConfig('Claude Code')
     console.log('[ATTACH_TOOLS] Generated MCP config:', mcpConfig)
 
     // Register MCP configuration (writes to .claude.json)
