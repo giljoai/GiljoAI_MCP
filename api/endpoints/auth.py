@@ -37,7 +37,7 @@ router = APIRouter()
 class LoginRequest(BaseModel):
     """Login request with username and password"""
     username: str = Field(..., min_length=3, max_length=64)
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=1)  # Allow default "admin" password (5 chars)
 
 
 class LoginResponse(BaseModel):

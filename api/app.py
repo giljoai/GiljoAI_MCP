@@ -169,13 +169,9 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     # Store setup_mode in config for middleware access
     state.config.setup_mode = setup_mode
 
-    # Initialize database (skip if in setup mode)
-    if setup_mode:
-        logger.info("Setup mode active - skipping database initialization")
-        logger.info("Database will be configured through the setup wizard")
-        state.db_manager = None
-        state.tenant_manager = None
-    else:
+    # Initialize database (ALWAYS - install.py creates DB before API starts)
+    # v3.0: No "setup mode without database" - database exists from installation
+    if True:  # Database always initialized
         # Check for DATABASE_URL in environment first
         logger.info("Initializing database connection...")
         db_url = os.getenv("DATABASE_URL")
@@ -275,19 +271,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as e:
         logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)
 
-    # Ensure system users exist (localhost user for auto-login)
-    if not setup_mode and state.db_manager:
-        try:
-            logger.info("Ensuring system users exist...")
-            from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
-
-            async with state.db_manager.get_session_async() as session:
-                await ensure_localhost_user(session)
-                logger.info("Localhost user ensured successfully")
-
-        except Exception as e:
-            logger.error(f"Failed to ensure localhost user: {e}", exc_info=True)
-            logger.warning("Continuing startup despite localhost user creation failure")
+    # v3.0: Removed localhost auto-login - unified authentication for all connections
 
     # Check setup state on startup (version tracking and validation)
     if not setup_mode and state.db_manager:
