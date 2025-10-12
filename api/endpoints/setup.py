@@ -116,33 +116,9 @@ class SetupCompleteResponse(BaseModel):
     admin_username: Optional[str] = Field(None, description="Admin username (LAN/WAN modes only)")
 
 
-class McpConfigRequest(BaseModel):
-    """Request model for MCP configuration generation"""
-
-    tool: str = Field(..., description="Tool name (e.g., 'Claude Code')")
-    mode: DeploymentContext = Field(..., description="Deployment context (localhost, lan, or wan)")
-
-
-class McpConfigResponse(BaseModel):
-    """Response model for MCP configuration"""
-
-    mcpServers: dict[str, Any] = Field(..., description="MCP server configuration")
-
-
-class RegisterMcpRequest(BaseModel):
-    """Request model for MCP registration"""
-
-    tool: str = Field(..., description="Tool name")
-    config: dict[str, Any] = Field(..., description="MCP configuration to register")
-
-
-class RegisterMcpResponse(BaseModel):
-    """Response model for MCP registration"""
-
-    success: bool = Field(..., description="Whether registration was successful")
-    message: str = Field(..., description="Human-readable status message")
-    config_path: Optional[str] = Field(None, description="Path to configuration file")
-    backup_path: Optional[str] = Field(None, description="Path to backup file")
+# PYDANTIC MODELS REMOVED (v3.0 unified architecture)
+# McpConfigRequest, McpConfigResponse, RegisterMcpRequest, RegisterMcpResponse
+# These models were only used by auto-injection endpoints (now removed)
 
 
 def get_config_path() -> Path:
@@ -750,119 +726,8 @@ async def migrate_setup_state():
         raise HTTPException(status_code=500, detail=f"Migration failed: {e}")
 
 
-@router.post("/generate-mcp-config", response_model=McpConfigResponse)
-async def generate_mcp_config(request: McpConfigRequest = Body(...)):
-    """
-    Generate MCP configuration for a specific tool and deployment mode.
-
-    Creates the appropriate MCP server configuration based on the tool
-    and deployment mode (localhost, LAN, or WAN).
-
-    Args:
-        request: MCP configuration request with tool name and mode
-
-    Returns:
-        Generated MCP configuration object
-    """
-    try:
-        # Read current config to get API settings
-        config = read_config()
-        services = config.get("services", {})
-        api_config = services.get("api", {})
-
-        # Get API port (default 7272)
-        api_port = api_config.get("port", 7272)
-
-        # Get API host based on mode
-        if request.mode == DeploymentContext.LOCALHOST:
-            api_host = "localhost"
-        else:
-            # For LAN/WAN, use the server IP from config
-            server_config = config.get("server", {})
-            api_host = server_config.get("ip", "localhost")
-
-        # Get project root (venv is in project root)
-        project_root = Path.cwd()
-        venv_python = project_root / "venv" / "Scripts" / "python.exe"
-
-        # If venv doesn't exist on Windows, try Unix path
-        if not venv_python.exists():
-            venv_python = project_root / "venv" / "bin" / "python"
-
-        # Generate MCP configuration
-        mcp_config = {
-            "mcpServers": {
-                "giljo-mcp": {
-                    "command": str(venv_python),
-                    "args": ["-m", "giljo_mcp"],
-                    "env": {
-                        "GILJO_MCP_HOME": str(project_root),
-                        "GILJO_SERVER_URL": f"http://{api_host}:{api_port}",
-                    },
-                }
-            }
-        }
-
-        logger.info(f"Generated MCP config for {request.tool} in {request.mode.value} mode")
-        return McpConfigResponse(**mcp_config)
-
-    except Exception as e:
-        logger.error(f"Error generating MCP config: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to generate MCP configuration: {e}")
-
-
-@router.get("/check-mcp-configured")
-async def check_mcp_configured():
-    """
-    Check if giljo-mcp is already configured in Claude Code.
-
-    Returns:
-        Configuration status including whether MCP server is configured
-    """
-    try:
-        import json
-        from pathlib import Path
-
-        # Get Claude Code config path
-        home = Path.home()
-        claude_config_path = home / ".claude.json"
-
-        if not claude_config_path.exists():
-            return {
-                "configured": False,
-                "message": "Claude Code config file not found",
-            }
-
-        # Read config
-        try:
-            with open(claude_config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-        except Exception as e:
-            logger.warning(f"Failed to read Claude config: {e}")
-            return {
-                "configured": False,
-                "message": "Could not read Claude Code config file",
-            }
-
-        # Check if giljo-mcp is configured
-        mcp_servers = config.get("mcpServers", {})
-        giljo_configured = "giljo-mcp" in mcp_servers
-
-        if giljo_configured:
-            return {
-                "configured": True,
-                "message": "giljo-mcp is already configured in Claude Code",
-                "config": mcp_servers["giljo-mcp"],
-            }
-        else:
-            return {
-                "configured": False,
-                "message": "giljo-mcp not found in Claude Code configuration",
-            }
-
-    except Exception as e:
-        logger.error(f"Error checking MCP configuration: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to check MCP configuration: {e}")
+# AUTO-INJECTION ENDPOINTS REMOVED (v3.0 unified architecture)
+# Use downloadable setup scripts instead for all users (localhost and remote)
 
 
 @router.get("/installation-info")
@@ -900,91 +765,7 @@ async def get_installation_info():
         raise HTTPException(status_code=500, detail=f"Failed to get installation info: {e}")
 
 
-@router.post("/register-mcp", response_model=RegisterMcpResponse)
-async def register_mcp(request: RegisterMcpRequest = Body(...)):
-    """
-    Register MCP server with AI tool (writes to tool's config file).
-
-    Currently supports Claude Code by writing to ~/.claude.json
-
-    Args:
-        request: MCP registration request with tool name and config
-
-    Returns:
-        Registration success response with config and backup paths
-    """
-    try:
-        tool_lower = request.tool.lower()
-
-        if "claude" in tool_lower:
-            # Write to Claude Code config file
-            import json
-            from pathlib import Path
-
-            # Get user home directory
-            home = Path.home()
-            claude_config_path = home / ".claude.json"
-
-            # Read existing config or create new one
-            existing_config = {}
-            if claude_config_path.exists():
-                try:
-                    with open(claude_config_path, "r", encoding="utf-8") as f:
-                        existing_config = json.load(f)
-                except Exception as e:
-                    logger.warning(f"Failed to read existing config: {e}")
-
-            # Ensure mcpServers section exists
-            if "mcpServers" not in existing_config:
-                existing_config["mcpServers"] = {}
-
-            # Check if already configured - UPDATE it instead of skipping (wizard is destructive)
-            is_update = "giljo-mcp" in existing_config["mcpServers"]
-
-            # Always backup existing config before modifying
-            backup_path = None
-            if claude_config_path.exists():
-                import shutil
-                from datetime import datetime
-
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_path = home / f".claude.json.backup_{timestamp}"
-                shutil.copy2(claude_config_path, backup_path)
-                logger.info(f"Backed up existing config to {backup_path}")
-
-            if is_update:
-                logger.info(f"Wizard: Updating existing giljo-mcp configuration (destructive)")
-
-            # Merge MCP servers
-            if "mcpServers" not in existing_config:
-                existing_config["mcpServers"] = {}
-
-            # Update with new config
-            existing_config["mcpServers"].update(request.config.get("mcpServers", {}))
-
-            # Write updated config
-            with open(claude_config_path, "w", encoding="utf-8") as f:
-                json.dump(existing_config, f, indent=2, ensure_ascii=False)
-
-            action = "Updated" if is_update else "Registered"
-            logger.info(f"{action} MCP server for {request.tool} at {claude_config_path}")
-
-            return RegisterMcpResponse(
-                success=True,
-                message=f"MCP server {action.lower()} for {request.tool}",
-                config_path=str(claude_config_path),
-                backup_path=str(backup_path) if backup_path else None,
-            )
-
-        else:
-            # Tool not supported yet
-            raise HTTPException(status_code=400, detail=f"MCP registration not yet supported for tool: {request.tool}")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error registering MCP: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to register MCP configuration: {e}")
+# /register-mcp endpoint REMOVED - auto-injection replaced with downloadable scripts
 
 
 # ================================================================================
