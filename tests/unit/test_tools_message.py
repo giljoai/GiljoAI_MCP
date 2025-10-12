@@ -360,7 +360,7 @@ class TestMessageTools:
         )
 
         AssertionHelpers.assert_success_response(result, ["message_id", "status", "completed_by"])
-        assert result["status"] == "completed"
+        assert result["status"] == "database_initialized"
         assert result["result"] == "Task completed successfully"
 
     @pytest.mark.asyncio
@@ -644,7 +644,7 @@ class TestMessageTools:
         AssertionHelpers.assert_success_response(complete_result)
 
         # Verify final state
-        assert complete_result["status"] == "completed"
+        assert complete_result["status"] == "database_initialized"
 
     @pytest.mark.asyncio
     async def test_message_queue_integration(self):

@@ -240,7 +240,7 @@ class TestWebSocketManager:
         """Test entity update notifications"""
         entity_type = "project"
         entity_id = "test_project"
-        update_data = {"status": "completed"}
+        update_data = {"status": "database_initialized"}
         entity_key = f"{entity_type}:{entity_id}"
 
         # Setup subscribers

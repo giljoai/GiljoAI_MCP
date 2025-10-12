@@ -47,7 +47,7 @@ def clean_config(tmp_path):
             }
         },
         "setup": {
-            "completed": False
+            "database_initialized": False
         }
     }
 
@@ -85,7 +85,7 @@ class TestSetupStatusEndpoint:
         data = response.json()
 
         # Check required fields exist
-        assert "completed" in data, "Response should have 'completed' field"
+        assert "database_initialized" in data, "Response should have 'database_initialized' field"
         assert "database_configured" in data, "Response should have 'database_configured' field"
         assert "tools_attached" in data, "Response should have 'tools_attached' field"
         assert "network_mode" in data, "Response should have 'network_mode' field"
@@ -98,7 +98,7 @@ class TestSetupStatusEndpoint:
         data = response.json()
 
         # Validate field types
-        assert isinstance(data["completed"], bool), "completed should be boolean"
+        assert isinstance(data["database_initialized"], bool), "completed should be boolean"
         assert isinstance(data["database_configured"], bool), "database_configured should be boolean"
         assert isinstance(data["tools_attached"], list), "tools_attached should be array"
         assert isinstance(data["network_mode"], str), "network_mode should be string"
@@ -131,8 +131,8 @@ class TestSetupStatusEndpoint:
         # On first launch, setup should not be completed
         # (This test may fail if setup was previously completed - that's OK)
         # The important part is the endpoint works
-        assert "completed" in data
-        assert isinstance(data["completed"], bool)
+        assert "database_initialized" in data
+        assert isinstance(data["database_initialized"], bool)
 
 
 class TestSetupCompleteEndpoint:
@@ -223,7 +223,7 @@ class TestSetupCompleteEndpoint:
         assert status_response.status_code == 200
 
         status_data = status_response.json()
-        assert status_data["completed"] is True, "Status should show setup as completed"
+        assert status_data["database_initialized"] is True, "Status should show setup as completed"
 
     def test_complete_is_idempotent(self, client):
         """Test that calling complete multiple times doesn't error"""
@@ -321,7 +321,7 @@ class TestSetupIntegration:
         assert final_status.status_code == 200
         final_data = final_status.json()
 
-        assert final_data["completed"] is True
+        assert final_data["database_initialized"] is True
         assert final_data["network_mode"] == "localhost"
 
     def test_setup_workflow_lan(self, client):
@@ -354,7 +354,7 @@ class TestSetupIntegration:
         assert status.status_code == 200
         status_data = status.json()
 
-        assert status_data["completed"] is True
+        assert status_data["database_initialized"] is True
         assert status_data["network_mode"] == "lan"
 
     def test_setup_can_be_reconfigured(self, client):

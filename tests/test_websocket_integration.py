@@ -553,12 +553,12 @@ class TestEndToEndIntegration:
 
             # 4. Complete agent task
             async with httpx.AsyncClient() as http_client:
-                await http_client.patch(f"{API_URL}/agents/{agent_id}", json={"status": "completed"})
+                await http_client.patch(f"{API_URL}/agents/{agent_id}", json={"status": "database_initialized"})
 
             # Should receive completion notification
             completion_msg = await client.receive_message(timeout=1.0)
             assert completion_msg.get("type") == "agent_status_update"
-            assert completion_msg.get("status") == "completed"
+            assert completion_msg.get("status") == "database_initialized"
 
         finally:
             await client.disconnect()

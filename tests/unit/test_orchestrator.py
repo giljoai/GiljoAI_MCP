@@ -337,7 +337,7 @@ class TestProjectOrchestrator(BaseAsyncTest):
 
         mock_project = Mock(spec=Project)
         mock_project.id = str(uuid.uuid4())
-        mock_project.status = "completed"
+        mock_project.status = "database_initialized"
 
         mock_query = Mock()
         mock_query.filter_by.return_value.first.return_value = mock_project

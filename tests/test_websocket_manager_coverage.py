@@ -114,7 +114,7 @@ class TestWebSocketManagerCoverage:
         sub_agent_name = "sub_agent"
         parent_agent_name = "parent_agent"
         project_id = "proj_001"
-        status = "completed"
+        status = "database_initialized"
         duration_seconds = 120
         tokens_used = 5000
         result = "Task completed successfully"
@@ -141,8 +141,8 @@ class TestWebSocketManagerCoverage:
         # Verify message content
         project_call = ws_manager.notify_entity_update.call_args_list[0]
         message_data = project_call[0][2]
-        assert message_data["type"] == "agent.sub_agent.completed"
-        assert message_data["data"]["status"] == "completed"
+        assert message_data["type"] == "agent.sub_agent.database_initialized"
+        assert message_data["data"]["status"] == "database_initialized"
         assert message_data["data"]["duration_seconds"] == 120
         assert message_data["data"]["result"] == result
         assert message_data["data"]["error_message"] is None
@@ -232,7 +232,7 @@ class TestWebSocketManagerCoverage:
         project_id = "proj_001"
         tenant_key = "tenant_a"
         duration_seconds = 300.5
-        final_status = "completed"
+        final_status = "database_initialized"
         context_usage = 2500
         completion_reason = "Mission accomplished"
         meta_data = {"efficiency": "high"}
@@ -260,7 +260,7 @@ class TestWebSocketManagerCoverage:
         sent_message = client.send_json.call_args[0][0]
         assert sent_message["type"] == "agent:complete"
         assert sent_message["data"]["duration_seconds"] == 300.5
-        assert sent_message["data"]["final_status"] == "completed"
+        assert sent_message["data"]["final_status"] == "database_initialized"
         assert sent_message["data"]["context_usage"] == 2500
 
         # Verify entity notifications

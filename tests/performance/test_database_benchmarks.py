@@ -475,7 +475,7 @@ class TestDatabaseBenchmarks:
                     project_id=test_project.id,
                     name=f"temp_agent_{i}",
                     role="worker",
-                    status="completed",  # Mark for cleanup
+                    status="database_initialized",  # Mark for cleanup
                 )
                 temp_agents.append(agent)
                 session.add(agent)
@@ -507,7 +507,7 @@ class TestDatabaseBenchmarks:
             await session.execute(stmt)
 
             # Delete completed agents
-            stmt = delete(Agent).where(Agent.status == "completed")
+            stmt = delete(Agent).where(Agent.status == "database_initialized")
             await session.execute(stmt)
 
             await session.commit()

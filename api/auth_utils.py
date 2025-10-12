@@ -21,11 +21,11 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
     Get current setup state from database.
 
     Returns:
-        dict with setup_completed flag
+        dict with database_initialized flag
     """
     if not db:
-        # If no database session, assume setup not completed
-        return {'setup_completed': False}
+        # If no database session, assume database not initialized
+        return {'database_initialized': False}
 
     try:
         from sqlalchemy import select
@@ -37,16 +37,16 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
 
         if setup_state:
             return {
-                'setup_completed': setup_state.completed,
+                'database_initialized': setup_state.database_initialized,
                 'default_password_active': setup_state.default_password_active
             }
 
-        # No setup state found - assume not completed
-        return {'setup_completed': False}
+        # No setup state found - assume not initialized
+        return {'database_initialized': False}
 
     except Exception as e:
         logger.error(f"Failed to get setup state: {e}")
-        return {'setup_completed': False}
+        return {'database_initialized': False}
 
 
 async def authenticate_websocket(
@@ -75,13 +75,13 @@ async def authenticate_websocket(
     """
     # Check setup state
     setup_state = await get_setup_state(db)
-    setup_completed = setup_state.get('setup_completed', True)
+    database_initialized = setup_state.get('database_initialized', True)
     default_password_active = setup_state.get('default_password_active', False)
 
     # Allow connection without auth during:
     # 1. Initial setup (database not initialized)
     # 2. Password change phase (database ready but default password active)
-    if not setup_completed:
+    if not database_initialized:
         logger.info("WebSocket connection allowed: initial setup mode (database not initialized)")
         return {
             'authenticated': True,

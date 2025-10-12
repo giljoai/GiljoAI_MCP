@@ -68,7 +68,7 @@ class TestWebSocketManager100Percent:
 
         with patch("api.websocket.logger") as mock_logger:
             await ws_manager.broadcast_agent_complete(
-                agent_id, agent_name, project_id, tenant_key, 120.0, "completed", 1000
+                agent_id, agent_name, project_id, tenant_key, 120.0, "database_initialized", 1000
             )
 
             # Verify exception was logged
@@ -152,7 +152,7 @@ class TestWebSocketManager100Percent:
         )
 
         await ws_manager.broadcast_agent_complete(
-            "agent_001", "test_agent", "proj_001", "nonexistent_tenant", 60.0, "completed", 100
+            "agent_001", "test_agent", "proj_001", "nonexistent_tenant", 60.0, "database_initialized", 100
         )
 
         await ws_manager.broadcast_agent_update(
@@ -181,7 +181,7 @@ class TestWebSocketManager100Percent:
 
         # Test broadcast_sub_agent_completed without optional parameters
         await ws_manager.broadcast_sub_agent_completed(
-            "int_001", "sub_agent", "parent_agent", "proj_001", "completed", 60
+            "int_001", "sub_agent", "parent_agent", "proj_001", "database_initialized", 60
         )
 
         # Test broadcast_agent_spawn without optional parameters
@@ -189,7 +189,7 @@ class TestWebSocketManager100Percent:
 
         # Test broadcast_agent_complete without optional parameters
         await ws_manager.broadcast_agent_complete(
-            "agent_001", "test_agent", "proj_001", "tenant_a", 120.0, "completed", 1000
+            "agent_001", "test_agent", "proj_001", "tenant_a", 120.0, "database_initialized", 1000
         )
 
         # Test broadcast_agent_update without optional parameters

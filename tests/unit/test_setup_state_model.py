@@ -14,8 +14,8 @@ def test_create_setup_state_with_defaults(sync_db_session, setup_state_factory):
 
     assert state.id is not None
     assert state.tenant_key is not None
-    assert state.completed is False
-    assert state.completed_at is None
+    assert state.database_initialized is False
+    assert state.database_initialized_at is None
     assert state.features_configured == {}
     assert state.tools_enabled == []
     assert state.validation_passed is True
@@ -27,7 +27,7 @@ def test_create_setup_state_with_custom_values(sync_db_session, setup_state_fact
     """Test creating SetupState with custom values"""
     state = setup_state_factory(
         tenant_key="custom_tenant",
-        completed=True,
+        database_initialized=True,
         setup_version="2.0.0",
         database_version="18",
         features_configured={"database": True},
@@ -35,7 +35,7 @@ def test_create_setup_state_with_custom_values(sync_db_session, setup_state_fact
     )
 
     assert state.tenant_key == "custom_tenant"
-    assert state.completed is True
+    assert state.database_initialized is True
     assert state.setup_version == "2.0.0"
     assert state.database_version == "18"
     assert state.features_configured == {"database": True}
@@ -127,11 +127,11 @@ def test_install_mode_constraint(sync_db_session, setup_state_factory):
 
 
 def test_completed_at_required_constraint(sync_db_session, setup_state_factory):
-    """Test CHECK constraint that completed_at must be set when completed=True"""
+    """Test CHECK constraint that completed_at must be set when database_initialized=True"""
     from sqlalchemy.exc import IntegrityError
 
-    # This should fail: completed=True but no completed_at
-    state = setup_state_factory(tenant_key="no_completed_at", completed=True, completed_at=None)
+    # This should fail: database_initialized=True but no completed_at
+    state = setup_state_factory(tenant_key="no_completed_at", database_initialized=True, database_initialized_at=None)
 
     with pytest.raises(IntegrityError) as exc_info:
         sync_db_session.commit()
@@ -145,13 +145,13 @@ def test_to_dict_serialization(sync_db_session, completed_setup_state):
     assert isinstance(data, dict)
     assert data["id"] == completed_setup_state.id
     assert data["tenant_key"] == completed_setup_state.tenant_key
-    assert data["completed"] is True
+    assert data["database_initialized"] is True
     assert data["setup_version"] == "2.0.0"
     assert data["database_version"] == "18"
     assert data["features_configured"] == {"database": True, "api": {"enabled": True, "port": 7272}}
     assert data["tools_enabled"] == ["project", "agent", "message", "task"]
     assert "created_at" in data
-    assert isinstance(data["completed_at"], str)  # ISO format
+    assert isinstance(data["database_initialized_at"], str)  # ISO format
 
 
 def test_get_by_tenant(sync_db_session, completed_setup_state):
@@ -174,14 +174,14 @@ def test_create_or_update_new(db_session):
     from src.giljo_mcp.models import SetupState
 
     state = SetupState.create_or_update(
-        db_session, tenant_key="new_tenant", setup_version="1.0.0", completed=True
+        db_session, tenant_key="new_tenant", setup_version="1.0.0", database_initialized=True
     )
 
     sync_db_session.commit()
 
     assert state.tenant_key == "new_tenant"
     assert state.setup_version == "1.0.0"
-    assert state.completed is True
+    assert state.database_initialized is True
 
 
 def test_create_or_update_existing(sync_db_session, completed_setup_state):
@@ -214,17 +214,17 @@ def test_mark_completed(sync_db_session, setup_state_factory):
     state = setup_state_factory(tenant_key="to_complete")
     sync_db_session.commit()
 
-    assert state.completed is False
-    assert state.completed_at is None
+    assert state.database_initialized is False
+    assert state.database_initialized_at is None
     assert state.setup_version is None
 
     # Mark as completed
     state.mark_completed(setup_version="2.0.0")
     sync_db_session.commit()
 
-    assert state.completed is True
-    assert state.completed_at is not None
-    assert isinstance(state.completed_at, datetime)
+    assert state.database_initialized is True
+    assert state.database_initialized_at is not None
+    assert isinstance(state.database_initialized_at, datetime)
     assert state.setup_version == "2.0.0"
 
 
@@ -384,7 +384,7 @@ def test_partial_index_incomplete_setups(sync_db_session, setup_state_factory, c
     from sqlalchemy import text
 
     # Create incomplete setup
-    incomplete = setup_state_factory(tenant_key="incomplete", completed=False)
+    incomplete = setup_state_factory(tenant_key="incomplete", database_initialized=False)
     sync_db_session.commit()
 
     # Query should use the partial index (idx_setup_incomplete)

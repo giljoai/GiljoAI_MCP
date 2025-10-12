@@ -96,7 +96,7 @@ class TestProjectStatuss:
         assert ProjectStatus.DRAFT.value == "draft"
         assert ProjectStatus.ACTIVE.value == "active"
         assert ProjectStatus.PAUSED.value == "paused"
-        assert ProjectStatus.COMPLETED.value == "completed"
+        assert ProjectStatus.COMPLETED.value == "database_initialized"
         assert ProjectStatus.ARCHIVED.value == "archived"
 
 

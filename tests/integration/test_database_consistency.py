@@ -273,7 +273,7 @@ class TestDatabaseConsistency:
         # 7. Update task statuses
         for task_id in task_ids:
             update_result = await _update_task_status(
-                self.db_manager, self.tenant_manager, task_id, "completed", "cascade_agent"
+                self.db_manager, self.tenant_manager, task_id, "database_initialized", "cascade_agent"
             )
             assert update_result["success"] is True
 
