@@ -367,19 +367,17 @@ const loadCurrentUser = async () => {
     console.log('[Auth] Not authenticated or error loading user')
     currentUser.value = null
     userStore.currentUser = null
-    
-    // Check if we're on localhost - if so, bypass authentication
-    const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
-    
-    // If not localhost and not already on login page, redirect to login
-    if (!isLocalhost && !window.location.pathname.includes('/login')) {
-      console.log('[Auth] Not on localhost, redirecting to login')
+
+    // v3.0 Unified: Always redirect to login on authentication failure
+    // No localhost bypass - unified authentication for ALL IPs
+    if (!window.location.pathname.includes('/login')) {
+      console.log('[Auth] Not authenticated, redirecting to login')
       router.push({
         path: '/login',
         query: { redirect: window.location.pathname + window.location.search }
       })
     }
-    
+
     return false
   }
 }
