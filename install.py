@@ -16,8 +16,8 @@ Architecture:
     2. Check Python version (3.10+)
     3. Discover PostgreSQL (cross-platform)
     4. Install dependencies (venv + requirements.txt)
-    5. Generate configs (.env + config.yaml v3.0) - BEFORE migrations!
-    6. Setup database (create DB, roles, migrations) - needs .env from step 5
+    5. Generate configs (.env + config.yaml v3.0) - BEFORE table creation!
+    6. Setup database (create DB, roles, tables via DatabaseManager) - needs .env from step 5
     7. Launch services (API + Frontend)
     8. Open browser (http://localhost:7274)
 
@@ -139,7 +139,7 @@ class UnifiedInstaller:
             result['steps'].append('dependencies_installed')
 
             # Step 5: Generate configs (MUST happen before database setup!)
-            # Migrations in step 6 need .env file with DATABASE_URL
+            # Table creation in step 6 needs .env file with DATABASE_URL
             self._print_header("Generating Configuration Files")
             config_result = self.generate_configs()
             if not config_result['success']:
@@ -159,34 +159,9 @@ class UnifiedInstaller:
             result['steps'].append('database_created')
             result['steps'].append('tables_created')  # Added by inline table creation
 
-            # Step 6b: Update .env with real database credentials (NEW - fixes password bug)
-            if self.database_credentials:
-                self._print_header("Updating Configuration with Database Credentials")
-                env_update_result = self.update_env_with_real_credentials()
-                if not env_update_result['success']:
-                    self._print_warning("Failed to update .env with real credentials")
-                    for error in env_update_result.get('errors', []):
-                        self._print_warning(f"  • {error}")
-                else:
-                    result['steps'].append('env_updated_with_credentials')
+            # REMOVED: Service launching - services will not auto-start after installation
 
-
-            # Step 7: Launch services (if requested)
-            if self.settings.get('start_services', True):
-                self._print_header("Launching Services")
-                launch_result = self.launch_services()
-                if not launch_result['success']:
-                    self._print_error("Service launch failed")
-                    result['error'] = launch_result.get('error', 'Unknown error')
-                    return result
-                result['steps'].append('services_launched')
-                result['api_pid'] = launch_result.get('api_pid')
-                result['frontend_pid'] = launch_result.get('frontend_pid')
-            else:
-                self._print_info("Skipping service launch (per user preference)")
-
-
-            # Step 9: Create desktop shortcuts (if requested - Windows only)
+            # Step 7: Create desktop shortcuts (if requested - Windows only)
             if self.settings.get('create_shortcuts', False):
                 self._print_header("Creating Desktop Shortcuts")
                 self.create_desktop_shortcuts()
@@ -316,17 +291,9 @@ class UnifiedInstaller:
                     self._print_error("Too many failed attempts. Installation cannot continue without valid PostgreSQL password.")
                     raise ValueError("PostgreSQL password required for installation")
 
-        # Start services after installation
-        print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
-        print(f"Would you like to start services automatically after installation?")
-        start_response = input(f"{Fore.YELLOW}Start services? (Y/n): {Style.RESET_ALL}").strip().lower()
-        self.settings['start_services'] = start_response != 'n'
+        # REMOVED: Start services prompt - services will not auto-start
 
-        # Database table creation (NEW - Enhancement 1)
-        print(f"\nWould you like to create database tables now?")
-        print(f"(runs Alembic migrations to initialize schema)")
-        create_tables_response = input(f"{Fore.YELLOW}Create database tables? (Y/n): {Style.RESET_ALL}").strip().lower()
-        self.settings['create_tables'] = create_tables_response != 'n'
+        # REMOVED: Database table creation prompt - table creation is now MANDATORY
 
         # Set defaults for MCP and Serena (will be configured in setup wizard)
         self.settings['register_mcp_tools'] = False
@@ -334,15 +301,16 @@ class UnifiedInstaller:
 
         # Create desktop shortcuts
         if platform.system() == "Windows":
-            print(f"\nWould you like to create desktop shortcuts?")
+            print(f"\n{Fore.CYAN}[Post-Installation Options]{Style.RESET_ALL}")
+            print(f"Would you like to create desktop shortcuts?")
             shortcuts_response = input(f"{Fore.YELLOW}Create shortcuts? (Y/n): {Style.RESET_ALL}").strip().lower()
             self.settings['create_shortcuts'] = shortcuts_response != 'n'
         else:
             self.settings['create_shortcuts'] = False
 
-        # Verbose mode for first run
-        print(f"\nWould you like to open console windows for debugging?")
-        print(f"(recommended for first-time installation)")
+        # Verbose mode for first run (only relevant if services started manually)
+        print(f"\nWould you like to enable verbose mode for manual service startup?")
+        print(f"(opens console windows when services are started)")
         verbose_response = input(f"{Fore.YELLOW}Enable verbose mode? (y/N): {Style.RESET_ALL}").strip().lower()
         self.settings['verbose_mode'] = verbose_response == 'y'
 
@@ -350,8 +318,6 @@ class UnifiedInstaller:
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
         print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
         print(f"  • PostgreSQL password: {'*' * 8} (secured)")
-        print(f"  • Start services: {self.settings['start_services']}")
-        print(f"  • Create database tables: {self.settings['create_tables']}")
         if platform.system() == "Windows":
             print(f"  • Create shortcuts: {self.settings['create_shortcuts']}")
         print(f"  • Verbose mode: {self.settings['verbose_mode']}")
@@ -669,30 +635,32 @@ class UnifiedInstaller:
 
     def setup_database(self) -> Dict[str, Any]:
         """
-        Setup PostgreSQL database using DatabaseInstaller, then create tables directly
+        Setup PostgreSQL database with correct credential flow
 
-        Uses the SAME method as the rest of the application:
-        DatabaseManager.create_tables_async() -> Base.metadata.create_all()
+        Sequence:
+        1. Create database and roles (DatabaseInstaller)
+        2. Update .env with REAL credentials
+        3. Reload environment variables
+        4. Create tables using DatabaseManager (MANDATORY)
+        5. Create admin account and setup_state
 
         Returns:
             Database setup result
         """
         try:
-            # Import DatabaseInstaller from existing module
             from installer.core.database import DatabaseInstaller
 
             # Prepare settings for DatabaseInstaller
             db_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
-                'pg_password': self.settings.get('pg_password'),  # No default - REQUIRED
+                'pg_password': self.settings.get('pg_password'),
                 'pg_user': self.settings.get('pg_user', 'postgres')
             }
 
-            # Create installer instance
             db_installer = DatabaseInstaller(settings=db_settings)
 
-            # Run database setup (creates DB + roles)
+            # STEP 1: Create database and roles
             self._print_info("Creating database and roles...")
             result = db_installer.setup()
 
@@ -704,104 +672,123 @@ class UnifiedInstaller:
 
             self._print_success("Database and roles created successfully")
 
-            # Create tables using DatabaseManager (SAME AS API/APP.PY LINE 186)
-            if self.settings.get('create_tables', True):
-                self._print_info("Creating database tables...")
-                import asyncio
-                import sys
-                from pathlib import Path
+            # STEP 2: Store real credentials
+            self.database_credentials = result.get('credentials', {})
 
-                # Add src to path
-                sys.path.insert(0, str(Path(__file__).parent / "src"))
+            if not self.database_credentials:
+                result['errors'] = ["Database credentials not returned by DatabaseInstaller"]
+                result['success'] = False
+                return result
 
-                # Import after path is set
-                from giljo_mcp.database import DatabaseManager
-                from giljo_mcp.models import User, SetupState
-                from datetime import datetime, timezone
-                from uuid import uuid4
-                from passlib.hash import bcrypt
+            # STEP 3: Update .env with REAL database credentials
+            self._print_info("Generating .env with real database credentials...")
+            env_result = self.update_env_with_real_credentials()
 
-                # Get DATABASE_URL from .env (generated in step 5)
-                import os
-                from dotenv import load_dotenv
-                load_dotenv()
-                db_url = os.getenv("DATABASE_URL")
+            if not env_result['success']:
+                self._print_error("Failed to generate .env file")
+                for error in env_result.get('errors', []):
+                    self._print_error(f"  • {error}")
+                result['success'] = False
+                return result
 
-                if not db_url:
-                    result['errors'] = ["DATABASE_URL not found in .env"]
-                    result['success'] = False
-                    return result
+            self._print_success(".env file generated with database credentials")
 
-                # Create tables using async DatabaseManager
-                async def create_tables_and_init():
-                    db_manager = DatabaseManager(db_url, is_async=True)
+            # STEP 4: Reload environment variables
+            import os
+            from dotenv import load_dotenv
+            load_dotenv(override=True)  # Force reload to pick up new DATABASE_URL
 
-                    # Create all tables (SAME AS api/app.py:186)
-                    await db_manager.create_tables_async()
+            db_url = os.getenv("DATABASE_URL")
+            if not db_url:
+                result['errors'] = ["DATABASE_URL not found in .env after regeneration"]
+                result['success'] = False
+                return result
 
-                    # Create admin user
-                    async with db_manager.get_session_async() as session:
-                        from sqlalchemy import select
+            self._print_info(f"Loaded DATABASE_URL from .env: {db_url.split('@')[0]}@...")
 
-                        # Check if admin exists
-                        stmt = select(User).where(User.username == 'admin')
-                        result_user = await session.execute(stmt)
-                        existing = result_user.scalar_one_or_none()
+            # STEP 5: Create tables using DatabaseManager (MANDATORY - always happens)
+            self._print_info("Creating database tables...")
+            import asyncio
+            import sys
+            from pathlib import Path
 
-                        if not existing:
-                            admin_user = User(
-                                id=str(uuid4()),
-                                username='admin',
-                                email=None,
-                                full_name='Administrator',
-                                password_hash=bcrypt.hash('admin'),
-                                role='admin',
-                                tenant_key='default',
-                                is_active=True,
-                                created_at=datetime.now(timezone.utc)
-                            )
-                            session.add(admin_user)
-                            await session.commit()
+            # Add src to path
+            sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-                        # Create setup_state
-                        stmt = select(SetupState).where(SetupState.tenant_key == 'default')
-                        result_state = await session.execute(stmt)
-                        existing_state = result_state.scalar_one_or_none()
+            from giljo_mcp.database import DatabaseManager
+            from giljo_mcp.models import User, SetupState
+            from datetime import datetime, timezone
+            from uuid import uuid4
+            from passlib.hash import bcrypt
 
-                        if not existing_state:
-                            setup_state = SetupState(
-                                id=str(uuid4()),
-                                tenant_key='default',
-                                completed=False,
-                                default_password_active=True,
-                                password_changed_at=None,
-                                setup_version='3.0.0',
-                                created_at=datetime.now(timezone.utc),
-                                updated_at=datetime.now(timezone.utc)
-                            )
-                            session.add(setup_state)
-                            await session.commit()
+            # Create tables using async DatabaseManager
+            async def create_tables_and_init():
+                db_manager = DatabaseManager(db_url, is_async=True)
 
-                    await db_manager.close_async()
-                    return True
+                # Create all tables (SAME AS api/app.py:186)
+                await db_manager.create_tables_async()
 
-                # Run async table creation
-                tables_created = asyncio.run(create_tables_and_init())
+                # Create admin user
+                async with db_manager.get_session_async() as session:
+                    from sqlalchemy import select
 
-                if tables_created:
-                    self._print_success("Database tables created successfully")
-                    self._print_success("Admin user created (username: admin, password: admin)")
-                    self._print_success("Setup state initialized")
-                    result['tables_created'] = True
-                    result['admin_created'] = True
-                    result['setup_state_created'] = True
-                else:
-                    self._print_error("Table creation failed")
-                    result['success'] = False
-                    return result
+                    # Check if admin exists
+                    stmt = select(User).where(User.username == 'admin')
+                    result_user = await session.execute(stmt)
+                    existing = result_user.scalar_one_or_none()
+
+                    if not existing:
+                        admin_user = User(
+                            id=str(uuid4()),
+                            username='admin',
+                            email=None,
+                            full_name='Administrator',
+                            password_hash=bcrypt.hash('admin'),
+                            role='admin',
+                            tenant_key='default',
+                            is_active=True,
+                            created_at=datetime.now(timezone.utc)
+                        )
+                        session.add(admin_user)
+                        await session.commit()
+
+                    # Create setup_state
+                    stmt = select(SetupState).where(SetupState.tenant_key == 'default')
+                    result_state = await session.execute(stmt)
+                    existing_state = result_state.scalar_one_or_none()
+
+                    if not existing_state:
+                        setup_state = SetupState(
+                            id=str(uuid4()),
+                            tenant_key='default',
+                            completed=True,
+                            completed_at=datetime.now(timezone.utc),  # REQUIRED by ck_completed_at_required constraint
+                            default_password_active=True,
+                            password_changed_at=None,
+                            setup_version='3.0.0',
+                            created_at=datetime.now(timezone.utc),
+                            updated_at=datetime.now(timezone.utc)
+                        )
+                        session.add(setup_state)
+                        await session.commit()
+
+                await db_manager.close_async()
+                return True
+
+            # Run async table creation
+            tables_created = asyncio.run(create_tables_and_init())
+
+            if tables_created:
+                self._print_success("Database tables created successfully")
+                self._print_success("Admin user created (username: admin, password: admin)")
+                self._print_success("Setup state initialized")
+                result['tables_created'] = True
+                result['admin_created'] = True
+                result['setup_state_created'] = True
             else:
-                self._print_info("Skipping table creation (per user preference)")
-                result['tables_skipped'] = True
+                self._print_error("Table creation failed")
+                result['success'] = False
+                return result
 
             return result
 
@@ -816,51 +803,41 @@ class UnifiedInstaller:
 
     def generate_configs(self) -> Dict[str, Any]:
         """
-        Generate configuration files (.env and config.yaml)
+        Generate configuration files (config.yaml ONLY)
 
-        Uses ConfigManager with v3.0 architecture (no mode field)
-
-        CRITICAL: This runs BEFORE setup_database() so migrations can read .env
-        Therefore, we use default passwords from settings, not database credentials.
+        .env generation happens AFTER database setup when real credentials exist.
 
         Returns:
             Configuration generation result
         """
         try:
-            # Import ConfigManager from existing module
             from installer.core.config import ConfigManager
 
             # Prepare settings for ConfigManager (v3.0: NO mode field)
-            # NOTE: database_credentials not available yet - using admin password temporarily
-            # Will be updated with real DB credentials after database setup in step 6b
             config_settings = {
                 'pg_host': self.settings.get('pg_host', 'localhost'),
                 'pg_port': self.settings.get('pg_port', 5432),
                 'api_port': self.settings.get('api_port', DEFAULT_API_PORT),
                 'dashboard_port': self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT),
                 'install_dir': str(self.install_dir),
-                'owner_password': self.settings.get('pg_password'),  # No default - REQUIRED
-                'user_password': self.settings.get('pg_password'),  # No default - REQUIRED
-                'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
-                'external_host': self.settings.get('external_host', 'localhost'),  # Frontend connection host
-                # NO 'mode' field - v3.0 unified architecture
+                'bind': '0.0.0.0',
+                'external_host': self.settings.get('external_host', 'localhost'),
             }
 
-            # Create config manager
             config_manager = ConfigManager(settings=config_settings)
 
-            # Generate all configs
-            self._print_info("Generating .env and config.yaml...")
-            result = config_manager.generate_all()
+            # Generate config.yaml ONLY (no .env yet)
+            self._print_info("Generating config.yaml...")
+            yaml_result = config_manager.generate_config_yaml()
 
-            if result['success']:
-                self._print_success("Configuration files generated")
+            if yaml_result['success']:
+                self._print_success("Configuration file generated (config.yaml)")
             else:
                 self._print_error("Configuration generation failed")
-                for error in result.get('errors', []):
+                for error in yaml_result.get('errors', []):
                     self._print_error(f"  • {error}")
 
-            return result
+            return yaml_result
 
         except Exception as e:
             self._print_error(f"Config generation failed: {e}")
@@ -1142,42 +1119,87 @@ class UnifiedInstaller:
             self._print_warning(f"Could not create batch files: {e}")
 
     def _print_success_summary(self) -> None:
-        """Print installation success summary"""
+        """Print installation success summary with manual start instructions"""
         separator = "=" * 70
 
         print(f"\n{Fore.GREEN}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{Style.BRIGHT}  Installation Complete!{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
 
-        # Detect all network IPs
+        # Database credentials
+        if self.database_credentials:
+            print(f"{Fore.YELLOW}Database Credentials (SAVE THESE):{Style.RESET_ALL}")
+            print(f"  • Database: giljo_mcp")
+            print(f"  • Owner: giljo_owner")
+            print(f"  • User: giljo_user")
+            print(f"  • Host: localhost")
+            print(f"  • Port: 5432")
+            print()
+
+        # Default admin account
+        print(f"{Fore.YELLOW}Default Admin Account:{Style.RESET_ALL}")
+        print(f"  • Username: admin")
+        print(f"  • Password: admin")
+        print(f"  {Fore.RED}(You will be required to change this on first login){Style.RESET_ALL}")
+        print()
+
+        # Manual start instructions
+        print(f"{Fore.CYAN}{Style.BRIGHT}To start the services manually:{Style.RESET_ALL}\n")
+        
+        print(f"{Fore.WHITE}1. Start the API server:{Style.RESET_ALL}")
+        if platform.system() == "Windows":
+            print(f"   {Fore.GREEN}venv\\Scripts\\python.exe api\\run_api.py{Style.RESET_ALL}")
+        else:
+            print(f"   {Fore.GREEN}venv/bin/python api/run_api.py{Style.RESET_ALL}")
+        print()
+
+        print(f"{Fore.WHITE}2. Start the frontend (in a new terminal):{Style.RESET_ALL}")
+        print(f"   {Fore.GREEN}cd frontend{Style.RESET_ALL}")
+        print(f"   {Fore.GREEN}npm run dev{Style.RESET_ALL}")
+        print()
+
+        print(f"{Fore.WHITE}3. Open your browser:{Style.RESET_ALL}")
+        
+        # Detect network IPs
         network_ips = self._get_all_network_ips()
         frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
         api_port = self.settings.get('api_port', DEFAULT_API_PORT)
 
-        print(f"{Fore.YELLOW}To continue setup, launch your browser at:{Style.RESET_ALL}\n")
-
-        # List network IPs (if any)
+        # Show localhost first (most common)
+        print(f"   {Fore.CYAN}http://localhost:{frontend_port}{Style.RESET_ALL}")
+        
+        # Show network IPs if detected
         if network_ips:
+            print(f"\n   {Fore.WHITE}Or from other devices on your network:{Style.RESET_ALL}")
             for ip in network_ips:
-                print(f"  • http://{ip}:{frontend_port}")
+                print(f"   {Fore.CYAN}http://{ip}:{frontend_port}{Style.RESET_ALL}")
+        
+        print()
 
-        # Always show localhost
-        print(f"  • http://localhost:{frontend_port}")
-        print(f"  • http://127.0.0.1:{frontend_port}")
+        # API documentation
+        print(f"{Fore.YELLOW}API Documentation:{Style.RESET_ALL}")
+        print(f"  {Fore.CYAN}http://localhost:{api_port}/docs{Style.RESET_ALL}")
+        print()
 
-        print(f"\n{Fore.CYAN}API Documentation:{Style.RESET_ALL}")
-        print(f"  • http://localhost:{api_port}/docs")
-
-        print(f"\n{Fore.WHITE}Next Steps:{Style.RESET_ALL}")
-        print(f"  1. Open your browser to one of the URLs above")
-        print(f"  2. Complete the first-time setup wizard:")
-        print(f"     • Create admin account")
-        print(f"     • Connect AI tools (Claude Code, etc.)")
-        print(f"  3. (Optional) Configure firewall to allow network access")
+        # Next steps
+        print(f"{Fore.WHITE}{Style.BRIGHT}Next Steps:{Style.RESET_ALL}")
+        print(f"  1. Start the services using the commands above")
+        print(f"  2. Open your browser to the frontend URL")
+        print(f"  3. Complete the first-time setup wizard:")
+        print(f"     • Change default admin password")
+        print(f"     • Configure MCP integration (optional)")
+        print(f"     • Configure Serena (optional)")
         print(f"  4. Create your first product and start orchestrating!")
         print()
 
-        print(f"{Fore.WHITE}Press Ctrl+C to stop services{Style.RESET_ALL}\n")
+        # Firewall configuration note
+        print(f"{Fore.YELLOW}Network Access (Optional):{Style.RESET_ALL}")
+        print(f"  To allow access from other devices on your network:")
+        print(f"  1. Configure your OS firewall (see docs/guides/FIREWALL_CONFIGURATION.md)")
+        print(f"  2. Update config.yaml: firewall_configured: true")
+        print()
+
+        print(f"{Fore.GREEN}Installation successful! Start the services to continue.{Style.RESET_ALL}\n")
 
     def _print_postgresql_install_guide(self) -> None:
         """Print platform-specific PostgreSQL installation guide"""

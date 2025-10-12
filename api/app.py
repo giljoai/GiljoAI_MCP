@@ -122,38 +122,56 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         logger.error(f"Failed to load configuration: {e}", exc_info=True)
         raise
 
-    # Check setup completion status (v3.0 fix: check SetupStateManager, not just config)
+    # Check setup completion status by querying database directly
     setup_mode = False
     try:
-        from src.giljo_mcp.setup.state_manager import SetupStateManager
+        # Get database URL to check setup_state table
+        db_url = os.getenv("DATABASE_URL")
 
-        # Try to check if setup is complete
-        state_manager = SetupStateManager.get_instance(tenant_key="default")
-        setup_state = state_manager.get_state()
-        setup_completed = setup_state.get("completed", False)
+        if not db_url and state.config.database:
+            if state.config.database.type == "postgresql":
+                db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
 
-        if not setup_completed:
-            logger.info("Setup wizard not completed - entering setup mode")
-            setup_mode = True
+        if db_url:
+            # Create temporary database connection to check setup_state
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import Session
+            from src.giljo_mcp.models import SetupState
+
+            # Use sync engine for startup check (simpler)
+            temp_engine = create_engine(db_url.replace('postgresql://', 'postgresql+psycopg2://'))
+
+            with Session(temp_engine) as session:
+                # Query setup_state for default tenant
+                setup_state_record = session.query(SetupState).filter(
+                    SetupState.tenant_key == 'default'
+                ).first()
+
+                if setup_state_record and setup_state_record.completed:
+                    logger.info(f"Setup completed - database initialized (completed_at: {setup_state_record.completed_at})")
+                    setup_mode = False
+                else:
+                    logger.info("Setup not completed - entering setup mode")
+                    setup_mode = True
+
+            temp_engine.dispose()
         else:
-            logger.info("Setup wizard completed - proceeding with full initialization")
-            setup_mode = False
+            # No database configured - setup mode
+            logger.warning("No database configuration found - entering setup mode")
+            setup_mode = True
+
     except Exception as e:
-        # If we can't check setup state (first run, missing file, etc.), check config fallback
-        logger.warning(f"Could not check setup state: {e}")
-        logger.info("Falling back to config.setup_mode check")
-        setup_mode = getattr(state.config, "setup_mode", False)
+        # If we can't check database, assume setup needed
+        logger.warning(f"Could not check setup state from database: {e}")
+        logger.info("Assuming setup mode due to database check failure")
+        setup_mode = True
 
     # Store setup_mode in config for middleware access
     state.config.setup_mode = setup_mode
 
-    # Initialize database (skip if in setup mode)
-    if setup_mode:
-        logger.info("Setup mode active - skipping database initialization")
-        logger.info("Database will be configured through the setup wizard")
-        state.db_manager = None
-        state.tenant_manager = None
-    else:
+    # Initialize database (ALWAYS - install.py creates DB before API starts)
+    # v3.0: No "setup mode without database" - database exists from installation
+    if True:  # Database always initialized
         # Check for DATABASE_URL in environment first
         logger.info("Initializing database connection...")
         db_url = os.getenv("DATABASE_URL")
@@ -253,19 +271,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as e:
         logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)
 
-    # Ensure system users exist (localhost user for auto-login)
-    if not setup_mode and state.db_manager:
-        try:
-            logger.info("Ensuring system users exist...")
-            from src.giljo_mcp.auth.localhost_user import ensure_localhost_user
-
-            async with state.db_manager.get_session_async() as session:
-                await ensure_localhost_user(session)
-                logger.info("Localhost user ensured successfully")
-
-        except Exception as e:
-            logger.error(f"Failed to ensure localhost user: {e}", exc_info=True)
-            logger.warning("Continuing startup despite localhost user creation failure")
+    # v3.0: Removed localhost auto-login - unified authentication for all connections
 
     # Check setup state on startup (version tracking and validation)
     if not setup_mode and state.db_manager:
