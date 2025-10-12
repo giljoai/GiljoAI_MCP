@@ -147,8 +147,8 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                     SetupState.tenant_key == 'default'
                 ).first()
 
-                if setup_state_record and setup_state_record.completed:
-                    logger.info(f"Setup completed - database initialized (completed_at: {setup_state_record.completed_at})")
+                if setup_state_record and setup_state_record.database_initialized:
+                    logger.info(f"Database initialized (initialized_at: {setup_state_record.database_initialized_at})")
                     setup_mode = False
                 else:
                     logger.info("Setup not completed - entering setup mode")
