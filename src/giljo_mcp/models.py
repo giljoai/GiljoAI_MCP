@@ -907,8 +907,8 @@ class SetupState(Base):
     tenant_key = Column(String(36), nullable=False, unique=True, index=True)
 
     # Completion status
-    completed = Column(Boolean, default=False, nullable=False, index=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    database_initialized = Column(Boolean, default=False, nullable=False, index=True) = Column(Boolean, default=False, nullable=False, index=True)
+    database_initialized_at = Column(DateTime(timezone=True), nullable=True) = Column(DateTime(timezone=True), nullable=True)
 
     # Version tracking
     setup_version = Column(String(20), nullable=True)  # e.g., "2.0.0"
