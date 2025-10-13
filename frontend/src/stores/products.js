@@ -255,52 +255,6 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
-      // Setup check using API client (proper port and auth handling)
-      try {
-        const response = await api.setup.status()
-        const setupStatus = response.data
-
-        // Skip product fetch during setup phases
-        if (setupStatus.default_password_active || !setupStatus.database_initialized) {
-          console.log('[PRODUCTS] Setup incomplete - skipping product initialization')
-          localStorage.removeItem('currentProductId')
-          return
-        }
-      } catch (error) {
-        console.warn('[PRODUCTS] Setup status check failed - skipping product initialization:', error)
-        return
-      }
-
-      // Fetch products (auth header automatically added by API client)
-      await fetchProducts()
-
-      // Restore selected product from localStorage
-      const storedProductId = localStorage.getItem('currentProductId')
-      if (storedProductId && products.value.length > 0) {
-        const product = products.value.find(p => p.id === parseInt(storedProductId))
-        if (product) {
-          await setCurrentProduct(parseInt(storedProductId))
-        } else {
-          // Product doesn't exist, clear localStorage and select first available
-          localStorage.removeItem('currentProductId')
-          await setCurrentProduct(products.value[0].id)
-        }
-      } else if (products.value.length > 0) {
-        // No stored product, select first available
-        await setCurrentProduct(products.value[0].id)
-      }
-    } catch (error) {
-      console.error('[PRODUCTS] Failed to initialize from storage:', error)
-    }
-  }
-
-    // If no products exist, clear localStorage and do nothing
-    if (products.value.length === 0) {
-      localStorage.removeItem('currentProductId')
-      return
-    }
-  }
-
   // Clear all product data
   function clearProductData() {
     products.value = []

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug WebSocket Issue</title>
+</head>
+<body>
+    <h1>Debug WebSocket Authentication Issue</h1>
+
+    <h2>Check Current Authentication State</h2>
+    <div id="auth-check"></div>
+
+    <h2>Test Direct WebSocket Connection</h2>
+    <button onclick="testWebSocketConnection()">Test WebSocket Connection</button>
+    <div id="ws-test-result"></div>
+
+    <script>
+        // Check authentication state
+        function checkAuthState() {
+            const authToken = localStorage.getItem('auth_token');
+            const user = localStorage.getItem('user');
+
+            const authDiv = document.getElementById('auth-check');
+            authDiv.innerHTML = `
+                <p><strong>Auth Token:</strong> ${authToken ? 'Present' : 'Missing'}</p>
+                <p><strong>Token Length:</strong> ${authToken ? authToken.length : 'N/A'}</p>
+                <p><strong>User Data:</strong> ${user ? 'Present' : 'Missing'}</p>
+                <p><strong>Current URL:</strong> ${window.location.href}</p>
+            `;
+
+            if (authToken) {
+                authDiv.innerHTML += `<p><strong>Token Preview:</strong> ${authToken.substring(0, 20)}...</p>`;
+            }
+        }
+
+        // Test WebSocket connection
+        function testWebSocketConnection() {
+            const resultDiv = document.getElementById('ws-test-result');
+            const authToken = localStorage.getItem('auth_token');
+
+            if (!authToken) {
+                resultDiv.innerHTML = '<p style="color: red;">No auth token found. Cannot test WebSocket connection.</p>';
+                return;
+            }
+
+            const clientId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const wsUrl = `ws://localhost:7272/ws/${clientId}?token=${authToken}`;
+
+            resultDiv.innerHTML = `<p>Testing connection to: ${wsUrl}</p>`;
+
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+                resultDiv.innerHTML += '<p style="color: green;">✅ WebSocket connection successful!</p>';
+                ws.close();
+            };
+
+            ws.onclose = function(event) {
+                resultDiv.innerHTML += `<p style="color: orange;">Connection closed: ${event.code} - ${event.reason}</p>`;
+            };
+
+            ws.onerror = function(error) {
+                resultDiv.innerHTML += `<p style="color: red;">❌ WebSocket error: ${error}</p>`;
+            };
+
+            // Timeout after 10 seconds
+            setTimeout(() => {
+                if (ws.readyState === WebSocket.CONNECTING) {
+                    ws.close();
+                    resultDiv.innerHTML += '<p style="color: red;">❌ Connection timeout after 10 seconds</p>';
+                }
+            }, 10000);
+        }
+
+        // Check auth state on load
+        checkAuthState();
+    </script>
+</body>
+</html>

@@ -413,15 +413,23 @@ onMounted(async () => {
   await loadCurrentUser()
 
   // Only connect WebSocket and start polling if user is authenticated
+  console.log('[Debug] Current user:', currentUser.value)
   if (currentUser.value) {
     // Connect WebSocket with authentication credentials
     try {
       // Get auth token from localStorage for WebSocket authentication
       const authToken = localStorage.getItem('auth_token')
-      const wsOptions = authToken ? { token: authToken } : {}
-
-      await wsStore.connect(wsOptions)
-      console.log('WebSocket connected successfully')
+      console.log('[Debug] Auth token available:', authToken ? 'Yes' : 'No')
+      
+      // Only attempt WebSocket connection if we have a valid auth token
+      if (authToken) {
+        const wsOptions = { token: authToken }
+        await wsStore.connect(wsOptions)
+        console.log('[WebSocket] Connected successfully')
+      } else {
+        console.warn('[WebSocket] No auth token available, skipping WebSocket connection')
+        // Still continue with the rest of the initialization
+      }
 
       // Post-auth initialization: Initialize product store first
       await productStore.initializeFromStorage()
@@ -446,7 +454,7 @@ onMounted(async () => {
       window.addEventListener('ws-notification', handleNotification)
       window.addEventListener('new-message', handleNewMessage)
     } catch (error) {
-      console.error('Failed to initialize WebSocket:', error)
+      console.error('[App] Failed to initialize application:', error)
     }
   } else {
     console.log('[Auth] User not authenticated, skipping WebSocket connection and message polling')
