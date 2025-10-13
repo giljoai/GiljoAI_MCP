@@ -98,13 +98,57 @@ All new documents should have `10_13_2025` suffix in filename to indicate versio
 
 **3. docs/SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md**
 - v3.0 Unified Architecture (single deployment model)
+- **Network Topology ASCII Diagram** (from CLAUDE.md lines 80-104):
+  ```
+  User Access (controlled by firewall):
+  ┌──────────────────────────────────────────┐
+  │ Localhost:    http://127.0.0.1:7272      │
+  │ LAN (if fw):  http://10.1.0.164:7272     │
+  │ WAN (if fw):  https://example.com:443    │
+  └───────────────────┬──────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────┐
+         │  API Server (FastAPI)  │
+         │  Binds to: 0.0.0.0     │ ← ALWAYS all interfaces
+         │  Port: 7272            │
+         └────────────┬───────────┘
+                      │
+                      │ ALWAYS localhost (security)
+                      ▼
+         ┌────────────────────────┐
+         │  PostgreSQL Database   │
+         │  Host: localhost       │ ← NEVER changes
+         │  Binding: 127.0.0.1    │
+         └────────────────────────┘
+  ```
+  **CRITICAL**: Verify this diagram is still accurate by checking:
+  - api/app.py startup (host binding)
+  - config.yaml structure (services.api.host)
+  - src/giljo_mcp/database.py (database connection)
 - PostgreSQL 18 database architecture
 - FastAPI backend (port 7272, binds 0.0.0.0)
 - Vue 3 + Vuetify frontend (port 7274)
 - WebSocket real-time updates
 - JWT-based authentication (ONE flow for all IPs)
-- OS firewall as access control layer
-- Technology stack versions
+- OS firewall as access control layer (defense in depth)
+- **Defense in Depth Security Model** (from CLAUDE.md lines 125-133):
+  1. OS Firewall - First layer, blocks unauthorized network access
+  2. Application Auth - Second layer, JWT + password-based authentication
+  3. Password Policy - Third layer, complexity requirements and forced change
+  4. Database Isolation - Fourth layer, PostgreSQL never exposed to network
+  5. HTTPS/TLS - Fifth layer, for WAN deployments
+- **Firewall Configuration Example** (Windows PowerShell):
+  ```powershell
+  # Block external, allow localhost
+  New-NetFirewallRule -DisplayName "GiljoAI MCP - Block External" `
+      -Direction Inbound -Action Block -Protocol TCP -LocalPort 7272
+
+  New-NetFirewallRule -DisplayName "GiljoAI MCP - Allow Localhost" `
+      -Direction Inbound -Action Allow -Protocol TCP -LocalPort 7272 `
+      -RemoteAddress 127.0.0.1,::1
+  ```
+- Technology stack versions (Python 3.11+, Node.js 18+, PostgreSQL 18)
 
 **4. docs/INSTALLATION_FLOW_PROCESS_10_13_2025.md**
 - **Windows Installation**: install.py walkthrough
@@ -338,11 +382,17 @@ find docs/ -type f -name "*.md" | wc -l
 
 **Actions:**
 1. Create docs/SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md
-   - v3.0 architecture diagram
+   - **v3.0 architecture diagram** (CRITICAL: Use ASCII diagram from CLAUDE.md lines 80-104 as base, verify accuracy)
    - PostgreSQL 18, FastAPI, Vue 3
    - Port configuration (7272 API, 7274 frontend)
    - JWT authentication flow
    - WebSocket integration
+   - **Network topology diagram showing**:
+     * User access layers (localhost, LAN, WAN)
+     * API server binding (0.0.0.0, port 7272)
+     * Database binding (localhost only, port 5432)
+     * Firewall control layer
+     * Defense-in-depth security model
 
 2. Create docs/INSTALLATION_FLOW_PROCESS_10_13_2025.md
    - install.py walkthrough (Windows)
@@ -361,12 +411,24 @@ find docs/ -type f -name "*.md" | wc -l
 - 3 comprehensive core documents
 - Clear install.py vs startup.py distinction
 - Complete first-run user journey
+- ASCII architecture diagrams accurately reflect current codebase
 
 **Testing Criteria:**
 - Each document standalone and complete
 - Cross-references between documents
 - No auto-login references
 - Accurate technical details
+- **ASCII diagrams verified against code**:
+  ```bash
+  # Verify API server binding
+  grep "host=" api/app.py api/run_api.py
+
+  # Verify database connection
+  grep "host.*localhost" src/giljo_mcp/database.py
+
+  # Verify config structure
+  grep -A 5 "services:" config.yaml
+  ```
 
 ### Phase 5: Update Existing Core Docs (1 hour)
 
