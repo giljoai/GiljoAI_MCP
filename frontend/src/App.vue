@@ -243,6 +243,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentStore } from '@/stores/agents'
 import { useMessageStore } from '@/stores/messages'
 import { useUserStore } from '@/stores/user'
+import { useProductStore } from '@/stores/products'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import ConnectionStatus from '@/components/ConnectionStatus.vue'
 import ProductSwitcher from '@/components/ProductSwitcher.vue'
@@ -258,6 +259,7 @@ const wsStore = useWebSocketStore()
 const agentStore = useAgentStore()
 const messageStore = useMessageStore()
 const userStore = useUserStore()
+const productStore = useProductStore()
 const { isHelpModalOpen, hideHelp, shortcuts } = useKeyboardShortcuts()
 
 // State
@@ -420,6 +422,9 @@ onMounted(async () => {
 
       await wsStore.connect(wsOptions)
       console.log('WebSocket connected successfully')
+
+      // Post-auth initialization: Initialize product store first
+      await productStore.initializeFromStorage()
 
       // Load initial data
       await Promise.all([agentStore.fetchAgents(), messageStore.fetchMessages()])
