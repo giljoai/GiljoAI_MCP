@@ -368,11 +368,10 @@ const loadCurrentUser = async () => {
     currentUser.value = null
     userStore.currentUser = null
     const currentRoute = router.currentRoute.value
-    const skipRedirectPaths = ['/login', '/change-password', '/setup']
-    const isSkipRoute = currentRoute && skipRedirectPaths.some(path => currentRoute.path.startsWith(path))
+    const requiresAuth = currentRoute ? currentRoute.meta?.requiresAuth !== false : true
 
-    // v3.0 Unified: Always redirect to login unless we're already on an auth-exempt route
-    if (!isSkipRoute) {
+    // v3.0 Unified: Redirect to login only when the current route requires auth
+    if (requiresAuth) {
       console.log('[Auth] Not authenticated, redirecting to login')
       router.push({
         path: '/login',
