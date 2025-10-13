@@ -502,13 +502,14 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             "cwd": str(Path.cwd()),
         }
 
-        # Verbose mode: show console window on Windows
-        if verbose and platform.system() == "Windows":
-            # CREATE_NEW_CONSOLE flag to open in new window
-            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
-            print_success("API server will open in new console window")
+        if verbose:
+            if platform.system() == "Windows":
+                popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+                print_success("API server will open in new console window")
+            else:
+                print_success("API server output will stream to this terminal (verbose mode)")
         else:
-            # Background mode: hide output
+            # Background mode: hide output for quiet startup
             popen_kwargs["stdout"] = subprocess.PIPE
             popen_kwargs["stderr"] = subprocess.PIPE
 
@@ -551,12 +552,14 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             "cwd": str(frontend_dir),
         }
 
-        # Verbose mode: show console window on Windows
-        if verbose and platform.system() == "Windows":
-            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
-            print_success("Frontend server will open in new console window")
+        if verbose:
+            if platform.system() == "Windows":
+                popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+                print_success("Frontend server will open in new console window")
+            else:
+                print_success("Frontend output will stream to this terminal (verbose mode)")
         else:
-            # Background mode: hide output
+            # Background mode: hide output for quiet startup
             popen_kwargs["stdout"] = subprocess.PIPE
             popen_kwargs["stderr"] = subprocess.PIPE
 
