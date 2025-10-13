@@ -404,6 +404,9 @@ onMounted(async () => {
     document.documentElement.classList.remove('no-transition')
   }, 100)
 
+  // Wait for router to resolve initial navigation (ensures meta flags are accurate)
+  await router.isReady()
+
   // Load current user (if authenticated)
   await loadCurrentUser()
 
