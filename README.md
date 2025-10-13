@@ -91,7 +91,7 @@ python startup.py --verbose    # Detailed logging
 2. **First-Run Detection**: Admin user found = skip setup wizard
 3. **Service Startup**: Starts API (port 7272) and frontend (port 7274)
 4. **Dashboard Launch**: Opens browser directly to dashboard
-5. **Auto-Login**: Localhost users automatically authenticated
+5. **Authentication**: Standard login required for all connections
 
 **For complete details**, see [Startup Simplification Guide](docs/guides/STARTUP_SIMPLIFICATION.md)
 
@@ -103,7 +103,7 @@ GiljoAI MCP v3.0 uses a **unified architecture** with no deployment modes:
 | -------------- | --------------------------------------- | ------------------------------------- |
 | **API Server** | Always binds to `0.0.0.0` (all interfaces) | Controlled by OS firewall             |
 | **Database**   | Always on `localhost` (never exposed)   | Local socket only (maximum security)  |
-| **Auth**       | Always enabled                          | Auto-login for localhost, API keys for network |
+| **Auth**       | Always enabled                          | JWT authentication for all connections      |
 | **Network**    | Firewall controls access                | Localhost-only by default, configurable for LAN/WAN |
 
 **No deployment modes** - one codebase, all contexts. See [v3.0 Architecture](docs/VERIFICATION_OCT9.md) for details.
