@@ -118,10 +118,11 @@
 
             <h3 class="text-h6 mb-3">API Key Information</h3>
 
-            <v-alert v-if="currentMode === 'localhost'" type="info" variant="tonal">
+            <!-- v3.0 Unified: Authentication always enabled for all IPs -->
+            <v-alert type="info" variant="tonal">
               <div class="d-flex align-center">
-                <v-icon start>mdi-lock-open</v-icon>
-                <div>API key authentication is disabled in localhost mode</div>
+                <v-icon start>mdi-shield-check</v-icon>
+                <div>v3.0 Unified: Authentication required for all network access</div>
               </div>
             </v-alert>
 

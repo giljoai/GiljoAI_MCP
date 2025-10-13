@@ -355,8 +355,8 @@ async function generateApiKey() {
 
     generatedKey.value = response.data.key
 
-    // Generate config snippet based on selected tool
-    const serverUrl = 'http://localhost:7272'
+    // Generate config snippet based on selected tool (v3.0 dynamic URL)
+    const serverUrl = `${window.location.protocol}//${window.location.hostname}:7272`
     const projectPath = 'F:/GiljoAI_MCP'
     const pythonPath = getPythonPath(projectPath, detectOS())
 
