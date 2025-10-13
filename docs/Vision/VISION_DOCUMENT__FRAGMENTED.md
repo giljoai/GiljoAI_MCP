@@ -1,6 +1,5 @@
-# GiljoAI MCP Coding Orchestrator
-
-## Vision Document
+# GiljoAI Agent Orchetration MCP Server Vision Document
+# Product Short name GiljoAI_MCP
 
 ### 2025-10-11 Update (Architecture V3)
 - Why: Deliver a secure, simple, and fast local-first coding orchestrator with clear APIs and reliable setup.
@@ -13,7 +12,7 @@ Key Changes
 - WebSocket authentication hardened: credentials validated before `accept()`, with proper close codes for unauthorized clients.
 - Installation flow clarified: environment validation, DB bootstrap, service start, and wizard steps streamlined.
 
-Capabilities
+Capabilities ** NEEDS VALIDATION **
 - Multi-tenant isolation using `X-Tenant-Key`, enforced across API and WebSocket subscriptions.
 - Extensible tool access via `ToolAccessor`, designed for per-tenant operations.
 - Health monitoring via `/health` with API/DB/WebSocket status.
@@ -25,19 +24,17 @@ Next Milestones
 
 ### CRITICAL: Development Approach
 
-**We are building GiljoAI MCP through self-orchestrated development across 20 focused projects over 4 weeks.**
-
 ### Our Vision
 
 To revolutionize software development by creating an intelligent orchestration layer that transforms isolated AI coding assistants into coordinated development teams, enabling developers to tackle projects of unlimited complexity while maintaining full control and visibility.
 
 ### Immediate Development Priorities
 
-1. **Multi-Tenant Architecture**: Replace single-active with tenant keys for unlimited concurrent products
+1. **Multi-Tenant Architecture**: Multiple users, with their own 'instance' and their own tasks handling, products with projects.  Their own configurations and settings. 
 2. **Preserve Proven Features**: Vision chunking (50K+ docs), message acknowledgment arrays, dynamic discovery
-3. **Serena MCP Integration**: Maintain and enhance Serena as primary codebase discovery tool
-4. **Progressive Setup**: Build setup scripts iteratively from Day 1, not after MVP
-5. **Local-First Design**: PostgreSQL default, PostgreSQL optional, same codebase scales to cloud
+3. **Serena MCP Integration**: Maintain and enhance Serena as an optionally enabled primary codebase discovery tool
+4. **Progressive Setup**: A downloadable product, with proper installation, launch, first login experience and configuration in both Windows and linux/mac OS.
+5. **Local-First Design**: PostgreSQL and Backend is a local on server orchestration, this is our primary focus.  Users interact anywhere on lan/wan via IP or can sit on same server if they want with localhost.  All the same experience.  Same codebase must scale to cloud in future. 
 6. **UI/UX Design Requirements**:
    - Vue 3 + Vite with Vuetify 3 components
    - **MUST use color themes defined in /docs/color_themes.md**
@@ -52,9 +49,12 @@ To revolutionize software development by creating an intelligent orchestration l
 
 ### Where We Are Today
 
-#### Current State (January 2025)
+### evolution from existing AKE-MCP
+THis project builds on the competence of AKE-MCP, availabe as a git or on the developers workstations.  Ask questions if needed.
 
-We have built a functional proof-of-concept that demonstrates the power of multi-agent orchestration:
+#### Current State (Oct 2025)
+
+We have built a functional proof-of-concept that demonstrates the power of multi-agent orchestration:  But we are yet to test them against real AI agents.
 
 **Working Components:**
 
@@ -62,20 +62,22 @@ We have built a functional proof-of-concept that demonstrates the power of multi
 - **PostgreSQL Backend**: Robust state management and message queuing
 - **Multi-Agent Orchestration**: Project Manager model with specialized agents
 - **Dynamic Discovery**: Agents explore codebases on-demand using Serena MCP
-- **Vision Document System**: Product principles guide all agent decisions
-- **Web Dashboard**: Real-time monitoring and control at localhost:5000
+- **Vision Document System**: Product principles guide all agent decisions, vision documents are same as a product definition document or a product proposal document.  This is what is being built or worked on.
+- **Web Dashboard**: Real-time monitoring and control at localhost:7274
 - **Task Management**: Capture and track technical debt during coding sessions
 
 **Current Architecture:**
 
-- 7,500 lines of Python code
+- Python code base
 - Database-first design with PostgreSQL
 - Singleton server pattern for resource efficiency
 - Message acknowledgment system preventing communication loss
 - Context-aware agent handoffs at threshold limits
+- Agent profiles
+- / (slash) commands for quick communications from AI agent tool to MCP server
 
 **Proven Capabilities:**
-
+**Originally from AKE-MCP need to be tested in GiljoAI MCP**
 - Successfully orchestrates multiple agents on complex projects
 - Maintains context across sessions through persistent storage
 - Enables vision-driven development with chunked document handling
@@ -89,27 +91,16 @@ We have built a functional proof-of-concept that demonstrates the power of multi
 We are rebuilding the system with a local-first philosophy that scales naturally:
 
 - **Local Mode**: Zero-configuration setup for individual developers
-- **LAN Mode**: Simple network sharing for small teams
-- **WAN Mode**: Internet-accessible with TLS and authentication
-- **Cloud Mode**: Fully managed service for enterprises
+- **WAN/LAN Mode**: Simple network sharing for small teams
 
-**Technical Evolution:**
-
-```
-Current State          →  Near Future          →  Ultimate Vision
-Single machine         →  LAN/WAN server       →  Global cloud service
-PostgreSQL only        →  PostgreSQL + PostgreSQL  →  Distributed database
-Basic dashboard        →  Customizable UI      →  Plugin ecosystem
-Claude CLI only        →  API agents support   →  Universal orchestration
-```
+NOTE: These are not profiles, the product fundamentally should work with several users using it at the same time in their tennant space.
 
 #### Key Architectural Principles
 
-**1. Progressive Enhancement**
-
-- Start simple (pip install, run locally)
-- Scale naturally (same code, different config)
-- No architectural rewrites needed
+**1. Network enabled and locally capable**
+-  Works both as localhost and on LAN
+-  Uses same authentication
+-  code should be scalable to a future cloud hosting, potentially SaaS
 
 **2. Database Agnostic**
 
@@ -119,75 +110,23 @@ Claude CLI only        →  API agents support   →  Universal orchestration
 
 **3. Multi-Tenant by Design**
 
-- Project isolation via unique keys
+- Project isolation via credentials JWT (ARE THERE KEYS TOO?)
 - Concurrent project support
-- Team collaboration built-in
-
+- 
 **4. Deployment Flexibility**
 
-- Single binary for easy distribution
-- Docker containers for server deployment
-- Kubernetes-ready for enterprise scale
+-  Downloadable from git or Giljo.ai
+-  Simple script based, '.py' for installation
+-  INstructions for script injection to configure Ai coding agent tools to connect to MCP
+-  Easy on off serena integration
+-  Admin configuration settings to change the servers evnironmentals
 
-### Strategic Roadmap
+**5. Multi OS and path neutrality**
 
-#### Phase 1: Foundation Rewrite (Now - Q1 2025)
+-  Built for multy OS, windows, Linux and Mac
+-  path neutrality so users can choose install foder
+-  Flexible installation with selecting IP address to bind to, databse location if not auto detected, dependancy instlalation, venv creation and transition to "First Setup" forcing admin password settings and continued to standard user onboarding steps.
 
-**Goal**: Create the definitive local-first orchestrator
-
-- Rewrite with multi-tenant architecture
-- Implement PostgreSQL support for zero-config setup
-- Build modern, customizable UI (Streamlit/Vue/React)
-- Create one-command installation experience
-- Launch on GitHub with comprehensive documentation
-
-**Success Criteria:**
-
-- Setup time under 5 minutes
-- First project running in under 10 minutes
-- 100+ GitHub stars in first month
-
-#### Phase 2: Team Collaboration (Q2-Q3 2025)
-
-**Goal**: Enable seamless team coordination
-
-- LAN mode with automatic discovery
-- API key management system
-- Real-time WebSocket updates
-- Shared task boards and project views
-- Desktop application for non-CLI users
-
-**Success Criteria:**
-
-- 5+ teams using LAN mode
-- 1,000+ active users
-- First paying customers
-
-#### Phase 3: Cloud Platform (Q4 2025 - Q1 2026)
-
-**Goal**: Offer managed service for distributed teams
-
-- Cloud-native deployment on AWS/Azure
-- Multi-organization support
-- Usage-based billing
-- SLA guarantees
-- Global availability
-
-**Success Criteria:**
-
-- 50+ paying organizations
-- 99.9% uptime
-- Sub-100ms latency globally
-
-#### Phase 4: Ecosystem Platform (2026+)
-
-**Goal**: Become the standard orchestration layer for AI development
-
-- Plugin marketplace for custom agents
-- Integration with all major AI providers
-- Visual workflow designer
-- Enterprise features (SSO, audit, compliance)
-- White-label options for enterprises
 
 ### Technical Architecture - Serena Integration
 
@@ -234,29 +173,26 @@ Every decision prioritizes developer experience:
 
 Recognizing that developers have different preferences:
 
-- **Multiple UI Options**: CLI, web dashboard, desktop app
 - **Themeable Interface**: Dark mode, custom colors, layouts
-- **Extensible Views**: Add custom dashboards and visualizations
-- **API-First**: Build your own interface if desired
+- **Choice of CLI based agent AI tools**: Add custom instructions for integration
 
 #### AI-Agnostic Future
 
-While starting with Claude Code CLI:
 
-- **Anthropic API**: Direct API integration coming Q2
-- **OpenAI Support**: GPT-4 and assistants API
-- **Local Models**: Ollama, LM Studio integration
+- **Claude**: First integration, uses your own Claude Code CLI tool we provide MCP server injection instructions.
+- **CODEX**: coming soon
+- **Gemini CLI**: coming soon
 - **Universal Protocol**: Any AI that speaks MCP
 
 ### Innovation Drivers
 
 #### 1. Vision-Driven Development
 
-Our unique vision document system ensures AI agents always align with product principles, creating consistency across thousands of decisions.
+The deveopers unique vision document system ensures AI agents always align with product principles, creating consistency across thousands of decisions.
 
-#### 2. Dynamic Discovery
+#### 2. Simplified Discovery
 
-Instead of static indexing, agents explore codebases on-demand, ensuring fresh context and reducing setup complexity.
+Context fields for a product are filled out by the developer which the agents draw from to succeed in their assignments.
 
 #### 3. Task Continuity
 
@@ -264,58 +200,13 @@ Seamlessly capture technical debt during coding, then orchestrate AI teams to ad
 
 #### 4. Progressive Architecture
 
-One codebase that scales from laptop to cloud without rewrites, respecting the journey from individual to enterprise.
+One codebase that scales from laptop to LAN?WAN  without rewrites, respecting the journey from individual to team.
 
-### Market Opportunity
+#### 5. intuitive commands and interfaces
 
-The AI coding assistant market is exploding, but current tools hit hard limits:
+Live view dashboard with control over how the agents work.
 
-- **Context Limitations**: Even 200k tokens isn't enough for real projects
-- **Session Loss**: Valuable context disappears between sessions
-- **No Coordination**: Multiple AI instances can't work together
-- **Task Fragmentation**: Technical debt identified but not tracked
-
-GiljoAI MCP Orchestrator is positioned to become the essential layer that makes AI coding truly productive at scale.
-
-### Our Commitment
-
-We commit to building a tool that:
-
-1. **Respects Developer Autonomy**: You control the AI, not vice versa
-2. **Preserves Data Ownership**: Your code, your data, your servers
-3. **Enables Real Productivity**: Not demos, but actual complex projects
-4. **Grows With You**: From side project to startup to enterprise
-5. **Stays Open**: Core functionality always free and open source
-
-### The Ultimate Vision
-
-Imagine a world where:
-
-- Developers orchestrate AI teams as easily as they write code
-- Complex refactoring projects complete overnight with AI teams
-- Technical debt is automatically captured and systematically eliminated
-- Global teams coordinate AI assistants across time zones
-- Every developer has access to an AI development team
-
-This is the future we're building with GiljoAI MCP Coding Orchestrator.
-
-### Success Metrics
-
-#### Year 1 Goals
-
-- 10,000+ active users
-- 100+ paying teams
-- 1,000+ GitHub stars
-- 5+ enterprise customers
-- $500K ARR
-
-#### Year 3 Vision
-
-- 100,000+ active users
-- 1,000+ paying organizations
-- Industry standard for AI orchestration
-- $10M+ ARR
-- Acquisition offers (but we're not selling)
+CLI slash "/" commands to quickly communicate fron from the AI agent tool CLI interface to GiljoMCP
 
 ### Installation and Packaging Strategy
 
@@ -326,72 +217,42 @@ This is the future we're building with GiljoAI MCP Coding Orchestrator.
 **Installation Philosophy**:
 
 - **Intelligent**: Automatically detect and install missing dependencies
-- **Adaptive**: GUI installer for desktop users, CLI for servers
-- **Complete**: One installer handles everything from Python to Docker
-- **Professional**: Match the installation experience of commercial software
+- **Adaptive**: transitions to webpage to complete installation once the core functionality is implemented and backend and frontend launch successfully.
+- **Complete**: One installer handles everything from binding IP, to detect database, setup database, install dependancies, and launches the web interface to finish installation.
 
 **Advanced Installer Features**:
 
 1. **Intelligent Quickstart Layer** (CRITICAL)
 
-   - `quickstart.bat` (Windows) and `quickstart.sh` (Mac/Linux) are TRUE entry points
-   - These scripts require ZERO dependencies - only OS shell
-   - They detect and INSTALL Python if missing (multiple methods)
-   - Only after Python is confirmed do they launch bootstrap.py
+   - .\install.py for windows (with dependancies in .\installer)
+   - F.\Linux_Installer\linux_install.py (with all dependancies in this folder)
+   - initial pre requirements check in order to make the installers work, such as Python install.
 
-2. **Smart Bootstrap System**
+2. **Smart Startup.py System**
 
-   - `bootstrap.py` is the secondary entry point (requires Python)
-   - Detects OS, GUI capability, and existing dependencies
-   - Runs comprehensive dependency checker
-   - Launches appropriate installer (GUI or CLI)
+   - Installation can auto launch or user can choose to contiue with singular script exectution by self launching startup.py
+   - User can alternatively use individual commands to launch backend and front end from CLI.
 
 3. **Dependency Management**
 
-   - Automatic detection of Python, Node.js, Docker, PostgreSQL
+   - Automatic detection of Python, Node.js, PostgreSQL
    - Offers to install missing components
    - Platform-specific installation methods (winget, brew, apt, etc.)
    - Fallback to manual downloads if needed
 
-4. **Service Integration**
-
-   - Creates system services (systemd, Windows Service, launchd)
-   - Configures auto-start on boot
-   - Provides start/stop controls
-   - System tray integration for desktop users
-
-5. **Post-Install Experience**
+4. **Post-Install Experience**
    - Desktop shortcuts and launcher creation
-   - Quick-start configuration with working defaults
-   - Built-in example agents and templates
-   - Immediate access to web dashboard
+   - user needs to change admin passwrod on first install
+   - All users go to a setup screen where they get instructions on how to configure the MCP server via cut and paste actions
+   - Future is links to downloadable '.py' scripts to automate the injection into installed AI agent cli tools
+   - Built-in example agents and templates, and option to activate those agents and inject them into the Ai agent cli tool, such as subagents in Claude Code CLI.  Future CODEX.
+   - Asks user to enable Serena durin setup
+   - Immediate access to web dashboard to start documenting the first product.
 
 **Distribution Channels**:
 
 - **Direct Download**: ZIP/TAR packages from website
 - **Package Managers**: pip, brew, winget, apt
-- **Containers**: Docker Hub with docker-compose
-- **Cloud Marketplaces**: AWS, Azure, Google Cloud
 - **Developer Platforms**: GitHub Releases, GitLab
 
-**Progressive Installation Modes**:
 
-```
-Quick Start → Custom Setup → Enterprise Deployment
-5 minutes  → 10 minutes   → Fully managed
-PostgreSQL     → PostgreSQL   → Kubernetes
-Local only → LAN access   → Internet scale
-```
-
-### Join Us
-
-We're not just building a tool – we're defining how the next generation of software will be created. Whether you're an individual developer hitting context limits or a team leader looking to amplify your team's capabilities, GiljoAI MCP Orchestrator is your path to truly productive AI-assisted development.
-
----
-
-_From local machine to global scale, we're orchestrating the future of AI development._
-
-**Version**: 1.0  
-**Date**: January 2025  
-**Status**: Active Development  
-**Next Review**: Q2 2025

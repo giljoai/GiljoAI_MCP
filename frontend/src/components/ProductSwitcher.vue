@@ -590,10 +590,14 @@ function formatFileSize(bytes) {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
-// Load products on mount
+// Load products on mount (removed premature initialization)
+// Products are now initialized in App.vue after authentication
 onMounted(async () => {
-  await productStore.fetchProducts()
-  productStore.initializeFromStorage()
+  // Products will be fetched automatically via initializeFromStorage() in App.vue
+  // Only fetch here if products haven't been loaded yet (fallback)
+  if (productStore.products.length === 0) {
+    await productStore.fetchProducts()
+  }
 })
 </script>
 
