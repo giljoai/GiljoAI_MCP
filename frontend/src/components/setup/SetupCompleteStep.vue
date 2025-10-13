@@ -149,12 +149,7 @@ onMounted(async () => {
   }
 })
 
-// Computed
-const isLanMode = computed(() => false)
-
-const deploymentModeLabel = computed(() => 'Localhost')
-
-const deploymentModeDescription = computed(() => 'Single-user mode on this computer (127.0.0.1)')
+// Computed - v3.0 Unified Architecture
 
 const hasTools = computed(() => {
   return props.config.aiTools && props.config.aiTools.length > 0

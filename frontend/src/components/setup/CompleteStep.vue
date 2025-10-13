@@ -36,8 +36,8 @@
       </v-card-text>
     </v-card>
 
-    <!-- Admin Account (if LAN mode) -->
-    <v-card v-if="isLanMode && config.adminAccount" variant="outlined" class="mb-3">
+    <!-- Admin Account -->
+    <v-card v-if="config.adminAccount" variant="outlined" class="mb-3">
       <v-card-text class="d-flex align-center">
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
@@ -67,8 +67,8 @@
       </v-card-text>
     </v-card>
 
-    <!-- LAN Settings (if LAN mode) -->
-    <v-card v-if="isLanMode && config.lanSettings" variant="outlined" class="mb-6">
+    <!-- Network Settings -->
+    <v-card v-if="config.lanSettings" variant="outlined" class="mb-6">
       <v-card-text class="d-flex align-center">
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
@@ -97,8 +97,7 @@
       <ul class="pl-4 mb-0">
         <li>Create your first project</li>
         <li>Explore agent templates</li>
-        <li v-if="isLanMode">Share access URL with team members</li>
-        <li v-else>Configure additional AI tools in Settings</li>
+        <li>Configure additional AI tools in Settings</li>
         <li>Review documentation to learn more</li>
       </ul>
     </v-alert>
@@ -108,7 +107,7 @@
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
           <span class="text-caption">
-            Progress: Step {{ isLanMode ? '7' : '5' }} of {{ isLanMode ? '7' : '5' }}
+            Progress: Step 3 of 3
           </span>
           <span class="text-caption">100%</span>
         </div>
@@ -159,12 +158,9 @@ watch(
 
 console.error('[COMPLETE_STEP] ===== Component loaded!')
 
-// Computed
-const isLanMode = computed(() => props.config.deploymentMode === 'lan')
-
-// v3.0 Unified: No deployment mode concepts
-// const deploymentModeLabel = computed(() => 'v3.0 Unified Architecture')
-// const deploymentModeDescription = computed(() => 'Single unified approach for all network access')
+// Computed - v3.0 Unified Architecture (no deployment modes)
+const deploymentModeLabel = computed(() => 'v3.0 Unified Architecture')
+const deploymentModeDescription = computed(() => 'Single unified approach for all network access')
 
 const toolCount = computed(() => {
   return props.config.aiTools?.length || 0
