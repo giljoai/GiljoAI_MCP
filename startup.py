@@ -138,25 +138,71 @@ def check_python_version() -> bool:
     return is_compatible
 
 
+def load_postgresql_config() -> Optional[dict]:
+    """
+    Load PostgreSQL configuration from config.yaml if available.
+    
+    Returns:
+        PostgreSQL config dict or None if not available
+    """
+    try:
+        import yaml
+        
+        config_path = Path.cwd() / "config.yaml"
+        
+        if config_path.exists():
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+            
+            # Get PostgreSQL configuration from database section
+            return config.get("database", {}).get("postgresql")
+    except Exception as e:
+        print_warning(f"Could not read PostgreSQL config from config.yaml: {e}")
+    
+    return None
+
+
 def check_postgresql_installed() -> bool:
     """
     Check if PostgreSQL is installed and accessible.
 
     We use a multi-layered approach:
-    1. Check if psql is in PATH
-    2. Check common Windows installation paths
-    3. Try to connect via Python (most reliable)
+    1. Check saved PostgreSQL paths from config.yaml (if available)
+    2. Check if psql is in PATH
+    3. Check common Windows installation paths
+    4. Try to connect via Python (most reliable)
 
     Returns:
         True if PostgreSQL is available, False otherwise
     """
-    # Method 1: Check PATH
+    # Method 1: Check saved PostgreSQL paths from installation
+    postgresql_config = load_postgresql_config()
+    if postgresql_config:
+        psql_path = postgresql_config.get('psql_path')
+        bin_path = postgresql_config.get('bin_path')
+        discovery_method = postgresql_config.get('discovery_method', 'UNKNOWN')
+        
+        if psql_path and Path(psql_path).exists():
+            print_success(f"PostgreSQL detected from saved config: {psql_path}")
+            print_info(f"Originally discovered via: {discovery_method}")
+            
+            # Add bin directory to PATH for session if needed
+            if bin_path and bin_path not in os.environ.get('PATH', ''):
+                os.environ['PATH'] = f"{bin_path}{os.pathsep}{os.environ['PATH']}"
+                print_info("Added PostgreSQL bin directory to PATH for this session")
+            
+            return True
+        elif psql_path:
+            print_warning(f"Saved PostgreSQL path no longer exists: {psql_path}")
+            print_info("Falling back to standard discovery methods...")
+
+    # Method 2: Check PATH
     psql_path = shutil.which("psql")
     if psql_path:
         print_success(f"PostgreSQL detected at: {psql_path}")
         return True
 
-    # Method 2: Check common installation paths on Windows
+    # Method 3: Check common installation paths on Windows
     if platform.system() == "Windows":
         common_paths = [
             Path("C:/Program Files/PostgreSQL/18/bin/psql.exe"),
@@ -172,7 +218,7 @@ def check_postgresql_installed() -> bool:
                 print_warning("PostgreSQL not in PATH - consider adding to environment variables")
                 return True
 
-    # Method 3: Try to connect via Python (most reliable)
+    # Method 4: Try to connect via Python (most reliable)
     # This will be tested in the database connectivity check
     print_warning("PostgreSQL command-line tools not found in PATH")
     print_info("Will verify PostgreSQL via database connectivity check...")
