@@ -2,7 +2,7 @@
 """
 Database initialization script for GiljoAI MCP.
 
-Creates tables and runs migrations for PostgreSQL.
+Creates tables and runs migrations for both SQLite and PostgreSQL.
 """
 
 import argparse
@@ -37,11 +37,7 @@ def init_database(database_url: Optional[str] = None, drop_existing: bool = Fals
     if not database_url:
         # Require PostgreSQL by default; build local PostgreSQL URL if none provided
         database_url = DatabaseManager.build_postgresql_url(
-            host="localhost",
-            port=5432,
-            database="giljo_mcp",
-            username="postgres",
-            password=os.getenv("DB_PASSWORD", ""),
+            host="localhost", port=5432, database="giljo_mcp", username="postgres", password=os.getenv("DB_PASSWORD", "")
         )
 
     try:
@@ -66,6 +62,10 @@ def init_database(database_url: Optional[str] = None, drop_existing: bool = Fals
             command.stamp(alembic_cfg, "head")
 
         # Print summary
+
+        if db_manager.is_sqlite:
+            db_manager.database_url.replace("sqlite:///", "")
+
         return True
 
     except Exception:
@@ -80,7 +80,7 @@ def main():
 
     parser.add_argument(
         "--database-url",
-        help="Database URL (e.g., postgresql://user:pass@host/db)",
+        help="Database URL (e.g., sqlite:///path/to/db.db or postgresql://user:pass@host/db)",
         default=None,
     )
 
