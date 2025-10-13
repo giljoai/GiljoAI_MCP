@@ -134,23 +134,18 @@ const props = defineProps({
 
 const emit = defineEmits(['finish', 'back'])
 
-// Ref to store detected IP
-const detectedServerUrl = ref('http://localhost:7272')
+// v3.0 Unified: Default to current host
+const detectedServerUrl = ref(`${window.location.protocol}//${window.location.hostname}:7272`)
 
-// IP detection on component mount
+// Lifecycle
 onMounted(async () => {
   try {
-    // Default to localhost
-    const serverIp = 'localhost'
-    const serverPort = 7272
-
-    detectedServerUrl.value = `http://${serverIp}:${serverPort}`
-
+    // v3.0 Unified: Use current host (already set in ref default)
+    console.log('[COMPLETE_STEP] Setup complete, server URL:', detectedServerUrl.value)
     console.log('[COMPLETE_STEP] Serena enabled:', props.config.serenaEnabled)
   } catch (error) {
-    console.error('IP detection failed:', error)
-    // Fallback to default localhost
-    detectedServerUrl.value = 'http://127.0.0.1:7272'
+    console.error('Setup completion error:', error)
+    // Fallback already handled by ref default
   }
 })
 
