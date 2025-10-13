@@ -34,6 +34,49 @@ import click
 from colorama import Fore, Style, init
 
 
+# ---------------------------------------------------------------------------
+# Virtualenv guard: always relaunch inside the project-managed interpreter
+# ---------------------------------------------------------------------------
+
+
+def ensure_project_virtualenv() -> None:
+    """Re-exec inside the installer-managed virtualenv when available."""
+    try:
+        project_root = Path(__file__).resolve().parent
+        venv_dir = project_root / "venv"
+
+        if not venv_dir.exists():
+            return
+
+        # If we're already inside the project virtualenv, no action needed
+        if Path(sys.prefix).resolve() == venv_dir.resolve():
+            return
+
+        candidates = []
+        if platform.system() == "Windows":
+            candidates.append(venv_dir / "Scripts" / "python.exe")
+        else:
+            candidates.extend(
+                [
+                    venv_dir / "bin" / "python",
+                    venv_dir / "bin" / "python3",
+                ]
+            )
+
+        target = next((path for path in candidates if path.exists()), None)
+        if target is None:
+            return
+
+        print("Re-launching GiljoAI MCP startup inside project virtual environment...")
+        target_path = str(target)
+        os.execv(target_path, [target_path, *sys.argv])
+    except Exception:
+        # Fail silently; startup will continue with current interpreter
+        return
+
+
+ensure_project_virtualenv()
+
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
 
@@ -345,6 +388,11 @@ def get_network_ip() -> Optional[str]:
         if config_path.exists():
             with open(config_path) as f:
                 config = yaml.safe_load(f)
+
+            # Prefer installer-configured external host for browser launch
+            external_host = config.get("services", {}).get("external_host")
+            if external_host and external_host not in ("localhost", "127.0.0.1", "0.0.0.0"):
+                return external_host
 
             # Try server.ip first (legacy), then security.network.initial_ip
             network_ip = config.get("server", {}).get("ip")

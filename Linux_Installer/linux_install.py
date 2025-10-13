@@ -330,19 +330,12 @@ class UnifiedInstaller:
         else:
             self.settings['create_shortcuts'] = False
 
-        # Verbose mode for first run (only relevant if services started manually)
-        print(f"\nWould you like to enable verbose mode for manual service startup?")
-        print(f"(opens console windows when services are started)")
-        verbose_response = input(f"{Fore.YELLOW}Enable verbose mode? (y/N): {Style.RESET_ALL}").strip().lower()
-        self.settings['verbose_mode'] = verbose_response == 'y'
-
         # Summary
         print(f"\n{Fore.GREEN}Configuration Summary:{Style.RESET_ALL}")
         print(f"  • External access host: {self.settings.get('external_host', 'localhost')}")
         print(f"  • PostgreSQL password: {'*' * 8} (secured)")
         if platform.system() == "Linux":
             print(f"  • Create desktop launchers: {self.settings['create_shortcuts']}")
-        print(f"  • Verbose mode: {self.settings['verbose_mode']}")
 
     def check_python_version(self) -> bool:
         """
@@ -936,16 +929,11 @@ class UnifiedInstaller:
 
             self._print_info("Starting API server...")
 
-            api_popen_kwargs = {}
-            if self.settings.get('verbose_mode', False):
-                api_popen_kwargs = {'stdout': None, 'stderr': None}
-            else:
-                api_popen_kwargs = {'stdout': subprocess.PIPE, 'stderr': subprocess.PIPE}
-
             api_process = subprocess.Popen(
                 [str(python_executable), str(api_script), "--port", str(api_port)],
                 cwd=str(self.install_dir),
-                **api_popen_kwargs
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
             )
             self._print_success(f"API server started (PID: {api_process.pid})")
 
@@ -972,16 +960,11 @@ class UnifiedInstaller:
 
                     npm_cmd = ['npm', 'run', 'dev', '--', '--port', str(frontend_port), '--strictPort']
 
-                    frontend_popen_kwargs = {}
-                    if self.settings.get('verbose_mode', False):
-                        frontend_popen_kwargs = {'stdout': None, 'stderr': None}
-                    else:
-                        frontend_popen_kwargs = {'stdout': subprocess.PIPE, 'stderr': subprocess.PIPE}
-
                     frontend_process = subprocess.Popen(
                         npm_cmd,
                         cwd=str(frontend_dir),
-                        **frontend_popen_kwargs
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE
                     )
                     self._print_success(f"Frontend server started (PID: {frontend_process.pid})")
 
@@ -1157,8 +1140,15 @@ class UnifiedInstaller:
         print(f"  {Fore.RED}(You will be required to change this on first login){Style.RESET_ALL}")
         print()
 
+        # Startup guidance
+        print(f"{Fore.CYAN}{Style.BRIGHT}Recommended startup:{Style.RESET_ALL}")
+        print(f"  {Fore.GREEN}python startup.py{Style.RESET_ALL}")
+        print(f"  {Fore.WHITE}(Automatically uses the installer virtual environment){Style.RESET_ALL}")
+        print(f"  {Fore.GREEN}./start_giljo.sh{Style.RESET_ALL}  (optional launcher)")
+        print()
+
         # Manual start instructions
-        print(f"{Fore.CYAN}{Style.BRIGHT}To start the services manually:{Style.RESET_ALL}\n")
+        print(f"{Fore.CYAN}{Style.BRIGHT}Manual control (separate terminals):{Style.RESET_ALL}\n")
         
         print(f"{Fore.WHITE}1. Start the API server:{Style.RESET_ALL}")
         print(f"   {Fore.GREEN}venv/bin/python api/run_api.py{Style.RESET_ALL}")
@@ -1194,7 +1184,7 @@ class UnifiedInstaller:
 
         # Next steps
         print(f"{Fore.WHITE}{Style.BRIGHT}Next Steps:{Style.RESET_ALL}")
-        print(f"  1. Start the services using the commands above")
+        print(f"  1. Start the services with python startup.py (or the manual commands above)")
         print(f"  2. Open your browser to the frontend URL")
         print(f"  3. Complete the first-time setup wizard:")
         print(f"     • Change default admin password")

@@ -507,6 +507,16 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
             f"http://localhost:{api_port}",
         ]
 
+        # Include installer-selected external host (LAN/WAN) for direct access
+        external_host = self.settings.get("external_host", "localhost")
+        if external_host and external_host not in ("localhost", "127.0.0.1"):
+            external_frontend = f"http://{external_host}:{frontend_port}"
+            external_api = f"http://{external_host}:{api_port}"
+            if external_frontend not in cors_origins:
+                cors_origins.append(external_frontend)
+            if external_api not in cors_origins:
+                cors_origins.append(external_api)
+
         # Add custom origins if provided (advanced users)
         custom_origins = self.settings.get("cors_origins", [])
         if custom_origins:
