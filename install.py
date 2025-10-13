@@ -367,6 +367,16 @@ class UnifiedInstaller:
             result['psql_path'] = psql_path
             self.psql_path = Path(psql_path)
             self.postgresql_found = True
+            
+            # Store PostgreSQL paths in settings for config.yaml persistence
+            psql_path_obj = Path(psql_path)
+            self.settings['postgresql_psql_path'] = str(psql_path_obj)
+            self.settings['postgresql_bin_path'] = str(psql_path_obj.parent)
+            self.settings['postgresql_installation_path'] = str(psql_path_obj.parent.parent) if psql_path_obj.parent.name == 'bin' else str(psql_path_obj.parent)
+            self.settings['postgresql_discovered_at'] = datetime.now().isoformat()
+            self.settings['postgresql_custom_path'] = False
+            self.settings['postgresql_discovery_method'] = 'PATH'
+            
             return result
 
         # Method 2: Scan platform-specific locations
@@ -383,8 +393,16 @@ class UnifiedInstaller:
                 self.psql_path = path
                 self.postgresql_found = True
 
-                # Add to PATH for session
+                # Store PostgreSQL paths in settings for config.yaml persistence
                 bin_dir = path.parent
+                self.settings['postgresql_psql_path'] = str(path)
+                self.settings['postgresql_bin_path'] = str(bin_dir)
+                self.settings['postgresql_installation_path'] = str(bin_dir.parent) if bin_dir.name == 'bin' else str(bin_dir)
+                self.settings['postgresql_discovered_at'] = datetime.now().isoformat()
+                self.settings['postgresql_custom_path'] = False
+                self.settings['postgresql_discovery_method'] = 'COMMON_LOCATION'
+
+                # Add to PATH for session
                 os.environ['PATH'] = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
 
                 return result
@@ -428,6 +446,15 @@ class UnifiedInstaller:
                 result['psql_path'] = str(psql_path)
                 self.psql_path = psql_path
                 self.postgresql_found = True
+
+                # Store PostgreSQL paths in settings for config.yaml persistence
+                custom_path_obj = Path(custom_path)
+                self.settings['postgresql_psql_path'] = str(psql_path)
+                self.settings['postgresql_bin_path'] = str(custom_path_obj)
+                self.settings['postgresql_installation_path'] = str(custom_path_obj.parent) if custom_path_obj.name == 'bin' else str(custom_path_obj)
+                self.settings['postgresql_discovered_at'] = datetime.now().isoformat()
+                self.settings['postgresql_custom_path'] = True
+                self.settings['postgresql_discovery_method'] = 'CUSTOM'
 
                 # Add to PATH for session
                 os.environ['PATH'] = f"{custom_path}{os.pathsep}{os.environ['PATH']}"
