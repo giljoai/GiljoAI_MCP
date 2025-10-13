@@ -2,6 +2,16 @@
 
 > **Central navigation hub for understanding GiljoAI MCP v3.0 architecture, fresh installation flow, security model, and system design.**
 
+## 📋 Core Documentation (October 2025)
+
+**New single-truth documents** - Start here for comprehensive understanding:
+
+- **[System Purpose & Capabilities](GILJOAI_MCP_PURPOSE_10_13_2025.md)** - What GiljoAI MCP does, key features, and value proposition
+- **[Multi-Tenant Architecture](USER_STRUCTURES_TENANTS_10_13_2025.md)** - User management, tenant isolation, and database design
+- **[Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md)** - v3.0 unified architecture, ASCII diagrams, tech stack
+- **[Installation Flow & Process](INSTALLATION_FLOW_PROCESS_10_13_2025.md)** - Complete installation walkthrough and cross-platform setup
+- **[First Launch Experience](FIRST_LAUNCH_EXPERIENCE_10_13_2025.md)** - Step-by-step onboarding from install to dashboard
+
 ## Table of Contents
 
 1. [System Architecture Summary](#system-architecture-summary)
@@ -612,4 +622,14 @@ cd frontend/ && npm run dev
 
 ---
 
-**Last Updated**: October 11, 2025 (v3.0.0)
+---
+
+## 📚 Documentation Harmonization (October 13, 2025)
+
+As of October 13, 2025, GiljoAI MCP documentation has been **harmonized** into single-truth documents to eliminate fragmentation and architectural conflicts. The five core documents listed above replace 70+ scattered documentation files.
+
+**Legacy documentation** has been archived to `docs/archive/2025-10-13/` for reference.
+
+---
+
+**Last Updated**: October 13, 2025 (v3.0.0 - Post Documentation Harmonization)
