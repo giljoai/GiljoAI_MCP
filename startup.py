@@ -541,11 +541,17 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             print_warning("Frontend directory not found - skipping frontend")
             return None
 
+        # Get full path to npm executable (required for Windows subprocess)
+        npm_executable = shutil.which("npm")
+        if not npm_executable:
+            print_warning("npm not found in PATH - skipping frontend server")
+            return None
+
         # Check if node_modules exists
         node_modules = frontend_dir / "node_modules"
         if not node_modules.exists():
             print_info("Installing frontend dependencies...")
-            subprocess.run(["npm", "install"], cwd=str(frontend_dir), check=True)
+            subprocess.run([npm_executable, "install"], cwd=str(frontend_dir), check=True)
 
         # Configure process creation for verbose mode
         popen_kwargs = {
@@ -563,8 +569,8 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             popen_kwargs["stdout"] = subprocess.PIPE
             popen_kwargs["stderr"] = subprocess.PIPE
 
-        # Start frontend server
-        process = subprocess.Popen(["npm", "run", "dev"], **popen_kwargs)
+        # Start frontend server (use full path to npm on Windows)
+        process = subprocess.Popen([npm_executable, "run", "dev"], **popen_kwargs)
 
         print_success(f"Frontend server started (PID: {process.pid})")
         return process

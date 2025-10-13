@@ -353,21 +353,31 @@ class GiljoDevControlPanel:
         self.root.update_idletasks()
 
     def update_status(self):
-        """Update all status indicators with port information."""
-        # Check backend status
-        if self.backend_process and self.backend_process.poll() is None:
+        """Update all status indicators - detects ANY process on ports (not just tracked)."""
+        # Check backend status - look for ANY process on port 7272
+        backend_pid = self._find_process_on_port(7272)
+        if backend_pid:
             self.backend_indicator.config(foreground="green")
-            self.backend_status_label.config(text="Running (Port 7272)")
+            if self.backend_process and self.backend_process.poll() is None:
+                self.backend_status_label.config(text=f"Running (Port 7272, PID {backend_pid})")
+            else:
+                # Process exists but NOT tracked by dev_tool
+                self.backend_status_label.config(text=f"Running (Port 7272, PID {backend_pid}) [External]")
             self.backend_status.set(True)
         else:
             self.backend_indicator.config(foreground="red")
             self.backend_status_label.config(text="Stopped")
             self.backend_status.set(False)
 
-        # Check frontend status
-        if self.frontend_process and self.frontend_process.poll() is None:
+        # Check frontend status - look for ANY process on port 7274
+        frontend_pid = self._find_process_on_port(7274)
+        if frontend_pid:
             self.frontend_indicator.config(foreground="green")
-            self.frontend_status_label.config(text="Running (Port 7274)")
+            if self.frontend_process and self.frontend_process.poll() is None:
+                self.frontend_status_label.config(text=f"Running (Port 7274, PID {frontend_pid})")
+            else:
+                # Process exists but NOT tracked by dev_tool
+                self.frontend_status_label.config(text=f"Running (Port 7274, PID {frontend_pid}) [External]")
             self.frontend_status.set(True)
         else:
             self.frontend_indicator.config(foreground="red")
@@ -528,6 +538,56 @@ class GiljoDevControlPanel:
 
         return None
 
+    def _find_all_giljo_ports(self) -> dict[int, int]:
+        """
+        Find ALL processes using ports in 72xxx range (GiljoAI ports).
+
+        This detects processes started by ANY method (not just dev_tool).
+
+        Returns:
+            Dictionary mapping port number to PID
+            Example: {7272: 12345, 7274: 67890}
+        """
+        giljo_ports = {}
+
+        if psutil is None:
+            return giljo_ports
+
+        try:
+            for conn in psutil.net_connections(kind="inet"):
+                # Check if port is in 72xx range (7200-7299)
+                if 7200 <= conn.laddr.port <= 7299:
+                    giljo_ports[conn.laddr.port] = conn.pid
+        except (psutil.AccessDenied, AttributeError):
+            # Fallback to Windows netstat command
+            try:
+                result = subprocess.run(
+                    ["netstat", "-ano"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+
+                for line in result.stdout.splitlines():
+                    if ":72" in line and "LISTENING" in line:
+                        parts = line.split()
+                        if parts:
+                            # Extract port from address (e.g., "0.0.0.0:7272")
+                            addr_parts = parts[1].split(":")
+                            if len(addr_parts) == 2:
+                                try:
+                                    port = int(addr_parts[1])
+                                    pid = int(parts[-1])
+                                    if 7200 <= port <= 7299 and pid != 0:
+                                        giljo_ports[port] = pid
+                                except (ValueError, IndexError):
+                                    pass
+            except Exception:
+                pass
+
+        return giljo_ports
+
     def _kill_process(self, pid: int):
         """
         Terminate a process by PID.
@@ -546,130 +606,193 @@ class GiljoDevControlPanel:
 
     def _nuclear_kill_port(self, port: int):
         """
-        Nuclear option: Kill ALL processes using a specific port.
+        TRIPLE-NUCLEAR option: Kill ALL processes using a specific port.
+
+        Enhanced to handle auto-restart processes:
+        1. Kill all processes on port (3 attempts)
+        2. Wait and verify port is free
+        3. If process respawns, kill again (up to 5 total rounds)
+
         Uses system commands for maximum aggression.
 
         Args:
             port: Port number to clear
         """
         system = platform.system()
+        max_rounds = 5  # Maximum kill rounds (handles auto-restart)
+        kills_per_round = 3  # Kill attempts per round
 
-        try:
-            if system == "Windows":
-                # Find PIDs using the port
-                result = subprocess.run(
-                    ["netstat", "-ano"],
-                    check=False, capture_output=True,
-                    text=True,
-                    timeout=5
-                )
+        for round_num in range(max_rounds):
+            pids_killed_this_round = set()
 
-                pids_to_kill = set()
-                for line in result.stdout.splitlines():
-                    if f":{port}" in line and "LISTENING" in line:
-                        parts = line.split()
-                        if parts:
-                            pid = parts[-1]
-                            if pid.isdigit() and pid != "0":
-                                pids_to_kill.add(pid)
-
-                # Force kill each PID
-                for pid in pids_to_kill:
-                    try:
-                        subprocess.run(
-                            ["taskkill", "/F", "/PID", pid],
-                            check=False, capture_output=True,
+            # Perform multiple kill attempts per round
+            for attempt in range(kills_per_round):
+                try:
+                    if system == "Windows":
+                        # Find PIDs using the port
+                        result = subprocess.run(
+                            ["netstat", "-ano"],
+                            check=False,
+                            capture_output=True,
+                            text=True,
                             timeout=5
                         )
-                    except Exception:
-                        pass
 
-            else:  # Linux/macOS
-                # Use lsof to find and kill processes
-                try:
-                    result = subprocess.run(
-                        ["lsof", "-ti", f":{port}"],
-                        check=False, capture_output=True,
-                        text=True,
-                        timeout=5
-                    )
+                        pids_to_kill = set()
+                        for line in result.stdout.splitlines():
+                            if f":{port}" in line and "LISTENING" in line:
+                                parts = line.split()
+                                if parts:
+                                    pid = parts[-1]
+                                    if pid.isdigit() and pid != "0":
+                                        pids_to_kill.add(pid)
 
-                    pids = result.stdout.strip().split()
-                    for pid in pids:
-                        if pid:
+                        # Force kill each PID
+                        for pid in pids_to_kill:
                             try:
                                 subprocess.run(
-                                    ["kill", "-9", pid],
-                                    check=False, capture_output=True,
+                                    ["taskkill", "/F", "/PID", pid],
+                                    check=False,
+                                    capture_output=True,
                                     timeout=5
                                 )
+                                pids_killed_this_round.add(pid)
                             except Exception:
                                 pass
-                except FileNotFoundError:
-                    # lsof not available, try fuser
-                    try:
-                        subprocess.run(
-                            ["fuser", "-k", f"{port}/tcp"],
-                            check=False, capture_output=True,
-                            timeout=5
-                        )
-                    except FileNotFoundError:
-                        pass
 
-        except Exception as e:
-            print(f"Warning: Nuclear kill port {port} failed: {e}")
+                    else:  # Linux/macOS
+                        # Use lsof to find and kill processes
+                        try:
+                            result = subprocess.run(
+                                ["lsof", "-ti", f":{port}"],
+                                check=False,
+                                capture_output=True,
+                                text=True,
+                                timeout=5
+                            )
+
+                            pids = result.stdout.strip().split()
+                            for pid in pids:
+                                if pid:
+                                    try:
+                                        subprocess.run(
+                                            ["kill", "-9", pid],
+                                            check=False,
+                                            capture_output=True,
+                                            timeout=5
+                                        )
+                                        pids_killed_this_round.add(pid)
+                                    except Exception:
+                                        pass
+                        except FileNotFoundError:
+                            # lsof not available, try fuser
+                            try:
+                                subprocess.run(
+                                    ["fuser", "-k", f"{port}/tcp"],
+                                    check=False,
+                                    capture_output=True,
+                                    timeout=5
+                                )
+                            except FileNotFoundError:
+                                pass
+
+                    # Small delay between kill attempts
+                    if attempt < kills_per_round - 1:
+                        time.sleep(0.3)
+
+                except Exception as e:
+                    print(f"Warning: Kill attempt {attempt + 1} for port {port} failed: {e}")
+
+            # Wait for processes to die
+            time.sleep(1)
+
+            # Verify port is now free
+            if self._is_port_available(port):
+                # Success! Port is free
+                if pids_killed_this_round:
+                    print(f"Port {port} cleared after round {round_num + 1} (killed PIDs: {pids_killed_this_round})")
+                return
+
+            # Port still in use - process may have auto-restarted
+            if round_num < max_rounds - 1:
+                print(f"Port {port} still in use after round {round_num + 1}, trying again...")
+
+        # If we get here, port is STILL in use after all rounds
+        print(f"WARNING: Port {port} could not be cleared after {max_rounds} rounds!")
 
     # Service Management Methods
 
     def check_backend_port(self):
-        """Check what's running on port 7272."""
+        """Check what's running on port 7272 and scan ALL 72xxx ports."""
         port = 7272
 
-        if self._is_port_available(port):
-            messagebox.showinfo(
-                "Port Available",
-                f"Port {port} is available\n\nNo process is using this port."
-            )
+        # Check specific port
+        port_available = self._is_port_available(port)
+        pid = self._find_process_on_port(port)
+
+        # Scan ALL 72xxx ports
+        all_giljo_ports = self._find_all_giljo_ports()
+
+        # Build comprehensive report
+        report = f"Backend Port {port}:\n"
+        if port_available:
+            report += f"✓ Available (no process)\n"
         else:
-            pid = self._find_process_on_port(port)
             if pid:
-                messagebox.showwarning(
-                    "Port In Use",
-                    f"Port {port} is IN USE\n\nProcess ID: {pid}\n\n"
-                    "This process must be stopped before starting the backend."
-                )
+                report += f"✗ IN USE by PID {pid}\n"
             else:
-                messagebox.showwarning(
-                    "Port In Use",
-                    f"Port {port} is IN USE\n\n"
-                    "Could not determine which process is using it.\n"
-                    "You may need administrator privileges."
-                )
+                report += f"✗ IN USE (PID unknown - need admin privileges)\n"
+
+        # Add scan of all GiljoAI ports
+        report += f"\n--- All GiljoAI Ports (7200-7299) ---\n"
+        if all_giljo_ports:
+            report += f"Found {len(all_giljo_ports)} process(es):\n\n"
+            for p, proc_pid in sorted(all_giljo_ports.items()):
+                report += f"Port {p}: PID {proc_pid}\n"
+            report += f"\nUse 'Stop All Services' to kill these processes."
+        else:
+            report += "✓ No processes found on 7200-7299"
+
+        if port_available:
+            messagebox.showinfo("Port Scan Results", report)
+        else:
+            messagebox.showwarning("Port Scan Results", report)
 
     def check_frontend_port(self):
-        """Check what's running on port 7274."""
+        """Check what's running on port 7274 and scan ALL 72xxx ports."""
         port = 7274
 
-        if self._is_port_available(port):
-            messagebox.showinfo(
-                "Port Available",
-                f"Port {port} is available\n\nNo process is using this port."
-            )
+        # Check specific port
+        port_available = self._is_port_available(port)
+        pid = self._find_process_on_port(port)
+
+        # Scan ALL 72xxx ports
+        all_giljo_ports = self._find_all_giljo_ports()
+
+        # Build comprehensive report
+        report = f"Frontend Port {port}:\n"
+        if port_available:
+            report += f"✓ Available (no process)\n"
         else:
-            pid = self._find_process_on_port(port)
             if pid:
-                messagebox.showwarning(
-                    "Port In Use",
-                    f"Port {port} is IN USE\n\nProcess ID: {pid}\n\n"
-                    "This process must be stopped before starting the frontend."
-                )
+                report += f"✗ IN USE by PID {pid}\n"
             else:
-                messagebox.showwarning(
-                    "Port In Use",
-                    f"Port {port} is IN USE\n\n"
-                    "Could not determine which process is using it.\n"
-                    "You may need administrator privileges."
-                )
+                report += f"✗ IN USE (PID unknown - need admin privileges)\n"
+
+        # Add scan of all GiljoAI ports
+        report += f"\n--- All GiljoAI Ports (7200-7299) ---\n"
+        if all_giljo_ports:
+            report += f"Found {len(all_giljo_ports)} process(es):\n\n"
+            for p, proc_pid in sorted(all_giljo_ports.items()):
+                report += f"Port {p}: PID {proc_pid}\n"
+            report += f"\nUse 'Stop All Services' to kill these processes."
+        else:
+            report += "✓ No processes found on 7200-7299"
+
+        if port_available:
+            messagebox.showinfo("Port Scan Results", report)
+        else:
+            messagebox.showwarning("Port Scan Results", report)
 
     def start_backend(self):
         """Start the backend API service in a new terminal window."""
@@ -885,8 +1008,13 @@ class GiljoDevControlPanel:
         self.start_frontend()
 
     def stop_all_services(self):
-        """Stop all services - NUCLEAR OPTION (kills all processes on ports 7272, 7273, 7274)."""
-        self.update_status_message("Stopping all services (nuclear mode)...")
+        """
+        Stop all services - TRIPLE-NUCLEAR OPTION.
+
+        Scans ALL ports 7200-7299 and kills EVERYTHING found.
+        Handles auto-restart processes with multiple kill rounds.
+        """
+        self.update_status_message("Scanning ALL 72xxx ports for GiljoAI processes...")
 
         try:
             # Stop tracked processes first
@@ -912,13 +1040,42 @@ class GiljoDevControlPanel:
                 finally:
                     self.frontend_process = None
 
-            # NUCLEAR: Kill everything on all GiljoAI ports
-            self._nuclear_kill_port(7272)  # Backend API
-            self._nuclear_kill_port(7273)  # Alternative backend
-            self._nuclear_kill_port(7274)  # Frontend
+            # Find ALL processes on 72xxx ports (comprehensive scan)
+            giljo_ports = self._find_all_giljo_ports()
 
-            time.sleep(1)
-            self.update_status_message("All services stopped (nuclear)")
+            if giljo_ports:
+                ports_found = sorted(giljo_ports.keys())
+                self.update_status_message(
+                    f"Found {len(giljo_ports)} process(es) on ports: {', '.join(map(str, ports_found))}"
+                )
+
+                # TRIPLE-NUCLEAR: Kill everything found
+                for port in ports_found:
+                    self.update_status_message(f"Killing process on port {port} (triple-nuclear)...")
+                    self._nuclear_kill_port(port)
+
+                time.sleep(1)
+
+                # Verify all ports cleared
+                remaining = self._find_all_giljo_ports()
+                if remaining:
+                    self.update_status_message(f"WARNING: {len(remaining)} port(s) still in use!")
+                    messagebox.showwarning(
+                        "Incomplete Shutdown",
+                        f"Some processes could not be killed:\n\n"
+                        + "\n".join(f"Port {p}: PID {pid}" for p, pid in remaining.items()) +
+                        "\n\nThese may be system-protected or auto-restarting."
+                    )
+                else:
+                    self.update_status_message("All services stopped (triple-nuclear)")
+                    messagebox.showinfo(
+                        "Success",
+                        f"All services stopped!\n\nKilled {len(giljo_ports)} process(es) on ports:\n"
+                        + ", ".join(map(str, ports_found))
+                    )
+            else:
+                self.update_status_message("No services running on 72xxx ports")
+                messagebox.showinfo("No Services", "No processes found on ports 7200-7299")
 
         except Exception as e:
             self.update_status_message(f"Error stopping services: {e}")
