@@ -49,17 +49,15 @@ apiClient.interceptors.response.use(
         // CRITICAL FIX: Check setup status BEFORE redirecting to login
         // This prevents the bug where fresh installs redirect to /login instead of /setup
         try {
-          // Use plain fetch to avoid circular dependency with axios
-          const setupResponse = await fetch('/api/setup/status')
-          if (setupResponse.ok) {
-            const setupStatus = await setupResponse.json()
+          // Use a separate axios instance to avoid circular dependency
+          const setupResponse = await axios.get('/api/setup/status')
+          const setupStatus = setupResponse.data
 
-            // If database is NOT initialized, don't redirect to login
-            // Let the router handle the redirect to /setup
-            if (!setupStatus.database_initialized) {
-              console.log('[API] Database not initialized - skipping login redirect')
-              return Promise.reject(error)
-            }
+          // If database is NOT initialized, don't redirect to login
+          // Let the router handle the redirect to /setup
+          if (!setupStatus.database_initialized) {
+            console.log('[API] Database not initialized - skipping login redirect')
+            return Promise.reject(error)
           }
         } catch (e) {
           // If setup status check fails, assume fresh install (don't redirect)
@@ -202,6 +200,11 @@ export const api = {
   session: {
     info: () => apiClient.get('/api/v1/stats/session/'),
     stats: () => apiClient.get('/api/v1/stats/'),
+  },
+
+  // Setup Status
+  setup: {
+    status: () => apiClient.get('/api/setup/status'),
   },
 
   // Templates
