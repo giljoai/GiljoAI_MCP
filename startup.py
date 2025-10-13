@@ -866,14 +866,15 @@ def run_startup(check_only: bool = False, verbose: bool = False, no_browser: boo
         network_ip = get_network_ip() if is_first_run else None
 
         if is_first_run:
-            # Open setup wizard - use network IP if available (avoids localhost auto-login)
+            # Open change-password first to enforce admin credential update before setup
+            target_route = "/change-password"
             if network_ip:
-                setup_url = f"http://{network_ip}:{frontend_port}/setup"
-                print_info("First-run detected - opening setup wizard at network IP...")
+                setup_url = f"http://{network_ip}:{frontend_port}{target_route}"
+                print_info("First-run detected - opening change-password screen at network IP...")
                 print_info("(Using network IP avoids localhost auto-login)")
             else:
-                setup_url = f"http://localhost:{frontend_port}/setup"
-                print_info("First-run detected - opening setup wizard...")
+                setup_url = f"http://localhost:{frontend_port}{target_route}"
+                print_info("First-run detected - opening change-password screen...")
 
             open_browser(setup_url, delay=2)
         else:
