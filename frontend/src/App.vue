@@ -370,9 +370,13 @@ const loadCurrentUser = async () => {
     
     // Check if we're on localhost - if so, bypass authentication
     const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+
+    const currentRoute = router.currentRoute.value
+    const skipRedirectPaths = ['/login', '/change-password', '/setup']
+    const isSkipRoute = currentRoute && skipRedirectPaths.some(path => currentRoute.path.startsWith(path))
     
-    // If not localhost and not already on login page, redirect to login
-    if (!isLocalhost && !window.location.pathname.includes('/login')) {
+    // If not localhost and route still requires authentication, redirect to login
+    if (!isLocalhost && !isSkipRoute) {
       console.log('[Auth] Not on localhost, redirecting to login')
       router.push({
         path: '/login',
