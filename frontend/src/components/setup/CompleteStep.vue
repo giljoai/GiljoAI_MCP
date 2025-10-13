@@ -16,7 +16,7 @@
         <v-icon color="success" class="mr-3">mdi-check-circle</v-icon>
         <div class="flex-grow-1">
           <div class="text-subtitle-1 font-weight-medium">Database: Connected</div>
-          <div class="text-caption text-medium-emphasis">PostgreSQL on localhost:5432</div>
+          <div class="text-caption text-medium-emphasis">PostgreSQL Database Connected</div>
         </div>
       </v-card-text>
     </v-card>
@@ -162,23 +162,9 @@ console.error('[COMPLETE_STEP] ===== Component loaded!')
 // Computed
 const isLanMode = computed(() => props.config.deploymentMode === 'lan')
 
-const deploymentModeLabel = computed(() => {
-  const modes = {
-    localhost: 'Localhost',
-    lan: 'LAN (Local Area Network)',
-    wan: 'WAN (Wide Area Network)',
-  }
-  return modes[props.config.deploymentMode] || 'Unknown'
-})
-
-const deploymentModeDescription = computed(() => {
-  const descriptions = {
-    localhost: 'Single-user mode on this computer',
-    lan: 'Team access on local network',
-    wan: 'Internet access for remote teams',
-  }
-  return descriptions[props.config.deploymentMode] || ''
-})
+// v3.0 Unified: No deployment mode concepts
+// const deploymentModeLabel = computed(() => 'v3.0 Unified Architecture')
+// const deploymentModeDescription = computed(() => 'Single unified approach for all network access')
 
 const toolCount = computed(() => {
   return props.config.aiTools?.length || 0

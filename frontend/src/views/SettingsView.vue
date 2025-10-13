@@ -282,7 +282,7 @@
               v-model="settings.api.baseUrl"
               label="API Base URL"
               variant="outlined"
-              hint="e.g., http://localhost:7272"
+              hint="e.g., http://your-server:7272"
               persistent-hint
             />
 
@@ -290,7 +290,7 @@
               v-model="settings.api.wsUrl"
               label="WebSocket URL"
               variant="outlined"
-              hint="e.g., ws://localhost:7272/ws"
+              hint="e.g., ws://your-server:7272/ws"
               persistent-hint
               class="mt-4"
             />
@@ -423,9 +423,9 @@
               <div class="d-flex align-center">
                 <v-icon start>mdi-information</v-icon>
                 <div>
-                  <strong>Current Mode:</strong>
-                  <v-chip :color="modeColor" size="small" class="ml-2">
-                    {{ currentMode.toUpperCase() }}
+                  <strong>Architecture:</strong>
+                  <v-chip color="success" size="small" class="ml-2">
+                    v3.0 UNIFIED
                   </v-chip>
                 </div>
               </div>
@@ -499,10 +499,11 @@
 
             <h3 class="text-h6 mb-3">API Key Information</h3>
 
-            <v-alert v-if="currentMode === 'localhost'" type="info" variant="tonal">
+            <!-- v3.0 Unified: Authentication always enabled for all IPs -->
+            <v-alert type="info" variant="tonal">
               <div class="d-flex align-center">
-                <v-icon start>mdi-lock-open</v-icon>
-                <div>API key authentication is disabled in localhost mode</div>
+                <v-icon start>mdi-shield-check</v-icon>
+                <div>v3.0 Unified: Authentication required for all network access</div>
               </div>
             </v-alert>
 
@@ -647,8 +648,9 @@ const settings = ref({
     duration: 5,
   },
   api: {
-    baseUrl: 'http://localhost:7272',
-    wsUrl: 'ws://localhost:7272/ws',
+    // v3.0 Unified: Dynamic URLs based on current host (fallback to localhost for SSR)
+    baseUrl: typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:7272` : 'http://localhost:7272',
+    wsUrl: typeof window !== 'undefined' ? `ws://${window.location.hostname}:7272/ws` : 'ws://localhost:7272/ws',
     apiKey: '',
     timeout: 30000,
     retryAttempts: 3,
@@ -804,8 +806,9 @@ function resetNotificationSettings() {
 
 function resetApiSettings() {
   settings.value.api = {
-    baseUrl: 'http://localhost:7272',
-    wsUrl: 'ws://localhost:7272/ws',
+    // v3.0 Unified: Dynamic URLs based on current host
+    baseUrl: `${window.location.protocol}//${window.location.hostname}:7272`,
+    wsUrl: `ws://${window.location.hostname}:7272/ws`,
     apiKey: '',
     timeout: 30000,
     retryAttempts: 3,

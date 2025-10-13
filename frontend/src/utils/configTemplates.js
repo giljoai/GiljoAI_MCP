@@ -8,11 +8,13 @@
 /**
  * Generate Claude Code MCP server configuration
  * @param {string} apiKey - The API key to embed
- * @param {string} serverUrl - GiljoAI MCP server URL (default: http://localhost:7272)
+ * @param {string} serverUrl - GiljoAI MCP server URL (default: current host:7272)
  * @param {string} pythonPath - Path to Python executable
  * @returns {string} JSON configuration snippet for .claude.json
  */
-export function generateClaudeCodeConfig(apiKey, serverUrl = 'http://localhost:7272', pythonPath) {
+export function generateClaudeCodeConfig(apiKey, serverUrl = null, pythonPath) {
+  // v3.0 Unified: Default to current host if no URL provided
+  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
   // Use default Python path if not provided
   const defaultPythonPath = pythonPath || 'python'
 
@@ -23,7 +25,7 @@ export function generateClaudeCodeConfig(apiKey, serverUrl = 'http://localhost:7
         args: ['-m', 'giljo_mcp'],
         env: {
           GILJO_MCP_HOME: 'F:/GiljoAI_MCP',
-          GILJO_SERVER_URL: serverUrl,
+          GILJO_SERVER_URL: defaultServerUrl,
           GILJO_API_KEY: apiKey,
         },
       },
@@ -36,12 +38,16 @@ export function generateClaudeCodeConfig(apiKey, serverUrl = 'http://localhost:7
 /**
  * Generate Codex CLI configuration
  * @param {string} apiKey - The API key to embed
+ * @param {string} serverUrl - GiljoAI MCP server URL (default: current host:7272)
  * @returns {string} TOML configuration snippet for config.toml
  */
-export function generateCodexConfig(apiKey) {
+export function generateCodexConfig(apiKey, serverUrl = null) {
+  // v3.0 Unified: Default to current host if no URL provided
+  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
+
   return `[tools.claude_code]
 api_key = "${apiKey}"
-server_url = "http://localhost:7272"
+server_url = "${defaultServerUrl}"
 
 # Codex CLI integration (coming soon)
 # This configuration will be used when Codex CLI support is added
@@ -51,15 +57,17 @@ server_url = "http://localhost:7272"
 /**
  * Generate generic API integration example
  * @param {string} apiKey - The API key to embed
- * @param {string} serverUrl - GiljoAI MCP server URL (default: http://localhost:7272)
+ * @param {string} serverUrl - GiljoAI MCP server URL (default: current host:7272)
  * @returns {string} Generic curl example for API testing
  */
-export function generateGenericConfig(apiKey, serverUrl = 'http://localhost:7272') {
+export function generateGenericConfig(apiKey, serverUrl = null) {
+  // v3.0 Unified: Default to current host if no URL provided
+  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
   return `# Generic API Integration
 
 Use this API key in your HTTP requests:
 
-curl -X GET "${serverUrl}/api/v1/projects/" \\
+curl -X GET "${defaultServerUrl}/api/v1/projects/" \\
   -H "X-API-Key: ${apiKey}" \\
   -H "Content-Type: application/json"
 
@@ -72,7 +80,7 @@ headers = {
     "Content-Type": "application/json"
 }
 
-response = requests.get("${serverUrl}/api/v1/projects/", headers=headers)
+response = requests.get("${defaultServerUrl}/api/v1/projects/", headers=headers)
 print(response.json())
 `
 }

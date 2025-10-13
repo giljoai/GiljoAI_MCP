@@ -79,14 +79,10 @@ export const useUserStore = defineStore('user', () => {
     } catch (error) {
       console.error('[UserStore] Auth check failed:', error)
       currentUser.value = null
-      
-      // Check if we're on localhost - bypass authentication
-      const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
-      if (!isLocalhost) {
-        return false
-      }
-      
-      return true // Localhost bypasses auth
+
+      // v3.0 Unified: Always require valid authentication
+      // No localhost bypass - unified authentication for ALL IPs
+      return false
     } finally {
       isLoading.value = false
     }
