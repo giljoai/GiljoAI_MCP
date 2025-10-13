@@ -379,6 +379,15 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "user": "giljo_user",
                     "owner": "giljo_owner",
                     "pool_size": 5,  # v3.0: Fixed pool size (no mode-based scaling)
+                    # PostgreSQL installation paths (discovered during install)
+                    "postgresql": {
+                        "installation_path": self.settings.get("postgresql_installation_path"),
+                        "bin_path": self.settings.get("postgresql_bin_path"),
+                        "psql_executable": self.settings.get("postgresql_psql_path"),
+                        "discovered_at": self.settings.get("postgresql_discovered_at"),
+                        "custom_path": self.settings.get("postgresql_custom_path", False),
+                        "discovery_method": self.settings.get("postgresql_discovery_method", "auto")
+                    } if self.settings.get("postgresql_bin_path") else {}
                 },
                 "server": {
                     # v3.0: Always bind to 0.0.0.0 (all interfaces)
