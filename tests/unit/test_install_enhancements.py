@@ -49,7 +49,6 @@ class TestDatabaseTableCreationToggle:
             'y',  # Start services
             'y',  # Create tables (NEW)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
@@ -73,7 +72,6 @@ class TestDatabaseTableCreationToggle:
             'y',  # Start services
             '',   # Create tables (press Enter for default YES)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
@@ -96,7 +94,6 @@ class TestDatabaseTableCreationToggle:
             'y',  # Start services
             'n',  # Create tables (NO)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
@@ -218,7 +215,6 @@ class TestMCPToolsRegistrationIntegration:
             'y',  # Create tables
             'y',  # Register AI tools (NEW)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
@@ -243,7 +239,6 @@ class TestMCPToolsRegistrationIntegration:
             'y',  # Create tables
             '',   # Register AI tools (default YES)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
@@ -433,7 +428,6 @@ class TestSerenaMCPToggle:
             'y',  # Register AI tools
             'y',  # Enable Serena (NEW)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
@@ -459,7 +453,6 @@ class TestSerenaMCPToggle:
             'y',  # Register AI tools
             '',   # Enable Serena (default NO)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
@@ -698,7 +691,6 @@ class TestInstallationWorkflowWithAllEnhancements:
             'n',  # Register AI tools (NO)
             'n',  # Enable Serena (NO)
             'n',  # Create shortcuts
-            'n',  # Verbose mode
         ]
         
         input_iterator = iter(inputs)
