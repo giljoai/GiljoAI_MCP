@@ -215,7 +215,9 @@ api/
 │   ├── projects.py       # Project management
 │   ├── agents.py         # Agent orchestration
 │   ├── messages.py       # Inter-agent messaging
-│   └── setup.py          # Setup wizard endpoints
+│   ├── setup.py          # Setup wizard endpoints
+│   ├── ai_tools.py       # AI tool configuration generator (425 lines)
+│   └── templates.py      # Template CRUD operations
 └── websocket/            # WebSocket handlers
     ├── manager.py        # WebSocket connection management
     └── auth.py           # WebSocket authentication
@@ -251,15 +253,18 @@ src/giljo_mcp/
 ├── database.py            # PostgreSQL connection management
 ├── tenant.py              # Multi-tenant isolation manager  
 ├── models.py              # SQLAlchemy ORM models
+├── template_manager.py    # ✨ NEW: Unified template system (342 lines)
 ├── auth/                  # Authentication services
 │   ├── manager.py         # AuthManager class
 │   ├── jwt_handler.py     # JWT token operations
 │   └── password.py        # bcrypt password handling
-├── tools/                 # MCP tool implementations
+├── tools/                 # MCP tool implementations (22+ tools)
 │   ├── project.py         # Project management tools
 │   ├── agent.py           # Agent orchestration tools
 │   ├── message.py         # Message queue tools
-│   └── context.py         # Context management tools
+│   ├── context.py         # Context management tools
+│   ├── template.py        # ✨ NEW: Template CRUD operations
+│   └── task_templates.py  # Task template management
 └── setup/                 # Setup wizard backend
     ├── state_manager.py   # Setup state tracking
     └── wizard.py          # Multi-step setup logic
@@ -294,7 +299,10 @@ frontend/
 │   ├── components/        # Reusable components
 │   │   ├── AgentCard.vue  # Agent status display
 │   │   ├── ProjectCard.vue# Project overview cards
-│   │   └── MessageQueue.vue# Real-time message display
+│   │   ├── MessageQueue.vue# Real-time message display
+│   │   ├── AIToolSetup.vue # ✨ NEW: AI tool configuration UI (243 lines)
+│   │   └── setup/         # ✨ NEW: Enhanced setup components
+│   │       └── WelcomePasswordStep.vue # Two-phase auth welcome
 │   └── utils/             # Utility modules
 │       ├── api.js         # Axios HTTP client configuration
 │       ├── auth.js        # JWT token management

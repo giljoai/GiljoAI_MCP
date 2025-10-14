@@ -29,7 +29,7 @@
               class="mb-4"
               icon="mdi-shield-alert"
             >
-              <AppAlert-title>Security Notice</v-alert-title>
+              <AppAlert-title>Security Notice</AppAlert-title>
               <div class="text-body-2">
                 For security reasons, you must change the default password before proceeding.
                 Your new password must meet minimum security requirements.
