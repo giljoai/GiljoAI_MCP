@@ -14,7 +14,7 @@
                 max-width="200"
                 class="mb-3"
               />
-              <h1 class="text-h5 font-weight-bold">Welcome to GiljoAI MCP</h1>
+              <h1 class="text-h5 font-weight-bold">Welcome to<br/>GiljoAI Agent Orchestration MCP Server</h1>
               <p class="text-body-2 text-medium-emphasis mt-2">Set Your Administrator Password</p>
             </div>
           </v-card-title>
@@ -55,8 +55,7 @@
               density="compact"
             >
               <div class="text-body-2">
-                <v-icon size="small" class="mr-1">mdi-information</v-icon>
-                Create a secure password (minimum 8 characters)
+Create a secure password (minimum 8 characters)
               </div>
             </v-alert>
 
@@ -227,6 +226,7 @@ async function handlePasswordSetup() {
     await api.auth.changePassword({
       current_password: 'admin',
       new_password: newPassword.value,
+      confirm_password: confirmPassword.value,
     })
 
     // Show success message
