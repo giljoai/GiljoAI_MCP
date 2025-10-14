@@ -230,8 +230,7 @@
                     >
                   </template>
                   <span
-                    >Required field - Select the AI tool for this template (only Claude available
-                    now)</span
+                    >Required field - Select the AI tool for this template</span
                   >
                 </v-tooltip>
               </v-col>
@@ -488,18 +487,16 @@ const toolOptions = [
     color: '#1976D2',
   },
   {
-    title: 'Codex (future)',
+    title: 'Codex',
     value: 'codex',
     logo: '/codex_logo.svg',
     color: '#4CAF50',
-    disabled: true,
   },
   {
-    title: 'Gemini (future)',
+    title: 'Gemini',
     value: 'gemini',
     logo: '/gemini-icon.svg',
     color: '#9C27B0',
-    disabled: true,
   },
 ]
 

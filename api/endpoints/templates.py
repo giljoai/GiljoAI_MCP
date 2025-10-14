@@ -349,6 +349,8 @@ async def update_template(
             template.tags = update.tags
         if update.is_active is not None:
             template.is_active = update.is_active
+        if update.preferred_tool is not None:
+            template.preferred_tool = update.preferred_tool
 
         # Handle default flag
         if update.is_default is not None and update.is_default and template.role:

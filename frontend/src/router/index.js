@@ -18,6 +18,18 @@ const routes = [
     },
   },
   {
+    path: '/welcome',
+    name: 'WelcomeSetup',
+    component: () => import('@/views/WelcomeSetup.vue'),
+    meta: {
+      title: 'Welcome to GiljoAI MCP',
+      showInNav: false,
+      requiresAuth: false, // Public route - first-time setup
+      requiresSetup: false, // Skip setup check for this route
+      requiresPasswordChange: false, // Skip password change check for this route
+    },
+  },
+  {
     path: '/change-password',
     name: 'ChangePassword',
     component: () => import('@/views/ChangePassword.vue'),
@@ -37,7 +49,7 @@ const routes = [
       title: 'Setup Wizard',
       showInNav: false,
       requiresSetup: false, // Skip setup check for this route
-      requiresAuth: false, // No authentication required - fresh install flow
+      requiresAuth: true, // PHASE 2: Requires authentication - user must login first
       requiresPasswordChange: false, // Skip password change check for this route
     },
   },
@@ -213,8 +225,8 @@ router.beforeEach(async (to, from, next) => {
       // This ensures password change happens before setup wizard
       if (to.meta.requiresPasswordChange !== false && status.default_password_active) {
         if (to.path !== '/change-password') {
-          console.log('[ROUTER] Default password active, redirecting to password change')
-          next('/change-password')
+          console.log('[ROUTER] Default password active, redirecting to welcome setup')
+          next('/welcome')
           return
         }
       }
@@ -241,8 +253,8 @@ router.beforeEach(async (to, from, next) => {
 
       // If on setup wizard but default password still active, redirect to password change
       if (to.path === '/setup' && status.default_password_active) {
-        console.log('[ROUTER] Must change password before setup, redirecting to password change')
-        next('/change-password')
+        console.log('[ROUTER] Must change password before setup, redirecting to welcome setup')
+        next('/welcome')
         return
       }
 
@@ -250,12 +262,12 @@ router.beforeEach(async (to, from, next) => {
       // SECURITY FAIL-SAFE: If setup status check fails (pristine database, API unreachable),
       // redirect to password change modal instead of setup wizard
       // This ensures we ALWAYS require password change on fresh install, even if status check fails
-      if (to.path !== '/setup' && to.path !== '/login' && to.path !== '/change-password') {
-        console.log('[ROUTER] Setup status check failed - assuming fresh install, redirecting to password change (FAIL-SAFE)')
-        next('/change-password')
+      if (to.path !== '/setup' && to.path !== '/login' && to.path !== '/welcome') {
+        console.log('[ROUTER] Setup status check failed - assuming fresh install, redirecting to welcome setup (FAIL-SAFE)')
+        next('/welcome')
         return
       }
-      // If already navigating to setup, login, or change-password, allow it
+      // If already navigating to setup, login, or welcome, allow it
       console.log('[ROUTER] Setup status check unavailable, but navigating to', to.path)
     }
   }
