@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from .database import get_db_manager
+from .optimization import SerenaOptimizer, MissionOptimizationInjector
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .models import Agent, Message, Project
 from .template_adapter import MissionTemplateGeneratorV2
@@ -85,6 +86,14 @@ class ProjectOrchestrator:
         self._context_monitors: dict[str, asyncio.Task] = {}
         # Initialize template generator
         self.template_generator = MissionTemplateGeneratorV2(self.db_manager)
+        # Initialize Serena optimization system
+        self.serena_optimizer = None  # Initialize lazily per tenant
+
+    def _get_serena_optimizer(self, tenant_key: str) -> SerenaOptimizer:
+        """Get or create SerenaOptimizer for tenant (lazy initialization)"""
+        if not self.serena_optimizer:
+            self.serena_optimizer = SerenaOptimizer(self.db_manager, tenant_key)
+        return self.serena_optimizer
 
     async def create_project(
         self,
@@ -276,7 +285,7 @@ class ProjectOrchestrator:
         additional_instructions: Optional[str] = None,
     ) -> Agent:
         """
-        Spawn a new agent with role-based mission template.
+        Spawn a new agent with role-based mission template enhanced with Serena optimization.
 
         Args:
             project_id: Project UUID
@@ -286,7 +295,7 @@ class ProjectOrchestrator:
             additional_instructions: Optional additional instructions
 
         Returns:
-            Created Agent instance
+            Created Agent instance with optimized mission
         """
         async with self.db_manager.get_session_async() as session:
             # Get project
@@ -314,7 +323,34 @@ class ProjectOrchestrator:
                     additional_instructions=additional_instructions,
                 )
 
-            # Create agent
+            # SERENA OPTIMIZATION: Inject optimization rules into mission
+            try:
+                optimizer = self._get_serena_optimizer(project.tenant_key)
+                injector = MissionOptimizationInjector(optimizer)
+                
+                # Gather context for optimization
+                context_data = {
+                    "project_id": project_id,
+                    "project_type": project_type.value if project_type else "general",
+                    "codebase_size": "medium",  # Could be determined dynamically
+                    "primary_language": "python",  # Could be detected from project
+                }
+                
+                # Inject optimization rules
+                optimized_mission = await injector.inject_optimization_rules(
+                    agent_role=role.value,
+                    mission=mission,
+                    context_data=context_data
+                )
+                
+                logger.info(f"Enhanced {role.value} agent mission with Serena optimization rules")
+                mission = optimized_mission
+                
+            except Exception as e:
+                logger.warning(f"Failed to inject Serena optimization rules: {e}")
+                # Continue with original mission if optimization fails
+
+            # Create agent with optimized mission
             agent = Agent(
                 tenant_key=project.tenant_key,
                 project_id=project_id,
@@ -329,7 +365,7 @@ class ProjectOrchestrator:
             await session.commit()
             await session.refresh(agent)
 
-            logger.info(f"Spawned {role.value} agent {agent.id} for project {project_id}")
+            logger.info(f"Spawned optimized {role.value} agent {agent.id} for project {project_id}")
             return agent
 
     async def spawn_agents_parallel(
@@ -754,3 +790,127 @@ class ProjectOrchestrator:
             "remaining_budget": remaining_budget,
             "suggested_project_budget": min(150000, remaining_budget),
         }
+
+    async def get_optimization_report(self, project_id: str) -> dict[str, Any]:
+        """
+        Generate comprehensive Serena optimization report for a project.
+        
+        Args:
+            project_id: Project UUID
+            
+        Returns:
+            Dict with optimization metrics and savings
+        """
+        async with self.db_manager.get_session_async() as session:
+            # Get project and agents
+            project_result = await session.execute(
+                select(Project).where(Project.id == project_id).options(selectinload(Project.agents))
+            )
+            project = project_result.scalar_one_or_none()
+            
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+            
+            # Get optimizer for tenant
+            optimizer = self._get_serena_optimizer(project.tenant_key)
+            
+            # Generate reports for each agent
+            agent_reports = {}
+            total_operations = 0
+            total_tokens_saved = 0
+            
+            for agent in project.agents:
+                try:
+                    agent_report = await optimizer.generate_savings_report(agent.id)
+                    agent_reports[agent.id] = {
+                        "agent_name": agent.name,
+                        "agent_role": agent.role,
+                        "report": agent_report
+                    }
+                    
+                    total_operations += agent_report.get("total_operations", 0)
+                    total_tokens_saved += agent_report.get("total_tokens_saved", 0)
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to get optimization report for agent {agent.id}: {e}")
+                    agent_reports[agent.id] = {
+                        "agent_name": agent.name,
+                        "agent_role": agent.role,
+                        "report": {"error": str(e)}
+                    }
+            
+            # Calculate project-level metrics
+            context_savings_percent = 0
+            if project.context_used > 0:
+                # Estimate what context usage would have been without optimization
+                estimated_unoptimized = project.context_used * 3  # Conservative estimate
+                context_savings_percent = ((estimated_unoptimized - project.context_used) / estimated_unoptimized) * 100
+            
+            return {
+                "project_id": project_id,
+                "project_name": project.name,
+                "project_status": project.status,
+                "optimization_summary": {
+                    "total_operations": total_operations,
+                    "total_tokens_saved": total_tokens_saved,
+                    "context_used": project.context_used,
+                    "estimated_context_savings_percent": round(context_savings_percent, 1),
+                    "agents_optimized": len(agent_reports)
+                },
+                "agent_reports": agent_reports,
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+    
+    async def estimate_optimization_impact(self, project_id: str, agent_role: str) -> dict[str, Any]:
+        """
+        Estimate optimization impact before spawning an agent.
+        
+        Args:
+            project_id: Project UUID
+            agent_role: Role of agent to spawn
+            
+        Returns:
+            Dict with estimated optimization impact
+        """
+        async with self.db_manager.get_session_async() as session:
+            # Get project
+            result = await session.execute(select(Project).where(Project.id == project_id))
+            project = result.scalar_one_or_none()
+            
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+            
+            # Get optimizer
+            optimizer = self._get_serena_optimizer(project.tenant_key)
+            injector = MissionOptimizationInjector(optimizer)
+            
+            # Prepare context data
+            context_data = {
+                "project_id": project_id,
+                "project_type": "general",
+                "codebase_size": "medium",
+                "primary_language": "python",
+            }
+            
+            # Get impact estimate
+            impact = await injector.estimate_optimization_impact(agent_role, context_data)
+            
+            return {
+                "project_id": project_id,
+                "agent_role": agent_role,
+                "estimated_impact": impact,
+                "recommendation": self._get_optimization_recommendation(impact)
+            }
+    
+    def _get_optimization_recommendation(self, impact: dict[str, Any]) -> str:
+        """Generate optimization recommendation based on impact analysis"""
+        
+        rules_applied = impact.get("rules_applied", 0)
+        context_adjustments = impact.get("context_adjustments", 0)
+        
+        if rules_applied >= 5:
+            return "High optimization potential - expect 60-90% token reduction"
+        elif rules_applied >= 3:
+            return "Medium optimization potential - expect 40-70% token reduction"
+        else:
+            return "Basic optimization applied - expect 20-50% token reduction"

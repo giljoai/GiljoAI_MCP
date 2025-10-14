@@ -1267,3 +1267,100 @@ class APIKey(Base):
     def display_key(self) -> str:
         """Get display-friendly version of key (prefix only)"""
         return f"{self.key_prefix}..."
+
+
+class OptimizationRule(Base):
+    """
+    Optimization Rule model - stores custom optimization rules per tenant.
+    
+    Rules define how Serena MCP operations should be optimized for specific contexts.
+    Overrides default SerenaOptimizer rules when present.
+    """
+    
+    __tablename__ = "optimization_rules"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    
+    # Rule definition
+    operation_type = Column(String(50), nullable=False)  # OperationType enum value
+    max_answer_chars = Column(Integer, nullable=False)
+    prefer_symbolic = Column(Boolean, nullable=False, default=True)
+    guidance = Column(Text, nullable=False)
+    context_filter = Column(String(100), nullable=True)  # When to apply this rule
+    
+    # Rule metadata
+    is_active = Column(Boolean, default=True, nullable=False)
+    priority = Column(Integer, default=100)  # Higher numbers = higher priority
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    __table_args__ = (
+        Index("idx_optimization_rule_tenant", "tenant_key"),
+        Index("idx_optimization_rule_type", "operation_type"),
+        Index("idx_optimization_rule_active", "is_active"),
+        CheckConstraint(
+            "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
+            name="ck_optimization_rule_operation_type"
+        ),
+        CheckConstraint("max_answer_chars > 0", name="ck_optimization_rule_max_chars"),
+        CheckConstraint("priority >= 0", name="ck_optimization_rule_priority"),
+    )
+    
+    def __repr__(self):
+        return f"<OptimizationRule(id={self.id}, operation_type={self.operation_type}, tenant_key={self.tenant_key})>"
+
+
+class OptimizationMetric(Base):
+    """
+    Optimization Metric model - tracks token savings from Serena MCP optimizations.
+    
+    Records every optimization operation to measure effectiveness and calculate savings.
+    Enables performance analytics and optimization rule refinement.
+    """
+    
+    __tablename__ = "optimization_metrics"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    
+    # Foreign keys
+    agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
+    
+    # Operation details
+    operation_type = Column(String(50), nullable=False)  # OperationType enum value
+    params_size = Column(Integer, nullable=False, default=0)
+    result_size = Column(Integer, nullable=False)
+    optimized = Column(Boolean, nullable=False, default=True)
+    
+    # Token calculations
+    tokens_saved = Column(Integer, nullable=False, default=0)
+    
+    # Metadata
+    meta_data = Column(JSON, default=dict)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
+    # Relationships
+    agent = relationship("Agent", backref="optimization_metrics")
+    
+    __table_args__ = (
+        Index("idx_optimization_metric_tenant", "tenant_key"),
+        Index("idx_optimization_metric_agent", "agent_id"),
+        Index("idx_optimization_metric_type", "operation_type"),
+        Index("idx_optimization_metric_date", "created_at"),
+        Index("idx_optimization_metric_optimized", "optimized"),
+        CheckConstraint(
+            "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
+            name="ck_optimization_metric_operation_type"
+        ),
+        CheckConstraint("params_size >= 0", name="ck_optimization_metric_params_size"),
+        CheckConstraint("result_size >= 0", name="ck_optimization_metric_result_size"),
+        CheckConstraint("tokens_saved >= 0", name="ck_optimization_metric_tokens_saved"),
+    )
+    
+    def __repr__(self):
+        return f"<OptimizationMetric(id={self.id}, operation_type={self.operation_type}, tokens_saved={self.tokens_saved})>"
