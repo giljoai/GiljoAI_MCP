@@ -9,15 +9,11 @@ const apiClient = axios.create({
   withCredentials: true, // CRITICAL: Send cookies with requests for JWT auth
 })
 
-// Request interceptor for auth token and tenant key
+// Request interceptor for tenant key
+// NOTE: Authentication token is sent automatically via httpOnly cookie (access_token)
+// No need to manually add Authorization header - the browser handles this
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token if available
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-
     // Ensure tenant key is always present
     if (!config.headers['X-Tenant-Key']) {
       config.headers['X-Tenant-Key'] =

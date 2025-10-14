@@ -601,46 +601,327 @@ async def spawn_agent_with_tool_preference(
 
 ## Security & Authentication
 
-### API Key Management
+### User API Key Management
 
-**For Network Deployments**:
+**Implementation Status**: COMPLETE (as of 2025-10-13)
+
+GiljoAI MCP v3.0 implements a comprehensive user API key management system that integrates seamlessly with AI tool configuration generation.
+
+**Key Features**:
+- Per-user API key generation and management
+- Automatic integration with MCP configuration generator
+- Bcrypt hashing for secure storage (cost factor 12)
+- One-time plaintext display (security best practice)
+- Complete multi-tenant isolation
+- Individual key revocation without affecting other users
+
+---
+
+### API Key Generation Flow
+
+**Step 1: User Accesses Settings**
+```
+Settings → API and Integrations → Personal API Keys
+```
+
+**Step 2: Generate New Key**
+```javascript
+// Frontend: ApiKeyManager.vue
+async generateApiKey(name) {
+  const response = await api.post('/api/auth/api-keys/', {
+    name: name,  // e.g., "Claude Code - 10/13/2025"
+    scopes: ['mcp_config', 'projects:read', 'agents:write']
+  })
+
+  // Backend returns plaintext key ONCE
+  return {
+    key: 'gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',  // 32-char random
+    key_id: 'uuid',
+    key_preview: 'gk_xxxxx...',
+    created_at: '2025-10-13T10:00:00Z'
+  }
+}
+```
+
+**Step 3: Key Stored Securely**
 ```python
-@router.post("/ai-tools/generate-api-key")
-async def generate_api_key(
-    current_user: User = Depends(get_current_user),
-    scope: str = Body(...),
-    expires_days: int = Body(30)
+# Backend: api/endpoints/auth.py
+@router.post("/api/auth/api-keys/")
+async def create_api_key(
+    request: APIKeyCreateRequest,
+    current_user: User = Depends(get_current_user)
 ):
-    """Generate API key for AI tool integration"""
-    
-    api_key = ApiKey(
+    """Generate new API key for authenticated user"""
+
+    # Generate cryptographically secure random key
+    raw_key = f"gk_{secrets.token_urlsafe(32)}"
+
+    # Hash with bcrypt (cost factor 12)
+    key_hash = bcrypt.hashpw(
+        raw_key.encode('utf-8'),
+        bcrypt.gensalt(rounds=12)
+    )
+
+    api_key = APIKey(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
-        tenant_key=current_user.tenant_key,
-        name=f"AI Tool Integration ({scope})",
-        key_hash=hash_api_key(generate_api_key()),
-        scope=scope,  # "ai_tools", "read_only", "full_access"
-        expires_at=datetime.utcnow() + timedelta(days=expires_days)
+        tenant_key=current_user.tenant_key,  # ← TENANT ISOLATION
+        name=request.name,
+        key_hash=key_hash.decode('utf-8'),
+        key_preview=f"{raw_key[:8]}...",
+        scopes=request.scopes,
+        is_active=True
     )
-    
+
     session.add(api_key)
     await session.commit()
-    
+
     return {
-        "api_key": api_key.key_value,  # Only returned once
+        "key": raw_key,  # ← ONLY RETURNED ONCE
         "key_id": api_key.id,
-        "expires_at": api_key.expires_at,
-        "scope": api_key.scope
+        "key_preview": api_key.key_preview,
+        "created_at": api_key.created_at
     }
 ```
+
+---
+
+### Automatic API Key Integration in AI Tools
+
+**AIToolSetup.vue Integration** (as of 2025-10-13):
+
+When users generate MCP configurations, the system now automatically:
+1. Generates a new API key with descriptive name
+2. Embeds the key in the configuration
+3. Displays security warnings about key storage
+
+**Implementation**:
+```javascript
+// Frontend: components/AIToolSetup.vue
+async generateConfigWithApiKey() {
+  try {
+    // Step 1: Generate new API key for this AI tool
+    const keyName = `${this.selectedTool} - ${new Date().toLocaleDateString()}`
+    const apiKeyResponse = await api.post('/api/auth/api-keys/', {
+      name: keyName,
+      scopes: ['mcp_config', 'projects:read', 'agents:write']
+    })
+
+    // Step 2: Generate configuration with embedded API key
+    const configResponse = await api.get(
+      `/api/ai-tools/config-generator/${this.selectedTool}`
+    )
+
+    // Step 3: Embed API key in configuration
+    const config = JSON.parse(configResponse.data.config_content)
+    config.mcpServers['giljo-mcp'].env.GILJO_API_KEY = apiKeyResponse.data.key
+
+    // Step 4: Display configuration with security warnings
+    this.generatedConfig = {
+      ...configResponse.data,
+      config_content: JSON.stringify(config, null, 2),
+      api_key_preview: apiKeyResponse.data.key_preview
+    }
+
+    // Step 5: Show security warning
+    this.showSecurityWarning(
+      'API key generated and embedded. Store this configuration securely - ' +
+      'the key will not be shown again.'
+    )
+  } catch (error) {
+    this.handleError('Failed to generate configuration with API key', error)
+  }
+}
+```
+
+**Generated Configuration Example**:
+```json
+{
+  "mcpServers": {
+    "giljo-mcp": {
+      "command": "uvx",
+      "args": ["giljo-mcp-client"],
+      "env": {
+        "GILJO_SERVER_URL": "http://localhost:7272",
+        "GILJO_TENANT_KEY": "user-tenant-key",
+        "GILJO_API_KEY": "gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+---
+
+### Database Schema
+
+**APIKey Model**:
+```python
+class APIKey(Base):
+    __tablename__ = 'api_keys'
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    tenant_key = Column(String(36), ForeignKey('tenants.tenant_key'), nullable=False)
+
+    name = Column(String(255), nullable=False)
+    key_hash = Column(String(255), nullable=False)  # bcrypt hashed
+    key_preview = Column(String(20), nullable=False)  # gk_xxxxx...
+
+    scopes = Column(JSON, default=['read'])
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    # Multi-tenant isolation
+    __table_args__ = (
+        Index('idx_api_keys_tenant_user', 'tenant_key', 'user_id'),
+    )
+```
+
+**Query Example** (automatic tenant filtering):
+```python
+async def get_user_api_keys(user_id: str, tenant_key: str):
+    """Get API keys for user (automatically filtered by tenant)"""
+    stmt = select(APIKey).where(
+        APIKey.user_id == user_id,
+        APIKey.tenant_key == tenant_key,  # ← TENANT ISOLATION
+        APIKey.is_active == True
+    )
+    result = await session.execute(stmt)
+    return result.scalars().all()
+```
+
+---
+
+### API Endpoints
+
+**User API Key Management**:
+```python
+# List user's API keys
+GET  /api/auth/api-keys/
+# Returns: [{ id, name, key_preview, created_at, last_used_at, scopes }]
+
+# Generate new API key
+POST /api/auth/api-keys/
+# Body: { name: str, scopes: list[str] }
+# Returns: { key, key_id, key_preview, created_at }
+
+# Revoke API key
+DELETE /api/auth/api-keys/{key_id}
+# Returns: { success: true, message: "API key revoked" }
+
+# Update API key metadata
+PATCH /api/auth/api-keys/{key_id}
+# Body: { name: str }
+# Returns: { success: true, api_key: {...} }
+```
+
+---
+
+### Security Features
+
+**Bcrypt Hashing**:
+- Cost factor: 12 (high security)
+- Salt automatically generated
+- One-way hashing (cannot recover plaintext)
+
+**One-Time Display**:
+- Plaintext key returned only once during generation
+- Never stored in plaintext
+- Key preview shown for identification (gk_xxxxx...)
+
+**Multi-Tenant Isolation**:
+- All API keys scoped to tenant_key
+- Users can only access their own tenant's keys
+- Database queries automatically filtered
+
+**httpOnly Cookie Authentication**:
+- Session token stored in httpOnly cookie
+- JavaScript cannot access (XSS protection)
+- SameSite=lax prevents CSRF attacks
+- Browser automatically includes in requests
+
+**Scope-Based Permissions** (future enhancement):
+```json
+{
+  "scopes": [
+    "projects:read",
+    "projects:write",
+    "agents:read",
+    "agents:write",
+    "mcp_config"
+  ]
+}
+```
+
+---
+
+### User Experience
+
+**API Key Manager Interface**:
+```
+┌───────────────────────────────────────────────────────┐
+│ Personal API Keys                                     │
+├───────────────────────────────────────────────────────┤
+│ Manage your API keys for MCP configuration           │
+│                                                       │
+│ [+ Generate New Key]                                  │
+│                                                       │
+│ ┌─────────────────────────────────────────────────┐  │
+│ │ Name                │ Key       │ Created │ ... │  │
+│ ├─────────────────────────────────────────────────┤  │
+│ │ Claude Code - 10/13 │ gk_xxxx.. │ 2 days  │ ⚙   │  │
+│ │ CODEX CLI - 10/10   │ gk_yyyy.. │ 5 days  │ ⚙   │  │
+│ └─────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────┘
+```
+
+**AI Tool Configuration Flow**:
+```
+1. User selects AI tool (Claude Code, CODEX, Gemini)
+2. System automatically generates API key
+3. Key embedded in generated configuration
+4. Security warning displayed
+5. User copies/downloads configuration
+6. Key stored securely (never shown again)
+```
+
+---
 
 ### Configuration Security
 
 **Secure Configuration Generation**:
-- API keys included only for WAN deployments
+- User-specific API keys embedded automatically
 - Tenant keys validated against user permissions
 - Server URLs validated for security (no internal IPs in production)
 - Configuration files include security warnings
+- One-time plaintext display enforced
+
+**Network Deployment Security**:
+```json
+{
+  "mcpServers": {
+    "giljo-mcp": {
+      "command": "uvx",
+      "args": ["giljo-mcp-client"],
+      "env": {
+        "GILJO_SERVER_URL": "https://api.yourdomain.com",  // ← HTTPS
+        "GILJO_TENANT_KEY": "production-tenant",
+        "GILJO_API_KEY": "gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // ← User key
+      }
+    }
+  }
+}
+```
+
+**Security Best Practices**:
+- Always use HTTPS for WAN deployments
+- Rotate API keys regularly (30-90 days)
+- Revoke unused keys immediately
+- Never commit API keys to version control
+- Store keys in secure credential management systems
 
 ---
 
