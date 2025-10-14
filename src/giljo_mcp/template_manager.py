@@ -572,6 +572,7 @@ SUCCESS CRITERIA:
         project_type: Optional[str] = None,
         product_id: Optional[str] = None,
         use_cache: bool = True,
+        preferred_tool: Optional[str] = None,
     ) -> str:
         """
         Get a processed template for the specified role.
@@ -583,6 +584,7 @@ SUCCESS CRITERIA:
             project_type: Optional project type for specialized templates
             product_id: Optional product ID for product-specific templates
             use_cache: Whether to use cached templates
+            preferred_tool: Optional AI tool preference (claude, codex, gemini)
 
         Returns:
             Processed template content
@@ -599,7 +601,7 @@ SUCCESS CRITERIA:
 
             # Try database first if available
             if self.db_manager:
-                template_content = await self._get_db_template(role, project_type, product_id, use_cache)
+                template_content = await self._get_db_template(role, project_type, product_id, use_cache, preferred_tool)
             else:
                 # Fall back to legacy templates
                 template_content = self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
@@ -624,6 +626,7 @@ SUCCESS CRITERIA:
         project_type: Optional[str],
         product_id: Optional[str],
         use_cache: bool,
+        preferred_tool: Optional[str] = None,
     ) -> str:
         """Get template from database with caching"""
         # Read Serena config for cache key
@@ -631,8 +634,8 @@ SUCCESS CRITERIA:
         serena_config = config_service.get_serena_config()
         serena_enabled = serena_config.get("enabled", False)
 
-        # Include serena status in cache key
-        cache_key = f"{role}_{project_type}_{product_id}_serena_{serena_enabled}"
+        # Include serena status and preferred_tool in cache key
+        cache_key = f"{role}_{project_type}_{product_id}_serena_{serena_enabled}_tool_{preferred_tool}"
 
         if use_cache and cache_key in self._template_cache:
             return self._template_cache[cache_key]
@@ -646,6 +649,8 @@ SUCCESS CRITERIA:
                 query = query.where(AgentTemplate.product_id == product_id)
             if project_type:
                 query = query.where(AgentTemplate.project_type == project_type)
+            if preferred_tool:
+                query = query.where(AgentTemplate.preferred_tool == preferred_tool)
 
             # Try to get most specific template first
             result = await session.execute(query)

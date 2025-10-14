@@ -719,13 +719,7 @@ def verify_deployment(preserved_items=None):
         "requirements.txt",
         "README.md",
         "devuninstall.py",
-        "uninstall.py",
-        "installer/universal_mcp_installer.py",  # MCP registration system
-        "installer/mcp_adapter_base.py",
-        "installer/claude_adapter.py",
-        "installer/codex_adapter.py",
-        "installer/gemini_adapter.py",
-        "register_ai_tools.py"  # Interactive MCP registration tool
+        "uninstall.py"
     ]
 
     for file_name in key_files:
