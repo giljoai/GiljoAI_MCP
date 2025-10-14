@@ -156,16 +156,25 @@ async function handleLogin() {
 
   try {
     // POST to /api/auth/login with credentials
+    // The backend sets an httpOnly cookie named 'access_token' automatically
+    // We don't need to store it in localStorage - the browser handles it
     const response = await api.auth.login(username.value, password.value)
 
-    // Store auth token if provided in response (Bearer token approach)
-    if (response.data?.access_token) {
-      localStorage.setItem('auth_token', response.data.access_token)
+    // Check if password change is required (v3.0 unified auth)
+    if (response.data?.password_change_required) {
+      // Redirect to password change page
+      router.push('/change-password')
+      return
     }
 
-    // Store user data if provided
-    if (response.data?.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user))
+    // Store user data if provided (for display purposes, not auth)
+    if (response.data) {
+      const userData = {
+        username: response.data.username,
+        role: response.data.role,
+        tenant_key: response.data.tenant_key
+      }
+      localStorage.setItem('user', JSON.stringify(userData))
     }
 
     // Store remember me preference
