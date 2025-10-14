@@ -58,6 +58,7 @@ try:
     from .auth_utils import authenticate_websocket
     from .endpoints import (
         agents,
+        ai_tools,
         auth,
         configuration,
         context,
@@ -559,6 +560,9 @@ def create_app() -> FastAPI:
 
     # MCP tool endpoints for stdio-to-HTTP bridge
     app.include_router(mcp_tools.router, prefix="/mcp/tools", tags=["mcp_tools"])
+
+    # AI Tools configuration generator endpoints
+    app.include_router(ai_tools.router, prefix="/api/ai-tools", tags=["ai-tools"])
 
     @app.get("/")
     async def root():
