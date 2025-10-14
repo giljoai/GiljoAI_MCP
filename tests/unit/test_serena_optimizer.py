@@ -103,8 +103,8 @@ class TestTokenUsageTracker:
         """Test token estimation with realistic text"""
         text = "This is a test message with multiple words and characters."
         tokens = self.tracker.estimate_tokens(text)
-        # 61 chars / 4 = 15 tokens
-        assert tokens == 15
+        # 59 chars / 4 = 14 tokens (integer division)
+        assert tokens == 14
 
     def test_estimate_tokens_unoptimized_file_read(self):
         """Test unoptimized token estimation for file_read"""
@@ -206,7 +206,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
         # Mock database failure
         mock_session = self.create_async_mock("session")
         mock_session.execute = AsyncMock(side_effect=Exception("Database error"))
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         rules = await self.optimizer.get_optimization_rules()
 
@@ -235,7 +235,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
 
         mock_session = self.create_async_mock("session")
         mock_session.execute = AsyncMock(return_value=mock_result)
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         rules = await self.optimizer.get_optimization_rules()
 
@@ -264,7 +264,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
 
         mock_session = self.create_async_mock("session")
         mock_session.execute = AsyncMock(return_value=mock_result)
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         rules = await self.optimizer.get_optimization_rules()
 
@@ -399,7 +399,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
         mock_session.add = Mock()
         mock_session.commit = AsyncMock()
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         await self.optimizer.record_operation(
             agent_id=agent_id,
@@ -430,7 +430,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
         mock_session.add = Mock()
         mock_session.commit = AsyncMock()
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         await self.optimizer.record_operation(
             agent_id=agent_id,
@@ -455,7 +455,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
         mock_session = self.create_async_mock("session")
         mock_session.add = Mock()
         mock_session.commit = AsyncMock(side_effect=Exception("DB error"))
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         # Should not raise exception (fail silently with logging)
         try:
@@ -507,7 +507,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
 
         mock_session = self.create_async_mock("session")
         mock_session.execute = AsyncMock(return_value=mock_result)
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         report = await self.optimizer.generate_savings_report(agent_id)
 
@@ -552,7 +552,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
 
         mock_session = self.create_async_mock("session")
         mock_session.execute = AsyncMock(return_value=mock_result)
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         report = await self.optimizer.generate_savings_report(agent_id)
 
@@ -587,7 +587,7 @@ class TestSerenaOptimizer(BaseAsyncTest):
         # 2. Load rules (with DB fallback)
         mock_session = self.create_async_mock("session")
         mock_session.execute = AsyncMock(side_effect=Exception("DB error"))
-        self.mock_db_manager.get_session_async = AsyncMock(return_value=self.create_context_manager(mock_session))
+        self.mock_db_manager.get_session_async = Mock(return_value=self.create_context_manager(mock_session))
 
         rules = await optimizer.get_optimization_rules()
         assert len(rules) >= 5

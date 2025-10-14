@@ -3,6 +3,7 @@ Base test class with common functionality for all test classes.
 """
 
 import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
@@ -91,6 +92,20 @@ class BaseAsyncTest(BaseTest):
         if exceptions:
             raise exceptions[0]
         return results
+
+    def create_context_manager(self, mock_session):
+        """Create an async context manager for database sessions"""
+        class MockContextManager:
+            def __init__(self, session):
+                self.session = session
+            
+            async def __aenter__(self):
+                return self.session
+            
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                pass
+        
+        return MockContextManager(mock_session)
 
 
 class BaseIntegrationTest(BaseAsyncTest):
