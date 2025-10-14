@@ -238,6 +238,7 @@ async def login(
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
         max_age=86400,  # 24 hours
+        domain=None,  # Allow cookie to work with both localhost and network IPs
     )
 
     # Update last_login
