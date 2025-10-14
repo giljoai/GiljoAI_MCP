@@ -90,7 +90,7 @@
     </v-card>
 
     <!-- Next Steps -->
-    <v-alert type="info" variant="tonal" class="mb-6">
+    <AppAlert type="info" variant="tonal" class="mb-6">
       <div class="text-subtitle-1 mb-2">
         <strong>Next Steps:</strong>
       </div>
@@ -100,7 +100,7 @@
         <li>Configure additional AI tools in Settings</li>
         <li>Review documentation to learn more</li>
       </ul>
-    </v-alert>
+    </AppAlert>
 
     <!-- Progress (100%) -->
     <v-card variant="outlined" class="mb-6">
@@ -127,6 +127,7 @@
 
 <script setup>
 import { computed, watch } from 'vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
 
 /**
  * CompleteStep - Final setup completion step

@@ -520,12 +520,14 @@
             <h3 class="text-h6 mb-3">API Key Information</h3>
 
             <!-- v3.0 Unified: Authentication always enabled for all IPs -->
-            <v-alert type="info" variant="tonal">
-              <div class="d-flex align-center">
-                <v-icon start>mdi-shield-check</v-icon>
-                <div>v3.0 Unified: Authentication required for all network access</div>
-              </div>
-            </v-alert>
+            <template v-if="currentMode === 'localhost'">
+              <v-alert type="info" variant="tonal">
+                <div class="d-flex align-center">
+                  <v-icon start>mdi-shield-check</v-icon>
+                  <div>v3.0 Unified: Authentication required for all network access</div>
+                </div>
+              </v-alert>
+            </template>
 
             <template v-else-if="currentMode === 'lan'">
               <v-alert type="success" variant="tonal" class="mb-4">

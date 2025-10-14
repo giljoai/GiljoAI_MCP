@@ -23,7 +23,7 @@
 
           <v-card-text class="pa-6">
             <!-- Alert for errors -->
-            <v-alert
+            <AppAlert
               v-if="error"
               type="error"
               variant="tonal"
@@ -32,10 +32,10 @@
               @click:close="error = ''"
             >
               {{ error }}
-            </v-alert>
+            </AppAlert>
 
             <!-- Alert for success messages -->
-            <v-alert
+            <AppAlert
               v-if="successMessage"
               type="success"
               variant="tonal"
@@ -44,7 +44,7 @@
               @click:close="successMessage = ''"
             >
               {{ successMessage }}
-            </v-alert>
+            </AppAlert>
 
             <!-- Login Form -->
             <v-form @submit.prevent="handleLogin" ref="loginForm">
@@ -118,6 +118,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
 import api from '@/services/api'
