@@ -274,6 +274,26 @@
           <v-card-title>API and Integrations</v-card-title>
           <v-card-subtitle>Configure API settings and MCP tool integrations</v-card-subtitle>
           <v-card-text>
+            <!-- AI Tools Connection Section -->
+            <v-alert type="success" variant="tonal" class="mb-6">
+              <div class="d-flex align-center">
+                <v-icon start>mdi-robot-outline</v-icon>
+                <div class="flex-grow-1">
+                  <strong>Connect Your AI Tools</strong>
+                  <p class="mb-0 mt-1">
+                    Generate configuration to connect Claude Code, CODEX, Gemini, and other AI tools
+                    to this GiljoAI MCP server. One-click copy-paste setup.
+                  </p>
+                </div>
+              </div>
+            </v-alert>
+
+            <div class="mb-6">
+              <AIToolSetup />
+            </div>
+
+            <v-divider class="my-6" />
+
             <v-alert type="info" variant="tonal" class="mb-4">
               Configure your API endpoints and authentication settings
             </v-alert>
@@ -591,6 +611,7 @@ import { useTheme } from 'vuetify'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
+import AIToolSetup from '@/components/AIToolSetup.vue'
 import { API_CONFIG } from '@/config/api'
 import setupService from '@/services/setupService'
 
