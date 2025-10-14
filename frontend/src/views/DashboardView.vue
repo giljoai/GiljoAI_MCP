@@ -9,10 +9,10 @@
       class="mb-4"
       @click:close="dismissSetupBanner"
     >
-      <AppAlert-title class="text-h6">
+      <template v-slot:title>
         <v-icon left>mdi-database-alert</v-icon>
         Database Setup Required
-      </v-alert-title>
+      </template>
       <div>
         The database is not configured. Please complete the setup process to use all features.
       </div>
@@ -31,10 +31,10 @@
       class="mb-4"
       @click:close="dismissLanWelcome"
     >
-      <AppAlert-title class="text-h6">
+      <template v-slot:title>
         <v-icon left>mdi-check-circle</v-icon>
         Application Now Configured for LAN Access
-      </v-alert-title>
+      </template>
       <div class="mb-3">
         <p class="mb-2">
           <strong>Congratulations!</strong> GiljoAI MCP is now accessible over your local network.

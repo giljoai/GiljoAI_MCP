@@ -419,3 +419,9 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `Vision/VISION_DOCUMENT__FRAGMENTED.md` — VISION DOCUMENT documentation for GiljoAI MCP (Vision) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `Website colors__FRAGMENTED.txt` — Website colors documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `WIZARD_YAML_TO_DB_CONVERSION__FRAGMENTED.md` — WIZARD YAML TO DB CONVERSION documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
+
+## New Implementation Documentation (October 2025 Harmonization)
+
+- `AI_TOOL_CONFIGURATION_MANAGEMENT_10_13_2025.md` — Multi-AI tool support and configuration generator for Claude Code, CODEX, and Gemini CLI integration. — Tag: CURRENT
+- `ENHANCED_SETUP_FLOW_10_13_2025.md` — Two-phase authentication redesign with WebSocket-enabled setup and welcome screen workflow. — Tag: CURRENT
+- `TEMPLATE_SYSTEM_EVOLUTION_10_13_2025.md` — Database-backed template management system replacing legacy file-based templates with AI tool preferences. — Tag: CURRENT

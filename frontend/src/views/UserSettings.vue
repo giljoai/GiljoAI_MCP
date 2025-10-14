@@ -22,6 +22,10 @@
         <v-icon start>mdi-robot</v-icon>
         Agent Templates
       </v-tab>
+      <v-tab value="api">
+        <v-icon start>mdi-api</v-icon>
+        API and Integrations
+      </v-tab>
     </v-tabs>
 
     <!-- Tab Content -->
@@ -248,6 +252,91 @@
       <v-window-item value="templates">
         <TemplateManager />
       </v-window-item>
+
+      <!-- API Configuration -->
+      <v-window-item value="api">
+        <v-card>
+          <v-card-title>API and Integrations</v-card-title>
+          <v-card-subtitle>Configure API settings and MCP tool integrations</v-card-subtitle>
+          <v-card-text>
+            <!-- API Keys Section -->
+            <h3 class="text-h6 mb-2">
+              <v-icon class="mr-2">mdi-key-variant</v-icon>
+              Personal API Keys
+            </h3>
+            <p class="mb-4 text-body-2 text-medium-emphasis">
+              Generate and manage API keys for external integrations like Claude Code, Codex, and other AI tools.
+              Each key is personal to you and scoped to your tenant.
+            </p>
+            <ApiKeyManager />
+
+            <v-divider class="my-6" />
+
+            <!-- AI Tools Connection Section -->
+            <h3 class="text-h6 mb-2">
+              <v-icon class="mr-2">mdi-robot-outline</v-icon>
+              AI Tool Configuration
+            </h3>
+            <v-alert type="success" variant="tonal" class="mb-6">
+              <div class="d-flex align-center">
+                <v-icon start>mdi-robot-outline</v-icon>
+                <div class="flex-grow-1">
+                  <strong>Connect Your AI Tools</strong>
+                  <p class="mb-0 mt-1">
+                    Generate configuration to connect Claude Code, CODEX, Gemini, and other AI tools
+                    to this GiljoAI MCP server. One-click copy-paste setup.
+                  </p>
+                </div>
+              </div>
+            </v-alert>
+
+            <div class="mb-6">
+              <AIToolSetup />
+            </div>
+
+            <v-divider class="my-6" />
+
+            <h3 class="text-h6 mb-4">MCP Integrations</h3>
+
+            <v-card variant="outlined" class="mb-4">
+              <v-list>
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-avatar size="40" rounded="0">
+                      <v-img src="/Serena.png" alt="Serena MCP" />
+                    </v-avatar>
+                  </template>
+
+                  <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
+                  <v-list-item-subtitle>
+                    Enabling adds Serena tool instructions to agent prompts. Disabling removes them
+                    from agent tool startup. (Currently only Claude Code)
+                  </v-list-item-subtitle>
+
+                  <template v-slot:append>
+                    <v-switch
+                      v-model="serenaEnabled"
+                      @update:model-value="toggleSerena"
+                      color="primary"
+                      :loading="toggling"
+                      hide-details
+                      inset
+                      class="serena-toggle"
+                    />
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card>
+
+            <v-alert type="info" variant="tonal" class="mb-4">
+              <v-icon start>mdi-information</v-icon>
+              Serena MCP must be installed separately and configured in your coding tool (e.g.,
+              Claude Code). This toggle only controls whether Serena instructions are included in
+              agent prompts.
+            </v-alert>
+          </v-card-text>
+        </v-card>
+      </v-window-item>
     </v-window>
   </v-container>
 </template>
@@ -257,6 +346,9 @@ import { ref, onMounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import TemplateManager from '@/components/TemplateManager.vue'
+import AIToolSetup from '@/components/AIToolSetup.vue'
+import ApiKeyManager from '@/components/ApiKeyManager.vue'
+import setupService from '@/services/setupService'
 
 // Stores and Theme
 const settingsStore = useSettingsStore()
@@ -265,6 +357,8 @@ const theme = useTheme()
 // State
 const activeTab = ref('general')
 const generalForm = ref(null)
+const serenaEnabled = ref(false)
+const toggling = ref(false)
 
 // Settings object
 const settings = ref({
@@ -366,8 +460,44 @@ function resetNotificationSettings() {
   }
 }
 
+// Serena MCP Methods
+async function checkSerenaStatus() {
+  try {
+    const status = await setupService.getSerenaStatus()
+    serenaEnabled.value = status.enabled || false
+    console.log('[USER SETTINGS] Serena prompt injection status:', serenaEnabled.value)
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to check Serena status:', error)
+    serenaEnabled.value = false
+  }
+}
+
+async function toggleSerena(enabled) {
+  toggling.value = true
+  try {
+    const result = await setupService.toggleSerena(enabled)
+    if (result.success) {
+      serenaEnabled.value = result.enabled
+      console.log('[USER SETTINGS] Serena prompt injection toggled:', result.enabled)
+    } else {
+      // Revert on failure
+      serenaEnabled.value = !enabled
+      console.error('[USER SETTINGS] Failed to toggle Serena:', result.message)
+    }
+  } catch (error) {
+    console.error('[USER SETTINGS] Error toggling Serena:', error)
+    // Revert on error
+    serenaEnabled.value = !enabled
+  } finally {
+    toggling.value = false
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Check Serena MCP status
+  await checkSerenaStatus()
+
   // Load settings from store
   const storedSettings = await settingsStore.loadSettings()
   if (storedSettings) {
@@ -375,3 +505,14 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+/* Make Serena toggle more visible */
+.serena-toggle :deep(.v-switch__track) {
+  border: 2px solid rgba(var(--v-theme-primary), 0.5);
+}
+
+.serena-toggle :deep(.v-switch__thumb) {
+  border: 2px solid rgba(var(--v-theme-primary), 0.8);
+}
+</style>
