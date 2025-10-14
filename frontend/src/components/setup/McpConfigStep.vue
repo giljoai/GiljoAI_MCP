@@ -4,11 +4,10 @@
     <p class="text-body-1 mb-6">Connect GiljoAI MCP with your AI coding assistants</p>
 
     <!-- Info Alert -->
-    <v-alert type="info" variant="tonal" class="mb-4">
-      <v-icon start>mdi-information</v-icon>
+    <AppAlert type="info" variant="tonal" class="mb-4">
       Configure Model Context Protocol (MCP) integration to enhance your AI assistants with GiljoAI capabilities.
       You can skip this step and configure it later in Settings.
-    </v-alert>
+    </AppAlert>
 
     <!-- Check Status -->
     <v-card variant="outlined" class="mb-4">
@@ -25,7 +24,7 @@
           </v-chip>
         </div>
 
-        <v-alert
+        <AppAlert
           v-if="mcpStatus.configured"
           type="success"
           variant="tonal"
@@ -34,7 +33,7 @@
         >
           <v-icon start size="small">mdi-check-circle</v-icon>
           GiljoAI MCP is already configured in Claude Code CLI
-        </v-alert>
+        </AppAlert>
       </v-card-text>
     </v-card>
 
@@ -67,10 +66,9 @@
             <li>Verify with <code>/mcp</code> command</li>
           </ol>
 
-          <v-alert type="warning" variant="tonal" density="compact">
-            <v-icon start size="small">mdi-alert</v-icon>
+          <AppAlert type="warning" variant="tonal" density="compact">
             This will modify your .claude.json file. A backup will be created automatically.
-          </v-alert>
+          </AppAlert>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -124,9 +122,9 @@
                 Apply Configuration to Claude Code
               </v-btn>
 
-              <v-alert v-if="applyResult" :type="applyResult.success ? 'success' : 'error'" class="mt-3">
+              <AppAlert v-if="applyResult" :type="applyResult.success ? 'success' : 'error'" class="mt-3">
                 {{ applyResult.message }}
-              </v-alert>
+              </AppAlert>
             </div>
           </v-expand-transition>
         </div>
@@ -166,6 +164,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import setupService from '@/services/setupService'
+import AppAlert from '@/components/ui/AppAlert.vue'
 
 const emit = defineEmits(['next'])
 

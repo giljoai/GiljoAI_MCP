@@ -70,8 +70,7 @@
     </v-card>
 
     <!-- Installation Warning -->
-    <v-alert type="warning" variant="tonal" prominent class="mb-4">
-      <v-icon start size="large">mdi-alert-circle</v-icon>
+    <AppAlert type="warning" variant="tonal" prominent class="mb-4">
       <v-alert-title class="text-h6">Important: Separate Installation Required</v-alert-title>
       <div class="text-body-2 mt-2">
         <p class="mb-2">
@@ -105,7 +104,7 @@
           </v-btn>
         </div>
       </div>
-    </v-alert>
+    </AppAlert>
 
     <!-- Main Choice Card -->
     <v-card variant="outlined" class="serena-card">
@@ -131,16 +130,15 @@
           />
         </v-radio-group>
 
-        <v-alert
+        <AppAlert
           v-if="choice === 'enabled'"
           type="info"
           variant="tonal"
           density="compact"
           class="mt-3"
         >
-          <v-icon start size="small">mdi-information</v-icon>
           Remember to install Serena MCP separately for the tools to work
-        </v-alert>
+        </AppAlert>
       </v-card-text>
     </v-card>
 
@@ -223,10 +221,9 @@
             </v-tabs-window-item>
           </v-tabs-window>
 
-          <v-alert type="success" variant="tonal" class="mt-4">
-            <v-icon start>mdi-check-circle</v-icon>
+          <AppAlert type="success" variant="tonal" class="mt-4">
             After installation, restart Claude Code and verify with <code>/mcp</code>
-          </v-alert>
+          </AppAlert>
         </v-card-text>
 
         <v-card-actions>
@@ -241,6 +238,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import setupService from '@/services/setupService'
+import AppAlert from '@/components/ui/AppAlert.vue'
 
 const emit = defineEmits(['next', 'back'])
 

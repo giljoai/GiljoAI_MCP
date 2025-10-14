@@ -49,7 +49,7 @@
               </v-btn>
 
               <!-- Verification Instructions -->
-              <v-alert
+              <AppAlert
                 v-if="claudeCodeConfigured"
                 type="success"
                 variant="tonal"
@@ -60,7 +60,7 @@
                   <strong>Next:</strong> Relaunch Claude Code CLI and type <code>/mcp</code> to
                   verify
                 </div>
-              </v-alert>
+              </AppAlert>
             </v-card-text>
           </v-card>
         </v-col>
@@ -139,24 +139,24 @@
       </v-row>
 
       <!-- Success Message -->
-      <v-alert v-if="claudeCodeConfigured" type="success" variant="tonal" class="mt-4">
-        <v-icon start>mdi-check-circle</v-icon>
+      <AppAlert v-if="claudeCodeConfigured" type="success" variant="tonal" class="mt-4">
+        
         <strong>Claude Code configured successfully</strong>
         <div class="text-caption mt-2">
           Server URL: <code>{{ serverUrl || `${window.location.protocol}//${window.location.hostname}:7272` }}</code>
         </div>
-      </v-alert>
+      </AppAlert>
 
       <!-- Manual Configuration Section (when needed) -->
       <div v-if="false" style="display: none">
-      <v-alert type="info" variant="tonal" class="mb-4">
-        <v-icon start>mdi-information</v-icon>
+      <AppAlert type="info" variant="tonal" class="mb-4">
+        
         <strong>LAN Mode: Manual Configuration Required</strong>
         <div class="text-body-2 mt-2">
           In LAN mode, you need to manually add the MCP configuration to Claude Code CLI. Copy the
           configuration below and follow the step-by-step instructions.
         </div>
-      </v-alert>
+      </AppAlert>
 
       <!-- Admin API Key Display -->
       <v-card variant="outlined" class="mb-4">
@@ -260,9 +260,9 @@
                     Add the configuration above to the <code>mcpServers</code> section. If the file
                     is empty, paste the entire JSON block.
                   </p>
-                  <v-alert type="warning" variant="tonal" density="compact">
+                  <AppAlert type="warning" variant="tonal" density="compact">
                     Make sure the JSON is valid (use a JSON validator if needed)
-                  </v-alert>
+                  </AppAlert>
                 </div>
               </v-stepper-window-item>
 
@@ -283,9 +283,9 @@
                     In Claude Code CLI, type the following command to verify MCP tools are loaded:
                   </p>
                   <v-code class="mb-3">/mcp</v-code>
-                  <v-alert type="success" variant="tonal" density="compact">
+                  <AppAlert type="success" variant="tonal" density="compact">
                     You should see "giljo-mcp" listed with available tools
-                  </v-alert>
+                  </AppAlert>
                 </div>
               </v-stepper-window-item>
             </v-stepper-window>
@@ -316,8 +316,8 @@
       </v-card>
 
       <!-- Future MCP Clients Note -->
-      <v-alert type="info" variant="tonal" class="mt-4">
-        <v-icon start>mdi-information</v-icon>
+      <AppAlert type="info" variant="tonal" class="mt-4">
+        
         <strong>Future MCP Clients:</strong>
         <div class="text-body-2 mt-2">
           Support for additional MCP clients is coming soon:
@@ -326,11 +326,11 @@
             <li>Gemini CLI (Coming Soon)</li>
           </ul>
         </div>
-      </v-alert>
+      </AppAlert>
     </div>
 
     <!-- Error Alert -->
-    <v-alert
+    <AppAlert
       v-if="errorMessage"
       type="error"
       variant="tonal"
@@ -339,7 +339,7 @@
       @click:close="errorMessage = ''"
     >
       {{ errorMessage }}
-    </v-alert>
+    </AppAlert>
 
     <!-- Copy Success Snackbar -->
     <v-snackbar v-model="showCopyConfirmation" timeout="2000" location="top right" color="success">
@@ -347,10 +347,10 @@
     </v-snackbar>
 
     <!-- Info Alert -->
-    <v-alert type="info" variant="tonal" class="mt-6">
+    <AppAlert type="info" variant="tonal" class="mt-6">
       You can configure additional tools later in Settings. At least one tool is recommended but not
       required.
-    </v-alert>
+    </AppAlert>
 
     <!-- Progress -->
     <v-card variant="outlined" class="mt-6 mb-6">
@@ -382,6 +382,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import setupService from '@/services/setupService'
+import AppAlert from '@/components/ui/AppAlert.vue'
 
 /**
  * AttachToolsStep - Tool attachment step (Step 1 of 3)

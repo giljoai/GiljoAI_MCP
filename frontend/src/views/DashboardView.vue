@@ -1,7 +1,7 @@
 <template>
   <v-container fluid>
     <!-- Setup Banner (shown when database not configured) -->
-    <v-alert
+    <AppAlert
       v-if="setupStatus.requires_setup"
       type="warning"
       prominent
@@ -9,7 +9,7 @@
       class="mb-4"
       @click:close="dismissSetupBanner"
     >
-      <v-alert-title class="text-h6">
+      <AppAlert-title class="text-h6">
         <v-icon left>mdi-database-alert</v-icon>
         Database Setup Required
       </v-alert-title>
@@ -20,10 +20,10 @@
         <v-icon left>mdi-cog</v-icon>
         Go to Setup Wizard
       </v-btn>
-    </v-alert>
+    </AppAlert>
 
     <!-- LAN Setup Complete Banner -->
-    <v-alert
+    <AppAlert
       v-if="showLanWelcome"
       type="success"
       prominent
@@ -31,7 +31,7 @@
       class="mb-4"
       @click:close="dismissLanWelcome"
     >
-      <v-alert-title class="text-h6">
+      <AppAlert-title class="text-h6">
         <v-icon left>mdi-check-circle</v-icon>
         Application Now Configured for LAN Access
       </v-alert-title>
@@ -51,7 +51,7 @@
         <v-icon left>mdi-download</v-icon>
         Download LAN Setup & Testing Guide
       </v-btn>
-    </v-alert>
+    </AppAlert>
 
     <!-- Header -->
     <v-row>
@@ -215,6 +215,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/stores/agents'
