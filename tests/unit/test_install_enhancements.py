@@ -1,10 +1,11 @@
 """
 Unit tests for install.py enhancements
 
-Tests three new features:
+Tests two features:
 1. Database table creation with Alembic migrations toggle
-2. MCP tools registration integration
-3. Serena MCP toggle option
+2. Serena MCP toggle option
+
+Note: MCP tools registration tests removed - now handled via web-based configuration generator
 
 Following TDD principles: Tests written before implementation
 """
@@ -184,216 +185,9 @@ class TestDatabaseTableCreationToggle:
             # (This will be part of _print_success_summary)
 
 
-class TestMCPToolsRegistrationIntegration:
-    """Test MCP tools registration integration"""
-
-    @pytest.fixture
-    def installer(self, tmp_path: Path):
-        """Create installer instance"""
-        from install import UnifiedInstaller
-
-        settings = {
-            'pg_host': 'localhost',
-            'pg_port': 5432,
-            'pg_password': '4010',
-            'api_port': 7272,
-            'dashboard_port': 7274,
-            'install_dir': str(tmp_path)
-        }
-
-        return UnifiedInstaller(settings=settings)
-
-    def test_ask_installation_questions_includes_mcp_prompt(
-        self, installer, monkeypatch
-    ):
-        """Test installation questions include MCP tools prompt"""
-        import getpass
-        
-        inputs = [
-            '',  # PostgreSQL password
-            'y',  # Start services
-            'y',  # Create tables
-            'y',  # Register AI tools (NEW)
-            'n',  # Create shortcuts
-        ]
-        
-        input_iterator = iter(inputs)
-        monkeypatch.setattr('builtins.input', lambda _: next(input_iterator))
-        monkeypatch.setattr('getpass.getpass', lambda _: '')
-        
-        installer.ask_installation_questions()
-        
-        # Should have MCP registration setting
-        assert 'register_mcp_tools' in installer.settings
-        assert installer.settings['register_mcp_tools'] is True
-
-    def test_ask_installation_questions_mcp_default_yes(
-        self, installer, monkeypatch
-    ):
-        """Test MCP tools prompt defaults to YES"""
-        import getpass
-        
-        inputs = [
-            '',  # PostgreSQL password
-            'y',  # Start services
-            'y',  # Create tables
-            '',   # Register AI tools (default YES)
-            'n',  # Create shortcuts
-        ]
-        
-        input_iterator = iter(inputs)
-        monkeypatch.setattr('builtins.input', lambda _: next(input_iterator))
-        monkeypatch.setattr('getpass.getpass', lambda _: '')
-        
-        installer.ask_installation_questions()
-        
-        # Should default to True
-        assert installer.settings.get('register_mcp_tools', False) is True
-
-    def test_mcp_registration_imports_universal_mcp_installer(self, installer):
-        """Test MCP registration imports UniversalMCPInstaller"""
-        installer.settings['register_mcp_tools'] = True
-        
-        # Should be able to import
-        try:
-            from scripts.integrate_mcp import UniversalMCPInstaller
-            assert True
-        except ImportError:
-            pytest.skip("UniversalMCPInstaller not available")
-
-    def test_mcp_registration_runs_after_services_start(self, installer):
-        """Test MCP registration runs after services launch"""
-        installer.settings['register_mcp_tools'] = True
-        installer.settings['start_services'] = True
-        
-        call_order = []
-        
-        def mock_launch_services():
-            call_order.append('launch_services')
-            return {'success': True, 'api_pid': 123, 'frontend_pid': 456}
-        
-        def mock_register_mcp():
-            call_order.append('register_mcp')
-            return {'success': True}
-        
-        with patch.object(installer, 'launch_services', side_effect=mock_launch_services):
-            with patch.object(installer, 'register_mcp_tools', side_effect=mock_register_mcp):
-                with patch.multiple(
-                    installer,
-                    welcome_screen=Mock(),
-                    check_python_version=Mock(return_value=True),
-                    discover_postgresql=Mock(return_value={'found': True}),
-                    install_dependencies=Mock(return_value={'success': True}),
-                    generate_configs=Mock(return_value={'success': True}),
-                    setup_database=Mock(return_value={'success': True, 'credentials': {}}),
-                    update_env_with_real_credentials=Mock(return_value={'success': True})
-                ):
-                    result = installer.run()
-                    
-                    # MCP registration should happen after services launch
-                    assert call_order.index('register_mcp') > call_order.index('launch_services')
-
-    def test_mcp_registration_detects_installed_tools(self, installer):
-        """Test MCP registration detects installed AI CLI tools"""
-        installer.settings['register_mcp_tools'] = True
-        
-        # Mock UniversalMCPInstaller
-        with patch('install.UniversalMCPInstaller') as mock_mcp:
-            mock_instance = Mock()
-            mock_instance.detect_installed_tools.return_value = ['claude']
-            mock_instance.register_all.return_value = {'claude': True}
-            mock_mcp.return_value = mock_instance
-            
-            result = installer.register_mcp_tools()
-            
-            # Should detect tools
-            assert mock_instance.detect_installed_tools.called
-
-    def test_mcp_registration_registers_with_detected_tools(self, installer):
-        """Test MCP registration registers GiljoAI with detected tools"""
-        installer.settings['register_mcp_tools'] = True
-        installer.settings['api_port'] = 7272
-        
-        with patch('install.UniversalMCPInstaller') as mock_mcp:
-            mock_instance = Mock()
-            mock_instance.detect_installed_tools.return_value = ['claude']
-            mock_instance.register_all.return_value = {'claude': True}
-            mock_mcp.return_value = mock_instance
-            
-            result = installer.register_mcp_tools()
-            
-            # Should register with Claude
-            assert mock_instance.register_all.called
-            call_args = mock_instance.register_all.call_args
-            assert call_args[1]['server_name'] == 'giljo-mcp'
-
-    def test_mcp_registration_skips_if_no_tools_detected(self, installer, capsys):
-        """Test MCP registration skips gracefully if no tools detected"""
-        installer.settings['register_mcp_tools'] = True
-        
-        with patch('install.UniversalMCPInstaller') as mock_mcp:
-            mock_instance = Mock()
-            mock_instance.detect_installed_tools.return_value = []
-            mock_mcp.return_value = mock_instance
-            
-            result = installer.register_mcp_tools()
-            
-            # Should not fail
-            assert result.get('skipped') or not result.get('success', True)
-            
-            captured = capsys.readouterr()
-            assert 'no ai tools detected' in captured.out.lower() or 'skipping' in captured.out.lower()
-
-    def test_mcp_registration_failure_does_not_fail_installation(self, installer):
-        """Test MCP registration failures are logged as warnings"""
-        installer.settings['register_mcp_tools'] = True
-        
-        with patch('install.UniversalMCPInstaller') as mock_mcp:
-            mock_instance = Mock()
-            mock_instance.detect_installed_tools.side_effect = Exception("Detection failed")
-            mock_mcp.return_value = mock_instance
-            
-            result = installer.register_mcp_tools()
-            
-            # Should not raise exception
-            assert 'error' in result or 'warning' in result or not result.get('success')
-
-    def test_mcp_registration_configures_server_url(self, installer):
-        """Test MCP registration configures correct server URL"""
-        installer.settings['register_mcp_tools'] = True
-        installer.settings['api_port'] = 7272
-        
-        with patch('install.UniversalMCPInstaller') as mock_mcp:
-            mock_instance = Mock()
-            mock_instance.detect_installed_tools.return_value = ['claude']
-            mock_instance.register_all.return_value = {'claude': True}
-            mock_mcp.return_value = mock_instance
-            
-            installer.register_mcp_tools()
-            
-            # Should configure server URL with localhost:7272
-            call_args = mock_instance.register_all.call_args
-            env = call_args[1].get('env', {})
-            assert 'GILJO_SERVER_URL' in env
-            assert '7272' in env['GILJO_SERVER_URL']
-
-    def test_mcp_registration_uses_python_module(self, installer):
-        """Test MCP registration uses 'python -m giljo_mcp' command"""
-        installer.settings['register_mcp_tools'] = True
-        
-        with patch('install.UniversalMCPInstaller') as mock_mcp:
-            mock_instance = Mock()
-            mock_instance.detect_installed_tools.return_value = ['claude']
-            mock_instance.register_all.return_value = {'claude': True}
-            mock_mcp.return_value = mock_instance
-            
-            installer.register_mcp_tools()
-            
-            # Should use Python module invocation
-            call_args = mock_instance.register_all.call_args
-            assert call_args[1]['command'] == 'python'
-            assert '-m' in call_args[1]['args']
-            assert 'giljo_mcp' in call_args[1]['args']
+# TestMCPToolsRegistrationIntegration class removed
+# MCP registration is now handled via web-based configuration generator
+# instead of server-side installer approach
 
 
 class TestSerenaMCPToggle:
@@ -420,22 +214,21 @@ class TestSerenaMCPToggle:
     ):
         """Test installation questions include Serena MCP prompt"""
         import getpass
-        
+
         inputs = [
             '',  # PostgreSQL password
             'y',  # Start services
             'y',  # Create tables
-            'y',  # Register AI tools
             'y',  # Enable Serena (NEW)
             'n',  # Create shortcuts
         ]
-        
+
         input_iterator = iter(inputs)
         monkeypatch.setattr('builtins.input', lambda _: next(input_iterator))
         monkeypatch.setattr('getpass.getpass', lambda _: '')
-        
+
         installer.ask_installation_questions()
-        
+
         # Should have Serena setting
         assert 'enable_serena' in installer.settings
         assert installer.settings['enable_serena'] is True
@@ -445,22 +238,21 @@ class TestSerenaMCPToggle:
     ):
         """Test Serena prompt defaults to NO (opt-in)"""
         import getpass
-        
+
         inputs = [
             '',  # PostgreSQL password
             'y',  # Start services
             'y',  # Create tables
-            'y',  # Register AI tools
             '',   # Enable Serena (default NO)
             'n',  # Create shortcuts
         ]
-        
+
         input_iterator = iter(inputs)
         monkeypatch.setattr('builtins.input', lambda _: next(input_iterator))
         monkeypatch.setattr('getpass.getpass', lambda _: '')
-        
+
         installer.ask_installation_questions()
-        
+
         # Should default to False (opt-in)
         assert installer.settings.get('enable_serena', True) is False
 
@@ -612,7 +404,7 @@ features:
 
 
 class TestInstallationWorkflowWithAllEnhancements:
-    """Test complete installation workflow with all three enhancements"""
+    """Test complete installation workflow with all enhancements"""
 
     @pytest.fixture
     def installer(self, tmp_path: Path):
@@ -627,16 +419,15 @@ class TestInstallationWorkflowWithAllEnhancements:
             'dashboard_port': 7274,
             'install_dir': str(tmp_path),
             'create_tables': True,
-            'register_mcp_tools': True,
             'enable_serena': True
         }
 
         return UnifiedInstaller(settings=settings)
 
     def test_all_enhancements_execute_in_correct_order(self, installer):
-        """Test all three enhancements execute in correct order"""
+        """Test enhancements execute in correct order"""
         call_order = []
-        
+
         def track_call(name):
             def wrapper(*args, **kwargs):
                 call_order.append(name)
@@ -649,7 +440,7 @@ class TestInstallationWorkflowWithAllEnhancements:
                 else:
                     return {'success': True}
             return wrapper
-        
+
         with patch.multiple(
             installer,
             welcome_screen=Mock(),
@@ -660,53 +451,48 @@ class TestInstallationWorkflowWithAllEnhancements:
             setup_database=Mock(side_effect=track_call('setup_database')),
             update_env_with_real_credentials=Mock(return_value={'success': True}),
             enable_serena_mcp=Mock(side_effect=track_call('enable_serena')),
-            launch_services=Mock(side_effect=track_call('launch_services')),
-            register_mcp_tools=Mock(side_effect=track_call('register_mcp'))
+            launch_services=Mock(side_effect=track_call('launch_services'))
         ):
             result = installer.run()
-            
+
             # Verify order:
             # 1. Config generation
             # 2. Database setup (with migrations if enabled)
             # 3. Serena toggle (after configs)
             # 4. Services launch
-            # 5. MCP registration (after services)
-            
+
             assert call_order.index('generate_configs') < call_order.index('setup_database')
             assert call_order.index('setup_database') < call_order.index('enable_serena')
             assert call_order.index('enable_serena') < call_order.index('launch_services')
-            assert call_order.index('launch_services') < call_order.index('register_mcp')
-            
+
             assert result['success'] is True
 
     def test_all_enhancements_are_optional(self, installer, monkeypatch):
-        """Test all three enhancements can be individually disabled"""
+        """Test enhancements can be individually disabled"""
         import getpass
-        
+
         # Decline all optional features
         inputs = [
             '',  # PostgreSQL password
             'n',  # Start services (NO)
             'n',  # Create tables (NO)
-            'n',  # Register AI tools (NO)
             'n',  # Enable Serena (NO)
             'n',  # Create shortcuts
         ]
-        
+
         input_iterator = iter(inputs)
         monkeypatch.setattr('builtins.input', lambda _: next(input_iterator))
         monkeypatch.setattr('getpass.getpass', lambda _: '')
-        
+
         installer.ask_installation_questions()
-        
+
         # All should be disabled
         assert installer.settings.get('start_services', True) is False
         assert installer.settings.get('create_tables', True) is False
-        assert installer.settings.get('register_mcp_tools', True) is False
         assert installer.settings.get('enable_serena', True) is False
 
     def test_summary_shows_all_enhancements_status(self, installer, capsys):
-        """Test success summary shows status of all enhancements"""
+        """Test success summary shows status of enhancements"""
         with patch.multiple(
             installer,
             welcome_screen=Mock(),
@@ -717,14 +503,13 @@ class TestInstallationWorkflowWithAllEnhancements:
             setup_database=Mock(return_value={'success': True, 'credentials': {}}),
             update_env_with_real_credentials=Mock(return_value={'success': True}),
             enable_serena_mcp=Mock(return_value={'success': True}),
-            launch_services=Mock(return_value={'success': True, 'api_pid': 123, 'frontend_pid': 456}),
-            register_mcp_tools=Mock(return_value={'success': True})
+            launch_services=Mock(return_value={'success': True, 'api_pid': 123, 'frontend_pid': 456})
         ):
             result = installer.run()
-            
+
             # Should print success summary
             installer._print_success_summary()
-            
+
             captured = capsys.readouterr()
             # Summary should mention key features
             # (Exact output will depend on implementation)

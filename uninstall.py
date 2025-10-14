@@ -224,31 +224,10 @@ class GiljoProductionUninstaller:
 
     def remove_mcp_registrations(self):
         """Remove MCP server registrations from AI CLI tools"""
-        self.log("Removing MCP registrations from AI CLI tools...")
-
-        try:
-            from installer.universal_mcp_installer import UniversalMCPInstaller
-
-            installer = UniversalMCPInstaller()
-            tools = installer.detect_installed_tools()
-
-            if not tools:
-                self.log("No AI CLI tools detected - skipping MCP unregistration", "INFO")
-                return 0
-
-            self.log(f"Detected: {', '.join(tools)}", "INFO")
-            results = installer.unregister_all("giljo-mcp")
-
-            success_count = sum(1 for v in results.values() if v)
-            self.log(f"Unregistered from {success_count}/{len(results)} AI CLI tools", "SUCCESS")
-            return success_count
-
-        except ImportError:
-            self.log("MCP unregistration unavailable (missing module)", "WARNING")
-            return 0
-        except Exception as e:
-            self.log(f"MCP unregistration failed: {e}", "WARNING")
-            return 0
+        # MCP registration is now done via web-based configuration generator
+        # Manual cleanup: Users should use Claude desktop app to remove server if needed
+        self.log("MCP cleanup note: Use Claude desktop app to remove server configuration", "INFO")
+        return 0
 
     def remove_appdata_completely(self):
         """Remove ALL files from APPDATA and user directories"""

@@ -3,6 +3,7 @@
  * Configures Vue Test Utils and Vuetify for all tests
  */
 import { config } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { vi } from 'vitest'
 
 // Suppress Vuetify warnings in tests
@@ -41,3 +42,42 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }))
+
+// Global mocks for authentication and routing
+config.global.mocks = {
+  $router: {
+    push: vi.fn(),
+    currentRoute: {
+      value: {
+        path: '/'
+      }
+    }
+  },
+  $route: {
+    path: '/'
+  }
+}
+
+// Mock Pinia stores globally
+config.global.plugins = [
+  createPinia()
+]
+
+// Mock localStorage
+Object.defineProperty(window, 'localStorage', {
+  value: {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn()
+  },
+  writable: true
+})
+
+// Global test helpers
+const resetAllMocks = () => {
+  vi.resetAllMocks()
+  vi.clearAllMocks()
+}
+
+// Register global test utilities
+global.resetAllMocks = resetAllMocks
