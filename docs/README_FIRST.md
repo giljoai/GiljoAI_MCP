@@ -12,6 +12,12 @@
 - **[Installation Flow & Process](INSTALLATION_FLOW_PROCESS_10_13_2025.md)** - Complete installation walkthrough and cross-platform setup
 - **[First Launch Experience](FIRST_LAUNCH_EXPERIENCE_10_13_2025.md)** - Step-by-step onboarding from install to dashboard
 
+**New Implementation Features** (October 2025 Harmonization):
+
+- **[AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT_10_13_2025.md)** - Multi-AI tool support (Claude, CODEX, Gemini)
+- **[Enhanced Setup Flow](ENHANCED_SETUP_FLOW_10_13_2025.md)** - Two-phase authentication and WebSocket-enabled setup
+- **[Template System Evolution](TEMPLATE_SYSTEM_EVOLUTION_10_13_2025.md)** - Database-backed templates with AI tool preferences
+
 ## Table of Contents
 
 1. [System Architecture Summary](#system-architecture-summary)

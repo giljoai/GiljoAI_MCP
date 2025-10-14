@@ -70,8 +70,53 @@
 
         <!-- Configuration Display -->
         <div v-if="configData && !loading" class="mt-6">
+          <!-- API Key Warning -->
+          <v-alert
+            v-if="showApiKeyWarning && generatedApiKey"
+            type="warning"
+            variant="tonal"
+            prominent
+            class="mb-4"
+            data-test="api-key-warning"
+          >
+            <v-alert-title class="text-h6 mb-2">
+              <v-icon start>mdi-shield-alert</v-icon>
+              Save this API key now!
+            </v-alert-title>
+            This API key will only be shown ONCE. After closing this dialog, you will not
+            be able to retrieve it again. Make sure to copy the configuration below.
+          </v-alert>
+
+          <!-- API Key Success Message -->
+          <v-alert
+            v-if="generatedApiKey"
+            type="success"
+            variant="tonal"
+            class="mb-4"
+            data-test="api-key-success"
+          >
+            <div class="d-flex align-center">
+              <v-icon start>mdi-key-check</v-icon>
+              <div>
+                <strong>API Key Generated:</strong>
+                <code class="ml-2 text-primary">{{ generatedApiKey.substring(0, 10) }}...</code>
+                <div class="text-caption mt-1">
+                  Your key is embedded in the configuration below.
+                  <a
+                    href="#/settings"
+                    class="text-primary"
+                    data-test="manage-api-keys-link"
+                    @click="dialog = false"
+                  >
+                    Manage all API keys
+                  </a>
+                </div>
+              </div>
+            </div>
+          </v-alert>
+
           <!-- File Location -->
-          <v-alert type="success" variant="tonal" class="mb-4">
+          <v-alert type="info" variant="tonal" class="mb-4">
             <div class="d-flex align-center">
               <v-icon start>mdi-file-document</v-icon>
               <div>
@@ -149,8 +194,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { API_CONFIG } from '@/config/api'
+import {
+  generateClaudeCodeConfig,
+  generateCodexConfig,
+  generateGenericConfig,
+} from '@/utils/configTemplates'
+import { getPythonPath, detectOS } from '@/utils/pathDetection'
 
 // State
 const dialog = ref(false)
@@ -160,6 +211,8 @@ const configData = ref(null)
 const loading = ref(false)
 const error = ref(null)
 const copied = ref(false)
+const generatedApiKey = ref(null)
+const showApiKeyWarning = ref(false)
 
 // Methods
 async function loadSupportedTools() {
@@ -178,6 +231,17 @@ async function loadSupportedTools() {
   }
 }
 
+function generateApiKeyName(toolId) {
+  const toolNames = {
+    claude: 'Claude Code',
+    codex: 'Codex CLI',
+    gemini: 'Gemini',
+  }
+  const toolName = toolNames[toolId] || 'AI Tool'
+  const date = new Date().toLocaleDateString()
+  return `${toolName} - ${date}`
+}
+
 async function generateConfig() {
   if (!selectedTool.value) {
     return
@@ -186,19 +250,79 @@ async function generateConfig() {
   loading.value = true
   error.value = null
   configData.value = null
+  generatedApiKey.value = null
+  showApiKeyWarning.value = false
 
   try {
-    const response = await fetch(
-      `${API_CONFIG.REST_API.baseURL}/api/ai-tools/config-generator/${selectedTool.value}`
-    )
+    // Step 1: Generate API key for this tool
+    const keyName = generateApiKeyName(selectedTool.value)
+    const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/auth/api-keys`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify({ name: keyName }),
+    })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.detail || 'Failed to generate configuration')
+    if (!apiKeyResponse.ok) {
+      const errorData = await apiKeyResponse.json()
+      throw new Error(errorData.detail || 'Failed to create API key')
     }
 
-    configData.value = await response.json()
-    console.log('[AIToolSetup] Configuration generated successfully for', selectedTool.value)
+    const apiKeyData = await apiKeyResponse.json()
+    generatedApiKey.value = apiKeyData.key
+    showApiKeyWarning.value = true
+
+    // Step 2: Generate configuration using frontend templates with the API key
+    const serverUrl = `${window.location.protocol}//${window.location.hostname}:7272`
+    const projectPath = 'F:/GiljoAI_MCP'
+    const pythonPath = getPythonPath(projectPath, detectOS())
+
+    let configContent = ''
+    let fileLocation = ''
+    let downloadFilename = ''
+    const instructions = []
+
+    if (selectedTool.value === 'claude') {
+      configContent = generateClaudeCodeConfig(generatedApiKey.value, serverUrl, pythonPath)
+      fileLocation = '~/.claude.json'
+      downloadFilename = 'claude-code-setup.md'
+      instructions.push(
+        'Open or create the file ~/.claude.json',
+        'Copy and paste the configuration above',
+        'Restart Claude Code to apply the changes',
+        'Your API key is now configured and ready to use'
+      )
+    } else if (selectedTool.value === 'codex') {
+      configContent = generateCodexConfig(generatedApiKey.value, serverUrl)
+      fileLocation = '~/config.toml'
+      downloadFilename = 'codex-setup.md'
+      instructions.push(
+        'Open or create the file ~/config.toml',
+        'Copy and paste the configuration above',
+        'Restart Codex CLI to apply the changes'
+      )
+    } else {
+      configContent = generateGenericConfig(generatedApiKey.value, serverUrl)
+      fileLocation = 'Custom integration'
+      downloadFilename = 'generic-api-setup.md'
+      instructions.push(
+        'Use the API key in your HTTP requests',
+        'Include it in the X-API-Key header',
+        'See the example code above for usage'
+      )
+    }
+
+    configData.value = {
+      file_location: fileLocation,
+      config_content: configContent,
+      instructions: instructions,
+      download_filename: downloadFilename,
+    }
+
+    console.log('[AIToolSetup] Configuration generated successfully with API key for', selectedTool.value)
   } catch (err) {
     console.error('[AIToolSetup] Failed to generate config:', err)
     error.value = err.message || 'Failed to generate configuration. Please try again.'
@@ -274,6 +398,8 @@ function closeDialog() {
     configData.value = null
     error.value = null
     copied.value = false
+    generatedApiKey.value = null
+    showApiKeyWarning.value = false
   }, 300)
 }
 
