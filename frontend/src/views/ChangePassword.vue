@@ -23,21 +23,21 @@
 
           <v-card-text class="pa-6">
             <!-- Security Notice -->
-            <v-alert
+            <AppAlert
               type="warning"
               variant="tonal"
               class="mb-4"
               icon="mdi-shield-alert"
             >
-              <v-alert-title>Security Notice</v-alert-title>
+              <AppAlert-title>Security Notice</v-alert-title>
               <div class="text-body-2">
                 For security reasons, you must change the default password before proceeding.
                 Your new password must meet minimum security requirements.
               </div>
-            </v-alert>
+            </AppAlert>
 
             <!-- Error Alert -->
-            <v-alert
+            <AppAlert
               v-if="errorMessage"
               type="error"
               variant="tonal"
@@ -46,7 +46,7 @@
               @click:close="errorMessage = ''"
             >
               {{ errorMessage }}
-            </v-alert>
+            </AppAlert>
 
             <!-- Change Password Form -->
             <v-form ref="passwordForm" @submit.prevent="handleSubmit">
@@ -177,6 +177,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import api from '@/services/api'

@@ -119,12 +119,14 @@
             <h3 class="text-h6 mb-3">API Key Information</h3>
 
             <!-- v3.0 Unified: Authentication always enabled for all IPs -->
-            <v-alert type="info" variant="tonal">
-              <div class="d-flex align-center">
-                <v-icon start>mdi-shield-check</v-icon>
-                <div>v3.0 Unified: Authentication required for all network access</div>
-              </div>
-            </v-alert>
+            <template v-if="currentMode === 'localhost'">
+              <v-alert type="info" variant="tonal">
+                <div class="d-flex align-center">
+                  <v-icon start>mdi-shield-check</v-icon>
+                  <div>v3.0 Unified: Authentication required for all network access</div>
+                </div>
+              </v-alert>
+            </template>
 
             <template v-else-if="currentMode === 'lan'">
               <v-alert type="success" variant="tonal" class="mb-4">
@@ -224,49 +226,23 @@
       <!-- Integrations -->
       <v-window-item value="integrations">
         <v-card>
-          <v-card-title>MCP Integrations</v-card-title>
-          <v-card-subtitle>Configure external tool integrations</v-card-subtitle>
+          <v-card-title>System Integrations</v-card-title>
+          <v-card-subtitle>System-wide integration settings (Admin only)</v-card-subtitle>
 
           <v-card-text>
-            <h3 class="text-h6 mb-4">Available Integrations</h3>
-
-            <v-card variant="outlined" class="mb-4" data-test="serena-integration">
-              <v-list>
-                <v-list-item>
-                  <template v-slot:prepend>
-                    <v-avatar size="40" rounded="0">
-                      <v-img src="/Serena.png" alt="Serena MCP" />
-                    </v-avatar>
-                  </template>
-
-                  <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
-                  <v-list-item-subtitle>
-                    Enabling adds Serena tool instructions to agent prompts. Disabling removes them
-                    from agent tool startup. (Currently only Claude Code)
-                  </v-list-item-subtitle>
-
-                  <template v-slot:append>
-                    <v-switch
-                      v-model="serenaEnabled"
-                      @update:model-value="toggleSerena"
-                      color="primary"
-                      :loading="toggling"
-                      hide-details
-                      inset
-                      class="serena-toggle"
-                      data-test="serena-toggle"
-                    />
-                  </template>
-                </v-list-item>
-              </v-list>
-            </v-card>
-
             <v-alert type="info" variant="tonal" class="mb-4">
-              <v-icon start>mdi-information</v-icon>
-              Serena MCP must be installed separately and configured in your coding tool (e.g.,
-              Claude Code). This toggle only controls whether Serena instructions are included in
-              agent prompts.
+              <v-icon start>mdi-account-cog</v-icon>
+              <div>
+                <strong>User-specific integrations</strong> like MCP tool setup and Serena preferences have been moved to individual user settings.
+                <br><br>
+                Access them via: <strong>User Menu → Settings → API and Integrations</strong>
+              </div>
             </v-alert>
+
+            <h3 class="text-h6 mb-4">System-wide Integrations</h3>
+            <p class="text-body-2 mb-4">
+              Future system-wide integration settings will appear here.
+            </p>
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -304,15 +280,12 @@ import { useRouter } from 'vue-router'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
 import UserManager from '@/components/UserManager.vue'
 import { API_CONFIG } from '@/config/api'
-import setupService from '@/services/setupService'
 
 // Router
 const router = useRouter()
 
 // State
 const activeTab = ref('network')
-const serenaEnabled = ref(false)
-const toggling = ref(false)
 
 // Network settings state
 const networkSettings = ref({
@@ -344,38 +317,6 @@ const maskedApiKey = computed(() => {
   return `${preview.substring(0, 8)}...${preview.substring(preview.length - 4)}`
 })
 
-// Serena MCP Methods
-async function checkSerenaStatus() {
-  try {
-    const status = await setupService.getSerenaStatus()
-    serenaEnabled.value = status.enabled || false
-    console.log('[SYSTEM SETTINGS] Serena prompt injection status:', serenaEnabled.value)
-  } catch (error) {
-    console.error('[SYSTEM SETTINGS] Failed to check Serena status:', error)
-    serenaEnabled.value = false
-  }
-}
-
-async function toggleSerena(enabled) {
-  toggling.value = true
-  try {
-    const result = await setupService.toggleSerena(enabled)
-    if (result.success) {
-      serenaEnabled.value = result.enabled
-      console.log('[SYSTEM SETTINGS] Serena prompt injection toggled:', result.enabled)
-    } else {
-      // Revert on failure
-      serenaEnabled.value = !enabled
-      console.error('[SYSTEM SETTINGS] Failed to toggle Serena:', result.message)
-    }
-  } catch (error) {
-    console.error('[SYSTEM SETTINGS] Error toggling Serena:', error)
-    // Revert on error
-    serenaEnabled.value = !enabled
-  } finally {
-    toggling.value = false
-  }
-}
 
 // Network Settings Methods
 async function loadNetworkSettings() {
@@ -568,9 +509,6 @@ const navigateToSetupWizard = () => {
 
 // Lifecycle
 onMounted(async () => {
-  // Check Serena MCP status
-  await checkSerenaStatus()
-
   // Load database settings from config on mount
   await loadDatabaseSettings()
 
@@ -580,12 +518,4 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Make Serena toggle more visible */
-.serena-toggle :deep(.v-switch__track) {
-  border: 2px solid rgba(var(--v-theme-primary), 0.5);
-}
-
-.serena-toggle :deep(.v-switch__thumb) {
-  border: 2px solid rgba(var(--v-theme-primary), 0.8);
-}
 </style>
