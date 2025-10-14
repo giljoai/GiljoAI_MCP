@@ -219,7 +219,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import ToolConfigSnippet from './ToolConfigSnippet.vue'
 import {
   generateClaudeCodeConfig,
@@ -345,15 +345,10 @@ async function generateApiKey() {
   errorMessage.value = ''
 
   try {
-    // Create axios instance (mocked in tests)
-    const apiClient = axios.create()
+    // Use authenticated API client (includes cookies and tenant key)
+    const response = await api.apiKeys.create(keyName.value)
 
-    const response = await apiClient.post('/api/auth/api-keys', {
-      name: keyName.value,
-      tool: selectedTool.value,
-    })
-
-    generatedKey.value = response.data.key
+    generatedKey.value = response.data.api_key
 
     // Generate config snippet based on selected tool (v3.0 dynamic URL)
     const serverUrl = `${window.location.protocol}//${window.location.hostname}:7272`
