@@ -23,7 +23,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Session, declarative_base, relationship
 from sqlalchemy.sql import func
 
@@ -40,6 +40,12 @@ class Product(Base):
     """
     Product model - TOP-level organizational unit.
     All projects, tasks, and agents belong to a product.
+
+    Vision Storage (Handover 0017 - Hybrid Approach):
+    - vision_path: File-based storage (existing workflow)
+    - vision_document: Inline text storage (new agentic workflow)
+    - vision_type: Source type ('file', 'inline', 'none')
+    - chunked: Has vision been chunked into mcp_context_index
     """
 
     __tablename__ = "products"
@@ -48,7 +54,17 @@ class Product(Base):
     tenant_key = Column(String(36), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    vision_path = Column(String(500), nullable=True)  # Localhost: local path, Server: uploaded file path
+
+    # Vision storage - Hybrid approach (file OR inline)
+    vision_path = Column(String(500), nullable=True,
+        comment="File path to vision document (file-based workflow)")
+    vision_document = Column(Text, nullable=True,
+        comment="Inline vision text (alternative to vision_path for agentic workflow)")
+    vision_type = Column(String(20), default="none",
+        comment="Vision source: 'file', 'inline', or 'none'")
+    chunked = Column(Boolean, default=False,
+        comment="Has vision been chunked into mcp_context_index for agentic RAG")
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     meta_data = Column(JSON, default=dict)
@@ -69,6 +85,10 @@ class Product(Base):
         Index("idx_product_tenant", "tenant_key"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
+        CheckConstraint(
+            "vision_type IN ('file', 'inline', 'none')",
+            name="ck_product_vision_type"
+        ),
     )
 
     @property
@@ -1364,3 +1384,129 @@ class OptimizationMetric(Base):
     
     def __repr__(self):
         return f"<OptimizationMetric(id={self.id}, operation_type={self.operation_type}, tokens_saved={self.tokens_saved})>"
+
+
+class MCPContextIndex(Base):
+    """
+    MCP Context Index model - stores chunked vision documents for agentic RAG.
+    
+    Handover 0017: Enables full-text search on vision document chunks for token reduction.
+    Chunks are created by EnhancedChunker from vision_document or vision_path content.
+    
+    Multi-tenant isolation: All queries filter by tenant_key.
+    """
+    
+    __tablename__ = 'mcp_context_index'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    chunk_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)
+    content = Column(Text, nullable=False)
+    summary = Column(Text, nullable=True,
+        comment="Optional LLM-generated summary (NULL for Phase 1 non-LLM chunking)")
+    keywords = Column(JSON, default=list,
+        comment="Array of keyword strings extracted via regex or LLM")
+    token_count = Column(Integer, nullable=True)
+    chunk_order = Column(Integer, nullable=True,
+        comment="Sequential chunk number for maintaining document order")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # PostgreSQL full-text search (requires pg_trgm extension)
+    searchable_vector = Column(TSVECTOR, nullable=True,
+        comment="Full-text search vector for fast keyword lookup")
+    
+    # Relationships
+    product = relationship("Product", backref="context_chunks")
+    
+    __table_args__ = (
+        Index("idx_mcp_context_tenant_product", "tenant_key", "product_id"),
+        Index("idx_mcp_context_searchable", "searchable_vector", postgresql_using="gin"),
+        Index("idx_mcp_context_chunk_id", "chunk_id"),
+    )
+    
+    def __repr__(self):
+        return f"<MCPContextIndex(id={self.id}, chunk_id={self.chunk_id}, product_id={self.product_id})>"
+
+
+class MCPContextSummary(Base):
+    """
+    MCP Context Summary model - tracks orchestrator-created condensed missions.
+    
+    Handover 0017: Enables 70% token reduction by condensing full context into missions.
+    Orchestrator creates condensed versions of vision chunks for agent spawning.
+    
+    Multi-tenant isolation: All queries filter by tenant_key.
+    """
+    
+    __tablename__ = 'mcp_context_summary'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    context_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)
+    full_content = Column(Text, nullable=False,
+        comment="Original full context before condensation")
+    condensed_mission = Column(Text, nullable=False,
+        comment="Orchestrator-generated condensed mission")
+    full_token_count = Column(Integer, nullable=True)
+    condensed_token_count = Column(Integer, nullable=True)
+    reduction_percent = Column(Float, nullable=True,
+        comment="Token reduction percentage achieved")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    product = relationship("Product", backref="context_summaries")
+    
+    __table_args__ = (
+        Index("idx_mcp_summary_tenant_product", "tenant_key", "product_id"),
+        Index("idx_mcp_summary_context_id", "context_id"),
+    )
+    
+    def __repr__(self):
+        return f"<MCPContextSummary(id={self.id}, context_id={self.context_id}, reduction={self.reduction_percent}%)>"
+
+
+class MCPAgentJob(Base):
+    """
+    MCP Agent Job model - tracks agent jobs separately from user tasks.
+    
+    Handover 0017: Enables agent-to-agent job coordination for agentic orchestration.
+    Separate from Task model which tracks user-facing work items.
+    
+    Multi-tenant isolation: All queries filter by tenant_key.
+    """
+    
+    __tablename__ = 'mcp_agent_jobs'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    job_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
+    agent_type = Column(String(100), nullable=False,
+        comment="Agent type: orchestrator, analyzer, implementer, tester, etc.")
+    mission = Column(Text, nullable=False,
+        comment="Agent mission/instructions")
+    status = Column(String(50), default="pending", nullable=False)
+    spawned_by = Column(String(36), nullable=True,
+        comment="Agent ID that spawned this job")
+    context_chunks = Column(JSON, default=list,
+        comment="Array of chunk_ids from mcp_context_index for context loading")
+    messages = Column(JSONB, default=list,
+        comment="Array of message objects for agent communication")
+    acknowledged = Column(Boolean, default=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        Index("idx_mcp_agent_jobs_tenant_status", "tenant_key", "status"),
+        Index("idx_mcp_agent_jobs_tenant_type", "tenant_key", "agent_type"),
+        Index("idx_mcp_agent_jobs_job_id", "job_id"),
+        CheckConstraint(
+            "status IN ('pending', 'active', 'completed', 'failed')",
+            name="ck_mcp_agent_job_status"
+        ),
+    )
+    
+    def __repr__(self):
+        return f"<MCPAgentJob(id={self.id}, job_id={self.job_id}, agent_type={self.agent_type}, status={self.status})>"
