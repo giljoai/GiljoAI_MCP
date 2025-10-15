@@ -169,7 +169,23 @@ class DatabaseInstaller:
             return result
 
     def create_database_direct(self) -> Dict[str, Any]:
-        """Attempt to create database with provided credentials"""
+        """
+        Create database with provided credentials and setup extensions
+        
+        This method handles:
+        1. Database and role creation
+        2. Password generation for giljo_owner and giljo_user
+        3. Privilege assignment following least-privilege principle
+        4. Extension creation (pg_trgm for Handover 0017)
+        
+        Security Model (Handover 0017 Fix):
+        - giljo_owner: Database owner with CREATE privilege (for extensions/migrations)
+        - giljo_user: Application user with table-level privileges only (no CREATE)
+        - Extensions created during setup with superuser, not at application runtime
+        
+        Returns:
+            Dict with success status, credentials, and any errors/warnings
+        """
         result = {'success': False, 'errors': [], 'warnings': []}
 
         try:
@@ -273,6 +289,33 @@ class DatabaseInstaller:
                     sql.Identifier(self.db_name),
                     sql.Identifier('giljo_user')
                 ))
+
+                # Grant CREATE privilege to owner for extension management (Handover 0017)
+                # Application user (giljo_user) does NOT get CREATE - security best practice
+                cur.execute(sql.SQL(
+                    "GRANT CREATE ON DATABASE {} TO {}"
+                ).format(
+                    sql.Identifier(self.db_name),
+                    sql.Identifier('giljo_owner')
+                ))
+
+                # ========================================================================
+                # HANDOVER 0017 FIX: PostgreSQL Extension Creation
+                # ========================================================================
+                # Problem: Application user lacked CREATE privilege on database
+                # Solution: Create extensions during installation with superuser privileges
+                #
+                # Security Model:
+                # - Extensions created HERE during setup (postgres superuser context)
+                # - giljo_owner gets CREATE privilege for future migrations only
+                # - giljo_user (application) has NO CREATE privilege (security)
+                #
+                # Extensions Required:
+                # - pg_trgm: Trigram matching for full-text search on vision chunks
+                # ========================================================================
+                self.logger.info("Creating PostgreSQL extensions (Handover 0017)...")
+                cur.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+                self.logger.info("Extension pg_trgm created successfully")
 
                 # Grant schema permissions
                 cur.execute("""

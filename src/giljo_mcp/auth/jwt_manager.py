@@ -45,10 +45,53 @@ from fastapi import HTTPException, status
 class JWTManager:
     """Manage JWT tokens for user sessions"""
 
-    # Get secret from environment or use the one from AuthManager
-    SECRET_KEY = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY")
+    # Default algorithm and token expiration
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_HOURS = 24
+
+    @classmethod
+    def _get_secret_key(cls) -> str:
+        """
+        Get JWT secret key from environment variables.
+        
+        Loads dynamically to ensure .env file has been processed.
+        
+        Returns:
+            Secret key string
+            
+        Raises:
+            RuntimeError: If no secret key is found
+        """
+        # Try multiple environment variable names
+        secret_key = (
+            os.getenv("JWT_SECRET") or 
+            os.getenv("GILJO_MCP_SECRET_KEY") or
+            os.getenv("SECRET_KEY")
+        )
+        
+        if not secret_key:
+            # Try to load .env file if not already loaded
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(override=False)  # Don't override existing values
+                
+                # Try again after loading .env
+                secret_key = (
+                    os.getenv("JWT_SECRET") or 
+                    os.getenv("GILJO_MCP_SECRET_KEY") or
+                    os.getenv("SECRET_KEY")
+                )
+            except ImportError:
+                pass  # dotenv not available
+        
+        if not secret_key:
+            raise RuntimeError(
+                "JWT secret key not found in environment variables. "
+                "Please ensure JWT_SECRET, GILJO_MCP_SECRET_KEY, or SECRET_KEY is set in .env file. "
+                "Run 'python install.py' to regenerate configuration if needed."
+            )
+        
+        return secret_key
 
     @classmethod
     def create_access_token(cls, user_id: UUID, username: str, role: str, tenant_key: str = "default") -> str:
@@ -74,11 +117,7 @@ class JWTManager:
             >>> token.startswith("eyJ")  # JWT format
             True
         """
-        if not cls.SECRET_KEY:
-            raise RuntimeError(
-                "JWT_SECRET or GILJO_MCP_SECRET_KEY environment variable not set. "
-                "Cannot create access tokens without secret key."
-            )
+        secret_key = cls._get_secret_key()
 
         expire = datetime.now(timezone.utc) + timedelta(hours=cls.ACCESS_TOKEN_EXPIRE_HOURS)
         payload = {
@@ -90,7 +129,7 @@ class JWTManager:
             "iat": datetime.now(timezone.utc),  # Issued at
             "type": "access",  # Token type
         }
-        return jwt.encode(payload, cls.SECRET_KEY, algorithm=cls.ALGORITHM)
+        return jwt.encode(payload, secret_key, algorithm=cls.ALGORITHM)
 
     @classmethod
     def verify_token(cls, token: str) -> Dict:
@@ -118,13 +157,16 @@ class JWTManager:
             >>> payload["username"]
             'admin'
         """
-        if not cls.SECRET_KEY:
+        try:
+            secret_key = cls._get_secret_key()
+        except RuntimeError as e:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="JWT secret key not configured on server"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail=f"JWT configuration error: {e}"
             )
 
         try:
-            payload = jwt.decode(token, cls.SECRET_KEY, algorithms=[cls.ALGORITHM])
+            payload = jwt.decode(token, secret_key, algorithms=[cls.ALGORITHM])
 
             # Verify token type (if present)
             if payload.get("type") != "access":
