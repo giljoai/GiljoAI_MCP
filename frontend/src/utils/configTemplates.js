@@ -24,7 +24,7 @@ export function generateClaudeCodeConfig(apiKey, serverUrl = null, pythonPath) {
         command: defaultPythonPath,
         args: ['-m', 'giljo_mcp'],
         env: {
-          GILJO_MCP_HOME: 'F:/GiljoAI_MCP',
+          // GILJO_MCP_HOME removed - backend auto-detects with Path.cwd()
           GILJO_SERVER_URL: defaultServerUrl,
           GILJO_API_KEY: apiKey,
         },
