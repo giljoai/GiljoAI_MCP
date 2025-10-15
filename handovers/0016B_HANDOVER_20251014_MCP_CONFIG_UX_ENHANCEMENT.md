@@ -1,6 +1,6 @@
 # Handover 0016-B: MCP Configuration UX Enhancement (Phase 2)
 
-**Date:** 2025-10-14
+**Date:** 2025-10-14 (Revised)
 **From Agent:** UX Designer + System Architect
 **To Agent:** UX Designer + Frontend Implementor (Coordinated)
 **Priority:** Medium
@@ -13,289 +13,361 @@
 
 ## Task Summary
 
-**Consolidate and enhance the MCP configuration user experience** by creating a unified, guided workflow that reduces cognitive load and provides clear validation feedback. This builds on the stabilized foundation from Phase 1 (0016-A).
+**Enhance the consolidated MCP configuration experience** with status detection, wizard integration, and dashboard guidance. This builds on Phase 1's navigation consolidation to `/settings/integrations`.
 
-**Why After Stabilization:** UX improvements require stable technical foundation. Phase 1 fixed critical bugs; Phase 2 improves user experience.
+**Critical Architecture Context:**
+- GiljoAI MCP is a **web server application** accessed via browser (LAN/WAN/localhost)
+- Server **cannot write** to user's local `~/.claude.json` file (different machines)
+- Configuration is **always manual copy-paste** workflow
+- Server detects status via **API key usage tracking** (proxy for "MCP working")
 
-**Expected Outcome:** Single, cohesive MCP configuration interface with 80% reduction in user decisions, clear primary path, and validation feedback.
+**Expected Outcome:** Guided configuration flow with status detection, wizard integration, and dashboard callouts for first-time users.
 
 ---
 
 ## Context and Background
 
-### Audit Findings: UX Problems
+### What Phase 1 Delivered (0016-A)
 
-**From UX Designer audit:**
+✅ **Navigation Consolidation:** Single entry point at `/settings/integrations`
+✅ **Component Reuse:** `McpConfigComponent.vue` for both Settings and Wizard
+✅ **Removed Fragmentation:** Deprecated standalone `/mcp-integration` page
+✅ **Removed AIToolSetup Dialog:** Consolidated into Settings
+✅ **Cross-Platform:** No hardcoded paths, works on all platforms
+✅ **Technical Stability:** api.js usage, proper error handling
 
-1. **Fragmented Journey** - 3 separate entry points (McpIntegration, AIToolSetup, McpConfigStep)
-2. **No Clear Primary Path** - 4 equal-weight actions, users don't know what to do
-3. **Expansion Panel Overload** - 7+ panels, critical info buried 2-3 clicks deep
-4. **Inconsistent API Key Workflow** - Auto-gen in one place, manual in another
-5. **No Progress Persistence** - Users can't tell if already configured
+**Foundation is solid. Phase 2 adds intelligence and guidance.**
 
-### Strategic Direction (From Consultant Analysis)
+### User Journey (After Phase 1)
 
-**Approved Approach:** Enhanced copy-paste > automation
-- Transparency and user control
-- 10x lower maintenance burden
-- Sufficient for developer audience
-- Focus on confidence, not automation
+```
+PRIMARY PATH:
+User Avatar → Settings → API & Integrations → McpConfigComponent
 
-### What Phase 1 Fixed
+WIZARD PATH (First Login):
+Setup Wizard → /setup?step=mcp → McpConfigComponent (same component)
 
-✅ Cross-platform compatibility (removed hardcoded paths)
-✅ Runtime errors (fixed/removed McpConfigStep)
-✅ API client consistency (using api.js everywhere)
-✅ Technical debt (SECRET_KEY, alert() usage)
+DASHBOARD PATH (First-Time Users):
+Dashboard → Callout Banner → Click "Configure" → Routes to /settings/integrations
+```
 
-**Foundation is solid. Now we can build good UX on top.**
+### Strategic Direction
+
+**Enhanced copy-paste with intelligence:**
+- Status detection (not_started, pending, active, inactive)
+- Wizard integration via query params
+- Dashboard callouts for first-time users
+- Validation and troubleshooting built-in
 
 ---
 
 ## Technical Details
 
-### Files to Modify
+### Phase 2A: Backend Status Detection API (90 minutes)
 
-**Primary Implementation:**
+#### 2A.1 Database Schema Enhancement
 
-1. **`frontend/src/views/McpIntegration.vue`** (Major Redesign)
-   - Consolidate: Single primary path with clear hierarchy
-   - Simplify: Reduce 4 sections → 2 tabs (Quick Setup, Manual Config)
-   - Enhance: Add copy-paste wizard, validator, status indicators
-   - **Lines:** ~400-500 (down from 640)
+**File:** `src/giljo_mcp/models.py`
 
-2. **`frontend/src/components/AIToolSetup.vue`** (Minor Enhancements)
-   - Improve: API key generation UX (add consent step)
-   - Add: "Already configured" detection
-   - Enhance: Better error recovery with actionable steps
-   - **Lines:** Keep similar size (~450)
+**Add to User model:**
+```python
+# MCP Configuration tracking
+mcp_config_attempted_at = Column(DateTime, nullable=True)
+```
 
-**New Components to Create:**
+**Add to APIKey model:**
+```python
+# Track when API key was last used (existing field, ensure it exists)
+last_used = Column(DateTime, nullable=True)
+```
 
-3. **`frontend/src/components/mcp/CopyPasteWizard.vue`** (NEW)
-   - 4-step guided workflow
-   - Visual progress indicator
-   - Before/after JSON comparison
-   - **Lines:** ~200
-
-4. **`frontend/src/components/mcp/ConfigValidator.vue`** (NEW)
-   - Paste-to-validate functionality
-   - Syntax error detection
-   - Common issue suggestions
-   - **Lines:** ~150
-
-5. **`frontend/src/components/mcp/TroubleshootingFAQ.vue`** (NEW)
-   - Icon-based FAQ format
-   - Platform-specific solutions
-   - Scannable bullet points
-   - **Lines:** ~200
-
-**Supporting Utilities:**
-
-6. **`frontend/src/utils/mcpConfigHelpers.js`** (NEW)
-   - JSON validation logic
-   - Common error detection
-   - Config path helpers
-   - **Lines:** ~100
+**Migration (manual, no Alembic):**
+```sql
+-- Run via psql or add to DatabaseManager.create_tables_async()
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mcp_config_attempted_at TIMESTAMP;
+-- last_used already exists in api_keys table
+```
 
 ---
 
-## Implementation Plan
+#### 2A.2 Create MCP Status Endpoint
 
-### Phase 2A: Component Foundation (90 minutes)
+**File:** `api/endpoints/mcp_tools.py` (NEW)
 
-#### 2A.1 Create Utility Helper
+```python
+"""
+MCP Configuration Status Endpoints
+Provides status detection for MCP configuration via API key usage tracking.
+"""
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+from typing import Literal
 
-**File:** `frontend/src/utils/mcpConfigHelpers.js`
+from ..dependencies import get_current_user, get_db
+from src.giljo_mcp.models import User, APIKey
+
+router = APIRouter(prefix="/api/mcp-tools", tags=["mcp-tools"])
+
+StatusType = Literal["not_started", "pending", "active", "inactive"]
+
+
+@router.get("/status")
+async def get_mcp_configuration_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Detect MCP configuration status based on:
+    - mcp_config_attempted_at: User started configuration
+    - api_key.last_used: API key recently used (proxy for "MCP working")
+
+    States:
+    - not_started: Never attempted configuration
+    - pending: Started config but key never used
+    - active: Key used within last 7 days
+    - inactive: Key not used for 7+ days
+    """
+    status: StatusType = "not_started"
+    last_activity = None
+    days_since_activity = None
+
+    # Check if user attempted configuration
+    if not current_user.mcp_config_attempted_at:
+        return {
+            "status": "not_started",
+            "message": "MCP configuration not started",
+            "last_activity": None,
+            "days_since_activity": None
+        }
+
+    # User attempted config, now check API key usage
+    status = "pending"  # Default to pending
+
+    # Find most recent API key usage
+    stmt = (
+        select(APIKey)
+        .where(APIKey.user_id == current_user.id)
+        .where(APIKey.last_used.isnot(None))
+        .order_by(APIKey.last_used.desc())
+        .limit(1)
+    )
+    result = db.execute(stmt)
+    most_recent_key = result.scalar_one_or_none()
+
+    if most_recent_key and most_recent_key.last_used:
+        last_activity = most_recent_key.last_used
+        days_since = (datetime.utcnow() - last_activity).days
+        days_since_activity = days_since
+
+        if days_since <= 7:
+            status = "active"
+        else:
+            status = "inactive"
+
+    messages = {
+        "pending": "Configuration started but not yet active",
+        "active": "MCP is configured and working",
+        "inactive": f"MCP configured but not used in {days_since_activity} days"
+    }
+
+    return {
+        "status": status,
+        "message": messages.get(status, "Unknown status"),
+        "last_activity": last_activity.isoformat() if last_activity else None,
+        "days_since_activity": days_since_activity,
+        "configured_at": current_user.mcp_config_attempted_at.isoformat()
+    }
+
+
+@router.post("/mark-configuration-attempted")
+async def mark_configuration_attempted(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Mark that user attempted MCP configuration.
+    Called when user clicks "Copy Configuration" button.
+    """
+    current_user.mcp_config_attempted_at = datetime.utcnow()
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Configuration attempt recorded",
+        "attempted_at": current_user.mcp_config_attempted_at.isoformat()
+    }
+```
+
+**Register Router:**
+
+**File:** `api/app.py`
+
+```python
+# Add import
+from api.endpoints import mcp_tools
+
+# Add router registration
+app.include_router(mcp_tools.router)
+```
+
+**Test Criteria:**
+- [ ] GET /api/mcp-tools/status returns correct states
+- [ ] not_started when mcp_config_attempted_at is null
+- [ ] pending when attempted but no API key usage
+- [ ] active when API key used within 7 days
+- [ ] inactive when API key not used for 7+ days
+- [ ] POST /api/mcp-tools/mark-configuration-attempted sets timestamp
+
+---
+
+### Phase 2B: Frontend Status Integration (90 minutes)
+
+#### 2B.1 Enhance McpConfigComponent with Status Detection
+
+**File:** `frontend/src/components/mcp/McpConfigComponent.vue` (from Phase 1)
+
+**Add to script section:**
 
 ```javascript
-/**
- * MCP Configuration Utilities
- * Helper functions for validation, path detection, and error checking
- */
+import { ref, computed, onMounted } from 'vue'
+import api from '@/services/api'
 
-/**
- * Detect config file path based on OS
- */
-export function detectConfigPath() {
-  const platform = navigator.platform.toLowerCase()
+// Existing state...
+const mcpStatus = ref(null)
+const statusLoading = ref(false)
 
-  if (platform.includes('win')) {
-    return 'C:\\Users\\YourName\\.claude.json'
+// Status computed properties
+const statusColor = computed(() => {
+  if (!mcpStatus.value) return 'grey'
+
+  const colors = {
+    not_started: 'grey',
+    pending: 'warning',
+    active: 'success',
+    inactive: 'error'
   }
-  return '~/.claude.json'
-}
+  return colors[mcpStatus.value.status] || 'grey'
+})
 
-/**
- * Validate MCP configuration JSON
- * @param {string} jsonString - Raw JSON string to validate
- * @returns {Object} { valid: boolean, errors: string[], suggestions: string[] }
- */
-export function validateMcpConfig(jsonString) {
-  const errors = []
-  const suggestions = []
+const statusIcon = computed(() => {
+  if (!mcpStatus.value) return 'mdi-help-circle'
 
-  // Check 1: Valid JSON syntax
-  let parsed
+  const icons = {
+    not_started: 'mdi-circle-outline',
+    pending: 'mdi-clock-alert',
+    active: 'mdi-check-circle',
+    inactive: 'mdi-alert-circle'
+  }
+  return icons[mcpStatus.value.status] || 'mdi-help-circle'
+})
+
+const statusMessage = computed(() => {
+  if (!mcpStatus.value) return 'Checking status...'
+  return mcpStatus.value.message
+})
+
+// Fetch status on mount
+onMounted(async () => {
+  await fetchMcpStatus()
+})
+
+async function fetchMcpStatus() {
+  statusLoading.value = true
   try {
-    parsed = JSON.parse(jsonString)
-  } catch (e) {
-    errors.push(`Invalid JSON syntax: ${e.message}`)
-    return { valid: false, errors, suggestions }
-  }
-
-  // Check 2: Has mcpServers section
-  if (!parsed.mcpServers) {
-    errors.push('Missing "mcpServers" object at top level')
-    suggestions.push('Add: { "mcpServers": { ... } }')
-  }
-
-  // Check 3: Has giljo-mcp server
-  if (parsed.mcpServers && !parsed.mcpServers['giljo-mcp']) {
-    errors.push('Missing "giljo-mcp" server configuration')
-    suggestions.push('Add the giljo-mcp config inside mcpServers')
-  }
-
-  // Check 4: giljo-mcp has required fields
-  if (parsed.mcpServers?.['giljo-mcp']) {
-    const giljo = parsed.mcpServers['giljo-mcp']
-
-    if (!giljo.command) {
-      errors.push('Missing "command" field in giljo-mcp')
-    }
-
-    if (!giljo.args) {
-      errors.push('Missing "args" field in giljo-mcp')
-    }
-
-    if (!giljo.env?.GILJO_API_KEY) {
-      errors.push('Missing GILJO_API_KEY in env')
-      suggestions.push('Replace <your-api-key-here> with real API key')
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-    suggestions
+    const response = await api.get('/api/mcp-tools/status')
+    mcpStatus.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch MCP status:', error)
+    // Fail silently, status is optional
+  } finally {
+    statusLoading.value = false
   }
 }
 
-/**
- * Detect common JSON errors
- * @param {string} jsonString - Raw JSON to analyze
- * @returns {Array} List of detected issues with solutions
- */
-export function detectCommonIssues(jsonString) {
-  const issues = []
+// Mark configuration attempted when user copies config
+async function copyConfig() {
+  try {
+    await navigator.clipboard.writeText(configJson.value)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
 
-  // Trailing commas
-  if (jsonString.match(/,\s*[}\]]/)) {
-    issues.push({
-      problem: 'Trailing comma detected',
-      solution: 'Remove comma before } or ]',
-      severity: 'error'
-    })
-  }
-
-  // Missing quotes on keys
-  if (jsonString.match(/\{[^"'\s]/)) {
-    issues.push({
-      problem: 'Object keys must be quoted',
-      solution: 'Wrap all keys in double quotes: "key": value',
-      severity: 'error'
-    })
-  }
-
-  // Placeholder API key
-  if (jsonString.includes('<your-api-key-here>')) {
-    issues.push({
-      problem: 'Placeholder API key detected',
-      solution: 'Replace with real API key from Settings → API Keys',
-      severity: 'warning'
-    })
-  }
-
-  // Hardcoded paths (from Phase 1 fixes)
-  if (jsonString.match(/[A-Z]:\\/)) {
-    issues.push({
-      problem: 'Windows-specific path detected',
-      solution: 'Remove hardcoded paths for cross-platform compatibility',
-      severity: 'warning'
-    })
-  }
-
-  return issues
-}
-
-/**
- * Open config folder in file explorer (browser-safe)
- * Note: Direct filesystem access not possible from browser
- * This provides instructions instead
- */
-export function getOpenFolderInstructions() {
-  const platform = navigator.platform.toLowerCase()
-
-  if (platform.includes('win')) {
-    return {
-      command: 'explorer %USERPROFILE%',
-      description: 'Opens your user folder. Look for .claude.json file'
-    }
-  }
-
-  if (platform.includes('mac')) {
-    return {
-      command: 'open ~',
-      description: 'Opens your home folder in Finder'
-    }
-  }
-
-  return {
-    command: 'cd ~ && ls -la',
-    description: 'Lists files in home directory including hidden files'
+    // Mark as attempted
+    await api.post('/api/mcp-tools/mark-configuration-attempted')
+    await fetchMcpStatus()  // Refresh status
+  } catch (error) {
+    console.error('Copy failed:', error)
   }
 }
 ```
 
+**Add to template (top of component):**
+
+```vue
+<!-- Status Banner -->
+<v-alert
+  v-if="mcpStatus"
+  :type="mcpStatus.status === 'active' ? 'success' : 'info'"
+  :color="statusColor"
+  variant="tonal"
+  class="mb-4"
+  :icon="statusIcon"
+>
+  <v-alert-title>
+    {{ statusMessage }}
+  </v-alert-title>
+  <div v-if="mcpStatus.status === 'active' && mcpStatus.last_activity" class="text-caption mt-1">
+    Last used: {{ formatDistanceToNow(new Date(mcpStatus.last_activity)) }} ago
+  </div>
+  <div v-if="mcpStatus.status === 'inactive'" class="text-caption mt-1">
+    Your API key hasn't been used recently. Make sure Claude Code CLI is running with the correct config.
+  </div>
+</v-alert>
+```
+
 **Test Criteria:**
-- [ ] validateMcpConfig() catches invalid JSON
-- [ ] validateMcpConfig() detects missing mcpServers
-- [ ] detectCommonIssues() finds trailing commas
-- [ ] detectCommonIssues() finds placeholder API keys
-- [ ] detectConfigPath() returns correct paths for each OS
+- [ ] Status banner displays on component mount
+- [ ] Color and icon change based on status
+- [ ] "Copy Configuration" marks config as attempted
+- [ ] Status refreshes after copy action
+- [ ] Works gracefully if API endpoint unavailable
 
 ---
 
-#### 2A.2 Create ConfigValidator Component
+#### 2B.2 Add Validation Component
 
-**File:** `frontend/src/components/mcp/ConfigValidator.vue`
+**File:** `frontend/src/components/mcp/ConfigValidator.vue` (NEW)
 
 ```vue
 <template>
   <v-card variant="outlined">
+    <v-card-title class="d-flex align-center">
+      <v-icon start>mdi-check-decagram</v-icon>
+      Validate Your Configuration
+    </v-card-title>
     <v-card-text>
+      <p class="text-body-2 mb-3">
+        After pasting the config into <code>~/.claude.json</code>, paste your complete file here to verify:
+      </p>
+
       <v-textarea
         v-model="userConfig"
         label="Paste your complete .claude.json content here"
         variant="outlined"
-        rows="12"
-        placeholder='Paste your entire .claude.json file here to validate...'
-        class="config-textarea"
-        @input="debouncedValidate"
-      >
-        <template v-slot:prepend-inner>
-          <v-icon :color="validationIcon.color">{{ validationIcon.icon }}</v-icon>
-        </template>
-      </v-textarea>
+        rows="10"
+        placeholder='{ "mcpServers": { ... } }'
+        class="config-textarea mb-3"
+      />
 
       <v-btn
-        @click="validateNow"
+        @click="validateConfig"
         color="primary"
         block
         size="large"
         :loading="validating"
-        prepend-icon="mdi-check-decagram"
       >
+        <v-icon start>mdi-check-circle</v-icon>
         Validate Configuration
       </v-btn>
 
@@ -308,716 +380,461 @@ export function getOpenFolderInstructions() {
           class="mt-4"
         >
           <v-alert-title>
-            <v-icon start>
-              {{ validationResult.valid ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-            </v-icon>
             {{ validationResult.valid ? 'Valid Configuration!' : 'Configuration Has Errors' }}
           </v-alert-title>
 
-          <div v-if="!validationResult.valid" class="mt-2">
-            <strong>Errors Found:</strong>
-            <ul class="ml-4 mt-1">
+          <div v-if="!validationResult.valid && validationResult.errors" class="mt-2">
+            <strong>Errors:</strong>
+            <ul class="ml-4">
               <li v-for="(error, i) in validationResult.errors" :key="i">{{ error }}</li>
             </ul>
-
-            <div v-if="validationResult.suggestions.length" class="mt-3">
-              <strong>Suggestions:</strong>
-              <ul class="ml-4 mt-1">
-                <li v-for="(suggestion, i) in validationResult.suggestions" :key="i">
-                  {{ suggestion }}
-                </li>
-              </ul>
-            </div>
           </div>
 
-          <div v-else class="mt-2">
-            Your configuration is valid and ready to use! Save it to <code>{{ configPath }}</code>
+          <div v-if="validationResult.valid" class="mt-2">
+            Your configuration is valid! Restart Claude Code CLI to apply changes.
           </div>
         </v-alert>
-      </v-expand-transition>
-
-      <!-- Common Issues Detected -->
-      <v-expand-transition>
-        <v-card v-if="commonIssues.length" variant="outlined" class="mt-4">
-          <v-card-title class="text-body-1">
-            <v-icon start color="warning">mdi-alert</v-icon>
-            Common Issues Detected
-          </v-card-title>
-          <v-card-text>
-            <v-list density="compact">
-              <v-list-item v-for="(issue, i) in commonIssues" :key="i">
-                <template v-slot:prepend>
-                  <v-icon :color="issue.severity === 'error' ? 'error' : 'warning'">
-                    {{ issue.severity === 'error' ? 'mdi-close-circle' : 'mdi-alert' }}
-                  </v-icon>
-                </template>
-                <v-list-item-title>{{ issue.problem }}</v-list-item-title>
-                <v-list-item-subtitle>{{ issue.solution }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-          </v-card-text>
-        </v-card>
       </v-expand-transition>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { validateMcpConfig, detectCommonIssues, detectConfigPath } from '@/utils/mcpConfigHelpers'
+import { ref } from 'vue'
 
-// Debounce utility (lightweight, no lodash needed)
-function debounce(fn, delay) {
-  let timeout
-  return (...args) => {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => fn(...args), delay)
-  }
-}
-
-const emit = defineEmits(['validated'])
-
-// State
 const userConfig = ref('')
 const validationResult = ref(null)
-const commonIssues = ref([])
 const validating = ref(false)
-const configPath = detectConfigPath()
 
-// Computed
-const validationIcon = computed(() => {
-  if (!validationResult.value) {
-    return { icon: 'mdi-text-box-check', color: 'grey' }
-  }
-  return validationResult.value.valid
-    ? { icon: 'mdi-check-circle', color: 'success' }
-    : { icon: 'mdi-alert-circle', color: 'error' }
-})
-
-// Methods
-function validateNow() {
+function validateConfig() {
   validating.value = true
+  validationResult.value = null
 
-  // Simulate async for UX
   setTimeout(() => {
-    validationResult.value = validateMcpConfig(userConfig.value)
+    const errors = []
+    let parsed = null
 
-    if (!validationResult.value.valid) {
-      commonIssues.value = detectCommonIssues(userConfig.value)
-    } else {
-      commonIssues.value = []
+    // Parse JSON
+    try {
+      parsed = JSON.parse(userConfig.value)
+    } catch (e) {
+      errors.push(`Invalid JSON: ${e.message}`)
+      validationResult.value = { valid: false, errors }
+      validating.value = false
+      return
     }
 
-    emit('validated', validationResult.value)
-    validating.value = false
-  }, 300)
-}
+    // Check structure
+    if (!parsed.mcpServers) {
+      errors.push('Missing "mcpServers" object')
+    }
 
-const debouncedValidate = debounce(validateNow, 1000)
+    if (parsed.mcpServers && !parsed.mcpServers['giljo-mcp']) {
+      errors.push('Missing "giljo-mcp" configuration in mcpServers')
+    }
+
+    if (parsed.mcpServers?.['giljo-mcp']) {
+      const giljo = parsed.mcpServers['giljo-mcp']
+      if (!giljo.command) errors.push('Missing "command" field')
+      if (!giljo.args) errors.push('Missing "args" array')
+      if (!giljo.env?.GILJO_API_KEY) errors.push('Missing GILJO_API_KEY in env')
+      if (giljo.env?.GILJO_API_KEY === '<your-api-key-here>') {
+        errors.push('Replace placeholder API key with real key')
+      }
+    }
+
+    validationResult.value = {
+      valid: errors.length === 0,
+      errors
+    }
+    validating.value = false
+  }, 500)
+}
 </script>
 
 <style scoped>
 .config-textarea :deep(textarea) {
   font-family: 'Courier New', monospace;
   font-size: 0.875rem;
-  line-height: 1.5;
 }
 
 code {
   background-color: rgba(var(--v-theme-surface-variant), 0.5);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 0.875rem;
 }
 </style>
 ```
 
+**Import and use in McpConfigComponent.vue:**
+
+```vue
+<template>
+  <!-- After config display section -->
+  <ConfigValidator class="mt-6" />
+</template>
+
+<script setup>
+import ConfigValidator from './ConfigValidator.vue'
+</script>
+```
+
 **Test Criteria:**
-- [ ] Validator detects invalid JSON
-- [ ] Validator detects missing mcpServers
-- [ ] Validator detects placeholder API key
-- [ ] Validator shows success for valid config
-- [ ] Debounced validation works (waits 1 second)
-- [ ] Common issues displayed with icons
+- [ ] Validates JSON syntax
+- [ ] Detects missing mcpServers
+- [ ] Detects missing giljo-mcp config
+- [ ] Detects placeholder API key
+- [ ] Shows clear error messages
+- [ ] Shows success message for valid config
 
 ---
 
-### Phase 2B: Redesign McpIntegration.vue (120 minutes)
+### Phase 2C: Setup Wizard Integration (60 minutes)
 
-#### 2B.1 Simplified Architecture
+#### 2C.1 Add Query Param Routing to Settings
 
-**Before (Current):**
+**File:** `frontend/src/views/Settings/IntegrationsView.vue` (from Phase 1)
+
+**Add to script:**
+
+```javascript
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+const highlightMcp = ref(false)
+
+onMounted(() => {
+  // Check if routed from wizard
+  if (route.query.from === 'wizard' || route.query.step === 'mcp') {
+    highlightMcp.value = true
+
+    // Scroll to MCP component after mount
+    setTimeout(() => {
+      const mcpElement = document.getElementById('mcp-config-section')
+      if (mcpElement) {
+        mcpElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
+  }
+})
 ```
-McpIntegration.vue (640 lines)
-├── Download Installer Scripts (4 buttons, lots of text)
-├── Share with Team Members (expansion panel, email template)
-├── Manual Configuration (expansion panel, JSON display)
-└── Troubleshooting (4 expansion panels)
-```
 
-**After (Redesigned):**
-```
-McpIntegration.vue (~450 lines)
-├── Tabs
-│   ├── Tab 1: Quick Setup (DEFAULT, 80% use case)
-│   │   ├── Platform selector (auto-detected)
-│   │   ├── Download button (LARGE, primary action)
-│   │   └── 3-step instructions
-│   │
-│   └── Tab 2: Advanced
-│       ├── Manual Config (copy-paste with validator)
-│       ├── Share Links (for teams)
-│       └── Troubleshooting FAQ
-│
-└── Status Banner (if already configured)
-```
-
-**Key Changes:**
-- **Tabs** instead of sequential cards (reduce scrolling)
-- **"Quick Setup" default** (shows primary path immediately)
-- **"Advanced" tab** for manual config, sharing, troubleshooting
-- **Status detection** ("Already configured" banner at top)
-- **Validator integrated** in Advanced tab
-
----
-
-#### 2B.2 Implementation Sketch
-
-**File:** `frontend/src/views/McpIntegration.vue` (redesigned)
+**Update template:**
 
 ```vue
 <template>
   <v-container>
-    <!-- Page Header -->
-    <div class="d-flex justify-space-between align-center mb-6">
-      <div>
-        <h1 class="text-h4 mb-2">MCP Configuration</h1>
-        <p class="text-subtitle-1">Configure Claude Code CLI to connect with GiljoAI MCP</p>
-      </div>
-    </div>
+    <h1 class="text-h4 mb-6">API & Integrations</h1>
+    <p class="text-subtitle-1 mb-6">
+      Configure external AI tools to connect with GiljoAI MCP
+    </p>
 
-    <!-- Status Banner (if configured) -->
-    <v-alert
-      v-if="isConfigured"
-      type="success"
-      variant="tonal"
-      prominent
+    <!-- MCP Configuration Section -->
+    <v-card
+      id="mcp-config-section"
+      :variant="highlightMcp ? 'elevated' : 'outlined'"
+      :color="highlightMcp ? 'primary' : undefined"
       class="mb-6"
     >
-      <v-alert-title>
-        <v-icon start>mdi-check-circle</v-icon>
-        MCP Already Configured
-      </v-alert-title>
-      <div>
-        You've already set up GiljoAI MCP for Claude Code. You can reconfigure below if needed.
-      </div>
-      <template v-slot:append>
-        <v-btn variant="text" @click="isConfigured = false">
-          Reconfigure
-        </v-btn>
-      </template>
-    </v-alert>
+      <v-card-title v-if="highlightMcp" class="bg-primary text-white">
+        <v-icon start>mdi-star</v-icon>
+        Configure Claude Code (Recommended)
+      </v-card-title>
 
-    <!-- Main Tabs -->
-    <v-tabs v-model="activeTab" class="mb-6">
-      <v-tab value="quick">
-        <v-icon start>mdi-flash</v-icon>
-        Quick Setup (Recommended)
-      </v-tab>
-      <v-tab value="advanced">
-        <v-icon start>mdi-cog</v-icon>
-        Advanced
-      </v-tab>
-    </v-tabs>
+      <McpConfigComponent />
+    </v-card>
 
-    <v-window v-model="activeTab">
-      <!-- TAB 1: QUICK SETUP (PRIMARY PATH) -->
-      <v-window-item value="quick">
-        <v-card>
-          <v-card-text class="pa-8">
-            <h2 class="text-h5 mb-4">Download MCP Installer</h2>
-            <p class="text-body-1 mb-6">
-              The easiest way to configure GiljoAI MCP. Download and run the installer script for your platform.
-            </p>
+    <!-- Future: Other integrations can go here -->
+  </v-container>
+</template>
+```
 
-            <!-- Platform Selector (auto-detected) -->
-            <v-select
-              v-model="selectedPlatform"
-              :items="platforms"
-              label="Select Your Platform"
-              variant="outlined"
-              prepend-icon="mdi-desktop-classic"
-              class="mb-4"
-            >
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props">
-                  <template v-slot:prepend>
-                    <v-icon :icon="item.raw.icon" />
-                  </template>
-                </v-list-item>
-              </template>
-            </v-select>
+**Test Criteria:**
+- [ ] Normal navigation shows no highlight
+- [ ] Query param `?from=wizard` triggers highlight
+- [ ] Query param `?step=mcp` triggers highlight
+- [ ] Component scrolls into view automatically
+- [ ] Highlight is visually clear but not intrusive
 
-            <!-- Download Button (LARGE, PRIMARY) -->
-            <v-btn
-              color="primary"
-              size="x-large"
-              block
-              :loading="downloading"
-              @click="downloadInstaller"
-              class="mb-6"
-            >
-              <v-icon start size="large">mdi-download</v-icon>
-              Download Installer for {{ selectedPlatform.title }}
-            </v-btn>
+---
 
-            <!-- Instructions -->
-            <v-card variant="outlined" class="mt-6">
-              <v-card-title class="bg-grey-lighten-4">
-                <v-icon start>mdi-list-box-outline</v-icon>
-                Next Steps
-              </v-card-title>
-              <v-card-text>
-                <v-stepper alt-labels :model-value="1">
-                  <v-stepper-header>
-                    <v-stepper-item value="1" title="Download" icon="mdi-download" />
-                    <v-divider />
-                    <v-stepper-item value="2" title="Run Script" icon="mdi-play" />
-                    <v-divider />
-                    <v-stepper-item value="3" title="Restart CLI" icon="mdi-restart" />
-                  </v-stepper-header>
-                </v-stepper>
+#### 2C.2 Update Setup Wizard to Route to Settings
 
-                <ol class="mt-4 ml-4">
-                  <li class="mb-2">Download the installer script (button above)</li>
-                  <li class="mb-2">
-                    Run the script:
-                    <code v-if="selectedPlatform.value === 'windows'" class="ml-2">
-                      Double-click giljo-mcp-setup.bat
-                    </code>
-                    <code v-else class="ml-2">
-                      chmod +x giljo-mcp-setup.sh && ./giljo-mcp-setup.sh
-                    </code>
-                  </li>
-                  <li class="mb-2">Restart Claude Code CLI: exit and run <code>claude</code></li>
-                  <li>Verify with: <code>claude mcp list</code> (should show "giljo-mcp")</li>
-                </ol>
-              </v-card-text>
-            </v-card>
-          </v-card-text>
-        </v-card>
-      </v-window-item>
+**File:** `frontend/src/views/SetupWizard.vue`
 
-      <!-- TAB 2: ADVANCED (MANUAL CONFIG, SHARE, TROUBLESHOOTING) -->
-      <v-window-item value="advanced">
-        <v-expansion-panels>
-          <!-- Manual Configuration -->
-          <v-expansion-panel value="manual">
-            <v-expansion-panel-title>
-              <v-icon start>mdi-code-json</v-icon>
-              <strong>Manual Configuration (Copy & Paste)</strong>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <p class="mb-4">
-                For advanced users who prefer manual configuration. Copy the JSON and add to your
-                <code>~/.claude.json</code> file.
-              </p>
+**Replace MCP step with routing:**
 
-              <!-- JSON Config Display -->
-              <v-card variant="outlined" class="mb-4">
-                <v-card-text>
-                  <div class="d-flex justify-space-between align-center mb-2">
-                    <span class="text-caption">Configuration JSON</span>
-                    <v-btn
-                      size="small"
-                      :color="copied ? 'success' : 'primary'"
-                      @click="copyConfig"
-                    >
-                      <v-icon start>{{ copied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
-                      {{ copied ? 'Copied!' : 'Copy' }}
-                    </v-btn>
-                  </div>
-                  <pre class="config-block"><code>{{ manualConfigJson }}</code></pre>
-                </v-card-text>
-              </v-card>
+```vue
+<!-- OLD: <McpConfigStep /> -->
+<!-- NEW: Route to Settings instead -->
 
-              <!-- Validator -->
-              <h3 class="text-h6 mb-2">Validate Your Configuration</h3>
-              <p class="text-body-2 mb-3">
-                After pasting the config into <code>~/.claude.json</code>, paste your complete file here to verify:
-              </p>
-              <ConfigValidator @validated="handleValidation" />
-            </v-expansion-panel-text>
-          </v-expansion-panel>
+<template v-if="currentStep === 3">
+  <v-card>
+    <v-card-title class="text-h5">
+      <v-icon start color="primary">mdi-connection</v-icon>
+      Configure AI Tools
+    </v-card-title>
+    <v-card-text>
+      <p class="text-body-1 mb-4">
+        Connect Claude Code CLI to unlock powerful agentic workflows.
+      </p>
 
-          <!-- Share with Team -->
-          <v-expansion-panel value="share">
-            <v-expansion-panel-title>
-              <v-icon start>mdi-share-variant</v-icon>
-              <strong>Share with Team Members</strong>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <!-- Existing share link generation logic -->
-              <p class="mb-4">Generate secure download links to share with your team (expires in 7 days).</p>
-              <!-- ... (keep existing share link functionality) ... -->
-            </v-expansion-panel-text>
-          </v-expansion-panel>
+      <v-alert type="info" variant="tonal" class="mb-4">
+        <v-alert-title>Quick Setup</v-alert-title>
+        We'll guide you through configuring Claude Code in the next step.
+        It only takes 60 seconds!
+      </v-alert>
 
-          <!-- Troubleshooting -->
-          <v-expansion-panel value="troubleshooting">
-            <v-expansion-panel-title>
-              <v-icon start>mdi-help-circle</v-icon>
-              <strong>Troubleshooting</strong>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <TroubleshootingFAQ />
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
-      </v-window-item>
-    </v-window>
+      <v-btn
+        color="primary"
+        size="x-large"
+        block
+        @click="navigateToIntegrations"
+        prepend-icon="mdi-arrow-right-circle"
+      >
+        Continue to Configuration
+      </v-btn>
+
+      <v-btn
+        variant="text"
+        block
+        class="mt-2"
+        @click="skipMcpConfig"
+      >
+        Skip for now
+      </v-btn>
+    </v-card-text>
+  </v-card>
+</template>
+
+<script setup>
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+function navigateToIntegrations() {
+  router.push({
+    path: '/settings/integrations',
+    query: { from: 'wizard', step: 'mcp' }
+  })
+}
+
+function skipMcpConfig() {
+  currentStep.value = 4  // Or finish wizard
+}
+</script>
+```
+
+**Test Criteria:**
+- [ ] Wizard step 3 shows MCP callout card
+- [ ] "Continue to Configuration" routes to /settings/integrations?from=wizard
+- [ ] Settings page highlights MCP section
+- [ ] "Skip for now" advances wizard
+- [ ] User can return to wizard from Settings
+
+---
+
+### Phase 2D: Dashboard Callout Component (45 minutes)
+
+#### 2D.1 Create Dashboard Callout Component
+
+**File:** `frontend/src/components/dashboard/McpConfigCallout.vue` (NEW)
+
+```vue
+<template>
+  <v-alert
+    v-if="shouldShow"
+    type="info"
+    variant="tonal"
+    prominent
+    closable
+    @click:close="dismissCallout"
+    class="mb-6"
+  >
+    <v-alert-title class="d-flex align-center">
+      <v-icon start size="large">mdi-robot-excited</v-icon>
+      <span class="text-h6">Unlock Agentic Workflows</span>
+    </v-alert-title>
+
+    <p class="mt-2 mb-3">
+      Connect Claude Code CLI to enable powerful multi-agent coordination, context management, and automated task execution.
+    </p>
+
+    <v-btn
+      color="primary"
+      size="large"
+      @click="navigateToConfig"
+      prepend-icon="mdi-rocket-launch"
+    >
+      Configure Claude Code (60 seconds)
+    </v-btn>
+
+    <v-btn
+      variant="text"
+      class="ml-2"
+      @click="dismissCallout"
+    >
+      Maybe Later
+    </v-btn>
+  </v-alert>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '@/services/api'
+
+const router = useRouter()
+const shouldShow = ref(false)
+
+onMounted(async () => {
+  // Check if user dismissed callout
+  const dismissed = localStorage.getItem('mcp-callout-dismissed')
+  if (dismissed === 'true') {
+    shouldShow.value = false
+    return
+  }
+
+  // Check MCP status
+  try {
+    const response = await api.get('/api/mcp-tools/status')
+    const status = response.data.status
+
+    // Show callout if not started or pending
+    if (status === 'not_started' || status === 'pending') {
+      shouldShow.value = true
+    }
+  } catch (error) {
+    // If endpoint fails, don't show callout
+    shouldShow.value = false
+  }
+})
+
+function navigateToConfig() {
+  router.push({
+    path: '/settings/integrations',
+    query: { from: 'dashboard', step: 'mcp' }
+  })
+}
+
+function dismissCallout() {
+  localStorage.setItem('mcp-callout-dismissed', 'true')
+  shouldShow.value = false
+}
+</script>
+```
+
+**Test Criteria:**
+- [ ] Callout shows only if status is not_started or pending
+- [ ] Callout does not show if dismissed
+- [ ] "Configure Claude Code" button routes to Settings with query param
+- [ ] "Maybe Later" dismisses callout
+- [ ] Dismissal persists across sessions (localStorage)
+- [ ] Callout does not show if MCP is active
+
+---
+
+#### 2D.2 Integrate Callout in Dashboard
+
+**File:** `frontend/src/views/Dashboard.vue`
+
+```vue
+<template>
+  <v-container>
+    <!-- Add at top of dashboard -->
+    <McpConfigCallout />
+
+    <!-- Rest of dashboard content -->
+    <!-- ... -->
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { API_CONFIG } from '@/config/api'
-import api from '@/services/api'
-import ConfigValidator from '@/components/mcp/ConfigValidator.vue'
-import TroubleshootingFAQ from '@/components/mcp/TroubleshootingFAQ.vue'
-
-// State
-const activeTab = ref('quick')
-const isConfigured = ref(false)
-const selectedPlatform = ref(null)
-const downloading = ref(false)
-const copied = ref(false)
-
-// Platform detection
-const platforms = [
-  { value: 'windows', title: 'Windows', icon: 'mdi-microsoft-windows' },
-  { value: 'unix', title: 'macOS / Linux', icon: 'mdi-apple' }
-]
-
-// Auto-detect platform
-onMounted(() => {
-  const platform = navigator.platform.toLowerCase()
-  selectedPlatform.value = platform.includes('win') ? platforms[0] : platforms[1]
-
-  // Check if already configured (future enhancement)
-  // isConfigured.value = await checkMcpStatus()
-})
-
-// Computed
-const manualConfigJson = computed(() => {
-  return JSON.stringify({
-    'giljo-mcp': {
-      command: 'python',
-      args: ['-m', 'giljo_mcp'],
-      env: {
-        GILJO_SERVER_URL: API_CONFIG.REST_API.baseURL,
-        GILJO_API_KEY: '<your-api-key-here>'
-      }
-    }
-  }, null, 2)
-})
-
-// Methods
-async function downloadInstaller() {
-  downloading.value = true
-  try {
-    const endpoint = selectedPlatform.value.value === 'windows'
-      ? '/api/mcp-installer/windows'
-      : '/api/mcp-installer/unix'
-
-    const response = await api.get(endpoint, { responseType: 'blob' })
-
-    // Trigger download (implementation from Phase 1)
-    const url = window.URL.createObjectURL(response.data)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = selectedPlatform.value.value === 'windows'
-      ? 'giljo-mcp-setup.bat'
-      : 'giljo-mcp-setup.sh'
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-  } catch (error) {
-    console.error('Download failed:', error)
-  } finally {
-    downloading.value = false
-  }
-}
-
-async function copyConfig() {
-  try {
-    await navigator.clipboard.writeText(manualConfigJson.value)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
-  } catch (error) {
-    console.error('Copy failed:', error)
-  }
-}
-
-function handleValidation(result) {
-  console.log('Validation result:', result)
-  // Could show snackbar notification here
-}
+import McpConfigCallout from '@/components/dashboard/McpConfigCallout.vue'
 </script>
-
-<style scoped>
-.config-block {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 16px;
-  overflow-x: auto;
-  font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
-  border-radius: 4px;
-}
-
-code {
-  background-color: rgba(var(--v-theme-surface-variant), 0.5);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-</style>
 ```
 
-**Key UX Improvements:**
-1. **Tabs reduce scrolling** - Everything accessible in 2 clicks
-2. **Auto-detect platform** - Reduces user decisions
-3. **Visual hierarchy** - Quick Setup tab is default, clearly primary
-4. **Integrated validator** - In Advanced tab, right where it's needed
-5. **Status awareness** - Shows "Already configured" banner if detected
-6. **Consistent patterns** - All copy buttons same style, same feedback
-
 **Test Criteria:**
-- [ ] Quick Setup tab is default on load
-- [ ] Platform auto-detected correctly
-- [ ] Download button works for both platforms
-- [ ] Tabs switch smoothly without losing state
-- [ ] Validator works in Advanced tab
-- [ ] Expansion panels in Advanced tab work
-- [ ] Status banner shows if configured (when implemented)
+- [ ] Callout appears at top of Dashboard
+- [ ] Does not interfere with other dashboard content
+- [ ] Only shows for users who haven't configured MCP
+- [ ] Dismissal works correctly
 
 ---
 
-### Phase 2C: Create TroubleshootingFAQ Component (45 minutes)
+## Implementation Plan Summary
 
-**File:** `frontend/src/components/mcp/TroubleshootingFAQ.vue`
+### Phase 2A: Backend Status Detection (90 min)
+- [ ] Add `mcp_config_attempted_at` to User model
+- [ ] Create `/api/mcp-tools/status` endpoint
+- [ ] Create `/api/mcp-tools/mark-configuration-attempted` endpoint
+- [ ] Register router in app.py
+- [ ] Test all status states
 
-```vue
-<template>
-  <div>
-    <p class="text-body-2 mb-4">Common issues and solutions for MCP configuration:</p>
+### Phase 2B: Frontend Status Integration (90 min)
+- [ ] Add status detection to McpConfigComponent
+- [ ] Create ConfigValidator component
+- [ ] Integrate validator into Settings view
+- [ ] Test status display and validation
 
-    <v-expansion-panels>
-      <!-- Config file doesn't exist -->
-      <v-expansion-panel>
-        <v-expansion-panel-title>
-          <v-icon start color="warning">mdi-file-question</v-icon>
-          <strong>.claude.json file doesn't exist</strong>
-        </v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <p class="mb-2">Create it with this base content:</p>
-          <v-card variant="outlined" class="pa-3 mb-2">
-            <pre>{ "mcpServers": {} }</pre>
-          </v-card>
-          <p class="text-caption">
-            Location: <code>{{ configPath }}</code>
-          </p>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
+### Phase 2C: Wizard Integration (60 min)
+- [ ] Add query param routing to IntegrationsView
+- [ ] Update SetupWizard to route to Settings
+- [ ] Test wizard → settings flow
+- [ ] Test highlight and scroll behavior
 
-      <!-- Config not loading -->
-      <v-expansion-panel>
-        <v-expansion-panel-title>
-          <v-icon start color="warning">mdi-alert</v-icon>
-          <strong>Configuration applied but commands not working</strong>
-        </v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <v-list density="compact">
-            <v-list-item>
-              <template v-slot:prepend>
-                <v-icon>mdi-numeric-1-circle</v-icon>
-              </template>
-              <v-list-item-title>Completely restart Claude Code CLI (not just reload)</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <template v-slot:prepend>
-                <v-icon>mdi-numeric-2-circle</v-icon>
-              </template>
-              <v-list-item-title>Verify JSON syntax with validator above</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <template v-slot:prepend>
-                <v-icon>mdi-numeric-3-circle</v-icon>
-              </template>
-              <v-list-item-title>Check Python: <code>python --version</code></v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <template v-slot:prepend>
-                <v-icon>mdi-numeric-4-circle</v-icon>
-              </template>
-              <v-list-item-title>Verify GiljoAI server is running</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-
-      <!-- Python not found -->
-      <v-expansion-panel>
-        <v-expansion-panel-title>
-          <v-icon start color="warning">mdi-language-python</v-icon>
-          <strong>Python not found</strong>
-        </v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <p class="mb-3">GiljoAI MCP requires Python 3.8 or higher.</p>
-
-          <v-list density="compact">
-            <v-list-item>
-              <v-list-item-title>
-                <strong>Windows:</strong>
-                <a href="https://www.python.org/downloads/" target="_blank" class="ml-2">
-                  python.org/downloads
-                </a>
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>
-                <strong>macOS:</strong>
-                <code class="ml-2">brew install python3</code>
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>
-                <strong>Linux:</strong>
-                <code class="ml-2">sudo apt install python3</code>
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-
-      <!-- Permission errors -->
-      <v-expansion-panel>
-        <v-expansion-panel-title>
-          <v-icon start color="warning">mdi-shield-alert</v-icon>
-          <strong>Permission denied errors</strong>
-        </v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <p class="mb-2"><strong>Windows:</strong></p>
-          <v-card variant="outlined" class="mb-3 pa-3">
-            <code>icacls "%USERPROFILE%\.claude.json" /grant %USERNAME%:F</code>
-          </v-card>
-
-          <p class="mb-2"><strong>macOS / Linux:</strong></p>
-          <v-card variant="outlined" class="pa-3">
-            <code>chmod 644 ~/.claude.json</code>
-          </v-card>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-    </v-expansion-panels>
-  </div>
-</template>
-
-<script setup>
-import { detectConfigPath } from '@/utils/mcpConfigHelpers'
-
-const configPath = detectConfigPath()
-</script>
-
-<style scoped>
-code {
-  background-color: rgba(var(--v-theme-surface-variant), 0.5);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-pre {
-  margin: 0;
-}
-</style>
-```
-
-**Test Criteria:**
-- [ ] All 4 FAQ panels expand correctly
-- [ ] Code examples display correctly
-- [ ] Links open in new tabs
-- [ ] Icons render correctly
-
----
-
-### Phase 2D: AIToolSetup Enhancements (60 minutes)
-
-**File:** `frontend/src/components/AIToolSetup.vue`
-
-**Changes:**
-
-1. **Add API Key Consent Step** (Lines 258-276)
-
-**Before:**
-```javascript
-// Automatically creates API key without asking
-const apiKeyData = await apiKeyResponse.json()
-generatedApiKey.value = apiKeyData.key
-```
-
-**After:**
-```javascript
-// Ask user before creating key
-showApiKeyConsent.value = true  // Show consent dialog
-
-// Only create key after user clicks "Generate New Key"
-```
-
-2. **Add Status Detection** (new onMounted logic)
-
-```javascript
-onMounted(async () => {
-  // Check if MCP already configured
-  try {
-    const response = await api.get('/api/mcp-tools/status')
-    if (response.data.configured) {
-      isAlreadyConfigured.value = true
-    }
-  } catch (error) {
-    // Not configured, that's fine
-  }
-})
-```
-
-**Test Criteria:**
-- [ ] Consent dialog shown before API key generation
-- [ ] User can cancel API key generation
-- [ ] Status check doesn't break if endpoint missing
-- [ ] "Already configured" badge shows when applicable
+### Phase 2D: Dashboard Callout (45 min)
+- [ ] Create McpConfigCallout component
+- [ ] Integrate into Dashboard
+- [ ] Test dismissal persistence
+- [ ] Test status-based display logic
 
 ---
 
 ## Success Criteria
 
 ### Definition of Done
-- [ ] McpIntegration.vue redesigned with tabs
-- [ ] ConfigValidator component created and integrated
-- [ ] TroubleshootingFAQ component created
-- [ ] mcpConfigHelpers.js utility created with tests
-- [ ] AIToolSetup.vue enhanced with consent flow
-- [ ] All manual tests pass
-- [ ] User can complete MCP config in < 60 seconds
-- [ ] Validation catches common errors
+- [ ] Backend status API returns correct states (not_started, pending, active, inactive)
+- [ ] Frontend displays status banner in McpConfigComponent
+- [ ] Config validator catches common JSON errors
+- [ ] Wizard routes to Settings with query params
+- [ ] Settings highlights MCP section when routed from wizard
+- [ ] Dashboard callout shows for unconfigured users
+- [ ] Callout dismissal persists across sessions
+- [ ] All status transitions work correctly
 - [ ] No console errors
 - [ ] Git committed with proper message
 
 ### User Experience Metrics
-- **Configuration completion time:** < 60 seconds (down from ~3-5 minutes)
-- **User decisions required:** 2-3 (down from 7+)
-- **Clicks to see all content:** 2-3 (down from 7+)
-- **Validation success rate:** > 80% on first try
+- **Status accuracy:** 100% correct state detection
+- **Wizard completion rate:** > 80% complete MCP config from wizard
+- **Dashboard conversion:** > 50% of callout clicks complete config
+- **Configuration time:** < 60 seconds from start to copy
+- **Validation success rate:** > 90% of configs pass validation
+
+---
+
+## Testing Checklist
+
+### Backend Tests
+- [ ] Status API returns not_started for new user
+- [ ] Status API returns pending after mark-configuration-attempted
+- [ ] Status API returns active when API key used < 7 days ago
+- [ ] Status API returns inactive when API key used > 7 days ago
+- [ ] Mark-configuration-attempted sets timestamp correctly
+
+### Frontend Tests
+- [ ] Status banner displays correct color/icon for each state
+- [ ] Copy button marks configuration as attempted
+- [ ] Validator detects invalid JSON
+- [ ] Validator detects missing mcpServers
+- [ ] Validator detects placeholder API key
+- [ ] Wizard routes to Settings with query params
+- [ ] Settings highlights MCP section from wizard
+- [ ] Dashboard callout shows for not_started status
+- [ ] Dashboard callout dismissal persists
+- [ ] Dashboard callout does not show if MCP active
 
 ---
 
@@ -1025,20 +842,30 @@ onMounted(async () => {
 
 **Revert to Phase 1 stable state:**
 ```bash
-git checkout HEAD~1 -- frontend/src/views/McpIntegration.vue
-git checkout HEAD~1 -- frontend/src/components/AIToolSetup.vue
-git clean -fd frontend/src/components/mcp/
-git clean -fd frontend/src/utils/mcpConfigHelpers.js
+# Revert backend changes
+git checkout HEAD~1 -- api/endpoints/mcp_tools.py
+git checkout HEAD~1 -- src/giljo_mcp/models.py
+git checkout HEAD~1 -- api/app.py
+
+# Revert frontend changes
+git checkout HEAD~1 -- frontend/src/components/mcp/McpConfigComponent.vue
+git checkout HEAD~1 -- frontend/src/views/Settings/IntegrationsView.vue
+git checkout HEAD~1 -- frontend/src/views/SetupWizard.vue
+git checkout HEAD~1 -- frontend/src/views/Dashboard.vue
+
+# Remove new files
+rm -f frontend/src/components/mcp/ConfigValidator.vue
+rm -f frontend/src/components/dashboard/McpConfigCallout.vue
 ```
 
 ---
 
 ## Estimated Timeline
 
-- **Phase 2A (Component Foundation):** 90 minutes
-- **Phase 2B (McpIntegration Redesign):** 120 minutes
-- **Phase 2C (TroubleshootingFAQ):** 45 minutes
-- **Phase 2D (AIToolSetup Enhancements):** 60 minutes
+- **Phase 2A (Backend Status API):** 90 minutes
+- **Phase 2B (Frontend Status Integration):** 90 minutes
+- **Phase 2C (Wizard Integration):** 60 minutes
+- **Phase 2D (Dashboard Callout):** 45 minutes
 - **Testing & Polish:** 45 minutes
 
 **Total:** 5-6 hours
@@ -1047,18 +874,24 @@ git clean -fd frontend/src/utils/mcpConfigHelpers.js
 
 ## Notes for Next Agent
 
-**This is UX enhancement only:**
-- ✅ Build on stable Phase 1 foundation
-- ✅ Focus on reducing cognitive load
-- ✅ Preserve all existing functionality
-- ✅ Add validation and feedback
-- ❌ No new backend requirements (except optional status endpoint)
+**This is UX enhancement building on Phase 1:**
+- ✅ Single entry point at /settings/integrations (done in Phase 1)
+- ✅ Reusable McpConfigComponent (done in Phase 1)
+- ✅ Cross-platform compatibility (done in Phase 1)
+- ➕ Now adding: status detection, wizard integration, dashboard guidance
+
+**Key architectural constraints:**
+- Server is accessed via browser (cannot write to user's local files)
+- Configuration is always manual copy-paste
+- Status detection uses API key usage as proxy
+- Wizard integration uses query param routing (no new pages)
 
 **After completion:**
-- User testing session recommended
-- Gather feedback on Quick Setup vs Advanced usage split
-- Consider analytics to track tab usage
+- Monitor dashboard callout conversion rate
+- Gather feedback on status detection accuracy
+- Consider adding "Reconnect" action for inactive status
+- Consider email notifications for inactive MCP (future enhancement)
 
 ---
 
-**Remember: Enhance what works, don't break what's fixed.**
+**Remember: We're guiding users through a manual process, not automating it. The intelligence is in knowing where the user is and what they need next.**
