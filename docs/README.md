@@ -25,7 +25,7 @@ GiljoAI MCP is evolving into a **sophisticated agentic project management platfo
 
 1. **[README_FIRST.md](README_FIRST.md)** - Project overview and navigation
 2. **[Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md](Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic vision and roadmap
-3. **[GILJOAI_MCP_PURPOSE_10_13_2025.md](GILJOAI_MCP_PURPOSE_10_13_2025.md)** - Core purpose and capabilities
+3. **[GILJOAI_MCP_PURPOSE.md](GILJOAI_MCP_PURPOSE.md)** - Core purpose and capabilities
 4. **[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)** - System architecture
 5. **[guides/STARTUP_SIMPLIFICATION.md](guides/STARTUP_SIMPLIFICATION.md)** - Unified startup process
 

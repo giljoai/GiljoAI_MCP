@@ -82,6 +82,7 @@ Modern software development involves:
 
 **Solution**:
 - **Role-based filtering** gives agents only relevant context (60% token reduction)
+- **Serena MCP Optimization Layer** achieves 60-90% token reduction through symbolic operations
 - **Context chunking** handles large files by loading relevant sections
 - **Shared discoveries** prevent repeated codebase exploration
 - **Smart handoffs** transfer focused context between agents
@@ -171,6 +172,14 @@ Modern software development involves:
 - `run_tests()` - Execute test suites
 - `deploy_project()` - Handle deployment workflows
 
+**Serena Optimization Control** (v3.0):
+- `get_optimization_settings()` - View current optimization configuration
+- `update_optimization_rules()` - Adjust optimization rules per project
+- `get_token_savings_report()` - Comprehensive token reduction analytics
+- `force_agent_handoff()` - Trigger context-based handoffs
+- `monitor_agent_context()` - Real-time context usage tracking
+- `optimize_agent_mission()` - Inject optimization rules at spawn time
+
 ### Hierarchical Context Loading (v2.0)
 
 **Innovation**: Reduces token usage by 60% through intelligent context filtering.
@@ -186,7 +195,7 @@ Modern software development involves:
 # Frontend Specialist gets:
 context:
   architecture: "Vue 3 + Vuetify"
-  ui_patterns: [...] 
+  ui_patterns: [...]
   styling_guide: [...]
   frontend_tests: [...]
   # Does NOT get: database schemas, API implementation details
@@ -199,6 +208,32 @@ context:
   performance_constraints: [...]
   # Does NOT get: frontend components, styling details
 ```
+
+### Serena MCP Optimization Layer (v3.0)
+
+**Innovation**: Achieves 60-90% token reduction through intelligent symbolic operations.
+
+**Core Optimization Engine**:
+- **Automatic symbolic operation enforcement** (find_symbol vs read_file)
+- **max_answer_chars injection** prevents massive file reads
+- **Context-aware optimization rules** adapt to project size/language
+- **Real-time token usage tracking** per agent and operation
+- **Intelligent handoff triggers** when context limits approached
+
+**How It Works**:
+1. **Mission-time injection**: Optimization rules added to agent missions automatically
+2. **Tool interception**: MCP tool calls optimized in real-time
+3. **Symbolic operations**: Prefer find_symbol() over read_file() for targeted analysis
+4. **Answer limiting**: Auto-inject character limits on searches and file reads
+5. **Savings tracking**: Comprehensive per-project token reduction metrics
+
+**Impact**:
+- **60-90% token reduction** vs naive file reading approaches
+- **Extended agent lifespan** before hitting context limits
+- **Faster codebase navigation** through symbolic operations
+- **Production-grade reliability** with 37 passing unit tests
+
+**Status**: Fully operational (Handover 0010 - COMPLETE)
 
 ### Claude Code CLI Integration
 
@@ -319,6 +354,26 @@ context:
 - **Resource sharing**: Efficient sharing of common agent templates
 - **Scalability**: Supports multiple concurrent development projects
 - **Security**: No cross-tenant data leakage
+- **Per-user API keys**: Individual access control and auditing (v3.0)
+
+### User API Key Management (v3.0)
+
+**Innovation**: Secure, per-user API key system for MCP tool integration.
+
+**Core Features**:
+- **Personal API keys**: Each user generates their own keys for MCP tools
+- **Automatic integration**: AI Tools config generator creates keys automatically
+- **Tenant-scoped security**: All API keys filtered by tenant_key
+- **Bcrypt hashing**: Secure storage with one-time plaintext display
+- **Full lifecycle management**: Generate, list, revoke, audit
+
+**AI Tool Integration**:
+- **One-click configuration**: Generate Claude Code, CODEX, Gemini configs
+- **Embedded API keys**: User keys automatically included in configs
+- **Tenant isolation**: Each user's keys only access their projects
+- **Professional UI**: 266-line ApiKeyManager component with data tables
+
+**Status**: Fully operational (Handover 0015 - COMPLETE)
 
 ### Performance & Reliability
 
@@ -379,10 +434,10 @@ context:
 ---
 
 **See Also**:
-- [User Structures & Tenants](USER_STRUCTURES_TENANTS_10_13_2025.md) - Understanding multi-tenant architecture
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - Technical implementation details
-- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS_10_13_2025.md) - Setup and configuration guide
-- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE_10_13_2025.md) - Complete onboarding walkthrough
+- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Understanding multi-tenant architecture
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Technical implementation details
+- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS.md) - Setup and configuration guide
+- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md) - Complete onboarding walkthrough
 
 ---
 

@@ -663,9 +663,9 @@ python install.py
 
 **Local Documentation** (created during installation):
 - `docs/README_FIRST.md` - Navigation hub
-- `docs/GILJOAI_MCP_PURPOSE_10_13_2025.md` - System overview
-- `docs/USER_STRUCTURES_TENANTS_10_13_2025.md` - Multi-tenant understanding
-- `docs/SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md` - Technical details
+- `docs/GILJOAI_MCP_PURPOSE.md` - System overview
+- `docs/USER_STRUCTURES_TENANTS.md` - Multi-tenant understanding
+- `docs/SERVER_ARCHITECTURE_TECH_STACK.md` - Technical details
 
 **Example Workflows**:
 1. **Simple Task**: Create a basic web page with agent coordination
@@ -716,10 +716,10 @@ After completing first launch, verify:
 ---
 
 **See Also**:
-- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS_10_13_2025.md) - Complete installation procedures
-- [User Structures & Tenants](USER_STRUCTURES_TENANTS_10_13_2025.md) - Understanding the multi-tenant system
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - Technical implementation details
-- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE_10_13_2025.md) - System overview and capabilities
+- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS.md) - Complete installation procedures
+- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Understanding the multi-tenant system
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Technical implementation details
+- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE.md) - System overview and capabilities
 
 ---
 

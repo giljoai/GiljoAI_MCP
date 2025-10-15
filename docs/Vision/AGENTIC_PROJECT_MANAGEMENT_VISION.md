@@ -16,7 +16,7 @@ This document provides the **strategic vision** for GiljoAI MCP's agentic capabi
 - **[Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on achieving 70% token savings
 - **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Implementation patterns for agent orchestration
 - **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - 5-project implementation timeline
-- **[Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md)** - v3.0 unified architecture overview
+- **[Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK.md)** - v3.0 unified architecture overview
 
 ### Reading Recommendations
 - **Business stakeholders**: Read this document, then review Complete Vision and Project Roadmap

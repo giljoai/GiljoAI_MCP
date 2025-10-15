@@ -12,11 +12,11 @@ The GiljoAI MCP documentation was fragmented across 70+ files with architectural
 
 The project created these authoritative documents:
 
-- **`docs/GILJOAI_MCP_PURPOSE_10_13_2025.md`** - System purpose, capabilities, and value proposition
-- **`docs/USER_STRUCTURES_TENANTS_10_13_2025.md`** - Multi-tenant architecture and user management
-- **`docs/SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md`** - v3.0 unified architecture with ASCII diagrams
-- **`docs/INSTALLATION_FLOW_PROCESS_10_13_2025.md`** - Complete installation walkthrough
-- **`docs/FIRST_LAUNCH_EXPERIENCE_10_13_2025.md`** - Step-by-step onboarding guide
+- **`docs/GILJOAI_MCP_PURPOSE.md`** - System purpose, capabilities, and value proposition
+- **`docs/USER_STRUCTURES_TENANTS.md`** - Multi-tenant architecture and user management
+- **`docs/SERVER_ARCHITECTURE_TECH_STACK.md`** - v3.0 unified architecture with ASCII diagrams
+- **`docs/INSTALLATION_FLOW_PROCESS.md`** - Complete installation walkthrough
+- **`docs/FIRST_LAUNCH_EXPERIENCE.md`** - Step-by-step onboarding guide
 
 ## What Was Archived
 
@@ -77,7 +77,7 @@ These directories and files remain active in `docs/`:
 ### Core Architecture
 - `README_FIRST.md` - Updated with new core document references
 - `TECHNICAL_ARCHITECTURE.md` - Updated but preserved for detailed technical specs
-- The 5 new core documents (`*_10_13_2025.md`)
+- The 5 new core documents (`*.md`)
 
 ### Reference Materials
 - `manuals/` - MCP tools manual and API reference

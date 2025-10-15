@@ -420,8 +420,8 @@ lighthouse http://localhost:7274 --only-categories=accessibility --output=html -
 ## Contact
 
 For accessibility questions or concerns:
-- Review full audit: `docs/WCAG_2_1_AA_ACCESSIBILITY_AUDIT_10_13_2025.md`
+- Review full audit: `docs/WCAG_2_1_AA_ACCESSIBILITY_AUDIT.md`
 - Check handover: `handovers/0009_HANDOVER_UI_UX_ACCESSIBILITY_VERIFICATION.md`
-- Design system: `docs/UI_UX_DESIGN_SYSTEM_10_13_2025.md`
+- Design system: `docs/UI_UX_DESIGN_SYSTEM.md`
 
 **Remember:** Accessibility is not optional. It's a legal requirement and makes our application better for everyone.

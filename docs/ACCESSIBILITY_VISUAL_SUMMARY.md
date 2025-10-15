@@ -486,13 +486,13 @@ Future:   98 ━━━━━━━━━━━━━━━━━━━━━━�
 ## Document References
 
 **Detailed Technical Audit:**
-- `docs/WCAG_2_1_AA_ACCESSIBILITY_AUDIT_10_13_2025.md`
+- `docs/WCAG_2_1_AA_ACCESSIBILITY_AUDIT.md`
 
 **Implementation Guide:**
-- `docs/ACCESSIBILITY_ACTION_PLAN_10_13_2025.md`
+- `docs/ACCESSIBILITY_ACTION_PLAN.md`
 
 **Design System:**
-- `docs/UI_UX_DESIGN_SYSTEM_10_13_2025.md`
+- `docs/UI_UX_DESIGN_SYSTEM.md`
 
 **Handover Documentation:**
 - `handovers/0009_HANDOVER_UI_UX_ACCESSIBILITY_VERIFICATION.md`
