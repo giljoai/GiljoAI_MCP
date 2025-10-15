@@ -189,6 +189,16 @@ const routes = [
     },
   },
   {
+    path: '/settings/integrations',
+    name: 'IntegrationsSettings',
+    component: () => import('@/views/Settings/IntegrationsView.vue'),
+    meta: {
+      title: 'API & Integrations',
+      showInNav: false,
+      requiresAuth: true,
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),

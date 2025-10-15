@@ -13,6 +13,7 @@ Phase 2.1 of v3.0 consolidation project.
 """
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -31,9 +32,20 @@ from src.giljo_mcp.models import User
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# JWT secret for token generation (should match auth system)
-# In production, this should come from environment variables
-SECRET_KEY = "giljo-mcp-installer-secret-key-2024"  # TODO: Move to config
+# JWT secret for token generation
+# Load from environment variable or use default for development
+SECRET_KEY = os.getenv(
+    'MCP_INSTALLER_SECRET_KEY',
+    'giljo-mcp-installer-default-dev-key'
+)
+
+# Warn if using default secret in production
+if SECRET_KEY == 'giljo-mcp-installer-default-dev-key':
+    logger.warning(
+        "Using default MCP installer secret key. "
+        "Set MCP_INSTALLER_SECRET_KEY environment variable for production."
+    )
+
 ALGORITHM = "HS256"
 
 

@@ -85,19 +85,13 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useTheme } from 'vuetify'
 import setupService from '@/services/setupService'
-import McpConfigStep from '@/components/setup/McpConfigStep.vue'
 import SerenaConfigStep from '@/components/setup/SerenaConfigStep.vue'
 import CompletionStep from '@/components/setup/CompletionStep.vue'
 
 const theme = useTheme()
 
-// Step configuration - simplified to 3 steps
+// Step configuration - simplified to 2 steps (MCP config moved to Settings)
 const allSteps = [
-  {
-    component: McpConfigStep,
-    title: 'MCP Configuration',
-    name: 'mcpConfig',
-  },
   {
     component: SerenaConfigStep,
     title: 'Serena Activation',
@@ -154,9 +148,6 @@ const getStepProps = (step) => {
   const baseProps = {}
 
   switch (step.name) {
-    case 'mcpConfig':
-      // MCP Config step has no props - manages its own state
-      break
     case 'serenaConfig':
       // Serena Config step has no props - manages its own state
       break
@@ -177,11 +168,7 @@ const currentStepProps = computed(() => {
 const handleNext = (stepData = {}) => {
   // Update config with data from current step
   if (currentStepIndex.value === 0) {
-    // MCP Config step
-    config.mcpConfigured = stepData.mcpConfigured || false
-    console.log('[WIZARD] MCP config updated:', config.mcpConfigured)
-  } else if (currentStepIndex.value === 1) {
-    // Serena Config step
+    // Serena Config step (now first step)
     config.serenaEnabled = stepData.serenaEnabled || false
     console.log('[WIZARD] Serena config updated:', config.serenaEnabled)
   }
