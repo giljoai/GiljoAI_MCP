@@ -1,0 +1,498 @@
+"""
+Agent management API endpoints for Handover 0017.
+
+Provides endpoints for vision document chunking, agent job management, and context search.
+All operations enforce tenant isolation for security.
+"""
+
+from datetime import datetime
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, Query, Form
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+
+from api.dependencies import get_tenant_key
+from src.giljo_mcp.models import Product, MCPContextIndex, MCPContextSummary, MCPAgentJob
+from src.giljo_mcp.repositories.context_repository import ContextRepository
+from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
+from src.giljo_mcp.tools.chunking import EnhancedChunker
+
+router = APIRouter(prefix="/api/agent", tags=["Agent Management"])
+
+
+# Pydantic models for request/response
+
+class VisionUploadRequest(BaseModel):
+    product_id: str = Field(..., description="Product ID to upload vision for")
+    content: str = Field(..., description="Vision document content")
+
+
+class VisionUploadResponse(BaseModel):
+    message: str
+    product_id: str
+    chunks_created: int
+    total_tokens: int
+    chunked: bool
+
+
+class ContextChunkResponse(BaseModel):
+    chunk_id: str
+    content: str
+    keywords: List[str]
+    token_count: int
+    chunk_order: int
+    summary: Optional[str]
+    created_at: datetime
+
+
+class ContextSearchRequest(BaseModel):
+    product_id: str = Field(..., description="Product ID to search within")
+    query: str = Field(..., description="Search query")
+    limit: int = Field(10, description="Maximum results to return")
+
+
+class AgentJobCreate(BaseModel):
+    agent_type: str = Field(..., description="Agent type (orchestrator, analyzer, etc.)")
+    mission: str = Field(..., description="Agent mission/instructions")
+    spawned_by: Optional[str] = Field(None, description="Agent ID that spawned this job")
+    context_chunks: List[str] = Field(default_factory=list, description="Context chunk IDs")
+
+
+class AgentJobResponse(BaseModel):
+    job_id: str
+    agent_type: str
+    mission: str
+    status: str
+    spawned_by: Optional[str]
+    context_chunks: List[str]
+    messages: List[Dict[str, Any]]
+    acknowledged: bool
+    created_at: datetime
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+
+
+class AgentJobStatusUpdate(BaseModel):
+    status: str = Field(..., description="New status (pending, active, completed, failed)")
+
+
+class AgentJobMessage(BaseModel):
+    message: Dict[str, Any] = Field(..., description="Message object to add")
+
+
+class TokenReductionStats(BaseModel):
+    total_summaries: int
+    total_tokens_saved: int
+    average_reduction_percent: float
+    total_original_tokens: int
+    total_condensed_tokens: int
+
+
+@router.post("/products/{product_id}/vision", response_model=VisionUploadResponse)
+async def upload_vision_document(
+    product_id: str,
+    content: str = Form(..., description="Vision document content"),
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """
+    Upload vision document for a product.
+    Chunks vision using EnhancedChunker and stores in mcp_context_index.
+    """
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        # Initialize repositories
+        context_repo = ContextRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            # Verify product exists and belongs to tenant
+            stmt = select(Product).where(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key
+            )
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Delete existing chunks for this product
+            delete_count = context_repo.delete_chunks_by_product(db, tenant_key, product_id)
+
+            # Chunk the vision content using EnhancedChunker
+            chunker = EnhancedChunker(max_tokens=20000)
+            chunks = chunker.chunk_content(content, product.name)
+
+            # Store chunks in mcp_context_index
+            chunks_created = 0
+            total_tokens = 0
+
+            for chunk in chunks:
+                context_repo.create_chunk(
+                    db, tenant_key, product_id,
+                    content=chunk["content"],
+                    keywords=chunk["keywords"],
+                    token_count=chunk["tokens"],
+                    chunk_order=chunk["chunk_number"],
+                    summary=None  # No LLM summary for Phase 1
+                )
+                chunks_created += 1
+                total_tokens += chunk["tokens"]
+
+            # Update Product model to mark as chunked
+            product.vision_document = content
+            product.vision_type = "inline"
+            product.chunked = True
+
+            await db.commit()
+
+            return VisionUploadResponse(
+                message="Vision document uploaded and chunked successfully",
+                product_id=product_id,
+                chunks_created=chunks_created,
+                total_tokens=total_tokens,
+                chunked=True
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agent-jobs/active", response_model=List[AgentJobResponse])
+async def get_active_agent_jobs(
+    agent_type: Optional[str] = Query(None, description="Filter by agent type"),
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """List all active agent jobs for tenant."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        job_repo = AgentJobRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            jobs = job_repo.get_active_jobs(db, tenant_key, agent_type)
+
+            return [
+                AgentJobResponse(
+                    job_id=job.job_id,
+                    agent_type=job.agent_type,
+                    mission=job.mission,
+                    status=job.status,
+                    spawned_by=job.spawned_by,
+                    context_chunks=job.context_chunks or [],
+                    messages=job.messages or [],
+                    acknowledged=job.acknowledged,
+                    created_at=job.created_at,
+                    started_at=job.started_at,
+                    completed_at=job.completed_at
+                )
+                for job in jobs
+            ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent-jobs", response_model=AgentJobResponse)
+async def create_agent_job(
+    job_data: AgentJobCreate,
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Create a new agent job."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        job_repo = AgentJobRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            job = job_repo.create_job(
+                db, tenant_key,
+                agent_type=job_data.agent_type,
+                mission=job_data.mission,
+                spawned_by=job_data.spawned_by,
+                context_chunks=job_data.context_chunks
+            )
+
+            await db.commit()
+
+            return AgentJobResponse(
+                job_id=job.job_id,
+                agent_type=job.agent_type,
+                mission=job.mission,
+                status=job.status,
+                spawned_by=job.spawned_by,
+                context_chunks=job.context_chunks or [],
+                messages=job.messages or [],
+                acknowledged=job.acknowledged,
+                created_at=job.created_at,
+                started_at=job.started_at,
+                completed_at=job.completed_at
+            )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/agent-jobs/{job_id}/status", response_model=dict)
+async def update_agent_job_status(
+    job_id: str,
+    status_update: AgentJobStatusUpdate,
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Update agent job status."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        job_repo = AgentJobRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            success = job_repo.update_status(
+                db, tenant_key, job_id, status_update.status
+            )
+
+            if not success:
+                raise HTTPException(status_code=404, detail="Agent job not found")
+
+            await db.commit()
+
+            return {"message": f"Job status updated to {status_update.status}"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent-jobs/{job_id}/acknowledge", response_model=dict)
+async def acknowledge_job_message(
+    job_id: str,
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Acknowledge receipt of a job message."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        job_repo = AgentJobRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            success = job_repo.acknowledge_job(db, tenant_key, job_id)
+
+            if not success:
+                raise HTTPException(status_code=404, detail="Agent job not found")
+
+            await db.commit()
+
+            return {"message": "Job acknowledged successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent-jobs/{job_id}/messages", response_model=dict)
+async def add_job_message(
+    job_id: str,
+    message_data: AgentJobMessage,
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Add a message to an agent job."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        job_repo = AgentJobRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            success = job_repo.add_message(
+                db, tenant_key, job_id, message_data.message
+            )
+
+            if not success:
+                raise HTTPException(status_code=404, detail="Agent job not found")
+
+            await db.commit()
+
+            return {"message": "Message added to job successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/context/search", response_model=List[ContextChunkResponse])
+async def search_context(
+    search_data: ContextSearchRequest,
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Full-text search on vision chunks."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        context_repo = ContextRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            # Verify product exists and belongs to tenant
+            stmt = select(Product).where(
+                Product.id == search_data.product_id,
+                Product.tenant_key == tenant_key
+            )
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Search chunks
+            chunks = context_repo.search_chunks(
+                db, tenant_key, search_data.product_id,
+                search_data.query, search_data.limit
+            )
+
+            return [
+                ContextChunkResponse(
+                    chunk_id=chunk.chunk_id,
+                    content=chunk.content,
+                    keywords=chunk.keywords or [],
+                    token_count=chunk.token_count or 0,
+                    chunk_order=chunk.chunk_order or 0,
+                    summary=chunk.summary,
+                    created_at=chunk.created_at
+                )
+                for chunk in chunks
+            ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/context/product/{product_id}/chunks", response_model=List[ContextChunkResponse])
+async def get_product_chunks(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Get all context chunks for a product."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        context_repo = ContextRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            # Verify product exists and belongs to tenant
+            stmt = select(Product).where(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key
+            )
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Get all chunks for product
+            chunks = context_repo.get_chunks_by_product(db, tenant_key, product_id)
+
+            return [
+                ContextChunkResponse(
+                    chunk_id=chunk.chunk_id,
+                    content=chunk.content,
+                    keywords=chunk.keywords or [],
+                    token_count=chunk.token_count or 0,
+                    chunk_order=chunk.chunk_order or 0,
+                    summary=chunk.summary,
+                    created_at=chunk.created_at
+                )
+                for chunk in chunks
+            ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/context/stats/{product_id}", response_model=TokenReductionStats)
+async def get_token_reduction_stats(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Get token reduction statistics for a product."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        context_repo = ContextRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            # Verify product exists and belongs to tenant
+            stmt = select(Product).where(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key
+            )
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Get stats
+            stats = context_repo.get_token_reduction_stats(db, tenant_key, product_id)
+
+            return TokenReductionStats(**stats)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agent-jobs/stats", response_model=dict)
+async def get_agent_job_statistics(
+    agent_type: Optional[str] = Query(None, description="Filter by agent type"),
+    tenant_key: str = Depends(get_tenant_key)
+):
+    """Get agent job statistics for tenant."""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        job_repo = AgentJobRepository(state.db_manager)
+
+        async with state.db_manager.get_session_async() as db:
+            stats = job_repo.get_job_statistics(db, tenant_key, agent_type)
+            return stats
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
