@@ -7,6 +7,24 @@
 
 ---
 
+## Related Documentation
+
+This document provides **technical implementation details** for GiljoAI MCP's token reduction strategies. For broader context, see:
+
+- **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of product vision
+- **[Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic context and business value
+- **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Agent coordination implementation patterns
+- **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - Implementation timeline and dependencies
+- **[Context Management System Handover](../../handovers/0018_HANDOVER_20251014_CONTEXT_MANAGEMENT_SYSTEM.md)** - Implementation details for Handover 0018
+
+### Reading Recommendations
+- **Architects**: Read this document alongside Multi-Agent Coordination Patterns
+- **Backend developers**: Focus on database requirements and caching sections, then review Handover 0018
+- **Performance engineers**: Study token usage comparisons and performance metrics sections
+- **Business stakeholders**: Review overview and benefits sections, then see Agentic Vision
+
+---
+
 ## Overview
 
 This document details the sophisticated token reduction architecture that enables GiljoAI MCP to achieve **70% token reduction** compared to traditional AI assistant approaches, while maintaining superior context awareness and coordination.
