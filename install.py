@@ -280,8 +280,10 @@ class UnifiedInstaller:
 
         # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
-        print(f"Enter the password for PostgreSQL 'postgres' user")
-        print(f"{Fore.RED}(Required - no defaults allowed){Style.RESET_ALL}")
+        print(f"\n{Fore.WHITE}PostgreSQL Admin Password Required{Style.RESET_ALL}")
+        print(f"This is the password for the 'postgres' superuser account")
+        print(f"(The password you set when you first installed PostgreSQL)")
+        print(f"{Fore.RED}Required - no defaults allowed{Style.RESET_ALL}")
 
         # Ask twice to confirm
         max_attempts = 3
@@ -403,6 +405,7 @@ class UnifiedInstaller:
 
         for path in scan_paths:
             result['scanned_paths'].append(str(path))
+            print(f"{Fore.WHITE}  Checking: {path}{Style.RESET_ALL}")
 
             if path.exists():
                 self._print_success(f"PostgreSQL detected: {path}")
@@ -643,11 +646,11 @@ class UnifiedInstaller:
                 return result
 
             self._print_info("Installing Python packages (this may take 2-3 minutes)...")
+            print(f"{Fore.WHITE}You will see pip's progress output below...{Style.RESET_ALL}\n")
 
             subprocess.run(
                 [str(pip_executable), 'install', '-r', str(self.requirements_file)],
                 check=True,
-                capture_output=True,
                 text=True,
                 timeout=300  # 5 minute timeout
             )
