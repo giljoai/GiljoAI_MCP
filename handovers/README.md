@@ -13,6 +13,17 @@ Handovers enable seamless task delegation between development agents/sessions by
 
 ## Active Handovers
 
+### Agentic Vision Implementation Projects (NEW - Based on Handover 0012)
+
+**Not Started (Priority Order):**
+1. [`0017_HANDOVER_20251014_DATABASE_SCHEMA_ENHANCEMENT.md`](0017_HANDOVER_20251014_DATABASE_SCHEMA_ENHANCEMENT.md) - **CRITICAL** - Foundation for all agentic features (1 week)
+2. [`0018_HANDOVER_20251014_CONTEXT_MANAGEMENT_SYSTEM.md`](0018_HANDOVER_20251014_CONTEXT_MANAGEMENT_SYSTEM.md) - **CRITICAL** - Token reduction system (2 weeks, depends on 0017)
+3. [`0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT.md`](0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT.md) - **HIGH** - Agent coordination (2 weeks, depends on 0017)
+4. [`0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md`](0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md) - **HIGH** - Intelligent orchestration (2 weeks, depends on 0018 & 0019)
+5. [`0021_HANDOVER_20251014_DASHBOARD_INTEGRATION.md`](0021_HANDOVER_20251014_DASHBOARD_INTEGRATION.md) - **MEDIUM** - Real-time monitoring (1.5 weeks, depends on 0019 & 0020)
+
+### Other Active Handovers
+
 **Not Started:**
 - [`0001_HANDOVER_20251012_REMOVE_DYNAMIC_IP_DETECTION.md`](0001_HANDOVER_20251012_REMOVE_DYNAMIC_IP_DETECTION.md) - Priority: High
 
@@ -23,6 +34,7 @@ Handovers enable seamless task delegation between development agents/sessions by
 - None
 
 **Recently Completed:**
+- `HANDOVER_0012_*-C.md` - Archived 2025-10-14 (Claude Code Integration Depth Verification - Spawned 5 implementation projects)
 - `0010_HANDOVER_20251014_SERENA_MCP_OPTIMIZATION_LAYER-C.md` - Archived 2025-10-14 (60-90% Token Reduction System Complete)
 - `0009_HANDOVER_20251013_ADVANCED_UI_UX_VERIFICATION-C.md` - Archived 2025-10-13 (90% Implementation Complete)
 - `0015_HANDOVER_20251013_USER_API_KEY_MANAGEMENT-C.md` - Archived 2025-10-13
@@ -53,6 +65,19 @@ Handovers enable seamless task delegation between development agents/sessions by
 ## Execution Order
 
 Some handovers have dependencies. Check each handover's "Dependencies and Blockers" section.
+
+### Agentic Vision Projects (0017-0021)
+
+**Implementation Roadmap** (7-week timeline):
+1. **Week 1**: Execute 0017 (Database Schema) - Foundation for everything
+2. **Weeks 2-3**: Execute 0018 (Context Management) and 0019 (Agent Jobs) in parallel
+3. **Weeks 4-5**: Execute 0020 (Orchestrator Enhancement) after 0018 & 0019
+4. **Week 6**: Execute 0021 (Dashboard Integration)
+5. **Week 7**: Integration testing and documentation
+
+**Critical Path**: 0017 → (0018 || 0019) → 0020 → 0021
+
+### Other Handovers
 
 **Current Recommendation:**
 1. Execute **0002** (Localhost Bypass Removal) first

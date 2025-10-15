@@ -1,8 +1,21 @@
 # GiljoAI MCP Documentation Index
 
-**Version**: 3.0
-**Last Updated**: October 9, 2025
-**Architecture**: Unified Single Network Architecture (deployment modes removed)
+**Version**: 3.1-AGENTIC
+**Last Updated**: October 14, 2025
+**Architecture**: Unified Network Architecture with Sophisticated Agentic Orchestration (in development)
+
+---
+
+## 🤖 AGENTIC VISION UPDATE
+
+GiljoAI MCP is evolving into a **sophisticated agentic project management platform**. While currently providing solid multi-tenant task management with manual workflows, we are implementing advanced multi-agent orchestration capabilities based on proven patterns from AKE-MCP.
+
+**Vision Documents**:
+- **[Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md](Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Complete strategic vision
+- **[Vision/TOKEN_REDUCTION_ARCHITECTURE.md](Vision/TOKEN_REDUCTION_ARCHITECTURE.md)** - 70% token reduction strategy
+- **[Vision/MULTI_AGENT_COORDINATION_PATTERNS.md](Vision/MULTI_AGENT_COORDINATION_PATTERNS.md)** - Agent orchestration patterns
+
+**Implementation Roadmap**: 5 major projects over 7 weeks to achieve full agentic capabilities (see vision documents for details)
 
 ---
 
@@ -11,10 +24,10 @@
 **New to GiljoAI MCP?** Read these documents first:
 
 1. **[README_FIRST.md](README_FIRST.md)** - Project overview and navigation
-2. **[VERIFICATION_OCT9.md](VERIFICATION_OCT9.md)** - v3.0 architecture verification and changes
-3. **[RELEASE_NOTES_V3.0.0.md](RELEASE_NOTES_V3.0.0.md)** - v3.0 release notes
+2. **[Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md](Vision/AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic vision and roadmap
+3. **[GILJOAI_MCP_PURPOSE_10_13_2025.md](GILJOAI_MCP_PURPOSE_10_13_2025.md)** - Core purpose and capabilities
 4. **[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)** - System architecture
-5. **[guides/STARTUP_SIMPLIFICATION.md](guides/STARTUP_SIMPLIFICATION.md)** - New unified startup process
+5. **[guides/STARTUP_SIMPLIFICATION.md](guides/STARTUP_SIMPLIFICATION.md)** - Unified startup process
 
 **Quick Start Guides**:
 - **[manuals/QUICK_START.md](manuals/QUICK_START.md)** - Get started in 5 minutes
@@ -305,6 +318,6 @@ See **[VERIFICATION_OCT9.md](VERIFICATION_OCT9.md)** for complete v3.0 architect
 
 ---
 
-**Last Updated**: October 9, 2025
-**Version**: 3.0
+**Last Updated**: October 14, 2025
+**Version**: 3.1-AGENTIC
 **For Questions**: See [CONTRIBUTING.md](CONTRIBUTING.md) or [guides/USER_GUIDE.md](guides/USER_GUIDE.md)
