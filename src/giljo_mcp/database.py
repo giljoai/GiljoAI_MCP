@@ -99,16 +99,15 @@ class DatabaseManager:
 
     async def create_tables_async(self):
         """
-        Create all database tables and enable required PostgreSQL extensions (async).
+        Create all database tables (async).
 
-        Handover 0017: Enables pg_trgm extension for full-text search on vision chunks.
+        Handover 0017: pg_trgm extension is created during installation by installer/core/database.py
+        with proper superuser privileges. Application does not require CREATE privilege on database.
         """
         if self.is_async:
             async with self.async_engine.begin() as conn:
-                # Enable PostgreSQL extensions for Handover 0017 (Agentic Vision)
-                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-
                 # Create all tables
+                # Extensions are now created during installation phase, not at runtime
                 await conn.run_sync(Base.metadata.create_all)
         else:
             raise RuntimeError("Use create_tables() for async engine")
