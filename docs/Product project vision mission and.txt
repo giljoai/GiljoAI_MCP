@@ -1,0 +1,25 @@
+Product project vision mission and operation
+
+let me clarify my intento of working order, User creates product, when creating products, they upload vision documents (the product proposal, i.e WHAT are
+we building), there should also be fields in the product like techstac, guiding principles for the ai agents (behaviours) or dev philoshphy do's and donts
+such as proof of concept, or production grade etc, then there is test tools, (you can visit AKAE-MCP on F drive to view the fields used when defining
+product), after product is created the user will create projects, these are then the step by step project to deliver the product or later in the lifcycle
+modify it.  Products are built on a title and description of what is to be done.   ON first launch of a project, the first prompt given is to start an
+orchestrator agent.  It will have a pre defined descriptor of what it does (hint, they are a project manager and technbical lead that understandds the
+product, the mission and what resource agents it has to successfully execute the project).  In claude code and codex, these will be agent profles which the
+user adds to the subagent components, and in gemini CLI it will use profiles prompt injected at time of activation.  the user will then have a "copy prompot
+  ⎿  Interrupted · What should Claude do instead?
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+> I didnt finsh typing sorry, the user will then have a "copy prompt" button, they paste it into claude code (or other agentic coding tool) and it will connect
+  to the MCP and get the orchestyrators initial mission.  This mission says, "check all the context in the product, with that knowledge, map out the project
+  prompt the user just added in project ID xxxxx, and write a summarized mission"  this is where token reduction comes, the first orchestrator reduces all this
+  complex context into the actual mission.  orchestartor says "wait while i create the mission", when done, it spawns agents (these show up in the app
+  dashboard), it then gives each agent a specific role in the mission and sends them off building.  they all communicate and queue eachother in the MCP, with
+  instructionst to reguarly check in and communciate with status updates, if they have questions they ask the orchestrator for more information or find it
+  themselves, if no answers, they pause and ask the orchestrator to interact with the user.  all this is to be illustrated through an itneractive dashboard,
+  and the user can even reivew mini logas as they go, and direct messeage the agents via MCP server if they want or see something.  This is how a project
+  executes and runs and where token reduction exist.  note, the very first orchestraotr, on the very first project ever, will read the often long vision or
+  product proposal, and will CHUNK it into logical smaller chunks and index it, so the next project the next orchestrator doesnt have to waste tokens on
+  reading all of the visino or product proposal and instead will shortcut to needed parts.  like an agentic rag in some ways.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
