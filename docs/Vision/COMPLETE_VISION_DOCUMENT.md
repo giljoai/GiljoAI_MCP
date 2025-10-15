@@ -26,7 +26,7 @@ This is the **executive summary** of GiljoAI MCP's vision. For detailed technica
 1. This document (Complete Vision) - High-level architecture overview
 2. [Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md) - Architectural patterns
 3. [Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md) - Technical optimization strategies
-4. [Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - v3.0 unified architecture details
+4. [Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK.md) - v3.0 unified architecture details
 
 **For Developers & Implementers**:
 1. [Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md) - Code-level patterns
@@ -36,8 +36,8 @@ This is the **executive summary** of GiljoAI MCP's vision. For detailed technica
 **For New Team Members**:
 1. This document (Complete Vision) - Start here
 2. All three detailed vision documents
-3. [Installation Guide](../INSTALLATION_FLOW_PROCESS_10_13_2025.md)
-4. [First Launch Experience](../FIRST_LAUNCH_EXPERIENCE_10_13_2025.md)
+3. [Installation Guide](../INSTALLATION_FLOW_PROCESS.md)
+4. [First Launch Experience](../FIRST_LAUNCH_EXPERIENCE.md)
 5. Implementation handovers (0017-0021)
 
 ---
