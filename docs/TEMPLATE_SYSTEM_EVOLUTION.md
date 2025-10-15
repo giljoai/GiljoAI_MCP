@@ -1415,10 +1415,10 @@ async def test_template_crud_operations():
 ---
 
 **See Also**:
-- [AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT_10_13_2025.md) - AI tool integration with templates
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - Database and technical implementation
-- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE_10_13_2025.md) - Multi-agent orchestration context
-- [User Structures & Tenants](USER_STRUCTURES_TENANTS_10_13_2025.md) - Multi-tenant template isolation
+- [AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT.md) - AI tool integration with templates
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Database and technical implementation
+- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE.md) - Multi-agent orchestration context
+- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Multi-tenant template isolation
 
 ---
 

@@ -1087,10 +1087,10 @@ class SetupWebSocketManager {
 ---
 
 **See Also**:
-- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE_10_13_2025.md) - Complete onboarding walkthrough
-- [User Structures & Tenants](USER_STRUCTURES_TENANTS_10_13_2025.md) - Authentication and tenant context
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - Technical implementation details
-- [AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT_10_13_2025.md) - Setup wizard integration
+- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md) - Complete onboarding walkthrough
+- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Authentication and tenant context
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Technical implementation details
+- [AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT.md) - Setup wizard integration
 
 ---
 

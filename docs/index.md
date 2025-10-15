@@ -422,6 +422,6 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 
 ## New Implementation Documentation (October 2025 Harmonization)
 
-- `AI_TOOL_CONFIGURATION_MANAGEMENT_10_13_2025.md` — Multi-AI tool support and configuration generator for Claude Code, CODEX, and Gemini CLI integration. — Tag: CURRENT
-- `ENHANCED_SETUP_FLOW_10_13_2025.md` — Two-phase authentication redesign with WebSocket-enabled setup and welcome screen workflow. — Tag: CURRENT
-- `TEMPLATE_SYSTEM_EVOLUTION_10_13_2025.md` — Database-backed template management system replacing legacy file-based templates with AI tool preferences. — Tag: CURRENT
+- `AI_TOOL_CONFIGURATION_MANAGEMENT.md` — Multi-AI tool support and configuration generator for Claude Code, CODEX, and Gemini CLI integration. — Tag: CURRENT
+- `ENHANCED_SETUP_FLOW.md` — Two-phase authentication redesign with WebSocket-enabled setup and welcome screen workflow. — Tag: CURRENT
+- `TEMPLATE_SYSTEM_EVOLUTION.md` — Database-backed template management system replacing legacy file-based templates with AI tool preferences. — Tag: CURRENT

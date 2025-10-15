@@ -497,9 +497,9 @@ That's a **+7 point improvement** with just 45 minutes of work!
 ## Resources
 
 **Full Documentation:**
-- Complete Audit: `docs/WCAG_2_1_AA_ACCESSIBILITY_AUDIT_10_13_2025.md`
-- Action Plan: `docs/ACCESSIBILITY_ACTION_PLAN_10_13_2025.md`
-- Visual Summary: `docs/ACCESSIBILITY_VISUAL_SUMMARY_10_13_2025.md`
+- Complete Audit: `docs/WCAG_2_1_AA_ACCESSIBILITY_AUDIT.md`
+- Action Plan: `docs/ACCESSIBILITY_ACTION_PLAN.md`
+- Visual Summary: `docs/ACCESSIBILITY_VISUAL_SUMMARY.md`
 
 **Testing Tools:**
 - WebAIM Contrast Checker: https://webaim.org/resources/contrastchecker/
@@ -508,7 +508,7 @@ That's a **+7 point improvement** with just 45 minutes of work!
 
 **Questions?**
 - Review handover: `handovers/0009_HANDOVER_UI_UX_ACCESSIBILITY_VERIFICATION.md`
-- Check design system: `docs/UI_UX_DESIGN_SYSTEM_10_13_2025.md`
+- Check design system: `docs/UI_UX_DESIGN_SYSTEM.md`
 
 ---
 

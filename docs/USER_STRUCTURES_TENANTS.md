@@ -591,10 +591,10 @@ SELECT COUNT(*) FROM messages WHERE tenant_key = 'expected-tenant';
 ---
 
 **See Also**:
-- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE_10_13_2025.md) - Understanding the overall system
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - Technical implementation details
-- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS_10_13_2025.md) - Setting up tenant configuration
-- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE_10_13_2025.md) - Default tenant creation walkthrough
+- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE.md) - Understanding the overall system
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Technical implementation details
+- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS.md) - Setting up tenant configuration
+- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md) - Default tenant creation walkthrough
 
 ---
 

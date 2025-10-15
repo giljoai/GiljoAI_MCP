@@ -1171,10 +1171,94 @@ describe('AIToolSetup Component', () => {
 ---
 
 **See Also**:
-- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE_10_13_2025.md) - Understanding multi-agent orchestration
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - Technical implementation details
-- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE_10_13_2025.md) - Setup wizard integration
-- [User Structures & Tenants](USER_STRUCTURES_TENANTS_10_13_2025.md) - Multi-tenant configuration
+- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE.md) - Understanding multi-agent orchestration
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Technical implementation details
+- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md) - Setup wizard integration
+- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Multi-tenant configuration
+
+---
+
+## HANDOVER 0015 - User API Key Management (COMPLETE)
+
+**Implementation Status**: ✅ **COMPLETE** - User-specific API key generation and management for secure MCP server access
+
+**Problem Solved**: Multi-user setup now provides individual API key management for isolated, secure MCP configuration. Each user gets personal API keys instead of sharing system-wide keys.
+
+**Implementation Details**:
+
+### Frontend Components Delivered
+- **`ApiKeyManager.vue`** (266 lines) - Full-featured user API key management component
+- **`ApiKeyWizard.vue`** - Modal for generating new API keys with descriptive names
+- **Integration**: Added to `UserSettings.vue` → "API and Integrations" tab
+- **Professional UI**: Data table with sorting, key preview, delete confirmations, loading states
+
+### AI Tools Integration Enhanced
+- **`AIToolSetup.vue`** - Automatic API key generation during configuration
+- **Workflow**: When generating AI tool configs, automatically creates user API keys
+- **Key Naming**: Auto-generates descriptive names (e.g., "Claude Code - 10/13/2025")
+- **Security**: One-time plaintext display, bcrypt hashing for storage
+
+### Security Improvements
+- **Per-User Access Control**: Individual API keys for audit and isolation
+- **Tenant-Specific**: All API key queries filtered by `tenant_key`
+- **httpOnly Cookie Authentication**: XSS protection, automatic browser management
+- **API Key Lifecycle**: Full CRUD operations (generate, list, revoke)
+
+### Multi-Tenant MCP Configuration
+**Before**: Single shared API key for all users
+```json
+{
+  "GILJO_API_KEY": "shared-system-key"  // Security risk
+}
+```
+
+**After**: User-specific API keys with tenant isolation
+```json
+{
+  "mcpServers": {
+    "giljo-mcp": {
+      "command": "uvx",
+      "args": ["giljo-mcp-client"],
+      "env": {
+        "GILJO_SERVER_URL": "http://10.1.0.164:7272",
+        "GILJO_TENANT_KEY": "usr_abc123",        // User-specific
+        "GILJO_API_KEY": "gk_user_xyz789..."    // User-specific API key
+      }
+    }
+  }
+}
+```
+
+### Features Delivered
+- ✅ **User API Key Generation**: Each user can generate personal API keys in Settings
+- ✅ **MCP Config Integration**: AI Tools setup uses user's API keys automatically
+- ✅ **Multi-Tenant Isolation**: Users only see their own keys and projects
+- ✅ **Authentication Fixed**: Resolved 401 errors with httpOnly cookie documentation
+- ✅ **Professional UI/UX**: Full-featured key management with security best practices
+
+### Database Schema
+```sql
+-- User API keys table (already existed, now fully integrated)
+CREATE TABLE user_api_keys (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    tenant_key VARCHAR REFERENCES tenants(tenant_key),
+    key_hash VARCHAR NOT NULL,     -- Hashed API key (bcrypt)
+    key_preview VARCHAR NOT NULL,  -- First 8 + last 4 chars for display
+    name VARCHAR,                  -- User-friendly name
+    created_at TIMESTAMP,
+    last_used_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+```
+
+### Implementation Quality
+- **Test Coverage**: 15 unit tests for AIToolSetup component (all passing)
+- **Error Handling**: Graceful 401 handling with authentication prompts
+- **Security Best Practices**: Key preview only, secure deletion confirmation
+- **Cross-Platform**: Works on Windows, Linux, macOS
+
+**Archive Status**: Moved to `handovers/completed/harmonized/HANDOVER_0015_USER_API_KEY_MANAGEMENT-C.md`
 
 ---
 

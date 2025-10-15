@@ -677,7 +677,7 @@ def display_installation_summary(db_credentials: dict):
    
 📚 Documentation:
    - docs/README_FIRST.md - Start here
-   - docs/FIRST_LAUNCH_EXPERIENCE_10_13_2025.md - Next steps
+   - docs/FIRST_LAUNCH_EXPERIENCE.md - Next steps
    
 🛠️  Service Management:
    Start: python startup.py
@@ -1015,10 +1015,10 @@ git commit -m "feat: Initial GiljoAI MCP v3.0 installation"
 ---
 
 **See Also**:
-- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE_10_13_2025.md) - Detailed first-run walkthrough
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md) - Technical architecture details
-- [User Structures & Tenants](USER_STRUCTURES_TENANTS_10_13_2025.md) - Multi-tenant system understanding
-- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE_10_13_2025.md) - System overview and capabilities
+- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md) - Detailed first-run walkthrough
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Technical architecture details
+- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Multi-tenant system understanding
+- [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE.md) - System overview and capabilities
 
 ---
 
