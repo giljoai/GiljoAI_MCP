@@ -7,8 +7,9 @@ and generate orchestrator prompts that can spawn the appropriate sub-agents.
 
 from typing import Dict
 
-from ..database import get_db_session
+from ..database import DatabaseManager
 from ..models import Agent, Project
+from sqlalchemy import select
 
 
 # Mapping of MCP agent roles to Claude Code agent types
@@ -66,7 +67,8 @@ def generate_agent_spawn_instructions(project_id: str, tenant_key: str) -> Dict:
     Returns:
         Dictionary with agent spawn instructions
     """
-    with get_db_session() as session:
+    db_manager = DatabaseManager()
+    with db_manager.get_session() as session:
         # Get project
         project = session.query(Project).filter_by(id=project_id, tenant_key=tenant_key).first()
 
