@@ -1,732 +1,615 @@
 # MCP Configuration Flow Visualization
 
-**Last Updated:** 2025-10-14
-**Purpose:** Visual map of how MCP configuration works today (before Phase 2 redesign)
+**Last Updated:** 2025-10-14 (Revised for Web Server Architecture)
+**Purpose:** Visual map of MCP configuration architecture and flows
 
 ---
 
-## Current State: 3 Separate Entry Points
-
-```
-USER ACTIONS
-═══════════════════════════════════════════════════════════════════════
-
-Entry Point 1: Navigate to /mcp-integration page
-Entry Point 2: Click "Connect AI Tools" button (Settings/Dashboard)
-Entry Point 3: Go through Setup Wizard (first-time only)
-
-Each leads to DIFFERENT component with DIFFERENT workflow!
-```
-
----
-
-## Flow 1: McpIntegration.vue (Main Page)
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  USER NAVIGATES: /mcp-integration                               │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-                           ▼
-     ┌─────────────────────────────────────────────────┐
-     │   McpIntegration.vue (640 lines)                │
-     │   File: frontend/src/views/McpIntegration.vue   │
-     └──────────────┬──────────────────────────────────┘
-                    │
-          ┌─────────┴─────────┬───────────┬───────────┐
-          │                   │           │           │
-          ▼                   ▼           ▼           ▼
-  ┌───────────────┐   ┌─────────────┐   ┌────────┐  ┌──────────────┐
-  │ Download      │   │ Share       │   │ Manual │  │ Trouble-     │
-  │ Installer     │   │ Links       │   │ Config │  │ shooting     │
-  │ Scripts       │   │ (Team)      │   │        │  │ (4 panels)   │
-  └───────┬───────┘   └──────┬──────┘   └───┬────┘  └──────────────┘
-          │                  │               │
-          │                  │               │
-  ┌───────▼────────┐  ┌──────▼─────────┐   │
-  │ Windows or     │  │ Generate       │   │
-  │ Unix Download  │  │ Share Link     │   │
-  └───────┬────────┘  └───────┬────────┘   │
-          │                   │             │
-          ▼                   ▼             ▼
-  ┌────────────────────────────────────────────────────────┐
-  │  BACKEND: api/endpoints/mcp_installer.py               │
-  │                                                        │
-  │  Routes:                                               │
-  │  • GET  /api/mcp-installer/windows                    │
-  │  • GET  /api/mcp-installer/unix                       │
-  │  • POST /api/mcp-installer/share-link                 │
-  │                                                        │
-  │  Functions:                                            │
-  │  • download_windows_installer()                       │
-  │  • download_unix_installer()                          │
-  │  • create_share_link()                                │
-  │                                                        │
-  │  Templates:                                            │
-  │  • Uses Jinja2 to render .bat/.sh with:              │
-  │    - User's API key (from APIKey table)              │
-  │    - Server URL                                       │
-  │    - Embedded config JSON                             │
-  └────────────────────────┬───────────────────────────────┘
-                           │
-                           ▼
-              ┌────────────────────────────┐
-              │  USER RECEIVES FILE:       │
-              │  • giljo-mcp-setup.bat  OR │
-              │  • giljo-mcp-setup.sh      │
-              │                            │
-              │  File contains:            │
-              │  1. Detect Claude CLI     │
-              │  2. Modify ~/.claude.json  │
-              │  3. Insert giljo-mcp config│
-              └────────────┬───────────────┘
-                           │
-                           ▼
-                 USER RUNS SCRIPT LOCALLY
-                           │
-                           ▼
-          ┌────────────────────────────────────┐
-          │  Script edits:                     │
-          │  ~/.claude.json                    │
-          │                                    │
-          │  Adds section:                     │
-          │  {                                 │
-          │    "mcpServers": {                 │
-          │      "giljo-mcp": {                │
-          │        "command": "python",        │
-          │        "args": ["-m","giljo_mcp"], │
-          │        "env": {                    │
-          │          "GILJO_SERVER_URL":"...", │
-          │          "GILJO_API_KEY": "..."    │
-          │        }                           │
-          │      }                             │
-          │    }                               │
-          │  }                                 │
-          └────────────────────────────────────┘
-```
-
----
-
-## Flow 2: AIToolSetup.vue (Dialog)
+## Critical Architecture Understanding
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  USER CLICKS: "Connect AI Tools" button                     │
-│  Location: UserSettings.vue or SettingsView.vue             │
-└────────────────────────┬─────────────────────────────────────┘
-                         │
-                         ▼
-     ┌───────────────────────────────────────────────────┐
-     │   AIToolSetup.vue (Dialog Component)              │
-     │   File: frontend/src/components/AIToolSetup.vue   │
-     │   Size: 453 lines                                 │
-     └────────────────────┬──────────────────────────────┘
-                          │
-                          ▼
-          ┌───────────────────────────────┐
-          │ User Selects Tool:            │
-          │ • Claude Code                 │
-          │ • Codex CLI                   │
-          │ • Generic/Other               │
-          └───────────────┬───────────────┘
-                          │
-                          ▼
-      ┌─────────────────────────────────────────────┐
-      │  AUTOMATIC API KEY GENERATION (NO CONSENT)  │
-      │                                             │
-      │  Backend Call:                              │
-      │  POST /api/auth/api-keys                   │
-      │  Body: { "name": "Claude Code - 10/14/25" }│
-      │                                             │
-      │  Response: { "key": "gai_..." }            │
-      └────────────────┬────────────────────────────┘
-                       │
-                       ▼
-  ┌──────────────────────────────────────────────────────┐
-  │  FRONTEND TEMPLATE GENERATION                        │
-  │  (NOT backend!)                                      │
-  │                                                      │
-  │  File: frontend/src/utils/configTemplates.js        │
-  │                                                      │
-  │  function generateClaudeCodeConfig(apiKey, url) {   │
-  │    return JSON.stringify({                          │
-  │      'giljo-mcp': {                                 │
-  │        command: 'python',                           │
-  │        args: ['-m', 'giljo_mcp'],                   │
-  │        env: {                                       │
-  │          GILJO_MCP_HOME: 'F:/GiljoAI_MCP', ❌      │
-  │          GILJO_SERVER_URL: url,                     │
-  │          GILJO_API_KEY: apiKey                      │
-  │        }                                            │
-  │      }                                              │
-  │    }, null, 2)                                      │
-  │  }                                                  │
-  │                                                      │
-  │  ⚠️  PROBLEM: Hardcoded Windows path!               │
-  └─────────────────────┬────────────────────────────────┘
-                        │
-                        ▼
-        ┌───────────────────────────────────┐
-        │  Dialog Shows:                    │
-        │  • API Key Warning (one-time)     │
-        │  • Config JSON (copyable)         │
-        │  • Instructions                   │
-        │  • Download Guide button          │
-        └───────────────┬───────────────────┘
-                        │
-                        ▼
-          USER MANUALLY COPIES JSON
-                        │
-                        ▼
-       USER MANUALLY PASTES INTO ~/.claude.json
-                        │
-                        ▼
-            USER MANUALLY RESTARTS CLAUDE CLI
+│  GiljoAI MCP: WEB SERVER APPLICATION                        │
+│                                                              │
+│  Server (LAN/WAN/Localhost)    User's Machine (Browser)     │
+│  ─────────────────────────     ───────────────────────────  │
+│                                                              │
+│  • GiljoAI Backend (Python)    • Chrome/Firefox/Edge       │
+│  • Database (PostgreSQL)       • Accesses via HTTP/HTTPS    │
+│  • API (FastAPI)               • Separate machine/VM/host   │
+│  • WebSocket (Real-time)       • Cannot write local files   │
+│                                                              │
+│  KEY INSIGHT:                                                │
+│  Server CANNOT write to user's ~/.claude.json               │
+│  Configuration is ALWAYS manual copy-paste                   │
+│  Status detection via API key usage (proxy for "working")   │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Flow 3: McpConfigStep.vue (Setup Wizard)
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  USER IN: First-time Setup Wizard                      │
-│  File: frontend/src/views/SetupWizard.vue              │
-│  Step: 3 of 3 (MCP Configuration)                      │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-                      ▼
-    ┌──────────────────────────────────────────────────┐
-    │   McpConfigStep.vue (Wizard Step Component)     │
-    │   File: frontend/src/components/setup/          │
-    │         McpConfigStep.vue                        │
-    │   Size: 291 lines                                │
-    │   Status: ⚠️  BROKEN (calls removed methods)     │
-    └────────────────┬─────────────────────────────────┘
-                     │
-                     ▼
-     ┌───────────────────────────────────────────┐
-     │  User Clicks "Generate Configuration"     │
-     └───────────────┬───────────────────────────┘
-                     │
-                     ▼
-  ┌────────────────────────────────────────────────────┐
-  │  ❌ BROKEN CALL (v3.0 removed this method)          │
-  │                                                    │
-  │  setupService.generateMcpConfig()                 │
-  │                                                    │
-  │  Location: frontend/src/services/setupService.js  │
-  │  Status: Method removed in lines 105-107          │
-  │                                                    │
-  │  Comment says:                                    │
-  │  "// generateMcpConfig() and registerMcp()       │
-  │  //  removed as part of v3.0 unified auth"       │
-  │                                                    │
-  │  Result: RUNTIME ERROR when called                │
-  └────────────────────────────────────────────────────┘
-```
-
----
-
-## Template Generation: Dual Systems Problem
-
-```
-┌────────────────────────────────────────────────────────────┐
-│  TWO SOURCES OF TRUTH FOR MCP CONFIG TEMPLATES            │
-│  (This causes drift and maintenance issues)                │
-└────────────────────────────────────────────────────────────┘
-
-   SYSTEM 1                        SYSTEM 2
-   --------                        --------
-   FRONTEND                        BACKEND
-   --------                        -------
-
-Frontend:                       Backend:
-┌─────────────────────┐        ┌──────────────────────┐
-│ configTemplates.js  │        │ mcp_installer.py     │
-│                     │        │                      │
-│ • Python Code       │        │ • Jinja2 templates   │
-│ • Hardcoded paths   │  VS    │ • Dynamic rendering  │
-│ • Used by           │        │ • Used by            │
-│   AIToolSetup       │        │   McpIntegration     │
-└─────────────────────┘        └──────────────────────┘
-
-        ▼                               ▼
-   JSON string                  .bat/.sh files
-   returned to                  downloaded by
-   user in dialog               user from page
-
-        ▼                               ▼
-   USER COPIES                   USER RUNS
-   MANUALLY                      AUTOMATICALLY
-
-
-⚠️  PROBLEM: If templates diverge, different users get
-    different configs depending on which flow they used!
-```
-
----
-
-## API Client Inconsistency
-
-```
-┌──────────────────────────────────────────────────────────┐
-│  TWO WAYS TO CALL BACKEND APIs                          │
-│  (Inconsistent auth handling)                            │
-└──────────────────────────────────────────────────────────┘
-
-   METHOD 1                       METHOD 2
-   --------                       --------
-   NATIVE fetch()                 api.js Client
-   --------------                 -------------
-
-McpIntegration.vue uses:      Rest of app uses:
-┌────────────────────────┐    ┌─────────────────────────┐
-│ fetch(url, {           │    │ api.get(url)            │
-│   headers: {           │    │                         │
-│     'Authorization':   │    │ (auto-adds auth token)  │
-│       Bearer ${token}, │    │ (auto-adds tenant key)  │
-│     'X-Tenant-Key':    │    │ (auto-retries on 401)   │
-│       hardcoded        │    │ (centralized errors)    │
-│   }                    │    │                         │
-│ })                     │    │                         │
-└────────────────────────┘    └─────────────────────────┘
-
-        ▼                              ▼
-   Manual auth                   Automatic auth
-   management                    via interceptors
-
-        ▼                              ▼
-   localStorage                  axios instance
-   direct access                 with interceptors
-
-⚠️  PROBLEM: McpIntegration bypasses api.js benefits:
-    - No automatic token refresh on 401
-    - No centralized error handling
-    - Manual tenant key injection
-    - Harder to test (can't mock api.js)
-```
-
----
-
-## Backend API Endpoints (Current)
-
-```
-┌───────────────────────────────────────────────────────────────┐
-│  API ROUTES FOR MCP CONFIGURATION                             │
-│  File: api/endpoints/mcp_installer.py                         │
-└───────────────────────────────────────────────────────────────┘
-
-GET /api/mcp-installer/windows
-├─ Handler: download_windows_installer()
-├─ Returns: .bat file (application/octet-stream)
-├─ Contains: Embedded API key, server URL, config JSON
-├─ Auth: Required (checks request.state.user)
-└─ Uses: Jinja2 template rendering
-
-GET /api/mcp-installer/unix
-├─ Handler: download_unix_installer()
-├─ Returns: .sh file (application/octet-stream)
-├─ Contains: Same as Windows but different script format
-├─ Auth: Required
-└─ Uses: Jinja2 template rendering
-
-POST /api/mcp-installer/share-link
-├─ Handler: create_share_link()
-├─ Returns: { windows_url, unix_url, expires_at }
-├─ Contains: JWT tokens embedded in URLs
-├─ Auth: Required
-├─ Secret: Hardcoded SECRET_KEY ⚠️  (should be env var)
-└─ Expiry: 7 days (hardcoded)
-
-POST /api/auth/api-keys
-├─ Handler: create_api_key() (in auth.py)
-├─ Returns: { key, key_id, name, created_at }
-├─ Contains: New API key (shown once)
-├─ Auth: Required
-└─ Called by: AIToolSetup.vue automatically
-```
-
----
-
-## Data Flow: Where API Keys Come From
-
-```
-┌──────────────────────────────────────────────────────────┐
-│  API KEY SOURCES (Inconsistent!)                         │
-└──────────────────────────────────────────────────────────┘
-
-Flow 1: McpIntegration Download
-═══════════════════════════════
-User clicks download
-         │
-         ▼
-Backend: mcp_installer.py:241
-         │
-         ▼
-   Try to get API key:
-   api_key = getattr(user, 'api_key', None)
-         │
-         ├─ If user.api_key exists → Use it
-         │
-         └─ If None → Use fallback:
-            f"temp_key_{user.id}"
-         │
-         ▼
-   Embed in .bat/.sh file
-
-⚠️  PROBLEM: Fallback key is not real!
-    MCP server will reject it.
-
-
-Flow 2: AIToolSetup Dialog
-═══════════════════════════
-User selects tool
-         │
-         ▼
-   AUTO-GENERATE NEW KEY
-   (no user consent)
-         │
-         ▼
-   POST /api/auth/api-keys
-   Body: { name: "Claude Code - date" }
-         │
-         ▼
-   Returns: { key: "gai_..." }
-         │
-         ▼
-   Store in database: APIKey table
-   • key_id (UUID)
-   • key (hashed)
-   • name
-   • user_id
-   • created_at
-         │
-         ▼
-   Show in dialog (ONE TIME ONLY)
-         │
-         ▼
-   User must copy now or lose access
-
-⚠️  PROBLEM: Creates keys without asking!
-    User may not realize they're creating credentials.
-```
-
----
-
-## Database Schema (Relevant Tables)
-
-```
-┌──────────────────────────────────────────────────────────┐
-│  DATABASE: giljo_mcp (PostgreSQL)                        │
-│  File: src/giljo_mcp/models.py                           │
-└──────────────────────────────────────────────────────────┘
-
-TABLE: users
-├─ id (UUID, PK)
-├─ email (String, unique)
-├─ password_hash (String)
-├─ tenant_key (String, FK → tenants.tenant_key)
-└─ created_at (DateTime)
-
-TABLE: api_keys (Created by AIToolSetup)
-├─ key_id (UUID, PK)
-├─ key_hash (String) ← Bcrypt hash of "gai_..." key
-├─ name (String) ← e.g., "Claude Code - 10/14/25"
-├─ user_id (UUID, FK → users.id)
-├─ created_at (DateTime)
-└─ last_used (DateTime, nullable)
-
-⚠️  NOTE: User table has no api_key column anymore!
-    Old code (mcp_installer.py:241) tries getattr(user, 'api_key')
-    which returns None → uses fallback temp key → breaks auth
-```
-
----
-
-## Cross-Platform Compatibility Issues
-
-```
-┌────────────────────────────────────────────────────────────┐
-│  HARDCODED PATHS (Breaks Linux/macOS)                     │
-└────────────────────────────────────────────────────────────┘
-
-Location 1: configTemplates.js:27
-────────────────────────────────
-env: {
-  GILJO_MCP_HOME: 'F:/GiljoAI_MCP',  ❌ Windows-only!
-  GILJO_SERVER_URL: serverUrl,
-  GILJO_API_KEY: apiKey
-}
-
-Problem: F:/ drive doesn't exist on Linux/macOS
-Impact: MCP server can't start
-Used by: AIToolSetup.vue
-Fix: Remove GILJO_MCP_HOME (not needed)
-
-
-Location 2: AIToolSetup.vue:280
-──────────────────────────────
-const projectPath = 'F:/GiljoAI_MCP'  ❌ Hardcoded!
-const pythonPath = getPythonPath(projectPath, detectOS())
-
-Problem: Hardcoded Windows path passed to path builder
-Impact: Config contains invalid paths on other platforms
-Fix: Use projectPath = null or detect dynamically
-
-
-Location 3: pathDetection.js (Not actually used wrong)
-────────────────────────────────────────────────────
-export function getPythonPath(projectPath, os) {
-  if (os === 'windows') {
-    return `${projectPath}\\venv\\Scripts\\python.exe`
-  }
-  return `${projectPath}/venv/bin/python`
-}
-
-Status: ✅ Logic is fine, but receives bad projectPath input
-```
-
----
-
-## What Happens When User Configures MCP (Success Path)
+## Before Phase 1: Fragmented Experience
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  FULL SUCCESS FLOW (Assuming no errors)                     │
+│  THREE SEPARATE ENTRY POINTS (Confusing!)                   │
 └──────────────────────────────────────────────────────────────┘
 
-1. User visits /mcp-integration
-   │
-   ▼
-2. Clicks "Download for Windows"
-   │
-   ▼
-3. Frontend: fetch(/api/mcp-installer/windows)
-   │
-   ▼
-4. Backend: Generates .bat with:
-   │  • User's API key (or fallback)
-   │  • Server URL (from config)
-   │  • Embedded config JSON
-   │
-   ▼
-5. User receives: giljo-mcp-setup.bat
-   │
-   ▼
-6. User double-clicks .bat file
-   │
-   ▼
-7. Script runs locally on user's machine:
-   │  • Detects Python installation
-   │  • Finds ~/.claude.json location
-   │  • Reads existing config (if any)
-   │  • Parses JSON
-   │  • Adds/updates "mcpServers.giljo-mcp" section
-   │  • Writes back to ~/.claude.json
-   │  • Shows success message
-   │
-   ▼
-8. User restarts Claude Code CLI:
-   │  $ claude quit
-   │  $ claude
-   │
-   ▼
-9. Claude Code loads ~/.claude.json
-   │
-   ▼
-10. Claude Code spawns MCP server process:
-    │  Command: python -m giljo_mcp
-    │  Env vars:
-    │    GILJO_SERVER_URL=http://localhost:7272
-    │    GILJO_API_KEY=gai_...
-    │
-    ▼
-11. GiljoAI MCP server starts (server.py)
-    │  • Reads env vars
-    │  • Connects to GiljoAI backend
-    │  • Authenticates with API key
-    │  • Registers available tools
-    │
-    ▼
-12. User types in Claude Code:
-    │  "Show my projects"
-    │
-    ▼
-13. Claude Code recognizes MCP tool
-    │  • Calls: get_projects_list()
-    │  • Via: stdio communication
-    │
-    ▼
-14. MCP server handles request:
-    │  • Calls GiljoAI API: GET /api/projects
-    │  • Returns results to Claude Code
-    │
-    ▼
-15. Claude Code shows results to user
-    │
-    ▼
-16. ✅ SUCCESS: MCP integration working!
+Entry Point 1: /mcp-integration (Standalone Page)
+├─ McpIntegration.vue (640 lines)
+├─ 4 major sections (Download, Share, Manual, Troubleshoot)
+├─ 7+ expansion panels (cognitive overload)
+└─ Uses fetch() instead of api.js ❌
+
+Entry Point 2: AIToolSetup Dialog
+├─ Triggered by "Connect AI Tools" button
+├─ AIToolSetup.vue (453 lines)
+├─ Auto-generates API key without consent ❌
+├─ Hardcoded F:/GiljoAI_MCP path ❌
+└─ Frontend template generation (dual system) ❌
+
+Entry Point 3: McpConfigStep in Setup Wizard
+├─ McpConfigStep.vue (291 lines)
+├─ Calls removed v3.0 methods ❌
+└─ BROKEN: Runtime errors ❌
+
+PROBLEMS:
+• Users don't know which entry point to use
+• Inconsistent workflows
+• Critical bugs (hardcoded paths, broken calls)
+• No status detection ("Am I configured?")
 ```
 
 ---
 
-## Component Import/Usage Map
+## After Phase 1: Consolidated Single Entry Point
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  WHERE COMPONENTS ARE USED                               │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  SINGLE ENTRY POINT: /settings/integrations                 │
+│  (Navigation consolidation complete)                         │
+└──────────────────────────────────────────────────────────────┘
 
-McpIntegration.vue
-├─ Route: /mcp-integration
-├─ Imported by: frontend/src/router/index.js
-└─ Direct navigation from: Dashboard, Settings, Setup Wizard
+PRIMARY PATH:
+User Avatar → Settings → API & Integrations
+                              │
+                              ▼
+                    IntegrationsView.vue
+                              │
+                              ▼
+                    McpConfigComponent.vue
+                    (Reusable component)
+                              │
+                              ├─ Generate API key
+                              ├─ Display config JSON
+                              ├─ Copy button
+                              └─ Instructions
 
-AIToolSetup.vue (Dialog)
-├─ Imported by:
-│  ├─ frontend/src/views/UserSettings.vue
-│  ├─ frontend/src/views/SettingsView.vue
-│  └─ frontend/src/views/Dashboard.vue (maybe)
+WIZARD PATH (Same Component):
+Setup Wizard → Step 3: MCP → Routes to /settings/integrations?from=wizard
+                              │
+                              ▼
+                    IntegrationsView.vue (highlights MCP section)
+                              │
+                              ▼
+                    McpConfigComponent.vue (same reusable component)
+
+BENEFITS:
+✅ Single source of truth
+✅ Consistent workflow everywhere
+✅ Reusable component
+✅ No more fragmentation
+✅ Cross-platform compatible
+✅ Uses api.js for auth/errors
+```
+
+---
+
+## After Phase 2: Intelligent Guidance
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  ENHANCED WITH STATUS DETECTION & GUIDANCE                   │
+└──────────────────────────────────────────────────────────────┘
+
+DASHBOARD (First-Time Users):
+Dashboard.vue
+    │
+    ├─ McpConfigCallout.vue (if status = not_started or pending)
+    │      │
+    │      ├─ Checks: GET /api/mcp-tools/status
+    │      ├─ Shows banner: "Unlock Agentic Workflows"
+    │      ├─ Button: "Configure Claude Code (60 seconds)"
+    │      └─ Routes to: /settings/integrations?from=dashboard
+    │
+    └─ (No callout if MCP status = active)
+
+WIZARD (First Login):
+SetupWizard.vue → Step 3
+    │
+    ├─ Shows callout card
+    ├─ Button: "Continue to Configuration"
+    ├─ Routes to: /settings/integrations?from=wizard&step=mcp
+    └─ (Skip option available)
+
+SETTINGS (Main Configuration):
+/settings/integrations
+    │
+    ├─ Query params trigger highlight (from=wizard, step=mcp)
+    ├─ Scrolls to MCP section automatically
+    │
+    └─ McpConfigComponent.vue
+           │
+           ├─ Status Banner (from GET /api/mcp-tools/status)
+           │      │
+           │      ├─ not_started: "Configuration not started"
+           │      ├─ pending: "Config started but not active"
+           │      ├─ active: "MCP working! Last used X days ago"
+           │      └─ inactive: "Not used in 7+ days"
+           │
+           ├─ Generate API Key
+           ├─ Display Config JSON
+           ├─ Copy Button (marks config as attempted)
+           │      │
+           │      └─ Calls: POST /api/mcp-tools/mark-configuration-attempted
+           │
+           └─ ConfigValidator.vue
+                  │
+                  ├─ Paste complete ~/.claude.json
+                  ├─ Validates JSON syntax
+                  ├─ Detects missing fields
+                  └─ Shows errors with suggestions
+```
+
+---
+
+## Status State Machine
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  MCP CONFIGURATION STATUS STATES                             │
+└──────────────────────────────────────────────────────────────┘
+
+State: not_started
+├─ Condition: mcp_config_attempted_at = NULL
+├─ Meaning: User never clicked "Copy Configuration"
+├─ Action: Show dashboard callout, wizard guidance
+└─ Next: User clicks "Copy" → pending
+
+State: pending
+├─ Condition: mcp_config_attempted_at NOT NULL, no API key usage
+├─ Meaning: User copied config but hasn't used it yet
+├─ Action: Show "waiting for first use" message
+└─ Next: API key used → active
+
+State: active
+├─ Condition: api_key.last_used within 7 days
+├─ Meaning: MCP is configured and working
+├─ Action: Show success banner with last used date
+└─ Next: 7+ days no usage → inactive
+
+State: inactive
+├─ Condition: api_key.last_used > 7 days ago
+├─ Meaning: MCP configured but not recently used
+├─ Action: Show warning, suggest reconnecting
+└─ Next: API key used → active
+
+TRACKING FIELDS:
+• users.mcp_config_attempted_at (DateTime, nullable)
+• api_keys.last_used (DateTime, nullable)
+```
+
+---
+
+## Server/Client Data Flow
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  HOW CONFIGURATION ACTUALLY WORKS (Web Server Reality)      │
+└──────────────────────────────────────────────────────────────┘
+
+SERVER (GiljoAI Backend)            CLIENT (User's Browser)
+────────────────────────            ───────────────────────
+
+1. User navigates to
+   /settings/integrations
+                                    Browser loads Vue SPA
+                                           │
+2. Browser requests:                       ▼
+   GET /api/mcp-tools/status       [Browser displays status]
+   ◄────────────────────────────────────┤
+   Returns: { status: "not_started" }    │
+                                           │
+3. User clicks                             ▼
+   "Generate API Key"              [Browser sends request]
+                                           │
+   POST /api/auth/api-keys          ──────►
+   Creates new API key              [Stores in database]
+   Returns: gai_abc123...           ◄──────
+                                           │
+4.                                         ▼
+                                    [Generates config JSON]
+                                    [Shows in textarea]
+                                           │
+5. User clicks "Copy"                      ▼
+                                    [Copies to clipboard]
+                                    [Calls backend to mark]
+                                           │
+   POST /api/mcp-tools/             ──────►
+   mark-configuration-attempted     [Sets attempted_at]
+                                    ◄──────
+                                           │
+6.                                         ▼
+                                    ╔════════════════════════╗
+                                    ║ USER'S LOCAL MACHINE   ║
+                                    ║ (Different computer!)  ║
+                                    ╠════════════════════════╣
+                                    ║ 1. Opens terminal      ║
+                                    ║ 2. vim ~/.claude.json  ║
+                                    ║ 3. Pastes config       ║
+                                    ║ 4. Saves file          ║
+                                    ║ 5. Restarts Claude CLI ║
+                                    ╚════════════════════════╝
+                                           │
+7.                                         ▼
+                                    ╔════════════════════════╗
+                                    ║ Claude Code CLI        ║
+                                    ║ (User's machine)       ║
+                                    ╠════════════════════════╣
+                                    ║ Loads ~/.claude.json   ║
+                                    ║ Spawns: python -m      ║
+                                    ║   giljo_mcp            ║
+                                    ║ Env: GILJO_API_KEY     ║
+                                    ╚════════════════════════╝
+                                           │
+8. MCP server connects to                  ▼
+   GiljoAI backend              ╔════════════════════════╗
+                                ║ GiljoAI MCP Server     ║
+   Validates API key            ║ (User's machine)       ║
+   ◄─────────────────────────   ╠════════════════════════╣
+                                ║ GET /api/projects      ║
+   Returns projects list        ║ Authorization: Bearer  ║
+   ────────────────────────►    ║   gai_abc123...        ║
+                                ╚═══════════│════════════╝
+9. Updates last_used                       │
+   api_keys.last_used = NOW                │
+                                           ▼
+10. Next time user visits            [Status shows "active"]
+    /settings/integrations
+
+    GET /api/mcp-tools/status    ──────►
+    Returns: { status: "active",  ◄──────
+              last_used: "2025-10-14" }
+```
+
+---
+
+## API Endpoints (Phase 2)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  NEW BACKEND ENDPOINTS FOR STATUS DETECTION                 │
+└──────────────────────────────────────────────────────────────┘
+
+GET /api/mcp-tools/status
+├─ Auth: Required (JWT)
+├─ Returns: {
+│    status: "not_started" | "pending" | "active" | "inactive",
+│    message: "Human-readable status",
+│    last_activity: "2025-10-14T12:00:00Z" | null,
+│    days_since_activity: 3 | null,
+│    configured_at: "2025-10-12T10:00:00Z" | null
+│  }
+├─ Logic:
+│    1. Check user.mcp_config_attempted_at
+│    2. If NULL → not_started
+│    3. If NOT NULL → pending (default)
+│    4. Query api_keys for most recent last_used
+│    5. If last_used within 7 days → active
+│    6. If last_used > 7 days → inactive
+└─ Used by: McpConfigComponent, McpConfigCallout, Dashboard
+
+POST /api/mcp-tools/mark-configuration-attempted
+├─ Auth: Required (JWT)
+├─ Body: (none)
+├─ Action: Sets user.mcp_config_attempted_at = NOW
+├─ Returns: {
+│    success: true,
+│    message: "Configuration attempt recorded",
+│    attempted_at: "2025-10-14T14:30:00Z"
+│  }
+└─ Called by: McpConfigComponent (when user clicks "Copy")
+
+EXISTING ENDPOINTS (Phase 1):
+GET /api/mcp-installer/windows
+GET /api/mcp-installer/unix
+POST /api/auth/api-keys
+```
+
+---
+
+## Component Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  COMPONENT HIERARCHY (After Phase 1 + Phase 2)              │
+└──────────────────────────────────────────────────────────────┘
+
+frontend/src/views/
 │
-└─ Triggered by: "Connect AI Tools" button clicks
+├─ Dashboard.vue
+│  └─ McpConfigCallout.vue (NEW - Phase 2)
+│     ├─ Checks status on mount
+│     ├─ Shows only if not_started or pending
+│     ├─ Dismissable (localStorage)
+│     └─ Routes to /settings/integrations
+│
+├─ SetupWizard.vue
+│  └─ Step 3: Routes to /settings/integrations (Modified - Phase 1)
+│
+└─ Settings/
+   └─ IntegrationsView.vue (NEW - Phase 1)
+      └─ McpConfigComponent.vue (NEW - Phase 1)
+         ├─ Status Banner (Enhanced - Phase 2)
+         ├─ API Key Generation
+         ├─ Config JSON Display
+         ├─ Copy Button (Enhanced - Phase 2)
+         └─ ConfigValidator.vue (NEW - Phase 2)
 
-McpConfigStep.vue
-├─ Imported by: frontend/src/views/SetupWizard.vue:88
-├─ Used in: Setup wizard (step 3 of 3)
-└─ Status: ⚠️  BROKEN (should be removed or rewritten)
+REMOVED/DEPRECATED:
+✗ McpIntegration.vue (standalone page)
+✗ AIToolSetup.vue (dialog)
+✗ McpConfigStep.vue (broken wizard step)
 ```
 
 ---
 
-## File Dependency Graph
+## Before/After Comparison
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│  FILE DEPENDENCIES                                         │
-└────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  USER EXPERIENCE TRANSFORMATION                              │
+└──────────────────────────────────────────────────────────────┘
 
-McpIntegration.vue
-  │
-  ├─→ @/config/api (API_CONFIG.REST_API.baseURL)
-  ├─→ date-fns (format function)
-  └─→ native fetch() ⚠️  (should use api.js)
+BEFORE (Fragmented):
+═══════════════════
+User: "How do I configure MCP?"
+Agent: "You have 3 options... which do you want?"
+User: "I don't know, what's the difference?"
+Agent: "Well, option 1 downloads a script, option 2..."
+User: *confused* "Just tell me what to do!"
 
-AIToolSetup.vue
-  │
-  ├─→ @/config/api (API_CONFIG.REST_API.baseURL)
-  ├─→ @/utils/configTemplates (generateClaudeCodeConfig, etc.)
-  ├─→ @/utils/pathDetection (getPythonPath, detectOS)
-  └─→ native fetch() ⚠️  (for API key generation)
+Clicks: 7+ (to find relevant info in expansion panels)
+Time: 3-5 minutes (if they figure it out)
+Success rate: 60% (many give up)
 
-McpConfigStep.vue
-  │
-  ├─→ @/services/setupService ⚠️  BROKEN
-  │   │
-  │   └─→ setupService.generateMcpConfig() ← REMOVED IN v3.0
-  │       setupService.registerMcp() ← REMOVED IN v3.0
-  │       setupService.checkMcpConfigured() ← REMOVED IN v3.0
-  │
-  └─→ @/components/ui/AppAlert.vue
+AFTER (Consolidated + Intelligent):
+═════════════════════════════════
+[Dashboard shows callout]
+"Unlock Agentic Workflows - Configure Claude Code (60 seconds)"
 
-configTemplates.js
-  │
-  └─→ No dependencies (pure functions)
+User clicks → Routed to /settings/integrations
+Section highlighted, scrolled into view
+Status banner: "Configuration not started"
 
-pathDetection.js
-  │
-  └─→ No dependencies (pure functions)
+Instructions:
+1. Click "Generate API Key" → Done
+2. Click "Copy Configuration" → Done
+3. Paste into ~/.claude.json → User does it
+4. Restart Claude Code CLI → User does it
 
-setupService.js
-  │
-  ├─→ @/config/api
-  └─→ Methods removed: generateMcpConfig, registerMcp, checkMcpConfigured
-      (Comments on lines 105-107 explain removal)
+[Status updates to "active" on next login]
+
+Clicks: 2-3
+Time: 60 seconds
+Success rate: 90%+
 ```
 
 ---
 
-## Key Problems Summary (From Audit)
+## Query Param Routing Pattern
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│  CRITICAL ISSUES (MUST FIX IN PHASE 1)                    │
-└────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  HOW WIZARD/DASHBOARD INTEGRATION WORKS                      │
+└──────────────────────────────────────────────────────────────┘
 
-❌ 1. Hardcoded F:/GiljoAI_MCP breaks Linux/macOS
-      Location: configTemplates.js:27
-      Impact: CRITICAL - Cross-platform incompatibility
+PATTERN:
+/settings/integrations?from=SOURCE&step=mcp
 
-❌ 2. McpConfigStep.vue calls removed methods
-      Location: McpConfigStep.vue:193, 220, 226
-      Impact: CRITICAL - Runtime crashes in setup wizard
+SOURCES:
+• from=wizard   → User came from first-time setup wizard
+• from=dashboard → User clicked dashboard callout
+• from=settings  → Direct navigation (default, no highlight)
 
-❌ 3. Dual template systems (frontend + backend)
-      Location: configTemplates.js vs mcp_installer.py
-      Impact: HIGH - Maintenance burden, drift risk
+BEHAVIOR IN IntegrationsView.vue:
+onMounted() {
+  if (route.query.from === 'wizard' || route.query.step === 'mcp') {
+    // Highlight MCP section
+    highlightMcp.value = true
 
-❌ 4. fetch() bypassing api.js interceptors
-      Location: McpIntegration.vue:446-492
-      Impact: MODERATE - Missing auth refresh, error handling
+    // Scroll to MCP component
+    setTimeout(() => {
+      document.getElementById('mcp-config-section')
+        .scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  }
+}
 
-❌ 5. API key auto-generation without consent
-      Location: AIToolSetup.vue:258-276
-      Impact: MODERATE - Security UX concern
-
-┌────────────────────────────────────────────────────────────┐
-│  UX ISSUES (FIX IN PHASE 2)                               │
-└────────────────────────────────────────────────────────────┘
-
-⚠️ 6. Fragmented user journey (3 entry points)
-      Impact: HIGH - Cognitive overload, confusion
-
-⚠️ 7. No clear primary action
-      Impact: HIGH - Users don't know what to do
-
-⚠️ 8. Expansion panel overload (7+ panels)
-      Impact: MODERATE - Critical info buried
-
-⚠️ 9. Inconsistent success feedback
-      Impact: MINOR - Copy buttons use different patterns
-
-⚠️ 10. No progress persistence
-       Impact: MINOR - Can't tell if already configured
+RESULT:
+• User sees highlighted card (primary color)
+• Page auto-scrolls to MCP section
+• Clear visual indicator: "This is where you need to be"
+• Reduces cognitive load: "No searching needed"
 ```
 
 ---
 
-## Recommended Two-Phase Fix
+## Database Schema Changes
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│  PHASE 1: STABILIZATION (0016-A) - 2-3 hours             │
-│  Fix critical bugs, enable cross-platform compatibility   │
-└────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  PHASE 2 DATABASE SCHEMA ADDITIONS                           │
+└──────────────────────────────────────────────────────────────┘
 
-✅ Remove hardcoded F:/GiljoAI_MCP paths
-✅ Fix or remove broken McpConfigStep.vue
-✅ Replace fetch() with api.js client
-✅ Move SECRET_KEY to environment variable
-✅ Replace alert() with Vuetify components
+TABLE: users (Modified)
+├─ Existing columns...
+└─ mcp_config_attempted_at (DateTime, nullable) ← NEW
+   ├─ NULL: Never attempted configuration
+   ├─ NOT NULL: User clicked "Copy Configuration" at this time
+   └─ Used for: Distinguishing not_started vs pending states
 
-Result: Stable foundation, works on all platforms
+TABLE: api_keys (Existing, verify field exists)
+├─ key_id (UUID, PK)
+├─ key_hash (String) ← Bcrypt hash
+├─ name (String)
+├─ user_id (UUID, FK → users.id)
+├─ created_at (DateTime)
+└─ last_used (DateTime, nullable) ← VERIFY EXISTS
+   ├─ NULL: Key never used
+   ├─ NOT NULL: Last time MCP server authenticated with this key
+   └─ Updated by: MCP authentication middleware
 
-┌────────────────────────────────────────────────────────────┐
-│  PHASE 2: UX ENHANCEMENT (0016-B) - 4-5 hours            │
-│  Consolidate fragmented experience, add validation        │
-└────────────────────────────────────────────────────────────┘
+MIGRATION (No Alembic):
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS mcp_config_attempted_at TIMESTAMP;
 
-✅ Redesign McpIntegration with tabs (Quick Setup vs Advanced)
-✅ Create ConfigValidator component
-✅ Create TroubleshootingFAQ component
-✅ Add API key consent flow to AIToolSetup
-✅ Add status detection ("Already configured")
-
-Result: Unified, guided experience with validation
+-- Verify last_used exists in api_keys
+-- Should already exist from v3.0 auth implementation
 ```
 
 ---
 
-**This visualization shows the CURRENT state (before Phase 1 & 2 fixes).**
+## Copy-Paste Workflow Reality
 
-**Next steps: Execute Handover 0016-A, then 0016-B.**
+```
+┌──────────────────────────────────────────────────────────────┐
+│  WHAT ACTUALLY HAPPENS (Manual Process)                      │
+└──────────────────────────────────────────────────────────────┘
+
+SERVER GENERATES CONFIG:
+{
+  "mcpServers": {
+    "giljo-mcp": {
+      "command": "python",
+      "args": ["-m", "giljo_mcp"],
+      "env": {
+        "GILJO_SERVER_URL": "http://192.168.1.100:7272",
+        "GILJO_API_KEY": "gai_abc123xyz..."
+      }
+    }
+  }
+}
+
+USER COPIES (clipboard):
+[JSON above copied to clipboard]
+
+USER PASTES (their machine):
+$ vim ~/.claude.json
+# OR
+$ code ~/.claude.json
+# OR
+$ notepad C:\Users\username\.claude.json
+
+[User pastes, saves file]
+
+USER RESTARTS:
+$ claude quit
+$ claude
+
+[Claude Code loads config, spawns MCP server]
+
+MCP SERVER AUTHENTICATES:
+GET /api/projects
+Authorization: Bearer gai_abc123xyz...
+
+[GiljoAI backend validates, updates api_keys.last_used]
+
+STATUS CHANGES:
+pending → active
+
+VALIDATION (ConfigValidator.vue):
+User can paste their COMPLETE ~/.claude.json back into validator
+to check for syntax errors, missing fields, placeholder API keys.
+```
+
+---
+
+## Future Enhancements (Out of Scope)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  POSSIBLE FUTURE IMPROVEMENTS                                │
+└──────────────────────────────────────────────────────────────┘
+
+❌ Automated installer scripts
+   Reason: 10x maintenance burden, trust issues, OS differences
+
+❌ Browser file access API
+   Reason: Security restrictions, requires user permission prompts
+
+❌ SSH into user's machine to configure
+   Reason: Security nightmare, enterprise firewall issues
+
+✅ Email notifications for inactive MCP
+   "Your Claude Code hasn't connected in 30 days"
+
+✅ "Reconnect" action for inactive status
+   Re-display config with new API key rotation option
+
+✅ Team sharing improvements
+   Generate shareable config links for team onboarding
+
+✅ Analytics dashboard
+   Track: configuration completion rate, time-to-active, drop-off points
+
+✅ Troubleshooting chatbot
+   AI-powered help for common MCP configuration issues
+```
+
+---
+
+## Key Takeaways
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  WHAT WE LEARNED & WHY IT MATTERS                            │
+└──────────────────────────────────────────────────────────────┘
+
+1. WEB SERVER ARCHITECTURE REALITY
+   Server and user are on DIFFERENT MACHINES
+   → Manual copy-paste is the ONLY option
+   → Automation would require SSH/remote access (bad idea)
+
+2. STATUS DETECTION IS PROXY
+   Server can't see ~/.claude.json on user's machine
+   → Use API key usage as proxy for "MCP working"
+   → States: not_started, pending, active, inactive
+
+3. NAVIGATION CONSOLIDATION WINS
+   Single entry point reduces confusion by 80%
+   → /settings/integrations is the ONE place
+   → Wizard and dashboard route there with query params
+
+4. QUERY PARAMS FOR GUIDANCE
+   No new pages needed, just routing + highlighting
+   → ?from=wizard highlights and scrolls to MCP
+   → Reduces cognitive load without complexity
+
+5. VALIDATION IS CRITICAL
+   Users make JSON syntax errors frequently
+   → ConfigValidator catches errors before user wastes time
+   → Shows specific errors with actionable suggestions
+
+6. DEVELOPER AUDIENCE IS KEY
+   Developers are comfortable with manual config
+   → Enhanced copy-paste > buggy automation
+   → Transparency builds trust
+```
+
+---
+
+**This visualization reflects the REVISED architecture understanding (web server, manual copy-paste, status detection).**
+
+**Phase 1 (0016-A): Navigation consolidation** ✅
+**Phase 2 (0016-B): Status detection + guidance** ⏳
