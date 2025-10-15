@@ -8,6 +8,23 @@
 
 ---
 
+## Related Documentation
+
+This document provides the **strategic vision** for GiljoAI MCP's agentic capabilities. For additional context, see:
+
+- **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of entire product vision
+- **[Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on achieving 70% token savings
+- **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Implementation patterns for agent orchestration
+- **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - 5-project implementation timeline
+- **[Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK_10_13_2025.md)** - v3.0 unified architecture overview
+
+### Reading Recommendations
+- **Business stakeholders**: Read this document, then review Complete Vision and Project Roadmap
+- **Technical architects**: Follow with Token Reduction Architecture and Coordination Patterns
+- **Developers**: Move to Coordination Patterns and implementation handovers (0017-0021)
+
+---
+
 ## Executive Summary
 
 GiljoAI MCP is evolving from a **multi-tenant task management system with manual workflows** into a **sophisticated agentic project management platform** that automatically orchestrates teams of specialized AI agents to tackle complex software development projects.

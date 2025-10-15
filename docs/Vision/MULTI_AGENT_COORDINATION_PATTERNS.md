@@ -7,6 +7,25 @@
 
 ---
 
+## Related Documentation
+
+This document defines **implementation patterns** for coordinating multiple AI agents. For broader context, see:
+
+- **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of product vision
+- **[Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic vision and business case
+- **[Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical optimization strategies
+- **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - Implementation timeline
+- **[Agent Job Management Handover](../../handovers/0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT.md)** - Implementation for Handover 0019
+- **[Orchestrator Enhancement Handover](../../handovers/0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md)** - Implementation for Handover 0020
+
+### Reading Recommendations
+- **Developers**: Start here, then review implementation handovers (0019, 0020)
+- **Architects**: Read alongside Token Reduction Architecture for complete technical picture
+- **Team leads**: Review coordination strategies section, then see Agentic Vision for business context
+- **New contributors**: Study core coordination principles first, then dive into specific patterns
+
+---
+
 ## Overview
 
 This document defines the coordination patterns that enable GiljoAI MCP to orchestrate multiple specialized AI agents working together on complex software development projects. These patterns, proven in AKE-MCP, enable sophisticated multi-agent collaboration with minimal overhead.
