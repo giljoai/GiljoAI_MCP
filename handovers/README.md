@@ -15,8 +15,10 @@ Handovers enable seamless task delegation between development agents/sessions by
 
 ### Agentic Vision Implementation Projects (NEW - Based on Handover 0012)
 
+**In Progress:**
+1. [`0017_HANDOVER_20251014_DATABASE_SCHEMA_ENHANCEMENT.md`](0017_HANDOVER_20251014_DATABASE_SCHEMA_ENHANCEMENT.md) - **CRITICAL** - Foundation for all agentic features (1 week) - Started: 2025-10-15, Phase 1: Model Creation
+
 **Not Started (Priority Order):**
-1. [`0017_HANDOVER_20251014_DATABASE_SCHEMA_ENHANCEMENT.md`](0017_HANDOVER_20251014_DATABASE_SCHEMA_ENHANCEMENT.md) - **CRITICAL** - Foundation for all agentic features (1 week)
 2. [`0018_HANDOVER_20251014_CONTEXT_MANAGEMENT_SYSTEM.md`](0018_HANDOVER_20251014_CONTEXT_MANAGEMENT_SYSTEM.md) - **CRITICAL** - Token reduction system (2 weeks, depends on 0017)
 3. [`0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT.md`](0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT.md) - **HIGH** - Agent coordination (2 weeks, depends on 0017)
 4. [`0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md`](0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md) - **HIGH** - Intelligent orchestration (2 weeks, depends on 0018 & 0019)
