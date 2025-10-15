@@ -8,6 +8,22 @@
       </p>
     </div>
 
+    <!-- MCP Configuration Alert -->
+    <v-alert type="info" variant="tonal" class="mb-4">
+      <v-icon start>mdi-connection</v-icon>
+      <div>
+        <strong>Optional:</strong> Configure MCP integration for AI coding tools
+        <v-btn
+          variant="text"
+          color="primary"
+          class="ml-2"
+          to="/settings/integrations"
+        >
+          Set Up Now
+        </v-btn>
+      </div>
+    </v-alert>
+
     <!-- Configuration Summary -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="text-h6">
@@ -16,17 +32,6 @@
       </v-card-title>
       <v-card-text>
         <v-list density="compact">
-          <v-list-item>
-            <template #prepend>
-              <v-icon :color="config.mcpConfigured ? 'success' : 'default'">
-                {{ config.mcpConfigured ? 'mdi-check-circle' : 'mdi-minus-circle' }}
-              </v-icon>
-            </template>
-            <v-list-item-title>MCP Integration</v-list-item-title>
-            <v-list-item-subtitle>
-              {{ config.mcpConfigured ? 'Configured' : 'Not configured (can be enabled later)' }}
-            </v-list-item-subtitle>
-          </v-list-item>
 
           <v-list-item>
             <template #prepend>
@@ -153,7 +158,7 @@
     <v-card variant="outlined" class="mb-6">
       <v-card-text>
         <div class="d-flex justify-space-between mb-2">
-          <span class="text-caption">Progress: Step 3 of 3</span>
+          <span class="text-caption">Progress: Step 2 of 2</span>
           <span class="text-caption">100%</span>
         </div>
         <v-progress-linear :model-value="100" color="success" />
