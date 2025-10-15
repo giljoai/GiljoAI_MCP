@@ -33,8 +33,18 @@ except ImportError as e:
     raise
 
 # Load environment variables from .env file
-load_dotenv()
-logger.info(f"Environment variables loaded from .env file")
+# Ensure we load from project root (parent of api directory)
+project_root = Path(__file__).parent.parent
+env_path = project_root / ".env"
+load_dotenv(dotenv_path=env_path)
+logger.info(f"Environment variables loaded from .env file: {env_path}")
+
+# Log JWT secret availability for debugging
+jwt_secret = os.getenv("JWT_SECRET") or os.getenv("GILJO_MCP_SECRET_KEY") or os.getenv("SECRET_KEY")
+if jwt_secret:
+    logger.info("JWT secret key found in environment")
+else:
+    logger.error("JWT secret key NOT found in environment - authentication will fail")
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
