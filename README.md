@@ -7,12 +7,12 @@
 [![Vue 3](https://img.shields.io/badge/Vue-3.0%2B-brightgreen)](https://vuejs.org/)
 [![Security](https://img.shields.io/badge/Security-Scanned-success)](SECURITY.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![Setup Time](https://img.shields.io/badge/Setup-5%20minutes-success)]()
+[![Setup Time](https://img.shields.io/badge/Setup-6--10%20minutes-success)]()
 [![Context](https://img.shields.io/badge/Context-Unlimited-orange)]()
 
 **Break through AI context limits. Orchestrate teams of specialized AI agents.**
 
-[**5-Minute Quick Start**](#5-minute-quick-start) | [**Features**](#key-features) | [**Architecture**](#architecture-overview) | [**Documentation**](#documentation)
+[**Quick Start**](#quick-start) | [**Features**](#key-features) | [**Architecture**](#architecture-overview) | [**Documentation**](#documentation)
 
 </div>
 
