@@ -96,11 +96,31 @@ async def authenticate_websocket(
         }
 
     # Post-setup: Require credentials for ALL connections
-    # Extract credentials from query params or headers
+    # Extract credentials from query params, cookies, or headers
     token = websocket.query_params.get('token')
     api_key = websocket.query_params.get('api_key')
 
-    # Check headers if not in query params
+    # Check cookies if not in query params (PRIMARY AUTH METHOD)
+    if not token and not api_key:
+        # Extract cookies from Cookie header
+        headers = dict(websocket.headers)
+        cookie_header = headers.get('cookie', '')
+
+        # Parse access_token from cookies (httpOnly cookie set by /api/auth/login)
+        if cookie_header:
+            cookies = {}
+            for cookie in cookie_header.split(';'):
+                cookie = cookie.strip()
+                if '=' in cookie:
+                    key, value = cookie.split('=', 1)
+                    cookies[key.strip()] = value.strip()
+
+            # Get access_token from cookies
+            token = cookies.get('access_token')
+            if token:
+                logger.debug("WebSocket: Found JWT token in httpOnly cookie")
+
+    # Check Authorization header if not in cookies/query params
     if not token and not api_key:
         headers = dict(websocket.headers)
         auth_header = headers.get('authorization', '')
