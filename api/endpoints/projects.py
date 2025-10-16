@@ -113,6 +113,11 @@ async def list_projects(
 ):
     """List all projects (filtered by user's tenant)"""
     from api.app import state
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # DIAGNOSTIC: Log authentication success
+    logger.info(f"[PROJECTS] Authentication successful - User: {current_user.username}, Tenant: {current_user.tenant_key}, Role: {current_user.role}")
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")

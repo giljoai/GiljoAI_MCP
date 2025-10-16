@@ -108,11 +108,16 @@ async def get_current_user(
         >>> user.username
         'admin'
     """
+    # DIAGNOSTIC: Log incoming auth attempt
+    logger.info(f"[AUTH] get_current_user called - path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)}")
+
     # Try JWT cookie first (web users)
     if access_token:
+        logger.info("[AUTH] Attempting JWT cookie authentication")
         try:
             payload = JWTManager.verify_token(access_token)
             user_id = payload["sub"]  # Keep as string - User.id is String(36), not UUID
+            logger.info(f"[AUTH] JWT valid - user_id: {user_id}")
 
             # Query user from database
             from sqlalchemy import select
@@ -122,14 +127,14 @@ async def get_current_user(
             user = result.scalar_one_or_none()
 
             if user:
-                logger.debug(f"Authenticated via JWT: {user.username}")
+                logger.info(f"[AUTH] JWT SUCCESS - User: {user.username}, Tenant: {user.tenant_key}")
                 return user
-            logger.warning(f"JWT valid but user not found: {user_id}")
-        except HTTPException:
+            logger.warning(f"[AUTH] JWT FAILED - User not found: {user_id}")
+        except HTTPException as e:
             # Token verification failed - continue to API key check
-            logger.debug("JWT verification failed, trying API key")
+            logger.warning(f"[AUTH] JWT verification failed: {e.detail}")
         except Exception as e:
-            logger.error(f"JWT authentication error: {e}")
+            logger.error(f"[AUTH] JWT authentication error: {e}", exc_info=True)
 
     # Try API key header (MCP tools)
     if x_api_key:
@@ -164,6 +169,7 @@ async def get_current_user(
             logger.error(f"API key authentication error: {e}")
 
     # No valid authentication found
+    logger.error(f"[AUTH] FAILED - No valid authentication found (path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)})")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated. Please login or provide a valid API key.",
