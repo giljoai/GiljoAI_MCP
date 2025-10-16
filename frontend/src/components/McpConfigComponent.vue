@@ -222,7 +222,7 @@ function showSnackbar(message, color = 'success') {
 // Methods
 async function loadSupportedTools() {
   try {
-    const response = await api.get('/api/ai-tools/supported')
+    const response = await api.aiTools.getSupportedTools()
     supportedTools.value = response.data.tools.filter(tool => tool.supported)
   } catch (err) {
     console.error('[McpConfig] Failed to load supported tools:', err)
