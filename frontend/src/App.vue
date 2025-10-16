@@ -361,12 +361,13 @@ const handleLogout = async () => {
 const loadCurrentUser = async () => {
   try {
     const response = await api.auth.me()
+    console.log('[Auth] API /auth/me response:', response)
     currentUser.value = response.data
 
     // Also update user store for consistency
     userStore.currentUser = response.data
 
-    console.log('[Auth] Current user loaded:', currentUser.value.username)
+    console.log('[Auth] Current user loaded:', currentUser.value?.username)
     return true
   } catch (error) {
     // Not authenticated or error occurred
