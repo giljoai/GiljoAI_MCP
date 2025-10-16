@@ -466,8 +466,10 @@ class AuthManager:
 
         # Validate JWT token if found
         if token:
+            logger.info(f"[Network Auth] Found JWT token (length: {len(token)})")
             # Check if it's a JWT token
             token_info = self.validate_jwt_token(token)
+            logger.info(f"[Network Auth] JWT validation result: {bool(token_info)}")
             if token_info:
                 jwt_result = {
                     "authenticated": True,
@@ -508,6 +510,7 @@ class AuthManager:
                 return await self._build_api_key_result(key_info, request)
 
         # No valid credentials
+        logger.warning(f"[Network Auth] Authentication failed - no valid credentials found")
         return {"authenticated": False, "error": "Authentication required for network access"}
 
     async def _build_api_key_result(self, key_info: dict[str, Any], request: Request) -> dict[str, Any]:

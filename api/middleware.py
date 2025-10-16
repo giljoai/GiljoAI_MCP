@@ -83,8 +83,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if self._is_public_endpoint(request.url.path):
             return await call_next(request)
 
+        # DIAGNOSTIC: Log incoming request details
+        logger.info(f"[AuthMiddleware] {request.method} {request.url.path} - IP: {request.client.host if request.client else 'unknown'}")
+        logger.info(f"[AuthMiddleware] Cookie header present: {bool(request.headers.get('cookie'))}")
+        logger.info(f"[AuthMiddleware] Authorization header present: {bool(request.headers.get('authorization'))}")
+
         # Authenticate (auto-login or credentials)
         auth_result = await auth_manager.authenticate_request(request)
+
+        # DIAGNOSTIC: Log auth result
+        logger.info(f"[AuthMiddleware] Auth result: authenticated={auth_result.get('authenticated')}, user={auth_result.get('user')}, error={auth_result.get('error')}")
 
         # Set request state consistently
         request.state.authenticated = auth_result.get("authenticated", False)

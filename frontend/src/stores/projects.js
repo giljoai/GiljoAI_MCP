@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-import { API_CONFIG } from '@/config/api'
+import { api } from '@/services/api'
 
 export const useProjectStore = defineStore('projects', () => {
   // State
@@ -20,9 +19,7 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await axios.get(API_CONFIG.ENDPOINTS.projects, {
-        baseURL: API_CONFIG.REST_API.baseURL,
-      })
+      const response = await api.projects.list()
       projects.value = response.data
     } catch (err) {
       error.value = err.message
@@ -36,8 +33,7 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const url = API_CONFIG.ENDPOINTS.project.replace(':id', id)
-      const response = await axios.get(url, { baseURL: API_CONFIG.REST_API.baseURL })
+      const response = await api.projects.get(id)
       currentProject.value = response.data
 
       // Update in list if exists
@@ -57,9 +53,7 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await axios.post(API_CONFIG.ENDPOINTS.projects, projectData, {
-        baseURL: API_CONFIG.REST_API.baseURL,
-      })
+      const response = await api.projects.create(projectData)
       projects.value.push(response.data)
       return response.data
     } catch (err) {
@@ -75,8 +69,7 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const url = API_CONFIG.ENDPOINTS.project.replace(':id', id)
-      const response = await axios.patch(url, updates, { baseURL: API_CONFIG.REST_API.baseURL })
+      const response = await api.projects.update(id, updates)
 
       const index = projects.value.findIndex((p) => p.id === id)
       if (index !== -1) {
@@ -101,8 +94,7 @@ export const useProjectStore = defineStore('projects', () => {
     loading.value = true
     error.value = null
     try {
-      const url = API_CONFIG.ENDPOINTS.project.replace(':id', id)
-      await axios.delete(url, { baseURL: API_CONFIG.REST_API.baseURL })
+      await api.projects.delete(id)
 
       projects.value = projects.value.filter((p) => p.id !== id)
 
