@@ -129,7 +129,7 @@ class TestPasswordChangeEndpoint:
 
         # Token should be valid
         from src.giljo_mcp.auth.jwt_manager import JWTManager
-        payload = JWTManager.decode_access_token(response['token'])
+        payload = JWTManager.verify_token(response['token'])
         assert payload is not None
         assert payload['username'] == 'admin'
 
