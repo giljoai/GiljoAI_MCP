@@ -265,8 +265,7 @@ const { isHelpModalOpen, hideHelp, shortcuts } = useKeyboardShortcuts()
 // State
 const drawer = ref(true)
 const rail = ref(false)
-// Use computed property from store instead of local ref
-const currentUser = computed(() => userStore.currentUser)
+const currentUser = ref(null)
 
 // Navigation items - filter based on user role
 const navigationItems = computed(() => {
@@ -332,8 +331,15 @@ const getRoleColor = (role) => {
 
 const handleLogout = async () => {
   try {
-    // Use user store to handle logout
-    await userStore.logout()
+    // Call logout endpoint
+    await api.auth.logout()
+
+    // Clear any cached user state
+    currentUser.value = null
+    localStorage.removeItem('user')
+
+    // Also clear store
+    userStore.currentUser = null
 
     // Disconnect WebSocket
     wsStore.disconnect()
@@ -344,21 +350,29 @@ const handleLogout = async () => {
     console.log('[Auth] User logged out successfully')
   } catch (error) {
     console.error('[Auth] Logout failed:', error)
-    // Even if logout fails, ensure we redirect
+    // Even if logout fails, clear local state and redirect
+    currentUser.value = null
+    userStore.currentUser = null
+    localStorage.removeItem('user')
     router.push('/login')
   }
 }
 
 const loadCurrentUser = async () => {
-  // Use the user store to fetch current user
-  const success = await userStore.fetchCurrentUser()
+  try {
+    const response = await api.auth.me()
+    currentUser.value = response.data
 
-  if (success && userStore.currentUser) {
-    console.log('[Auth] Current user loaded:', userStore.currentUser.username)
+    // Also update user store for consistency
+    userStore.currentUser = response.data
+
+    console.log('[Auth] Current user loaded:', currentUser.value.username)
     return true
-  } else {
+  } catch (error) {
     // Not authenticated or error occurred
     console.log('[Auth] Not authenticated or error loading user')
+    currentUser.value = null
+    userStore.currentUser = null
     const currentRoute = router.currentRoute.value
     const requiresAuth = currentRoute ? currentRoute.meta?.requiresAuth !== false : true
 
@@ -413,8 +427,8 @@ onMounted(async () => {
   await loadCurrentUser()
 
   // Only connect WebSocket and start polling if user is authenticated
-  console.log('[Debug] Current user:', userStore.currentUser)
-  if (userStore.currentUser) {
+  console.log('[Debug] Current user:', currentUser.value)
+  if (currentUser.value) {
     // Connect WebSocket with authentication credentials
     try {
       // Cookie-based authentication: httpOnly cookie is automatically sent by browser

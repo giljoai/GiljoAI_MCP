@@ -159,7 +159,9 @@ async function handleLogin() {
   try {
     // Use user store login method - this will authenticate AND populate currentUser
     const loginSuccess = await userStore.login(username.value, password.value)
-    
+
+    console.log('[Login] After login, userStore.currentUser is:', userStore.currentUser)
+
     if (!loginSuccess) {
       error.value = 'Login failed. Please check your credentials.'
       return
