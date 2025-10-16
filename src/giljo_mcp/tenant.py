@@ -76,10 +76,6 @@ class TenantManager:
         if not tenant_key:
             return False
 
-        # Allow legacy "default" tenant key for backward compatibility
-        if tenant_key == "default":
-            return True
-
         # Check cache first
         if tenant_key in cls._validation_cache:
             return cls._validation_cache[tenant_key]

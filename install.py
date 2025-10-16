@@ -760,9 +760,13 @@ class UnifiedInstaller:
 
             from giljo_mcp.database import DatabaseManager
             from giljo_mcp.models import User, SetupState
+            from giljo_mcp.tenant import TenantManager
             from datetime import datetime, timezone
             from uuid import uuid4
             from passlib.hash import bcrypt
+
+            # Generate proper tenant key for default installation
+            default_tenant_key = TenantManager.generate_tenant_key("default_admin")
 
             # Create tables using async DatabaseManager
             async def create_tables_and_init():
@@ -788,7 +792,7 @@ class UnifiedInstaller:
                             full_name='Administrator',
                             password_hash=bcrypt.hash('admin'),
                             role='admin',
-                            tenant_key='default',
+                            tenant_key=default_tenant_key,  # Use generated tenant key
                             is_active=True,
                             created_at=datetime.now(timezone.utc)
                         )
@@ -796,14 +800,14 @@ class UnifiedInstaller:
                         await session.commit()
 
                     # Create setup_state
-                    stmt = select(SetupState).where(SetupState.tenant_key == 'default')
+                    stmt = select(SetupState).where(SetupState.tenant_key == default_tenant_key)
                     result_state = await session.execute(stmt)
                     existing_state = result_state.scalar_one_or_none()
 
                     if not existing_state:
                         setup_state = SetupState(
                             id=str(uuid4()),
-                            tenant_key='default',
+                            tenant_key=default_tenant_key,  # Use generated tenant key
                             database_initialized=True,
                             database_initialized_at=datetime.now(timezone.utc),  # REQUIRED by ck_database_initialized_at_required constraint
                             default_password_active=True,
