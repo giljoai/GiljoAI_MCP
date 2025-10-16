@@ -10,6 +10,7 @@ const routes = [
     name: 'Login',
     component: () => import('@/views/Login.vue'),
     meta: {
+      layout: 'auth',
       title: 'Login',
       showInNav: false,
       requiresAuth: false, // Public route, no auth required
@@ -22,6 +23,7 @@ const routes = [
     name: 'WelcomeSetup',
     component: () => import('@/views/WelcomeSetup.vue'),
     meta: {
+      layout: 'auth',
       title: 'Welcome to GiljoAI MCP',
       showInNav: false,
       requiresAuth: false, // Public route - first-time setup
@@ -34,6 +36,7 @@ const routes = [
     name: 'Setup',
     component: () => import('@/views/SetupWizard.vue'),
     meta: {
+      layout: 'default',
       title: 'Setup Wizard',
       showInNav: false,
       requiresSetup: false, // Skip setup check for this route
@@ -46,6 +49,7 @@ const routes = [
     name: 'Dashboard',
     component: () => import('@/views/DashboardView.vue'),
     meta: {
+      layout: 'default',
       title: 'Dashboard',
       icon: 'mdi-view-dashboard',
       showInNav: true,
@@ -56,6 +60,7 @@ const routes = [
     name: 'Products',
     component: () => import('@/views/ProductsView.vue'),
     meta: {
+      layout: 'default',
       title: 'Products',
       icon: 'mdi-package-variant',
       showInNav: true,
@@ -66,6 +71,7 @@ const routes = [
     name: 'ProductDetail',
     component: () => import('@/views/ProductDetailView.vue'),
     meta: {
+      layout: 'default',
       title: 'Product Details',
       showInNav: false,
     },
@@ -75,6 +81,7 @@ const routes = [
     name: 'Projects',
     component: () => import('@/views/ProjectsView.vue'),
     meta: {
+      layout: 'default',
       title: 'Project Management',
       icon: 'mdi-folder-multiple',
       showInNav: true,
@@ -85,6 +92,7 @@ const routes = [
     name: 'ProjectDetail',
     component: () => import('@/views/ProjectDetailView.vue'),
     meta: {
+      layout: 'default',
       title: 'Project Details',
       showInNav: false,
     },
@@ -94,6 +102,7 @@ const routes = [
     name: 'Agents',
     component: () => import('@/views/AgentsView.vue'),
     meta: {
+      layout: 'default',
       title: 'Agent Monitoring',
       icon: 'mdi-robot',
       showInNav: true,
@@ -104,6 +113,7 @@ const routes = [
     name: 'Messages',
     component: () => import('@/views/MessagesView.vue'),
     meta: {
+      layout: 'default',
       title: 'Message Center',
       icon: 'mdi-message-text',
       showInNav: true,
@@ -114,6 +124,7 @@ const routes = [
     name: 'Tasks',
     component: () => import('@/views/TasksView.vue'),
     meta: {
+      layout: 'default',
       title: 'Task Management',
       icon: 'mdi-clipboard-check',
       showInNav: true,
@@ -124,6 +135,7 @@ const routes = [
     name: 'UserSettings',
     component: () => import('@/views/UserSettings.vue'),
     meta: {
+      layout: 'default',
       title: 'My Settings',
       icon: 'mdi-cog',
       showInNav: false, // Now in profile menu, not main nav
@@ -135,6 +147,7 @@ const routes = [
     name: 'ApiKeys',
     component: () => import('@/views/ApiKeysView.vue'),
     meta: {
+      layout: 'default',
       title: 'My API Keys',
       showInNav: false, // Now in profile menu
       requiresAuth: true,
@@ -145,6 +158,7 @@ const routes = [
     name: 'SystemSettings',
     component: () => import('@/views/SystemSettings.vue'),
     meta: {
+      layout: 'default',
       title: 'System Settings',
       icon: 'mdi-cog-outline',
       showInNav: true, // Show in main nav for admins
@@ -157,6 +171,7 @@ const routes = [
     name: 'Users',
     component: () => import('@/views/UsersView.vue'),
     meta: {
+      layout: 'default',
       title: 'User Management',
       icon: 'mdi-account-multiple',
       showInNav: true,
@@ -169,6 +184,7 @@ const routes = [
     name: 'McpIntegration',
     component: () => import('@/views/McpIntegration.vue'),
     meta: {
+      layout: 'default',
       title: 'MCP Integration',
       icon: 'mdi-connection',
       showInNav: true,
@@ -181,6 +197,7 @@ const routes = [
     name: 'IntegrationsSettings',
     component: () => import('@/views/Settings/IntegrationsView.vue'),
     meta: {
+      layout: 'default',
       title: 'API & Integrations',
       showInNav: false,
       requiresAuth: true,
@@ -191,6 +208,7 @@ const routes = [
     name: 'ServerDown',
     component: () => import('@/views/ServerDownView.vue'),
     meta: {
+      layout: 'auth',
       title: 'Server Unreachable',
       showInNav: false,
       requiresAuth: false,
@@ -203,6 +221,7 @@ const routes = [
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),
     meta: {
+      layout: 'default',
       title: '404 Not Found',
       showInNav: false,
     },
@@ -219,102 +238,87 @@ router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
 
-  // Skip all checks for routes that explicitly don't require them
-  if (to.meta.requiresSetup === false && to.meta.requiresAuth === false && to.meta.requiresPasswordChange === false) {
+  // Auth routes (layout: 'auth') - allow access without authentication
+  if (to.meta.layout === 'auth') {
+    // Still need to check setup flow for auth routes
+    if (to.meta.requiresSetup !== false) {
+      try {
+        const status = await setupService.checkStatus()
+
+        // Check for default password requirement
+        if (to.meta.requiresPasswordChange !== false && status.default_password_active) {
+          if (to.path !== '/welcome') {
+            console.log('[ROUTER] Default password active, redirecting to welcome setup')
+            next('/welcome')
+            return
+          }
+        }
+
+        // If password changed but database not initialized, redirect to wizard
+        if (!status.default_password_active && !status.database_initialized && to.path !== '/setup') {
+          console.log('[ROUTER] Database not initialized, redirecting to setup wizard')
+          next('/setup')
+          return
+        }
+
+        // If on setup wizard but default password still active, redirect to password change
+        if (to.path === '/setup' && status.default_password_active) {
+          console.log('[ROUTER] Must change password before setup, redirecting to welcome setup')
+          next('/welcome')
+          return
+        }
+      } catch (error) {
+        // Network error during setup check
+        const hasCompletedSetup = localStorage.getItem('setup_completed') === 'true'
+        const hasAuthCookie = document.cookie.includes('access_token')
+
+        console.log('[ROUTER] Setup status check failed:', {
+          hasCompletedSetup,
+          hasAuthCookie,
+          targetPath: to.path,
+          errorType: error.message
+        })
+
+        // If existing installation, show server down page
+        if (hasCompletedSetup || hasAuthCookie) {
+          if (to.path !== '/server-down') {
+            console.log('[ROUTER] Existing installation detected - server unreachable, redirecting to error page')
+            next('/server-down')
+            return
+          }
+        } else {
+          // Fresh install - allow navigation to welcome/login/server-down
+          if (to.path !== '/welcome' && to.path !== '/login' && to.path !== '/server-down') {
+            console.log('[ROUTER] Fresh install detected - redirecting to welcome setup')
+            next('/welcome')
+            return
+          }
+        }
+      }
+    }
+
+    // Allow access to auth routes
     next()
     return
   }
 
-  // CRITICAL: Check setup status and password requirements
-  // Priority order: Password Change → Setup Wizard → Normal Auth
-  if (to.meta.requiresSetup !== false) {
-    try {
-      const status = await setupService.checkStatus()
-
-      // HIGHEST PRIORITY: Check for default password requirement FIRST
-      // This ensures password change happens before setup wizard
-      if (to.meta.requiresPasswordChange !== false && status.default_password_active) {
-        if (to.path !== '/change-password') {
-          console.log('[ROUTER] Default password active, redirecting to welcome setup')
-          next('/welcome')
-          return
-        }
-      }
-
-      // SECOND PRIORITY: If password has been changed, check database initialization
-      if (!status.default_password_active && !status.database_initialized && to.path !== '/setup') {
-        // Password changed but database not initialized, redirect to wizard
-        console.log('[ROUTER] Database not initialized, redirecting to setup wizard')
-        next('/setup')
-        return
-      }
-
-
-      // If on setup wizard but default password still active, redirect to password change
-      if (to.path === '/setup' && status.default_password_active) {
-        console.log('[ROUTER] Must change password before setup, redirecting to welcome setup')
-        next('/welcome')
-        return
-      }
-
-    } catch (error) {
-      // SECURITY FIX: Network errors should NOT redirect to setup screen
-      // This prevents attackers from blocking the server to trigger password reset
-
-      // Check if this is a true fresh install vs network error
-      const hasCompletedSetup = localStorage.getItem('setup_completed') === 'true'
-      const hasAuthCookie = document.cookie.includes('access_token')
-
-      console.log('[ROUTER] Setup status check failed:', {
-        hasCompletedSetup,
-        hasAuthCookie,
-        targetPath: to.path,
-        errorType: error.message
-      })
-
-      // If user has completed setup before OR has auth cookie, this is NOT a fresh install
-      // Show server down page instead of setup
-      if (hasCompletedSetup || hasAuthCookie) {
-        console.log('[ROUTER] Existing installation detected - server unreachable, redirecting to error page')
-        next('/server-down')
-        return
-      }
-
-      // Only redirect to welcome/setup if:
-      // 1. No setup completion flag
-      // 2. No auth cookie
-      // 3. Navigating to a protected route
-      if (to.path !== '/setup' && to.path !== '/login' && to.path !== '/welcome' && to.path !== '/server-down') {
-        console.log('[ROUTER] Fresh install detected - redirecting to welcome setup')
-        next('/welcome')
-        return
-      }
-
-      // If already navigating to setup, login, welcome, or server-down, allow it
-      console.log('[ROUTER] Setup status check unavailable, but navigating to', to.path)
-    }
-  }
-
-  // Get user store for role checking
+  // App routes (layout: 'default') - check authentication
   const userStore = useUserStore()
-
-  // Check authentication (AFTER setup check - only for routes that completed setup)
   const requiresAuth = to.meta.requiresAuth !== false
+
   if (requiresAuth) {
     try {
-      // Use API client to get current user (includes Bearer token from localStorage)
+      // Use API client to get current user
       const response = await api.auth.me()
-
-      // Get user data from response
       const userData = response.data
 
-      // If we don't have user data in store, set it
+      // Update user store if needed
       if (!userStore.currentUser) {
         userStore.currentUser = userData
       }
     } catch (error) {
-      // Not authenticated or network error, redirect to login
-      console.log('User not authenticated, redirecting to login')
+      // Not authenticated, redirect to login
+      console.log('[ROUTER] User not authenticated, redirecting to login')
       next({
         path: '/login',
         query: { redirect: to.fullPath },
@@ -325,7 +329,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Check admin role requirement
   if (to.meta.requiresAdmin && !userStore.isAdmin) {
-    console.log('Admin access required, redirecting to dashboard')
+    console.log('[ROUTER] Admin access required, redirecting to dashboard')
     next({ name: 'Dashboard' })
     return
   }
