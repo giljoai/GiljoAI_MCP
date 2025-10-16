@@ -300,9 +300,9 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
     """
     Get current user profile or return 401 if not authenticated.
 
-    This endpoint returns the authenticated user's profile information.
-    Uses optional authentication to avoid raising exceptions during
-    fresh installation (cleaner console output).
+    Two-Layout Pattern: Auth routes isolated in AuthLayout, app routes always require valid user.
+    This endpoint simply returns authenticated user data or 401 Unauthorized.
+    No setup mode complexity - setup state is irrelevant to authentication.
 
     Args:
         request: FastAPI request
@@ -311,27 +311,9 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
     Returns:
         User profile data if authenticated, 401 JSON response otherwise
     """
-    # Check if system is in setup mode
-    setup_mode = False
-    try:
-        config = getattr(request.app.state, "api_state", None)
-        if config:
-            config = getattr(config, "config", None)
-            if config:
-                setup_mode = getattr(config, "setup_mode", False)
-    except (AttributeError, TypeError) as e:
-        logger.warning(f"Could not check setup mode in /me endpoint: {e}")
-
-    # If in setup mode, return setup mode status
-    if setup_mode:
-        return JSONResponse(
-            status_code=200,
-            content={
-                "setup_mode": True,
-                "message": "System in setup mode - authentication not available",
-                "requires_setup": True,
-            },
-        )
+    # REMOVED: Setup mode check (lines 314-334 in original)
+    # Two-Layout Pattern eliminates need for setup mode complexity.
+    # Auth routes now isolated, app routes always require authentication.
 
     # Try to get current user (optional - doesn't raise exceptions)
     from src.giljo_mcp.auth.dependencies import get_current_user_optional
