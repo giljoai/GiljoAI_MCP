@@ -426,9 +426,10 @@ class AuthManager:
         Validate JWT token or API key for network clients.
 
         Priority:
-        1. JWT Bearer token (Authorization: Bearer <token>)
-        2. API key (X-API-Key header)
-        3. Unauthenticated (return error)
+        1. JWT token from httpOnly cookie (access_token)
+        2. JWT Bearer token (Authorization: Bearer <token>)
+        3. API key (X-API-Key header)
+        4. Unauthenticated (return error)
 
         Args:
             request: FastAPI Request object
@@ -440,11 +441,31 @@ class AuthManager:
 
         from .models import User
 
-        # Try JWT first (Bearer token)
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # Remove "Bearer " prefix
+        # Try httpOnly cookie FIRST (PRIMARY AUTH METHOD for web dashboard)
+        token = None
+        cookie_header = request.headers.get("cookie", "")
+        if cookie_header:
+            # Parse cookies from Cookie header
+            cookies = {}
+            for cookie in cookie_header.split(';'):
+                cookie = cookie.strip()
+                if '=' in cookie:
+                    key, value = cookie.split('=', 1)
+                    cookies[key.strip()] = value.strip()
 
+            # Get access_token from cookies
+            token = cookies.get('access_token')
+            if token:
+                logger.debug("REST API: Found JWT token in httpOnly cookie")
+
+        # Try Authorization header if no cookie token found
+        if not token:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]  # Remove "Bearer " prefix
+
+        # Validate JWT token if found
+        if token:
             # Check if it's a JWT token
             token_info = self.validate_jwt_token(token)
             if token_info:
