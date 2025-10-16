@@ -27,7 +27,9 @@ export const useUserStore = defineStore('user', () => {
     isLoading.value = true
     try {
       const response = await api.auth.me()
+      console.log('[UserStore] API response from /auth/me:', response.data)
       currentUser.value = response.data
+      console.log('[UserStore] Current user set to:', currentUser.value)
       return true
     } catch (error) {
       console.error('[UserStore] Failed to fetch current user:', error)
