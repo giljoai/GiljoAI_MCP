@@ -199,6 +199,18 @@ const routes = [
     },
   },
   {
+    path: '/server-down',
+    name: 'ServerDown',
+    component: () => import('@/views/ServerDownView.vue'),
+    meta: {
+      title: 'Server Unreachable',
+      showInNav: false,
+      requiresAuth: false,
+      requiresSetup: false,
+      requiresPasswordChange: false,
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue'),
@@ -269,15 +281,39 @@ router.beforeEach(async (to, from, next) => {
       }
 
     } catch (error) {
-      // SECURITY FAIL-SAFE: If setup status check fails (pristine database, API unreachable),
-      // redirect to password change modal instead of setup wizard
-      // This ensures we ALWAYS require password change on fresh install, even if status check fails
-      if (to.path !== '/setup' && to.path !== '/login' && to.path !== '/welcome') {
-        console.log('[ROUTER] Setup status check failed - assuming fresh install, redirecting to welcome setup (FAIL-SAFE)')
+      // SECURITY FIX: Network errors should NOT redirect to setup screen
+      // This prevents attackers from blocking the server to trigger password reset
+
+      // Check if this is a true fresh install vs network error
+      const hasCompletedSetup = localStorage.getItem('setup_completed') === 'true'
+      const hasAuthCookie = document.cookie.includes('access_token')
+
+      console.log('[ROUTER] Setup status check failed:', {
+        hasCompletedSetup,
+        hasAuthCookie,
+        targetPath: to.path,
+        errorType: error.message
+      })
+
+      // If user has completed setup before OR has auth cookie, this is NOT a fresh install
+      // Show server down page instead of setup
+      if (hasCompletedSetup || hasAuthCookie) {
+        console.log('[ROUTER] Existing installation detected - server unreachable, redirecting to error page')
+        next('/server-down')
+        return
+      }
+
+      // Only redirect to welcome/setup if:
+      // 1. No setup completion flag
+      // 2. No auth cookie
+      // 3. Navigating to a protected route
+      if (to.path !== '/setup' && to.path !== '/login' && to.path !== '/welcome' && to.path !== '/server-down') {
+        console.log('[ROUTER] Fresh install detected - redirecting to welcome setup')
         next('/welcome')
         return
       }
-      // If already navigating to setup, login, or welcome, allow it
+
+      // If already navigating to setup, login, welcome, or server-down, allow it
       console.log('[ROUTER] Setup status check unavailable, but navigating to', to.path)
     }
   }

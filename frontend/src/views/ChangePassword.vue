@@ -318,6 +318,9 @@ async function handleSubmit() {
       confirm_password: confirmPassword.value,
     })
 
+    // SECURITY: Mark setup as completed to prevent setup screen on network errors
+    localStorage.setItem('setup_completed', 'true')
+
     // Store JWT token if provided (backend returns "token" not "access_token")
     if (response.data?.token) {
       localStorage.setItem('auth_token', response.data.token)
@@ -327,6 +330,8 @@ async function handleSubmit() {
     if (response.data?.user) {
       localStorage.setItem('user', JSON.stringify(response.data.user))
     }
+
+    console.log('[ChangePassword] Password changed successfully - setup marked complete')
 
     // Small delay to show success
     await new Promise((resolve) => setTimeout(resolve, 300))

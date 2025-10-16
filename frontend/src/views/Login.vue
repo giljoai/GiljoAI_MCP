@@ -167,6 +167,9 @@ async function handleLogin() {
       return
     }
 
+    // SECURITY: Mark setup as completed (user successfully logged in after setup)
+    localStorage.setItem('setup_completed', 'true')
+
     // Store user data if provided (for display purposes, not auth)
     if (response.data) {
       const userData = {
@@ -185,6 +188,8 @@ async function handleLogin() {
       localStorage.removeItem('remember_me')
       localStorage.removeItem('remembered_username')
     }
+
+    console.log('[Login] Login successful - setup marked complete')
 
     // Show success message briefly
     successMessage.value = 'Login successful! Redirecting...'

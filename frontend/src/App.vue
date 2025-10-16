@@ -417,19 +417,10 @@ onMounted(async () => {
   if (currentUser.value) {
     // Connect WebSocket with authentication credentials
     try {
-      // Get auth token from localStorage for WebSocket authentication
-      const authToken = localStorage.getItem('auth_token')
-      console.log('[Debug] Auth token available:', authToken ? 'Yes' : 'No')
-      
-      // Only attempt WebSocket connection if we have a valid auth token
-      if (authToken) {
-        const wsOptions = { token: authToken }
-        await wsStore.connect(wsOptions)
-        console.log('[WebSocket] Connected successfully')
-      } else {
-        console.warn('[WebSocket] No auth token available, skipping WebSocket connection')
-        // Still continue with the rest of the initialization
-      }
+      // Cookie-based authentication: httpOnly cookie is automatically sent by browser
+      // WebSocket will use the same cookie for authentication
+      await wsStore.connect()
+      console.log('[WebSocket] Connected successfully with cookie-based auth')
 
       // Post-auth initialization: Initialize product store first
       await productStore.initializeFromStorage()
