@@ -265,7 +265,8 @@ const { isHelpModalOpen, hideHelp, shortcuts } = useKeyboardShortcuts()
 // State
 const drawer = ref(true)
 const rail = ref(false)
-const currentUser = ref(null)
+// Use computed property from store instead of local ref
+const currentUser = computed(() => userStore.currentUser)
 
 // Navigation items - filter based on user role
 const navigationItems = computed(() => {
@@ -331,12 +332,8 @@ const getRoleColor = (role) => {
 
 const handleLogout = async () => {
   try {
-    // Call logout endpoint
-    await api.auth.logout()
-
-    // Clear any cached user state
-    currentUser.value = null
-    localStorage.removeItem('user')
+    // Use user store to handle logout
+    await userStore.logout()
 
     // Disconnect WebSocket
     wsStore.disconnect()
@@ -347,24 +344,21 @@ const handleLogout = async () => {
     console.log('[Auth] User logged out successfully')
   } catch (error) {
     console.error('[Auth] Logout failed:', error)
-    // Even if logout fails, clear local state and redirect
-    currentUser.value = null
-    localStorage.removeItem('user')
+    // Even if logout fails, ensure we redirect
     router.push('/login')
   }
 }
 
 const loadCurrentUser = async () => {
-  try {
-    const response = await api.auth.me()
-    currentUser.value = response.data
+  // Use the user store to fetch current user
+  const success = await userStore.fetchCurrentUser()
 
-    console.log('[Auth] Current user loaded:', currentUser.value.username)
+  if (success) {
+    console.log('[Auth] Current user loaded:', userStore.currentUser?.username)
     return true
-  } catch (error) {
+  } else {
     // Not authenticated or error occurred
     console.log('[Auth] Not authenticated or error loading user')
-    currentUser.value = null
     const currentRoute = router.currentRoute.value
     const requiresAuth = currentRoute ? currentRoute.meta?.requiresAuth !== false : true
 
@@ -418,8 +412,8 @@ onMounted(async () => {
   await loadCurrentUser()
 
   // Only connect WebSocket and start polling if user is authenticated
-  console.log('[Debug] Current user:', currentUser.value)
-  if (currentUser.value) {
+  console.log('[Debug] Current user:', userStore.currentUser)
+  if (userStore.currentUser) {
     // Connect WebSocket with authentication credentials
     try {
       // Cookie-based authentication: httpOnly cookie is automatically sent by browser

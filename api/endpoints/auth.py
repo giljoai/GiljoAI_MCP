@@ -242,14 +242,14 @@ async def login(
         user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
     )
 
-    # Set httpOnly cookie
+    # Set httpOnly cookie (session cookie - expires on browser close)
     response.set_cookie(
         key="access_token",
         value=token,
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
-        max_age=86400,  # 24 hours
+        # NO max_age - makes it a session cookie that expires on browser close
         domain=None,  # Allow cookie to work with both localhost and network IPs
     )
 
