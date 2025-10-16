@@ -230,13 +230,25 @@ async function handlePasswordSetup() {
     })
 
     // Show success message
-    successMessage.value = 'Password set successfully! Redirecting to setup wizard...'
+    successMessage.value = 'Password set successfully! Redirecting...'
 
-    // Wait 2 seconds to allow backend to update status
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // Wait 1 second to show success message
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Force navigation to setup wizard (password change complete)
-    router.push('/setup')
+    // Check if database is initialized to decide where to redirect
+    try {
+      const status = await api.setup.status()
+      if (status.data.database_initialized) {
+        // Database ready - go to dashboard
+        router.push('/')
+      } else {
+        // Database not ready - go to setup wizard
+        router.push('/setup')
+      }
+    } catch (err) {
+      // If status check fails, try dashboard anyway (user is authenticated)
+      router.push('/')
+    }
   } catch (err) {
     // Handle specific error types with user-friendly messages
     if (err.response?.status === 401) {
