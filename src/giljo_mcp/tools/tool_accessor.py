@@ -86,14 +86,18 @@ class ToolAccessor:
             logger.exception(f"Failed to create project: {e}")
             return {"success": False, "error": str(e)}
 
-    async def list_projects(self, status: Optional[str] = None) -> dict[str, Any]:
-        """List all projects with optional status filter"""
+    async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
+        """List all projects with optional status filter and tenant filtering"""
         try:
-            tenant_key = self.tenant_manager.get_current_tenant()
+            # Use provided tenant_key or get from context
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+
             if not tenant_key:
                 return {"success": False, "error": "No tenant context available"}
 
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
+                # TENANT ISOLATION: Only return projects for the specified tenant
                 query = select(Project).where(Project.tenant_key == tenant_key)
                 if status:
                     query = query.where(Project.status == status)

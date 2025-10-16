@@ -186,51 +186,20 @@ class JWTManager:
     @classmethod
     def decode_token_no_verify(cls, token: str) -> Dict:
         """
-        Decode JWT token without verification (for debugging only).
+        Decode JWT token without verification (for debugging/testing only).
 
         WARNING: Do NOT use for authentication - this does not verify signature!
+        Use verify_token() for production authentication.
 
         Args:
             token: JWT token string to decode
 
         Returns:
             Decoded payload (unverified)
+
+        Example:
+            >>> token = JWTManager.create_access_token(...)
+            >>> payload = JWTManager.decode_token_no_verify(token)
+            >>> payload["exp"]  # Check expiration claim in tests
         """
         return jwt.decode(token, options={"verify_signature": False})
-
-    @classmethod
-    def get_token_expiry(cls, token: str) -> datetime:
-        """
-        Get expiration time from token.
-
-        Args:
-            token: JWT token string
-
-        Returns:
-            Expiration datetime (UTC)
-
-        Raises:
-            HTTPException: If token is invalid
-        """
-        payload = cls.verify_token(token)
-        exp_timestamp = payload.get("exp")
-        if not exp_timestamp:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing expiration claim")
-        return datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
-
-    @classmethod
-    def is_token_expired(cls, token: str) -> bool:
-        """
-        Check if token is expired without raising exception.
-
-        Args:
-            token: JWT token string
-
-        Returns:
-            True if expired, False if still valid
-        """
-        try:
-            cls.verify_token(token)
-            return False
-        except HTTPException as e:
-            return "expired" in str(e.detail).lower()
