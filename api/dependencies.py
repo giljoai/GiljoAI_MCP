@@ -27,8 +27,9 @@ async def get_tenant_key(request: Request) -> str:
     if hasattr(state, "api_state") and hasattr(state.api_state, "config"):
         setup_mode = getattr(state.api_state.config, "setup_mode", False)
         if setup_mode:
-            # In setup mode, just return default without validation
-            return "default"
+            # In setup mode, use environment variable or proper default tenant key
+            default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+            return default_tenant
 
     # For OPTIONS requests (CORS preflight), return default tenant without validation
     # OPTIONS requests should not fail due to missing tenant context
