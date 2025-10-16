@@ -183,8 +183,8 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
     try:
         from src.giljo_mcp.auth.jwt_manager import JWTManager
 
-        # Decode and validate token
-        payload = JWTManager.validate_access_token(token)
+        # Decode and validate token (correct method name: verify_token)
+        payload = JWTManager.verify_token(token)
         if not payload:
             return None
 
