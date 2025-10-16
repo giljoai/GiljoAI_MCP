@@ -72,11 +72,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # In setup mode, allow additional endpoints that setup wizard needs
         if setup_mode and self._is_setup_allowed_endpoint(request.url.path):
             # Set minimal request state for setup mode
+            import os
             request.state.authenticated = True
             request.state.user_id = "setup-mode"
             request.state.user = None
             request.state.is_auto_login = True
-            request.state.tenant_key = "default"
+            request.state.tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
             return await call_next(request)
 
         # Public endpoints bypass auth
@@ -99,10 +100,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         if auth_result.get("authenticated"):
             # Always set both user_id (string) and user (object if available)
+            import os
             request.state.user_id = auth_result.get("user_id") or auth_result.get("user")
             request.state.user = auth_result.get("user_obj")  # User object or None
             request.state.is_auto_login = auth_result.get("is_auto_login", False)
-            request.state.tenant_key = auth_result.get("tenant_key", "default")
+            request.state.tenant_key = auth_result.get("tenant_key", os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd"))
         else:
             # Auth failed - return 401
             return JSONResponse(
