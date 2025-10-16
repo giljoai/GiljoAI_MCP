@@ -335,7 +335,10 @@ src/giljo_mcp/
 frontend/
 ├── src/
 │   ├── main.js            # Application entry point
-│   ├── App.vue            # Root component
+│   ├── App.vue            # Root component (layout router)
+│   ├── layouts/           # ✨ TWO-LAYOUT PATTERN (2025-10-16)
+│   │   ├── AuthLayout.vue # Minimal layout for auth routes
+│   │   └── DefaultLayout.vue # Full app layout with navigation
 │   ├── router/            # Vue Router configuration
 │   │   └── index.js       # Route definitions + auth guards
 │   ├── stores/            # Pinia state management
@@ -365,6 +368,72 @@ frontend/
 ├── index.html             # HTML template
 └── package.json           # NPM dependencies
 ```
+
+### Two-Layout Authentication Pattern (SaaS-Ready Architecture)
+
+**Implementation Date**: 2025-10-16
+**Devlog**: [docs/devlog/20251016_two_layout_auth_pattern_implementation.md](devlog/20251016_two_layout_auth_pattern_implementation.md)
+
+GiljoAI MCP implements an industry-standard Two-Layout Pattern that separates authentication routes from application routes, providing:
+- **Clean separation of concerns** between auth and app contexts
+- **Scalable SaaS architecture** suitable for multi-tenant deployments
+- **Consistent authentication flow** across localhost, LAN, and WAN
+- **Professional user experience** with zero visual artifacts
+
+**Architecture Overview**:
+```
+App.vue (58 lines - layout router)
+├── AuthLayout.vue (Minimal)
+│   ├── /welcome → WelcomeSetup.vue
+│   └── /login → Login.vue
+│   └── Features:
+│       • No navigation components (AppBar, NavigationDrawer)
+│       • No user data loading (happens in DefaultLayout)
+│       • Just <router-view /> for auth pages
+│       • Auth pages handle their own full-page layout
+│
+└── DefaultLayout.vue (Full Application)
+    ├── /dashboard → Dashboard.vue
+    ├── /projects → Projects.vue
+    ├── /settings → Settings.vue
+    └── Features:
+        • AppBar with user menu
+        • NavigationDrawer with app navigation
+        • User data loading on mount (only for app routes)
+        • Automatic user reload after login navigation
+        • Passes currentUser to child components via <router-view>
+```
+
+**Router Metadata Configuration**:
+```javascript
+// Authentication routes use AuthLayout
+{
+  path: '/login',
+  meta: { layout: 'auth', requiresAuth: false }
+}
+
+// Application routes use DefaultLayout
+{
+  path: '/dashboard',
+  meta: { layout: 'default', requiresAuth: true }
+}
+```
+
+**Layout Selection Logic**:
+```javascript
+// App.vue - Dynamic layout component
+const layout = computed(() => {
+  return route.meta.layout === 'auth' ? AuthLayout : DefaultLayout
+})
+```
+
+**Benefits**:
+- **90% code reduction** in App.vue (537 lines → 58 lines)
+- **Zero setup mode complexity** - eliminated from frontend routing
+- **User data loading** only when needed (app routes, not auth routes)
+- **Future-ready** for tenant-specific layouts and white-labeling
+
+**Code Reference**: `frontend/src/layouts/`, `frontend/src/App.vue`, `frontend/src/router/index.js`
 
 **Real-time Updates**:
 ```javascript
