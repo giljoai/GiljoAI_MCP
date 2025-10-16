@@ -196,6 +196,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { API_CONFIG } from '@/config/api'
+import api from '@/services/api'
 import {
   generateClaudeCodeConfig,
   generateCodexConfig,
@@ -217,14 +218,8 @@ const showApiKeyWarning = ref(false)
 // Methods
 async function loadSupportedTools() {
   try {
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/ai-tools/supported`)
-
-    if (!response.ok) {
-      throw new Error('Failed to load supported tools')
-    }
-
-    const data = await response.json()
-    supportedTools.value = data.tools.filter(tool => tool.supported)
+    const response = await api.aiTools.getSupportedTools()
+    supportedTools.value = response.data.tools.filter(tool => tool.supported)
   } catch (err) {
     console.error('[AIToolSetup] Failed to load supported tools:', err)
     error.value = 'Failed to load supported tools. Please try again.'

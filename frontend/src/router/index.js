@@ -30,18 +30,6 @@ const routes = [
     },
   },
   {
-    path: '/change-password',
-    name: 'ChangePassword',
-    component: () => import('@/views/ChangePassword.vue'),
-    meta: {
-      title: 'Change Default Password',
-      showInNav: false,
-      requiresAuth: false, // Allow access without auth - first-time setup
-      requiresSetup: false, // Skip setup check for this route
-      requiresPasswordChange: false, // Skip password change check for this route
-    },
-  },
-  {
     path: '/setup',
     name: 'Setup',
     component: () => import('@/views/SetupWizard.vue'),
@@ -261,17 +249,6 @@ router.beforeEach(async (to, from, next) => {
         return
       }
 
-      // If password has been changed and user is on change-password page, redirect to setup or dashboard
-      if (to.path === '/change-password' && !status.default_password_active) {
-        if (!status.database_initialized) {
-          console.log('[ROUTER] Password changed, redirecting to setup wizard')
-          next('/setup')
-        } else {
-          console.log('[ROUTER] Password already changed and database initialized, redirecting to dashboard')
-          next('/')
-        }
-        return
-      }
 
       // If on setup wizard but default password still active, redirect to password change
       if (to.path === '/setup' && status.default_password_active) {

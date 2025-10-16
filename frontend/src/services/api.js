@@ -235,6 +235,19 @@ export const api = {
     create: (name) => apiClient.post('/api/auth/api-keys', { name }),
     delete: (keyId) => apiClient.delete(`/api/auth/api-keys/${keyId}`),
   },
+
+  // AI Tools Integration
+  aiTools: {
+    getSupportedTools: () => apiClient.get('/api/ai-tools/supported'),
+    generateConfig: (toolName) => apiClient.get(`/api/ai-tools/config-generator/${toolName}`),
+    downloadSetupGuide: (toolName) => apiClient.get(`/api/ai-tools/config-generator/${toolName}/markdown`),
+  },
+
+  // Serena MCP Integration
+  serena: {
+    getStatus: () => apiClient.get('/api/serena/status'),
+    toggle: (enabled) => apiClient.post('/api/serena/toggle', { enabled }),
+  },
 }
 
 export default api

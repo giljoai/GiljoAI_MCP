@@ -121,12 +121,14 @@ import { ref, onMounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
+import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 
 // Composables
 const router = useRouter()
 const route = useRoute()
 const theme = useTheme()
+const userStore = useUserStore()
 
 // State
 const username = ref('')
@@ -155,30 +157,23 @@ async function handleLogin() {
   error.value = ''
 
   try {
-    // POST to /api/auth/login with credentials
-    // The backend sets an httpOnly cookie named 'access_token' automatically
-    // We don't need to store it in localStorage - the browser handles it
-    const response = await api.auth.login(username.value, password.value)
+    // Use user store login method - this will authenticate AND populate currentUser
+    const loginSuccess = await userStore.login(username.value, password.value)
+    
+    if (!loginSuccess) {
+      error.value = 'Login failed. Please check your credentials.'
+      return
+    }
 
-    // Check if password change is required (v3.0 unified auth)
-    if (response.data?.password_change_required) {
-      // Redirect to password change page
-      router.push('/change-password')
+    // Check if password change is required (check from currentUser if available)
+    if (userStore.currentUser?.password_change_required) {
+      // Redirect to welcome page for password setup
+      router.push('/welcome')
       return
     }
 
     // SECURITY: Mark setup as completed (user successfully logged in after setup)
     localStorage.setItem('setup_completed', 'true')
-
-    // Store user data if provided (for display purposes, not auth)
-    if (response.data) {
-      const userData = {
-        username: response.data.username,
-        role: response.data.role,
-        tenant_key: response.data.tenant_key
-      }
-      localStorage.setItem('user', JSON.stringify(userData))
-    }
 
     // Store remember me preference
     if (rememberMe.value) {
@@ -208,8 +203,8 @@ async function handleLogin() {
       if (detail.toLowerCase().includes('inactive')) {
         error.value = 'Account is inactive. Please contact your administrator.'
       } else if (detail.toLowerCase().includes('must_change_password') || detail.toLowerCase().includes('change password')) {
-        // Redirect to password change page
-        router.push('/change-password')
+        // Redirect to welcome page for password setup
+        router.push('/welcome')
         return
       } else {
         error.value = 'Invalid username or password'
@@ -217,8 +212,8 @@ async function handleLogin() {
     } else if (err.response?.status === 403) {
       const detail = err.response?.data?.detail || ''
       if (detail.toLowerCase().includes('must_change_password') || detail.toLowerCase().includes('change password')) {
-        // Redirect to password change page
-        router.push('/change-password')
+        // Redirect to welcome page for password setup
+        router.push('/welcome')
         return
       }
       error.value = 'Access forbidden. Please contact your administrator.'
@@ -243,6 +238,11 @@ async function handleLogin() {
 
 // Check if already authenticated on mount
 onMounted(async () => {
+  // Check for password change success message
+  if (route.query.passwordChanged === 'true') {
+    successMessage.value = 'Password changed successfully! Please log in with your new credentials.'
+  }
+
   // Restore remembered username if available
   const rememberedUsername = localStorage.getItem('remembered_username')
   const rememberMeFlag = localStorage.getItem('remember_me')

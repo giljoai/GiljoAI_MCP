@@ -358,17 +358,13 @@ const loadCurrentUser = async () => {
   try {
     const response = await api.auth.me()
     currentUser.value = response.data
-    
-    // Also update user store for consistency
-    userStore.currentUser = response.data
-    
+
     console.log('[Auth] Current user loaded:', currentUser.value.username)
     return true
   } catch (error) {
     // Not authenticated or error occurred
     console.log('[Auth] Not authenticated or error loading user')
     currentUser.value = null
-    userStore.currentUser = null
     const currentRoute = router.currentRoute.value
     const requiresAuth = currentRoute ? currentRoute.meta?.requiresAuth !== false : true
 
@@ -387,6 +383,15 @@ const loadCurrentUser = async () => {
 
 // Lifecycle
 let messagePollingInterval = null
+
+// Watch for route changes to reload user after login
+router.afterEach(async (to, from) => {
+  // If navigating to dashboard from login or welcome, reload current user
+  if (to.path === '/' && (from.path === '/login' || from.path === '/welcome')) {
+    console.log('[App] Navigated from auth page to dashboard, reloading user')
+    await loadCurrentUser()
+  }
+})
 
 onMounted(async () => {
   // Prevent transitions on initial load
