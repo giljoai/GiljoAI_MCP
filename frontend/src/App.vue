@@ -353,8 +353,8 @@ const loadCurrentUser = async () => {
   // Use the user store to fetch current user
   const success = await userStore.fetchCurrentUser()
 
-  if (success) {
-    console.log('[Auth] Current user loaded:', userStore.currentUser?.username)
+  if (success && userStore.currentUser) {
+    console.log('[Auth] Current user loaded:', userStore.currentUser.username)
     return true
   } else {
     // Not authenticated or error occurred
@@ -380,9 +380,10 @@ let messagePollingInterval = null
 
 // Watch for route changes to reload user after login
 router.afterEach(async (to, from) => {
-  // If navigating to dashboard from login or welcome, reload current user
-  if (to.path === '/' && (from.path === '/login' || from.path === '/welcome')) {
-    console.log('[App] Navigated from auth page to dashboard, reloading user')
+  // Only reload user when navigating to dashboard from login (not from welcome)
+  // This prevents the flash issue where user data gets nullified during redirect
+  if (to.path === '/' && from.path === '/login') {
+    console.log('[App] Navigated from login to dashboard, reloading user')
     await loadCurrentUser()
   }
 })
