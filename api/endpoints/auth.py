@@ -708,28 +708,14 @@ async def change_password(
 
     await db.commit()
 
-    # Generate JWT token for immediate login
-    token = JWTManager.create_access_token(
-        user_id=admin_user.id, username=admin_user.username, role=admin_user.role, tenant_key=admin_user.tenant_key
-    )
-
-    # Set httpOnly cookie for immediate login (same as /login endpoint)
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        secure=False,  # Set to True in production with HTTPS
-        samesite="lax",
-        max_age=86400,  # 24 hours
-        domain=None,  # Allow cookie to work with both localhost and network IPs
-    )
-
     logger.info(f"Password changed successfully for user: {admin_user.username}")
 
+    # Don't set cookie or return token - force proper login
+    # This ensures user data is properly loaded after authentication
     return PasswordChangeResponse(
         success=True,
-        message="Password changed successfully",
-        token=token,
+        message="Password changed successfully. Please login with your new credentials.",
+        token="",  # No token - must login
         user={
             "id": str(admin_user.id),
             "username": admin_user.username,
