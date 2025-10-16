@@ -106,8 +106,8 @@
           <!-- Footer Info -->
           <v-card-text class="text-center pa-4">
             <p class="text-caption text-medium-emphasis">
-              <v-icon size="small" class="mr-1">mdi-information</v-icon>
-              Localhost mode (127.0.0.1) bypasses authentication
+              <v-icon size="small" class="mr-1">mdi-shield-lock</v-icon>
+              Authentication required for all connections
             </p>
           </v-card-text>
         </v-card>
@@ -252,17 +252,9 @@ onMounted(async () => {
     rememberMe.value = true
   }
 
-  try {
-    // Try to access a protected endpoint to check if already logged in
-    await api.auth.me()
-
-    // If successful, user is already authenticated, redirect to dashboard
-    const redirect = route.query.redirect || '/'
-    router.push(redirect)
-  } catch (err) {
-    // Not authenticated, stay on login page
-    console.log('User not authenticated, showing login page')
-  }
+  // REMOVED: Auto-login check
+  // Always require manual login - no automatic authentication
+  console.log('[Login] Manual login required - no auto-authentication')
 })
 </script>
 
