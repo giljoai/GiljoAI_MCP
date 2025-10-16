@@ -312,14 +312,25 @@ async def get_setup_status(request: Request = None):
                         if setup_state_db:
                             # Found setup_state - use its value
                             default_password_active = setup_state_db.default_password_active
+                            logger.debug(f"SetupState found - default_password_active: {default_password_active}")
                         else:
-                            # No setup state in DB yet - assume default password active if admin user exists
+                            # No setup state in DB yet - check if admin user exists with default password
                             from src.giljo_mcp.models import User
+                            from passlib.hash import bcrypt
+
                             stmt_user = select(User).where(User.username == 'admin')
                             result_user = await session.execute(stmt_user)
                             admin_user = result_user.scalar_one_or_none()
-                            # If admin user exists, password change required; if not, also require it (pristine DB)
-                            default_password_active = True  # Always True until password is changed
+
+                            if admin_user:
+                                # Check if password is still 'admin' (default)
+                                is_default_password = bcrypt.verify('admin', admin_user.password_hash)
+                                default_password_active = is_default_password
+                                logger.debug(f"No SetupState - checking admin password: default={is_default_password}")
+                            else:
+                                # No admin user yet - pristine DB, password change required
+                                default_password_active = True
+                                logger.debug("No SetupState, no admin user - default_password_active: True")
         except Exception as e:
             logger.warning(f"Failed to check default password status: {e}")
             # SECURITY: Default to True (force password change on error - fail-safe)
