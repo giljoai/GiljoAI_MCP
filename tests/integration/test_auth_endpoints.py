@@ -385,37 +385,30 @@ async def test_jwt_token_expiry(test_client: AsyncClient, test_user: User):
 
 
 @pytest.mark.asyncio
-async def test_get_me_setup_mode(test_client: AsyncClient):
-    """Test /me endpoint returns setup mode status when in setup mode."""
-    from api.app import app
+async def test_get_me_no_setup_mode_response(test_client: AsyncClient):
+    """
+    Test /me endpoint does NOT return setup mode status (Two-Layout Pattern).
 
-    # Mock the config to enable setup mode
-    api_state = app.state.api_state
-    original_setup_mode = api_state.config.setup_mode
+    This test verifies Phase 3 of the Two-Layout Pattern implementation:
+    /api/auth/me no longer checks setup mode and always returns 401 when not authenticated.
 
-    try:
-        # Enable setup mode
-        api_state.config.setup_mode = True
+    Previously, the endpoint returned {"setup_mode": true, ...} when setup mode was active.
+    Now, it simply returns 401 Unauthorized, regardless of setup state.
+    """
+    # Call /me endpoint without authentication
+    response = await test_client.get("/api/auth/me")
 
-        # Call /me endpoint
-        response = await test_client.get("/api/auth/me")
+    # Two-Layout Pattern: Should return 401 (not 200 with setup mode status)
+    assert response.status_code == 401
+    data = response.json()
 
-        # Should return 200 with setup mode status (not 401)
-        assert response.status_code == 200
-        data = response.json()
+    # Verify clean 401 response
+    assert "detail" in data
+    assert "Not authenticated" in data["detail"]
 
-        # Verify setup mode response format
-        assert data.get("setup_mode") is True
-        assert "setup" in data.get("message", "").lower()
-        assert data.get("requires_setup") is True
-
-        # Should NOT return user profile fields
-        assert "username" not in data
-        assert "role" not in data
-
-    finally:
-        # Restore original setup mode
-        api_state.config.setup_mode = original_setup_mode
+    # CRITICAL: Should NOT return setup mode fields
+    assert "setup_mode" not in data
+    assert "requires_setup" not in data
 
 
 # Fixtures
