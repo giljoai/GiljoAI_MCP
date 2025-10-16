@@ -556,7 +556,10 @@ async def register_user(
 
 @router.post("/change-password", response_model=PasswordChangeResponse, tags=["auth"])
 async def change_password(
-    request_body: PasswordChangeRequest = Body(...), request: Request = None, db: AsyncSession = Depends(get_db_session)
+    request_body: PasswordChangeRequest = Body(...),
+    response: Response = None,
+    request: Request = None,
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Change password from default admin/admin.
@@ -646,6 +649,17 @@ async def change_password(
     # Generate JWT token for immediate login
     token = JWTManager.create_access_token(
         user_id=admin_user.id, username=admin_user.username, role=admin_user.role, tenant_key=admin_user.tenant_key
+    )
+
+    # Set httpOnly cookie for immediate login (same as /login endpoint)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=86400,  # 24 hours
+        domain=None,  # Allow cookie to work with both localhost and network IPs
     )
 
     logger.info(f"Password changed successfully for user: {admin_user.username}")
