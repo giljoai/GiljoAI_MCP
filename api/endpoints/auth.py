@@ -595,6 +595,19 @@ async def change_password(
     if not admin_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found")
 
+    # SECURITY: Check if setup already completed (defense-in-depth)
+    # This prevents attackers from accessing /welcome directly to trigger password reset
+    stmt_setup = select(SetupState).where(SetupState.tenant_key == admin_user.tenant_key)
+    result_setup = await db.execute(stmt_setup)
+    setup_state = result_setup.scalar_one_or_none()
+
+    if setup_state and not setup_state.default_password_active:
+        logger.warning(f"Password change attempt after setup completed (user: {admin_user.username})")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Setup already completed. Password can only be changed during initial setup. Use 'Change Password' in user settings instead."
+        )
+
     # Verify current password
     if not bcrypt.verify(request_body.current_password, admin_user.password_hash):
         logger.warning("Password change failed: incorrect current password")
