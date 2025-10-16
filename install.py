@@ -768,6 +768,9 @@ class UnifiedInstaller:
             # Generate proper tenant key for default installation
             default_tenant_key = TenantManager.generate_tenant_key("default_admin")
 
+            # Store tenant key in instance variable for .env generation
+            self.default_tenant_key = default_tenant_key
+
             # Create tables using async DatabaseManager
             async def create_tables_and_init():
                 db_manager = DatabaseManager(db_url, is_async=True)
@@ -920,6 +923,7 @@ class UnifiedInstaller:
                 'install_dir': str(self.install_dir),
                 'owner_password': self.database_credentials.get('owner_password'),
                 'user_password': self.database_credentials.get('user_password'),
+                'default_tenant_key': getattr(self, 'default_tenant_key', 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'),  # Pass generated tenant key
                 'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
             }
 
