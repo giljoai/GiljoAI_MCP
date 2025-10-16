@@ -28,6 +28,7 @@ Handovers enable seamless task delegation between development agents/sessions by
 
 **Not Started:**
 - [`0001_HANDOVER_20251012_REMOVE_DYNAMIC_IP_DETECTION.md`](0001_HANDOVER_20251012_REMOVE_DYNAMIC_IP_DETECTION.md) - Priority: High
+- [`0023_HANDOVER_20251015_PASSWORD_RESET_FUNCTIONALITY.md`](0023_HANDOVER_20251015_PASSWORD_RESET_FUNCTIONALITY.md) - **AWAITING USER DECISIONS** - Password reset feature (design decisions required)
 
 **In Progress:**
 - None
