@@ -8,8 +8,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.dependencies import get_tenant_key
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.models import User
 
 router = APIRouter()
 
@@ -43,7 +45,11 @@ class ProjectResponse(BaseModel):
 
 
 @router.post("/", response_model=ProjectResponse)
-async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_tenant_key)):
+async def create_project(
+    project: ProjectCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
     """Create a new project"""
     from api.app import state
 
@@ -55,9 +61,9 @@ async def create_project(project: ProjectCreate, tenant_key: str = Depends(get_t
         # Create project in database
         str(uuid.uuid4())
 
-        # Use the tool accessor, passing the tenant_key from the request header
+        # Use the tool accessor, passing the tenant_key from the authenticated user
         result = await state.tool_accessor.create_project(
-            name=project.name, mission=project.mission, agents=project.agents, product_id=project.product_id, tenant_key=tenant_key
+            name=project.name, mission=project.mission, agents=project.agents, product_id=project.product_id, tenant_key=current_user.tenant_key
         )
 
         if not result.get("success"):
@@ -102,9 +108,10 @@ async def list_projects(
     status: Optional[str] = Query(None, description="Filter by status"),
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
-    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
 ):
-    """List all projects"""
+    """List all projects (filtered by user's tenant)"""
     from api.app import state
 
     if not state.db_manager:
@@ -112,7 +119,8 @@ async def list_projects(
 
     try:
 
-        result = await state.tool_accessor.list_projects(status=status)
+        # TENANT ISOLATION: Only return projects for user's tenant
+        result = await state.tool_accessor.list_projects(status=status, tenant_key=current_user.tenant_key)
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to list projects"))  # noqa: TRY301
 
