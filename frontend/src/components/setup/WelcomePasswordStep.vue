@@ -230,13 +230,13 @@ async function handlePasswordSetup() {
     })
 
     // Show success message
-    successMessage.value = 'Password set successfully! Redirecting to dashboard...'
+    successMessage.value = 'Password set successfully! Redirecting to setup wizard...'
 
-    // Wait 1 second to show success message
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Wait 2 seconds to allow backend to update status
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    // Redirect to dashboard (user is now logged in with cookie)
-    router.push('/')
+    // Force navigation to setup wizard (password change complete)
+    router.push('/setup')
   } catch (err) {
     // Handle specific error types with user-friendly messages
     if (err.response?.status === 401) {
