@@ -71,6 +71,18 @@ class UserProfileResponse(BaseModel):
     created_at: str
     last_login: Optional[str]
 
+class UserListResponse(BaseModel):
+    """User list response for tenant users"""
+    
+    id: str
+    username: str
+    email: Optional[str]
+    full_name: Optional[str]
+    role: str
+    is_active: bool
+    created_at: str
+    last_login: Optional[str]
+
 
 class APIKeyResponse(BaseModel):
     """API key response (masked for security)"""
@@ -478,6 +490,56 @@ async def revoke_api_key(
 
     return APIKeyRevokeResponse(id=str(api_key.id), name=api_key.name, message="API key revoked successfully")
 
+
+
+@router.get("/users", response_model=List[UserListResponse], tags=["auth"])
+async def list_users(
+    current_user: User = Depends(get_current_active_user), 
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    List all users in the current tenant (admin only).
+    
+    This endpoint returns all users in the same tenant as the authenticated user.
+    Only admins can list users.
+    
+    Args:
+        current_user: User from JWT token (dependency)
+        db: Database session
+        
+    Returns:
+        List of users in the tenant
+        
+    Raises:
+        HTTPException: 403 if user is not admin
+    """
+    # Check if user is admin
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Admin access required"
+        )
+    
+    # Query users in the same tenant
+    stmt = select(User).where(
+        User.tenant_key == current_user.tenant_key
+    ).order_by(User.created_at.desc())
+    result = await db.execute(stmt)
+    users = result.scalars().all()
+    
+    return [
+        UserListResponse(
+            id=str(user.id),
+            username=user.username,
+            email=user.email,
+            full_name=user.full_name,
+            role=user.role,
+            is_active=user.is_active,
+            created_at=user.created_at.isoformat(),
+            last_login=user.last_login.isoformat() if user.last_login else None,
+        )
+        for user in users
+    ]
 
 @router.post("/register", response_model=RegisterUserResponse, status_code=status.HTTP_201_CREATED, tags=["auth"])
 async def register_user(

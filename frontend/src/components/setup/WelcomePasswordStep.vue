@@ -235,8 +235,12 @@ async function handlePasswordSetup() {
     // Wait 2 seconds to show success message
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
+    // Clear any cached auth state for clean login flow
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user')
+
     // Redirect to login page - user will validate new credentials
-    router.push('/login')
+    router.push('/login?passwordChanged=true')
   } catch (err) {
     // Handle specific error types with user-friendly messages
     if (err.response?.status === 401) {

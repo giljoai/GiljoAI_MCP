@@ -265,18 +265,12 @@ class SetupService {
    * @returns {Promise<{success: boolean, enabled: boolean, message?: string}>}
    */
   async toggleSerena(enabled) {
+    // Import API here to avoid circular dependency
+    const { default: api } = await import('@/services/api')
+    
     try {
-      const response = await fetch(`${this.baseURL}/api/serena/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      return response.json()
+      const response = await api.serena.toggle(enabled)
+      return response.data
     } catch (error) {
       console.error('[SETUP_SERVICE] Serena toggle failed:', error)
       throw error
@@ -288,14 +282,12 @@ class SetupService {
    * @returns {Promise<{enabled: boolean}>}
    */
   async getSerenaStatus() {
+    // Import API here to avoid circular dependency
+    const { default: api } = await import('@/services/api')
+    
     try {
-      const response = await fetch(`${this.baseURL}/api/serena/status`)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      return response.json()
+      const response = await api.serena.getStatus()
+      return response.data
     } catch (error) {
       console.error('[SETUP_SERVICE] Serena status check failed:', error)
       throw error
