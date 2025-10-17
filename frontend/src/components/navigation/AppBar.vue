@@ -78,11 +78,20 @@
               <v-list-item-title>My Settings</v-list-item-title>
             </v-list-item>
 
-            <v-list-item :to="{ name: 'ApiKeys' }">
+            <!-- Admin Settings - Only visible to admin users -->
+            <v-list-item v-if="currentUser && currentUser.role === 'admin'" :to="{ name: 'SystemSettings' }">
               <template v-slot:prepend>
-                <v-icon>mdi-key-variant</v-icon>
+                <v-icon color="error">mdi-cog</v-icon>
               </template>
-              <v-list-item-title>My API Keys</v-list-item-title>
+              <v-list-item-title>Admin Settings</v-list-item-title>
+            </v-list-item>
+
+            <!-- Users Management - Only visible to admin users -->
+            <v-list-item v-if="currentUser && currentUser.role === 'admin'" :to="{ name: 'Users' }">
+              <template v-slot:prepend>
+                <v-icon color="error">mdi-account-multiple</v-icon>
+              </template>
+              <v-list-item-title>Users</v-list-item-title>
             </v-list-item>
 
             <v-divider />
