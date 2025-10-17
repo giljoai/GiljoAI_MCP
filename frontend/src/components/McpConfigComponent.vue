@@ -6,16 +6,125 @@
     </v-card-title>
 
     <v-card-text class="pt-6">
-      <!-- Tool Selection -->
-      <v-alert type="info" variant="tonal" class="mb-6">
-        <div class="d-flex align-center">
-          <v-icon start>mdi-information</v-icon>
+      <!-- NEW: Universal Agent Configuration Section -->
+      <v-card class="mb-6" variant="outlined" style="border: 2px solid var(--v-theme-primary);">
+        <v-card-title class="d-flex align-center bg-primary text-white">
+          <v-icon start size="large">mdi-robot-excited</v-icon>
           <div>
-            Generate configuration for your AI tool to connect to this GiljoAI MCP server.
-            Copy and paste the configuration, or download a complete setup guide.
+            <div class="text-h6">🚀 Let Your AI Tool Configure Itself</div>
+            <div class="text-subtitle-2 opacity-90">
+              Works with Claude Code, Codex, Gemini, Cursor, and more
+            </div>
           </div>
-        </div>
-      </v-alert>
+        </v-card-title>
+        
+        <v-card-text>
+          <v-alert type="success" variant="tonal" class="mb-4">
+            <v-alert-title>Revolutionary Approach</v-alert-title>
+            <div class="mt-2">
+              Instead of manual configuration, your AI tool can visit a special URL 
+              and configure itself automatically. This works with ANY AI coding tool!
+            </div>
+          </v-alert>
+
+          <p class="text-body-1 mb-3">
+            <strong>Copy this instruction</strong> and send it to your AI coding tool:
+          </p>
+
+          <v-card variant="outlined" class="pa-3 mb-3">
+            <div class="d-flex justify-space-between align-center mb-2">
+              <span class="text-caption text-medium-emphasis">Universal AI Instruction</span>
+              <v-btn 
+                @click="copyAgentInstruction" 
+                :color="agentInstructionCopied ? 'success' : 'primary'"
+                size="small"
+                variant="elevated"
+              >
+                <v-icon start>{{ agentInstructionCopied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+                {{ agentInstructionCopied ? 'Copied!' : 'Copy Instruction' }}
+              </v-btn>
+            </div>
+            
+            <div class="agent-instruction-text">
+              {{ agentInstruction }}
+            </div>
+          </v-card>
+
+          <v-expansion-panels class="mb-4">
+            <v-expansion-panel>
+              <v-expansion-panel-title>
+                <v-icon start>mdi-help-circle</v-icon>
+                How This Works
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <ol class="ml-4">
+                  <li class="mb-2">
+                    <strong>Send the instruction</strong> to your AI tool (Claude Code, Codex, Gemini, etc.)
+                  </li>
+                  <li class="mb-2">
+                    <strong>AI visits the URL</strong> and receives tailored configuration instructions
+                  </li>
+                  <li class="mb-2">
+                    <strong>AI asks for your API key</strong> (generate one in Settings if needed)
+                  </li>
+                  <li class="mb-2">
+                    <strong>AI configures itself</strong> with the correct settings
+                  </li>
+                  <li class="mb-2">
+                    <strong>Restart your AI tool</strong> to activate the connection
+                  </li>
+                </ol>
+                
+                <v-alert type="info" variant="tonal" class="mt-3">
+                  <strong>Works with:</strong> Claude Code, GitHub Codex, Google Gemini Code Assist, 
+                  Cursor, Continue.dev, and any future AI coding tool
+                </v-alert>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+
+          <div class="d-flex gap-3">
+            <v-btn 
+              @click="testAgentEndpoint" 
+              variant="outlined" 
+              :loading="testingEndpoint"
+              prepend-icon="mdi-test-tube"
+            >
+              Test Endpoint
+            </v-btn>
+            
+            <v-btn 
+              @click="navigateToApiKeys" 
+              variant="outlined"
+              prepend-icon="mdi-key"
+            >
+              Manage API Keys
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <!-- Manual Configuration Section (keep as fallback) -->
+      <v-card class="mb-6">
+        <v-card-title>
+          <v-icon start>mdi-cog</v-icon>
+          Manual Configuration (Alternative)
+        </v-card-title>
+        <v-card-text>
+          <p class="text-body-2 mb-3">
+            If your AI tool doesn't support the automatic method above, use manual configuration:
+          </p>
+          
+          <!-- Tool Selection -->
+          <v-alert type="info" variant="tonal" class="mb-6">
+            <div class="d-flex align-center">
+              <v-icon start>mdi-information</v-icon>
+              <div>
+                Generate configuration for your AI tool to connect to this GiljoAI MCP server.
+                Copy and paste the configuration, or download a complete setup guide.
+              </div>
+            </div>
+          </v-alert>
 
       <v-select
         v-model="selectedTool"
@@ -168,6 +277,8 @@
           Download Complete Setup Guide (Markdown)
         </v-btn>
       </div>
+        </v-card-text>
+      </v-card>
     </v-card-text>
 
     <!-- Snackbar for user feedback -->
@@ -186,7 +297,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import {
   generateClaudeCodeConfig,
@@ -204,6 +315,10 @@ const copied = ref(false)
 const generatedApiKey = ref(null)
 const showApiKeyWarning = ref(false)
 
+// Agent-driven configuration state
+const agentInstructionCopied = ref(false)
+const testingEndpoint = ref(false)
+
 // Snackbar state
 const snackbar = ref({
   show: false,
@@ -218,6 +333,11 @@ function showSnackbar(message, color = 'success') {
     color
   }
 }
+
+// Agent instruction computed property
+const agentInstruction = computed(() => 
+  `Visit ${window.location.origin}/setup/ai-tools and configure yourself for MCP integration with this GiljoAI server. You will receive tailored configuration instructions for your platform.`
+)
 
 // Methods
 async function loadSupportedTools() {
@@ -373,6 +493,47 @@ function getToolIcon(toolId) {
   return icons[toolId] || 'mdi-robot'
 }
 
+// Agent-driven configuration methods
+async function copyAgentInstruction() {
+  try {
+    await navigator.clipboard.writeText(agentInstruction.value)
+    agentInstructionCopied.value = true
+    setTimeout(() => { agentInstructionCopied.value = false }, 3000)
+    
+    console.log('[McpConfig] Agent instruction copied to clipboard')
+    showSnackbar('Agent instruction copied to clipboard!', 'success')
+  } catch (error) {
+    console.error('[McpConfig] Failed to copy agent instruction:', error)
+    showSnackbar('Failed to copy instruction. Please copy manually.', 'error')
+  }
+}
+
+async function testAgentEndpoint() {
+  testingEndpoint.value = true
+  try {
+    const response = await fetch(`${window.location.origin}/setup/ai-tools`)
+    if (response.ok) {
+      const instructions = await response.text()
+      console.log('[McpConfig] Agent endpoint working:', instructions.slice(0, 100) + '...')
+      
+      // Show success feedback
+      showSnackbar('Agent endpoint is working correctly!', 'success')
+    } else {
+      throw new Error(`HTTP ${response.status}`)
+    }
+  } catch (error) {
+    console.error('[McpConfig] Agent endpoint test failed:', error)
+    showSnackbar('Agent endpoint test failed. Check server status.', 'error')
+  } finally {
+    testingEndpoint.value = false
+  }
+}
+
+function navigateToApiKeys() {
+  // Navigate to API keys management page
+  window.location.href = '/settings/api-keys'
+}
+
 // Lifecycle
 onMounted(() => {
   loadSupportedTools()
@@ -418,5 +579,15 @@ onMounted(() => {
 
 .config-code :deep(.token.null) {
   color: #569cd6;
+}
+
+.agent-instruction-text {
+  font-family: 'Roboto Mono', monospace;
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  word-break: break-all;
 }
 </style>
