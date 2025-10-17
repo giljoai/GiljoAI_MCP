@@ -107,22 +107,7 @@ const navigationItems = computed(() => {
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 
-  // Add admin-only menu items
-  if (userStore.isAdmin) {
-    baseItems.push({
-      name: 'SystemSettings',
-      path: '/admin/settings',
-      title: 'System Settings',
-      icon: 'mdi-cog-outline',
-    })
-    baseItems.push({
-      name: 'Users',
-      path: '/users',
-      title: 'Users',
-      icon: 'mdi-account-multiple',
-    })
-  }
-
+  // Note: Admin-only items like Users are now in the avatar dropdown
   return baseItems
 })
 
