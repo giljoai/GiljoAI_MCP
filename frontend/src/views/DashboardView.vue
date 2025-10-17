@@ -53,6 +53,9 @@
       </v-btn>
     </AppAlert>
 
+    <!-- MCP Configuration Callout -->
+    <McpConfigCallout />
+
     <!-- Header -->
     <v-row>
       <v-col cols="12">
@@ -216,6 +219,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
+import McpConfigCallout from '@/components/dashboard/McpConfigCallout.vue'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/stores/agents'
