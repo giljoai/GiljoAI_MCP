@@ -70,6 +70,7 @@ class UserProfileResponse(BaseModel):
     is_active: bool
     created_at: str
     last_login: Optional[str]
+    password_change_required: Optional[bool] = None  # v3.0 Unified: Indicates default password must be changed
 
 class UserListResponse(BaseModel):
     """User list response for tenant users"""
@@ -301,8 +302,7 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
     Get current user profile or return 401 if not authenticated.
 
     Two-Layout Pattern: Auth routes isolated in AuthLayout, app routes always require valid user.
-    This endpoint simply returns authenticated user data or 401 Unauthorized.
-    No setup mode complexity - setup state is irrelevant to authentication.
+    This endpoint returns authenticated user data with password_change_required flag when applicable.
 
     Args:
         request: FastAPI request
@@ -311,10 +311,6 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
     Returns:
         User profile data if authenticated, 401 JSON response otherwise
     """
-    # REMOVED: Setup mode check (lines 314-334 in original)
-    # Two-Layout Pattern eliminates need for setup mode complexity.
-    # Auth routes now isolated, app routes always require authentication.
-
     # Try to get current user (optional - doesn't raise exceptions)
     from src.giljo_mcp.auth.dependencies import get_current_user_optional
 
@@ -331,6 +327,18 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
             status_code=401, content={"detail": "Not authenticated. Please login or provide a valid API key."}
         )
 
+    # Check if password change is required (for admin user with default password)
+    from src.giljo_mcp.models import SetupState
+
+    password_change_required = None
+    if current_user.username == "admin":
+        stmt_setup = select(SetupState).where(SetupState.tenant_key == current_user.tenant_key)
+        result_setup = await db.execute(stmt_setup)
+        setup_state = result_setup.scalar_one_or_none()
+
+        if setup_state and setup_state.default_password_active:
+            password_change_required = True
+
     # Return authenticated user profile
     return UserProfileResponse(
         id=str(current_user.id),
@@ -342,6 +350,7 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
         is_active=current_user.is_active,
         created_at=current_user.created_at.isoformat(),
         last_login=current_user.last_login.isoformat() if current_user.last_login else None,
+        password_change_required=password_change_required,
     )
 
 
