@@ -70,6 +70,7 @@ try:
         agent_management,
         agents,
         ai_tools,
+        ai_tools_setup,
         auth,
         configuration,
         context,
@@ -579,6 +580,9 @@ def create_app() -> FastAPI:
 
     # AI Tools configuration generator endpoints
     app.include_router(ai_tools.router, prefix="/api/ai-tools", tags=["ai-tools"])
+
+    # Universal AI Tools setup endpoints for self-configuration
+    app.include_router(ai_tools_setup.router, tags=["ai-tools-setup"])
 
     @app.get("/")
     async def root():
