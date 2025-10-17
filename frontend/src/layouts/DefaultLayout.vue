@@ -22,9 +22,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useWebSocketStore } from '@/stores/websocket'
+import { useAgentStore } from '@/stores/agents'
+import { useMessageStore } from '@/stores/messages'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import api from '@/services/api'
@@ -32,10 +35,14 @@ import api from '@/services/api'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const wsStore = useWebSocketStore()
+const agentStore = useAgentStore()
+const messageStore = useMessageStore()
 
 const drawer = ref(true)
 const rail = ref(false)
 const currentUser = ref(null)
+let messagePollingInterval = null
 
 const loadCurrentUser = async () => {
   try {
@@ -58,7 +65,44 @@ const loadCurrentUser = async () => {
 
 onMounted(async () => {
   console.log('[DefaultLayout] Loading user data on mount')
-  await loadCurrentUser()
+  const userLoaded = await loadCurrentUser()
+
+  // Initialize WebSocket and data polling only if user is authenticated
+  if (userLoaded && currentUser.value) {
+    try {
+      // Connect WebSocket with cookie-based authentication
+      await wsStore.connect()
+      console.log('[DefaultLayout] WebSocket connected successfully')
+
+      // Load initial data
+      await Promise.all([agentStore.fetchAgents(), messageStore.fetchMessages()])
+
+      // Set up 10-second message polling interval
+      messagePollingInterval = setInterval(async () => {
+        try {
+          await messageStore.fetchMessages()
+          console.log('[DefaultLayout] Messages refreshed at', new Date().toLocaleTimeString())
+        } catch (error) {
+          console.error('[DefaultLayout] Failed to fetch messages:', error)
+        }
+      }, 10000) // Poll every 10 seconds
+
+      console.log('[DefaultLayout] Application initialized successfully')
+    } catch (error) {
+      console.error('[DefaultLayout] Failed to initialize WebSocket:', error)
+    }
+  }
+})
+
+onUnmounted(() => {
+  // Clear message polling interval
+  if (messagePollingInterval) {
+    clearInterval(messagePollingInterval)
+  }
+
+  // Disconnect WebSocket
+  wsStore.disconnect()
+  console.log('[DefaultLayout] Cleanup complete')
 })
 
 // Reload user after login (navigation from /login)
