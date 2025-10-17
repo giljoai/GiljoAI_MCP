@@ -895,8 +895,8 @@ const downloadClaudeInstructions = () => {
 ## Manual Configuration
 
 **Configuration File Location:**
-- macOS/Linux: `~/.claude.json`
-- Windows: `%USERPROFILE%\.claude.json`
+- macOS/Linux: ~/.claude.json
+- Windows: %USERPROFILE%\\.claude.json
 
 **Documentation:** https://docs.claude.com/en/docs/claude-code/mcp
 
@@ -942,8 +942,8 @@ const downloadCodexInstructions = () => {
 
 ## Configuration
 **Configuration File Location:**
-- macOS/Linux: `~/.codex/config.toml`
-- Windows: `%USERPROFILE%\.codex\config.toml`
+- macOS/Linux: ~/.codex/config.toml
+- Windows: %USERPROFILE%\\.codex\\config.toml
 
 **Documentation:** 
 - MCP Integration: https://developers.openai.com/codex/mcp
