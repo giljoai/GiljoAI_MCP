@@ -41,6 +41,14 @@
         </div>
       </template>
 
+      <!-- Email column -->
+      <template #item.email="{ item }">
+        <div class="d-flex align-center">
+          <v-icon size="small" class="mr-2 text-medium-emphasis">mdi-email</v-icon>
+          <span class="text-caption">{{ item.email || 'No email' }}</span>
+        </div>
+      </template>
+
       <!-- Role badge column -->
       <template #item.role="{ item }">
         <v-chip
@@ -65,6 +73,14 @@
           </v-icon>
           {{ item.is_active ? 'Active' : 'Inactive' }}
         </v-chip>
+      </template>
+
+      <!-- Created date column -->
+      <template #item.created_at="{ item }">
+        <div class="d-flex align-center">
+          <v-icon size="small" class="mr-2 text-medium-emphasis">mdi-calendar-plus</v-icon>
+          <span class="text-caption">{{ formatDate(item.created_at) }}</span>
+        </div>
       </template>
 
       <!-- Last login column -->
@@ -131,6 +147,16 @@
               :disabled="isEditMode"
               prepend-inner-icon="mdi-account"
               required
+              class="mb-3"
+            />
+
+            <v-text-field
+              v-model="userForm.email"
+              label="Email"
+              variant="outlined"
+              type="email"
+              :rules="[rules.email]"
+              prepend-inner-icon="mdi-email"
               class="mb-3"
             />
 
@@ -318,6 +344,7 @@ const togglingStatus = ref(false)
 const userForm = ref({
   id: null,
   username: '',
+  email: '',
   password: '',
   role: 'developer',
   is_active: true,
@@ -330,8 +357,10 @@ const statusUser = ref(null)
 // Table configuration
 const headers = [
   { title: 'Username', key: 'username', sortable: true },
+  { title: 'Email', key: 'email', sortable: true },
   { title: 'Role', key: 'role', sortable: true },
   { title: 'Status', key: 'is_active', sortable: true },
+  { title: 'Created', key: 'created_at', sortable: true },
   { title: 'Last Login', key: 'last_login', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
 ]
@@ -362,13 +391,17 @@ const roleOptions = [
 const rules = {
   required: (value) => !!value || 'This field is required',
   minLength: (value) => !value || value.length >= 8 || 'Password must be at least 8 characters',
+  email: (value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || 'Must be a valid email address',
 }
 
 // Computed
 const filteredUsers = computed(() => {
   if (!search.value) return users.value
   const searchLower = search.value.toLowerCase()
-  return users.value.filter((user) => user.username.toLowerCase().includes(searchLower))
+  return users.value.filter((user) => 
+    user.username.toLowerCase().includes(searchLower) ||
+    (user.email && user.email.toLowerCase().includes(searchLower))
+  )
 })
 
 // Methods
@@ -396,6 +429,12 @@ function formatRelativeTime(timestamp) {
   }
 }
 
+function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return date.toLocaleDateString()
+}
+
 async function loadUsers() {
   loading.value = true
   try {
@@ -414,6 +453,7 @@ function openCreateDialog() {
   userForm.value = {
     id: null,
     username: '',
+    email: '',
     password: '',
     role: 'developer',
     is_active: true,
@@ -426,6 +466,7 @@ function openEditDialog(user) {
   userForm.value = {
     id: user.id,
     username: user.username,
+    email: user.email || '',
     password: '',
     role: user.role,
     is_active: user.is_active,
@@ -438,6 +479,7 @@ function closeUserDialog() {
   userForm.value = {
     id: null,
     username: '',
+    email: '',
     password: '',
     role: 'developer',
     is_active: true,
@@ -450,6 +492,7 @@ async function saveUser() {
     if (isEditMode.value) {
       // Update existing user
       await api.auth.updateUser(userForm.value.id, {
+        email: userForm.value.email,
         role: userForm.value.role,
         is_active: userForm.value.is_active,
       })
@@ -458,6 +501,7 @@ async function saveUser() {
       // Create new user
       await api.auth.register({
         username: userForm.value.username,
+        email: userForm.value.email,
         password: userForm.value.password,
         role: userForm.value.role,
       })

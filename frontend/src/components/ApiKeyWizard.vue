@@ -12,9 +12,7 @@
           <v-stepper-header>
             <v-stepper-item :complete="currentStep > 1" :value="1" title="Name"></v-stepper-item>
             <v-divider></v-divider>
-            <v-stepper-item :complete="currentStep > 2" :value="2" title="Tool"></v-stepper-item>
-            <v-divider></v-divider>
-            <v-stepper-item :complete="currentStep > 3" :value="3" title="Generate"></v-stepper-item>
+            <v-stepper-item :complete="currentStep > 2" :value="2" title="Generate"></v-stepper-item>
           </v-stepper-header>
         </v-stepper>
       </v-card-text>
@@ -23,63 +21,27 @@
       <v-card-text class="px-6 py-4">
         <!-- Step 1: Name Your Key -->
         <div v-if="currentStep === 1" data-test="step-1">
-          <h3 class="text-h6 mb-2">Name Your API Key</h3>
-          <p class="text-subtitle-2 text-medium-emphasis mb-4">Choose a descriptive name for this API key</p>
+          <h3 class="text-h6 mb-2">Name Your Integration Key</h3>
+          <p class="text-subtitle-2 text-medium-emphasis mb-4">Choose a descriptive name for this integration API key</p>
           <v-text-field
             v-model="keyName"
             label="Key Name"
             variant="outlined"
-            hint="e.g., 'Production Server', 'Dev Environment', 'Claude Code Integration'"
+            hint="e.g., 'Claude Code CLI', 'Production Bot', 'Development Environment'"
             persistent-hint
             data-test="key-name"
             :error-messages="nameError"
             autofocus
             @input="nameError = ''"
           />
+          <v-alert type="info" variant="tonal" class="mt-4" density="compact">
+            <v-icon start size="small">mdi-information</v-icon>
+            This key will enable AI tools and external applications to access GiljoAI MCP server endpoints.
+          </v-alert>
         </div>
 
-        <!-- Step 2: Select Tool -->
+        <!-- Step 2: Generate & Copy -->
         <div v-if="currentStep === 2" data-test="step-2">
-          <h3 class="text-h6 mb-2">Select Your Tool</h3>
-          <p class="text-subtitle-2 text-medium-emphasis mb-4">Choose the tool you'll use with this API key</p>
-          <v-row>
-            <v-col
-              v-for="tool in tools"
-              :key="tool.id"
-              cols="12"
-              sm="6"
-            >
-              <v-card
-                :variant="selectedTool === tool.id ? 'elevated' : 'outlined'"
-                :color="selectedTool === tool.id ? 'primary' : ''"
-                :class="{ 'tool-card-selected': selectedTool === tool.id }"
-                class="tool-card"
-                :data-test="`tool-${tool.id}`"
-                @click="selectTool(tool.id)"
-                :disabled="!tool.available"
-              >
-                <v-card-text class="text-center">
-                  <v-icon size="48" :class="{ 'mb-2': true, 'text-disabled': !tool.available }">
-                    {{ tool.icon }}
-                  </v-icon>
-                  <h3 class="text-h6">{{ tool.name }}</h3>
-                  <p class="text-caption mt-2">{{ tool.description }}</p>
-                  <v-chip
-                    v-if="!tool.available"
-                    size="small"
-                    color="warning"
-                    class="mt-2"
-                  >
-                    Coming Soon
-                  </v-chip>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-        </div>
-
-        <!-- Step 3: Generate & Copy -->
-        <div v-if="currentStep === 3" data-test="step-3">
           <h3 class="text-h6 mb-2">Your API Key</h3>
           <p class="text-subtitle-2 text-medium-emphasis mb-4">
             Copy and save this key securely - it will only be shown once!
@@ -150,7 +112,7 @@
 
             <h3 class="text-subtitle-1 mb-2">Configuration Snippet</h3>
             <p class="text-caption mb-3">
-              Use this configuration for {{ getSelectedToolName() }}:
+              Use this configuration for your AI tools and integrations:
             </p>
 
             <ToolConfigSnippet
@@ -185,7 +147,7 @@
         <v-btn variant="text" @click="close" :disabled="generating">Cancel</v-btn>
 
         <v-btn
-          v-if="currentStep < 3"
+          v-if="currentStep < 2"
           color="primary"
           @click="nextStep"
           data-test="next-button"
@@ -194,7 +156,7 @@
         </v-btn>
 
         <v-btn
-          v-if="currentStep === 3 && !generatedKey"
+          v-if="currentStep === 2 && !generatedKey"
           color="primary"
           @click="generateApiKey"
           :loading="generating"
@@ -204,7 +166,7 @@
         </v-btn>
 
         <v-btn
-          v-if="currentStep === 3 && generatedKey"
+          v-if="currentStep === 2 && generatedKey"
           color="primary"
           @click="finish"
           :disabled="!confirmSaved"
@@ -249,7 +211,7 @@ const isOpen = computed({
 const currentStep = ref(1)
 const keyName = ref('')
 const nameError = ref('')
-const selectedTool = ref('')
+// selectedTool removed - using single integration key type
 const generatedKey = ref(null)
 const configSnippet = ref('')
 const configLanguage = ref('json')
@@ -258,41 +220,7 @@ const copiedKey = ref(false)
 const errorMessage = ref('')
 const generating = ref(false)
 
-// Tools configuration
-const tools = [
-  {
-    id: 'claude-code',
-    name: 'Claude Code',
-    icon: 'mdi-code-json',
-    configFile: '.claude.json',
-    description: 'Configure your Claude Code MCP server',
-    available: true,
-  },
-  {
-    id: 'codex',
-    name: 'Codex CLI',
-    icon: 'mdi-console',
-    configFile: 'config.toml',
-    description: 'Command-line tool for AI development',
-    available: false,
-  },
-  {
-    id: 'gemini',
-    name: 'Gemini',
-    icon: 'mdi-google',
-    configFile: 'config.json',
-    description: "Google's AI assistant",
-    available: false,
-  },
-  {
-    id: 'other',
-    name: 'Other',
-    icon: 'mdi-wrench',
-    configFile: 'Generic',
-    description: 'Custom API integration',
-    available: true,
-  },
-]
+// Tools configuration removed - using single integration key type
 
 // Methods
 function validateName() {
@@ -316,9 +244,6 @@ function nextStep() {
   if (currentStep.value === 1) {
     if (!validateName()) return
   }
-  if (currentStep.value === 2) {
-    if (!selectedTool.value) return
-  }
   currentStep.value++
 }
 
@@ -328,17 +253,7 @@ function previousStep() {
   }
 }
 
-function selectTool(toolId) {
-  const tool = tools.find((t) => t.id === toolId)
-  if (tool && tool.available) {
-    selectedTool.value = toolId
-  }
-}
-
-function getSelectedToolName() {
-  const tool = tools.find((t) => t.id === selectedTool.value)
-  return tool ? tool.name : 'this tool'
-}
+// selectTool and getSelectedToolName functions removed - using single integration key type
 
 async function generateApiKey() {
   generating.value = true
@@ -350,25 +265,18 @@ async function generateApiKey() {
 
     generatedKey.value = response.data.api_key
 
-    // Generate config snippet based on selected tool (v3.0 dynamic URL)
+    // Generate config snippet for integration use (v3.0 dynamic URL)
     const serverUrl = `${window.location.protocol}//${window.location.hostname}:7272`
     const projectPath = 'F:/GiljoAI_MCP'
     const pythonPath = getPythonPath(projectPath, detectOS())
 
-    if (selectedTool.value === 'claude-code') {
-      configSnippet.value = generateClaudeCodeConfig(
-        generatedKey.value,
-        serverUrl,
-        pythonPath
-      )
-      configLanguage.value = 'json'
-    } else if (selectedTool.value === 'codex') {
-      configSnippet.value = generateCodexConfig(generatedKey.value)
-      configLanguage.value = 'toml'
-    } else {
-      configSnippet.value = generateGenericConfig(generatedKey.value, serverUrl)
-      configLanguage.value = 'bash'
-    }
+    // Default to Claude Code config for integration keys
+    configSnippet.value = generateClaudeCodeConfig(
+      generatedKey.value,
+      serverUrl,
+      pythonPath
+    )
+    configLanguage.value = 'json'
   } catch (err) {
     console.error('Failed to generate API key:', err)
     errorMessage.value = 'Failed to generate API key. Please try again.'
@@ -413,7 +321,6 @@ function reset() {
   currentStep.value = 1
   keyName.value = ''
   nameError.value = ''
-  selectedTool.value = ''
   generatedKey.value = null
   configSnippet.value = ''
   confirmSaved.value = false

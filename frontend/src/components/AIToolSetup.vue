@@ -46,7 +46,9 @@
           <template v-slot:item="{ props, item }">
             <v-list-item v-bind="props">
               <template v-slot:prepend>
-                <v-icon :icon="getToolIcon(item.raw.id)" />
+                <v-avatar size="32" class="mr-2">
+                  <v-img :src="getToolLogo(item.raw.id)" :alt="item.raw.name" />
+                </v-avatar>
               </template>
             </v-list-item>
           </template>
@@ -222,7 +224,14 @@ async function loadSupportedTools() {
     supportedTools.value = response.data.tools.filter(tool => tool.supported)
   } catch (err) {
     console.error('[AIToolSetup] Failed to load supported tools:', err)
-    error.value = 'Failed to load supported tools. Please try again.'
+    // Fallback to default tools if API fails
+    supportedTools.value = [
+      { id: 'claude', name: 'Claude Code CLI', supported: true },
+      { id: 'codex', name: 'Codex CLI', supported: true },
+      { id: 'gemini', name: 'Gemini CLI', supported: false },
+      { id: 'serena', name: 'Serena MCP', supported: true }
+    ]
+    error.value = 'Using default tool list. Some features may be limited.'
   }
 }
 
@@ -282,22 +291,44 @@ async function generateConfig() {
 
     if (selectedTool.value === 'claude') {
       configContent = generateClaudeCodeConfig(generatedApiKey.value, serverUrl, pythonPath)
-      fileLocation = '~/.claude.json'
+      fileLocation = '~/.claude.json (Claude Code MCP configuration)'
       downloadFilename = 'claude-code-setup.md'
       instructions.push(
-        'Open or create the file ~/.claude.json',
-        'Copy and paste the configuration above',
-        'Restart Claude Code to apply the changes',
-        'Your API key is now configured and ready to use'
+        'Locate your Claude Code MCP configuration file:',
+        '  • macOS/Linux: ~/.claude.json',
+        '  • Windows: %USERPROFILE%\.claude.json',
+        'Open the file in a text editor (create if it doesn\'t exist)',
+        'Copy and paste the configuration above into the file',
+        'Save the file and restart Claude Code',
+        'Verify GiljoAI MCP tools appear in Claude Code',
+        'Documentation: https://docs.claude.com/en/docs/claude-code/mcp'
       )
     } else if (selectedTool.value === 'codex') {
       configContent = generateCodexConfig(generatedApiKey.value, serverUrl)
-      fileLocation = '~/config.toml'
+      fileLocation = '~/.codex/config.toml (Codex CLI configuration)'
       downloadFilename = 'codex-setup.md'
       instructions.push(
-        'Open or create the file ~/config.toml',
-        'Copy and paste the configuration above',
-        'Restart Codex CLI to apply the changes'
+        'Locate your Codex CLI configuration file:',
+        '  • macOS/Linux: ~/.codex/config.toml',
+        '  • Windows: %USERPROFILE%\.codex\config.toml',
+        'Open the file in a text editor (create directory and file if needed)',
+        'Copy and paste the configuration above into the file',
+        'Save the file and restart Codex CLI',
+        'Test the connection with your first agent command',
+        'MCP Documentation: https://developers.openai.com/codex/mcp',
+        'CLI Configuration: https://developers.openai.com/codex/local-config#cli'
+      )
+    } else if (selectedTool.value === 'serena') {
+      configContent = generateGenericConfig(generatedApiKey.value, serverUrl)
+      fileLocation = 'MCP Client Configuration'
+      downloadFilename = 'serena-mcp-setup.md'
+      instructions.push(
+        'Serena MCP provides intelligent codebase navigation',
+        'Configure your MCP client to connect to this server:',
+        `  • Server URL: ${serverUrl}`,
+        `  • API Key: Your generated key above`,
+        'Enable Serena in User Settings → API & Integrations',
+        'Visit https://github.com/oraios/serena for more details'
       )
     } else {
       configContent = generateGenericConfig(generatedApiKey.value, serverUrl)
@@ -380,9 +411,20 @@ function getToolIcon(toolId) {
   const icons = {
     claude: 'mdi-chat-processing',
     codex: 'mdi-code-braces',
-    gemini: 'mdi-diamond-stone'
+    gemini: 'mdi-diamond-stone',
+    serena: 'mdi-brain'
   }
   return icons[toolId] || 'mdi-robot'
+}
+
+function getToolLogo(toolId) {
+  const logos = {
+    claude: '/Claude_AI_symbol.svg',
+    codex: '/codex_logo.svg',
+    gemini: '/gemini-icon.svg',
+    serena: '/Serena.png'
+  }
+  return logos[toolId] || '/icons/robot.svg'
 }
 
 function closeDialog() {

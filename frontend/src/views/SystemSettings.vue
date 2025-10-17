@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <!-- Page Header -->
-    <h1 class="text-h4 mb-2">System Settings</h1>
+    <h1 class="text-h4 mb-2">Admin Settings</h1>
     <p class="text-subtitle-1 mb-4">Configure server and system-wide settings (Admin only)</p>
 
     <!-- Settings Tabs -->
@@ -226,23 +226,163 @@
       <!-- Integrations -->
       <v-window-item value="integrations">
         <v-card>
-          <v-card-title>System Integrations</v-card-title>
-          <v-card-subtitle>System-wide integration settings (Admin only)</v-card-subtitle>
+          <v-card-title>Integrations</v-card-title>
+          <v-card-subtitle>Agent coding tools and native integrations (Admin overview)</v-card-subtitle>
 
           <v-card-text>
-            <v-alert type="info" variant="tonal" class="mb-4">
-              <v-icon start>mdi-account-cog</v-icon>
-              <div>
-                <strong>User-specific integrations</strong> like MCP tool setup and Serena preferences have been moved to individual user settings.
-                <br><br>
-                Access them via: <strong>User Menu → Settings → API and Integrations</strong>
-              </div>
-            </v-alert>
+            <!-- Agent Coding Tools Section -->
+            <h2 class="text-h5 mb-4">Agent Coding Tools</h2>
+            
+            <!-- Claude Code CLI -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-avatar size="48" class="mr-4">
+                    <v-img src="/Claude_AI_symbol.svg" alt="Claude Code CLI" />
+                  </v-avatar>
+                  <div>
+                    <h3 class="text-h6">Claude Code CLI</h3>
+                    <p class="text-caption text-medium-emphasis mb-0">AI-powered development with MCP integration</p>
+                  </div>
+                </div>
 
-            <h3 class="text-h6 mb-4">System-wide Integrations</h3>
-            <p class="text-body-2 mb-4">
-              Future system-wide integration settings will appear here.
-            </p>
+                <v-alert color="warning" variant="tonal" class="mb-3">
+                  <v-icon start>mdi-alert</v-icon>
+                  <strong>FINISH THESE INSTRUCTIONS AFTER ALPHA TESTING AND AGENT CREATION IS DONE</strong>
+                </v-alert>
+
+                <p class="text-body-2 mb-3">
+                  GiljoAI Agent Orchestration MCP Server integrates seamlessly with Claude Code CLI, leveraging 
+                  MCP configuration through Claude Code marketplace tools and specialized sub-agents. Our system 
+                  creates coordinated agent teams that break through context limits with 70% token reduction.
+                </p>
+
+                <p class="text-body-2 mb-3">
+                  <strong>Sub-agent Architecture:</strong> Claude Code spawns specialized sub-agents for different 
+                  development tasks while GiljoAI MCP serves as the persistent orchestration brain, managing state, 
+                  memory, and coordination across agent teams.
+                </p>
+
+                <p class="text-body-2 mb-3">
+                  <strong>Configuration:</strong> Each user must generate an API key under their user profile and 
+                  configure Claude Code either through the marketplace function or manually.
+                </p>
+
+                <v-btn variant="outlined" color="primary" @click="showClaudeConfigModal = true">
+                  <v-icon start>mdi-cog</v-icon>
+                  How to Configure Claude Code
+                </v-btn>
+              </v-card-text>
+            </v-card>
+
+            <!-- Codex CLI -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-avatar size="48" class="mr-4">
+                    <v-img src="/codex_logo.svg" alt="Codex CLI" />
+                  </v-avatar>
+                  <div>
+                    <h3 class="text-h6">Codex CLI</h3>
+                    <p class="text-caption text-medium-emphasis mb-0">Advanced code generation and analysis</p>
+                  </div>
+                </div>
+
+                <p class="text-body-2 mb-3">
+                  Codex CLI integrates with our sub-agent architecture to provide powerful code generation and 
+                  analysis capabilities. Sub-agents coordinate through GiljoAI MCP for complex development workflows, 
+                  maintaining context and state across multiple coding sessions.
+                </p>
+
+                <p class="text-body-2 mb-3">
+                  <strong>Configuration:</strong> Generate an API key under your user profile and configure Codex 
+                  manually using our copy/paste method or downloadable instructions.
+                </p>
+
+                <v-btn variant="outlined" color="secondary" @click="showCodexConfigModal = true">
+                  <v-icon start>mdi-cog</v-icon>
+                  How to Configure Codex
+                </v-btn>
+              </v-card-text>
+            </v-card>
+
+            <!-- Gemini CLI -->
+            <v-card variant="outlined" class="mb-6">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-avatar size="48" class="mr-4">
+                    <v-img src="/gemini-icon.svg" alt="Gemini CLI" />
+                  </v-avatar>
+                  <div class="d-flex align-center">
+                    <div class="mr-3">
+                      <h3 class="text-h6">Gemini CLI</h3>
+                      <p class="text-caption text-medium-emphasis mb-0">Google's advanced AI development platform</p>
+                    </div>
+                    <v-chip color="warning" size="small" variant="flat">
+                      COMING SOON
+                    </v-chip>
+                  </div>
+                </div>
+
+                <p class="text-body-2 mb-0">
+                  Integration with Google's Gemini AI platform for enhanced development capabilities. 
+                  Sub-agent architecture and MCP integration planned for future releases.
+                </p>
+              </v-card-text>
+            </v-card>
+
+            <!-- Native Integrations Section -->
+            <v-divider class="my-6"></v-divider>
+            
+            <h2 class="text-h5 mb-4">Native Integrations</h2>
+
+            <!-- Serena Integration -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-avatar size="48" class="mr-4">
+                    <v-img src="/Serena.png" alt="Serena MCP" />
+                  </v-avatar>
+                  <div>
+                    <h3 class="text-h6">Serena MCP</h3>
+                    <p class="text-caption text-medium-emphasis mb-0">Intelligent codebase understanding and navigation</p>
+                  </div>
+                </div>
+
+                <p class="text-body-2 mb-3">
+                  Serena provides deep semantic code analysis, intelligent symbol navigation, and contextual 
+                  understanding of your codebase. It enables agents to efficiently explore and understand 
+                  project structure without reading unnecessary code, significantly improving performance 
+                  and reducing token usage.
+                </p>
+
+                <div class="d-flex align-center mb-3">
+                  <v-btn variant="text" size="small" color="primary" href="https://github.com/oraios/serena" target="_blank">
+                    <v-icon start>mdi-github</v-icon>
+                    GitHub Repository
+                  </v-btn>
+                  <span class="text-caption text-medium-emphasis ml-3">
+                    Credit: Oraios
+                  </span>
+                </div>
+
+                <v-alert type="info" variant="tonal" class="mb-0">
+                  <v-icon start>mdi-account-cog</v-icon>
+                  <strong>User Configuration:</strong> Each user enables Serena under User Settings → Integrations
+                </v-alert>
+              </v-card-text>
+            </v-card>
+
+            <!-- More Coming Soon -->
+            <v-card variant="outlined" color="surface-variant">
+              <v-card-text class="text-center py-6">
+                <v-icon size="48" color="medium-emphasis" class="mb-3">mdi-plus-circle-outline</v-icon>
+                <h3 class="text-h6 text-medium-emphasis mb-2">More Integrations Coming Soon</h3>
+                <p class="text-body-2 text-medium-emphasis mb-0">
+                  Additional native integrations and agent tools will be added in future releases
+                </p>
+              </v-card-text>
+            </v-card>
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -268,6 +408,188 @@
           <v-spacer />
           <v-btn variant="text" @click="showRegenerateDialog = false">Cancel</v-btn>
           <v-btn color="warning" variant="flat" @click="regenerateApiKey">Regenerate</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Claude Code Configuration Modal -->
+    <v-dialog v-model="showClaudeConfigModal" max-width="800" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="primary">mdi-robot-outline</v-icon>
+          How to Configure Claude Code
+        </v-card-title>
+        
+        <v-card-text>
+          <v-alert type="info" variant="tonal" class="mb-4">
+            <v-icon start>mdi-information</v-icon>
+            First, generate an API key under your User Profile → Settings → API and Integrations
+          </v-alert>
+
+          <v-tabs v-model="claudeConfigTab" class="mb-4">
+            <v-tab value="marketplace">Marketplace Configuration</v-tab>
+            <v-tab value="manual">Manual Configuration</v-tab>
+            <v-tab value="download">Download Instructions</v-tab>
+          </v-tabs>
+
+          <v-window v-model="claudeConfigTab">
+            <!-- Marketplace Configuration -->
+            <v-window-item value="marketplace">
+              <h3 class="text-h6 mb-3">Claude Code Marketplace Configuration</h3>
+              <ol class="text-body-2 mb-3">
+                <li class="mb-2">Open Claude Code and navigate to the MCP Tools Marketplace</li>
+                <li class="mb-2">Search for "GiljoAI Agent Orchestration MCP Server"</li>
+                <li class="mb-2">Click "Install" and follow the marketplace prompts</li>
+                <li class="mb-2">When prompted for the API endpoint, enter: <code>http://your-server-ip:7272</code></li>
+                <li class="mb-2">Enter your API key from your user profile</li>
+                <li class="mb-2">Test the connection and confirm installation</li>
+              </ol>
+            </v-window-item>
+
+            <!-- Manual Configuration -->
+            <v-window-item value="manual">
+              <h3 class="text-h6 mb-3">Manual Configuration</h3>
+              <p class="text-body-2 mb-3">
+                Add the following to your Claude Code MCP configuration file. 
+                See <a href="https://docs.claude.com/en/docs/claude-code/mcp" target="_blank" class="text-primary">Claude Code MCP Documentation</a> for complete setup instructions.
+              </p>
+              
+              <v-alert type="info" variant="tonal" class="mb-3" density="compact">
+                <v-icon start size="small">mdi-file-document</v-icon>
+                <strong>Configuration File Location:</strong>
+                <br>• macOS/Linux: <code>~/.claude.json</code>
+                <br>• Windows: <code>%USERPROFILE%\.claude.json</code>
+              </v-alert>
+              
+              <v-card variant="outlined" class="mb-3">
+                <v-card-text>
+                  <pre class="text-caption"><code>{
+  "servers": {
+    "giljo-mcp": {
+      "command": "mcp-client",
+      "args": [
+        "--server-url", "http://your-server-ip:7272",
+        "--api-key", "{your-api-key-here}"
+      ],
+      "description": "GiljoAI Agent Orchestration MCP Server"
+    }
+  }
+}</code></pre>
+                </v-card-text>
+                <v-card-actions>
+                  <v-btn variant="text" size="small" @click="copyClaudeConfig">
+                    <v-icon start>mdi-content-copy</v-icon>
+                    Copy Configuration
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+
+              <p class="text-body-2">
+                Replace <code>{your-api-key-here}</code> with your actual API key from your user profile.
+              </p>
+            </v-window-item>
+
+            <!-- Download Instructions -->
+            <v-window-item value="download">
+              <h3 class="text-h6 mb-3">Download Configuration Instructions</h3>
+              <p class="text-body-2 mb-3">
+                Download a complete setup guide with your server-specific configuration:
+              </p>
+              
+              <v-btn variant="outlined" color="primary" @click="downloadClaudeInstructions">
+                <v-icon start>mdi-download</v-icon>
+                Download Claude Code Setup Guide
+              </v-btn>
+            </v-window-item>
+          </v-window>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showClaudeConfigModal = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Codex Configuration Modal -->
+    <v-dialog v-model="showCodexConfigModal" max-width="800" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="secondary">mdi-code-braces</v-icon>
+          How to Configure Codex CLI
+        </v-card-title>
+        
+        <v-card-text>
+          <v-alert type="info" variant="tonal" class="mb-4">
+            <v-icon start>mdi-information</v-icon>
+            First, generate an API key under your User Profile → Settings → API and Integrations
+          </v-alert>
+
+          <v-tabs v-model="codexConfigTab" class="mb-4">
+            <v-tab value="manual">Manual Configuration</v-tab>
+            <v-tab value="download">Download Instructions</v-tab>
+          </v-tabs>
+
+          <v-window v-model="codexConfigTab">
+            <!-- Manual Configuration -->
+            <v-window-item value="manual">
+              <h3 class="text-h6 mb-3">Manual Configuration</h3>
+              <p class="text-body-2 mb-3">
+                Add the following to your Codex CLI configuration file. 
+                See <a href="https://developers.openai.com/codex/local-config#cli" target="_blank" class="text-primary">Codex CLI Configuration</a> 
+                and <a href="https://developers.openai.com/codex/mcp" target="_blank" class="text-primary">Codex MCP Documentation</a> for complete setup instructions.
+              </p>
+              
+              <v-alert type="info" variant="tonal" class="mb-3" density="compact">
+                <v-icon start size="small">mdi-file-document</v-icon>
+                <strong>Configuration File Location:</strong>
+                <br>• macOS/Linux: <code>~/.codex/config.toml</code>
+                <br>• Windows: <code>%USERPROFILE%\\.codex\\config.toml</code>
+              </v-alert>
+              
+              <v-card variant="outlined" class="mb-3">
+                <v-card-text>
+                  <pre class="text-caption"><code>[giljo-mcp]
+endpoint = "http://your-server-ip:7272"
+api_key = "{your-api-key-here}"
+description = "GiljoAI Agent Orchestration MCP Server"
+
+[agents]
+orchestrator_enabled = true
+subagent_coordination = true
+context_sharing = true</code></pre>
+                </v-card-text>
+                <v-card-actions>
+                  <v-btn variant="text" size="small" @click="copyCodexConfig">
+                    <v-icon start>mdi-content-copy</v-icon>
+                    Copy Configuration
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+
+              <p class="text-body-2">
+                Replace <code>{your-api-key-here}</code> with your actual API key from your user profile.
+              </p>
+            </v-window-item>
+
+            <!-- Download Instructions -->
+            <v-window-item value="download">
+              <h3 class="text-h6 mb-3">Download Configuration Instructions</h3>
+              <p class="text-body-2 mb-3">
+                Download a complete setup guide with your server-specific configuration:
+              </p>
+              
+              <v-btn variant="outlined" color="secondary" @click="downloadCodexInstructions">
+                <v-icon start>mdi-download</v-icon>
+                Download Codex CLI Setup Guide
+              </v-btn>
+            </v-window-item>
+          </v-window>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showCodexConfigModal = false">Close</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -299,6 +621,12 @@ const apiKeyInfo = ref(null)
 const networkSettingsChanged = ref(false)
 const showRegenerateDialog = ref(false)
 
+// Configuration modal state
+const showClaudeConfigModal = ref(false)
+const showCodexConfigModal = ref(false)
+const claudeConfigTab = ref('marketplace')
+const codexConfigTab = ref('manual')
+
 // Computed Properties
 const modeColor = computed(() => {
   const colors = {
@@ -325,6 +653,7 @@ async function loadNetworkSettings() {
     try {
       // First, try loading from /api/v1/config
       const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
+        credentials: 'include',
         timeout: 5000,
       })
 
@@ -339,7 +668,9 @@ async function loadNetworkSettings() {
       )
 
       // Fallback to /api/setup/status
-      const fallbackResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/status`)
+      const fallbackResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/status`, {
+        credentials: 'include',
+      })
 
       if (!fallbackResponse.ok) {
         throw fallbackResponse.statusText
@@ -377,7 +708,9 @@ async function loadNetworkSettings() {
     // Load API key info for LAN mode
     if (currentMode.value === 'lan') {
       try {
-        const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/api-key-info`)
+        const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/api-key-info`, {
+          credentials: 'include',
+        })
         const apiKeyData = await apiKeyResponse.json()
 
         apiKeyInfo.value = {
@@ -446,6 +779,7 @@ async function saveNetworkSettings() {
     // Save CORS origins back to config
     const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
       method: 'PATCH',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         security: {
@@ -469,6 +803,7 @@ async function regenerateApiKey() {
   try {
     const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/regenerate-api-key`, {
       method: 'POST',
+      credentials: 'include',
     })
 
     if (response.ok) {
@@ -485,7 +820,9 @@ async function regenerateApiKey() {
 async function loadDatabaseSettings() {
   try {
     // Fetch database config from API
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/database`)
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/database`, {
+      credentials: 'include',
+    })
     const config = await response.json()
 
     console.log('Database settings reloaded from config')
@@ -505,6 +842,147 @@ function handleDatabaseError(error) {
 // Setup Wizard Navigation
 const navigateToSetupWizard = () => {
   router.push('/setup')
+}
+
+// Configuration Modal Methods
+const copyClaudeConfig = () => {
+  const config = `{
+  "servers": {
+    "giljo-mcp": {
+      "command": "mcp-client",
+      "args": [
+        "--server-url", "http://your-server-ip:7272",
+        "--api-key", "{your-api-key-here}"
+      ],
+      "description": "GiljoAI Agent Orchestration MCP Server"
+    }
+  }
+}`
+  navigator.clipboard.writeText(config)
+  console.log('[INTEGRATIONS] Claude configuration copied to clipboard')
+}
+
+const copyCodexConfig = () => {
+  const config = `[giljo-mcp]
+endpoint = "http://your-server-ip:7272"
+api_key = "{your-api-key-here}"
+description = "GiljoAI Agent Orchestration MCP Server"
+
+[agents]
+orchestrator_enabled = true
+subagent_coordination = true
+context_sharing = true`
+  navigator.clipboard.writeText(config)
+  console.log('[INTEGRATIONS] Codex configuration copied to clipboard')
+}
+
+const downloadClaudeInstructions = () => {
+  const instructions = `# Claude Code Setup Guide for GiljoAI MCP Server
+
+## Prerequisites
+1. Generate an API key from your user profile in GiljoAI dashboard
+2. Ensure Claude Code is installed and configured
+
+## Marketplace Configuration (Recommended)
+1. Open Claude Code
+2. Navigate to MCP Tools Marketplace
+3. Search for "GiljoAI Agent Orchestration MCP Server"
+4. Click "Install"
+5. Enter endpoint: http://your-server-ip:7272
+6. Enter your API key
+7. Test connection
+
+## Manual Configuration
+
+**Configuration File Location:**
+- macOS/Linux: `~/.claude.json`
+- Windows: `%USERPROFILE%\.claude.json`
+
+**Documentation:** https://docs.claude.com/en/docs/claude-code/mcp
+
+Add the following to your Claude Code MCP configuration file:
+
+{
+  "servers": {
+    "giljo-mcp": {
+      "command": "mcp-client",
+      "args": [
+        "--server-url", "http://your-server-ip:7272",
+        "--api-key", "YOUR_API_KEY_HERE"
+      ],
+      "description": "GiljoAI Agent Orchestration MCP Server"
+    }
+  }
+}
+
+## Verification
+- Restart Claude Code
+- Verify GiljoAI MCP tools are available
+- Test agent coordination functionality
+
+## Support
+Visit your GiljoAI dashboard for additional configuration help.`
+
+  const blob = new Blob([instructions], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'claude-code-giljo-mcp-setup.txt'
+  a.click()
+  URL.revokeObjectURL(url)
+  console.log('[INTEGRATIONS] Claude setup instructions downloaded')
+}
+
+const downloadCodexInstructions = () => {
+  const instructions = `# Codex CLI Setup Guide for GiljoAI MCP Server
+
+## Prerequisites
+1. Generate an API key from your user profile in GiljoAI dashboard
+2. Ensure Codex CLI is installed and configured
+
+## Configuration
+**Configuration File Location:**
+- macOS/Linux: `~/.codex/config.toml`
+- Windows: `%USERPROFILE%\.codex\config.toml`
+
+**Documentation:** 
+- MCP Integration: https://developers.openai.com/codex/mcp
+- CLI Configuration: https://developers.openai.com/codex/local-config#cli
+
+Add to your Codex CLI configuration file:
+
+[giljo-mcp]
+endpoint = "http://your-server-ip:7272"
+api_key = "YOUR_API_KEY_HERE"
+description = "GiljoAI Agent Orchestration MCP Server"
+
+[agents]
+orchestrator_enabled = true
+subagent_coordination = true
+context_sharing = true
+
+## Sub-Agent Workflow
+1. Codex spawns specialized sub-agents for different tasks
+2. GiljoAI MCP coordinates agent state and memory
+3. Context sharing enables seamless handoffs
+4. 70% token reduction through intelligent coordination
+
+## Verification
+- Restart Codex CLI
+- Verify GiljoAI MCP connection
+- Test sub-agent coordination
+
+## Support
+Visit your GiljoAI dashboard for additional configuration help.`
+
+  const blob = new Blob([instructions], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'codex-cli-giljo-mcp-setup.txt'
+  a.click()
+  URL.revokeObjectURL(url)
+  console.log('[INTEGRATIONS] Codex setup instructions downloaded')
 }
 
 // Lifecycle

@@ -11,7 +11,7 @@
     </v-card-title>
 
     <v-card-subtitle class="mt-2">
-      Manage API keys for programmatic access to GiljoAI MCP
+      Manage API keys for AI tool integrations and external applications
     </v-card-subtitle>
 
     <v-divider class="mt-4" />
@@ -22,7 +22,7 @@
         <div class="d-flex align-center">
           <v-icon start>mdi-information</v-icon>
           <div>
-            No API keys created yet. Generate a new key to enable programmatic access to the API.
+            No API keys created yet. Generate a new integration key to connect AI tools like Claude Code, Codex, or other external applications.
           </div>
         </div>
       </v-alert>
