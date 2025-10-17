@@ -238,6 +238,22 @@ router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
 
+  // FIRST: Check for factory default password (applies to ALL routes)
+  // If default password is active, redirect to welcome screen BEFORE any other checks
+  if (to.path !== '/welcome' && to.meta.requiresPasswordChange !== false) {
+    try {
+      const status = await setupService.checkStatus()
+      if (status.default_password_active) {
+        console.log('[ROUTER] Factory default password active, redirecting to welcome setup')
+        next('/welcome')
+        return
+      }
+    } catch (error) {
+      // If setup status check fails, continue with normal flow
+      console.log('[ROUTER] Setup status check failed (factory password check):', error.message)
+    }
+  }
+
   // Auth routes (layout: 'auth') - allow access without authentication
   if (to.meta.layout === 'auth') {
     // Still need to check setup flow for auth routes
