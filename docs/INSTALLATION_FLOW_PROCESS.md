@@ -957,6 +957,48 @@ After successful installation:
 3. **Complete Setup Wizard**: 3-step setup (MCP, Serena, Complete)
 4. **Verify Installation**: Check all services are running
 5. **Configure Firewall**: If network access needed
+6. **Connect Claude Code** (Optional): Set up MCP-over-HTTP integration
+
+### Connecting Claude Code via MCP (Post-Install)
+
+After completing the installation, you can connect Claude Code to GiljoAI MCP for zero-dependency agent orchestration:
+
+**Step 1: Generate API Key**
+1. Login to GiljoAI MCP dashboard (http://localhost:7274)
+2. Click your avatar → "My Settings"
+3. Navigate to "API and Integrations" tab
+4. Click "Personal API Keys" → "Generate New API Key"
+5. Name your key (e.g., "Claude Code Access")
+6. Copy the API key (shown only once)
+
+**Step 2: Configure Claude Code**
+```bash
+# Add GiljoAI MCP as an HTTP transport server
+claude mcp add --transport http giljo-mcp http://localhost:7272/mcp \
+  --header "X-API-Key: gk_YOUR_COPIED_API_KEY"
+
+# For network access (replace with your server IP)
+claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
+  --header "X-API-Key: gk_YOUR_COPIED_API_KEY"
+```
+
+**Step 3: Verify Connection**
+```bash
+# Within Claude Code, check MCP status
+> /mcp
+
+# Should show "giljo-mcp" with "Connected" status
+```
+
+**Step 4: Start Using Tools**
+```bash
+# In Claude Code, ask for orchestration help
+> "List all my projects"
+> "Create a new project called 'Website Redesign' with mission 'Modernize company website'"
+> "Show me all active agents"
+```
+
+**Complete MCP Documentation**: See [MCP-over-HTTP Integration](MCP_OVER_HTTP_INTEGRATION.md) for full details.
 
 ### Service Management
 
