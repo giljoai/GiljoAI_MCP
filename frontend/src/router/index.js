@@ -225,19 +225,36 @@ router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
 
-  // FIRST: Check for factory default password (applies to ALL routes)
-  // If default password is active, redirect to welcome screen BEFORE any other checks
+  // SECURITY: Enhanced fresh install detection with attack prevention (v3.0 compatible)
+  // Distinguish between true fresh install vs attack scenario while preserving existing flow
   if (to.path !== '/welcome' && to.meta.requiresPasswordChange !== false) {
     try {
-      const status = await setupService.checkStatus()
-      if (status.default_password_active) {
-        console.log('[ROUTER] Factory default password active, redirecting to welcome setup')
+      const setupState = await setupService.checkEnhancedStatus()
+      
+      if (setupState.is_true_fresh_install) {
+        // True fresh install - allow welcome screen (v3.0 behavior preserved)
+        console.log('[ROUTER] True fresh install detected, redirecting to welcome setup')
+        next('/welcome')
+        return
+      }
+      
+      if (setupState.admin_users_exist && setupState.default_password_active) {
+        // SECURITY ALERT: Possible attack - block welcome access
+        console.warn('[SECURITY] Blocking welcome access - admin users exist but default password active')
+        console.log('[ROUTER] Security: Redirecting to login instead of welcome')
+        next('/login')
+        return
+      }
+      
+      if (setupState.default_password_active && !setupState.admin_users_exist) {
+        // Normal v3.0 case: Database ready, password change needed
+        console.log('[ROUTER] Default password active, redirecting to welcome setup')
         next('/welcome')
         return
       }
     } catch (error) {
-      // If setup status check fails, continue with normal flow
-      console.log('[ROUTER] Setup status check failed (factory password check):', error.message)
+      // If setup status check fails, continue with normal v3.0 flow
+      console.log('[ROUTER] Enhanced setup status check failed:', error.message)
     }
   }
 
