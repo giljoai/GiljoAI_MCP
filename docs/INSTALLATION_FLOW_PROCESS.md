@@ -672,7 +672,7 @@ def display_installation_summary(db_credentials: dict):
 
 ⚠️  IMPORTANT FIRST STEPS:
    1. Change default password (admin/admin) - REQUIRED
-   2. Complete setup wizard (MCP integration, Serena)
+   2. Configure AI tool integration via Avatar → My Settings → API & Integrations
    3. Configure firewall if needed for network access
    
 📚 Documentation:

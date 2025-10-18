@@ -8,7 +8,7 @@
 
 ## Overview
 
-The GiljoAI MCP v3.0 first launch experience is designed as a **smooth, guided onboarding** that takes users from fresh installation to productive multi-agent orchestration. The process consists of installation, mandatory password change, a 3-step setup wizard, and dashboard introduction.
+The GiljoAI MCP v3.0 first launch experience is designed as a **smooth, guided onboarding** that takes users from fresh installation to productive multi-agent orchestration. The process consists of installation, mandatory password change, and user self-configuration through settings.
 
 ### First Launch Sequence
 
@@ -50,7 +50,7 @@ After running `python install.py`, you'll see the installation summary:
 
 ⚠️  IMPORTANT FIRST STEPS:
    1. Change default password (admin/admin) - REQUIRED
-   2. Complete setup wizard (MCP integration, Serena)
+   2. Configure AI tools via Avatar → My Settings → API & Integrations
    3. Configure firewall if needed for network access
 
 Happy orchestrating! 🤖✨
@@ -162,7 +162,7 @@ async def change_password(request: PasswordChangeRequest):
 **After Successful Change**:
 - JWT token issued and stored in localStorage
 - User automatically logged in
-- Redirect to `/setup` (setup wizard)
+- Redirect to `/dashboard` (main application)
 
 ### Step 4: Setup Wizard (3 Steps)
 

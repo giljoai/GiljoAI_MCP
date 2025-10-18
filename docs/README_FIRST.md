@@ -637,7 +637,7 @@ python install.py
 # 4. Access application
 # Browser opens to http://localhost:7274
 # Change default password (admin/admin)
-# Complete setup wizard
+# Configure AI tools via Avatar → My Settings → API & Integrations
 # Start building!
 ```
 

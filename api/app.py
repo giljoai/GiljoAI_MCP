@@ -85,6 +85,7 @@ try:
         tasks,
         templates,
         users,
+        user_settings,
     )
     from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
     from .websocket import WebSocketManager
@@ -513,6 +514,8 @@ def create_app() -> FastAPI:
     app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(users.router, prefix="/api/users", tags=["users"])
+    # v3: authenticated user-scoped settings
+    app.include_router(user_settings.router, prefix="/api/v1/user", tags=["user-settings"])
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
     app.include_router(network.router, prefix="/api/network", tags=["network"])
