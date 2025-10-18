@@ -175,43 +175,69 @@ function buildServerUrl() {
 }
 
 function claudePrompt(serverUrl, apiKey) {
-  return ` Please add the GiljoAI MCP server to your Claude Code configuration:
+  return `Please add the GiljoAI MCP server to your Claude Code configuration using HTTP transport:
 
-  1. Locate your Claude Code MCP config file:
-     - Windows: C:\Users\[username]\.claude\mcp.json
-     - Linux/macOS: ~/.claude/mcp.json
+1. Open your terminal or command prompt
 
-  2. Add this server configuration to the "mcpServers" section:
+2. Run this command to add the HTTP MCP server:
 
-  "giljo-mcp": {
-    "command": "uvx",
-    "args": ["giljo-mcp"],
-    "env": {
-      "GILJO_API_KEY": "${apiKey}",
-      "GILJO_SERVER_URL": "${serverUrl}"
-    }
-  }
+claude mcp add --transport http giljo-mcp ${serverUrl}/mcp \\
+  --header "X-API-Key: ${apiKey}"
 
-  3. Restart Claude Code to activate the new MCP server connection.`
+3. Verify the connection:
+
+claude mcp list
+
+4. You should see "giljo-mcp" listed as an available server
+
+5. Start using GiljoAI tools in your Claude Code conversations!
+
+Note: This uses HTTP transport with zero dependencies - no Python or local packages required.`
 }
 
 function codexPrompt(serverUrl, apiKey) {
-  return `Please update your .codex.toml configuration file to add this MCP server:\n\n[mcp.servers.giljo-mcp]
-command = "uvx"
-args = ["giljo-mcp"]
+  return `Codex CLI MCP configuration (placeholder - coming soon):
 
-[mcp.servers.giljo-mcp.env]
-GILJO_API_KEY = "${apiKey}"
-GILJO_SERVER_URL = "${serverUrl}"
-`
+1. Once Codex CLI supports HTTP transport, use this command:
+
+codex mcp add --transport http giljo-mcp ${serverUrl}/mcp \\
+  --header "X-API-Key: ${apiKey}"
+
+2. Verify the connection:
+
+codex mcp list
+
+Note: Codex CLI MCP integration is coming soon. This command syntax is a placeholder for future implementation. Check Codex CLI documentation for the latest MCP support status.`
 }
 
 function geminiPrompt(serverUrl, apiKey) {
-  return `Configure your Gemini Code Assist integration with:\n- Base URL: ${serverUrl}\n- Header: X-API-Key: ${apiKey}\n\nApply settings in your IDE's Gemini extension and restart.`
+  return `Gemini CLI MCP configuration (placeholder - coming soon):
+
+1. Once Gemini CLI supports HTTP transport, use this command:
+
+gemini mcp add --transport http giljo-mcp ${serverUrl}/mcp \\
+  --header "X-API-Key: ${apiKey}"
+
+2. Verify the connection:
+
+gemini mcp list
+
+Note: Gemini CLI MCP integration is coming soon. This command syntax is a placeholder for future implementation. Check Gemini CLI documentation for the latest MCP support status.`
 }
 
 function cursorPrompt(serverUrl, apiKey) {
-  return `Configure Cursor to connect to GiljoAI MCP:\n- Base URL: ${serverUrl}\n- Header: X-API-Key: ${apiKey}\n\nRestart Cursor after saving settings.`
+  return `Cursor MCP configuration (manual setup):
+
+1. Configure Cursor to connect to GiljoAI MCP:
+
+- Base URL: ${serverUrl}/mcp
+- Header: X-API-Key: ${apiKey}
+
+2. Apply settings in your Cursor IDE configuration
+
+3. Restart Cursor after saving settings
+
+Note: Cursor may require manual configuration through its settings interface. Check Cursor documentation for MCP integration instructions.`
 }
 
 function buildPromptFor(tool, serverUrl, apiKey) {
