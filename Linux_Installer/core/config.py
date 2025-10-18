@@ -242,6 +242,9 @@ LOG_FILE=./logs/giljo_mcp.log
 # API Key for network clients (optional - generated at runtime if needed)
 GILJO_MCP_API_KEY=
 
+# Default tenant key (generated during installation)
+DEFAULT_TENANT_KEY={self.settings.get('default_tenant_key', 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd')}
+
 # Secret keys for session management
 GILJO_MCP_SECRET_KEY={self.generate_secret_key()}
 SECRET_KEY={self.generate_secret_key()}
