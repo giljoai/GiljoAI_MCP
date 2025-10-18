@@ -5,7 +5,7 @@ All models include tenant_key for project isolation.
 Supports PostgreSQL (production).
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
@@ -1352,7 +1352,6 @@ class MCPSession(Base):
     
     def extend_expiration(self, hours: int = 24) -> None:
         """Extend session expiration by specified hours"""
-        from datetime import timedelta
         self.expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
         self.last_accessed = datetime.now(timezone.utc)
 

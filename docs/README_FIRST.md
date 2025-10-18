@@ -11,6 +11,7 @@
 - **[Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md)** - v3.0 unified architecture, ASCII diagrams, tech stack
 - **[Installation Flow & Process](INSTALLATION_FLOW_PROCESS.md)** - Complete installation walkthrough and cross-platform setup
 - **[First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md)** - Step-by-step onboarding from install to dashboard
+- **[MCP-over-HTTP Integration](MCP_OVER_HTTP_INTEGRATION.md)** - Connecting Claude Code via HTTP transport (zero dependencies)
 
 **New Implementation Features** (October 2025 Harmonization):
 
@@ -66,6 +67,7 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
    - Project, agent, message, task, context management
    - Template system for agent roles
    - Git integration for version control
+   - **MCP-over-HTTP** endpoint for zero-dependency Claude Code integration
 
 ### v3.0 Unified Architecture Principles
 

@@ -1,0 +1,734 @@
+# MCP-over-HTTP Integration Guide
+
+**Document Version**: 1.0.0
+**Status**: Production Ready
+**Last Updated**: January 18, 2025
+
+---
+
+## Overview
+
+GiljoAI MCP implements **MCP-over-HTTP**, enabling Claude Code, Codex CLI, and other MCP clients to connect via HTTP transport with zero client dependencies. This eliminates the need for local Python installations or source code distribution, providing a true SaaS-ready deployment model.
+
+### What is MCP-over-HTTP?
+
+MCP-over-HTTP is an implementation of the Model Context Protocol (MCP) using HTTP as the transport layer instead of stdio (standard input/output). This architecture provides:
+
+- **Zero-dependency client setup** - Just Claude Code + API key + one command
+- **SaaS deployment ready** - No source code distribution required
+- **Cross-platform compatibility** - Works on any system with HTTP access
+- **Firewall-friendly** - Standard HTTP/HTTPS ports
+- **Stateful sessions** - PostgreSQL-backed session management
+
+### Why HTTP Transport Over Stdio?
+
+**Traditional stdio transport requires:**
+- Python installation on every client machine
+- Package distribution (PyPI or source code)
+- Client-side dependency management
+- Local execution environment
+
+**HTTP transport provides:**
+- Single server deployment
+- API key-based authentication
+- Network-accessible from any client
+- True multi-tenant SaaS architecture
+- Zero client-side installation
+
+---
+
+## Architecture
+
+### HTTP Endpoint Design
+
+GiljoAI MCP exposes a single HTTP endpoint that implements the JSON-RPC 2.0 protocol:
+
+```
+POST http://server:7272/mcp
+Content-Type: application/json
+X-API-Key: gk_YOUR_API_KEY_HERE
+```
+
+**Request Format (JSON-RPC 2.0):**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "claude-code",
+      "version": "1.0.0"
+    }
+  },
+  "id": 1
+}
+```
+
+**Response Format:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "serverInfo": {
+      "name": "giljo-mcp",
+      "version": "3.0.0"
+    },
+    "capabilities": {
+      "tools": {
+        "listChanged": false
+      }
+    }
+  },
+  "id": 1
+}
+```
+
+### Session Management Architecture
+
+**PostgreSQL-Based Sessions:**
+- Session data stored in `mcp_sessions` table
+- Auto-expiration after 24 hours of inactivity
+- Tenant context preserved across tool calls
+- Project context switching support
+
+**Session Lifecycle:**
+1. Client sends request with `X-API-Key` header
+2. Server authenticates API key → resolves User → extracts tenant_key
+3. Server creates or retrieves existing session
+4. Session stores: initialized state, client info, tool call history
+5. Session auto-expires after 24 hours (configurable)
+
+**Database Schema:**
+```sql
+CREATE TABLE mcp_sessions (
+    id SERIAL PRIMARY KEY,
+    session_id UUID NOT NULL DEFAULT gen_random_uuid(),
+    api_key_id INTEGER NOT NULL REFERENCES api_keys(id),
+    tenant_key VARCHAR(36) NOT NULL,
+    project_id VARCHAR(36),
+    session_data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_accessed TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(session_id)
+);
+
+CREATE INDEX idx_mcp_session_api_key ON mcp_sessions(api_key_id);
+CREATE INDEX idx_mcp_session_tenant ON mcp_sessions(tenant_key);
+CREATE INDEX idx_mcp_session_last_accessed ON mcp_sessions(last_accessed);
+```
+
+### Multi-Tenant Isolation Architecture
+
+**Authentication Flow:**
+```
+X-API-Key → APIKey (database lookup)
+         → User (via api_key.user_id)
+         → tenant_key (from User record)
+         → Tenant context established
+```
+
+**Isolation Guarantees:**
+- Each API key belongs to exactly one User
+- Each User belongs to exactly one Tenant (via tenant_key)
+- All tool operations filtered by tenant_key
+- No cross-tenant data access possible
+
+**Code Reference:**
+- `api/endpoints/mcp_session.py:43-70` - Authentication flow
+- `api/endpoints/mcp_http.py:225-226` - Tenant context setting
+- `src/giljo_mcp/models.py:1330-1357` - MCPSession model
+
+---
+
+## Implementation Details
+
+### File Structure
+
+```
+api/
+├── endpoints/
+│   ├── mcp_http.py         # Pure JSON-RPC 2.0 MCP endpoint (398 lines)
+│   └── mcp_session.py      # PostgreSQL session management (186 lines)
+├── middleware.py           # Authentication middleware (line 111: /mcp public)
+└── app.py                  # FastAPI app (registers /mcp endpoint)
+
+src/giljo_mcp/
+└── models.py               # MCPSession model (lines 1295-1357)
+
+frontend/src/
+├── utils/
+│   └── configTemplates.js  # HTTP transport config generation
+└── components/
+    └── McpConfigComponent.vue  # MCP configuration UI
+```
+
+### Key Code Locations
+
+**MCP HTTP Endpoint:**
+- File: `api/endpoints/mcp_http.py`
+- Endpoint: `POST /mcp`
+- Handlers:
+  - `handle_initialize()` - Handshake and capability negotiation
+  - `handle_tools_list()` - List available tools
+  - `handle_tools_call()` - Execute tool with arguments
+
+**Session Management:**
+- File: `api/endpoints/mcp_session.py`
+- Class: `MCPSessionManager`
+- Methods:
+  - `authenticate_api_key()` - API key validation
+  - `get_or_create_session()` - Session lifecycle management
+  - `update_session_data()` - Session state updates
+  - `cleanup_expired_sessions()` - Background cleanup
+
+**Middleware Configuration:**
+- File: `api/middleware.py`
+- Line 111: `/mcp` added to public endpoints list
+- MCP endpoint handles own authentication via X-API-Key header
+
+### Supported MCP Methods
+
+**1. initialize** - Connection handshake
+```json
+{
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {"name": "claude-code", "version": "1.0.0"}
+  }
+}
+```
+
+**2. tools/list** - List available tools
+```json
+{
+  "method": "tools/list",
+  "params": {}
+}
+```
+
+**Response:**
+```json
+{
+  "result": {
+    "tools": [
+      {
+        "name": "create_project",
+        "description": "Create a new project with mission and optional agent sequence",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "Project name"},
+            "mission": {"type": "string", "description": "Project mission statement"}
+          },
+          "required": ["name", "mission"]
+        }
+      }
+    ]
+  }
+}
+```
+
+**3. tools/call** - Execute tool
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "list_projects",
+    "arguments": {"status": "active"}
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "result": {
+    "content": [
+      {"type": "text", "text": "[{\"id\": \"proj_123\", \"name\": \"My Project\"}]"}
+    ],
+    "isError": false
+  }
+}
+```
+
+---
+
+## Usage Guide
+
+### Generating API Keys
+
+**Via Frontend Dashboard:**
+1. Login to GiljoAI MCP dashboard
+2. Click avatar → "My Settings"
+3. Navigate to "API and Integrations" tab
+4. Click "Personal API Keys" section
+5. Click "Generate New API Key"
+6. Name your key (e.g., "Claude Code Access")
+7. Copy the API key (shown only once)
+
+**Key Format:**
+```
+gk_RANDOMSTRING123456789
+```
+
+**Security Note:**
+- API keys are hashed with bcrypt before storage
+- Plaintext key shown only once during generation
+- Keys can be revoked at any time from dashboard
+
+### Connecting Claude Code
+
+**Step 1: Generate API Key**
+```bash
+# From GiljoAI MCP dashboard:
+# Avatar → My Settings → API & Integrations → Personal API Keys → Generate
+```
+
+**Step 2: Add MCP Server**
+```bash
+claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
+  --header "X-API-Key: gk_YOUR_API_KEY_HERE"
+```
+
+**Step 3: Verify Connection**
+```bash
+# Within Claude Code, check MCP status
+> /mcp
+
+# You should see "giljo-mcp" listed with "Connected" status
+```
+
+**Step 4: Test Tool Execution**
+```bash
+# In Claude Code, ask for project list
+> "Can you list all my projects?"
+
+# Claude Code will use the list_projects tool via MCP
+```
+
+### Example Tool Calls
+
+**Create a new project:**
+```
+> "Create a new project called 'Website Redesign' with the mission 'Modernize company website with Vue 3 and improve performance'"
+```
+
+**List all agents:**
+```
+> "Show me all the agents working on the Website Redesign project"
+```
+
+**Send a message:**
+```
+> "Send a message to the frontend-developer agent asking for a status update"
+```
+
+### Session Management
+
+**Session Lifetime:**
+- Default: 24 hours from last access
+- Configurable in `MCPSessionManager.DEFAULT_SESSION_LIFETIME_HOURS`
+
+**Session Cleanup:**
+- Expired sessions automatically deleted after 48 hours
+- Background cleanup runs periodically
+
+**Session Data Stored:**
+```json
+{
+  "initialized": true,
+  "client_info": {"name": "claude-code", "version": "1.0.0"},
+  "protocol_version": "2024-11-05",
+  "client_capabilities": {},
+  "last_tool_call": {
+    "tool": "list_projects",
+    "timestamp": "2025-01-18T10:30:00Z",
+    "success": true
+  }
+}
+```
+
+---
+
+## Security
+
+### Authentication via X-API-Key
+
+**Header Format:**
+```
+X-API-Key: gk_YOUR_API_KEY_HERE
+```
+
+**Authentication Flow:**
+1. Client sends request with X-API-Key header
+2. Server looks up API key in database (hashed comparison)
+3. Server validates API key is active
+4. Server retrieves associated User record
+5. Server extracts tenant_key from User
+6. Server creates/retrieves session with tenant context
+
+**Code Reference:**
+- `api/endpoints/mcp_session.py:43-70` - `authenticate_api_key()`
+- `api/endpoints/mcp_http.py:329-354` - API key validation
+
+### Tenant Isolation Guarantees
+
+**Database-Level Isolation:**
+- All tool operations filtered by `tenant_key`
+- No cross-tenant data access in queries
+- Foreign key constraints enforce tenant boundaries
+
+**Session-Level Isolation:**
+- Each session tied to single tenant_key
+- Tenant context never changes during session
+- Project switching limited to tenant's projects
+
+**Code References:**
+- `api/endpoints/mcp_http.py:225-226` - Tenant context setting
+- `api/endpoints/mcp_http.py:131-133` - Session tenant validation
+
+### Session Expiration
+
+**Default Policy:**
+- Sessions expire after 24 hours of inactivity
+- `last_accessed` updated on every request
+- `expires_at` automatically extended on access
+
+**Cleanup Policy:**
+- Sessions older than 48 hours deleted
+- Cleanup runs via background task
+- No manual intervention required
+
+**Code Reference:**
+- `api/endpoints/mcp_session.py:160-174` - `cleanup_expired_sessions()`
+- `src/giljo_mcp/models.py:1346-1356` - Expiration logic
+
+### Public Endpoint Security Model
+
+**Why /mcp is Public:**
+- MCP endpoint requires X-API-Key authentication
+- Standard authentication middleware bypassed
+- Custom authentication in endpoint handler
+- Prevents double-authentication issues
+
+**Security Layers:**
+1. **X-API-Key validation** - First defense
+2. **Tenant isolation** - Second defense
+3. **Session expiration** - Third defense
+4. **OS Firewall** - Fourth defense (network level)
+
+**Code Reference:**
+- `api/middleware.py:97-113` - Public endpoint list
+- `api/endpoints/mcp_http.py:329-338` - X-API-Key validation
+
+---
+
+## Troubleshooting
+
+### Common Connection Issues
+
+**Issue: "X-API-Key header required"**
+```bash
+# Solution: Ensure API key header is included
+claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
+  --header "X-API-Key: gk_YOUR_ACTUAL_KEY"
+```
+
+**Issue: "Invalid API key"**
+- Check API key is correct (case-sensitive)
+- Verify API key hasn't been revoked
+- Generate new API key from dashboard
+
+**Issue: "Session expired"**
+- Sessions expire after 24 hours of inactivity
+- Simply make a new request to create new session
+- No manual intervention required
+
+**Issue: "Connection refused"**
+- Verify server is running: `curl http://localhost:7272/health`
+- Check firewall allows port 7272
+- Verify correct server IP/hostname
+
+### How to Verify Server is Running
+
+**Check API Health:**
+```bash
+curl http://localhost:7272/health
+```
+
+**Expected Response:**
+```json
+{
+  "status": "healthy",
+  "checks": {
+    "api": "healthy",
+    "database": "healthy",
+    "websocket": "healthy"
+  }
+}
+```
+
+**Test MCP Endpoint:**
+```bash
+curl -X POST http://localhost:7272/mcp \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: gk_YOUR_KEY" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}'
+```
+
+### How to Check Logs
+
+**API Server Logs:**
+```bash
+# From project root
+tail -f logs/api.log
+
+# Look for MCP-related messages:
+# - "MCP session initialized"
+# - "Tool executed successfully"
+# - "API key authenticated"
+```
+
+**Database Query Logs:**
+```sql
+-- Check active MCP sessions
+SELECT session_id, tenant_key, created_at, last_accessed
+FROM mcp_sessions
+WHERE expires_at > NOW()
+ORDER BY last_accessed DESC;
+
+-- Check expired sessions
+SELECT session_id, tenant_key, expires_at
+FROM mcp_sessions
+WHERE expires_at < NOW();
+```
+
+### Python Cache Issues
+
+**Problem: Old bytecode causing import errors**
+
+**Solution:**
+```bash
+# From project root
+find . -type d -name "__pycache__" -exec rm -rf {} +
+find . -type f -name "*.pyc" -delete
+
+# Restart API server
+python api/run_api.py
+```
+
+**Verification:**
+```bash
+# Check imports work correctly
+python -c "from src.giljo_mcp.models import MCPSession; print('OK')"
+```
+
+---
+
+## Developer Guide
+
+### How to Add New MCP Tools
+
+**Step 1: Define Tool in tools/list Handler**
+
+Edit `api/endpoints/mcp_http.py`, add to `handle_tools_list()`:
+
+```python
+{
+    "name": "my_new_tool",
+    "description": "Description of what this tool does",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "param1": {"type": "string", "description": "Parameter description"}
+        },
+        "required": ["param1"]
+    }
+}
+```
+
+**Step 2: Map Tool in tools/call Handler**
+
+Edit `api/endpoints/mcp_http.py`, add to `tool_map` in `handle_tools_call()`:
+
+```python
+tool_map = {
+    # ... existing tools ...
+    "my_new_tool": state.tool_accessor.my_new_tool,
+}
+```
+
+**Step 3: Implement Tool Method**
+
+Add method to `src/giljo_mcp/tools/` or appropriate module:
+
+```python
+async def my_new_tool(self, param1: str) -> dict:
+    """Tool implementation"""
+    # Your logic here
+    return {"result": "success"}
+```
+
+**Step 4: Test Tool**
+
+```bash
+# From Claude Code
+> "Use my_new_tool with param1 set to 'test'"
+```
+
+### Session State Management
+
+**Reading Session Data:**
+```python
+from api.endpoints.mcp_session import MCPSessionManager
+
+async def my_handler(session_id: str, db: AsyncSession):
+    session_manager = MCPSessionManager(db)
+    session = await session_manager.get_session(session_id)
+
+    if session:
+        client_info = session.session_data.get("client_info", {})
+        print(f"Client: {client_info.get('name')}")
+```
+
+**Updating Session Data:**
+```python
+await session_manager.update_session_data(
+    session_id,
+    {
+        "custom_field": "value",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    },
+    merge=True  # Merge with existing data
+)
+```
+
+**Session Expiration Management:**
+```python
+# Extend session expiration
+session.extend_expiration(hours=24)
+await db.commit()
+
+# Check if session expired
+if session.is_expired:
+    print("Session has expired")
+```
+
+### Testing MCP Endpoints
+
+**Unit Test Example:**
+
+```python
+import pytest
+from httpx import AsyncClient
+
+@pytest.mark.asyncio
+async def test_mcp_initialize(async_client: AsyncClient, test_api_key: str):
+    response = await async_client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0",
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "test-client", "version": "1.0.0"}
+            },
+            "id": 1
+        },
+        headers={"X-API-Key": test_api_key}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["jsonrpc"] == "2.0"
+    assert data["result"]["serverInfo"]["name"] == "giljo-mcp"
+```
+
+**Integration Test Example:**
+
+```python
+@pytest.mark.asyncio
+async def test_mcp_full_flow(async_client: AsyncClient, test_api_key: str):
+    # 1. Initialize
+    init_response = await async_client.post("/mcp", json={
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "params": {"protocolVersion": "2024-11-05"},
+        "id": 1
+    }, headers={"X-API-Key": test_api_key})
+    assert init_response.status_code == 200
+
+    # 2. List tools
+    list_response = await async_client.post("/mcp", json={
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "params": {},
+        "id": 2
+    }, headers={"X-API-Key": test_api_key})
+    assert list_response.status_code == 200
+    tools = list_response.json()["result"]["tools"]
+    assert len(tools) > 0
+
+    # 3. Call tool
+    call_response = await async_client.post("/mcp", json={
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {"name": "list_projects", "arguments": {}},
+        "id": 3
+    }, headers={"X-API-Key": test_api_key})
+    assert call_response.status_code == 200
+```
+
+### Debugging Tips
+
+**Enable Debug Logging:**
+```python
+import logging
+
+# In api/endpoints/mcp_http.py
+logger.setLevel(logging.DEBUG)
+
+# Will log:
+# - MCP session initialization details
+# - Tool execution parameters and results
+# - Authentication flow information
+```
+
+**Debug Session State:**
+```python
+# In handler code
+print(f"Session data: {session.session_data}")
+print(f"Tenant: {session.tenant_key}")
+print(f"Expires: {session.expires_at}")
+print(f"Last accessed: {session.last_accessed}")
+```
+
+**Debug API Key Resolution:**
+```python
+# In mcp_session.py authenticate_api_key()
+print(f"API key lookup: {api_key_value[:10]}...")
+print(f"Found user: {user.username} (tenant: {user.tenant_key})")
+```
+
+---
+
+## See Also
+
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Overall system architecture
+- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS.md) - Installation guide
+- [Connect Claude Code to tools via MCP](Connect%20Claude%20Code%20to%20tools%20via%20MCP.md) - Claude Code MCP setup
+- [MCP Tools Manual](manuals/MCP_TOOLS_MANUAL.md) - Complete MCP tools reference
+- [Handover 0032](../handovers/0032_HANDOVER_20251018_MCP_OVER_HTTP_IMPLEMENTATION.md) - Implementation details
+
+---
+
+**Last Updated**: January 18, 2025
+**Version**: 1.0.0
+**Status**: Production Ready

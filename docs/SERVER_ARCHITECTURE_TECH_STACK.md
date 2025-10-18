@@ -217,7 +217,9 @@ api/
 │   ├── messages.py       # Inter-agent messaging
 │   ├── setup.py          # Setup wizard endpoints
 │   ├── ai_tools.py       # AI tool configuration generator (425 lines)
-│   └── templates.py      # Template CRUD operations
+│   ├── templates.py      # Template CRUD operations
+│   ├── mcp_http.py       # MCP-over-HTTP endpoint (398 lines)
+│   └── mcp_session.py    # MCP session management (186 lines)
 └── websocket/            # WebSocket handlers
     ├── manager.py        # WebSocket connection management
     └── auth.py           # WebSocket authentication
@@ -454,6 +456,95 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
 })
 ```
+
+---
+
+## MCP-over-HTTP Architecture
+
+GiljoAI MCP implements the Model Context Protocol over HTTP transport, enabling zero-dependency integration with Claude Code and other MCP clients.
+
+### Endpoint Design
+
+**HTTP Endpoint:**
+```
+POST http://server:7272/mcp
+Content-Type: application/json
+X-API-Key: gk_YOUR_API_KEY_HERE
+```
+
+**Protocol:** JSON-RPC 2.0 (https://www.jsonrpc.org/specification)
+
+**Code Reference:** `api/endpoints/mcp_http.py` (398 lines)
+
+### Supported MCP Methods
+
+**1. initialize** - Connection handshake
+- Negotiates protocol version (2024-11-05)
+- Exchanges server and client capabilities
+- Initializes session state
+
+**2. tools/list** - List available MCP tools
+- Returns 22+ orchestration tools
+- Includes tool schemas and descriptions
+- Filtered by tenant context
+
+**3. tools/call** - Execute MCP tool
+- Routes to existing tool_accessor methods
+- Preserves multi-tenant isolation
+- Returns JSON-RPC 2.0 formatted results
+
+### Session Management
+
+**PostgreSQL-backed Sessions:**
+- Table: `mcp_sessions` (see `src/giljo_mcp/models.py` lines 1295-1357)
+- Default lifetime: 24 hours from last access
+- Auto-cleanup: Expired sessions deleted after 48 hours
+- Session data: client info, protocol version, tool call history
+
+**Session Authentication Flow:**
+```
+X-API-Key header
+  → API key validation (bcrypt hash comparison)
+  → User lookup (api_key.user_id)
+  → Tenant resolution (user.tenant_key)
+  → Session creation/retrieval
+  → Tool execution with tenant context
+```
+
+**Code Reference:** `api/endpoints/mcp_session.py` (186 lines)
+
+### Security Model
+
+**Public Endpoint with Custom Auth:**
+- `/mcp` added to public endpoints list (bypasses standard JWT middleware)
+- Endpoint handles own authentication via X-API-Key header
+- Multi-tenant isolation enforced via tenant_key filtering
+- Session expiration provides defense in depth
+
+**Code Reference:**
+- `api/middleware.py` line 111 - Public endpoint definition
+- `api/endpoints/mcp_http.py` lines 329-354 - API key validation
+
+### Integration Example
+
+**Connecting Claude Code:**
+```bash
+# Generate API key from dashboard: Avatar → My Settings → API & Integrations
+
+# Add MCP server to Claude Code
+claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
+  --header "X-API-Key: gk_YOUR_API_KEY_HERE"
+
+# Verify connection
+> /mcp
+# Should show "giljo-mcp" as Connected
+
+# Use tools
+> "List all my projects"
+> "Create a new project called 'Website Redesign'"
+```
+
+**Complete Documentation:** [MCP-over-HTTP Integration](MCP_OVER_HTTP_INTEGRATION.md)
 
 ---
 
