@@ -1,6 +1,167 @@
-# Connect Claude Code to tools via MCP
+# Connect Claude Code to GiljoAI MCP via HTTP Transport
 
-> Learn how to connect Claude Code to your tools with the Model Context Protocol.
+> Learn how to connect Claude Code to GiljoAI MCP Server for zero-dependency agent orchestration.
+
+---
+
+## Connecting to GiljoAI MCP Server
+
+GiljoAI MCP implements MCP-over-HTTP, providing a zero-dependency integration with Claude Code. No local Python installation or package distribution required - just an API key and one command.
+
+### Quick Start
+
+**Prerequisites:**
+- GiljoAI MCP server installed and running
+- Claude Code installed on your machine
+- User account on GiljoAI MCP dashboard
+
+**Step 1: Generate API Key**
+
+1. Open GiljoAI MCP dashboard (http://localhost:7274 or your server URL)
+2. Login with your credentials
+3. Click your avatar → "My Settings"
+4. Navigate to "API and Integrations" tab
+5. Click "Personal API Keys" section
+6. Click "Generate New API Key"
+7. Enter a name (e.g., "Claude Code Access")
+8. Copy the generated API key (starts with `gk_`)
+
+**Important:** API keys are shown only once. Save it securely.
+
+**Step 2: Add MCP Server to Claude Code**
+
+```bash
+# For localhost access
+claude mcp add --transport http giljo-mcp http://localhost:7272/mcp \
+  --header "X-API-Key: gk_YOUR_API_KEY_HERE"
+
+# For network access (replace IP with your server)
+claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
+  --header "X-API-Key: gk_YOUR_API_KEY_HERE"
+```
+
+**Step 3: Verify Connection**
+
+```bash
+# Within Claude Code, check MCP status
+> /mcp
+
+# You should see:
+# - Server: giljo-mcp
+# - Status: Connected
+# - Tools: 22+ available tools
+```
+
+**Step 4: Start Using GiljoAI Orchestration**
+
+```bash
+# In Claude Code, interact with GiljoAI MCP
+> "List all my projects"
+> "Create a new project called 'Website Redesign' with the mission 'Modernize company website using Vue 3'"
+> "Show me all active agents"
+> "Send a message to the frontend-developer agent"
+```
+
+### Available Tools
+
+GiljoAI MCP provides 22+ orchestration tools via MCP:
+
+**Project Management:**
+- create_project - Create new projects with missions
+- list_projects - List all projects (filterable by status)
+- get_project - Get detailed project information
+- switch_project - Switch project context
+- close_project - Close/archive projects
+
+**Agent Orchestration:**
+- spawn_agent - Create specialized agents with roles
+- list_agents - List all agents in current project
+- get_agent_status - Check agent status and progress
+- update_agent - Modify agent configuration
+- retire_agent - Gracefully retire agents
+
+**Message Queue:**
+- send_message - Send messages between agents
+- receive_messages - Retrieve pending messages
+- acknowledge_message - Mark messages as read
+- list_messages - Browse message history
+
+**Task Management:**
+- create_task - Create tasks with dependencies
+- list_tasks - List tasks with filtering
+- update_task - Modify task details
+- assign_task - Assign tasks to agents
+- complete_task - Mark tasks as complete
+
+**Template System:**
+- list_templates - Browse agent role templates
+- get_template - Retrieve template details
+- create_template - Define custom templates
+- update_template - Modify existing templates
+
+**Context Management:**
+- discover_context - Analyze codebase structure
+- get_file_context - Retrieve file contents
+- search_context - Search across project context
+- get_context_summary - Get context usage summary
+
+### Architecture
+
+**MCP-over-HTTP Benefits:**
+- **Zero Dependencies** - No Python or packages required on client
+- **Network Accessible** - Works from any machine with HTTP access
+- **Multi-Tenant** - Automatic tenant isolation via API key
+- **Stateful Sessions** - PostgreSQL-backed session management
+- **SaaS Ready** - True cloud deployment model
+
+**Authentication Flow:**
+```
+X-API-Key header
+  → API key validation (bcrypt)
+  → User lookup
+  → Tenant resolution
+  → Session creation/retrieval
+  → Tool execution with tenant context
+```
+
+**Session Management:**
+- Sessions persist for 24 hours from last access
+- Session data stored in PostgreSQL
+- Auto-cleanup of expired sessions after 48 hours
+- Tenant context preserved across tool calls
+
+### Troubleshooting
+
+**Issue: "X-API-Key header required"**
+- Ensure you included the `--header` flag with correct API key
+- Verify API key format starts with `gk_`
+
+**Issue: "Invalid API key"**
+- Check API key is copied correctly (case-sensitive)
+- Verify API key hasn't been revoked from dashboard
+- Generate a new API key if needed
+
+**Issue: "Connection refused"**
+- Verify GiljoAI MCP server is running: `curl http://localhost:7272/health`
+- Check firewall allows port 7272
+- Verify correct server IP/hostname
+
+**Issue: "Session expired"**
+- Sessions expire after 24 hours of inactivity
+- Simply make a new request to create a new session
+
+### Complete Documentation
+
+For full details on GiljoAI MCP-over-HTTP integration, see:
+- [MCP-over-HTTP Integration Guide](MCP_OVER_HTTP_INTEGRATION.md)
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md)
+- [Installation Flow & Process](INSTALLATION_FLOW_PROCESS.md)
+
+---
+
+## Other MCP Servers
+
+Below is a list of other popular MCP servers you can connect to Claude Code:
 
 export const MCPServersTable = ({platform = "all"}) => {
   const generateClaudeCodeCommand = server => {

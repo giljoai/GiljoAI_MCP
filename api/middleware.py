@@ -108,6 +108,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/v1/agents",  # Agent listing
             "/api/v1/messages",  # Message listing
             "/api/auth/me",  # Auth status check
+            "/mcp",  # MCP-over-HTTP endpoint (handles own auth via X-API-Key)
         ]
         return any(path.startswith(p) for p in PUBLIC_PATHS)
 
