@@ -2,40 +2,87 @@ import { describe, it, expect } from 'vitest'
 import {
   generateClaudeCodeConfig,
   generateCodexConfig,
+  generateGeminiConfig,
   generateGenericConfig
 } from '@/utils/configTemplates'
 
-describe('generateClaudeCodeConfig', () => {
-  it('should generate valid JSON config', () => {
-    const config = generateClaudeCodeConfig('test-key-123', 'http://localhost:7272')
-    const parsed = JSON.parse(config)
+describe('generateClaudeCodeConfig - HTTP Transport', () => {
+  it('should generate valid HTTP transport command', () => {
+    const command = generateClaudeCodeConfig('test-key-123', 'http://localhost:7272')
 
-    expect(parsed.mcpServers).toBeDefined()
-    expect(parsed.mcpServers['giljo-mcp']).toBeDefined()
-    expect(parsed.mcpServers['giljo-mcp'].command).toBe('python')
-    expect(parsed.mcpServers['giljo-mcp'].env.GILJO_API_KEY).toBe('test-key-123')
-    expect(parsed.mcpServers['giljo-mcp'].env.GILJO_SERVER_URL).toBe('http://localhost:7272')
+    // Verify command structure
+    expect(command).toContain('claude mcp add')
+    expect(command).toContain('--transport http')
+    expect(command).toContain('giljo-mcp')
+    expect(command).toContain('http://localhost:7272/mcp')
+    expect(command).toContain('--header "X-API-Key: test-key-123"')
   })
 
-  it('should NOT include GILJO_MCP_HOME environment variable', () => {
-    const config = generateClaudeCodeConfig('test-key-123', 'http://localhost:7272')
-    const parsed = JSON.parse(config)
+  it('should include API key in header', () => {
+    const command = generateClaudeCodeConfig('gk_SecretKey123', 'https://example.com:7272')
 
-    // CRITICAL TEST: This will FAIL until we remove the hardcoded path
-    expect(parsed.mcpServers['giljo-mcp'].env.GILJO_MCP_HOME).toBeUndefined()
+    expect(command).toContain('X-API-Key: gk_SecretKey123')
   })
 
-  it('should work cross-platform - no hardcoded Windows paths', () => {
-    const config = generateClaudeCodeConfig('test-key-123', 'http://localhost:7272')
+  it('should use correct MCP endpoint path', () => {
+    const command = generateClaudeCodeConfig('test-key', 'http://server:7272')
 
-    // CRITICAL TEST: Will FAIL if hardcoded F:/GiljoAI_MCP exists
-    expect(config).not.toContain('F:/')
+    // Verify endpoint is /mcp not /api/mcp
+    expect(command).toContain('http://server:7272/mcp')
+    expect(command).not.toContain('/api/mcp')
   })
 
-  it('should use simple python command', () => {
-    const config = generateClaudeCodeConfig('test-key-123', 'http://localhost:7272')
-    const parsed = JSON.parse(config)
+  it('should be zero-dependency - no Python or uvx', () => {
+    const command = generateClaudeCodeConfig('test-key-123', 'http://localhost:7272')
 
-    expect(parsed.mcpServers['giljo-mcp'].command).toBe('python')
+    // CRITICAL: No Python, no uvx, no local packages
+    expect(command).not.toContain('python')
+    expect(command).not.toContain('uvx')
+    expect(command).not.toContain('GILJO_MCP_HOME')
+  })
+
+  it('should work cross-platform - no hardcoded paths', () => {
+    const command = generateClaudeCodeConfig('test-key-123', 'http://localhost:7272')
+
+    // CRITICAL: No hardcoded Windows paths
+    expect(command).not.toContain('F:/')
+    expect(command).not.toContain('C:/')
+    expect(command).not.toContain('\\\\')
+  })
+})
+
+describe('generateCodexConfig - HTTP Transport Placeholder', () => {
+  it('should generate placeholder command', () => {
+    const command = generateCodexConfig('test-key-123', 'http://localhost:7272')
+
+    expect(command).toContain('Codex CLI MCP Integration')
+    expect(command).toContain('Coming Soon')
+    expect(command).toContain('codex mcp add')
+    expect(command).toContain('--transport http')
+    expect(command).toContain('http://localhost:7272/mcp')
+  })
+
+  it('should include API key in placeholder', () => {
+    const command = generateCodexConfig('codex-key-456', 'https://example.com:7272')
+
+    expect(command).toContain('X-API-Key: codex-key-456')
+  })
+})
+
+describe('generateGeminiConfig - HTTP Transport Placeholder', () => {
+  it('should generate placeholder command', () => {
+    const command = generateGeminiConfig('test-key-123', 'http://localhost:7272')
+
+    expect(command).toContain('Gemini CLI MCP Integration')
+    expect(command).toContain('Coming Soon')
+    expect(command).toContain('gemini mcp add')
+    expect(command).toContain('--transport http')
+    expect(command).toContain('http://localhost:7272/mcp')
+  })
+
+  it('should include API key in placeholder', () => {
+    const command = generateGeminiConfig('gemini-key-789', 'https://example.com:7272')
+
+    expect(command).toContain('X-API-Key: gemini-key-789')
   })
 })

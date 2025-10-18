@@ -74,6 +74,7 @@ try:
         configuration,
         context,
         database_setup,
+        mcp_http,
         mcp_installer,
         messages,
         mcp_tools,
@@ -525,6 +526,9 @@ def create_app() -> FastAPI:
 
     # MCP tool endpoints for stdio-to-HTTP bridge
     app.include_router(mcp_tools.router, prefix="/mcp/tools", tags=["mcp_tools"])
+
+    # Pure MCP JSON-RPC 2.0 over HTTP endpoint (Handover 0032)
+    app.include_router(mcp_http.router, tags=["mcp"])
 
     # AI Tools configuration generator endpoints
     app.include_router(ai_tools.router, prefix="/api/ai-tools", tags=["ai-tools"])
