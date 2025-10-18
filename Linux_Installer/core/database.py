@@ -752,13 +752,52 @@ USER_URL=postgresql://giljo_user:{self.user_password}@{self.pg_host}:{self.pg_po
         return password
 
     def get_postgresql_install_guide(self) -> str:
-        """Return Linux-specific PostgreSQL installation guide"""
-        return """
+        """Return Ubuntu-optimized PostgreSQL installation guide"""
+        import platform
+        
+        # Detect Ubuntu for specific instructions
+        ubuntu_specific = ""
+        try:
+            dist_info = platform.freedesktop_os_release()
+            if dist_info.get('ID') == 'ubuntu':
+                ubuntu_version = dist_info.get('VERSION_ID', '')
+                ubuntu_specific = f"""
+Ubuntu {ubuntu_version} Specific Instructions:
+
+Method 1 - Official PostgreSQL Repository (Recommended):
+  # Add PostgreSQL official APT repository
+  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+  sudo apt update
+  sudo apt install postgresql-18 postgresql-client-18 postgresql-contrib-18
+  sudo systemctl enable --now postgresql
+  # Set password for postgres user
+  sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_password';"
+
+Method 2 - Ubuntu Default Repository:
+  sudo apt update
+  sudo apt install postgresql postgresql-contrib
+  sudo systemctl enable --now postgresql
+  # Set password for postgres user
+  sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_password';"
+
+Ubuntu Tips:
+  • Check status: sudo systemctl status postgresql
+  • View logs: sudo journalctl -u postgresql
+  • Default data directory: /var/lib/postgresql/
+  • Configuration files: /etc/postgresql/*/main/
+"""
+        except:
+            pass
+        
+        return f"""
 PostgreSQL Installation Guide for Linux:
+{ubuntu_specific}
+General Linux Instructions:
 
 Ubuntu/Debian:
-  sudo apt-get update
-  sudo apt-get install postgresql-18
+  sudo apt update
+  sudo apt install postgresql-18 postgresql-client-18
   sudo systemctl enable --now postgresql
 
 RHEL/CentOS/Fedora:
@@ -771,8 +810,17 @@ Arch:
   sudo -u postgres initdb -D /var/lib/postgres/data
   sudo systemctl enable --now postgresql
 
-Alternative:
-  docker run --name giljo-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:18
+Docker Alternative (Development Only):
+  # Install Docker
+  sudo apt update && sudo apt install docker.io
+  sudo systemctl enable --now docker
+  # Run PostgreSQL 18
+  sudo docker run --name giljo-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:18
+
+Post-Installation (All Distributions):
+  • Set postgres user password (REQUIRED)
+  • Verify service is running: sudo systemctl status postgresql
+  • Test connection: psql -h localhost -U postgres -d postgres
 """
 
 
