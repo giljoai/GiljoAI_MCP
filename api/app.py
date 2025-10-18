@@ -77,6 +77,7 @@ try:
         mcp_http,
         mcp_installer,
         messages,
+        setup_security,
         mcp_tools,
         network,
         products,
@@ -518,6 +519,7 @@ def create_app() -> FastAPI:
     # v3: authenticated user-scoped settings
     app.include_router(user_settings.router, prefix="/api/v1/user", tags=["user-settings"])
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
+    app.include_router(setup_security.router, prefix="/api/setup", tags=["setup-security"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
     app.include_router(network.router, prefix="/api/network", tags=["network"])
 
