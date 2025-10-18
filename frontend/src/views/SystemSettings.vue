@@ -173,22 +173,18 @@
               </v-btn>
             </template>
 
-            <!-- Deployment Mode Change via Setup Wizard -->
+            <!-- Network Configuration Info -->
             <v-divider class="my-6" />
 
-            <h3 class="text-h6 mb-3">Change Deployment Mode</h3>
+            <h3 class="text-h6 mb-3">Network Configuration</h3>
 
             <v-alert type="info" variant="tonal" class="mb-4">
-              To change deployment mode (localhost ↔ LAN), use the Setup Wizard below. This ensures
-              all network settings, API keys, and configurations are properly updated.
+              Network settings are configured during installation. To modify deployment mode,
+              update the system configuration file and restart the server.
             </v-alert>
           </v-card-text>
 
           <v-card-actions>
-            <v-btn variant="outlined" @click="navigateToSetupWizard">
-              <v-icon start>mdi-wizard-hat</v-icon>
-              Re-run Setup Wizard
-            </v-btn>
             <v-spacer />
             <v-btn variant="text" @click="loadNetworkSettings">
               <v-icon start>mdi-refresh</v-icon>
@@ -931,11 +927,6 @@ function handleDatabaseSuccess(result) {
 
 function handleDatabaseError(error) {
   console.error('Database connection failed:', error)
-}
-
-// Setup Wizard Navigation
-const navigateToSetupWizard = () => {
-  router.push('/setup')
 }
 
 // Configuration Modal Methods

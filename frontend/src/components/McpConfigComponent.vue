@@ -2,16 +2,18 @@
   <v-card>
     <v-card-title class="d-flex align-center bg-primary">
       <v-icon start>mdi-robot-outline</v-icon>
-      Connect AI Tools to GiljoAI MCP
+      Manual AI Tool Configuration
+      <v-spacer />
+      <v-btn icon="mdi-close" variant="text" @click="$emit('close')" aria-label="Close dialog" />
     </v-card-title>
 
     <v-card-text class="pt-6">
-      <!-- NEW: Universal Agent Configuration Section -->
+      <!-- Universal Agent Configuration Section -->
       <v-card class="mb-6" variant="outlined" style="border: 2px solid var(--v-theme-primary);">
         <v-card-title class="d-flex align-center bg-primary text-white">
           <v-icon start size="large">mdi-robot-excited</v-icon>
           <div>
-            <div class="text-h6">🚀 Let Your AI Tool Configure Itself</div>
+            <div class="text-h6">AI Tool MCP Configurator</div>
             <div class="text-subtitle-2 opacity-90">
               Works with Claude Code, Codex, Gemini, Cursor, and more
             </div>
@@ -20,10 +22,10 @@
         
         <v-card-text>
           <v-alert type="success" variant="tonal" class="mb-4">
-            <v-alert-title>Revolutionary Approach</v-alert-title>
+            <v-alert-title>Automatic Configuration</v-alert-title>
             <div class="mt-2">
-              Instead of manual configuration, your AI tool can visit a special URL 
-              and configure itself automatically. This works with ANY AI coding tool!
+              Your AI tool can visit a special URL and configure itself automatically.
+              This works with any AI coding tool that supports MCP.
             </div>
           </v-alert>
 
@@ -104,15 +106,15 @@
         </v-card-text>
       </v-card>
 
-      <!-- Manual Configuration Section (keep as fallback) -->
+      <!-- Manual Configuration Section (fallback) -->
       <v-card class="mb-6">
         <v-card-title>
           <v-icon start>mdi-cog</v-icon>
-          Manual Configuration (Alternative)
+          Manual Configuration
         </v-card-title>
         <v-card-text>
           <p class="text-body-2 mb-3">
-            If your AI tool doesn't support the automatic method above, use manual configuration:
+            If your AI tool doesn't support automatic configuration, use manual configuration below:
           </p>
           
           <!-- Tool Selection -->
@@ -335,8 +337,8 @@ function showSnackbar(message, color = 'success') {
 }
 
 // Agent instruction computed property
-const agentInstruction = computed(() => 
-  `Visit ${window.location.origin}/setup/ai-tools and configure yourself for MCP integration with this GiljoAI server. You will receive tailored configuration instructions for your platform.`
+const agentInstruction = computed(() =>
+  `Visit ${window.location.origin}/api/v1/user/ai-tools-configurator and configure yourself for MCP integration with this GiljoAI server. You will receive tailored configuration instructions for your platform.`
 )
 
 // Methods
@@ -511,11 +513,11 @@ async function copyAgentInstruction() {
 async function testAgentEndpoint() {
   testingEndpoint.value = true
   try {
-    const response = await fetch(`${window.location.origin}/setup/ai-tools`)
+    const response = await fetch(`${window.location.origin}/api/v1/user/ai-tools-configurator`)
     if (response.ok) {
       const instructions = await response.text()
       console.log('[McpConfig] Agent endpoint working:', instructions.slice(0, 100) + '...')
-      
+
       // Show success feedback
       showSnackbar('Agent endpoint is working correctly!', 'success')
     } else {

@@ -14,8 +14,7 @@
 
 **New Implementation Features** (October 2025 Harmonization):
 
-- **[AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT.md)** - Multi-AI tool support (Claude, CODEX, Gemini)
-- **[Enhanced Setup Flow](ENHANCED_SETUP_FLOW.md)** - Two-phase authentication and WebSocket-enabled setup
+- **[AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT.md)** - Multi-AI tool support via user settings (Claude, CODEX, Gemini)
 - **[Template System Evolution](TEMPLATE_SYSTEM_EVOLUTION.md)** - Database-backed templates with AI tool preferences
 
 ## Table of Contents
@@ -170,47 +169,17 @@ python install.py
 - Returns JWT token for immediate login
 - Token stored in localStorage
 
-**4. Redirect to Setup Wizard**:
-- User redirected to `/setup`
-- WebSocket connection established (setup mode - no auth required)
+**4. Redirect to Dashboard**:
+- User redirected to `/dashboard`
+- WebSocket connection established (authenticated mode)
+- Ready for normal operation
 
-### 3. Setup Wizard (3 Steps)
+### 3. Normal Operation
 
-**Step 1: MCP Configuration** (Optional)
-- Configure Model Context Protocol integration
-- Download setup scripts:
-  - Claude Desktop MCP config (`.claude.json`)
-  - VS Code MCP config (`.vscode/settings.json`)
-  - CLI setup scripts
-- Enable/disable toggle
-- Skip button allowed
-- Saves state: `mcp_configured: true/false`
-
-**Step 2: Serena Activation** (Optional)
-- Enable/disable Serena MCP server
-- Serena provides:
-  - Advanced code analysis
-  - Symbolic navigation
-  - Semantic search
-- Installation guide (uvx or local)
-- Skip button allowed
-- Saves state: `serena_enabled: true/false`
-
-**Step 3: Complete** (Summary)
-- Configuration summary:
-  - MCP Integration: Enabled/Disabled
-  - Serena MCP Server: Enabled/Disabled
-- Links to documentation
-- "Go to Dashboard" button
-- Marks `setup_completed: true`
-- `POST /api/setup/complete`
-
-### 4. Normal Operation
-
-**Login Flow** (after setup):
+**Login Flow**:
 - User visits application
 - Router redirects to `/login` (if not authenticated)
-- Login with new password (not default)
+- Login with password (not default)
 - `POST /api/auth/login`
 - JWT token returned and stored
 - Redirected to `/dashboard`
@@ -221,6 +190,12 @@ python install.py
 - Project and task management
 - Live updates via WebSocket
 - Multi-tenant data isolation
+
+**AI Tool Configuration** (Avatar → My Settings → API and Integrations):
+- **AI Tool MCP Configurator**: One-click setup for Claude Code, CODEX, Gemini
+- **Manual AI Tool Configuration**: Custom setup for any AI tool
+- **Personal API Keys**: Generate and manage user API keys
+- **Serena MCP**: Advanced code analysis integration
 
 ---
 
@@ -251,15 +226,7 @@ python install.py
 
 ### WebSocket Authentication
 
-**Setup Mode** (`setup_completed: false`):
-```javascript
-// Allow WebSocket without authentication for setup progress updates
-if (!setup_completed && path === '/ws/setup') {
-  return { allowed: true, context: 'setup' }
-}
-```
-
-**Post-Setup** (`setup_completed: true`):
+**Standard Operation**:
 ```javascript
 // Require JWT token for ALL WebSocket connections
 const token = websocket.query_params.get('token')
@@ -480,11 +447,11 @@ database:
 
 **Endpoints**:
 - `/auth/*` - Authentication (login, password change)
+- `/users/*` - User settings and AI tool configuration
 - `/projects/*` - Project CRUD
 - `/agents/*` - Agent management
 - `/tasks/*` - Task management
 - `/messages/*` - Message queue
-- `/setup/*` - Setup wizard state
 - `/ws` - WebSocket for real-time updates
 
 **Technologies**:
@@ -508,8 +475,8 @@ database:
 **Views**:
 - Login (`/login`)
 - Password Change (`/change-password`)
-- Setup Wizard (`/setup`)
 - Dashboard (`/dashboard`)
+- User Settings (`/settings`)
 - Projects, Agents, Tasks, Messages
 
 ---
