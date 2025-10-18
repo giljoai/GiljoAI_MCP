@@ -337,8 +337,9 @@ function showSnackbar(message, color = 'success') {
 }
 
 // Agent instruction computed property
+import { API_CONFIG } from '@/config/api'
 const agentInstruction = computed(() =>
-  `Visit ${window.location.origin}/api/v1/user/ai-tools-configurator and configure yourself for MCP integration with this GiljoAI server. You will receive tailored configuration instructions for your platform.`
+  `Visit ${API_CONFIG.REST_API.baseURL}/api/v1/user/ai-tools-configurator and configure yourself for MCP integration with this GiljoAI server. You will receive tailored configuration instructions for your platform.`
 )
 
 // Methods
@@ -513,7 +514,7 @@ async function copyAgentInstruction() {
 async function testAgentEndpoint() {
   testingEndpoint.value = true
   try {
-    const response = await fetch(`${window.location.origin}/api/v1/user/ai-tools-configurator`)
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/user/ai-tools-configurator`)
     if (response.ok) {
       const instructions = await response.text()
       console.log('[McpConfig] Agent endpoint working:', instructions.slice(0, 100) + '...')
