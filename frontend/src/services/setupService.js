@@ -17,27 +17,66 @@ class SetupService {
   }
 
   /**
-   * Check setup completion status
+   * Check enhanced setup status for security and v3.0 login flow
+   * @returns {Promise<{database_initialized: boolean, default_password_active: boolean, admin_users_exist: boolean, total_users_count: number, is_true_fresh_install: boolean}>}
+   */
+  async checkEnhancedStatus() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/setup/status`, {
+        method: 'GET',
+        cache: 'no-cache'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        return {
+          database_initialized: data.database_initialized,
+          default_password_active: data.default_password_active,
+          admin_users_exist: data.admin_users_exist,
+          total_users_count: data.total_users_count,
+          is_true_fresh_install: data.is_true_fresh_install
+        }
+      } else {
+        console.warn('[SETUP_SERVICE] Enhanced setup status endpoint failed:', response.status)
+        // Conservative fallback - assume fresh install
+        return {
+          database_initialized: false,
+          default_password_active: true,
+          admin_users_exist: false,
+          total_users_count: 0,
+          is_true_fresh_install: true
+        }
+      }
+    } catch (error) {
+      console.warn('[SETUP_SERVICE] Enhanced status check failed:', error)
+      // Conservative fallback - assume fresh install
+      return {
+        database_initialized: false,
+        default_password_active: true,
+        admin_users_exist: false,
+        total_users_count: 0,
+        is_true_fresh_install: true
+      }
+    }
+  }
+
+  /**
+   * Check setup completion status (v3.0 unified + backward compatibility)
    * @returns {Promise<{database_initialized: boolean}>}
    */
   async checkStatus() {
-    // v3.0 unified: setup wizard deprecated. Return "no setup required" state.
+    // v3.0 unified: Now uses real endpoint for security while maintaining no-setup approach
     try {
-      // Optional: fetch public frontend config to verify API is reachable
-      const response = await fetch(`${this.baseURL}/api/v1/config/frontend`, {
-        method: 'GET',
-        cache: 'no-cache',
-      })
-      if (!response.ok) {
-        // If config fetch fails, still do not block UI
-        return { requires_setup: false, database_initialized: true }
+      const enhancedStatus = await this.checkEnhancedStatus()
+      return {
+        requires_setup: false, // v3.0: Always false, no setup wizard
+        database_initialized: enhancedStatus.database_initialized,
+        default_password_active: enhancedStatus.default_password_active
       }
-      // Not used by callers, but proves connectivity
-      await response.json()
-    } catch (_) {
-      // Ignore errors and report setup not required
-    }
-    return { requires_setup: false, database_initialized: true }
+    } catch (error) {
+      console.warn('[SETUP_SERVICE] Status check failed:', error)
+      // v3.0 fallback - no setup required, assume initialized
+      return { requires_setup: false, database_initialized: true }
   }
 
   /**
