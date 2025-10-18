@@ -206,11 +206,11 @@ class UnifiedInstaller:
             return result
 
     def welcome_screen(self) -> None:
-        """Display welcome screen with yellow branding"""
+        """Display welcome screen with yellow branding and Ubuntu detection"""
         separator = "=" * 70
 
         print(f"\n{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}{Style.BRIGHT}  GiljoAI MCP - Unified Installer v3.0{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{Style.BRIGHT}  GiljoAI MCP - Linux Installer v3.0{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
 
         print(f"{Fore.CYAN}Welcome to GiljoAI MCP!{Style.RESET_ALL}")
@@ -223,7 +223,19 @@ class UnifiedInstaller:
         print(f"  • API server + Frontend dashboard")
         print(f"  • MCP server integration\n")
 
-        print(f"{Fore.YELLOW}Platform: {platform.system()} {platform.release()}{Style.RESET_ALL}")
+        # Detect and display Ubuntu information
+        platform_info = f"Platform: {platform.system()} {platform.release()}"
+        try:
+            dist_info = platform.freedesktop_os_release()
+            if dist_info.get('ID') == 'ubuntu':
+                ubuntu_version = dist_info.get('VERSION_ID', '')
+                ubuntu_name = dist_info.get('NAME', 'Ubuntu')
+                platform_info = f"Platform: {ubuntu_name} {ubuntu_version} ({platform.machine()})"
+                print(f"{Fore.GREEN}✓ Ubuntu detected - installer optimized for your system{Style.RESET_ALL}")
+        except:
+            pass
+            
+        print(f"{Fore.YELLOW}{platform_info}{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
 
     def ask_installation_questions(self) -> None:
@@ -703,9 +715,16 @@ class UnifiedInstaller:
 
             from giljo_mcp.database import DatabaseManager
             from giljo_mcp.models import User, SetupState
+            from giljo_mcp.tenant import TenantManager
             from datetime import datetime, timezone
             from uuid import uuid4
             from passlib.hash import bcrypt
+
+            # Generate proper tenant key for default installation
+            default_tenant_key = TenantManager.generate_tenant_key("default_admin")
+
+            # Store tenant key in instance variable for .env generation
+            self.default_tenant_key = default_tenant_key
 
             # Create tables using async DatabaseManager
             async def create_tables_and_init():
@@ -731,7 +750,7 @@ class UnifiedInstaller:
                             full_name='Administrator',
                             password_hash=bcrypt.hash('admin'),
                             role='admin',
-                            tenant_key='default',
+                            tenant_key=default_tenant_key,  # Use generated tenant key
                             is_active=True,
                             created_at=datetime.now(timezone.utc)
                         )
@@ -739,14 +758,14 @@ class UnifiedInstaller:
                         await session.commit()
 
                     # Create setup_state
-                    stmt = select(SetupState).where(SetupState.tenant_key == 'default')
+                    stmt = select(SetupState).where(SetupState.tenant_key == default_tenant_key)
                     result_state = await session.execute(stmt)
                     existing_state = result_state.scalar_one_or_none()
 
                     if not existing_state:
                         setup_state = SetupState(
                             id=str(uuid4()),
-                            tenant_key='default',
+                            tenant_key=default_tenant_key,  # Use generated tenant key
                             database_initialized=True,
                             database_initialized_at=datetime.now(timezone.utc),  # REQUIRED by ck_database_initialized_at_required constraint
                             default_password_active=True,
@@ -857,6 +876,7 @@ class UnifiedInstaller:
                 'install_dir': str(self.install_dir),
                 'owner_password': self.database_credentials.get('owner_password'),
                 'user_password': self.database_credentials.get('user_password'),
+                'default_tenant_key': getattr(self, 'default_tenant_key', 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'),  # Pass generated tenant key
                 'bind': '0.0.0.0',  # v3.0: Always bind all interfaces
             }
 
@@ -1203,13 +1223,51 @@ class UnifiedInstaller:
         print(f"{Fore.GREEN}Installation successful! Start the services to continue.{Style.RESET_ALL}\n")
 
     def _print_postgresql_install_guide(self) -> None:
-        """Print platform-specific PostgreSQL installation guide"""
+        """Print platform-specific PostgreSQL installation guide with Ubuntu focus"""
+        import platform
+        
         print(f"\n{Fore.YELLOW}PostgreSQL Installation Required{Style.RESET_ALL}\n")
 
-        print(f"{Fore.CYAN}Linux Installation:{Style.RESET_ALL}")
+        # Detect Ubuntu version for more specific instructions
+        try:
+            dist_info = platform.freedesktop_os_release()
+            if dist_info.get('ID') == 'ubuntu':
+                ubuntu_version = dist_info.get('VERSION_ID', '')
+                print(f"{Fore.GREEN}Ubuntu {ubuntu_version} Detected - Optimized Instructions:{Style.RESET_ALL}")
+                
+                print(f"\n{Fore.CYAN}Method 1 - Official PostgreSQL APT Repository (Recommended):{Style.RESET_ALL}")
+                print(f"  # Install the repository signing key")
+                print(f"  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -")
+                print(f"  echo \"deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main\" | sudo tee /etc/apt/sources.list.d/pgdg.list")
+                print(f"  sudo apt update")
+                print(f"  sudo apt install postgresql-18 postgresql-client-18 postgresql-contrib-18")
+                print(f"  sudo systemctl enable --now postgresql")
+                print(f"  # Set password for postgres user")
+                print(f"  sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"")
+                
+                print(f"\n{Fore.CYAN}Method 2 - Ubuntu Default Repository (May have older version):{Style.RESET_ALL}")
+                print(f"  sudo apt update")
+                print(f"  sudo apt install postgresql postgresql-contrib")
+                print(f"  sudo systemctl enable --now postgresql")
+                print(f"  # Set password for postgres user")
+                print(f"  sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"")
+                
+                print(f"\n{Fore.CYAN}Method 3 - Docker (Development Only):{Style.RESET_ALL}")
+                print(f"  # Install Docker if not already installed")
+                print(f"  sudo apt update && sudo apt install docker.io")
+                print(f"  sudo systemctl enable --now docker")
+                print(f"  # Run PostgreSQL 18 in Docker")
+                print(f"  sudo docker run --name giljo-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:18")
+                
+            else:
+                print(f"{Fore.CYAN}Linux Distribution: {dist_info.get('NAME', 'Unknown')}{Style.RESET_ALL}")
+        except:
+            pass
+
+        print(f"\n{Fore.CYAN}General Linux Installation:{Style.RESET_ALL}")
         print(f"  Ubuntu/Debian:")
-        print(f"     sudo apt-get update")
-        print(f"     sudo apt-get install postgresql-18")
+        print(f"     sudo apt update")
+        print(f"     sudo apt install postgresql-18 postgresql-client-18")
         print(f"     sudo systemctl enable --now postgresql")
         print(f"  RHEL/CentOS/Fedora:")
         print(f"     sudo dnf install postgresql18-server postgresql18")
@@ -1219,7 +1277,17 @@ class UnifiedInstaller:
         print(f"     sudo pacman -S postgresql")
         print(f"     sudo -iu postgres initdb -D /var/lib/postgres/data")
         print(f"     sudo systemctl enable --now postgresql")
-        print(f"\nFor other distributions see: {POSTGRESQL_DOWNLOAD_URL}")
+        
+        print(f"\n{Fore.YELLOW}Important for Ubuntu Users:{Style.RESET_ALL}")
+        print(f"  • After installation, PostgreSQL runs on port 5432")
+        print(f"  • Default admin user is 'postgres'")
+        print(f"  • You MUST set a password for the postgres user")
+        print(f"  • Use 'sudo systemctl status postgresql' to check service status")
+        print(f"  • Logs are in /var/log/postgresql/")
+        
+        print(f"\n{Fore.RED}If you need help:{Style.RESET_ALL}")
+        print(f"  • PostgreSQL Ubuntu documentation: https://help.ubuntu.com/community/PostgreSQL")
+        print(f"  • Official docs: {POSTGRESQL_DOWNLOAD_URL}")
 
         print()
 
