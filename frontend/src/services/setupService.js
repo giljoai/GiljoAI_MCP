@@ -21,11 +21,23 @@ class SetupService {
    * @returns {Promise<{database_initialized: boolean}>}
    */
   async checkStatus() {
-    const response = await fetch(`${this.baseURL}/api/setup/status`)
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    // v3.0 unified: setup wizard deprecated. Return "no setup required" state.
+    try {
+      // Optional: fetch public frontend config to verify API is reachable
+      const response = await fetch(`${this.baseURL}/api/v1/config/frontend`, {
+        method: 'GET',
+        cache: 'no-cache',
+      })
+      if (!response.ok) {
+        // If config fetch fails, still do not block UI
+        return { requires_setup: false, database_initialized: true }
+      }
+      // Not used by callers, but proves connectivity
+      await response.json()
+    } catch (_) {
+      // Ignore errors and report setup not required
     }
-    return response.json()
+    return { requires_setup: false, database_initialized: true }
   }
 
   /**
