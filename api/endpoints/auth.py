@@ -617,110 +617,146 @@ async def register_user(
     )
 
 
-@router.post("/change-password", response_model=PasswordChangeResponse, tags=["auth"])
-async def change_password(
-    request_body: PasswordChangeRequest = Body(...),
+
+@router.post("/create-first-admin", response_model=RegisterUserResponse, status_code=201, tags=["auth"])
+async def create_first_admin_user(
+    request_body: RegisterUserRequest = Body(...),
     response: Response = None,
-    request: Request = None,
     db: AsyncSession = Depends(get_db_session)
 ):
     """
-    Change password from default admin/admin.
-
-    This endpoint allows changing the default admin password.
-    Requirements:
-    - Current password must be 'admin'
-    - New password must meet complexity requirements (12+ chars, uppercase, lowercase, digit, special char)
-    - Passwords must match
-    - Sets default_password_active: false on success
-    - Returns JWT token for immediate login
-
+    Create first administrator account on fresh install (Handover 0034).
+    
+    Security:
+    - Only works when total_users_count == 0 (fresh install)
+    - Enforces strong password requirements (12+ chars, complexity)
+    - Auto-generates secure tenant_key
+    - Forces role='admin' for first user
+    - Returns JWT token for immediate login via httpOnly cookie
+    - Logs admin creation event for audit trail
+    
+    Replaces legacy admin/admin default password flow.
+    
     Args:
-        request: Password change request
+        request_body: User registration request with username, password, optional email/full_name
+        response: FastAPI response object for setting cookies
         db: Database session
-
+        
     Returns:
-        Password change success with JWT token
-
+        RegisterUserResponse with user details and success message
+        
     Raises:
-        HTTPException: 400 if passwords don't match
-        HTTPException: 401 if current password is incorrect
-        HTTPException: 404 if admin user not found
+        HTTPException 403: If users already exist (not fresh install)
+        HTTPException 400: If password doesn't meet requirements
     """
-    from src.giljo_mcp.models import SetupState
-
-    # Validate passwords match
-    if request_body.new_password != request_body.confirm_password:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
-
-    # Get admin user
-    stmt = select(User).where(User.username == "admin")
-    result = await db.execute(stmt)
-    admin_user = result.scalar_one_or_none()
-
-    if not admin_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found")
-
-    # SECURITY: Check if setup already completed (defense-in-depth)
-    # This prevents attackers from accessing /welcome directly to trigger password reset
-    stmt_setup = select(SetupState).where(SetupState.tenant_key == admin_user.tenant_key)
-    result_setup = await db.execute(stmt_setup)
-    setup_state = result_setup.scalar_one_or_none()
-
-    if setup_state and not setup_state.default_password_active:
-        logger.warning(f"Password change attempt after setup completed (user: {admin_user.username})")
+    from uuid import uuid4
+    from src.giljo_mcp.tenant import TenantManager
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
+    
+    # SECURITY CHECK: Verify no users exist (fresh install only)
+    user_count_stmt = select(func.count(User.id))
+    result = await db.execute(user_count_stmt)
+    total_users = result.scalar()
+    
+    if total_users > 0:
+        logger.warning(
+            f"[SECURITY] Blocked create-first-admin attempt - {total_users} users already exist. "
+            "This may be an attack attempt."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Setup already completed. Password can only be changed during initial setup. Use 'Change Password' in user settings instead."
+            detail="Administrator account already exists. Please use the login page instead."
         )
-
-    # Verify current password
-    if not bcrypt.verify(request_body.current_password, admin_user.password_hash):
-        logger.warning("Password change failed: incorrect current password")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
-
-    # Hash new password
-    new_password_hash = bcrypt.hash(request_body.new_password)
-
-    # Update user
-    admin_user.password_hash = new_password_hash
-
-    # Update setup state
-    stmt_setup = select(SetupState).where(SetupState.tenant_key == admin_user.tenant_key)
-    result_setup = await db.execute(stmt_setup)
-    setup_state = result_setup.scalar_one_or_none()
-
-    if setup_state:
-        setup_state.default_password_active = False
-        setup_state.password_changed_at = datetime.now(timezone.utc)
-    else:
-        # Create setup state if it doesn't exist
-        from uuid import uuid4
-
-        setup_state = SetupState(
-            id=str(uuid4()),
-            tenant_key=admin_user.tenant_key,
-            database_initialized=True,
-            default_password_active=False,
-            password_changed_at=datetime.now(timezone.utc),
-            setup_version="3.0.0",
+    
+    # Validate password strength (enforce 12+ char minimum for admin)
+    if len(request_body.password) < 12:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin password must be at least 12 characters long"
         )
-        db.add(setup_state)
-
-    await db.commit()
-
-    logger.info(f"Password changed successfully for user: {admin_user.username}")
-
-    # Don't set cookie or return token - force proper login
-    # This ensures user data is properly loaded after authentication
-    return PasswordChangeResponse(
-        success=True,
-        message="Password changed successfully. Please login with your new credentials.",
-        token="",  # No token - must login
-        user={
-            "id": str(admin_user.id),
-            "username": admin_user.username,
-            "role": admin_user.role,
-            "tenant_key": admin_user.tenant_key,
-        },
+    
+    # Check password complexity
+    has_upper = any(c.isupper() for c in request_body.password)
+    has_lower = any(c.islower() for c in request_body.password)
+    has_digit = any(c.isdigit() for c in request_body.password)
+    has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in request_body.password)
+    
+    if not (has_upper and has_lower and has_digit and has_special):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain uppercase, lowercase, digit, and special character"
+        )
+    
+    # Hash password
+    password_hash = bcrypt.hash(request_body.password)
+    
+    # Generate secure tenant key
+    tenant_key = TenantManager.generate_tenant_key(request_body.username)
+    
+    # Create first admin user (force admin role)
+    admin_user = User(
+        id=str(uuid4()),
+        username=request_body.username,
+        email=request_body.email,
+        full_name=request_body.full_name or "Administrator",
+        password_hash=password_hash,
+        role='admin',  # FORCE admin role for first user
+        tenant_key=tenant_key,
+        is_active=True,
+        created_at=datetime.now(timezone.utc)
     )
+    
+    db.add(admin_user)
+    
+    try:
+        await db.commit()
+        await db.refresh(admin_user)
+    except IntegrityError as e:
+        await db.rollback()
+        logger.error(f"Failed to create first admin user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists"
+        )
+    
+    # Generate JWT token for immediate login
+    token = JWTManager.create_access_token(
+        user_id=str(admin_user.id),
+        username=admin_user.username,
+        role=admin_user.role,
+        tenant_key=admin_user.tenant_key
+    )
+    
+    # Set httpOnly cookie (same pattern as login endpoint)
+    if response:
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+            path="/api",
+            max_age=86400  # 24 hours
+        )
+    
+    logger.info(
+        f"[SETUP] First administrator account created successfully - "
+        f"username: {admin_user.username}, tenant: {tenant_key[:12]}..."
+    )
+    
+    return RegisterUserResponse(
+        id=str(admin_user.id),
+        username=admin_user.username,
+        email=admin_user.email,
+        full_name=admin_user.full_name,
+        role=admin_user.role,
+        tenant_key=admin_user.tenant_key,
+        is_active=admin_user.is_active,
+        message="Administrator account created successfully. Redirecting to dashboard..."
+    )
+
+
+# REMOVED (Handover 0034): Legacy password change endpoint
+# Replaced by clean first-admin creation flow via /create-first-admin
+# Old endpoint required default admin/admin credentials and complex state tracking
+# New flow: Fresh install (0 users) → Create admin account directly

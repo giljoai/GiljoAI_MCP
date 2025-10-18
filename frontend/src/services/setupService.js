@@ -17,8 +17,8 @@ class SetupService {
   }
 
   /**
-   * Check enhanced setup status for security and v3.0 login flow
-   * @returns {Promise<{database_initialized: boolean, default_password_active: boolean, admin_users_exist: boolean, total_users_count: number, is_true_fresh_install: boolean}>}
+   * Check fresh install status (Handover 0034 - simplified)
+   * @returns {Promise<{is_fresh_install: boolean, total_users_count: number, requires_admin_creation: boolean}>}
    */
   async checkEnhancedStatus() {
     try {
@@ -26,57 +26,50 @@ class SetupService {
         method: 'GET',
         cache: 'no-cache'
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         return {
-          database_initialized: data.database_initialized,
-          default_password_active: data.default_password_active,
-          admin_users_exist: data.admin_users_exist,
+          is_fresh_install: data.is_fresh_install,
           total_users_count: data.total_users_count,
-          is_true_fresh_install: data.is_true_fresh_install
+          requires_admin_creation: data.requires_admin_creation
         }
       } else {
-        console.warn('[SETUP_SERVICE] Enhanced setup status endpoint failed:', response.status)
-        // Conservative fallback - assume fresh install
+        console.warn('[SETUP_SERVICE] Setup status endpoint failed:', response.status)
+        // Conservative fallback - assume fresh install (allows account creation)
         return {
-          database_initialized: false,
-          default_password_active: true,
-          admin_users_exist: false,
+          is_fresh_install: true,
           total_users_count: 0,
-          is_true_fresh_install: true
+          requires_admin_creation: true
         }
       }
     } catch (error) {
-      console.warn('[SETUP_SERVICE] Enhanced status check failed:', error)
-      // Conservative fallback - assume fresh install
+      console.warn('[SETUP_SERVICE] Status check failed:', error)
+      // Conservative fallback - assume fresh install (allows account creation)
       return {
-        database_initialized: false,
-        default_password_active: true,
-        admin_users_exist: false,
+        is_fresh_install: true,
         total_users_count: 0,
-        is_true_fresh_install: true
+        requires_admin_creation: true
       }
     }
   }
 
   /**
-   * Check setup completion status (v3.0 unified + backward compatibility)
-   * @returns {Promise<{database_initialized: boolean}>}
+   * Check setup completion status (Handover 0034 - backward compatibility wrapper)
+   * @returns {Promise<{requires_setup: boolean, is_fresh_install: boolean}>}
    */
   async checkStatus() {
-    // v3.0 unified: Now uses real endpoint for security while maintaining no-setup approach
     try {
-      const enhancedStatus = await this.checkEnhancedStatus()
+      const status = await this.checkEnhancedStatus()
       return {
         requires_setup: false, // v3.0: Always false, no setup wizard
-        database_initialized: enhancedStatus.database_initialized,
-        default_password_active: enhancedStatus.default_password_active
+        is_fresh_install: status.is_fresh_install
       }
     } catch (error) {
       console.warn('[SETUP_SERVICE] Status check failed:', error)
-      // v3.0 fallback - no setup required, assume initialized
-      return { requires_setup: false, database_initialized: true }
+      // Fallback - no setup required, not fresh install
+      return { requires_setup: false, is_fresh_install: false }
+    }
   }
 
   /**

@@ -683,7 +683,7 @@ class UnifiedInstaller:
         2. Update .env with REAL credentials
         3. Reload environment variables
         4. Create tables using DatabaseManager (MANDATORY)
-        5. Create admin account and setup_state
+        5. Create setup_state (NO admin user - Handover 0034)
 
         Returns:
             Database setup result
@@ -759,14 +759,13 @@ class UnifiedInstaller:
             sys.path.insert(0, str(Path(__file__).parent / "src"))
 
             from giljo_mcp.database import DatabaseManager
-            from giljo_mcp.models import User, SetupState
+            from giljo_mcp.models import SetupState
             from giljo_mcp.tenant import TenantManager
             from datetime import datetime, timezone
             from uuid import uuid4
-            from passlib.hash import bcrypt
 
             # Generate proper tenant key for default installation
-            default_tenant_key = TenantManager.generate_tenant_key("default_admin")
+            default_tenant_key = TenantManager.generate_tenant_key("default_installation")
 
             # Store tenant key in instance variable for .env generation
             self.default_tenant_key = default_tenant_key
@@ -778,31 +777,11 @@ class UnifiedInstaller:
                 # Create all tables (SAME AS api/app.py:186)
                 await db_manager.create_tables_async()
 
-                # Create admin user
+                # Create setup_state ONLY (no admin user - Handover 0034)
                 async with db_manager.get_session_async() as session:
                     from sqlalchemy import select
 
-                    # Check if admin exists
-                    stmt = select(User).where(User.username == 'admin')
-                    result_user = await session.execute(stmt)
-                    existing = result_user.scalar_one_or_none()
-
-                    if not existing:
-                        admin_user = User(
-                            id=str(uuid4()),
-                            username='admin',
-                            email=None,
-                            full_name='Administrator',
-                            password_hash=bcrypt.hash('admin'),
-                            role='admin',
-                            tenant_key=default_tenant_key,  # Use generated tenant key
-                            is_active=True,
-                            created_at=datetime.now(timezone.utc)
-                        )
-                        session.add(admin_user)
-                        await session.commit()
-
-                    # Create setup_state
+                    # Check if setup_state exists
                     stmt = select(SetupState).where(SetupState.tenant_key == default_tenant_key)
                     result_state = await session.execute(stmt)
                     existing_state = result_state.scalar_one_or_none()
@@ -810,11 +789,12 @@ class UnifiedInstaller:
                     if not existing_state:
                         setup_state = SetupState(
                             id=str(uuid4()),
-                            tenant_key=default_tenant_key,  # Use generated tenant key
+                            tenant_key=default_tenant_key,
                             database_initialized=True,
-                            database_initialized_at=datetime.now(timezone.utc),  # REQUIRED by ck_database_initialized_at_required constraint
-                            default_password_active=True,
-                            password_changed_at=None,
+                            database_initialized_at=datetime.now(timezone.utc),
+                            # REMOVED (Handover 0034):
+                            # default_password_active=True,
+                            # password_changed_at=None,
                             setup_version='3.0.0',
                             created_at=datetime.now(timezone.utc),
                             updated_at=datetime.now(timezone.utc)
@@ -830,11 +810,11 @@ class UnifiedInstaller:
 
             if tables_created:
                 self._print_success("Database tables created successfully")
-                self._print_success("Admin user created (username: admin, password: admin)")
                 self._print_success("Setup state initialized")
+                # REMOVED (Handover 0034): Admin user creation messaging
                 result['tables_created'] = True
-                result['admin_created'] = True
                 result['setup_state_created'] = True
+                result['admin_created'] = False  # Explicitly mark as not created
             else:
                 self._print_error("Table creation failed")
                 result['success'] = False
@@ -1172,12 +1152,8 @@ class UnifiedInstaller:
             print(f"  • Port: 5432")
             print()
 
-        # Default admin account
-        print(f"{Fore.YELLOW}Default Admin Account:{Style.RESET_ALL}")
-        print(f"  • Username: admin")
-        print(f"  • Password: admin")
-        print(f"  {Fore.RED}(You will be required to change this on first login){Style.RESET_ALL}")
-        print()
+        # REMOVED (Handover 0034): Default admin account messaging
+        # Fresh installs will create admin via CreateAdminAccount.vue
 
         # Startup guidance
         print(f"{Fore.CYAN}{Style.BRIGHT}Recommended startup:{Style.RESET_ALL}")
@@ -1227,15 +1203,15 @@ class UnifiedInstaller:
         print(f"  {Fore.CYAN}http://localhost:{api_port}/docs{Style.RESET_ALL}")
         print()
 
-        # Next steps
+        # Next steps (updated for Handover 0034)
         print(f"{Fore.WHITE}{Style.BRIGHT}Next Steps:{Style.RESET_ALL}")
         print(f"  1. Start the services with python startup.py (or the manual commands above)")
         print(f"  2. Open your browser to the frontend URL")
-        print(f"  3. Complete the first-time setup wizard:")
-        print(f"     • Change default admin password")
-        print(f"     • Configure MCP integration (optional)")
-        print(f"     • Configure Serena (optional)")
-        print(f"  4. Create your first product and start orchestrating!")
+        print(f"  3. {Fore.YELLOW}Create your administrator account{Style.RESET_ALL} (first-run only)")
+        print(f"  4. Configure optional features:")
+        print(f"     • MCP integration")
+        print(f"     • Serena integration")
+        print(f"  5. Create your first product and start orchestrating!")
         print()
 
         # Firewall configuration note
