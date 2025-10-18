@@ -102,7 +102,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/redoc",
             "/openapi.json",
             "/api/auth/login",  # Login endpoint
-            "/api/auth/change-password",  # Password change (first-time setup)
+            "/api/auth/create-first-admin",  # First admin creation (Handover 0034)
+            "/api/setup/status",  # Fresh install detection (Handover 0034)
             "/api/v1/config/frontend",  # Frontend config
             "/api/v1/products",  # Product listing
             "/api/v1/agents",  # Agent listing
