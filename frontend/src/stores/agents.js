@@ -134,7 +134,7 @@ export const useAgentStore = defineStore('agents', () => {
 
   async function fetchAgentTree(projectId) {
     try {
-      const response = await api.get(`/api/agents/tree?project_id=${projectId}`)
+      const response = await api.agents.tree(projectId)
       agentTree.value = response.data
       return response.data
     } catch (err) {
@@ -145,9 +145,10 @@ export const useAgentStore = defineStore('agents', () => {
 
   async function fetchAgentMetrics(projectId, timeRange = '24h') {
     try {
-      const response = await api.get(
-        `/api/agents/metrics?project_id=${projectId}&range=${timeRange}`,
-      )
+      const hours = typeof timeRange === 'string' && timeRange.endsWith('h')
+        ? parseInt(timeRange)
+        : 24
+      const response = await api.agents.metrics(projectId, isNaN(hours) ? 24 : hours)
       agentMetrics.value = response.data
       return response.data
     } catch (err) {

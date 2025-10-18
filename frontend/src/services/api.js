@@ -32,36 +32,12 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config
 
     if (error.response?.status === 401) {
-      // Handle unauthorized access
-      // Clear any cached user state
+      // Handle unauthorized: clear cached state and redirect to login
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
 
-      // Only redirect to login if not already on the login page
-      if (!window.location.pathname.includes('/login') && !originalRequest._retry) {
-        // Mark request as retried to prevent infinite loops
+      if (!window.location.pathname.includes('/login') && !originalRequest?._retry) {
         originalRequest._retry = true
-
-        // CRITICAL FIX: Check setup status BEFORE redirecting to login
-        // This prevents the bug where fresh installs redirect to /login instead of /setup
-        try {
-          // Use a separate axios instance to avoid circular dependency
-          const setupResponse = await axios.get('/api/setup/status')
-          const setupStatus = setupResponse.data
-
-          // If database is NOT initialized, don't redirect to login
-          // Let the router handle the redirect to /setup
-          if (!setupStatus.database_initialized) {
-            console.log('[API] Database not initialized - skipping login redirect')
-            return Promise.reject(error)
-          }
-        } catch (e) {
-          // If setup status check fails, assume fresh install (don't redirect)
-          console.log('[API] Setup status check failed - assuming fresh install')
-          return Promise.reject(error)
-        }
-
-        // Setup is complete - proceed with login redirect (existing behavior)
         const currentPath = window.location.pathname + window.location.search
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
       }
@@ -133,6 +109,9 @@ export const api = {
     health: (id) => apiClient.get(`/api/v1/agents/${id}/health/`),
     assign: (agentName, jobData) => apiClient.post(`/api/v1/agents/${agentName}/assign/`, jobData),
     decommission: (id, reason) => apiClient.post(`/api/v1/agents/${id}/decommission/`, { reason }),
+    tree: (projectId) => apiClient.get('/api/v1/agents/tree', { params: { project_id: projectId } }),
+    metrics: (projectId, hours = 24) =>
+      apiClient.get('/api/v1/agents/metrics', { params: { project_id: projectId, hours } }),
   },
 
   // Messages

@@ -259,124 +259,110 @@
           <v-card-title>API and Integrations</v-card-title>
           <v-card-subtitle>Configure API settings and MCP tool integrations</v-card-subtitle>
           <v-card-text>
-            <!-- API Keys Section -->
-            <h3 class="text-h6 mb-2">
-              <v-icon class="mr-2">mdi-key-variant</v-icon>
-              Personal API Keys
-            </h3>
-            <p class="mb-4 text-body-2 text-medium-emphasis">
-              Generate and manage API keys for external integrations like Claude Code, Codex, and other AI tools.
-              Each key is personal to you and scoped to your tenant.
-            </p>
-            <ApiKeyManager />
+            <v-tabs v-model="apiSubTab" class="mb-4">
+              <v-tab value="api-keys"><v-icon start>mdi-key-variant</v-icon>API Keys</v-tab>
+              <v-tab value="mcp-config"><v-icon start>mdi-robot</v-icon>MCP Configuration</v-tab>
+              <v-tab value="integrations"><v-icon start>mdi-puzzle</v-icon>Integrations</v-tab>
+            </v-tabs>
 
-            <v-divider class="my-6" />
+            <v-window v-model="apiSubTab">
+              <!-- API Keys Tab -->
+              <v-window-item value="api-keys">
+                <h3 class="text-h6 mb-2">
+                  <v-icon class="mr-2">mdi-key-variant</v-icon>
+                  Personal API Keys
+                </h3>
+                <p class="mb-4 text-body-2 text-medium-emphasis">
+                  Generate and manage API keys for external integrations like Claude Code, Codex, and other AI tools.
+                  Each key is personal to you and scoped to your tenant.
+                </p>
+                <ApiKeyManager />
+              </v-window-item>
 
-            <!-- AI Tools Connection Section -->
-            <h3 class="text-h6 mb-2">
-              <v-icon class="mr-2">mdi-robot-outline</v-icon>
-              AI Tool Configuration
-            </h3>
-            <p class="text-body-2 text-medium-emphasis mb-4">
-              Connect Claude Code, Codex, Gemini, and other AI tools to this GiljoAI MCP server.
-              Choose automatic configuration (recommended) or manual setup.
-            </p>
+              <!-- MCP Configuration Tab -->
+              <v-window-item value="mcp-config">
+                <h3 class="text-h6 mb-2">
+                  <v-icon class="mr-2">mdi-robot-outline</v-icon>
+                  AI Tool Self-Configuration
+                </h3>
+                <p class="text-body-2 text-medium-emphasis mb-4">
+                  Use the wizard to generate a tool-specific prompt that configures your AI tool automatically.
+                  For tools without wizard support, use manual configuration.
+                </p>
 
-            <!-- Auto-Configurator Button (Primary) -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-2">
-                  <v-icon color="primary" size="large" class="mr-3">mdi-auto-fix</v-icon>
-                  <div class="flex-grow-1">
-                    <h4 class="text-h6 mb-1">AI Tool MCP Configurator</h4>
-                    <p class="text-body-2 text-medium-emphasis mb-0">
-                      Recommended: Let your AI tool configure itself automatically.
-                      Works with Claude Code, Codex, Gemini, Cursor, and more.
-                    </p>
-                  </div>
-                </div>
-                <v-btn
-                  color="primary"
-                  variant="flat"
-                  size="large"
-                  block
-                  prepend-icon="mdi-robot-excited"
-                  @click="openAutoConfigurator"
-                  aria-label="Open AI Tool MCP Configurator for automatic setup"
-                  class="mt-3"
-                >
-                  Open AI Tool MCP Configurator
-                </v-btn>
-              </v-card-text>
-            </v-card>
+                <v-card variant="outlined" class="mb-4 pa-4">
+                  <AiToolConfigWizard />
+                </v-card>
 
-            <!-- Manual Configuration Button (Secondary) -->
-            <v-card variant="outlined" class="mb-6">
-              <v-card-text>
-                <div class="d-flex align-center mb-2">
-                  <v-icon color="secondary" size="large" class="mr-3">mdi-cog</v-icon>
-                  <div class="flex-grow-1">
-                    <h4 class="text-h6 mb-1">Manual AI Tool Configuration</h4>
-                    <p class="text-body-2 text-medium-emphasis mb-0">
-                      Manual configuration for AI tools that don't support automatic setup.
-                      Generate and copy configuration snippets.
-                    </p>
-                  </div>
-                </div>
-                <v-btn
-                  variant="outlined"
-                  size="large"
-                  block
-                  prepend-icon="mdi-file-code"
-                  @click="openManualConfig"
-                  aria-label="Open manual AI tool configuration dialog"
-                  class="mt-3"
-                >
-                  Open Manual Configuration
-                </v-btn>
-              </v-card-text>
-            </v-card>
+                <!-- Manual Configuration (fallback) -->
+                <v-card variant="outlined" class="mb-6">
+                  <v-card-text>
+                    <div class="d-flex align-center mb-2">
+                      <v-icon color="secondary" size="large" class="mr-3">mdi-cog</v-icon>
+                      <div class="flex-grow-1">
+                        <h4 class="text-h6 mb-1">Manual AI Tool Configuration</h4>
+                        <p class="text-body-2 text-medium-emphasis mb-0">
+                          Manual configuration for AI tools that don't support automatic setup.
+                          Generate and copy configuration snippets.
+                        </p>
+                      </div>
+                    </div>
+                    <v-btn
+                      variant="outlined"
+                      size="large"
+                      block
+                      prepend-icon="mdi-file-code"
+                      @click="openManualConfig"
+                      aria-label="Open manual AI tool configuration dialog"
+                      class="mt-3"
+                    >
+                      Open Manual Configuration
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+              </v-window-item>
 
-            <v-divider class="my-6" />
+              <!-- Integrations Tab -->
+              <v-window-item value="integrations">
+                <h3 class="text-h6 mb-4">MCP Integrations</h3>
+                <v-card variant="outlined" class="mb-4">
+                  <v-list>
+                    <v-list-item>
+                      <template #prepend>
+                        <v-avatar size="40" rounded="0">
+                          <v-img src="/Serena.png" alt="Serena MCP" />
+                        </v-avatar>
+                      </template>
 
-            <h3 class="text-h6 mb-4">MCP Integrations</h3>
+                      <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
+                      <v-list-item-subtitle>
+                        Enabling adds Serena tool instructions to agent prompts. Disabling removes them
+                        from agent tool startup. (Currently only Claude Code)
+                      </v-list-item-subtitle>
 
-            <v-card variant="outlined" class="mb-4">
-              <v-list>
-                <v-list-item>
-                  <template v-slot:prepend>
-                    <v-avatar size="40" rounded="0">
-                      <v-img src="/Serena.png" alt="Serena MCP" />
-                    </v-avatar>
-                  </template>
+                      <template #append>
+                        <v-switch
+                          v-model="serenaEnabled"
+                          @update:model-value="toggleSerena"
+                          color="primary"
+                          :loading="toggling"
+                          hide-details
+                          inset
+                          class="serena-toggle"
+                        />
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </v-card>
 
-                  <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
-                  <v-list-item-subtitle>
-                    Enabling adds Serena tool instructions to agent prompts. Disabling removes them
-                    from agent tool startup. (Currently only Claude Code)
-                  </v-list-item-subtitle>
-
-                  <template v-slot:append>
-                    <v-switch
-                      v-model="serenaEnabled"
-                      @update:model-value="toggleSerena"
-                      color="primary"
-                      :loading="toggling"
-                      hide-details
-                      inset
-                      class="serena-toggle"
-                    />
-                  </template>
-                </v-list-item>
-              </v-list>
-            </v-card>
-
-            <v-alert type="info" variant="tonal" class="mb-4">
-              <v-icon start>mdi-information</v-icon>
-              Serena MCP must be installed separately and configured in your coding tool (e.g.,
-              Claude Code). This toggle only controls whether Serena instructions are included in
-              agent prompts.
-            </v-alert>
+                <v-alert type="info" variant="tonal" class="mb-4">
+                  <v-icon start>mdi-information</v-icon>
+                  Serena MCP must be installed separately and configured in your coding tool (e.g.,
+                  Claude Code). This toggle only controls whether Serena instructions are included in
+                  agent prompts.
+                </v-alert>
+              </v-window-item>
+            </v-window>
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -397,6 +383,7 @@ import { useRouter } from 'vue-router'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import McpConfigComponent from '@/components/McpConfigComponent.vue'
+import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
 import setupService from '@/services/setupService'
 
 // Stores and Theme
@@ -406,6 +393,7 @@ const router = useRouter()
 
 // State
 const activeTab = ref('general')
+const apiSubTab = ref('api-keys')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
@@ -512,16 +500,6 @@ function resetNotificationSettings() {
 }
 
 // AI Tool Configuration Methods
-import { API_CONFIG } from '@/config/api'
-function openAutoConfigurator() {
-  // Open the configurator on the API origin to avoid SPA dev-server fallback
-  const token = localStorage.getItem('auth_token')
-  const apiBase = API_CONFIG.REST_API.baseURL
-  const url = `${apiBase}/api/v1/user/ai-tools-configurator${token ? `?token=${token}` : ''}`
-
-  console.log('[USER SETTINGS] Opening auto-configurator:', url)
-  window.location.href = url
-}
 
 function openManualConfig() {
   // Show the manual config dialog
