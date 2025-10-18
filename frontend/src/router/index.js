@@ -224,8 +224,8 @@ router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
 
-  // Fresh install detection - simple user count check
-  if (to.path !== '/welcome' && to.path !== '/login' && to.meta.requiresAuth !== false) {
+  // PRIORITY 1: Fresh install detection (check BEFORE auth for all routes except /welcome)
+  if (to.path !== '/welcome' && to.path !== '/login') {
     try {
       const setupState = await setupService.checkEnhancedStatus()
 
@@ -236,17 +236,12 @@ router.beforeEach(async (to, from, next) => {
         return
       }
     } catch (error) {
-      // Network error - allow navigation to auth routes
+      // Network error - log but continue (will fail at auth check if needed)
       console.log('[ROUTER] Setup status check failed:', error.message)
-      if (to.path !== '/welcome' && to.path !== '/login') {
-        // On network error, default to login (safe fallback)
-        next('/login')
-        return
-      }
     }
   }
 
-  // Auth routes (layout: 'auth') - allow access without authentication
+  // PRIORITY 2: Auth routes (layout: 'auth') - allow access without authentication
   if (to.meta.layout === 'auth') {
     // Security check: Block /welcome if users exist (attack prevention)
     if (to.path === '/welcome') {
@@ -269,7 +264,7 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // App routes (layout: 'default') - check authentication
+  // PRIORITY 3: App routes (layout: 'default') - check authentication
   const userStore = useUserStore()
   const requiresAuth = to.meta.requiresAuth !== false
 
