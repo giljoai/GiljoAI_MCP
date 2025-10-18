@@ -936,9 +936,11 @@ class SetupState(Base):
     python_version = Column(String(20), nullable=True)
     node_version = Column(String(20), nullable=True)
 
-    # Default password tracking
-    default_password_active = Column(Boolean, default=True, nullable=False, comment="True if default admin/admin password is still active")
-    password_changed_at = Column(DateTime(timezone=True), nullable=True, comment="Timestamp when default password was changed")
+    # REMOVED (Handover 0034): Default password tracking fields
+    # Legacy admin/admin pattern no longer used
+    # Fresh install now creates admin via CreateAdminAccount.vue
+    # default_password_active = Column(...)  # REMOVED
+    # password_changed_at = Column(...)  # REMOVED
 
     # Feature and tool configuration (JSONB for performance)
     features_configured = Column(
@@ -1017,8 +1019,7 @@ class SetupState(Base):
             "database_version": self.database_version,
             "python_version": self.python_version,
             "node_version": self.node_version,
-            "default_password_active": self.default_password_active,
-            "password_changed_at": self.password_changed_at.isoformat() if self.password_changed_at else None,
+            # REMOVED (Handover 0034): default_password_active and password_changed_at fields
             "features_configured": self.features_configured,
             "tools_enabled": self.tools_enabled,
             "config_snapshot": self.config_snapshot,

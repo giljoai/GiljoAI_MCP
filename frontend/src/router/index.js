@@ -20,15 +20,14 @@ const routes = [
   },
   {
     path: '/welcome',
-    name: 'WelcomeSetup',
-    component: () => import('@/views/WelcomeSetup.vue'),
+    name: 'CreateAdminAccount',
+    component: () => import('@/views/CreateAdminAccount.vue'),
     meta: {
       layout: 'auth',
-      title: 'Welcome to GiljoAI MCP',
+      title: 'Create Administrator Account',
       showInNav: false,
-      requiresAuth: false, // Public route - first-time setup
+      requiresAuth: false, // Public route - fresh install only
       requiresSetup: false, // Skip setup check for this route
-      requiresPasswordChange: false, // Skip password change check for this route
     },
   },
   {
@@ -220,93 +219,48 @@ const router = createRouter({
   routes,
 })
 
-// Navigation guard for page titles, authentication, setup check, password change check, and role-based access
+// Navigation guard (Handover 0034 - simplified fresh install detection)
 router.beforeEach(async (to, from, next) => {
   // Set page title
   document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
 
-  // SECURITY: Enhanced fresh install detection with attack prevention (v3.0 compatible)
-  // Distinguish between true fresh install vs attack scenario while preserving existing flow
-  if (to.path !== '/welcome' && to.meta.requiresPasswordChange !== false) {
+  // Fresh install detection - simple user count check
+  if (to.path !== '/welcome' && to.path !== '/login' && to.meta.requiresAuth !== false) {
     try {
       const setupState = await setupService.checkEnhancedStatus()
-      
-      if (setupState.is_true_fresh_install) {
-        // True fresh install - allow welcome screen (v3.0 behavior preserved)
-        console.log('[ROUTER] True fresh install detected, redirecting to welcome setup')
-        next('/welcome')
-        return
-      }
-      
-      if (setupState.admin_users_exist && setupState.default_password_active) {
-        // SECURITY ALERT: Possible attack - block welcome access
-        console.warn('[SECURITY] Blocking welcome access - admin users exist but default password active')
-        console.log('[ROUTER] Security: Redirecting to login instead of welcome')
-        next('/login')
-        return
-      }
-      
-      if (setupState.default_password_active && !setupState.admin_users_exist) {
-        // Normal v3.0 case: Database ready, password change needed
-        console.log('[ROUTER] Default password active, redirecting to welcome setup')
+
+      if (setupState.is_fresh_install) {
+        // Fresh install (0 users) - redirect to create admin account
+        console.log('[ROUTER] Fresh install detected (0 users), redirecting to create admin account')
         next('/welcome')
         return
       }
     } catch (error) {
-      // If setup status check fails, continue with normal v3.0 flow
-      console.log('[ROUTER] Enhanced setup status check failed:', error.message)
+      // Network error - allow navigation to auth routes
+      console.log('[ROUTER] Setup status check failed:', error.message)
+      if (to.path !== '/welcome' && to.path !== '/login') {
+        // On network error, default to login (safe fallback)
+        next('/login')
+        return
+      }
     }
   }
 
   // Auth routes (layout: 'auth') - allow access without authentication
   if (to.meta.layout === 'auth') {
-    // Still need to check setup flow for auth routes
-    if (to.meta.requiresSetup !== false) {
+    // Security check: Block /welcome if users exist (attack prevention)
+    if (to.path === '/welcome') {
       try {
-        const status = await setupService.checkStatus()
-
-        // Check for default password requirement
-        if (to.meta.requiresPasswordChange !== false && status.default_password_active) {
-          if (to.path !== '/welcome') {
-            console.log('[ROUTER] Default password active, redirecting to welcome setup')
-            next('/welcome')
-            return
-          }
-        }
-
-        // If password changed but database not initialized, redirect to login
-        if (!status.default_password_active && !status.database_initialized) {
-          console.log('[ROUTER] Database not initialized, redirecting to login')
+        const setupState = await setupService.checkEnhancedStatus()
+        if (!setupState.is_fresh_install) {
+          // Users exist - block welcome page access
+          console.warn('[SECURITY] Blocking /welcome access - users exist (total:', setupState.total_users_count, ')')
           next('/login')
           return
         }
       } catch (error) {
-        // Network error during setup check
-        const hasCompletedSetup = localStorage.getItem('setup_completed') === 'true'
-        const hasAuthCookie = document.cookie.includes('access_token')
-
-        console.log('[ROUTER] Setup status check failed:', {
-          hasCompletedSetup,
-          hasAuthCookie,
-          targetPath: to.path,
-          errorType: error.message
-        })
-
-        // If existing installation, show server down page
-        if (hasCompletedSetup || hasAuthCookie) {
-          if (to.path !== '/server-down') {
-            console.log('[ROUTER] Existing installation detected - server unreachable, redirecting to error page')
-            next('/server-down')
-            return
-          }
-        } else {
-          // Fresh install - allow navigation to welcome/login/server-down
-          if (to.path !== '/welcome' && to.path !== '/login' && to.path !== '/server-down') {
-            console.log('[ROUTER] Fresh install detected - redirecting to welcome setup')
-            next('/welcome')
-            return
-          }
-        }
+        // On error, allow access (conservative for fresh installs)
+        console.log('[ROUTER] Welcome security check failed, allowing access')
       }
     }
 
