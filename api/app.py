@@ -70,7 +70,6 @@ try:
         agent_management,
         agents,
         ai_tools,
-        ai_tools_setup,
         auth,
         configuration,
         context,
@@ -82,13 +81,12 @@ try:
         products,
         projects,
         serena,
-        setup,
         statistics,
         tasks,
         templates,
         users,
     )
-    from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware, SetupModeMiddleware
+    from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
     from .websocket import WebSocketManager
 
     logger.info("API endpoint modules loaded successfully")
@@ -135,52 +133,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         logger.error(f"Failed to load configuration: {e}", exc_info=True)
         raise
 
-    # Check setup completion status by querying database directly
-    setup_mode = False
-    try:
-        # Get database URL to check setup_state table
-        db_url = os.getenv("DATABASE_URL")
-
-        if not db_url and state.config.database:
-            if state.config.database.type == "postgresql":
-                db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
-
-        if db_url:
-            # Create temporary database connection to check setup_state
-            from sqlalchemy import create_engine
-            from sqlalchemy.orm import Session
-            from src.giljo_mcp.models import SetupState
-
-            # Use sync engine for startup check (simpler)
-            temp_engine = create_engine(db_url.replace('postgresql://', 'postgresql+psycopg2://'))
-
-            with Session(temp_engine) as session:
-                # Query setup_state for default tenant
-                setup_state_record = session.query(SetupState).filter(
-                    SetupState.tenant_key == 'default'
-                ).first()
-
-                if setup_state_record and setup_state_record.database_initialized:
-                    logger.info(f"Database initialized (initialized_at: {setup_state_record.database_initialized_at})")
-                    setup_mode = False
-                else:
-                    logger.info("Setup not completed - entering setup mode")
-                    setup_mode = True
-
-            temp_engine.dispose()
-        else:
-            # No database configured - setup mode
-            logger.warning("No database configuration found - entering setup mode")
-            setup_mode = True
-
-    except Exception as e:
-        # If we can't check database, assume setup needed
-        logger.warning(f"Could not check setup state from database: {e}")
-        logger.info("Assuming setup mode due to database check failure")
-        setup_mode = True
-
-    # Store setup_mode in config for middleware access
-    state.config.setup_mode = setup_mode
+    # v3.0: Setup mode removed - all access requires authentication
 
     # Initialize database (ALWAYS - install.py creates DB before API starts)
     # v3.0: No "setup mode without database" - database exists from installation
@@ -220,15 +173,14 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             logger.error(f"Database initialization failed: {e}", exc_info=True)
             raise
 
-    # Initialize tenant manager (skip if in setup mode)
-    if not setup_mode:
-        try:
-            logger.info("Initializing tenant manager...")
-            state.tenant_manager = TenantManager()  # TenantManager uses static methods
-            logger.info("Tenant manager initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
-            raise
+    # Initialize tenant manager
+    try:
+        logger.info("Initializing tenant manager...")
+        state.tenant_manager = TenantManager()  # TenantManager uses static methods
+        logger.info("Tenant manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
+        raise
 
     # Initialize tool accessor
     try:
@@ -287,7 +239,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     # v3.0: Removed localhost auto-login - unified authentication for all connections
 
     # Check setup state on startup (version tracking and validation)
-    if not setup_mode and state.db_manager:
+    if state.db_manager:
         try:
             logger.info("Checking setup state...")
             from src.giljo_mcp.setup.state_manager import SetupStateManager
@@ -423,10 +375,6 @@ def create_app() -> FastAPI:
                 "name": "statistics",
                 "description": "Statistics and monitoring - system metrics, performance, and health checks",
             },
-            {
-                "name": "setup",
-                "description": "Setup wizard - first-time configuration, tool detection, and MCP registration",
-            },
         ],
         servers=[
             {"url": "http://localhost:7272", "description": "Local development server"},
@@ -540,9 +488,7 @@ def create_app() -> FastAPI:
     # Add security headers middleware (executes 3rd - adds security headers to all responses)
     app.add_middleware(SecurityHeadersMiddleware)
 
-    # Add setup mode middleware (executes 2nd - checks database config before auth)
-    # This must execute BEFORE auth middleware to allow setup endpoints without auth
-    app.add_middleware(SetupModeMiddleware, config_getter=lambda: state.config or get_config())
+    # v3.0: Setup mode middleware removed - unified authentication for all endpoints
 
     # Add CORS middleware (executes 1st - MUST be first to handle OPTIONS preflight requests)
     # This MUST execute before all other middleware to add CORS headers to OPTIONS responses
@@ -568,7 +514,6 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(users.router, prefix="/api/users", tags=["users"])
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
-    app.include_router(setup.router, prefix="/api/setup", tags=["setup"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])
     app.include_router(network.router, prefix="/api/network", tags=["network"])
 
@@ -580,9 +525,6 @@ def create_app() -> FastAPI:
 
     # AI Tools configuration generator endpoints
     app.include_router(ai_tools.router, prefix="/api/ai-tools", tags=["ai-tools"])
-
-    # Universal AI Tools setup endpoints for self-configuration
-    app.include_router(ai_tools_setup.router, tags=["ai-tools-setup"])
 
     @app.get("/")
     async def root():

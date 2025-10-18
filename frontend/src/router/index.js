@@ -32,19 +32,6 @@ const routes = [
     },
   },
   {
-    path: '/setup',
-    name: 'Setup',
-    component: () => import('@/views/SetupWizard.vue'),
-    meta: {
-      layout: 'default',
-      title: 'Setup Wizard',
-      showInNav: false,
-      requiresSetup: false, // Skip setup check for this route
-      requiresAuth: true, // PHASE 2: Requires authentication - user must login first
-      requiresPasswordChange: false, // Skip password change check for this route
-    },
-  },
-  {
     path: '/',
     name: 'Dashboard',
     component: () => import('@/views/DashboardView.vue'),
@@ -270,17 +257,10 @@ router.beforeEach(async (to, from, next) => {
           }
         }
 
-        // If password changed but database not initialized, redirect to wizard
-        if (!status.default_password_active && !status.database_initialized && to.path !== '/setup') {
-          console.log('[ROUTER] Database not initialized, redirecting to setup wizard')
-          next('/setup')
-          return
-        }
-
-        // If on setup wizard but default password still active, redirect to password change
-        if (to.path === '/setup' && status.default_password_active) {
-          console.log('[ROUTER] Must change password before setup, redirecting to welcome setup')
-          next('/welcome')
+        // If password changed but database not initialized, redirect to login
+        if (!status.default_password_active && !status.database_initialized) {
+          console.log('[ROUTER] Database not initialized, redirecting to login')
+          next('/login')
           return
         }
       } catch (error) {

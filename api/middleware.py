@@ -57,29 +57,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     },
                 )
 
-        # Check if system is in setup mode
-        setup_mode = False
-        try:
-            # Get config from app state
-            config = getattr(request.app.state, "api_state", None)
-            if config:
-                config = getattr(config, "config", None)
-                if config:
-                    setup_mode = getattr(config, "setup_mode", False)
-        except Exception as e:
-            logger.warning(f"Could not check setup mode in AuthMiddleware: {e}")
-
-        # In setup mode, allow additional endpoints that setup wizard needs
-        if setup_mode and self._is_setup_allowed_endpoint(request.url.path):
-            # Set minimal request state for setup mode
-            import os
-            request.state.authenticated = True
-            request.state.user_id = "setup-mode"
-            request.state.user = None
-            request.state.is_auto_login = True
-            request.state.tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
-            return await call_next(request)
-
         # Public endpoints bypass auth
         if self._is_public_endpoint(request.url.path):
             return await call_next(request)
@@ -124,29 +101,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/redoc",
             "/openapi.json",
-            "/api/setup",  # All setup endpoints (setup wizard)
             "/api/auth/login",  # Login endpoint
             "/api/auth/change-password",  # Password change (first-time setup)
-            "/api/v1/config/frontend",  # Frontend config (needed during setup)
-            "/api/v1/products",  # Product listing (needed during setup)
-            "/api/v1/agents",  # Agent listing (returns empty during setup)
-            "/api/v1/messages",  # Message listing (returns empty during setup)
+            "/api/v1/config/frontend",  # Frontend config
+            "/api/v1/products",  # Product listing
+            "/api/v1/agents",  # Agent listing
+            "/api/v1/messages",  # Message listing
             "/api/auth/me",  # Auth status check
         ]
         return any(path.startswith(p) for p in PUBLIC_PATHS)
-
-    def _is_setup_allowed_endpoint(self, path: str) -> bool:
-        """Check if endpoint is allowed during setup mode"""
-        SETUP_ALLOWED_PATHS = [
-            "/api/v1/config/frontend",  # Frontend needs this for API connection info
-            "/api/v1/products",  # Product listing may be needed
-            "/api/v1/agents",  # Agent listing (returns empty in setup mode)
-            "/api/v1/messages",  # Message listing (returns empty in setup mode)
-            "/api/auth/me",  # Auth status check
-            "/api/setup",  # All setup endpoints
-            "/ws",  # WebSocket connections
-        ]
-        return any(path.startswith(p) for p in SETUP_ALLOWED_PATHS)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -204,104 +167,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Process request
         response = await call_next(request)
         return response
-
-
-class SetupModeMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to handle setup mode - blocks most API access when database is not configured.
-    Only allows setup-related endpoints and essential system endpoints.
-    """
-
-    def __init__(self, app, config_getter: Callable):
-        super().__init__(app)
-        self.get_config = config_getter
-        logger.info("[SetupModeMiddleware] Middleware initialized")
-
-    async def dispatch(self, request: Request, call_next):
-        """Check if system is in setup mode and restrict access accordingly"""
-
-        # Always allow these endpoints regardless of setup mode
-        always_allowed = [
-            "/",
-            "/health",
-            "/docs",
-            "/openapi.json",
-            "/redoc",
-            "/api/setup",  # All setup endpoints
-            "/api/setup/status",
-            "/api/setup/database",  # Database setup endpoints
-            "/api/setup/reset",
-            "/api/setup/detect-tools",
-            "/api/setup/test-mcp-connection",
-            "/api/setup/configure-deployment-mode",
-            "/api/setup/complete",
-            "/api/setup/test-database",
-        ]
-
-        # Check if path is always allowed
-        path = request.url.path
-        if any(path.startswith(allowed) for allowed in always_allowed):
-            return await call_next(request)
-
-        # Get config and check setup mode
-        try:
-            config = self.get_config()
-        except Exception as e:
-            logger.error(f"Error getting config in SetupModeMiddleware: {e}", exc_info=True)
-            # If we can't get config, block access to be safe
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "error": "System configuration error",
-                    "detail": "Unable to load system configuration. Please contact administrator.",
-                    "requires_setup": True,
-                },
-            )
-
-        setup_mode = getattr(config, "setup_mode", False)
-        logger.info(f"[SetupModeMiddleware] path={path}, setup_mode={setup_mode}")
-
-        # If not in setup mode, check if database is actually configured
-        if not setup_mode:
-            database_configured = False
-            if hasattr(config, "database") and config.database:
-                # Log what we're checking
-                logger.debug(
-                    f"Database config: host={getattr(config.database, 'host', None)}, "
-                    f"port={getattr(config.database, 'port', None)}, "
-                    f"name={getattr(config.database, 'name', None)}, "
-                    f"database_name={getattr(config.database, 'database_name', None)}, "
-                    f"username={getattr(config.database, 'username', None)}, "
-                    f"user={getattr(config.database, 'user', None)}"
-                )
-
-                # Check for both 'name' and 'database_name' fields
-                db_name = getattr(config.database, "database_name", None) or getattr(config.database, "name", None)
-                db_user = getattr(config.database, "username", None) or getattr(config.database, "user", None)
-
-                database_configured = bool(config.database.host and config.database.port and db_name and db_user)
-                logger.debug(f"Database configured: {database_configured}")
-
-            if database_configured:
-                # Database configured and not in setup mode - allow request
-                logger.debug("Allowing request - database configured and not in setup mode")
-                return await call_next(request)
-            # Database not configured even though not in setup mode - block
-            logger.warning(f"Blocking access to {path} - database not configured")
-        else:
-            # In setup mode - block
-            logger.warning(f"Blocking access to {path} - system in setup mode")
-
-        # Block the request
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": "System setup required",
-                "detail": "Database configuration is required. Please complete the setup wizard.",
-                "setup_url": "/setup",
-                "requires_setup": True,
-            },
-        )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

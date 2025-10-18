@@ -277,22 +277,65 @@
               <v-icon class="mr-2">mdi-robot-outline</v-icon>
               AI Tool Configuration
             </h3>
-            <v-alert type="success" variant="tonal" class="mb-6">
-              <div class="d-flex align-center">
-                <v-icon start>mdi-robot-outline</v-icon>
-                <div class="flex-grow-1">
-                  <strong>Connect Your AI Tools</strong>
-                  <p class="mb-0 mt-1">
-                    Generate configuration to connect Claude Code, CODEX, Gemini, and other AI tools
-                    to this GiljoAI MCP server. One-click copy-paste setup.
-                  </p>
-                </div>
-              </div>
-            </v-alert>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              Connect Claude Code, Codex, Gemini, and other AI tools to this GiljoAI MCP server.
+              Choose automatic configuration (recommended) or manual setup.
+            </p>
 
-            <div class="mb-6">
-              <AIToolSetup />
-            </div>
+            <!-- Auto-Configurator Button (Primary) -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-2">
+                  <v-icon color="primary" size="large" class="mr-3">mdi-auto-fix</v-icon>
+                  <div class="flex-grow-1">
+                    <h4 class="text-h6 mb-1">AI Tool MCP Configurator</h4>
+                    <p class="text-body-2 text-medium-emphasis mb-0">
+                      Recommended: Let your AI tool configure itself automatically.
+                      Works with Claude Code, Codex, Gemini, Cursor, and more.
+                    </p>
+                  </div>
+                </div>
+                <v-btn
+                  color="primary"
+                  variant="flat"
+                  size="large"
+                  block
+                  prepend-icon="mdi-robot-excited"
+                  @click="openAutoConfigurator"
+                  aria-label="Open AI Tool MCP Configurator for automatic setup"
+                  class="mt-3"
+                >
+                  Open AI Tool MCP Configurator
+                </v-btn>
+              </v-card-text>
+            </v-card>
+
+            <!-- Manual Configuration Button (Secondary) -->
+            <v-card variant="outlined" class="mb-6">
+              <v-card-text>
+                <div class="d-flex align-center mb-2">
+                  <v-icon color="secondary" size="large" class="mr-3">mdi-cog</v-icon>
+                  <div class="flex-grow-1">
+                    <h4 class="text-h6 mb-1">Manual AI Tool Configuration</h4>
+                    <p class="text-body-2 text-medium-emphasis mb-0">
+                      Manual configuration for AI tools that don't support automatic setup.
+                      Generate and copy configuration snippets.
+                    </p>
+                  </div>
+                </div>
+                <v-btn
+                  variant="outlined"
+                  size="large"
+                  block
+                  prepend-icon="mdi-file-code"
+                  @click="openManualConfig"
+                  aria-label="Open manual AI tool configuration dialog"
+                  class="mt-3"
+                >
+                  Open Manual Configuration
+                </v-btn>
+              </v-card-text>
+            </v-card>
 
             <v-divider class="my-6" />
 
@@ -338,6 +381,11 @@
         </v-card>
       </v-window-item>
     </v-window>
+
+    <!-- Manual Configuration Dialog -->
+    <v-dialog v-model="showManualConfigDialog" max-width="900" scrollable>
+      <McpConfigComponent @close="showManualConfigDialog = false" />
+    </v-dialog>
   </v-container>
 </template>
 
@@ -345,20 +393,23 @@
 import { ref, onMounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
+import { useRouter } from 'vue-router'
 import TemplateManager from '@/components/TemplateManager.vue'
-import AIToolSetup from '@/components/AIToolSetup.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
+import McpConfigComponent from '@/components/McpConfigComponent.vue'
 import setupService from '@/services/setupService'
 
 // Stores and Theme
 const settingsStore = useSettingsStore()
 const theme = useTheme()
+const router = useRouter()
 
 // State
 const activeTab = ref('general')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
+const showManualConfigDialog = ref(false)
 
 // Settings object
 const settings = ref({
@@ -460,6 +511,23 @@ function resetNotificationSettings() {
   }
 }
 
+// AI Tool Configuration Methods
+function openAutoConfigurator() {
+  // Navigate to relocated endpoint - opens in same tab
+  const token = localStorage.getItem('auth_token')
+  const baseUrl = window.location.origin
+  const url = `${baseUrl}/api/v1/user/ai-tools-configurator${token ? `?token=${token}` : ''}`
+
+  console.log('[USER SETTINGS] Opening auto-configurator:', url)
+  window.location.href = url
+}
+
+function openManualConfig() {
+  // Show the manual config dialog
+  showManualConfigDialog.value = true
+  console.log('[USER SETTINGS] Opening manual configuration dialog')
+}
+
 // Serena MCP Methods
 async function checkSerenaStatus() {
   try {
@@ -495,6 +563,12 @@ async function toggleSerena(enabled) {
 
 // Lifecycle
 onMounted(async () => {
+  // Check for tab parameter in query string
+  const route = router.currentRoute.value
+  if (route.query.tab) {
+    activeTab.value = route.query.tab
+  }
+
   // Check Serena MCP status
   await checkSerenaStatus()
 

@@ -10,11 +10,11 @@
   >
     <v-alert-title class="d-flex align-center">
       <v-icon start size="large">mdi-robot-excited</v-icon>
-      <span class="text-h6">🚀 Revolutionary AI Tool Integration</span>
+      <span class="text-h6">AI Tool Integration Available</span>
     </v-alert-title>
 
     <p class="mt-2 mb-3">
-      Your AI coding tool can now configure itself automatically! Works with 
+      Connect your AI coding tools to this GiljoAI MCP server. Works with
       <strong>Claude Code, Codex, Gemini, Cursor</strong> and more.
     </p>
 
@@ -24,21 +24,15 @@
         size="large"
         @click="navigateToConfig"
         prepend-icon="mdi-auto-fix"
+        aria-label="Navigate to AI Tool Configuration settings"
       >
-        Auto-Configure (Recommended)
-      </v-btn>
-
-      <v-btn
-        variant="outlined"
-        @click="navigateToConfig"
-        prepend-icon="mdi-cog"
-      >
-        Manual Setup
+        Configure AI Tools
       </v-btn>
 
       <v-btn
         variant="text"
         @click="dismissCallout"
+        aria-label="Dismiss this notification"
       >
         Maybe Later
       </v-btn>
@@ -71,9 +65,11 @@ onMounted(async () => {
 })
 
 function navigateToConfig() {
+  // Navigate to settings page with API tab active
   router.push({
     path: '/settings',
-    query: { from: 'dashboard', step: 'mcp' }
+    hash: '#api',
+    query: { tab: 'api' }
   })
 }
 
