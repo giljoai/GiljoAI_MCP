@@ -24,8 +24,11 @@
             <div class="d-flex align-center">
               <v-icon start>mdi-information</v-icon>
               <div>
-                Generate configuration for your AI tool to connect to this GiljoAI MCP server.
-                Copy and paste the configuration, or download a complete setup guide.
+                <strong>Zero-Dependency HTTP Transport Setup</strong>
+                <p class="text-body-2 mt-2 mb-0">
+                  Connect your AI tool to GiljoAI using HTTP transport - no Python installation or local packages required.
+                  Just copy and run a single command to enable all GiljoAI orchestration tools.
+                </p>
               </div>
             </div>
           </v-alert>
@@ -113,12 +116,12 @@
           </div>
         </v-alert>
 
-        <!-- File Location -->
+        <!-- Setup Method -->
         <v-alert type="info" variant="tonal" class="mb-4">
           <div class="d-flex align-center">
-            <v-icon start>mdi-file-document</v-icon>
+            <v-icon start>mdi-hammer-wrench</v-icon>
             <div>
-              <strong>Configuration File:</strong>
+              <strong>Setup Method:</strong>
               <code class="ml-2 text-primary">{{ configData.file_location }}</code>
             </div>
           </div>
@@ -127,8 +130,8 @@
         <!-- Configuration Content -->
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="bg-grey-darken-3 d-flex align-center">
-            <v-icon start>mdi-code-json</v-icon>
-            Configuration Content
+            <v-icon start>mdi-console-line</v-icon>
+            Setup Command
             <v-spacer />
             <v-btn
               size="small"
@@ -206,6 +209,7 @@ import api from '@/services/api'
 import {
   generateClaudeCodeConfig,
   generateCodexConfig,
+  generateGeminiConfig,
   generateGenericConfig,
 } from '@/utils/configTemplates'
 
@@ -279,7 +283,6 @@ async function generateConfig() {
 
     // Step 2: Generate configuration using frontend templates with the API key
     const serverUrl = `${window.location.protocol}//${window.location.hostname}:7272`
-    const pythonPath = 'python'
 
     let configContent = ''
     let fileLocation = ''
@@ -288,22 +291,34 @@ async function generateConfig() {
 
     if (selectedTool.value === 'claude') {
       configContent = generateClaudeCodeConfig(generatedApiKey.value, serverUrl)
-      fileLocation = 'Windows: C\\\\Users\\\\[username]\\\\.claude\\\\mcp.json; Linux/macOS: ~/.claude/mcp.json'
+      fileLocation = 'Command Line (Terminal/PowerShell)'
       downloadFilename = 'claude-code-setup.md'
       instructions.push(
-        'Open or create the Claude Code MCP config file (see file paths above)',
-        'Locate the "mcpServers" section in mcp.json',
-        'Add the shown "giljo-mcp" server block under "mcpServers"',
-        'Save the file and restart Claude Code to apply the changes'
+        'Open your terminal or command prompt',
+        'Copy the command shown above',
+        'Paste and run the command to configure Claude Code',
+        'Verify connection with: claude mcp list',
+        'Start using GiljoAI tools in Claude Code conversations'
       )
     } else if (selectedTool.value === 'codex') {
       configContent = generateCodexConfig(generatedApiKey.value, serverUrl)
-      fileLocation = '~/config.toml'
+      fileLocation = 'Command Line (Terminal/PowerShell) - Coming Soon'
       downloadFilename = 'codex-setup.md'
       instructions.push(
-        'Open or create the file ~/config.toml',
-        'Copy and paste the configuration above',
-        'Restart Codex CLI to apply the changes'
+        'Codex CLI MCP integration is coming soon',
+        'The command syntax shown is a placeholder',
+        'Once Codex CLI supports MCP, update this configuration',
+        'Check Codex CLI documentation for the latest MCP support status'
+      )
+    } else if (selectedTool.value === 'gemini') {
+      configContent = generateGeminiConfig(generatedApiKey.value, serverUrl)
+      fileLocation = 'Command Line (Terminal/PowerShell) - Coming Soon'
+      downloadFilename = 'gemini-setup.md'
+      instructions.push(
+        'Gemini CLI MCP integration is coming soon',
+        'The command syntax shown is a placeholder',
+        'Once Gemini CLI supports MCP, update this configuration',
+        'Check Gemini CLI documentation for the latest MCP support status'
       )
     } else {
       configContent = generateGenericConfig(generatedApiKey.value, serverUrl)

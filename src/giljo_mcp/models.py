@@ -1289,6 +1289,74 @@ class APIKey(Base):
         return f"{self.key_prefix}..."
 
 
+class MCPSession(Base):
+    """
+    MCP Session model - tracks HTTP MCP sessions for stateful context preservation.
+    
+    Handover 0032: Enables pure MCP JSON-RPC 2.0 over HTTP with multi-tenant isolation.
+    Sessions preserve tenant_key and project_id context across tool calls.
+    
+    Multi-tenant isolation: Sessions inherit tenant_key from API key's user.
+    Session cleanup: Inactive sessions auto-expire after 24 hours.
+    """
+    
+    __tablename__ = "mcp_sessions"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    session_id = Column(String(36), unique=True, nullable=False, default=generate_uuid, index=True)
+    
+    # Foreign keys
+    api_key_id = Column(String(36), ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=False)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    
+    # Context preservation
+    project_id = Column(String(36), ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
+    
+    # Session data (JSONB for performance)
+    session_data = Column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        comment="MCP protocol state: client_info, capabilities, tool_call_history"
+    )
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_accessed = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    api_key = relationship("APIKey", backref="mcp_sessions")
+    project = relationship("Project", backref="mcp_sessions")
+    
+    __table_args__ = (
+        Index("idx_mcp_session_api_key", "api_key_id"),
+        Index("idx_mcp_session_tenant", "tenant_key"),
+        Index("idx_mcp_session_last_accessed", "last_accessed"),
+        Index("idx_mcp_session_expires", "expires_at"),
+        # Composite index for session cleanup queries
+        Index("idx_mcp_session_cleanup", "expires_at", "last_accessed"),
+        # GIN index for session_data (enables efficient JSON queries)
+        Index("idx_mcp_session_data_gin", "session_data", postgresql_using="gin"),
+    )
+    
+    def __repr__(self):
+        return f"<MCPSession(id={self.id}, session_id={self.session_id}, tenant_key={self.tenant_key})>"
+    
+    @property
+    def is_expired(self) -> bool:
+        """Check if session has expired"""
+        if not self.expires_at:
+            return False
+        return datetime.now(timezone.utc) > self.expires_at
+    
+    def extend_expiration(self, hours: int = 24) -> None:
+        """Extend session expiration by specified hours"""
+        from datetime import timedelta
+        self.expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
+        self.last_accessed = datetime.now(timezone.utc)
+
+
 class OptimizationRule(Base):
     """
     Optimization Rule model - stores custom optimization rules per tenant.
