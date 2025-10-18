@@ -357,7 +357,9 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
 
 @router.get("/api-keys", response_model=List[APIKeyResponse], tags=["auth"])
 async def list_api_keys(
-    current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
+    include_revoked: bool = Query(False, description="Include revoked keys in results"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     List all API keys for current user.
@@ -372,8 +374,15 @@ async def list_api_keys(
     Returns:
         List of API keys (masked)
     """
-    # Query user's API keys
-    stmt = select(APIKey).where(APIKey.user_id == current_user.id).order_by(APIKey.created_at.desc())
+    # Query user's API keys (active by default, include revoked when requested)
+    if include_revoked:
+        stmt = select(APIKey).where(APIKey.user_id == current_user.id).order_by(APIKey.created_at.desc())
+    else:
+        stmt = (
+            select(APIKey)
+            .where(APIKey.user_id == current_user.id, APIKey.is_active == True)
+            .order_by(APIKey.created_at.desc())
+        )
     result = await db.execute(stmt)
     api_keys = result.scalars().all()
 

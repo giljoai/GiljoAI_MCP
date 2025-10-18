@@ -8,104 +8,6 @@
     </v-card-title>
 
     <v-card-text class="pt-6">
-      <!-- Universal Agent Configuration Section -->
-      <v-card class="mb-6" variant="outlined" style="border: 2px solid var(--v-theme-primary);">
-        <v-card-title class="d-flex align-center bg-primary text-white">
-          <v-icon start size="large">mdi-robot-excited</v-icon>
-          <div>
-            <div class="text-h6">AI Tool MCP Configurator</div>
-            <div class="text-subtitle-2 opacity-90">
-              Works with Claude Code, Codex, Gemini, Cursor, and more
-            </div>
-          </div>
-        </v-card-title>
-        
-        <v-card-text>
-          <v-alert type="success" variant="tonal" class="mb-4">
-            <v-alert-title>Automatic Configuration</v-alert-title>
-            <div class="mt-2">
-              Your AI tool can visit a special URL and configure itself automatically.
-              This works with any AI coding tool that supports MCP.
-            </div>
-          </v-alert>
-
-          <p class="text-body-1 mb-3">
-            <strong>Copy this instruction</strong> and send it to your AI coding tool:
-          </p>
-
-          <v-card variant="outlined" class="pa-3 mb-3">
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-caption text-medium-emphasis">Universal AI Instruction</span>
-              <v-btn 
-                @click="copyAgentInstruction" 
-                :color="agentInstructionCopied ? 'success' : 'primary'"
-                size="small"
-                variant="elevated"
-              >
-                <v-icon start>{{ agentInstructionCopied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
-                {{ agentInstructionCopied ? 'Copied!' : 'Copy Instruction' }}
-              </v-btn>
-            </div>
-            
-            <div class="agent-instruction-text">
-              {{ agentInstruction }}
-            </div>
-          </v-card>
-
-          <v-expansion-panels class="mb-4">
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                <v-icon start>mdi-help-circle</v-icon>
-                How This Works
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <ol class="ml-4">
-                  <li class="mb-2">
-                    <strong>Send the instruction</strong> to your AI tool (Claude Code, Codex, Gemini, etc.)
-                  </li>
-                  <li class="mb-2">
-                    <strong>AI visits the URL</strong> and receives tailored configuration instructions
-                  </li>
-                  <li class="mb-2">
-                    <strong>AI asks for your API key</strong> (generate one in Settings if needed)
-                  </li>
-                  <li class="mb-2">
-                    <strong>AI configures itself</strong> with the correct settings
-                  </li>
-                  <li class="mb-2">
-                    <strong>Restart your AI tool</strong> to activate the connection
-                  </li>
-                </ol>
-                
-                <v-alert type="info" variant="tonal" class="mt-3">
-                  <strong>Works with:</strong> Claude Code, GitHub Codex, Google Gemini Code Assist, 
-                  Cursor, Continue.dev, and any future AI coding tool
-                </v-alert>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
-
-          <div class="d-flex gap-3">
-            <v-btn 
-              @click="testAgentEndpoint" 
-              variant="outlined" 
-              :loading="testingEndpoint"
-              prepend-icon="mdi-test-tube"
-            >
-              Test Endpoint
-            </v-btn>
-            
-            <v-btn 
-              @click="navigateToApiKeys" 
-              variant="outlined"
-              prepend-icon="mdi-key"
-            >
-              Manage API Keys
-            </v-btn>
-          </div>
-        </v-card-text>
-      </v-card>
-
       <!-- Manual Configuration Section (fallback) -->
       <v-card class="mb-6">
         <v-card-title>
@@ -317,10 +219,6 @@ const copied = ref(false)
 const generatedApiKey = ref(null)
 const showApiKeyWarning = ref(false)
 
-// Agent-driven configuration state
-const agentInstructionCopied = ref(false)
-const testingEndpoint = ref(false)
-
 // Snackbar state
 const snackbar = ref({
   show: false,
@@ -336,11 +234,7 @@ function showSnackbar(message, color = 'success') {
   }
 }
 
-// Agent instruction computed property
-import { API_CONFIG } from '@/config/api'
-const agentInstruction = computed(() =>
-  `Visit ${API_CONFIG.REST_API.baseURL}/api/v1/user/ai-tools-configurator and configure yourself for MCP integration with this GiljoAI server. You will receive tailored configuration instructions for your platform.`
-)
+// Agent-driven configuration removed in Project 0031 (wizard handles prompts)
 
 // Methods
 async function loadSupportedTools() {
@@ -372,16 +266,16 @@ async function generateConfig() {
   loading.value = true
   error.value = null
   configData.value = null
-  generatedApiKey.value = null
-  showApiKeyWarning.value = false
+  // Do not reset any existing session key; reuse across tool selections
 
   try {
-    // Step 1: Generate API key for this tool
-    const keyName = generateApiKeyName(selectedTool.value)
-    const apiKeyResponse = await api.apiKeys.create(keyName)
-
-    generatedApiKey.value = apiKeyResponse.data.key
-    showApiKeyWarning.value = true
+    // Step 1: Ensure we have an API key for this session
+    if (!generatedApiKey.value) {
+      const keyName = generateApiKeyName(selectedTool.value)
+      const apiKeyResponse = await api.apiKeys.create(keyName)
+      generatedApiKey.value = apiKeyResponse.data.key
+      showApiKeyWarning.value = true
+    }
 
     // Step 2: Generate configuration using frontend templates with the API key
     const serverUrl = `${window.location.protocol}//${window.location.hostname}:7272`
@@ -496,41 +390,7 @@ function getToolIcon(toolId) {
   return icons[toolId] || 'mdi-robot'
 }
 
-// Agent-driven configuration methods
-async function copyAgentInstruction() {
-  try {
-    await navigator.clipboard.writeText(agentInstruction.value)
-    agentInstructionCopied.value = true
-    setTimeout(() => { agentInstructionCopied.value = false }, 3000)
-    
-    console.log('[McpConfig] Agent instruction copied to clipboard')
-    showSnackbar('Agent instruction copied to clipboard!', 'success')
-  } catch (error) {
-    console.error('[McpConfig] Failed to copy agent instruction:', error)
-    showSnackbar('Failed to copy instruction. Please copy manually.', 'error')
-  }
-}
-
-async function testAgentEndpoint() {
-  testingEndpoint.value = true
-  try {
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/user/ai-tools-configurator`)
-    if (response.ok) {
-      const instructions = await response.text()
-      console.log('[McpConfig] Agent endpoint working:', instructions.slice(0, 100) + '...')
-
-      // Show success feedback
-      showSnackbar('Agent endpoint is working correctly!', 'success')
-    } else {
-      throw new Error(`HTTP ${response.status}`)
-    }
-  } catch (error) {
-    console.error('[McpConfig] Agent endpoint test failed:', error)
-    showSnackbar('Agent endpoint test failed. Check server status.', 'error')
-  } finally {
-    testingEndpoint.value = false
-  }
-}
+// Agent-driven configuration methods removed
 
 function navigateToApiKeys() {
   // Navigate to API keys management page
