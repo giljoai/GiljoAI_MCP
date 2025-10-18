@@ -1,8 +1,11 @@
 """
-Security-focused setup status endpoint for fresh install attack prevention.
+Simple fresh install detection endpoint (Handover 0034).
 
-Minimal implementation that enhances v3.0 login flow with security detection
-without restoring the deprecated setup wizard.
+Clean architecture based on user count:
+- 0 users = Fresh install (show create admin account)
+- 1+ users = Normal operation (show login)
+
+Replaces complex legacy admin/admin password change flow.
 """
 
 import logging
@@ -11,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from src.giljo_mcp.auth.dependencies import get_db_session
-from src.giljo_mcp.models import SetupState, User
+from src.giljo_mcp.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -21,78 +24,50 @@ router = APIRouter()
 @router.get("/status")
 async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
     """
-    Get setup status with enhanced security fields for fresh install attack prevention.
-    
-    This endpoint enhances the v3.0 unified login approach with security detection
-    to distinguish between legitimate fresh installs and potential attack scenarios.
-    
+    Simple fresh install detection based on user count (Handover 0034).
+
+    Replaces complex legacy logic with single source of truth: user count.
+
+    Fresh install = 0 users exist
+    Normal operation = 1+ users exist
+
     Returns:
-        - database_initialized: bool - Whether database is set up
-        - default_password_active: bool - Whether admin still has default password  
-        - admin_users_exist: bool - Whether any admin users exist in database
-        - total_users_count: int - Total number of users
-        - is_true_fresh_install: bool - True only for genuine fresh installs
+        - is_fresh_install: bool - True when total_users_count == 0
+        - total_users_count: int - Total number of users in database
+        - requires_admin_creation: bool - Same as is_fresh_install
     """
     try:
-        # Get basic setup state (existing v3.0 logic)
-        stmt = select(SetupState).where(SetupState.tenant_key == 'default')
-        result = await db.execute(stmt)
-        setup_state = result.scalar_one_or_none()
-
-        # Enhanced security: Check if any admin users exist
-        admin_count_stmt = select(func.count(User.id)).where(User.role == 'admin')
-        admin_count_result = await db.execute(admin_count_stmt)
-        admin_users_exist = admin_count_result.scalar() > 0
-
-        # Get total user count for security analysis
+        # Single source of truth: user count
         total_users_stmt = select(func.count(User.id))
         total_users_result = await db.execute(total_users_stmt)
         total_users_count = total_users_result.scalar()
 
-        if setup_state:
-            database_initialized = setup_state.database_initialized
-            default_password_active = setup_state.default_password_active
-        else:
-            # No setup state found - assume fresh install
-            database_initialized = False
-            default_password_active = True
+        # Simple fresh install detection
+        is_fresh_install = (total_users_count == 0)
 
-        # Security decision: Compute true fresh install
-        is_true_fresh_install = (
-            not database_initialized and 
-            not admin_users_exist and 
-            total_users_count == 0
-        )
-
-        # Security logging for audit trail
-        if admin_users_exist and default_password_active:
-            logger.warning(
-                f"[SECURITY] Potential attack detected - admin users exist ({admin_users_exist}) "
-                f"but default password active ({default_password_active}). "
-                f"Total users: {total_users_count}, DB initialized: {database_initialized}"
-            )
-        
-        if is_true_fresh_install:
+        # Security logging
+        if is_fresh_install:
             logger.info(
-                f"[SECURITY] True fresh install confirmed - no admin users, "
-                f"no database initialization, zero user count"
+                "[SETUP] Fresh install detected - no users exist. "
+                "Will show create admin account flow."
+            )
+        else:
+            logger.debug(
+                f"[SETUP] Normal operation - {total_users_count} user(s) exist. "
+                "Will show login flow."
             )
 
         return {
-            "database_initialized": database_initialized,
-            "default_password_active": default_password_active,
-            "admin_users_exist": admin_users_exist,
+            "is_fresh_install": is_fresh_install,
             "total_users_count": total_users_count,
-            "is_true_fresh_install": is_true_fresh_install
+            "requires_admin_creation": is_fresh_install
         }
 
     except Exception as e:
-        logger.error(f"Failed to get setup security status: {e}")
-        # Conservative fallback - assume fresh install (secure default)
+        logger.error(f"Failed to get setup status: {e}")
+        # Conservative fallback - assume fresh install (allows account creation)
         return {
-            "database_initialized": False,
-            "default_password_active": True,
-            "admin_users_exist": False,
+            "is_fresh_install": True,
             "total_users_count": 0,
-            "is_true_fresh_install": True
+            "requires_admin_creation": True
         }

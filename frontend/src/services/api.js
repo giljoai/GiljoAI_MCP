@@ -202,7 +202,9 @@ export const api = {
     logout: () => apiClient.post('/api/auth/logout'),
     me: () => apiClient.get('/api/auth/me'),
     register: (data) => apiClient.post('/api/auth/register', data),
-    changePassword: (data) => apiClient.post('/api/auth/change-password', data),
+    // REMOVED (Handover 0034): changePassword - legacy admin/admin flow
+    // Replaced by createFirstAdmin for fresh installs
+    createFirstAdmin: (data) => apiClient.post('/api/auth/create-first-admin', data),
     listUsers: () => apiClient.get('/api/auth/users'),
     updateUser: (userId, data) => apiClient.put(`/api/auth/users/${userId}`, data),
     deleteUser: (userId) => apiClient.delete(`/api/auth/users/${userId}`),
