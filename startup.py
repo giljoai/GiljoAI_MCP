@@ -556,13 +556,20 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
                 print_success("API server output will stream to this terminal (verbose mode)")
         else:
             # Background mode: hide output for quiet startup
-            popen_kwargs["stdout"] = subprocess.PIPE
-            popen_kwargs["stderr"] = subprocess.PIPE
+            logs_dir = Path.cwd() / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            api_stdout = open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")
+            api_stderr = open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")
+            popen_kwargs["stdout"] = api_stdout
+            popen_kwargs["stderr"] = api_stderr
 
         # Start API server
         process = subprocess.Popen([python_executable, str(api_script)], **popen_kwargs)
 
         print_success(f"API server started (PID: {process.pid})")
+        if not verbose:
+            print_info(f"API logs: {str((Path.cwd() / 'logs' / 'api_stdout.log').resolve())}")
+            print_info(f"API errors: {str((Path.cwd() / 'logs' / 'api_stderr.log').resolve())}")
         return process
 
     except Exception as e:
@@ -612,13 +619,20 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
                 print_success("Frontend output will stream to this terminal (verbose mode)")
         else:
             # Background mode: hide output for quiet startup
-            popen_kwargs["stdout"] = subprocess.PIPE
-            popen_kwargs["stderr"] = subprocess.PIPE
+            logs_dir = Path.cwd() / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            fe_stdout = open(logs_dir / "frontend_stdout.log", "a", buffering=1, encoding="utf-8")
+            fe_stderr = open(logs_dir / "frontend_stderr.log", "a", buffering=1, encoding="utf-8")
+            popen_kwargs["stdout"] = fe_stdout
+            popen_kwargs["stderr"] = fe_stderr
 
         # Start frontend server (use full path to npm on Windows)
         process = subprocess.Popen([npm_executable, "run", "dev"], **popen_kwargs)
 
         print_success(f"Frontend server started (PID: {process.pid})")
+        if not verbose:
+            print_info(f"Frontend logs: {str((Path.cwd() / 'logs' / 'frontend_stdout.log').resolve())}")
+            print_info(f"Frontend errors: {str((Path.cwd() / 'logs' / 'frontend_stderr.log').resolve())}")
         return process
 
     except FileNotFoundError:

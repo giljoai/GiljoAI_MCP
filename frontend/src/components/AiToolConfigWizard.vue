@@ -1,8 +1,11 @@
 <template>
   <v-dialog v-model="showWizard" max-width="720">
     <template #activator="{ props }">
-      <v-btn v-bind="props" color="primary" size="large" block prepend-icon="mdi-robot-excited">
-        🤖 Setup AI Tool Connection
+      <v-btn v-bind="props" color="primary" size="large" block>
+        <template #prepend>
+          <v-img src="/Giljo_gray_Face.svg?v=2" width="24" height="24" class="mr-2" cover />
+        </template>
+        Setup AI Tool Connection
       </v-btn>
     </template>
 
@@ -147,8 +150,7 @@ const detectedServer = computed(() => `${serverIp.value}:${serverPort.value}`)
 
 function makeKeyName(tool) {
   const map = { claude: 'Claude Code', codex: 'Codex CLI', gemini: 'Gemini', cursor: 'Cursor' }
-  const date = new Date().toISOString().slice(0, 10)
-  return `${map[tool] || 'AI Tool'} - ${date}`
+  return `${map[tool] || 'AI Tool'} prompt key`
 }
 
 async function generateApiKey() {
@@ -156,7 +158,11 @@ async function generateApiKey() {
     busy.value = true
     const keyName = makeKeyName(selectedTool.value)
     const resp = await api.apiKeys.create(keyName)
-    generatedKey.value = resp.data.key
+    // Backend returns APIKeyCreateResponse with 'api_key'
+    generatedKey.value = resp.data.api_key
+    try {
+      window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
+    } catch (_) { /* no-op */ }
   } catch (e) {
     console.error('[Wizard] Failed to generate API key', e)
   } finally {
@@ -169,19 +175,24 @@ function buildServerUrl() {
 }
 
 function claudePrompt(serverUrl, apiKey) {
-  return `Please modify your claude_desktop_config.json file to add this MCP server:\n\n{
-  "mcpServers": {
-    "giljo-mcp": {
-      "command": "uvx",
-      "args": ["giljo-mcp"],
-      "env": {
-        "GILJO_API_KEY": "${apiKey}",
-        "GILJO_SERVER_URL": "${serverUrl}"
-      }
+  return ` Please add the GiljoAI MCP server to your Claude Code configuration:
+
+  1. Locate your Claude Code MCP config file:
+     - Windows: C:\Users\[username]\.claude\mcp.json
+     - Linux/macOS: ~/.claude/mcp.json
+
+  2. Add this server configuration to the "mcpServers" section:
+
+  "giljo-mcp": {
+    "command": "uvx",
+    "args": ["giljo-mcp"],
+    "env": {
+      "GILJO_API_KEY": "${apiKey}",
+      "GILJO_SERVER_URL": "${serverUrl}"
     }
   }
-}
-\nAfter updating the file, restart Claude Code to connect to the GiljoAI MCP server.`
+
+  3. Restart Claude Code to activate the new MCP server connection.`
 }
 
 function codexPrompt(serverUrl, apiKey) {
@@ -221,10 +232,8 @@ function buildPromptFor(tool, serverUrl, apiKey) {
 async function generateQuickPrompt() {
   try {
     busy.value = true
-    // Ensure we have a key
-    if (!generatedKey.value) {
-      await generateApiKey()
-    }
+    // Always generate a fresh key for quick prompt
+    await generateApiKey()
     const serverUrl = buildServerUrl()
     generatedPrompt.value = buildPromptFor(selectedTool.value, serverUrl, generatedKey.value)
   } finally {
@@ -238,16 +247,45 @@ function generateAdvancedPrompt() {
 }
 
 async function copyPrompt() {
+  const text = String(generatedPrompt.value || '')
+  if (!text) return
+
+  // Fallback for non-secure origins (e.g., http://LAN-IP)
+  const fallbackCopy = () => {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.top = '-1000px'
+      ta.style.left = '-1000px'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      return ok
+    } catch (err) {
+      console.error('[Wizard] Fallback copy failed:', err)
+      return false
+    }
+  }
+
   try {
-    await navigator.clipboard.writeText(generatedPrompt.value)
-    copied.value = true
-    setTimeout(() => (copied.value = false), 2000)
+    if (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      await navigator.clipboard.writeText(text)
+      copied.value = true
+    } else {
+      // Non-secure context (e.g., LAN IP over http)
+      copied.value = fallbackCopy()
+    }
   } catch (e) {
-    console.error('[Wizard] Failed to copy prompt', e)
+    console.warn('[Wizard] Clipboard API failed, using fallback:', e)
+    copied.value = fallbackCopy()
+  } finally {
+    if (copied.value) setTimeout(() => (copied.value = false), 2000)
   }
 }
 </script>
 
 <style scoped>
 </style>
-
