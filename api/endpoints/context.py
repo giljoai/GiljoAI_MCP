@@ -1,11 +1,16 @@
 """
 Context and vision management API endpoints
+
+Handover 0018: Context Management System API
+Provides endpoints for vision document chunking, indexing, and dynamic context loading.
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+
+from api.dependencies import get_tenant_key
 
 
 router = APIRouter()
@@ -25,6 +30,66 @@ class VisionResponse(BaseModel):
     tokens: int
 
 
+class ChunkVisionRequest(BaseModel):
+    force_rechunk: bool = Field(False, description="Force rechunking even if already chunked")
+
+
+class ChunkVisionResponse(BaseModel):
+    success: bool
+    product_id: str
+    chunks_created: int
+    total_tokens: int
+    original_size: int
+    reduction_percentage: Optional[float] = None
+    message: Optional[str] = None
+
+
+class ContextChunk(BaseModel):
+    chunk_id: str
+    content: str
+    tokens: int
+    chunk_number: int
+    relevance_score: Optional[float] = None
+
+
+class SearchContextResponse(BaseModel):
+    query: str
+    chunks: List[ContextChunk]
+    total_chunks: int
+    total_tokens: int
+
+
+class LoadContextRequest(BaseModel):
+    agent_type: str = Field(..., description="Type of agent (e.g., 'backend', 'frontend')")
+    mission: str = Field(..., description="Mission or query for context selection")
+    product_id: str = Field(..., description="Product ID")
+    max_tokens: int = Field(10000, description="Maximum tokens to load")
+
+
+class LoadContextResponse(BaseModel):
+    agent_type: str
+    chunks: List[ContextChunk]
+    total_chunks: int
+    total_tokens: int
+    average_relevance: float
+    reduction_percentage: Optional[float] = None
+
+
+class TokenStatsResponse(BaseModel):
+    product_id: str
+    original_tokens: int
+    condensed_tokens: int
+    reduction_percentage: float
+    chunks_count: int
+
+
+class HealthCheckResponse(BaseModel):
+    status: str
+    chunk_count: int
+    search_performance_ms: Optional[float] = None
+    message: Optional[str] = None
+
+
 @router.get("/index", response_model=ContextIndexResponse)
 async def get_context_index(product_id: Optional[str] = Query(None, description="Product ID")):
     """Get the context index for intelligent querying"""
@@ -34,7 +99,7 @@ async def get_context_index(product_id: Optional[str] = Query(None, description=
         result = await get_context_index(product_id=product_id)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Context index not found")  # noqa: TRY301
+            raise HTTPException(status_code=404, detail="Context index not found")
 
         index = result.get("index", {})
         return ContextIndexResponse(
@@ -60,7 +125,7 @@ async def get_vision(
         result = await get_vision(part=part, max_tokens=max_tokens)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Vision document not found")  # noqa: TRY301
+            raise HTTPException(status_code=404, detail="Vision document not found")
 
         return VisionResponse(
             part=part,
@@ -82,7 +147,7 @@ async def get_vision_index():
         result = await get_vision_index()
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Vision index not found")  # noqa: TRY301
+            raise HTTPException(status_code=404, detail="Vision index not found")
 
         return result.get("index", {})
 
@@ -99,9 +164,311 @@ async def get_product_settings(product_id: Optional[str] = Query(None, descripti
         result = await get_product_settings(product_id=product_id)
 
         if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Product settings not found")  # noqa: TRY301
+            raise HTTPException(status_code=404, detail="Product settings not found")
 
         return result.get("settings", {})
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/products/{product_id}/chunk-vision", response_model=ChunkVisionResponse)
+async def chunk_vision_document(
+    product_id: str,
+    request: ChunkVisionRequest,
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Chunk and index a product's vision document.
+
+    This endpoint processes the vision document stored in the Product model,
+    chunks it using tiktoken-based accurate token counting, and stores the
+    chunks in the context index for efficient retrieval.
+
+    Multi-tenant isolation enforced via tenant_key.
+    """
+    from api.app import state
+    from giljo_mcp.context_management import ContextManagementSystem
+    from giljo_mcp.models import Product
+    from sqlalchemy import select
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            stmt = select(Product).where(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key
+            )
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            content = None
+            original_size = 0
+
+            if product.vision_document:
+                content = product.vision_document
+                original_size = len(content)
+            elif product.vision_path:
+                import aiofiles
+                from pathlib import Path
+
+                vision_path = Path(product.vision_path)
+                if not vision_path.exists():
+                    raise HTTPException(status_code=404, detail="Vision document file not found")
+
+                async with aiofiles.open(vision_path, 'r', encoding='utf-8') as f:
+                    content = await f.read()
+                    original_size = len(content)
+            else:
+                raise HTTPException(status_code=404, detail="No vision document available for this product")
+
+            if product.chunked and not request.force_rechunk:
+                return ChunkVisionResponse(
+                    success=False,
+                    product_id=product_id,
+                    chunks_created=0,
+                    total_tokens=0,
+                    original_size=original_size,
+                    message="Vision document already chunked. Use force_rechunk=true to rechunk."
+                )
+
+            cms = ContextManagementSystem(state.db_manager)
+            result = cms.process_vision_document(tenant_key, product_id, content)
+
+            if result["success"]:
+                product.chunked = True
+                await db.commit()
+
+                return ChunkVisionResponse(
+                    success=True,
+                    product_id=product_id,
+                    chunks_created=result["chunks_created"],
+                    total_tokens=result["total_tokens"],
+                    original_size=original_size,
+                    reduction_percentage=None,
+                    message="Vision document chunked and indexed successfully"
+                )
+            else:
+                raise HTTPException(status_code=500, detail=result.get("message", "Failed to chunk vision document"))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/search", response_model=SearchContextResponse)
+async def search_context(
+    query: str = Query(..., description="Search query"),
+    product_id: Optional[str] = Query(None, description="Filter by product ID"),
+    limit: int = Query(10, description="Maximum chunks to return"),
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Search context index by keywords.
+
+    Uses PostgreSQL full-text search to find relevant chunks based on the query.
+    Returns chunks sorted by relevance score.
+
+    Multi-tenant isolation enforced via tenant_key.
+    """
+    from api.app import state
+    from giljo_mcp.context_management import ContextManagementSystem
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        cms = ContextManagementSystem(state.db_manager)
+
+        if product_id:
+            chunks = cms.loader.load_relevant_chunks(
+                tenant_key=tenant_key,
+                product_id=product_id,
+                query=query,
+                max_tokens=100000
+            )[:limit]
+        else:
+            chunks = cms.indexer.search_chunks(tenant_key, query, limit)
+
+        total_tokens = sum(c.get("tokens", 0) for c in chunks)
+
+        context_chunks = [
+            ContextChunk(
+                chunk_id=str(c.get("id", c.get("chunk_id", ""))),
+                content=c.get("content", ""),
+                tokens=c.get("tokens", 0),
+                chunk_number=c.get("chunk_number", 0),
+                relevance_score=c.get("relevance_score")
+            )
+            for c in chunks
+        ]
+
+        return SearchContextResponse(
+            query=query,
+            chunks=context_chunks,
+            total_chunks=len(context_chunks),
+            total_tokens=total_tokens
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/load-for-agent", response_model=LoadContextResponse)
+async def load_context_for_agent(
+    request: LoadContextRequest,
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Load context for specific agent.
+
+    Selects relevant chunks based on agent role and mission.
+    Uses role-based weighting to prioritize chunks relevant to the agent type.
+
+    Multi-tenant isolation enforced via tenant_key.
+    """
+    from api.app import state
+    from giljo_mcp.context_management import ContextManagementSystem
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        cms = ContextManagementSystem(state.db_manager)
+
+        result = cms.load_context_for_agent(
+            tenant_key=tenant_key,
+            product_id=request.product_id,
+            query=request.mission,
+            role=request.agent_type,
+            max_tokens=request.max_tokens
+        )
+
+        context_chunks = [
+            ContextChunk(
+                chunk_id=str(c.get("id", c.get("chunk_id", ""))),
+                content=c.get("content", ""),
+                tokens=c.get("tokens", 0),
+                chunk_number=c.get("chunk_number", 0),
+                relevance_score=c.get("relevance_score")
+            )
+            for c in result["chunks"]
+        ]
+
+        return LoadContextResponse(
+            agent_type=request.agent_type,
+            chunks=context_chunks,
+            total_chunks=result["total_chunks"],
+            total_tokens=result["total_tokens"],
+            average_relevance=result["average_relevance"],
+            reduction_percentage=None
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/products/{product_id}/token-stats", response_model=TokenStatsResponse)
+async def get_token_stats(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Get token reduction statistics for a product.
+
+    Returns original tokens, condensed tokens (if summarized),
+    and reduction percentage.
+
+    Multi-tenant isolation enforced via tenant_key.
+    """
+    from api.app import state
+    from giljo_mcp.context_management import ContextManagementSystem
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        cms = ContextManagementSystem(state.db_manager)
+
+        stats = cms.get_token_reduction_stats(tenant_key, product_id)
+
+        if not stats:
+            chunks = cms.get_all_chunks(tenant_key, product_id)
+            if not chunks:
+                raise HTTPException(status_code=404, detail="No chunks found for this product")
+
+            total_tokens = sum(c.tokens for c in chunks)
+            return TokenStatsResponse(
+                product_id=product_id,
+                original_tokens=total_tokens,
+                condensed_tokens=total_tokens,
+                reduction_percentage=0.0,
+                chunks_count=len(chunks)
+            )
+
+        return TokenStatsResponse(
+            product_id=product_id,
+            original_tokens=stats.get("original_tokens", 0),
+            condensed_tokens=stats.get("condensed_tokens", 0),
+            reduction_percentage=stats.get("reduction_percentage", 0.0),
+            chunks_count=stats.get("chunks_count", 0)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health", response_model=HealthCheckResponse)
+async def health_check(
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """
+    Health check for context management system.
+
+    Returns system status, chunk count, and search performance.
+    """
+    from api.app import state
+    from giljo_mcp.models import MCPContextIndex
+    from sqlalchemy import select, func
+    import time
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            stmt = select(func.count()).select_from(MCPContextIndex).where(
+                MCPContextIndex.tenant_key == tenant_key
+            )
+            result = await db.execute(stmt)
+            chunk_count = result.scalar()
+
+            start_time = time.time()
+            search_stmt = select(MCPContextIndex).where(
+                MCPContextIndex.tenant_key == tenant_key
+            ).limit(1)
+            await db.execute(search_stmt)
+            search_time_ms = (time.time() - start_time) * 1000
+
+            return HealthCheckResponse(
+                status="healthy",
+                chunk_count=chunk_count or 0,
+                search_performance_ms=round(search_time_ms, 2),
+                message="Context management system operational"
+            )
+
+    except Exception as e:
+        return HealthCheckResponse(
+            status="degraded",
+            chunk_count=0,
+            search_performance_ms=None,
+            message=f"Error: {str(e)}"
+        )
