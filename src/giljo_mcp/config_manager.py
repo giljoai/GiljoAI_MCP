@@ -578,6 +578,7 @@ class ConfigManager:
                 db = data["database"]
                 self.database.type = db.get("type", self.database.type)
 
+                # v3 primary: nested postgresql config
                 if "postgresql" in db:
                     pg = db["postgresql"]
                     self.database.pg_host = pg.get("host", self.database.pg_host)
@@ -586,6 +587,19 @@ class ConfigManager:
                     self.database.pg_user = pg.get("user", self.database.pg_user)
                     self.database.pg_password = pg.get("password", self.database.pg_password)
                     self.database.pg_pool_size = pg.get("pool_size", self.database.pg_pool_size)
+
+                # Fallback: support legacy top-level keys under database
+                # e.g., host, port, name/database, user/username, pool_size
+                self.database.host = db.get("host", self.database.host)
+                self.database.port = db.get("port", self.database.port)
+                # Prefer 'database_name' then 'name'
+                self.database.database_name = db.get(
+                    "database_name", db.get("name", self.database.database_name)
+                )
+                # Prefer 'username' then 'user'
+                self.database.username = db.get("username", db.get("user", self.database.username))
+                # Do not read password from file by default; env overrides handled in _load_from_env
+                self.database.pg_pool_size = db.get("pool_size", self.database.pg_pool_size)
 
             # Logging configuration
             if "logging" in data:

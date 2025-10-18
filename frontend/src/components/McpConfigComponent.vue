@@ -273,7 +273,7 @@ async function generateConfig() {
     if (!generatedApiKey.value) {
       const keyName = generateApiKeyName(selectedTool.value)
       const apiKeyResponse = await api.apiKeys.create(keyName)
-      generatedApiKey.value = apiKeyResponse.data.key
+      generatedApiKey.value = apiKeyResponse.data.api_key
       showApiKeyWarning.value = true
     }
 
@@ -287,14 +287,14 @@ async function generateConfig() {
     const instructions = []
 
     if (selectedTool.value === 'claude') {
-      configContent = generateClaudeCodeConfig(generatedApiKey.value, serverUrl, pythonPath)
-      fileLocation = '~/.claude.json'
+      configContent = generateClaudeCodeConfig(generatedApiKey.value, serverUrl)
+      fileLocation = 'Windows: C\\\\Users\\\\[username]\\\\.claude\\\\mcp.json; Linux/macOS: ~/.claude/mcp.json'
       downloadFilename = 'claude-code-setup.md'
       instructions.push(
-        'Open or create the file ~/.claude.json',
-        'Copy and paste the configuration above',
-        'Restart Claude Code to apply the changes',
-        'Your API key is now configured and ready to use'
+        'Open or create the Claude Code MCP config file (see file paths above)',
+        'Locate the "mcpServers" section in mcp.json',
+        'Add the shown "giljo-mcp" server block under "mcpServers"',
+        'Save the file and restart Claude Code to apply the changes'
       )
     } else if (selectedTool.value === 'codex') {
       configContent = generateCodexConfig(generatedApiKey.value, serverUrl)
@@ -335,19 +335,47 @@ async function generateConfig() {
 async function copyToClipboard() {
   if (!configData.value) return
 
+  const text = String(configData.value.config_content || '')
+  if (!text) return
+
+  const fallbackCopy = () => {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.top = '-1000px'
+      ta.style.left = '-1000px'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      return ok
+    } catch (err) {
+      console.error('[McpConfig] Fallback copy failed:', err)
+      return false
+    }
+  }
+
   try {
-    await navigator.clipboard.writeText(configData.value.config_content)
-    copied.value = true
+    if (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      await navigator.clipboard.writeText(text)
+      copied.value = true
+    } else {
+      copied.value = fallbackCopy()
+    }
     console.log('[McpConfig] Configuration copied to clipboard')
     showSnackbar('Configuration copied to clipboard!', 'success')
-
+  } catch (err) {
+    console.warn('[McpConfig] Clipboard API failed, using fallback:', err)
+    const ok = fallbackCopy()
+    copied.value = ok
+    showSnackbar(ok ? 'Configuration copied to clipboard!' : 'Failed to copy to clipboard. Please copy manually.', ok ? 'success' : 'error')
+  } finally {
     // Reset copied state after 2 seconds
     setTimeout(() => {
       copied.value = false
     }, 2000)
-  } catch (err) {
-    console.error('[McpConfig] Failed to copy to clipboard:', err)
-    showSnackbar('Failed to copy to clipboard. Please copy manually.', 'error')
   }
 }
 
