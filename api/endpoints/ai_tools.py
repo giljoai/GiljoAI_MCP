@@ -51,111 +51,94 @@ class SupportedToolsResponse(BaseModel):
 
 # Configuration Templates
 
-def get_claude_code_config(server_url: str, tenant_key: str) -> dict:
+def get_claude_code_config(server_url: str, api_key: str) -> str:
     """
-    Generate Claude Code MCP configuration.
+    Generate Claude Code MCP HTTP transport command.
 
     Args:
         server_url: GiljoAI server URL
-        tenant_key: User's tenant key
+        api_key: User's API key
 
     Returns:
-        Configuration dictionary
+        Command string for HTTP transport
     """
-    return {
-        "mcpServers": {
-            "giljo-mcp": {
-                "command": "python",
-                "args": ["-m", "giljo_mcp.mcp_server"],
-                "env": {
-                    "GILJO_SERVER_URL": server_url,
-                    "GILJO_TENANT_KEY": tenant_key
-                }
-            }
-        }
-    }
+    return f"""claude mcp add --transport http giljo-mcp {server_url}/mcp \\
+  --header "X-API-Key: {api_key}" """
 
 
-def get_codex_config(server_url: str, tenant_key: str) -> dict:
+def get_codex_config(server_url: str, api_key: str) -> str:
     """
-    Generate CODEX configuration.
+    Generate Codex CLI MCP HTTP transport command (placeholder).
 
     Args:
         server_url: GiljoAI server URL
-        tenant_key: User's tenant key
+        api_key: User's API key
 
     Returns:
-        Configuration dictionary
+        Command string for HTTP transport (placeholder)
     """
-    # CODEX uses similar MCP server configuration
-    return {
-        "mcp": {
-            "servers": {
-                "giljo-mcp": {
-                    "command": "python",
-                    "args": ["-m", "giljo_mcp.mcp_server"],
-                    "environment": {
-                        "GILJO_SERVER_URL": server_url,
-                        "GILJO_TENANT_KEY": tenant_key
-                    }
-                }
-            }
-        }
-    }
+    return f"""codex mcp add --transport http giljo-mcp {server_url}/mcp \\
+  --header "X-API-Key: {api_key}"
+
+Note: Codex CLI MCP integration is coming soon. This command syntax is a placeholder for future implementation."""
 
 
-def get_gemini_config(server_url: str, tenant_key: str) -> dict:
+def get_gemini_config(server_url: str, api_key: str) -> str:
     """
-    Generate Gemini configuration.
+    Generate Gemini CLI MCP HTTP transport command (placeholder).
 
     Args:
         server_url: GiljoAI server URL
-        tenant_key: User's tenant key
+        api_key: User's API key
 
     Returns:
-        Configuration dictionary
+        Command string for HTTP transport (placeholder)
     """
-    # Gemini uses JSON configuration
-    return {
-        "tools": {
-            "giljo-mcp": {
-                "type": "mcp_server",
-                "command": "python",
-                "args": ["-m", "giljo_mcp.mcp_server"],
-                "env": {
-                    "GILJO_SERVER_URL": server_url,
-                    "GILJO_TENANT_KEY": tenant_key
-                }
-            }
-        }
-    }
+    return f"""gemini mcp add --transport http giljo-mcp {server_url}/mcp \\
+  --header "X-API-Key: {api_key}"
+
+Note: Gemini CLI MCP integration is coming soon. This command syntax is a placeholder for future implementation."""
 
 
-def get_tool_instructions(tool_id: str, file_location: str) -> List[str]:
+def get_http_tool_instructions(tool_id: str) -> List[str]:
     """
-    Get setup instructions for a specific tool.
+    Get HTTP transport setup instructions for a specific tool.
 
     Args:
         tool_id: Tool identifier
-        file_location: Config file location
 
     Returns:
         List of instruction steps
     """
-    common_restart = {
-        "claude": "Restart Claude Code CLI",
-        "codex": "Restart CODEX",
-        "gemini": "Restart Gemini CLI"
-    }
-
-    return [
-        f"1. Open or create the file: {file_location}",
-        "2. Copy the configuration below",
-        f"3. Paste it into {file_location} (merge with existing config if needed)",
-        "4. Save the file",
-        f"5. {common_restart.get(tool_id, 'Restart your AI tool')}",
-        "6. Test the connection by asking your AI tool to use GiljoAI MCP"
-    ]
+    if tool_id == "claude":
+        return [
+            "Open your terminal or command prompt",
+            "Copy the command shown above",
+            "Paste and run the command to configure Claude Code",
+            "Verify connection with: claude mcp list",
+            "Start using GiljoAI tools in Claude Code conversations"
+        ]
+    elif tool_id == "codex":
+        return [
+            "Codex CLI MCP integration is coming soon",
+            "The command syntax shown is a placeholder",
+            "Once Codex CLI supports MCP, update this configuration",
+            "Check Codex CLI documentation for the latest MCP support status"
+        ]
+    elif tool_id == "gemini":
+        return [
+            "Gemini CLI MCP integration is coming soon",
+            "The command syntax shown is a placeholder",
+            "Once Gemini CLI supports MCP, update this configuration",
+            "Check Gemini CLI documentation for the latest MCP support status"
+        ]
+    else:
+        return [
+            "Copy the command above",
+            "Run it in your terminal",
+            "Verify the connection",
+            "Start using GiljoAI tools"
+        ]
 
 
 # API Endpoints
@@ -172,23 +155,23 @@ async def list_supported_tools():
         AIToolInfo(
             id="claude",
             name="Claude Code",
-            config_format="json",
-            file_location="~/.claude.json",
+            config_format="command",
+            file_location="Terminal/PowerShell",
             supported=True
         ),
         AIToolInfo(
             id="codex",
-            name="OpenAI CODEX",
-            config_format="json",
-            file_location="~/.codex/config.json",
-            supported=True
+            name="Codex CLI",
+            config_format="command",
+            file_location="Terminal/PowerShell (Coming Soon)",
+            supported=False
         ),
         AIToolInfo(
             id="gemini",
-            name="Google Gemini",
-            config_format="json",
-            file_location="~/.gemini/config.json",
-            supported=True
+            name="Gemini CLI",
+            config_format="command",
+            file_location="Terminal/PowerShell (Coming Soon)",
+            supported=False
         )
     ]
 
@@ -237,27 +220,28 @@ async def generate_ai_tool_config(
 
     logger.info(f"Generating config for tool '{tool_id}' with server URL: {server_url}")
 
-    # Get tenant key (use default if no user authenticated)
-    tenant_key = current_user.tenant_key if current_user else "default"
+    # Note: This endpoint should create an API key and use HTTP transport
+    # For now, using a placeholder API key - should be integrated with API key creation
+    api_key = "placeholder-api-key-please-use-wizard"
 
     # Generate configuration based on tool
     config_generators = {
         "claude": {
             "generator": get_claude_code_config,
-            "format": "json",
-            "file_location": "~/.claude.json",
+            "format": "command",
+            "file_location": "Terminal/PowerShell",
             "filename": "giljo-claude-setup.md"
         },
         "codex": {
             "generator": get_codex_config,
-            "format": "json",
-            "file_location": "~/.codex/config.json",
+            "format": "command",
+            "file_location": "Terminal/PowerShell (Coming Soon)",
             "filename": "giljo-codex-setup.md"
         },
         "gemini": {
             "generator": get_gemini_config,
-            "format": "json",
-            "file_location": "~/.gemini/config.json",
+            "format": "command",
+            "file_location": "Terminal/PowerShell (Coming Soon)",
             "filename": "giljo-gemini-setup.md"
         }
     }
@@ -270,21 +254,13 @@ async def generate_ai_tool_config(
 
     tool_config = config_generators[tool_id]
 
-    # Generate configuration
-    config_dict = tool_config["generator"](server_url, tenant_key)
+    # Generate configuration command
+    config_content = tool_config["generator"](server_url, api_key)
 
-    # Convert to formatted string
-    if tool_config["format"] == "json":
-        config_content = json.dumps(config_dict, indent=2, ensure_ascii=False)
-    else:
-        # YAML format (future enhancement)
-        import yaml
-        config_content = yaml.dump(config_dict, default_flow_style=False)
+    # Get instructions for HTTP transport
+    instructions = get_http_tool_instructions(tool_id)
 
-    # Get instructions
-    instructions = get_tool_instructions(tool_id, tool_config["file_location"])
-
-    logger.info(f"Successfully generated config for {tool_id} (tenant: {tenant_key})")
+    logger.info(f"Successfully generated config for {tool_id} (HTTP transport)")
 
     return AIToolConfigResponse(
         tool=tool_id,
