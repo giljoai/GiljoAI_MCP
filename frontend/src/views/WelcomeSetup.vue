@@ -7,7 +7,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
-import WelcomePasswordStep from '@/components/setup/WelcomePasswordStep.vue'
+import WelcomePasswordStep from '@/components/WelcomePasswordStep.vue'
 
 const router = useRouter()
 
