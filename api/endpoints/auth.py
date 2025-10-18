@@ -251,6 +251,7 @@ async def login(
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
         # NO max_age - makes it a session cookie that expires on browser close
+        path="/api",  # Ensure cookie is sent to all API routes (v1, auth, etc.)
         domain=None,  # Allow cookie to work with both localhost and network IPs
     )
 

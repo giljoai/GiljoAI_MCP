@@ -512,11 +512,12 @@ function resetNotificationSettings() {
 }
 
 // AI Tool Configuration Methods
+import { API_CONFIG } from '@/config/api'
 function openAutoConfigurator() {
-  // Navigate to relocated endpoint - opens in same tab
+  // Open the configurator on the API origin to avoid SPA dev-server fallback
   const token = localStorage.getItem('auth_token')
-  const baseUrl = window.location.origin
-  const url = `${baseUrl}/api/v1/user/ai-tools-configurator${token ? `?token=${token}` : ''}`
+  const apiBase = API_CONFIG.REST_API.baseURL
+  const url = `${apiBase}/api/v1/user/ai-tools-configurator${token ? `?token=${token}` : ''}`
 
   console.log('[USER SETTINGS] Opening auto-configurator:', url)
   window.location.href = url
