@@ -138,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import ApiKeyWizard from './ApiKeyWizard.vue'
@@ -212,7 +212,9 @@ async function revokeKey() {
     await api.apiKeys.delete(keyToRevoke.value.id)
     console.log('[API Keys] Revoked key:', keyToRevoke.value.name)
 
-    // Reload keys list
+    // Optimistically remove from list, then reload to ensure consistency
+    const revokedId = keyToRevoke.value.id
+    apiKeys.value = apiKeys.value.filter(k => k.id !== revokedId)
     await loadKeys()
 
     // Close dialog
@@ -236,6 +238,12 @@ function formatDate(dateString) {
 // Lifecycle
 onMounted(() => {
   loadKeys()
+  // Listen for keys created elsewhere (e.g., wizard)
+  window.addEventListener('api-key-created', refreshKeys)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('api-key-created', refreshKeys)
 })
 </script>
 

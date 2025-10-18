@@ -12,27 +12,24 @@
  * @param {string} pythonPath - Path to Python executable
  * @returns {string} JSON configuration snippet for .claude.json
  */
-export function generateClaudeCodeConfig(apiKey, serverUrl = null, pythonPath) {
+export function generateClaudeCodeConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
-  // Use default Python path if not provided
-  const defaultPythonPath = pythonPath || 'python'
 
-  const config = {
-    mcpServers: {
-      'giljo-mcp': {
-        command: defaultPythonPath,
-        args: ['-m', 'giljo_mcp'],
-        env: {
-          // GILJO_MCP_HOME removed - backend auto-detects with Path.cwd()
-          GILJO_SERVER_URL: defaultServerUrl,
-          GILJO_API_KEY: apiKey,
-        },
+  // Return the entry to add under "mcpServers"
+  const entry = {
+    'giljo-mcp': {
+      command: 'uvx',
+      args: ['giljo-mcp'],
+      env: {
+        GILJO_API_KEY: apiKey,
+        GILJO_SERVER_URL: defaultServerUrl,
       },
     },
   }
 
-  return JSON.stringify(config, null, 2)
+  // Pretty-print just the giljo-mcp entry block for clarity
+  return JSON.stringify(entry['giljo-mcp'], null, 2)
 }
 
 /**

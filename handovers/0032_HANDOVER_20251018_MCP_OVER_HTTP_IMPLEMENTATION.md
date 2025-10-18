@@ -100,10 +100,25 @@ claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
 
 ### Database Changes
 
-**No schema changes required** - Will use existing:
+**New table required for session management:**
+```sql
+CREATE TABLE mcp_sessions (
+    session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    api_key_id INTEGER REFERENCES api_keys(id),
+    tenant_id INTEGER REFERENCES tenants(id), 
+    project_id INTEGER,
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_accessed TIMESTAMP DEFAULT NOW(),
+    session_data JSONB
+);
+
+CREATE INDEX idx_mcp_sessions_api_key ON mcp_sessions(api_key_id);
+CREATE INDEX idx_mcp_sessions_last_accessed ON mcp_sessions(last_accessed);
+```
+
+**Uses existing tables:**
 - `api_keys` table for authentication
 - `tenants` table for tenant resolution
-- Session state can be stored in-memory or Redis (implementation choice)
 
 ### API Changes
 
@@ -130,22 +145,37 @@ claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
 - Research and implement Codex CLI MCP syntax
 - Research and implement Gemini CLI MCP syntax
 
+## User Decisions Made (2025-01-18)
+
+**Session Storage Strategy:** PostgreSQL table
+- **Rationale:** Zero new dependencies, persistent across restarts, leverages existing database
+- **Performance:** 2-5ms overhead negligible compared to tool execution time (100ms-10s)
+- **Implementation:** New `mcp_sessions` table with foreign keys to existing `api_keys` and `tenants`
+
+**Git Workflow:** Commit current changes first  
+- **Action Required:** Review and commit 8 modified files before starting implementation
+- **Status:** Changes appear to be previous MCP-related work
+
+**Research Scope:** Claude Code only
+- **Decision:** Skip Codex CLI and Gemini CLI research for now
+- **Focus:** Implement HTTP transport for Claude Code first, expand later if needed
+
 ## Implementation Plan
 
-### Phase 1: Research AI Tool MCP Configurations (Day 1)
+### Phase 1: Research Claude Code MCP Configuration (Day 1)
 **Specific actions:**
-1. Research Codex CLI MCP configuration format
-2. Research Gemini CLI MCP integration method
-3. Document findings in `docs/ai_tool_mcp_research.md`
-4. Verify Claude Code HTTP transport syntax from existing docs
+1. ✅ **SCOPE REDUCED:** Focus on Claude Code only (user decision)
+2. Verify Claude Code HTTP transport syntax from existing docs
+3. Review existing documentation in `docs/Connect Claude Code to tools via MCP.md`
+4. Document final HTTP transport command format
 
 **Expected outcome:**
-- Complete understanding of all three AI tool MCP configurations
-- Configuration command templates for each tool
+- Complete understanding of Claude Code MCP HTTP configuration
+- Exact command template for HTTP transport setup
 
 **Testing criteria:**
-- All three AI tools have documented configuration methods
-- Configuration commands are syntactically correct
+- Claude Code HTTP transport command is syntactically correct
+- Configuration works with existing API key system
 
 **Recommended Sub-Agent:** deep-researcher
 
@@ -171,9 +201,10 @@ claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
 ### Phase 3: Add Stateful Session Management (Day 2)
 **Specific actions:**
 1. Create `api/endpoints/mcp_session.py` for session management
-2. Implement API key to tenant/project resolution
-3. Add session state tracking for multi-tenant context
-4. Integrate with existing tenant management system
+2. Create PostgreSQL table for persistent session storage
+3. Implement API key to tenant/project resolution
+4. Add session state tracking for multi-tenant context
+5. Integrate with existing tenant management system
 
 **Expected outcome:**
 - Session state preserves tenant_key and project_id across calls
@@ -313,13 +344,14 @@ claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
 - Gemini CLI MCP integration method (may need external documentation)
 
 **Technical Questions:**
-- Session storage: In-memory vs Redis vs database?
+- ✅ **DECIDED: Session storage** - PostgreSQL table (persistent, zero new dependencies)
 - Session timeout handling strategy?
 - Error message format preferences?
 
 **User Decisions:**
+- ✅ **DECIDED: Git workflow** - Commit and push current changes before starting
+- ✅ **DECIDED: Research scope** - Claude Code only for now (skip Codex/Gemini CLI)
 - Should stdio adapter remain for local development?
-- Preferred session storage mechanism?
 - Configuration UI design preferences?
 
 ## Success Criteria

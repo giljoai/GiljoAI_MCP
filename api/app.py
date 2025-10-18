@@ -146,16 +146,16 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
         if db_url:
             logger.info("Using DATABASE_URL from environment")
         elif state.config.database:
-            # Construct database URL from config
-            logger.info("Constructing database URL from configuration")
-            if state.config.database.type == "postgresql":
-                db_url = f"postgresql://{state.config.database.username}:{state.config.database.password}@{state.config.database.host}:{state.config.database.port}/{state.config.database.database_name}"
+            # Construct database URL using configuration manager (handles env + migrations)
+            try:
+                logger.info("Constructing database URL from configuration manager")
+                db_url = state.config.database.get_connection_string()
                 logger.debug(
                     f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
                 )
-            else:
-                logger.error(f"Invalid database type: {state.config.database.type}")
-                raise ValueError("Database configuration missing. PostgreSQL is required.")
+            except Exception as e:
+                logger.error(f"Failed to build database URL from config: {e}")
+                raise
 
         if not db_url:
             logger.error("No database configuration found")
