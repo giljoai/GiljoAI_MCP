@@ -6,49 +6,64 @@
  */
 
 /**
- * Generate Claude Code MCP server configuration
+ * Generate Claude Code MCP server configuration using HTTP transport
  * @param {string} apiKey - The API key to embed
  * @param {string} serverUrl - GiljoAI MCP server URL (default: current host:7272)
- * @param {string} pythonPath - Path to Python executable
- * @returns {string} JSON configuration snippet for .claude.json
+ * @returns {string} Command-line instruction for HTTP transport setup
  */
 export function generateClaudeCodeConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
-  // Return the entry to add under "mcpServers"
-  const entry = {
-    'giljo-mcp': {
-      command: 'uvx',
-      args: ['giljo-mcp'],
-      env: {
-        GILJO_API_KEY: apiKey,
-        GILJO_SERVER_URL: defaultServerUrl,
-      },
-    },
-  }
+  // Generate HTTP transport command for Claude Code
+  // Uses zero-dependency HTTP transport - no Python or local packages required
+  const command = `claude mcp add --transport http giljo-mcp ${defaultServerUrl}/mcp --header "X-API-Key: ${apiKey}"`
 
-  // Pretty-print just the giljo-mcp entry block for clarity
-  return JSON.stringify(entry['giljo-mcp'], null, 2)
+  return command
 }
 
 /**
- * Generate Codex CLI configuration
+ * Generate Codex CLI configuration using HTTP transport
  * @param {string} apiKey - The API key to embed
  * @param {string} serverUrl - GiljoAI MCP server URL (default: current host:7272)
- * @returns {string} TOML configuration snippet for config.toml
+ * @returns {string} Command-line instruction for HTTP transport setup (placeholder)
  */
 export function generateCodexConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
-  return `[tools.claude_code]
-api_key = "${apiKey}"
-server_url = "${defaultServerUrl}"
+  // Placeholder command - exact syntax pending Codex CLI documentation
+  // Expected format follows Claude Code pattern when available
+  const command = `# Codex CLI MCP Integration (Coming Soon)
+# Expected command format (pending official documentation):
+codex mcp add --transport http giljo-mcp ${defaultServerUrl}/mcp --header "X-API-Key: ${apiKey}"
 
-# Codex CLI integration (coming soon)
-# This configuration will be used when Codex CLI support is added
-`
+# Note: This is a placeholder. Once Codex CLI MCP support is available,
+# the exact command syntax will be updated based on official documentation.`
+
+  return command
+}
+
+/**
+ * Generate Gemini CLI configuration using HTTP transport
+ * @param {string} apiKey - The API key to embed
+ * @param {string} serverUrl - GiljoAI MCP server URL (default: current host:7272)
+ * @returns {string} Command-line instruction for HTTP transport setup (placeholder)
+ */
+export function generateGeminiConfig(apiKey, serverUrl = null) {
+  // v3.0 Unified: Default to current host if no URL provided
+  const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
+
+  // Placeholder command - exact syntax pending Gemini CLI documentation
+  // Expected format follows Claude Code pattern when available
+  const command = `# Gemini CLI MCP Integration (Coming Soon)
+# Expected command format (pending official documentation):
+gemini mcp add --transport http giljo-mcp ${defaultServerUrl}/mcp --header "X-API-Key: ${apiKey}"
+
+# Note: This is a placeholder. Once Gemini CLI MCP support is available,
+# the exact command syntax will be updated based on official documentation.`
+
+  return command
 }
 
 /**
