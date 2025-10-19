@@ -22,6 +22,10 @@
         <v-icon start>mdi-account-multiple</v-icon>
         Users
       </v-tab>
+      <v-tab value="security">
+        <v-icon start>mdi-shield-lock</v-icon>
+        Security
+      </v-tab>
     </v-tabs>
 
     <!-- Tab Content -->
@@ -393,6 +397,107 @@
       <v-window-item value="users">
         <UserManager />
       </v-window-item>
+
+      <!-- Security Settings -->
+      <v-window-item value="security">
+        <v-card>
+          <v-card-title>Security Settings</v-card-title>
+          <v-card-subtitle>Manage authentication and cross-origin security</v-card-subtitle>
+
+          <v-card-text>
+            <!-- Cookie Domain Whitelist Section -->
+            <h3 class="text-h6 mb-3">Cookie Domain Whitelist</h3>
+
+            <p class="text-body-2 mb-3">
+              Configure which domain names are allowed for cross-port authentication cookies.
+              This enables secure authentication when accessing the dashboard from different ports
+              or subdomains on the same machine.
+            </p>
+
+            <v-alert type="info" variant="tonal" class="mb-4">
+              <v-icon start>mdi-information</v-icon>
+              IP addresses are automatically allowed. Only add domain names here (e.g., app.example.com, localhost).
+            </v-alert>
+
+            <!-- Domain List -->
+            <div v-if="cookieDomains.length > 0" class="mb-4">
+              <v-list density="compact" class="mb-3">
+                <v-list-item
+                  v-for="domain in cookieDomains"
+                  :key="domain"
+                  :title="domain"
+                >
+                  <template v-slot:append>
+                    <v-btn
+                      icon="mdi-delete"
+                      size="small"
+                      variant="text"
+                      color="error"
+                      @click="removeCookieDomain(domain)"
+                      :aria-label="`Delete domain ${domain}`"
+                    />
+                  </template>
+                </v-list-item>
+              </v-list>
+            </div>
+
+            <!-- Empty State -->
+            <v-alert
+              v-else
+              type="info"
+              variant="outlined"
+              class="mb-4"
+            >
+              No domain names configured. IP-based access only.
+            </v-alert>
+
+            <!-- Add Domain Form -->
+            <v-text-field
+              v-model="newDomain"
+              label="Add Domain Name"
+              variant="outlined"
+              placeholder="app.example.com"
+              hint="Enter a domain name (no IP addresses)"
+              persistent-hint
+              :rules="[validateDomain]"
+              :error-messages="domainError"
+              @keyup.enter="addCookieDomain"
+              class="mb-2"
+            >
+              <template v-slot:append>
+                <v-btn
+                  icon="mdi-plus"
+                  color="primary"
+                  variant="text"
+                  @click="addCookieDomain"
+                  :disabled="!newDomain || !!domainError"
+                  aria-label="Add domain"
+                />
+              </template>
+            </v-text-field>
+
+            <!-- Success/Error Feedback -->
+            <v-alert
+              v-if="cookieDomainFeedback"
+              :type="cookieDomainFeedback.type"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="cookieDomainFeedback = null"
+            >
+              {{ cookieDomainFeedback.message }}
+            </v-alert>
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="loadCookieDomains">
+              <v-icon start>mdi-refresh</v-icon>
+              Reload
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-window-item>
     </v-window>
 
     <!-- Regenerate API Key Dialog -->
@@ -690,6 +795,7 @@ import { useRouter } from 'vue-router'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
 import UserManager from '@/components/UserManager.vue'
 import { API_CONFIG } from '@/config/api'
+import api from '@/services/api'
 
 // Router
 const router = useRouter()
@@ -716,6 +822,12 @@ const showGeminiConfigModal = ref(false)
 const claudeConfigTab = ref('marketplace')
 const codexConfigTab = ref('manual')
 const geminiConfigTab = ref('manual')
+
+// Cookie Domain Whitelist state
+const cookieDomains = ref([])
+const newDomain = ref('')
+const domainError = ref('')
+const cookieDomainFeedback = ref(null)
 
 // Computed Properties
 const modeColor = computed(() => {
@@ -1159,6 +1271,104 @@ Visit your GiljoAI dashboard for additional configuration help.`
   console.log('[INTEGRATIONS] Gemini setup instructions downloaded')
 }
 
+// Cookie Domain Whitelist Methods
+async function loadCookieDomains() {
+  try {
+    const response = await api.settings.getCookieDomains()
+    cookieDomains.value = response.data.domains || []
+    console.log('[SECURITY] Cookie domains loaded:', cookieDomains.value.length)
+  } catch (error) {
+    console.error('[SECURITY] Failed to load cookie domains:', error)
+    cookieDomainFeedback.value = {
+      type: 'error',
+      message: 'Failed to load cookie domains. Please try again.'
+    }
+  }
+}
+
+function validateDomain(value) {
+  if (!value) {
+    return true // Empty is valid (optional field)
+  }
+
+  const trimmed = value.trim()
+
+  // Check for IP address pattern (reject IPs)
+  const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
+  if (ipPattern.test(trimmed)) {
+    domainError.value = 'IP addresses are not allowed. Use domain names only.'
+    return false
+  }
+
+  // Validate domain format
+  const domainPattern = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+  if (!domainPattern.test(trimmed)) {
+    domainError.value = 'Invalid domain format. Example: app.example.com'
+    return false
+  }
+
+  domainError.value = ''
+  return true
+}
+
+async function addCookieDomain() {
+  const trimmed = newDomain.value.trim()
+
+  if (!trimmed) {
+    return
+  }
+
+  // Validate before submitting
+  if (!validateDomain(trimmed)) {
+    return
+  }
+
+  // Check for duplicates
+  if (cookieDomains.value.includes(trimmed)) {
+    cookieDomainFeedback.value = {
+      type: 'warning',
+      message: `Domain "${trimmed}" is already in the whitelist.`
+    }
+    return
+  }
+
+  try {
+    await api.settings.addCookieDomain(trimmed)
+    cookieDomains.value.push(trimmed)
+    newDomain.value = ''
+    domainError.value = ''
+    cookieDomainFeedback.value = {
+      type: 'success',
+      message: `Domain "${trimmed}" added successfully.`
+    }
+    console.log('[SECURITY] Cookie domain added:', trimmed)
+  } catch (error) {
+    console.error('[SECURITY] Failed to add cookie domain:', error)
+    cookieDomainFeedback.value = {
+      type: 'error',
+      message: error.response?.data?.detail || 'Failed to add domain. Please try again.'
+    }
+  }
+}
+
+async function removeCookieDomain(domain) {
+  try {
+    await api.settings.removeCookieDomain(domain)
+    cookieDomains.value = cookieDomains.value.filter(d => d !== domain)
+    cookieDomainFeedback.value = {
+      type: 'success',
+      message: `Domain "${domain}" removed successfully.`
+    }
+    console.log('[SECURITY] Cookie domain removed:', domain)
+  } catch (error) {
+    console.error('[SECURITY] Failed to remove cookie domain:', error)
+    cookieDomainFeedback.value = {
+      type: 'error',
+      message: error.response?.data?.detail || 'Failed to remove domain. Please try again.'
+    }
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   // Load database settings from config on mount
@@ -1166,6 +1376,9 @@ onMounted(async () => {
 
   // Load network settings from config on mount
   await loadNetworkSettings()
+
+  // Load cookie domains
+  await loadCookieDomains()
 })
 </script>
 

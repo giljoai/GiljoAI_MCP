@@ -194,6 +194,9 @@ export const api = {
     get: () => apiClient.get('/api/v1/config/'),
     update: (data) => apiClient.put('/api/v1/config/', data),
     getProduct: () => apiClient.get('/api/v1/config/product/'),
+    getCookieDomains: () => apiClient.get('/api/v1/user/settings/cookie-domains'),
+    addCookieDomain: (domain) => apiClient.post('/api/v1/user/settings/cookie-domains', { domain }),
+    removeCookieDomain: (domain) => apiClient.delete('/api/v1/user/settings/cookie-domains', { data: { domain } }),
   },
 
   // Session Info

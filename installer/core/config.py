@@ -514,6 +514,8 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
         Returns:
             Security configuration dictionary with CORS, API keys, and rate limiting
         """
+        import re
+
         # Get API and frontend ports
         api_port = self.settings.get("api_port", 7272)
         frontend_port = self.settings.get("dashboard_port", 7274)
@@ -541,12 +543,28 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
         if custom_origins:
             cors_origins.extend(custom_origins)
 
+        # Build cookie_domains whitelist for cross-port authentication
+        # Only include domain names (not IPs - they're auto-allowed by FastAPI)
+        cookie_domains = []
+        ip_pattern = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+
+        # Check custom_domain from installer prompt
+        custom_domain = self.settings.get("custom_domain")
+        if custom_domain and not ip_pattern.match(custom_domain):
+            cookie_domains.append(custom_domain)
+
+        # Check external_host if it's a domain name (not IP, not localhost)
+        if external_host and external_host not in ("localhost", "127.0.0.1"):
+            if not ip_pattern.match(external_host) and external_host not in cookie_domains:
+                cookie_domains.append(external_host)
+
         security_config = {
             "cors": {
                 "allowed_origins": cors_origins
                 # Note: Do NOT use wildcards like 'http://10.1.0.*:7274' - they don't work
                 # Add specific IPs instead: 'http://192.168.1.100:7274'
             },
+            "cookie_domains": cookie_domains,  # Whitelist for cookie domain setting (cross-port auth)
             "api_keys": {
                 # API keys documentation (not enforced in v3.0 localhost mode)
                 "info": "API keys optional for localhost (auto-login enabled)",

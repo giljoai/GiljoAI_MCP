@@ -12,6 +12,7 @@ All endpoints support multi-tenant isolation through tenant_key.
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
@@ -27,6 +28,7 @@ from sqlalchemy.exc import IntegrityError
 from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
 from src.giljo_mcp.auth.jwt_manager import JWTManager
+from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import APIKey, User
 
 
@@ -253,38 +255,74 @@ async def login(
         user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
     )
 
-    # SECURITY: Cookie domain handling for cross-port authentication
+    # SECURITY: Cookie domain validation and whitelist enforcement
+    #
     # Background: Frontend (port 7274) needs cookies set by API (port 7272)
-    # 
-    # Domain behavior:
+    # Cross-port authentication requires setting cookie domain attribute.
+    #
+    # Domain attribute behavior:
     #   - domain=None → Strict (exact host:port match) - MOST SECURE
     #   - domain="10.1.0.164" → Loose (all ports on that IP) - NEEDED for cross-port
-    # 
+    #   - domain="example.com" → Applies to example.com AND all subdomains (*.example.com)
+    #
     # Security considerations:
-    #   1. NEVER trust user-supplied Host header directly (Host header injection risk)
-    #   2. IP addresses don't have subdomains, so domain=IP is relatively safe
-    #   3. CORS whitelist provides defense-in-depth
-    #   4. SameSite=lax prevents CSRF
-    # 
-    # For production with HTTPS domains, validate against whitelist!
+    #   1. Host Header Injection Risk: NEVER trust user-supplied Host header blindly
+    #      Attacker can send: "Host: evil.com" and steal cookies if we set domain=evil.com
+    #
+    #   2. Defense-in-Depth Strategy:
+    #      - IP addresses: Auto-allowed (no subdomain risk, validated by regex)
+    #      - Domain names: MUST be in whitelist (prevents header injection attacks)
+    #      - localhost/127.0.0.1: Always domain=None (strictest security)
+    #      - Unknown hosts: domain=None (fail secure)
+    #
+    #   3. Additional Protections:
+    #      - CORS whitelist (separate layer of defense)
+    #      - SameSite=lax (prevents CSRF)
+    #      - httpOnly=True (prevents XSS cookie theft)
+    #      - secure=True in production (HTTPS only)
+    #
+    # Configuration: config.yaml can define allowed domains:
+    #   security:
+    #     cookie_domains: ["example.com", "myapp.io"]
+
     cookie_domain = None
     if request and request.client:
-        # Get the host from the request (e.g., "10.1.0.164:7272" or "localhost:7272")
+        # Extract host from request header (e.g., "10.1.0.164:7272" or "example.com:7272")
         host_header = request.headers.get("host", "")
         if host_header:
             # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
-            host_only = host_header.split(":")[0]
-            
-            # SECURITY: Only set domain for IP addresses (no subdomains)
-            # For localhost/127.0.0.1, use domain=None for strictest security
-            # For domain names (production), would need whitelist validation
-            import re
-            is_ip_address = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only)
-            
-            if is_ip_address and host_only not in ("127.0.0.1",):
-                # Safe: IP address (no subdomain risk)
+            host_only = host_header.split(":")[0].lower()
+
+            # SECURITY CHECK #1: Localhost gets strictest security (domain=None)
+            # This ensures cookies are never shared beyond exact localhost:port
+            if host_only in ("localhost", "127.0.0.1"):
+                cookie_domain = None
+                logger.debug(f"Cookie domain set to None for localhost security (host: {host_only})")
+
+            # SECURITY CHECK #2: IP addresses are auto-allowed (no subdomain risk)
+            # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
+            # IP addresses have no subdomain hierarchy, so domain=IP is safe
+            elif re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
                 cookie_domain = host_only
-            # else: domain=None (strictest - localhost or domain name)
+                logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
+
+            # SECURITY CHECK #3: Domain names MUST be whitelisted (prevent header injection)
+            # Without whitelist, attacker could send "Host: evil.com" and steal cookies
+            else:
+                # Load whitelist from config (defaults to empty list if not configured)
+                config = get_config()
+                allowed_domains = config.get("security", {}).get("cookie_domains", [])
+
+                if host_only in allowed_domains:
+                    cookie_domain = host_only
+                    logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
+                else:
+                    # FAIL SECURE: Unknown domain → domain=None (strictest)
+                    cookie_domain = None
+                    logger.warning(
+                        f"Cookie domain set to None for unknown host '{host_only}' "
+                        f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
+                    )
     
     # Set httpOnly cookie (session cookie - expires on browser close)
     response.set_cookie(
@@ -816,38 +854,74 @@ async def create_first_admin_user(
             tenant_key=admin_user.tenant_key
         )
 
-        # SECURITY: Cookie domain handling for cross-port authentication
-    # Background: Frontend (port 7274) needs cookies set by API (port 7272)
-    # 
-    # Domain behavior:
-    #   - domain=None → Strict (exact host:port match) - MOST SECURE
-    #   - domain="10.1.0.164" → Loose (all ports on that IP) - NEEDED for cross-port
-    # 
-    # Security considerations:
-    #   1. NEVER trust user-supplied Host header directly (Host header injection risk)
-    #   2. IP addresses don't have subdomains, so domain=IP is relatively safe
-    #   3. CORS whitelist provides defense-in-depth
-    #   4. SameSite=lax prevents CSRF
-    # 
-    # For production with HTTPS domains, validate against whitelist!
-    cookie_domain = None
-    if request and request.client:
-        # Get the host from the request (e.g., "10.1.0.164:7272" or "localhost:7272")
-        host_header = request.headers.get("host", "")
-        if host_header:
-            # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
-            host_only = host_header.split(":")[0]
-            
-            # SECURITY: Only set domain for IP addresses (no subdomains)
-            # For localhost/127.0.0.1, use domain=None for strictest security
-            # For domain names (production), would need whitelist validation
-            import re
-            is_ip_address = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only)
-            
-            if is_ip_address and host_only not in ("127.0.0.1",):
-                # Safe: IP address (no subdomain risk)
-                cookie_domain = host_only
-            # else: domain=None (strictest - localhost or domain name)
+        # SECURITY: Cookie domain validation and whitelist enforcement
+        #
+        # Background: Frontend (port 7274) needs cookies set by API (port 7272)
+        # Cross-port authentication requires setting cookie domain attribute.
+        #
+        # Domain attribute behavior:
+        #   - domain=None → Strict (exact host:port match) - MOST SECURE
+        #   - domain="10.1.0.164" → Loose (all ports on that IP) - NEEDED for cross-port
+        #   - domain="example.com" → Applies to example.com AND all subdomains (*.example.com)
+        #
+        # Security considerations:
+        #   1. Host Header Injection Risk: NEVER trust user-supplied Host header blindly
+        #      Attacker can send: "Host: evil.com" and steal cookies if we set domain=evil.com
+        #
+        #   2. Defense-in-Depth Strategy:
+        #      - IP addresses: Auto-allowed (no subdomain risk, validated by regex)
+        #      - Domain names: MUST be in whitelist (prevents header injection attacks)
+        #      - localhost/127.0.0.1: Always domain=None (strictest security)
+        #      - Unknown hosts: domain=None (fail secure)
+        #
+        #   3. Additional Protections:
+        #      - CORS whitelist (separate layer of defense)
+        #      - SameSite=lax (prevents CSRF)
+        #      - httpOnly=True (prevents XSS cookie theft)
+        #      - secure=True in production (HTTPS only)
+        #
+        # Configuration: config.yaml can define allowed domains:
+        #   security:
+        #     cookie_domains: ["example.com", "myapp.io"]
+
+        cookie_domain = None
+        if request and request.client:
+            # Extract host from request header (e.g., "10.1.0.164:7272" or "example.com:7272")
+            host_header = request.headers.get("host", "")
+            if host_header:
+                # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
+                host_only = host_header.split(":")[0].lower()
+
+                # SECURITY CHECK #1: Localhost gets strictest security (domain=None)
+                # This ensures cookies are never shared beyond exact localhost:port
+                if host_only in ("localhost", "127.0.0.1"):
+                    cookie_domain = None
+                    logger.debug(f"Cookie domain set to None for localhost security (host: {host_only})")
+
+                # SECURITY CHECK #2: IP addresses are auto-allowed (no subdomain risk)
+                # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
+                # IP addresses have no subdomain hierarchy, so domain=IP is safe
+                elif re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
+                    cookie_domain = host_only
+                    logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
+
+                # SECURITY CHECK #3: Domain names MUST be whitelisted (prevent header injection)
+                # Without whitelist, attacker could send "Host: evil.com" and steal cookies
+                else:
+                    # Load whitelist from config (defaults to empty list if not configured)
+                    config = get_config()
+                    allowed_domains = config.get("security", {}).get("cookie_domains", [])
+
+                    if host_only in allowed_domains:
+                        cookie_domain = host_only
+                        logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
+                    else:
+                        # FAIL SECURE: Unknown domain → domain=None (strictest)
+                        cookie_domain = None
+                        logger.warning(
+                            f"Cookie domain set to None for unknown host '{host_only}' "
+                            f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
+                        )
         
         # Set httpOnly cookie for immediate login (same pattern as login endpoint)
         response.set_cookie(
