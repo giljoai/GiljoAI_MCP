@@ -293,16 +293,11 @@ async def login(
             # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
             host_only = host_header.split(":")[0].lower()
 
-            # SECURITY CHECK #1: Localhost development mode - allow cross-port cookies
-            # In development, frontend (7274) needs cookies from API (7272)
-            # For localhost/127.0.0.1: Use domain=None to let browser handle naturally
-            # Browsers treat localhost and 127.0.0.1 as different, but with domain=None
-            # cookies work within the same hostname across different ports
+            # SECURITY CHECK #1: Localhost gets strictest security (domain=None)
+            # This ensures cookies are never shared beyond exact localhost:port
             if host_only in ("localhost", "127.0.0.1"):
-                # domain=None allows cookies to work across ports on the same hostname
-                # This is the most reliable approach for local development
                 cookie_domain = None
-                logger.debug(f"Cookie domain set to None for localhost ({host_only}) - allows cross-port access")
+                logger.debug(f"Cookie domain set to None for localhost security (host: {host_only})")
 
             # SECURITY CHECK #2: IP addresses are auto-allowed (no subdomain risk)
             # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
@@ -897,16 +892,11 @@ async def create_first_admin_user(
                 # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
                 host_only = host_header.split(":")[0].lower()
 
-                # SECURITY CHECK #1: Localhost development mode - allow cross-port cookies
-            # In development, frontend (7274) needs cookies from API (7272)
-            # For localhost/127.0.0.1: Use domain=None to let browser handle naturally
-            # Browsers treat localhost and 127.0.0.1 as different, but with domain=None
-            # cookies work within the same hostname across different ports
-            if host_only in ("localhost", "127.0.0.1"):
-                # domain=None allows cookies to work across ports on the same hostname
-                # This is the most reliable approach for local development
-                cookie_domain = None
-                logger.debug(f"Cookie domain set to None for localhost ({host_only}) - allows cross-port access")
+                # SECURITY CHECK #1: Localhost gets strictest security (domain=None)
+                # This ensures cookies are never shared beyond exact localhost:port
+                if host_only in ("localhost", "127.0.0.1"):
+                    cookie_domain = None
+                    logger.debug(f"Cookie domain set to None for localhost security (host: {host_only})")
 
                 # SECURITY CHECK #2: IP addresses are auto-allowed (no subdomain risk)
                 # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
