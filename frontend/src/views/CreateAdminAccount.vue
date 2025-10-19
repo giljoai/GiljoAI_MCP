@@ -221,7 +221,7 @@ const createAdmin = async () => {
 
     // Success - redirect to dashboard (JWT cookie set by API)
     console.log('[CREATE_ADMIN] Admin account created successfully, redirecting to dashboard')
-    router.push('/dashboard')
+    router.push('/')  // Dashboard is at root path
   } catch (error) {
     console.error('[CREATE_ADMIN] Failed:', error)
 
