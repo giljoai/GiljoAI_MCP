@@ -627,8 +627,8 @@ async def register_user(
 
 @router.post("/create-first-admin", response_model=RegisterUserResponse, status_code=201, tags=["auth"])
 async def create_first_admin_user(
-    request_body: RegisterUserRequest = Body(...),
     response: Response,
+    request_body: RegisterUserRequest = Body(...),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
