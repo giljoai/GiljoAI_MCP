@@ -86,6 +86,68 @@ F:\GiljoAI_MCP/
 
 ## 2. Technical Requirements
 
+### CRITICAL: Security Enhancement (Handover 0035)
+
+**IMPORTANT**: During development of this handover, a security enhancement was implemented that affects the database schema. The unified installer MUST create these new fields.
+
+**SetupState Model Changes** (already in `src/giljo_mcp/models.py`):
+
+**New Fields** (lines 945-959):
+```python
+# First admin creation tracking (Handover 0035: Security Enhancement)
+# CRITICAL SECURITY: Atomic flag preventing duplicate admin creation after first user setup
+# Used by /api/auth/create-first-admin endpoint to lock down after initial setup
+first_admin_created = Column(
+    Boolean,
+    default=False,
+    nullable=False,
+    index=True,
+    comment="True after first admin account created - prevents duplicate admin creation attacks"
+)
+first_admin_created_at = Column(
+    DateTime(timezone=True),
+    nullable=True,
+    comment="Timestamp when first admin account was created"
+)
+```
+
+**New Constraint** (lines 1011-1015):
+```python
+CheckConstraint(
+    "(first_admin_created = false) OR (first_admin_created = true AND first_admin_created_at IS NOT NULL)",
+    name="ck_first_admin_created_at_required"
+)
+```
+
+**New Indexes** (lines 1025-1026):
+```python
+# Partial index for fresh installs (no admin created yet) - used by security checks
+Index("idx_setup_fresh_install", "tenant_key", "first_admin_created",
+      postgresql_where="first_admin_created = false")
+```
+
+**Security Benefit**:
+- Before: `/api/auth/create-first-admin` stayed accessible forever (attack vector)
+- After: Endpoint auto-disables after first admin created (hardened security)
+
+**Installation Impact**:
+- If using `Base.metadata.create_all()`: ✅ No changes needed (automatic)
+- If using custom SQL: ⚠️ Must add these fields, constraint, and index
+
+**API Endpoint Changes** (`api/endpoints/auth.py`):
+- Endpoint checks `SetupState.first_admin_created` at START
+- If `True`, raises 403 "endpoint has been disabled"
+- After successful admin creation, sets `first_admin_created = True` and `first_admin_created_at = datetime.now()`
+
+**Verification After Install**:
+```bash
+# Verify endpoint blocks after admin created:
+curl -X POST http://localhost:7272/api/auth/create-first-admin
+# Expected: 403 "endpoint has been disabled"
+```
+
+---
+
 ### Platform-Specific Code Analysis
 
 **Code that MUST differ by platform (~15%)**:
@@ -1483,6 +1545,10 @@ rm -rf linux_installer/
 - [ ] Handover 0034: /welcome redirect works for fresh install
 - [ ] Handover 0034: First admin creation works with strong password validation
 - [ ] Handover 0034: Success messages correct (no admin/admin references)
+- [ ] Handover 0035: SetupState has first_admin_created + first_admin_created_at fields (security)
+- [ ] Handover 0035: SetupState has ck_first_admin_created_at_required constraint
+- [ ] Handover 0035: SetupState has idx_setup_fresh_install partial index
+- [ ] Handover 0035: /api/auth/create-first-admin auto-disables after first admin created
 
 **Code Quality**:
 - [ ] Code reduction: 5,000+ lines → 3,350 lines (33% reduction)
@@ -1577,6 +1643,20 @@ async def test_handover_0034_compliance():
     # Verify user count == 1
     # Verify SetupState.first_admin_created == True
     # Verify /welcome blocked
+
+async def test_handover_0035_security_enhancement():
+    """CRITICAL: Verify Handover 0035 security enhancements"""
+    # Run installer
+    # Verify SetupState table has first_admin_created column
+    # Verify SetupState table has first_admin_created_at column
+    # Verify constraint ck_first_admin_created_at_required exists
+    # Verify index idx_setup_fresh_install exists
+    # Create first admin via /api/auth/create-first-admin
+    # Verify SetupState.first_admin_created == True
+    # Verify SetupState.first_admin_created_at is set
+    # Attempt second admin creation
+    # Verify 403 "endpoint has been disabled" returned
+    # Verify endpoint permanently disabled
 ```
 
 ### Manual Testing
