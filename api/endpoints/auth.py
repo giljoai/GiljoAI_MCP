@@ -197,7 +197,10 @@ class PasswordChangeResponse(BaseModel):
 
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
 async def login(
-    request: LoginRequest = Body(...), response: Response = None, db: AsyncSession = Depends(get_db_session)
+    login_data: LoginRequest = Body(...), 
+    response: Response = None, 
+    request: Request = None,
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Login with username/password, returns JWT in httpOnly cookie.
@@ -205,8 +208,8 @@ async def login(
     This endpoint authenticates a user and sets an httpOnly cookie
     containing a JWT access token valid for 24 hours.
 
-    If default_password_active is true, returns 403 error directing
-    user to change password first.
+    v3.0 Unified (Handover 0034): No more default password flow.
+    Fresh installs go directly to "Create Admin Account" page.
 
     Args:
         request: Login credentials (username, password)
@@ -218,20 +221,19 @@ async def login(
 
     Raises:
         HTTPException: 401 if credentials are invalid
-        HTTPException: 403 if default password must be changed
     """
     # Find user by username
-    stmt = select(User).where(User.username == request.username)
+    stmt = select(User).where(User.username == login_data.username)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
-        logger.warning(f"Login failed for username: {request.username} (user not found or inactive)")
+        logger.warning(f"Login failed for username: {login_data.username} (user not found or inactive)")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     # Verify password
-    if not bcrypt.verify(request.password, user.password_hash):
-        logger.warning(f"Login failed for username: {request.username} (invalid password)")
+    if not bcrypt.verify(login_data.password, user.password_hash):
+        logger.warning(f"Login failed for username: {login_data.username} (invalid password)")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     # Check if default password is still active (for admin user) - v3.0 Unified UX
@@ -241,15 +243,49 @@ async def login(
     result_setup = await db.execute(stmt_setup)
     setup_state = result_setup.scalar_one_or_none()
 
-    # v3.0 Unified: Allow admin/admin login but indicate password change required
-    # No longer block with 403 - that's terrible UX. Login succeeds, frontend handles redirect.
-    password_change_required = setup_state and setup_state.default_password_active and user.username == "admin"
+    # v3.0 Unified (Handover 0034): No more default admin/admin password
+    # Fresh installs go directly to "Create Admin Account" page
+    # This flag is always False for v3.0+ (legacy field removed in Handover 0035)
+    password_change_required = False
 
     # Generate JWT token
     token = JWTManager.create_access_token(
         user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
     )
 
+    # SECURITY: Cookie domain handling for cross-port authentication
+    # Background: Frontend (port 7274) needs cookies set by API (port 7272)
+    # 
+    # Domain behavior:
+    #   - domain=None → Strict (exact host:port match) - MOST SECURE
+    #   - domain="10.1.0.164" → Loose (all ports on that IP) - NEEDED for cross-port
+    # 
+    # Security considerations:
+    #   1. NEVER trust user-supplied Host header directly (Host header injection risk)
+    #   2. IP addresses don't have subdomains, so domain=IP is relatively safe
+    #   3. CORS whitelist provides defense-in-depth
+    #   4. SameSite=lax prevents CSRF
+    # 
+    # For production with HTTPS domains, validate against whitelist!
+    cookie_domain = None
+    if request and request.client:
+        # Get the host from the request (e.g., "10.1.0.164:7272" or "localhost:7272")
+        host_header = request.headers.get("host", "")
+        if host_header:
+            # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
+            host_only = host_header.split(":")[0]
+            
+            # SECURITY: Only set domain for IP addresses (no subdomains)
+            # For localhost/127.0.0.1, use domain=None for strictest security
+            # For domain names (production), would need whitelist validation
+            import re
+            is_ip_address = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only)
+            
+            if is_ip_address and host_only not in ("127.0.0.1",):
+                # Safe: IP address (no subdomain risk)
+                cookie_domain = host_only
+            # else: domain=None (strictest - localhost or domain name)
+    
     # Set httpOnly cookie (session cookie - expires on browser close)
     response.set_cookie(
         key="access_token",
@@ -259,7 +295,7 @@ async def login(
         samesite="lax",
         # NO max_age - makes it a session cookie that expires on browser close
         path="/",  # Accessible from all paths (frontend and API)
-        domain=None,  # Allow cookie to work with both localhost and network IPs
+        domain=cookie_domain,  # Set to request host for cross-port cookie sharing
     )
 
     # Update last_login
@@ -338,14 +374,10 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db_session)):
     # Check if password change is required (for admin user with default password)
     from src.giljo_mcp.models import SetupState
 
+    # v3.0 Unified (Handover 0034): No more default admin/admin password
+    # Fresh installs go directly to "Create Admin Account" page via first_admin_created flag
+    # This check removed in Handover 0035 (field no longer exists in SetupState model)
     password_change_required = None
-    if current_user.username == "admin":
-        stmt_setup = select(SetupState).where(SetupState.tenant_key == current_user.tenant_key)
-        result_setup = await db.execute(stmt_setup)
-        setup_state = result_setup.scalar_one_or_none()
-
-        if setup_state and setup_state.default_password_active:
-            password_change_required = True
 
     # Return authenticated user profile
     return UserProfileResponse(
@@ -673,6 +705,32 @@ async def create_first_admin_user(
     # Without this lock, multiple concurrent requests could all check user_count == 0
     # simultaneously and create multiple admin accounts
     async with _first_admin_creation_lock:
+        # SECURITY CHECK #1: Check if endpoint is already disabled (first admin created)
+        # This is the PRIMARY security gate - if first admin exists, endpoint is permanently disabled
+        from src.giljo_mcp.models import SetupState
+
+        try:
+            setup_check_stmt = select(SetupState).where(SetupState.first_admin_created == True)
+            setup_check_result = await db.execute(setup_check_stmt)
+            existing_setup = setup_check_result.scalar_one_or_none()
+
+            if existing_setup:
+                logger.warning(
+                    f"[SECURITY] BLOCKED admin creation attempt from {client_ip} - "
+                    f"first admin already created on {existing_setup.first_admin_created_at.isoformat()}. "
+                    f"This endpoint is permanently disabled."
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Administrator account already exists. This setup endpoint has been disabled. "
+                           "Please use the login page instead."
+                )
+        except HTTPException:
+            raise  # Re-raise our 403
+        except Exception as setup_error:
+            # If SetupState check fails, fall through to user count check (backwards compatibility)
+            logger.warning(f"[SETUP] SetupState check failed: {setup_error}. Falling back to user count check.")
+
         # SECURITY CHECK: Verify no users exist (fresh install only)
         # FAIL-SECURE: If database check fails, block admin creation
         try:
@@ -758,6 +816,39 @@ async def create_first_admin_user(
             tenant_key=admin_user.tenant_key
         )
 
+        # SECURITY: Cookie domain handling for cross-port authentication
+    # Background: Frontend (port 7274) needs cookies set by API (port 7272)
+    # 
+    # Domain behavior:
+    #   - domain=None → Strict (exact host:port match) - MOST SECURE
+    #   - domain="10.1.0.164" → Loose (all ports on that IP) - NEEDED for cross-port
+    # 
+    # Security considerations:
+    #   1. NEVER trust user-supplied Host header directly (Host header injection risk)
+    #   2. IP addresses don't have subdomains, so domain=IP is relatively safe
+    #   3. CORS whitelist provides defense-in-depth
+    #   4. SameSite=lax prevents CSRF
+    # 
+    # For production with HTTPS domains, validate against whitelist!
+    cookie_domain = None
+    if request and request.client:
+        # Get the host from the request (e.g., "10.1.0.164:7272" or "localhost:7272")
+        host_header = request.headers.get("host", "")
+        if host_header:
+            # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
+            host_only = host_header.split(":")[0]
+            
+            # SECURITY: Only set domain for IP addresses (no subdomains)
+            # For localhost/127.0.0.1, use domain=None for strictest security
+            # For domain names (production), would need whitelist validation
+            import re
+            is_ip_address = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only)
+            
+            if is_ip_address and host_only not in ("127.0.0.1",):
+                # Safe: IP address (no subdomain risk)
+                cookie_domain = host_only
+            # else: domain=None (strictest - localhost or domain name)
+        
         # Set httpOnly cookie for immediate login (same pattern as login endpoint)
         response.set_cookie(
             key="access_token",
@@ -766,6 +857,7 @@ async def create_first_admin_user(
             secure=False,  # Set to True in production with HTTPS
             samesite="lax",
             path="/",  # Accessible from all paths (frontend and API)
+            domain=cookie_domain,  # Set to request host for cross-port cookie sharing
             max_age=86400  # 24 hours
         )
 

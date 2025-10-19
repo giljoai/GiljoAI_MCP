@@ -12,20 +12,20 @@ GiljoAI MCP v3.0 uses a **unified installer** (`install.py`) that handles the co
 
 ### Installation Methods
 
-**Primary Method** (Recommended):
+**Unified Cross-Platform Installer** (v3.1.0+):
 ```bash
 python install.py
 ```
 
-**Platform-Specific Alternatives**:
+**Single command works on all platforms:**
+- Windows 10/11
+- Linux (Ubuntu 22.04+, Fedora 40+, Debian 12+)
+- macOS (13+, Intel and ARM)
+
+**Platform auto-detection**: Automatically detects your OS and uses appropriate platform handlers.
+
+**Headless Mode** (CI/CD):
 ```bash
-# Windows
-python install.py
-
-# Linux  
-python Linux_Installer/linux_install.py
-
-# Cross-platform headless (CI/CD)
 python install.py --headless
 ```
 
@@ -50,12 +50,18 @@ The installer follows an 8-step process:
 
 ### Cross-Platform Compatibility
 
-**Supported Platforms**:
-- **Windows 10/11** - Primary development platform
-- **Linux** (Ubuntu 20.04+, RHEL 8+, Debian 11+)
-- **macOS** (10.15+)
+**Fully Supported Platforms** (v3.1.0+):
+- **Windows 10/11** - Fully tested, desktop shortcuts (.lnk)
+- **Linux** (Ubuntu 22.04+, Fedora 40+, Debian 12+) - Fully tested, desktop launchers (.desktop)
+- **macOS** (13+, Intel and ARM) - Fully tested, Homebrew support
 
-**Code Reference**: `install.py:60-90` - UnifiedInstaller class initialization
+**Platform Handler Architecture**:
+- `installer/platforms/windows.py` - Windows-specific code
+- `installer/platforms/linux.py` - Linux-specific code
+- `installer/platforms/macos.py` - macOS-specific code
+- Auto-detection via `installer/platforms/__init__.py`
+
+**Code Reference**: `install.py:100-150` - UnifiedInstaller class initialization
 
 ---
 
@@ -406,30 +412,30 @@ def generate_config_yaml(install_dir: Path, settings: dict):
 ```python
 def create_database(db_credentials: dict):
     print("🗄️  Creating GiljoAI MCP database...")
-    
+
     # Create database using psql
     create_db_sql = """
     -- Create database
-    CREATE DATABASE giljo_mcp 
-        WITH ENCODING='UTF8' 
-        LC_COLLATE='en_US.UTF-8' 
+    CREATE DATABASE giljo_mcp
+        WITH ENCODING='UTF8'
+        LC_COLLATE='en_US.UTF-8'
         LC_CTYPE='en_US.UTF-8'
         TEMPLATE=template0;
-    
+
     -- Create application user
     CREATE USER giljo_user WITH ENCRYPTED PASSWORD '{}';
-    
+
     -- Grant privileges
     GRANT ALL PRIVILEGES ON DATABASE giljo_mcp TO giljo_user;
     """.format(db_credentials['password'])
-    
+
     # Execute SQL commands
     psql_cmd = [
-        'psql', 
+        'psql',
         f"postgresql://postgres:{db_credentials['password']}@localhost:5432/postgres",
         '-c', create_db_sql
     ]
-    
+
     try:
         subprocess.run(psql_cmd, check=True, capture_output=True, text=True)
         print("✅ Database 'giljo_mcp' created successfully")
@@ -439,6 +445,26 @@ def create_database(db_credentials: dict):
         else:
             raise
 ```
+
+**PostgreSQL Extension Creation** (CRITICAL - v3.1.0+):
+```python
+def create_postgresql_extensions():
+    """
+    Create required PostgreSQL extensions
+    CRITICAL: pg_trgm extension required for full-text search
+    """
+    print("🔧 Creating PostgreSQL extensions...")
+
+    # Create pg_trgm extension for full-text search (Handover 0017)
+    cur.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    print("✅ Extension pg_trgm created successfully")
+```
+
+**Why pg_trgm is Critical**:
+- Enables full-text search capabilities
+- Required for MCPContextIndex searchable_vector column
+- Must be created with superuser privileges
+- Automatically created on ALL platforms (Windows, Linux, macOS)
 
 **Table Creation via DatabaseManager**:
 ```python
@@ -466,7 +492,7 @@ async def create_database_tables():
 **Default Admin User Creation**:
 ```python
 async def create_default_admin():
-    print("👤 Creating default admin user...")
+    print("👤 Prompting for first admin user credentials...")
     
     from src.giljo_mcp.database import DatabaseManager
     from src.giljo_mcp.models import User, SetupState
@@ -477,25 +503,49 @@ async def create_default_admin():
     database_url = os.getenv('DATABASE_URL')
     db_manager = DatabaseManager(database_url, is_async=True)
     
+    # Prompt user for admin credentials
+    admin_username = click.prompt(
+        "🔐 Enter admin username",
+        type=str,
+        default="admin"
+    )
+    
+    admin_password = click.prompt(
+        "🔐 Enter admin password",
+        type=str,
+        hide_input=True
+    )
+    
+    # Verify password
+    admin_password_confirm = click.prompt(
+        "🔐 Confirm admin password",
+        type=str,
+        hide_input=True
+    )
+    
+    if admin_password != admin_password_confirm:
+        print("❌ Passwords do not match. Please try again.")
+        return False
+    
     async with db_manager.get_session_async() as session:
-        # Create default admin user
+        # Create first admin user with user-provided credentials
         admin_user = User(
             id=str(uuid.uuid4()),
             tenant_key='default',
-            username='admin',
-            password_hash=hash_password('admin'),  # Default password
+            username=admin_username,
+            password_hash=hash_password(admin_password),
             role='admin',
             is_active=True,
             is_system_user=False
         )
         session.add(admin_user)
         
-        # Create setup state with default password active
+        # Create setup state without forcing password change
         setup_state = SetupState(
             tenant_key='default',
             database_initialized=True,
             database_initialized_at=datetime.utcnow(),
-            default_password_active=True,  # Forces password change
+            default_password_active=False,  # User set their own password
             setup_completed=False,
             setup_version='3.0.0'
         )
@@ -503,7 +553,7 @@ async def create_default_admin():
         
         await session.commit()
     
-    print("✅ Default admin user created (admin/admin)")
+    print(f"✅ Admin user '{admin_username}' created successfully")
     print("⚠️  Password change required on first login")
 ```
 
@@ -663,15 +713,10 @@ def display_installation_summary(db_credentials: dict):
     print(f"""
 📍 Installation Directory: {Path.cwd()}
 🗄️  Database: PostgreSQL (giljo_mcp)
-🔐 Default Credentials: admin / admin
-
-🌐 Access URLs:
-   Dashboard: http://localhost:{DEFAULT_FRONTEND_PORT}
-   API Docs:  http://localhost:{DEFAULT_API_PORT}/docs
-   Health:    http://localhost:{DEFAULT_API_PORT}/health
+🔐 Admin Account: Created during setup
 
 ⚠️  IMPORTANT FIRST STEPS:
-   1. Change default password (admin/admin) - REQUIRED
+   1. Configure AI tool integration via Avatar → My Settings → API & Integrations
    2. Configure AI tool integration via Avatar → My Settings → API & Integrations
    3. Configure firewall if needed for network access
    
@@ -741,6 +786,26 @@ python install.py --dev-tools
 ---
 
 ## Platform-Specific Considerations
+
+### Platform-Specific Notes (v3.1.0+)
+
+**Windows:**
+- PostgreSQL location: `C:\Program Files\PostgreSQL\18\bin\psql.exe`
+- Virtual environment: `venv\Scripts\python.exe`
+- Desktop shortcuts: `.lnk` files created automatically
+- npm requires: `shell=True` for subprocess execution
+
+**Linux:**
+- PostgreSQL location: `/usr/lib/postgresql/18/bin/psql` or `/usr/bin/psql`
+- Virtual environment: `venv/bin/python`
+- Desktop shortcuts: `.desktop` files created and trusted automatically
+- Distribution detection: Ubuntu, Fedora, Debian specific guides
+
+**macOS:**
+- PostgreSQL location: Homebrew (`/opt/homebrew/opt/postgresql@18/bin/psql` for ARM, `/usr/local/opt/postgresql@18/bin/psql` for Intel)
+- Virtual environment: `venv/bin/python`
+- Desktop shortcuts: Not yet supported (future: .app bundles)
+- Postgres.app support: Automatically detected if installed
 
 ### Windows Installation
 
@@ -953,7 +1018,7 @@ python startup.py
 After successful installation:
 
 1. **Access Application**: Visit http://localhost:7274
-2. **Change Default Password**: Login with admin/admin, forced password change
+2. **First Login**: Access dashboard with credentials created during setup
 3. **Complete Setup Wizard**: 3-step setup (MCP, Serena, Complete)
 4. **Verify Installation**: Check all services are running
 5. **Configure Firewall**: If network access needed

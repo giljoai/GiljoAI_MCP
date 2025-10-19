@@ -8,22 +8,22 @@
 
 ## Overview
 
-The GiljoAI MCP v3.0 first launch experience is designed as a **smooth, guided onboarding** that takes users from fresh installation to productive multi-agent orchestration. The process consists of installation, mandatory password change, and user self-configuration through settings.
+The GiljoAI MCP v3.0 first launch experience is designed as a **smooth, guided onboarding** that takes users from fresh installation to productive multi-agent orchestration. The process consists of installation, first-admin account creation during setup wizard, and user self-configuration through settings.
 
 ### First Launch Sequence
 
 1. **Installation Complete** (`python install.py`)
-2. **Browser Opens** (http://localhost:7274)
-3. **Mandatory Password Change** (admin/admin → secure password)
-4. **Setup Wizard** (3 steps: MCP, Serena, Complete)
-5. **Dashboard Access** (full system ready)
+2. **Setup Wizard Opens** (http://localhost:7274/setup)
+3. **First Admin Creation** (user sets admin username and password)
+4. **MCP & Integration Setup** (2 additional steps)
+5. **Dashboard Access** (full system ready, authenticated)
 
 ### v3.0 Authentication Requirements
 
-**CRITICAL**: GiljoAI MCP v3.0 has **NO auto-login** for any connection type:
-- ❌ **No localhost auto-login** - Removed completely
+**CRITICAL**: GiljoAI MCP v3.0 has **secure first-admin creation** during setup:
+- ✅ **User-Defined Credentials** - Admin sets username/password during first run
 - ✅ **ONE authentication flow** - Same for localhost, LAN, WAN
-- ✅ **Mandatory password change** - Cannot skip on any IP address
+- ✅ **No default credentials** - Each installation is unique and secure
 - ✅ **JWT-based sessions** - Unified authentication system
 
 ---
@@ -41,15 +41,16 @@ After running `python install.py`, you'll see the installation summary:
 
 📍 Installation Directory: F:\GiljoAI_MCP
 🗄️  Database: PostgreSQL (giljo_mcp)
-🔐 Default Credentials: admin / admin
+🔐 Admin Account: Created during setup wizard
 
 🌐 Access URLs:
-   Dashboard: http://localhost:7274
-   API Docs:  http://localhost:7272/docs
-   Health:    http://localhost:7272/health
+   Setup Wizard: http://localhost:7274/setup
+   Dashboard:    http://localhost:7274
+   API Docs:     http://localhost:7272/docs
+   Health:       http://localhost:7272/health
 
 ⚠️  IMPORTANT FIRST STEPS:
-   1. Change default password (admin/admin) - REQUIRED
+   1. Complete setup wizard (create admin account)
    2. Configure AI tools via Avatar → My Settings → API & Integrations
    3. Configure firewall if needed for network access
 
@@ -59,52 +60,49 @@ Happy orchestrating! 🤖✨
 
 **What Just Happened**:
 - PostgreSQL database created with tables
-- Default admin user created (admin/admin)
-- `default_password_active: true` set in setup_state
 - API server started on port 7272
 - Frontend server started on port 7274
-- Browser automatically opened to http://localhost:7274
+- Setup wizard ready for first-admin account creation
+- Browser automatically opened to http://localhost:7274/setup
 
-### Step 2: First Access & Routing
+### Step 2: Setup Wizard - First Admin Creation
 
-**URL Access**: Visit http://localhost:7274 (or your network IP)
+**URL Access**: Visit http://localhost:7274/setup (automatic on first run)
 
 **Router Navigation Guard** (automatic):
 ```javascript
 // Frontend router checks setup state
 router.beforeEach(async (to, from, next) => {
   const setupStatus = await api.get('/api/setup/status')
-  
-  if (setupStatus.data.default_password_active) {
-    // Force redirect to password change
-    if (to.path !== '/change-password') {
-      return next('/change-password')
+
+  if (!setupStatus.data.admin_created) {
+    // Force redirect to setup wizard
+    if (to.path !== '/setup') {
+      return next('/setup')
     }
   }
-  
+
   next()
 })
 ```
 
-**Result**: Automatic redirect to `/change-password` screen
+**Result**: Automatic redirect to `/setup` wizard for first-admin creation
 
-### Step 3: Mandatory Password Change
+### Step 3: Admin Account Creation
 
-**Password Change Screen**:
+**First Admin Creation Screen**:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    🔐 Security Setup                    │
+│               🔐 Create First Admin Account             │
 │                                                         │
 │  Welcome to GiljoAI MCP v3.0!                         │
 │                                                         │
-│  For security, you must change the default password    │
-│  before accessing the system.                          │
+│  Set up your admin credentials to secure the system.   │
 │                                                         │
-│  Username: [admin                 ] (pre-filled)       │
-│  Current:  [                      ] (hint: admin)       │
-│  New:      [                      ]                    │
-│  Confirm:  [                      ]                    │
+│  Admin Username: [                      ]              │
+│  Password:       [                      ]              │
+│  Confirm:        [                      ]              │
 │                                                         │
 │  Password Requirements:                                 │
 │  ✓ Minimum 12 characters                              │
@@ -113,7 +111,7 @@ router.beforeEach(async (to, from, next) => {
 │  ✓ At least 1 digit (0-9)                             │
 │  ✓ At least 1 special character (!@#$%^&*...)         │
 │                                                         │
-│  [ Change Password ]                                    │
+│  [ Create Admin Account ]                              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -124,30 +122,42 @@ router.beforeEach(async (to, from, next) => {
 - Confirmation field must match
 
 **Form Validation**:
-- Current password must be "admin"
-- New password must meet complexity requirements
-- Confirmation must match new password
-- **Cannot skip or bypass this step**
+- Username cannot be empty (default suggestion: "admin")
+- Password must meet complexity requirements
+- Confirmation must match password
+- **Cannot skip this step** - required for system security
 
 **Backend Processing**:
 ```python
-# POST /api/auth/change-password
-@router.post("/change-password")
-async def change_password(request: PasswordChangeRequest):
-    # Verify current password is "admin"
-    if not verify_password("admin", user.password_hash):
-        raise HTTPException(400, "Invalid current password")
-    
-    # Validate new password complexity
-    if not validate_password_complexity(request.new_password):
+# POST /api/auth/create-first-admin
+@router.post("/create-first-admin")
+async def create_first_admin(request: CreateFirstAdminRequest):
+    # Check no admin exists yet
+    existing_admin = await session.execute(
+        select(User).where(User.role == 'admin')
+    )
+    if existing_admin.scalars().first():
+        raise HTTPException(400, "Admin user already exists")
+
+    # Validate password complexity
+    if not validate_password_complexity(request.password):
         raise HTTPException(400, "Password does not meet requirements")
-    
-    # Update password and clear default flag
-    user.password_hash = hash_password(request.new_password)
-    
-    # CRITICAL: Clear default password flag
-    setup_state.default_password_active = False
-    setup_state.password_changed_at = datetime.utcnow()
+
+    # Create first admin user
+    admin_user = User(
+        id=str(uuid.uuid4()),
+        tenant_key='default',
+        username=request.username,
+        password_hash=hash_password(request.password),
+        role='admin',
+        is_active=True,
+        is_system_user=False
+    )
+    session.add(admin_user)
+
+    # Mark admin as created
+    setup_state.admin_created = True
+    setup_state.admin_created_at = datetime.utcnow()
     
     # Generate JWT token for immediate login
     access_token = create_access_token(user.id, user.tenant_key)
@@ -480,7 +490,7 @@ ws.onmessage = (event) => {
 **Access**: http://localhost:7274
 
 **Experience**:
-1. Password change required (admin/admin → secure password)
+1. Admin account setup (user-defined credentials)
 2. Setup wizard (optional steps can be skipped)
 3. Dashboard with localhost-only access
 4. All services running locally
@@ -698,7 +708,7 @@ python install.py
 
 After completing first launch, verify:
 
-- [ ] **Password Changed**: Default admin/admin password replaced
+- [ ] **Admin Created**: First admin account setup completed
 - [ ] **Dashboard Accessible**: Can access http://localhost:7274
 - [ ] **API Responding**: http://localhost:7272/health returns healthy
 - [ ] **Database Connected**: No database errors in logs

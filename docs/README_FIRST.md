@@ -74,7 +74,7 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 **ONE Authentication Flow**:
 - NO localhost auto-login
 - Same authentication for localhost, LAN, WAN
-- Default credentials: admin/admin (fresh install only)
+- Admin account: Created during setup wizard (user-defined credentials)
 - Forced password change on first access
 - JWT-based session management
 
@@ -87,6 +87,31 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 - All database queries filtered by `tenant_key`
 - Default tenant: "default"
 - Tenant scoping for projects, agents, messages, tasks
+
+---
+
+## Platform Support
+
+**Unified Cross-Platform Installer** (v3.1.0+):
+
+Supported Platforms:
+- Windows 10/11 - Fully tested
+- Linux (Ubuntu 22.04+, Fedora 40+, Debian 12+) - Fully tested
+- macOS (13+, Intel and ARM) - Fully tested
+
+**Single installer for all platforms:**
+```bash
+python install.py
+```
+
+**Platform auto-detection**: Automatically detects your OS and uses appropriate platform handlers.
+
+**Platform-Specific Features:**
+- **Windows**: Desktop shortcuts (.lnk), PostgreSQL detection in Program Files
+- **Linux**: Desktop launchers (.desktop), distribution-specific installation guides
+- **macOS**: Homebrew support (Intel and ARM), Postgres.app detection
+
+**Architecture**: Strategy pattern with isolated platform handlers (`installer/platforms/`)
 
 ---
 
@@ -638,7 +663,7 @@ python install.py
 
 # 4. Access application
 # Browser opens to http://localhost:7274
-# Change default password (admin/admin)
+# First Login
 # Configure AI tools via Avatar → My Settings → API & Integrations
 # Start building!
 ```

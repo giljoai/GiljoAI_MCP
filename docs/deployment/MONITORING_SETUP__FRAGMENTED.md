@@ -987,7 +987,7 @@ sudo systemctl start grafana-server
 sudo systemctl enable grafana-server
 
 # Access: http://localhost:3000
-# Default: admin/admin
+# Note: Grafana default credentials (see Grafana documentation for setup)
 ```
 
 **3. AlertManager (Alerting)**
