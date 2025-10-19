@@ -942,6 +942,22 @@ class SetupState(Base):
     # default_password_active = Column(...)  # REMOVED
     # password_changed_at = Column(...)  # REMOVED
 
+    # First admin creation tracking (Handover 0035: Security Enhancement)
+    # CRITICAL SECURITY: Atomic flag preventing duplicate admin creation after first user setup
+    # Used by /api/auth/create-first-admin endpoint to lock down after initial setup
+    first_admin_created = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        index=True,
+        comment="True after first admin account created - prevents duplicate admin creation attacks"
+    )
+    first_admin_created_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when first admin account was created"
+    )
+
     # Feature and tool configuration (JSONB for performance)
     features_configured = Column(
         JSONB,
@@ -992,6 +1008,11 @@ class SetupState(Base):
             "(database_initialized = false) OR (database_initialized = true AND database_initialized_at IS NOT NULL)",
             name="ck_database_initialized_at_required"
         ),
+        # First admin created timestamp must be set when first_admin_created=true
+        CheckConstraint(
+            "(first_admin_created = false) OR (first_admin_created = true AND first_admin_created_at IS NOT NULL)",
+            name="ck_first_admin_created_at_required"
+        ),
         # Regular indexes
         Index("idx_setup_tenant", "tenant_key"),  # Primary lookup index
         Index("idx_setup_database_initialized", "database_initialized"),  # Filter by database init status
@@ -1001,6 +1022,8 @@ class SetupState(Base):
         Index("idx_setup_tools_gin", "tools_enabled", postgresql_using="gin"),
         # Partial index for incomplete database initialization (frequently queried)
         Index("idx_setup_database_incomplete", "tenant_key", "database_initialized", postgresql_where="database_initialized = false"),
+        # Partial index for fresh installs (no admin created yet) - used by security checks
+        Index("idx_setup_fresh_install", "tenant_key", "first_admin_created", postgresql_where="first_admin_created = false"),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1020,6 +1043,9 @@ class SetupState(Base):
             "python_version": self.python_version,
             "node_version": self.node_version,
             # REMOVED (Handover 0034): default_password_active and password_changed_at fields
+            # ADDED (Handover 0035): First admin creation tracking
+            "first_admin_created": self.first_admin_created,
+            "first_admin_created_at": self.first_admin_created_at.isoformat() if self.first_admin_created_at else None,
             "features_configured": self.features_configured,
             "tools_enabled": self.tools_enabled,
             "config_snapshot": self.config_snapshot,

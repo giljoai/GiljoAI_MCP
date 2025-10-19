@@ -628,46 +628,66 @@ async def register_user(
 @router.post("/create-first-admin", response_model=RegisterUserResponse, status_code=201, tags=["auth"])
 async def create_first_admin_user(
     response: Response,
+    request: Request,
     request_body: RegisterUserRequest = Body(...),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
     Create first administrator account on fresh install (Handover 0034).
-    
+
     Security:
+    - LAN ACCESS ALLOWED: Can be accessed remotely for initial setup
+    - ENDPOINT DISABLED AFTER FIRST ADMIN: Automatically locked down after creation
     - Only works when total_users_count == 0 (fresh install)
     - Enforces strong password requirements (12+ chars, complexity)
     - Auto-generates secure tenant_key
     - Forces role='admin' for first user
     - Returns JWT token for immediate login via httpOnly cookie
-    - Logs admin creation event for audit trail
-    
+    - Logs admin creation event for audit trail (including IP address)
+
     Replaces legacy admin/admin default password flow.
-    
+
     Args:
+        request: FastAPI request object (for IP logging)
         request_body: User registration request with username, password, optional email/full_name
         response: FastAPI response object for setting cookies
         db: Database session
-        
+
     Returns:
         RegisterUserResponse with user details and success message
-        
+
     Raises:
         HTTPException 403: If users already exist (not fresh install)
         HTTPException 400: If password doesn't meet requirements
+        HTTPException 503: If database check fails (fail-secure)
     """
     from uuid import uuid4
     from src.giljo_mcp.tenant import TenantManager
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+
+    # Log client IP for audit trail (LAN access allowed for remote setup)
+    client_ip = request.client.host
+    logger.info(f"[SETUP] Admin creation attempt from IP: {client_ip}")
 
     # CRITICAL SECURITY FIX (Handover 0034): Acquire lock to prevent race condition
     # Without this lock, multiple concurrent requests could all check user_count == 0
     # simultaneously and create multiple admin accounts
     async with _first_admin_creation_lock:
         # SECURITY CHECK: Verify no users exist (fresh install only)
-        user_count_stmt = select(func.count(User.id))
-        result = await db.execute(user_count_stmt)
-        total_users = result.scalar()
+        # FAIL-SECURE: If database check fails, block admin creation
+        try:
+            user_count_stmt = select(func.count(User.id))
+            result = await db.execute(user_count_stmt)
+            total_users = result.scalar()
+        except Exception as db_error:
+            logger.error(
+                f"[SECURITY] Admin creation BLOCKED - database check failed: {db_error}. "
+                f"Failing secure to prevent potential bypass attacks."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="System temporarily unavailable. Database connection error. Please try again in a moment."
+            )
 
         if total_users > 0:
             logger.warning(
@@ -749,9 +769,35 @@ async def create_first_admin_user(
             max_age=86400  # 24 hours
         )
 
+        # SECURITY: Disable this endpoint permanently after first admin created
+        # This prevents any future attempts to create additional admins via this endpoint
+        from src.giljo_mcp.models import SetupState
+
+        setup_state_stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
+        setup_result = await db.execute(setup_state_stmt)
+        setup_state = setup_result.scalar_one_or_none()
+
+        if setup_state:
+            setup_state.first_admin_created = True
+            setup_state.first_admin_created_at = datetime.now(timezone.utc)
+        else:
+            # Create SetupState if it doesn't exist
+            setup_state = SetupState(
+                id=str(uuid4()),
+                tenant_key=tenant_key,
+                database_initialized=True,
+                database_initialized_at=datetime.now(timezone.utc),
+                first_admin_created=True,
+                first_admin_created_at=datetime.now(timezone.utc)
+            )
+            db.add(setup_state)
+
+        await db.commit()
+
         logger.info(
             f"[SETUP] First administrator account created successfully - "
-            f"username: {admin_user.username}, tenant: {tenant_key[:12]}..."
+            f"username: {admin_user.username}, tenant: {tenant_key[:12]}..., "
+            f"client_ip: {client_ip}. Endpoint now DISABLED for security."
         )
 
         return RegisterUserResponse(
