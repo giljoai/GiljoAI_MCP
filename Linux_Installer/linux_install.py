@@ -733,29 +733,13 @@ class UnifiedInstaller:
                 # Create all tables (SAME AS api/app.py:186)
                 await db_manager.create_tables_async()
 
-                # Create admin user
+                # REMOVED (Handover 0034): Default admin user creation
+                # Fresh installs now use /welcome page to create first admin account
+                # This eliminates the legacy admin/admin default credentials security risk
                 async with db_manager.get_session_async() as session:
                     from sqlalchemy import select
 
-                    # Check if admin exists
-                    stmt = select(User).where(User.username == 'admin')
-                    result_user = await session.execute(stmt)
-                    existing = result_user.scalar_one_or_none()
-
-                    if not existing:
-                        admin_user = User(
-                            id=str(uuid4()),
-                            username='admin',
-                            email=None,
-                            full_name='Administrator',
-                            password_hash=bcrypt.hash('admin'),
-                            role='admin',
-                            tenant_key=default_tenant_key,  # Use generated tenant key
-                            is_active=True,
-                            created_at=datetime.now(timezone.utc)
-                        )
-                        session.add(admin_user)
-                        await session.commit()
+                    # Skip admin creation - let user create via web UI on first run
 
                     # Create setup_state
                     stmt = select(SetupState).where(SetupState.tenant_key == default_tenant_key)
@@ -768,8 +752,8 @@ class UnifiedInstaller:
                             tenant_key=default_tenant_key,  # Use generated tenant key
                             database_initialized=True,
                             database_initialized_at=datetime.now(timezone.utc),  # REQUIRED by ck_database_initialized_at_required constraint
-                            default_password_active=True,
-                            password_changed_at=None,
+                            # REMOVED (Handover 0034): default_password_active and password_changed_at
+                            # These fields have been removed from the model
                             setup_version='3.0.0',
                             created_at=datetime.now(timezone.utc),
                             updated_at=datetime.now(timezone.utc)
@@ -785,10 +769,9 @@ class UnifiedInstaller:
 
             if tables_created:
                 self._print_success("Database tables created successfully")
-                self._print_success("Admin user created (username: admin, password: admin)")
-                self._print_success("Setup state initialized")
+                self._print_success("Setup state initialized (Handover 0034: No default admin - create via web UI)")
                 result['tables_created'] = True
-                result['admin_created'] = True
+                result['admin_created'] = False  # Handover 0034: No default admin
                 result['setup_state_created'] = True
             else:
                 self._print_error("Table creation failed")

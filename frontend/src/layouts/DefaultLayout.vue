@@ -65,6 +65,32 @@ const loadCurrentUser = async () => {
 
 onMounted(async () => {
   console.log('[DefaultLayout] Loading user data on mount')
+
+  // CRITICAL FIX (Handover 0034): Check fresh install status FIRST
+  // This prevents race condition where DefaultLayout redirects to /login
+  // before router guard can redirect to /welcome
+  try {
+    const setupResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:7272'}/api/setup/status`, {
+      method: 'GET',
+      cache: 'no-cache'
+    })
+
+    if (setupResponse.ok) {
+      const setupData = await setupResponse.json()
+
+      if (setupData.is_fresh_install) {
+        // Fresh install (0 users) - redirect to create admin account
+        console.log('[DefaultLayout] Fresh install detected, redirecting to /welcome')
+        router.push('/welcome')
+        return
+      }
+    }
+  } catch (setupError) {
+    console.warn('[DefaultLayout] Failed to check fresh install status:', setupError)
+    // Continue with auth check (secure fallback)
+  }
+
+  // Normal operation: load current user
   const userLoaded = await loadCurrentUser()
 
   // Initialize WebSocket and data polling only if user is authenticated
