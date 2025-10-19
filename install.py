@@ -38,6 +38,11 @@ from typing import Dict, Any, List, Optional, Tuple
 import click
 from colorama import Fore, Style, init
 
+# Import unified platform handlers and core modules
+from installer.platforms import get_platform_handler
+from installer.core.config import ConfigManager
+from installer.core.database import DatabaseInstaller
+
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -80,6 +85,9 @@ class UnifiedInstaller:
         self.settings.setdefault('api_port', DEFAULT_API_PORT)
         self.settings.setdefault('dashboard_port', DEFAULT_FRONTEND_PORT)
         self.settings.setdefault('bind', '0.0.0.0')  # v3.0: Always bind all interfaces
+
+        # Initialize platform handler (auto-detects Windows/Linux/macOS)
+        self.platform = get_platform_handler()
 
         # Paths
         self.install_dir = Path(self.settings['install_dir'])
@@ -457,8 +465,7 @@ class UnifiedInstaller:
             # Validate custom path
             if self.check_custom_postgresql_path(custom_path):
                 # Custom path is valid
-                system = platform.system()
-                if system == "Windows":
+                if self.platform.platform_name == 'Windows':
                     psql_path = Path(custom_path) / "psql.exe"
                 else:
                     psql_path = Path(custom_path) / "psql"
@@ -527,8 +534,8 @@ class UnifiedInstaller:
                 return False
 
             # Check for psql executable (platform-specific)
-            system = platform.system()
-            if system == "Windows":
+            # Windows uses .exe extension, Linux/macOS don't
+            if self.platform.platform_name == 'Windows':
                 psql_path = path / "psql.exe"
             else:
                 psql_path = path / "psql"
@@ -537,7 +544,7 @@ class UnifiedInstaller:
                 self._print_error(f"psql executable not found in: {path}")
                 # Try to be helpful - check if psql exists without extension
                 psql_no_ext = path / "psql"
-                if psql_no_ext.exists() and system == "Windows":
+                if psql_no_ext.exists() and self.platform.platform_name == 'Windows':
                     self._print_info("Found 'psql' without .exe extension - this may not work on Windows")
                 # Check if user provided the full path to psql.exe instead of bin directory
                 if path.name == "psql.exe" and path.exists():
@@ -556,53 +563,12 @@ class UnifiedInstaller:
         """
         Get platform-specific PostgreSQL scan paths
 
+        Delegates to platform handler to eliminate hardcoded OS-specific paths.
+
         Returns:
             List of paths to check for psql
         """
-        system = platform.system()
-        paths = []
-
-        if system == "Windows":
-            # Windows: C:\Program Files\PostgreSQL\*\bin\psql.exe
-            program_files = [
-                Path("C:/Program Files/PostgreSQL"),
-                Path("C:/Program Files (x86)/PostgreSQL")
-            ]
-
-            for base in program_files:
-                if base.exists():
-                    for version_dir in sorted(base.glob("*"), reverse=True):
-                        psql_path = version_dir / "bin" / "psql.exe"
-                        paths.append(psql_path)
-
-        elif system == "Darwin":  # macOS
-            # Homebrew installations
-            paths.extend([
-                Path("/usr/local/bin/psql"),
-                Path("/opt/homebrew/bin/psql"),
-                Path("/usr/local/opt/postgresql@18/bin/psql"),
-                Path("/usr/local/opt/postgresql@17/bin/psql"),
-                Path("/usr/local/opt/postgresql/bin/psql")
-            ])
-
-            # Postgres.app
-            paths.append(Path("/Applications/Postgres.app/Contents/Versions/latest/bin/psql"))
-
-        elif system == "Linux":
-            # Standard system paths
-            paths.extend([
-                Path("/usr/bin/psql"),
-                Path("/usr/local/bin/psql")
-            ])
-
-            # Version-specific paths
-            pg_lib = Path("/usr/lib/postgresql")
-            if pg_lib.exists():
-                for version_dir in sorted(pg_lib.glob("*"), reverse=True):
-                    psql_path = version_dir / "bin" / "psql"
-                    paths.append(psql_path)
-
-        return paths
+        return self.platform.get_postgresql_scan_paths()
 
     def install_dependencies(self) -> Dict[str, Any]:
         """
@@ -633,11 +599,8 @@ class UnifiedInstaller:
                 result['venv_created'] = True
                 self.venv_created = True
 
-            # Determine pip executable
-            if platform.system() == "Windows":
-                pip_executable = self.venv_dir / 'Scripts' / 'pip.exe'
-            else:
-                pip_executable = self.venv_dir / 'bin' / 'pip'
+            # Determine pip executable (platform-specific)
+            pip_executable = self.platform.get_venv_pip(self.venv_dir)
 
             # Step 2: Install requirements
             if not self.requirements_file.exists():
@@ -959,11 +922,8 @@ class UnifiedInstaller:
                     self._print_warning("No available port for frontend - skipping")
                     frontend_port = None
 
-            # Determine Python executable
-            if platform.system() == "Windows":
-                python_executable = self.venv_dir / 'Scripts' / 'python.exe'
-            else:
-                python_executable = self.venv_dir / 'bin' / 'python'
+            # Determine Python executable (platform-specific)
+            python_executable = self.platform.get_venv_python(self.venv_dir)
 
             # Get ports from settings
             api_port = self.settings.get('api_port', DEFAULT_API_PORT)
@@ -999,20 +959,25 @@ class UnifiedInstaller:
                     if not (frontend_dir / 'node_modules').exists():
                         self._print_info("Installing frontend dependencies...")
 
-                        # Windows needs shell=True for npm batch file
-                        subprocess.run(
-                            ['npm', 'install'],
-                            cwd=str(frontend_dir),
-                            check=True,
-                            capture_output=True,
-                            shell=(platform.system() == "Windows")
+                        # Delegate to platform handler for npm command execution
+                        npm_result = self.platform.run_npm_command(
+                            cmd=['npm', 'install'],
+                            cwd=frontend_dir,
+                            timeout=300
                         )
+                        if not npm_result['success']:
+                            self._print_warning(f"npm install failed: {npm_result.get('stderr', 'Unknown error')}")
 
                     self._print_info("Starting frontend server...")
 
-                    # Windows needs shell=True or npm.cmd for batch files
+                    # Delegate to platform handler for npm command execution
+                    # Note: For background processes, we still use subprocess.Popen directly
+                    # but use platform handler to determine shell setting
                     npm_cmd = ['npm', 'run', 'dev', '--', '--port', str(frontend_port), '--strictPort']
-                    use_shell = platform.system() == "Windows"
+                    
+                    # Platform handler provides correct shell setting
+                    # (Windows: True, Linux/macOS: False)
+                    use_shell = self.platform.platform_name == 'Windows'
 
                     frontend_process = subprocess.Popen(
                         npm_cmd,
@@ -1044,95 +1009,30 @@ class UnifiedInstaller:
 
 
     def create_desktop_shortcuts(self) -> None:
-        """Create desktop shortcuts for Windows"""
-        if platform.system() != "Windows":
-            self._print_warning("Desktop shortcuts are only supported on Windows")
+        """Create desktop shortcuts (delegates to platform handler)"""
+        # Check if platform supports shortcuts
+        if not self.platform.supports_desktop_shortcuts():
+            self._print_info(f"Desktop shortcuts not supported on {self.platform.platform_name}")
             return
 
-        try:
-            # Try to use win32com.client for proper shortcuts
-            try:
-                import win32com.client
-                shell = win32com.client.Dispatch("WScript.Shell")
-                desktop = shell.SpecialFolders("Desktop")
+        # Delegate to platform handler
+        result = self.platform.create_desktop_shortcuts(
+            install_dir=self.install_dir,
+            venv_dir=self.venv_dir
+        )
 
-                # Main application shortcut
-                shortcut_path = Path(desktop) / "GiljoAI MCP.lnk"
-                shortcut = shell.CreateShortcut(str(shortcut_path))
-                shortcut.TargetPath = str(sys.executable)
-                shortcut.Arguments = str(self.install_dir / "startup.py")
-                shortcut.WorkingDirectory = str(self.install_dir)
-                shortcut.IconLocation = str(self.install_dir / "frontend" / "public" / "favicon.ico")
-                shortcut.Description = "Launch GiljoAI MCP Orchestrator"
-                shortcut.save()
-                self._print_success("Created main application shortcut")
-
-                # Dev control panel shortcut
-                dev_panel_path = self.install_dir / "dev_tools" / "GiljoAI_Control_Panel.vbs"
-                if dev_panel_path.exists():
-                    dev_shortcut_path = Path(desktop) / "GiljoAI Dev Panel.lnk"
-                    dev_shortcut = shell.CreateShortcut(str(dev_shortcut_path))
-                    dev_shortcut.TargetPath = str(dev_panel_path)
-                    dev_shortcut.WorkingDirectory = str(self.install_dir / "dev_tools")
-                    dev_shortcut.Description = "GiljoAI Developer Control Panel"
-                    dev_shortcut.save()
-                    self._print_success("Created developer panel shortcut")
-
-            except ImportError:
-                # Fallback: Create .bat files if pywin32 not available
-                self._print_warning("pywin32 not installed - creating .bat file shortcuts instead")
-                self._create_batch_shortcuts()
-
-        except Exception as e:
-            self._print_error(f"Failed to create shortcuts: {e}")
-            self._print_info("You can manually create shortcuts to:")
-            self._print_info(f"  • Main app: python {self.install_dir / 'startup.py'}")
-            self._print_info(f"  • Dev panel: {self.install_dir / 'dev_tools' / 'GiljoAI_Control_Panel.vbs'}")
+        if result['success']:
+            for shortcut in result.get('shortcuts_created', []):
+                self._print_success(f"Created shortcut: {shortcut}")
+        else:
+            self._print_warning(f"Shortcut creation: {result.get('message', 'Unknown result')}")
 
     def _get_all_network_ips(self) -> List[str]:
         """Get all non-loopback IPv4 addresses"""
-        try:
-            import psutil
-            ips = []
+        # Delegate to platform handler for network interface detection
+        return self.platform.get_network_ips()
 
-            for interface_name, addresses in psutil.net_if_addrs().items():
-                for addr in addresses:
-                    if addr.family == 2:  # IPv4
-                        ip = addr.address
-                        if not ip.startswith("127.") and not ip.startswith("169.254."):
-                            ips.append(ip)
 
-            return sorted(set(ips))  # Deduplicate and sort
-        except Exception:
-            return []  # Graceful fallback
-
-    def _create_batch_shortcuts(self) -> None:
-        """Create .bat file shortcuts as fallback"""
-        try:
-            import os
-            desktop = Path.home() / "Desktop"
-
-            # Main application batch file
-            main_bat = desktop / "GiljoAI MCP.bat"
-            with open(main_bat, 'w') as f:
-                f.write('@echo off\n')
-                f.write(f'cd /d "{self.install_dir}"\n')
-                f.write(f'"{sys.executable}" startup.py\n')
-                f.write('pause\n')
-            self._print_success("Created main application batch file")
-
-            # Dev panel batch file
-            dev_panel_vbs = self.install_dir / "dev_tools" / "GiljoAI_Control_Panel.vbs"
-            if dev_panel_vbs.exists():
-                dev_bat = desktop / "GiljoAI Dev Panel.bat"
-                with open(dev_bat, 'w') as f:
-                    f.write('@echo off\n')
-                    f.write(f'cd /d "{self.install_dir / "dev_tools"}"\n')
-                    f.write(f'wscript GiljoAI_Control_Panel.vbs\n')
-                self._print_success("Created developer panel batch file")
-
-        except Exception as e:
-            self._print_warning(f"Could not create batch files: {e}")
 
     def _print_success_summary(self) -> None:
         """Print installation success summary with manual start instructions"""
@@ -1225,36 +1125,13 @@ class UnifiedInstaller:
 
     def _print_postgresql_install_guide(self) -> None:
         """Print platform-specific PostgreSQL installation guide"""
-        system = platform.system()
-
         print(f"\n{Fore.YELLOW}PostgreSQL Installation Required{Style.RESET_ALL}\n")
 
-        if system == "Windows":
-            print(f"{Fore.CYAN}Windows Installation:{Style.RESET_ALL}")
-            print(f"  1. Download PostgreSQL 18 from:")
-            print(f"     {POSTGRESQL_DOWNLOAD_URL}")
-            print(f"  2. Run installer as Administrator")
-            print(f"  3. Remember the 'postgres' user password")
-            print(f"  4. Re-run this installer")
-
-        elif system == "Darwin":
-            print(f"{Fore.CYAN}macOS Installation:{Style.RESET_ALL}")
-            print(f"  Option 1 - Homebrew (recommended):")
-            print(f"     brew install postgresql@18")
-            print(f"     brew services start postgresql@18")
-            print(f"  Option 2 - Official installer:")
-            print(f"     Download from: {POSTGRESQL_DOWNLOAD_URL}")
-
-        else:  # Linux
-            print(f"{Fore.CYAN}Linux Installation:{Style.RESET_ALL}")
-            print(f"  Ubuntu/Debian:")
-            print(f"     sudo apt-get update")
-            print(f"     sudo apt-get install postgresql-18")
-            print(f"  RHEL/CentOS/Fedora:")
-            print(f"     sudo dnf install postgresql18-server")
-            print(f"  Arch:")
-            print(f"     sudo pacman -S postgresql")
-
+        # Delegate to platform handler for OS-specific instructions
+        guide = self.platform.get_postgresql_install_guide(
+            recommended_version=RECOMMENDED_POSTGRESQL_VERSION
+        )
+        print(guide)
         print()
 
     def _is_port_available(self, port: int, host: str = '127.0.0.1') -> bool:
