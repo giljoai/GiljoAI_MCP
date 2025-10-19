@@ -336,7 +336,7 @@ for path in scan_paths:
 - No credentials in config.yaml (references .env only)
 
 **2. Authentication Flow**
-- Default credentials: admin/admin (industry standard for first setup)
+- Admin account: Created during setup wizard with user-defined credentials
 - Forced password change on first login (no bypass)
 - Password requirements enforced:
   - Minimum 12 characters

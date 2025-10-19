@@ -33,13 +33,14 @@ pyyaml>=6.0.0              # YAML configuration parsing
 click>=8.1.0               # CLI interface builder
 colorama>=0.4.6            # Cross-platform colored terminal output (required by startup.py)
 httpx>=0.25.0              # Modern async HTTP client
+aiohttp>=3.9.0             # Async HTTP client (required by websocket_client.py)
 websockets>=12.0           # WebSocket client/server support
 psutil>=5.9.0              # Process and system utilities (required for network detection and statistics)
 aiofiles>=24.1.0           # Async file I/O operations (required for product vision uploads)
+tiktoken>=0.5.0             # Token counting for Context Management System (70% token reduction)
 
 # Platform-Specific
 pywin32>=306; sys_platform == "win32"  # Windows service management (Windows only)
 
 PyJWT>=2.8.0
 watchdog>=3.0.0
-aiohttp>=3.8.0

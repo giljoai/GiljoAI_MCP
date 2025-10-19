@@ -328,7 +328,10 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                 os.chmod(self.env_file, 0o600)
 
             result["success"] = True
+            result["path"] = str(self.env_file.absolute())
             self.logger.info(f"Created .env file: {self.env_file.absolute()}")
+
+            # Fixed: Return the result dictionary, not the path string
             return result
 
         except Exception as e:
@@ -488,7 +491,10 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
             result["success"] = True
+            result["path"] = str(self.config_file.absolute())
             self.logger.info(f"Created config.yaml: {self.config_file.absolute()}")
+
+            # Fixed: Return the result dictionary, not the path string
             return result
 
         except Exception as e:
