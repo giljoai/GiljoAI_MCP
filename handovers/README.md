@@ -26,6 +26,11 @@ Handovers enable seamless task delegation between development agents/sessions by
 5. [`0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md`](0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md) - **HIGH** - Intelligent orchestration (2 weeks, depends on 0018 & 0019)
 6. [`0021_HANDOVER_20251014_DASHBOARD_INTEGRATION.md`](0021_HANDOVER_20251014_DASHBOARD_INTEGRATION.md) - **MEDIUM** - Real-time monitoring (1.5 weeks, depends on 0019 & 0020)
 
+### Installation & Infrastructure Handovers
+
+**Not Started (Priority Order):**
+1. [`0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER.md`](0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER.md) - **CRITICAL** - Unified cross-platform installer (16-20 hours) - Fixes Linux pg_trgm bug, eliminates 85% code duplication
+
 ### Other Active Handovers
 
 **Not Started:**
