@@ -27,8 +27,14 @@ export async function initializeApiConfig() {
     }
 
     // Update API_CONFIG with correct values
-    API_CONFIG.REST_API.baseURL = `http://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+    const newBaseURL = `http://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+    API_CONFIG.REST_API.baseURL = newBaseURL
     API_CONFIG.WEBSOCKET.url = runtimeConfig.websocket.url
+
+    // CRITICAL: Update axios instance baseURL (created before config was fetched)
+    // Import dynamically to avoid circular dependency
+    const { updateApiBaseURL } = await import('@/services/api')
+    updateApiBaseURL(newBaseURL)
 
     console.log('[API Config] Initialized from backend:', runtimeConfig)
     return true

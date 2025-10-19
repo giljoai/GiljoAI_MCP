@@ -9,6 +9,12 @@ const apiClient = axios.create({
   withCredentials: true, // CRITICAL: Send cookies with requests for JWT auth
 })
 
+// Export function to update baseURL after runtime config is fetched
+export function updateApiBaseURL(newBaseURL) {
+  apiClient.defaults.baseURL = newBaseURL
+  console.log('[API] Updated axios baseURL to:', newBaseURL)
+}
+
 // Request interceptor for tenant key
 // NOTE: Authentication token is sent automatically via httpOnly cookie (access_token)
 // No need to manually add Authorization header - the browser handles this
