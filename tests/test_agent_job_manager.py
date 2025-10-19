@@ -17,7 +17,25 @@ from sqlalchemy import select
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.agent_job_manager import AgentJobManager
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import MCPAgentJob
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+
+@pytest.fixture
+def db_manager():
+    """Create a synchronous database manager for testing."""
+    manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
+    manager.create_tables()
+    yield manager
+    manager.close()
+
+
+@pytest.fixture
+def db_session(db_manager):
+    """Get a database session for testing."""
+    with db_manager.get_session() as session:
+        yield session
 
 
 class TestAgentJobManagerCreation:
