@@ -628,7 +628,7 @@ async def register_user(
 @router.post("/create-first-admin", response_model=RegisterUserResponse, status_code=201, tags=["auth"])
 async def create_first_admin_user(
     request_body: RegisterUserRequest = Body(...),
-    response: Response = None,
+    response: Response,
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -738,17 +738,16 @@ async def create_first_admin_user(
             tenant_key=admin_user.tenant_key
         )
 
-        # Set httpOnly cookie (same pattern as login endpoint)
-        if response:
-            response.set_cookie(
-                key="access_token",
-                value=token,
-                httponly=True,
-                secure=False,  # Set to True in production with HTTPS
-                samesite="lax",
-                path="/api",
-                max_age=86400  # 24 hours
-            )
+        # Set httpOnly cookie for immediate login (same pattern as login endpoint)
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+            path="/api",
+            max_age=86400  # 24 hours
+        )
 
         logger.info(
             f"[SETUP] First administrator account created successfully - "
