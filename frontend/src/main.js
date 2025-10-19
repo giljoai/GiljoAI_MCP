@@ -40,44 +40,42 @@ const vuetify = createVuetify({
 
 console.log('[MAIN] Vuetify instance created')
 
-// Initialize API configuration from backend before mounting app
-async function initializeApp() {
-  console.log('[MAIN] Initializing API configuration from backend...')
+// Create Vue app SYNCHRONOUSLY (before async operations)
+// This ensures router guard executes for initial navigation (Handover 0034 fix)
+const app = createApp(App)
+console.log('[MAIN] Vue app created')
 
-  // Fetch API configuration from backend
-  // This ensures WebSocket uses correct host in LAN mode
-  await initializeApiConfig()
+// Register router IMMEDIATELY (synchronously)
+// CRITICAL: Router must be registered before any async operations
+// so that router.beforeEach guard can intercept initial navigation
+app.use(router)
+console.log('[MAIN] Router registered')
 
-  console.log('[MAIN] API configuration initialized')
+app.use(pinia)
+console.log('[MAIN] Pinia registered')
 
-  // Create Vue app
-  const app = createApp(App)
+app.use(vuetify)
+console.log('[MAIN] Vuetify registered')
 
-  console.log('[MAIN] Vue app created')
+// Mount app SYNCHRONOUSLY
+app.mount('#app')
+console.log('[MAIN] App mounted to #app')
 
-  // Use plugins
-  app.use(router)
-  console.log('[MAIN] Router registered')
+// THEN do async initialization in background (non-blocking)
+async function initializeBackgroundConfig() {
+  try {
+    console.log('[MAIN] Initializing API configuration from backend...')
 
-  app.use(pinia)
-  console.log('[MAIN] Pinia registered')
+    // Fetch API configuration from backend
+    // This ensures WebSocket uses correct host in LAN mode
+    await initializeApiConfig()
 
-  app.use(vuetify)
-  console.log('[MAIN] Vuetify registered')
-
-  // Mount app
-  app.mount('#app')
-  console.log('[MAIN] App mounted to #app')
+    console.log('[MAIN] API configuration initialized')
+  } catch (error) {
+    console.warn('[MAIN] Failed to initialize API config, using fallback:', error)
+    // App already mounted with fallback config, continue
+  }
 }
 
-// Start app initialization
-initializeApp().catch((error) => {
-  console.error('[MAIN] Failed to initialize app:', error)
-  // Even if API config fails, still mount the app with fallback config
-  const app = createApp(App)
-  app.use(router)
-  app.use(pinia)
-  app.use(vuetify)
-  app.mount('#app')
-  console.log('[MAIN] App mounted with fallback configuration')
-})
+// Start background initialization (non-blocking)
+initializeBackgroundConfig()

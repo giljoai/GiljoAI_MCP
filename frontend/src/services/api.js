@@ -32,12 +32,37 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config
 
     if (error.response?.status === 401) {
-      // Handle unauthorized: clear cached state and redirect to login
+      // Handle unauthorized: clear cached state
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
 
-      if (!window.location.pathname.includes('/login') && !originalRequest?._retry) {
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/welcome') && !originalRequest?._retry) {
         originalRequest._retry = true
+
+        // CRITICAL FIX (Handover 0034): Check fresh install status BEFORE redirecting
+        // This prevents redirecting to /login when we should show /welcome (create admin page)
+        try {
+          const setupResponse = await fetch(`${apiClient.defaults.baseURL}/api/setup/status`, {
+            method: 'GET',
+            cache: 'no-cache'
+          })
+
+          if (setupResponse.ok) {
+            const setupData = await setupResponse.json()
+
+            if (setupData.is_fresh_install) {
+              // Fresh install (0 users) - redirect to create admin account
+              console.log('[API] 401 on fresh install, redirecting to create admin account')
+              window.location.href = '/welcome'
+              return Promise.reject(error)
+            }
+          }
+        } catch (setupError) {
+          console.warn('[API] Failed to check fresh install status:', setupError)
+          // On error, default to login redirect (secure fallback)
+        }
+
+        // Normal operation (users exist) - redirect to login
         const currentPath = window.location.pathname + window.location.search
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
       }

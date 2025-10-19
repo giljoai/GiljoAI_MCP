@@ -10,6 +10,7 @@ Provides REST API for:
 All endpoints support multi-tenant isolation through tenant_key.
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -19,8 +20,9 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, 
 from fastapi.responses import JSONResponse
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
@@ -30,6 +32,11 @@ from src.giljo_mcp.models import APIKey, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Security: Application-level lock to prevent concurrent first admin creation
+# Protects against race condition where multiple requests check user count simultaneously
+# and both create admin accounts (Handover 0034 security fix)
+_first_admin_creation_lock = asyncio.Lock()
 
 
 # Pydantic Models for Request/Response
@@ -652,106 +659,110 @@ async def create_first_admin_user(
     from uuid import uuid4
     from src.giljo_mcp.tenant import TenantManager
     from src.giljo_mcp.auth.jwt_manager import JWTManager
-    
-    # SECURITY CHECK: Verify no users exist (fresh install only)
-    user_count_stmt = select(func.count(User.id))
-    result = await db.execute(user_count_stmt)
-    total_users = result.scalar()
-    
-    if total_users > 0:
-        logger.warning(
-            f"[SECURITY] Blocked create-first-admin attempt - {total_users} users already exist. "
-            "This may be an attack attempt."
+
+    # CRITICAL SECURITY FIX (Handover 0034): Acquire lock to prevent race condition
+    # Without this lock, multiple concurrent requests could all check user_count == 0
+    # simultaneously and create multiple admin accounts
+    async with _first_admin_creation_lock:
+        # SECURITY CHECK: Verify no users exist (fresh install only)
+        user_count_stmt = select(func.count(User.id))
+        result = await db.execute(user_count_stmt)
+        total_users = result.scalar()
+
+        if total_users > 0:
+            logger.warning(
+                f"[SECURITY] Blocked create-first-admin attempt - {total_users} users already exist. "
+                "This may be an attack attempt."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Administrator account already exists. Please use the login page instead."
+            )
+
+        # Validate password strength (enforce 12+ char minimum for admin)
+        if len(request_body.password) < 12:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admin password must be at least 12 characters long"
+            )
+
+        # Check password complexity
+        has_upper = any(c.isupper() for c in request_body.password)
+        has_lower = any(c.islower() for c in request_body.password)
+        has_digit = any(c.isdigit() for c in request_body.password)
+        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in request_body.password)
+
+        if not (has_upper and has_lower and has_digit and has_special):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain uppercase, lowercase, digit, and special character"
+            )
+
+        # Hash password
+        password_hash = bcrypt.hash(request_body.password)
+
+        # Generate secure tenant key
+        tenant_key = TenantManager.generate_tenant_key(request_body.username)
+
+        # Create first admin user (force admin role)
+        admin_user = User(
+            id=str(uuid4()),
+            username=request_body.username,
+            email=request_body.email,
+            full_name=request_body.full_name or "Administrator",
+            password_hash=password_hash,
+            role='admin',  # FORCE admin role for first user
+            tenant_key=tenant_key,
+            is_active=True,
+            created_at=datetime.now(timezone.utc)
         )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Administrator account already exists. Please use the login page instead."
+
+        db.add(admin_user)
+
+        try:
+            await db.commit()
+            await db.refresh(admin_user)
+        except IntegrityError as e:
+            await db.rollback()
+            logger.error(f"Failed to create first admin user: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists"
+            )
+
+        # Generate JWT token for immediate login
+        token = JWTManager.create_access_token(
+            user_id=str(admin_user.id),
+            username=admin_user.username,
+            role=admin_user.role,
+            tenant_key=admin_user.tenant_key
         )
-    
-    # Validate password strength (enforce 12+ char minimum for admin)
-    if len(request_body.password) < 12:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Admin password must be at least 12 characters long"
+
+        # Set httpOnly cookie (same pattern as login endpoint)
+        if response:
+            response.set_cookie(
+                key="access_token",
+                value=token,
+                httponly=True,
+                secure=False,  # Set to True in production with HTTPS
+                samesite="lax",
+                path="/api",
+                max_age=86400  # 24 hours
+            )
+
+        logger.info(
+            f"[SETUP] First administrator account created successfully - "
+            f"username: {admin_user.username}, tenant: {tenant_key[:12]}..."
         )
-    
-    # Check password complexity
-    has_upper = any(c.isupper() for c in request_body.password)
-    has_lower = any(c.islower() for c in request_body.password)
-    has_digit = any(c.isdigit() for c in request_body.password)
-    has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in request_body.password)
-    
-    if not (has_upper and has_lower and has_digit and has_special):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain uppercase, lowercase, digit, and special character"
-        )
-    
-    # Hash password
-    password_hash = bcrypt.hash(request_body.password)
-    
-    # Generate secure tenant key
-    tenant_key = TenantManager.generate_tenant_key(request_body.username)
-    
-    # Create first admin user (force admin role)
-    admin_user = User(
-        id=str(uuid4()),
-        username=request_body.username,
-        email=request_body.email,
-        full_name=request_body.full_name or "Administrator",
-        password_hash=password_hash,
-        role='admin',  # FORCE admin role for first user
-        tenant_key=tenant_key,
-        is_active=True,
-        created_at=datetime.now(timezone.utc)
-    )
-    
-    db.add(admin_user)
-    
-    try:
-        await db.commit()
-        await db.refresh(admin_user)
-    except IntegrityError as e:
-        await db.rollback()
-        logger.error(f"Failed to create first admin user: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists"
-        )
-    
-    # Generate JWT token for immediate login
-    token = JWTManager.create_access_token(
-        user_id=str(admin_user.id),
-        username=admin_user.username,
-        role=admin_user.role,
-        tenant_key=admin_user.tenant_key
-    )
-    
-    # Set httpOnly cookie (same pattern as login endpoint)
-    if response:
-        response.set_cookie(
-            key="access_token",
-            value=token,
-            httponly=True,
-            secure=False,  # Set to True in production with HTTPS
-            samesite="lax",
-            path="/api",
-            max_age=86400  # 24 hours
-        )
-    
-    logger.info(
-        f"[SETUP] First administrator account created successfully - "
-        f"username: {admin_user.username}, tenant: {tenant_key[:12]}..."
-    )
-    
-    return RegisterUserResponse(
-        id=str(admin_user.id),
-        username=admin_user.username,
-        email=admin_user.email,
-        full_name=admin_user.full_name,
-        role=admin_user.role,
-        tenant_key=admin_user.tenant_key,
-        is_active=admin_user.is_active,
+
+        return RegisterUserResponse(
+            id=str(admin_user.id),
+            username=admin_user.username,
+            email=admin_user.email,
+            full_name=admin_user.full_name,
+            role=admin_user.role,
+            tenant_key=admin_user.tenant_key,
+            is_active=admin_user.is_active,
         message="Administrator account created successfully. Redirecting to dashboard..."
     )
 
