@@ -1,0 +1,454 @@
+"""
+Linux platform handler implementation.
+
+Handles Linux-specific installation operations including:
+- Virtual environment path resolution (bin/)
+- PostgreSQL discovery across distributions
+- Desktop launcher creation (.desktop files)
+- npm command execution with shell=False
+- Distribution-specific guides (Ubuntu, Fedora, etc.)
+"""
+
+import subprocess
+import platform
+import sys
+from pathlib import Path
+from typing import List, Dict, Any
+
+from colorama import Fore, Style
+
+from .base import PlatformHandler
+
+
+class LinuxPlatformHandler(PlatformHandler):
+    """
+    Linux-specific platform handler.
+
+    Key Linux behaviors:
+    - venv executables in bin/ directory
+    - PostgreSQL paths vary by distribution
+    - Desktop launchers via .desktop files
+    - npm uses shell=False (direct execution)
+    - Distribution detection for guides
+    """
+
+    @property
+    def platform_name(self) -> str:
+        """Return 'Linux'"""
+        return "Linux"
+
+    def get_venv_python(self, venv_dir: Path) -> Path:
+        """
+        Get Linux Python executable path.
+
+        Args:
+            venv_dir: Virtual environment directory
+
+        Returns:
+            Path to venv/bin/python
+        """
+        return venv_dir / "bin" / "python"
+
+    def get_venv_pip(self, venv_dir: Path) -> Path:
+        """
+        Get Linux pip executable path.
+
+        Args:
+            venv_dir: Virtual environment directory
+
+        Returns:
+            Path to venv/bin/pip
+        """
+        return venv_dir / "bin" / "pip"
+
+    def get_postgresql_scan_paths(self) -> List[Path]:
+        """
+        Get Linux PostgreSQL scan paths.
+
+        Covers:
+        - Standard system paths (/usr/bin/psql)
+        - Debian/Ubuntu: /usr/lib/postgresql/*/bin/psql
+        - Fedora/RHEL: /usr/pgsql-*/bin/psql
+        - Local installs: /usr/local/bin/psql
+
+        Returns:
+            List of potential psql paths (sorted by version, newest first)
+        """
+        paths = []
+
+        # Standard system paths
+        paths.extend([
+            Path("/usr/bin/psql"),
+            Path("/usr/local/bin/psql")
+        ])
+
+        # Debian/Ubuntu version-specific paths
+        pg_lib = Path("/usr/lib/postgresql")
+        if pg_lib.exists():
+            for version_dir in sorted(pg_lib.glob("*"), reverse=True):
+                if version_dir.is_dir():
+                    psql_path = version_dir / "bin" / "psql"
+                    paths.append(psql_path)
+
+        # Fedora/RHEL version-specific paths
+        pgsql_base = Path("/usr")
+        for version_dir in sorted(pgsql_base.glob("pgsql-*"), reverse=True):
+            if version_dir.is_dir():
+                psql_path = version_dir / "bin" / "psql"
+                paths.append(psql_path)
+
+        return paths
+
+    def _detect_distribution(self) -> Dict[str, str]:
+        """
+        Detect Linux distribution.
+
+        Returns:
+            Dictionary with distribution info (ID, VERSION_ID, NAME)
+        """
+        try:
+            return platform.freedesktop_os_release()
+        except Exception:
+            return {'ID': 'unknown', 'VERSION_ID': '', 'NAME': 'Linux'}
+
+    def get_postgresql_install_guide(self, recommended_version: int = 18) -> str:
+        """
+        Get distribution-specific PostgreSQL installation guide.
+
+        Args:
+            recommended_version: Recommended version (default: 18)
+
+        Returns:
+            Multi-line installation instructions
+        """
+        dist_info = self._detect_distribution()
+        dist_id = dist_info.get('ID', 'unknown')
+
+        # Ubuntu/Debian guide
+        if dist_id in ['ubuntu', 'debian']:
+            return self._get_ubuntu_install_guide(recommended_version)
+
+        # Fedora/RHEL guide
+        elif dist_id in ['fedora', 'rhel', 'centos']:
+            return self._get_fedora_install_guide(recommended_version)
+
+        # Generic guide for unknown distributions
+        else:
+            return self._get_generic_install_guide(recommended_version)
+
+    def _get_ubuntu_install_guide(self, recommended_version: int) -> str:
+        """Ubuntu/Debian-specific guide"""
+        return f"""
+{Fore.CYAN}Ubuntu/Debian PostgreSQL Installation:{Style.RESET_ALL}
+
+  1. Add PostgreSQL repository:
+     sudo apt-get update
+     sudo apt-get install -y postgresql-common
+     sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+
+  2. Install PostgreSQL {recommended_version}:
+     sudo apt-get update
+     sudo apt-get install -y postgresql-{recommended_version}
+
+  3. Start PostgreSQL service:
+     sudo systemctl start postgresql
+     sudo systemctl enable postgresql
+
+  4. Set postgres user password:
+     sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_password';"
+
+  5. Re-run this installer
+
+{Fore.YELLOW}Ubuntu Firewall Note:{Style.RESET_ALL} If accessing from other devices, configure UFW:
+  sudo ufw allow 7272/tcp  # API port
+  sudo ufw allow 7274/tcp  # Dashboard port
+"""
+
+    def _get_fedora_install_guide(self, recommended_version: int) -> str:
+        """Fedora/RHEL-specific guide"""
+        return f"""
+{Fore.CYAN}Fedora/RHEL PostgreSQL Installation:{Style.RESET_ALL}
+
+  1. Install PostgreSQL {recommended_version}:
+     sudo dnf install -y postgresql{recommended_version}-server
+
+  2. Initialize database:
+     sudo /usr/pgsql-{recommended_version}/bin/postgresql-{recommended_version}-setup initdb
+
+  3. Start PostgreSQL service:
+     sudo systemctl start postgresql-{recommended_version}
+     sudo systemctl enable postgresql-{recommended_version}
+
+  4. Set postgres user password:
+     sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_password';"
+
+  5. Re-run this installer
+
+{Fore.YELLOW}Firewall Note:{Style.RESET_ALL} If accessing from other devices:
+  sudo firewall-cmd --permanent --add-port=7272/tcp  # API
+  sudo firewall-cmd --permanent --add-port=7274/tcp  # Dashboard
+  sudo firewall-cmd --reload
+"""
+
+    def _get_generic_install_guide(self, recommended_version: int) -> str:
+        """Generic guide for unknown distributions"""
+        return f"""
+{Fore.CYAN}Generic Linux PostgreSQL Installation:{Style.RESET_ALL}
+
+  1. Install PostgreSQL {recommended_version} using your package manager
+
+  2. Start PostgreSQL service:
+     sudo systemctl start postgresql
+     sudo systemctl enable postgresql
+
+  3. Set postgres user password:
+     sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_password';"
+
+  4. Re-run this installer
+
+{Fore.YELLOW}Documentation:{Style.RESET_ALL}
+  https://www.postgresql.org/download/linux/
+"""
+
+    def supports_desktop_shortcuts(self) -> bool:
+        """Linux supports .desktop files"""
+        return True
+
+    def create_desktop_shortcuts(self, install_dir: Path, venv_dir: Path) -> Dict[str, Any]:
+        """
+        Create Linux desktop launchers (.desktop files).
+
+        Creates .desktop files in ~/.local/share/applications/
+        Uses gio trust for GNOME environments.
+
+        Args:
+            install_dir: Installation directory
+            venv_dir: Virtual environment directory
+
+        Returns:
+            Result dictionary with success status
+        """
+        try:
+            # Desktop applications directory
+            desktop_dir = Path.home() / ".local" / "share" / "applications"
+            desktop_dir.mkdir(parents=True, exist_ok=True)
+
+            shortcuts_created = []
+
+            # Main application launcher
+            main_desktop = desktop_dir / "giljoai-mcp.desktop"
+            self._create_desktop_file(
+                main_desktop,
+                name="GiljoAI MCP",
+                exec_path=f'"{venv_dir / "bin" / "python"}" "{install_dir / "startup.py"}"',
+                working_dir=install_dir,
+                description="Launch GiljoAI MCP Orchestrator"
+            )
+            shortcuts_created.append(str(main_desktop))
+
+            # Dashboard-only launcher
+            dashboard_desktop = desktop_dir / "giljoai-dashboard.desktop"
+            self._create_desktop_file(
+                dashboard_desktop,
+                name="GiljoAI Dashboard",
+                exec_path=f'"{venv_dir / "bin" / "python"}" "{install_dir / "startup.py"}" --dashboard-only',
+                working_dir=install_dir,
+                description="Launch GiljoAI Dashboard Only"
+            )
+            shortcuts_created.append(str(dashboard_desktop))
+
+            # Try to trust desktop files (GNOME)
+            for desktop_file in shortcuts_created:
+                try:
+                    subprocess.run(
+                        ['gio', 'set', desktop_file, 'metadata::trusted', 'true'],
+                        capture_output=True,
+                        timeout=5
+                    )
+                except Exception:
+                    pass  # Not critical if gio trust fails
+
+            return {
+                'success': True,
+                'method': 'desktop',
+                'shortcuts_created': shortcuts_created,
+                'message': f'Created {len(shortcuts_created)} desktop launchers'
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'message': f'Failed to create desktop launchers: {e}'
+            }
+
+    def _create_desktop_file(
+        self,
+        path: Path,
+        name: str,
+        exec_path: str,
+        working_dir: Path,
+        description: str
+    ) -> None:
+        """
+        Create .desktop file with proper format.
+
+        Args:
+            path: Path to .desktop file
+            name: Application name
+            exec_path: Executable command
+            working_dir: Working directory
+            description: Application description
+        """
+        content = f"""[Desktop Entry]
+Version=1.0
+Type=Application
+Name={name}
+Comment={description}
+Exec={exec_path}
+Path={working_dir}
+Terminal=false
+Categories=Development;
+"""
+        path.write_text(content)
+        path.chmod(0o755)  # Make executable
+
+    def run_npm_command(
+        self,
+        cmd: List[str],
+        cwd: Path,
+        timeout: int = 300
+    ) -> Dict[str, Any]:
+        """
+        Run npm command with Linux-specific handling.
+
+        Linux uses shell=False for direct execution (more secure).
+
+        Args:
+            cmd: Command list (e.g., ['npm', 'install'])
+            cwd: Working directory
+            timeout: Timeout in seconds
+
+        Returns:
+            Result dictionary with success status and output
+        """
+        try:
+            # Linux uses shell=False (direct execution)
+            result = subprocess.run(
+                cmd,
+                cwd=str(cwd),
+                shell=False,  # Direct execution for Linux
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+
+            return {
+                'success': result.returncode == 0,
+                'stdout': result.stdout,
+                'stderr': result.stderr,
+                'returncode': result.returncode
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                'success': False,
+                'error': 'Command timed out',
+                'timeout': timeout
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def get_network_ips(self) -> List[str]:
+        """
+        Get non-localhost IPv4 addresses on Linux.
+
+        Returns:
+            List of IPv4 address strings
+        """
+        try:
+            import psutil
+
+            ips = []
+            for interface_name, addresses in psutil.net_if_addrs().items():
+                for addr in addresses:
+                    if addr.family == 2:  # AF_INET (IPv4)
+                        ip = addr.address
+                        # Filter out localhost and link-local
+                        if not ip.startswith("127.") and not ip.startswith("169.254."):
+                            ips.append(ip)
+
+            return sorted(set(ips))  # Deduplicate and sort
+
+        except ImportError:
+            # Fallback if psutil not available
+            return []
+
+        except Exception:
+            # Graceful failure
+            return []
+
+    def welcome_screen(self) -> None:
+        """
+        Print Linux-specific welcome screen with distro detection.
+        """
+        separator = "=" * 70
+
+        print(f"\n{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{Style.BRIGHT}  GiljoAI MCP - Linux Installer v3.0{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
+
+        print(f"{Fore.CYAN}Welcome to GiljoAI MCP!{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}This installer will set up your coding orchestrator.{Style.RESET_ALL}\n")
+
+        print(f"{Fore.WHITE}What will be installed:{Style.RESET_ALL}")
+        print(f"  • PostgreSQL database (giljo_mcp)")
+        print(f"  • Python dependencies (FastAPI, SQLAlchemy, etc.)")
+        print(f"  • Configuration files (.env, config.yaml)")
+        print(f"  • API server + Frontend dashboard")
+        print(f"  • MCP server integration\n")
+
+        # Detect and display distribution info
+        dist_info = self._detect_distribution()
+        platform_info = f"Platform: Linux {platform.release()}"
+
+        if dist_info.get('ID') == 'ubuntu':
+            ubuntu_version = dist_info.get('VERSION_ID', '')
+            ubuntu_name = dist_info.get('NAME', 'Ubuntu')
+            platform_info = f"Platform: {ubuntu_name} {ubuntu_version} ({platform.machine()})"
+            print(f"{Fore.GREEN}Ubuntu detected - installer optimized for your system{Style.RESET_ALL}")
+
+        elif dist_info.get('ID') in ['fedora', 'rhel', 'centos']:
+            distro_name = dist_info.get('NAME', 'Fedora/RHEL')
+            distro_version = dist_info.get('VERSION_ID', '')
+            platform_info = f"Platform: {distro_name} {distro_version} ({platform.machine()})"
+            print(f"{Fore.GREEN}{distro_name} detected - installer optimized for your system{Style.RESET_ALL}")
+
+        print(f"{Fore.YELLOW}{platform_info}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}{Style.RESET_ALL}\n")
+
+    def get_platform_specific_warnings(self) -> List[str]:
+        """
+        Get Linux-specific warnings.
+
+        Ubuntu users should be reminded about UFW firewall configuration.
+
+        Returns:
+            List of warning strings
+        """
+        warnings = []
+
+        dist_info = self._detect_distribution()
+
+        # Ubuntu UFW firewall reminder
+        if dist_info.get('ID') == 'ubuntu':
+            warnings.append(
+                "Ubuntu UFW Firewall: If accessing from other devices, configure firewall rules. "
+                "See docs/guides/FIREWALL_CONFIGURATION.md for details."
+            )
+
+        return warnings
