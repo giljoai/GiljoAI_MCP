@@ -129,7 +129,7 @@ The CLI installer automates all system-level setup tasks:
    - **Uses DatabaseManager.create_tables_async()** (same as api/app.py:186)
    - Creates all tables via Base.metadata.create_all()
    - **NOT using Alembic migrations**
-   - Creates admin user (admin/admin)
+   - Creates setup state for first-admin creation during wizard
    - Creates setup_state record
 
 5. **Service Configuration**

@@ -1037,6 +1037,57 @@ After installation, return here and run the installer again
 """
 
 
+    async def create_database_async(self) -> Dict[str, Any]:
+        """
+        Async wrapper for create_database_direct.
+
+        Required for test compatibility and future async workflows.
+        """
+        return self.create_database_direct()
+
+    async def create_tables_async(self) -> Dict[str, Any]:
+        """
+        Create database tables using SQLAlchemy models.
+
+        Returns:
+            Dict with success status and table count
+        """
+        result = {'success': False, 'errors': [], 'warnings': []}
+
+        try:
+            # Import DatabaseManager to create tables
+            from src.giljo_mcp.database_manager import DatabaseManager
+            from src.giljo_mcp.models import Base
+
+            # Create database manager
+            db_url = f"postgresql://giljo_owner:{self.owner_password}@{self.pg_host}:{self.pg_port}/{self.db_name}"
+            db_manager = DatabaseManager(db_url)
+
+            # Create all tables
+            self.logger.info("Creating database tables from SQLAlchemy models...")
+            Base.metadata.create_all(db_manager.engine)
+
+            # Count tables created
+            table_count = len(Base.metadata.tables)
+            self.logger.info(f"Created {table_count} tables successfully")
+
+            result['success'] = True
+            result['tables_created'] = table_count
+            return result
+
+        except Exception as e:
+            result['errors'].append(f"Table creation failed: {str(e)}")
+            self.logger.error(f"Failed to create tables: {e}", exc_info=True)
+            return result
+
+    def _generate_password(self, length: int = 20) -> str:
+        """
+        Internal method for password generation (test-accessible).
+
+        Alias for generate_password() method.
+        """
+        return self.generate_password(length=length)
+
     def run_migrations(self, alembic_ini_path: Optional[Path] = None) -> Dict[str, Any]:
         """Run Alembic migrations to initialize/update database schema"""
         result = {'success': False, 'errors': [], 'warnings': []}

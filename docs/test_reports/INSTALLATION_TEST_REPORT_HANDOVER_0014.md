@@ -1,4 +1,6 @@
-# GiljoAI MCP Installation Experience Test Report
+# GiljoAI MCP Installation Experience Test Report (HISTORICAL)
+
+**⚠️  IMPORTANT**: This report documents testing from October 15, 2025. The authentication system has since been updated to use first-admin account creation instead of default admin/admin credentials. See FIRST_LAUNCH_EXPERIENCE.md for current flow.
 
 **Handover**: HANDOVER_0014
 **Test Date**: 2025-10-15

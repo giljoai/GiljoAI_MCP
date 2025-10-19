@@ -37,8 +37,9 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
 
         if setup_state:
             return {
-                'database_initialized': setup_state.database_initialized,
-                'default_password_active': setup_state.default_password_active
+                'database_initialized': setup_state.database_initialized
+                # REMOVED (Handover 0035): default_password_active field no longer exists
+                # v3.0+ uses first_admin_created flag in create-first-admin endpoint
             }
 
         # No setup state found - assume not initialized
@@ -76,23 +77,15 @@ async def authenticate_websocket(
     # Check setup state
     setup_state = await get_setup_state(db)
     database_initialized = setup_state.get('database_initialized', True)
-    default_password_active = setup_state.get('default_password_active', False)
 
-    # Allow connection without auth during:
-    # 1. Initial setup (database not initialized)
-    # 2. Password change phase (database ready but default password active)
+    # Allow connection without auth during initial setup (database not initialized)
+    # REMOVED (Handover 0035): Password change phase check (default_password_active field no longer exists)
+    # v3.0+ goes directly from fresh install → Create Admin Account (no password change phase)
     if not database_initialized:
         logger.info("WebSocket connection allowed: initial setup mode (database not initialized)")
         return {
             'authenticated': True,
             'context': 'setup'
-        }
-
-    if default_password_active:
-        logger.info("WebSocket connection allowed: password change phase (default password active)")
-        return {
-            'authenticated': True,
-            'context': 'password_change'
         }
 
     # Post-setup: Require credentials for ALL connections

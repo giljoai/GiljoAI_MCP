@@ -1136,13 +1136,6 @@ class UnifiedInstaller:
             print(f"  • Port: 5432")
             print()
 
-        # Default admin account
-        print(f"{Fore.YELLOW}Default Admin Account:{Style.RESET_ALL}")
-        print(f"  • Username: admin")
-        print(f"  • Password: admin")
-        print(f"  {Fore.RED}(You will be required to change this on first login){Style.RESET_ALL}")
-        print()
-
         # Startup guidance
         print(f"{Fore.CYAN}{Style.BRIGHT}Recommended startup:{Style.RESET_ALL}")
         print(f"  {Fore.GREEN}python startup.py{Style.RESET_ALL}")

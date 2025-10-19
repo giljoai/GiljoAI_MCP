@@ -29,7 +29,8 @@ Handovers enable seamless task delegation between development agents/sessions by
 ### Installation & Infrastructure Handovers
 
 **Not Started (Priority Order):**
-1. [`0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER.md`](0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER.md) - **CRITICAL** - Unified cross-platform installer (16-20 hours) - Fixes Linux pg_trgm bug, eliminates 85% code duplication
+1. [`0036_HANDOVER_20251019_COOKIE_DOMAIN_WHITELIST_CROSS_PORT_AUTH.md`](0036_HANDOVER_20251019_COOKIE_DOMAIN_WHITELIST_CROSS_PORT_AUTH.md) - **HIGH** - Cookie domain whitelist for cross-port authentication (70 min, fixes login redirect loop)
+2. [`0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER.md`](0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER.md) - **CRITICAL** - Unified cross-platform installer (16-20 hours) - Fixes Linux pg_trgm bug, eliminates 85% code duplication
 
 ### Other Active Handovers
 
