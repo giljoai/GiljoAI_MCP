@@ -8,16 +8,21 @@ and multi-project concurrency with tenant isolation.
 import asyncio
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from .agent_selector import AgentSelector
+from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
-from .optimization import SerenaOptimizer, MissionOptimizationInjector
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
-from .models import Agent, Message, Project
+from .mission_planner import MissionPlanner
+from .models import Agent, Message, Product, Project
+from .optimization import MissionOptimizationInjector, SerenaOptimizer
 from .template_adapter import MissionTemplateGeneratorV2
+from .workflow_engine import WorkflowEngine
 
 
 logger = logging.getLogger(__name__)
@@ -88,6 +93,11 @@ class ProjectOrchestrator:
         self.template_generator = MissionTemplateGeneratorV2(self.db_manager)
         # Initialize Serena optimization system
         self.serena_optimizer = None  # Initialize lazily per tenant
+
+        # Phase 2: Initialize orchestration components (Handover 0020)
+        self.mission_planner = MissionPlanner(self.db_manager)
+        self.agent_selector = AgentSelector(self.db_manager)
+        self.workflow_engine = WorkflowEngine(self.db_manager)
 
     def _get_serena_optimizer(self, tenant_key: str) -> SerenaOptimizer:
         """Get or create SerenaOptimizer for tenant (lazy initialization)"""
@@ -327,7 +337,7 @@ class ProjectOrchestrator:
             try:
                 optimizer = self._get_serena_optimizer(project.tenant_key)
                 injector = MissionOptimizationInjector(optimizer)
-                
+
                 # Gather context for optimization
                 context_data = {
                     "project_id": project_id,
@@ -335,17 +345,15 @@ class ProjectOrchestrator:
                     "codebase_size": "medium",  # Could be determined dynamically
                     "primary_language": "python",  # Could be detected from project
                 }
-                
+
                 # Inject optimization rules
                 optimized_mission = await injector.inject_optimization_rules(
-                    agent_role=role.value,
-                    mission=mission,
-                    context_data=context_data
+                    agent_role=role.value, mission=mission, context_data=context_data
                 )
-                
+
                 logger.info(f"Enhanced {role.value} agent mission with Serena optimization rules")
                 mission = optimized_mission
-                
+
             except Exception as e:
                 logger.warning(f"Failed to inject Serena optimization rules: {e}")
                 # Continue with original mission if optimization fails
@@ -794,10 +802,10 @@ class ProjectOrchestrator:
     async def get_optimization_report(self, project_id: str) -> dict[str, Any]:
         """
         Generate comprehensive Serena optimization report for a project.
-        
+
         Args:
             project_id: Project UUID
-            
+
         Returns:
             Dict with optimization metrics and savings
         """
@@ -807,45 +815,45 @@ class ProjectOrchestrator:
                 select(Project).where(Project.id == project_id).options(selectinload(Project.agents))
             )
             project = project_result.scalar_one_or_none()
-            
+
             if not project:
                 raise ValueError(f"Project {project_id} not found")
-            
+
             # Get optimizer for tenant
             optimizer = self._get_serena_optimizer(project.tenant_key)
-            
+
             # Generate reports for each agent
             agent_reports = {}
             total_operations = 0
             total_tokens_saved = 0
-            
+
             for agent in project.agents:
                 try:
                     agent_report = await optimizer.generate_savings_report(agent.id)
                     agent_reports[agent.id] = {
                         "agent_name": agent.name,
                         "agent_role": agent.role,
-                        "report": agent_report
+                        "report": agent_report,
                     }
-                    
+
                     total_operations += agent_report.get("total_operations", 0)
                     total_tokens_saved += agent_report.get("total_tokens_saved", 0)
-                    
+
                 except Exception as e:
                     logger.warning(f"Failed to get optimization report for agent {agent.id}: {e}")
                     agent_reports[agent.id] = {
                         "agent_name": agent.name,
                         "agent_role": agent.role,
-                        "report": {"error": str(e)}
+                        "report": {"error": str(e)},
                     }
-            
+
             # Calculate project-level metrics
             context_savings_percent = 0
             if project.context_used > 0:
                 # Estimate what context usage would have been without optimization
                 estimated_unoptimized = project.context_used * 3  # Conservative estimate
                 context_savings_percent = ((estimated_unoptimized - project.context_used) / estimated_unoptimized) * 100
-            
+
             return {
                 "project_id": project_id,
                 "project_name": project.name,
@@ -855,20 +863,20 @@ class ProjectOrchestrator:
                     "total_tokens_saved": total_tokens_saved,
                     "context_used": project.context_used,
                     "estimated_context_savings_percent": round(context_savings_percent, 1),
-                    "agents_optimized": len(agent_reports)
+                    "agents_optimized": len(agent_reports),
                 },
                 "agent_reports": agent_reports,
-                "generated_at": datetime.now(timezone.utc).isoformat()
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             }
-    
+
     async def estimate_optimization_impact(self, project_id: str, agent_role: str) -> dict[str, Any]:
         """
         Estimate optimization impact before spawning an agent.
-        
+
         Args:
             project_id: Project UUID
             agent_role: Role of agent to spawn
-            
+
         Returns:
             Dict with estimated optimization impact
         """
@@ -876,14 +884,14 @@ class ProjectOrchestrator:
             # Get project
             result = await session.execute(select(Project).where(Project.id == project_id))
             project = result.scalar_one_or_none()
-            
+
             if not project:
                 raise ValueError(f"Project {project_id} not found")
-            
+
             # Get optimizer
             optimizer = self._get_serena_optimizer(project.tenant_key)
             injector = MissionOptimizationInjector(optimizer)
-            
+
             # Prepare context data
             context_data = {
                 "project_id": project_id,
@@ -891,26 +899,230 @@ class ProjectOrchestrator:
                 "codebase_size": "medium",
                 "primary_language": "python",
             }
-            
+
             # Get impact estimate
             impact = await injector.estimate_optimization_impact(agent_role, context_data)
-            
+
             return {
                 "project_id": project_id,
                 "agent_role": agent_role,
                 "estimated_impact": impact,
-                "recommendation": self._get_optimization_recommendation(impact)
+                "recommendation": self._get_optimization_recommendation(impact),
             }
-    
+
     def _get_optimization_recommendation(self, impact: dict[str, Any]) -> str:
         """Generate optimization recommendation based on impact analysis"""
-        
+
         rules_applied = impact.get("rules_applied", 0)
         context_adjustments = impact.get("context_adjustments", 0)
-        
+
         if rules_applied >= 5:
             return "High optimization potential - expect 60-90% token reduction"
-        elif rules_applied >= 3:
+        if rules_applied >= 3:
             return "Medium optimization potential - expect 40-70% token reduction"
-        else:
-            return "Basic optimization applied - expect 20-50% token reduction"
+        return "Basic optimization applied - expect 20-50% token reduction"
+
+    #  ====================  Phase 2: Orchestration Enhancement Methods (Handover 0020) ====================
+
+    async def generate_mission_plan(self, product: "Product", project_description: str) -> dict[str, Any]:
+        """
+        Generate missions from vision analysis.
+
+        Algorithm:
+        1. Analyze requirements (MissionPlanner.analyze_requirements)
+        2. Select agents (AgentSelector.select_agents)
+        3. Generate missions (MissionPlanner.generate_missions)
+        4. Return mission plan
+
+        Args:
+            product: Product with vision document
+            project_description: Project requirements description
+
+        Returns:
+            Dict mapping agent roles to Mission objects
+        """
+        # 1. Analyze requirements
+        requirements = await self.mission_planner.analyze_requirements(product, project_description)
+
+        # 2. Generate missions based on requirements
+        missions = await self.mission_planner.generate_missions(requirements=requirements, product=product)
+
+        logger.info(f"Generated mission plan for product {product.id}: " f"{len(missions)} missions created")
+
+        return missions
+
+    async def select_agents_for_mission(
+        self, requirements: Any, tenant_key: str, product_id: Optional[str] = None
+    ) -> list[Any]:
+        """
+        Smart agent selection based on requirements.
+
+        Uses AgentSelector to query database templates.
+
+        Args:
+            requirements: RequirementAnalysis from MissionPlanner
+            tenant_key: Tenant key for isolation
+            product_id: Optional product ID for context
+
+        Returns:
+            List of AgentConfig objects
+        """
+        agent_configs = await self.agent_selector.select_agents(
+            requirements=requirements, tenant_key=tenant_key, product_id=product_id
+        )
+
+        logger.info(f"Selected {len(agent_configs)} agents for mission: " f"{[ac.role for ac in agent_configs]}")
+
+        return agent_configs
+
+    async def coordinate_agent_workflow(
+        self, agent_configs: list[Any], workflow_type: str, tenant_key: str, project_id: str
+    ) -> Any:
+        """
+        Monitor and coordinate agent team.
+
+        Uses WorkflowEngine to execute workflow pattern.
+
+        Args:
+            agent_configs: List of AgentConfig objects
+            workflow_type: 'waterfall' or 'parallel'
+            tenant_key: Tenant key for isolation
+            project_id: Project ID
+
+        Returns:
+            WorkflowResult from execution
+        """
+        workflow_result = await self.workflow_engine.execute_workflow(
+            agent_configs=agent_configs, workflow_type=workflow_type, tenant_key=tenant_key, project_id=project_id
+        )
+
+        logger.info(
+            f"Workflow coordination complete for project {project_id}: "
+            f"status={workflow_result.status}, "
+            f"completed={len(workflow_result.completed)}, "
+            f"failed={len(workflow_result.failed)}"
+        )
+
+        return workflow_result
+
+    async def process_product_vision(
+        self, tenant_key: str, product_id: str, project_requirements: str
+    ) -> dict[str, Any]:
+        """
+        MAIN ORCHESTRATION WORKFLOW.
+
+        Complete workflow:
+        1. Load product and validate vision
+        2. Chunk vision if needed
+        3. Analyze requirements
+        4. Select agents
+        5. Generate missions
+        6. Coordinate workflow
+
+        Args:
+            tenant_key: Tenant key for isolation
+            product_id: Product UUID
+            project_requirements: Project requirements description
+
+        Returns:
+            Dict with:
+            - project_id: Created project ID
+            - mission_plan: Generated missions
+            - selected_agents: List of agent roles
+            - spawned_jobs: List of job IDs
+            - workflow_result: Workflow execution result
+            - token_reduction: Token reduction metrics
+        """
+        # 1. Load product and validate vision
+        async with self.db_manager.get_session_async() as session:
+            product = await session.get(Product, product_id)
+            if not product or product.tenant_key != tenant_key:
+                raise ValueError(f"Product {product_id} not found")
+
+            # Get vision content (inline or file-based)
+            if product.vision_type == "inline":
+                vision_content = product.vision_document
+            elif product.vision_type == "file" and product.vision_path:
+                vision_content = Path(product.vision_path).read_text(encoding="utf-8")
+            else:
+                raise ValueError(f"Product {product_id} has no vision document")
+
+        # 2. Chunk vision if needed
+        if not product.chunked:
+            logger.info(f"Chunking vision document for product {product_id}")
+            chunker = VisionDocumentChunker(target_chunk_size=2000)
+            chunks = chunker.chunk_document(vision_content, product_id=product_id)
+
+            # Store chunks in database (via ContextRepository or direct insert)
+            # For now, just mark as chunked
+            async with self.db_manager.get_session_async() as session:
+                db_product = await session.get(Product, product_id)
+                db_product.chunked = True
+                await session.commit()
+
+            logger.info(f"Chunked vision into {len(chunks)} chunks")
+
+        # 3. Create project
+        project = await self.create_project(
+            name=f"Vision Project: {product.name}",
+            mission=project_requirements,
+            tenant_key=tenant_key,
+            context_budget=150000,
+        )
+
+        # 4. Generate mission plan
+        missions = await self.generate_mission_plan(product, project_requirements)
+
+        # 5. Select agents
+        analysis = await self.mission_planner.analyze_requirements(product, project_requirements)
+        agent_configs = await self.select_agents_for_mission(
+            requirements=analysis, tenant_key=tenant_key, product_id=product_id
+        )
+
+        # 6. Assign missions to agents
+        for agent_config in agent_configs:
+            if agent_config.role in missions:
+                agent_config.mission = missions[agent_config.role]
+
+        # 7. Coordinate workflow (default: waterfall)
+        workflow_result = await self.coordinate_agent_workflow(
+            agent_configs=agent_configs, workflow_type="waterfall", tenant_key=tenant_key, project_id=project.id
+        )
+
+        # 8. Calculate token reduction metrics
+        total_mission_tokens = sum(
+            mission.token_count for mission in missions.values() if hasattr(mission, "token_count")
+        )
+        # Estimate what it would have been without optimization (3x)
+        estimated_unoptimized = total_mission_tokens * 3
+        token_reduction_percent = (
+            ((estimated_unoptimized - total_mission_tokens) / estimated_unoptimized) * 100
+            if estimated_unoptimized > 0
+            else 0
+        )
+
+        # 9. Collect job IDs from workflow result
+        spawned_jobs = []
+        for stage in workflow_result.completed:
+            if hasattr(stage, "job_ids"):
+                spawned_jobs.extend(stage.job_ids)
+
+        logger.info(
+            f"Completed product vision processing for {product_id}: "
+            f"project={project.id}, agents={len(agent_configs)}, "
+            f"jobs={len(spawned_jobs)}, token_reduction={token_reduction_percent:.1f}%"
+        )
+
+        # 10. Return comprehensive result
+        return {
+            "project_id": project.id,
+            "mission_plan": {role: mission.to_dict() for role, mission in missions.items()},
+            "selected_agents": [ac.role for ac in agent_configs],
+            "spawned_jobs": spawned_jobs,
+            "workflow_result": workflow_result,
+            "token_reduction": {
+                "original_tokens": estimated_unoptimized,
+                "optimized_tokens": total_mission_tokens,
+                "reduction_percent": round(token_reduction_percent, 1),
+            },
+        }
