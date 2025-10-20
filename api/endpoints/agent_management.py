@@ -226,6 +226,17 @@ async def create_agent_job(
 
             await db.commit()
 
+            # Broadcast job creation via WebSocket
+            if state.websocket_manager:
+                await state.websocket_manager.broadcast_job_created(
+                    job_id=job.job_id,
+                    agent_type=job.agent_type,
+                    tenant_key=tenant_key,
+                    spawned_by=job.spawned_by,
+                    mission_preview=job.mission[:100] if job.mission else None,
+                    created_at=job.created_at
+                )
+
             return AgentJobResponse(
                 job_id=job.job_id,
                 agent_type=job.agent_type,
@@ -260,6 +271,14 @@ async def update_agent_job_status(
         job_repo = AgentJobRepository(state.db_manager)
 
         async with state.db_manager.get_session_async() as db:
+            # Get current job to capture old status
+            job = job_repo.get_job_by_job_id(db, tenant_key, job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Agent job not found")
+
+            old_status = job.status
+
+            # Update status
             success = job_repo.update_status(
                 db, tenant_key, job_id, status_update.status
             )
@@ -267,7 +286,25 @@ async def update_agent_job_status(
             if not success:
                 raise HTTPException(status_code=404, detail="Agent job not found")
 
+            # Calculate duration for completed/failed jobs
+            duration_seconds = None
+            if status_update.status in ["completed", "failed"] and job.started_at:
+                from datetime import datetime, timezone
+                completed_at = job.completed_at or datetime.now(timezone.utc)
+                duration_seconds = (completed_at - job.started_at).total_seconds()
+
             await db.commit()
+
+            # Broadcast status update via WebSocket
+            if state.websocket_manager:
+                await state.websocket_manager.broadcast_job_status_update(
+                    job_id=job_id,
+                    agent_type=job.agent_type,
+                    tenant_key=tenant_key,
+                    old_status=old_status,
+                    new_status=status_update.status,
+                    duration_seconds=duration_seconds
+                )
 
             return {"message": f"Job status updated to {status_update.status}"}
 
@@ -292,12 +329,29 @@ async def acknowledge_job_message(
         job_repo = AgentJobRepository(state.db_manager)
 
         async with state.db_manager.get_session_async() as db:
+            # Get job before acknowledgment
+            job = job_repo.get_job_by_job_id(db, tenant_key, job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Agent job not found")
+
+            old_status = job.status
+
             success = job_repo.acknowledge_job(db, tenant_key, job_id)
 
             if not success:
                 raise HTTPException(status_code=404, detail="Agent job not found")
 
             await db.commit()
+
+            # Broadcast acknowledgment via WebSocket (transitions to 'active')
+            if state.websocket_manager and old_status == "pending":
+                await state.websocket_manager.broadcast_job_status_update(
+                    job_id=job_id,
+                    agent_type=job.agent_type,
+                    tenant_key=tenant_key,
+                    old_status=old_status,
+                    new_status="active"  # Acknowledgment implies active status
+                )
 
             return {"message": "Job acknowledged successfully"}
 
@@ -315,6 +369,7 @@ async def add_job_message(
 ):
     """Add a message to an agent job."""
     from api.app import state
+    from uuid import uuid4
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -323,6 +378,11 @@ async def add_job_message(
         job_repo = AgentJobRepository(state.db_manager)
 
         async with state.db_manager.get_session_async() as db:
+            # Get job for broadcasting
+            job = job_repo.get_job_by_job_id(db, tenant_key, job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Agent job not found")
+
             success = job_repo.add_message(
                 db, tenant_key, job_id, message_data.message
             )
@@ -331,6 +391,21 @@ async def add_job_message(
                 raise HTTPException(status_code=404, detail="Agent job not found")
 
             await db.commit()
+
+            # Broadcast message via WebSocket
+            if state.websocket_manager:
+                message_content = message_data.message.get("content", "")
+                content_preview = message_content[:100] if isinstance(message_content, str) else str(message_content)[:100]
+
+                await state.websocket_manager.broadcast_job_message(
+                    job_id=job_id,
+                    message_id=message_data.message.get("message_id", str(uuid4())),
+                    from_agent=message_data.message.get("from_agent", job.agent_type),
+                    tenant_key=tenant_key,
+                    to_agent=message_data.message.get("to_agent"),
+                    message_type=message_data.message.get("type", "status"),
+                    content_preview=content_preview
+                )
 
             return {"message": "Message added to job successfully"}
 

@@ -67,6 +67,7 @@ except ImportError as e:
 try:
     from .auth_utils import authenticate_websocket
     from .endpoints import (
+        agent_jobs,
         agent_management,
         agents,
         ai_tools,
@@ -510,6 +511,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_management.router, tags=["Agent Management"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
+    app.include_router(agent_jobs.router, prefix="/api/agent-jobs", tags=["agent-jobs"])
     app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
