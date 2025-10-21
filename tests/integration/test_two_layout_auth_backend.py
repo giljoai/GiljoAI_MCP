@@ -83,12 +83,12 @@ async def test_auth_me_no_setup_mode_response_even_if_setup_active(test_client: 
     # Get database session to create setup state
     db_session_gen = app.dependency_overrides[get_db_session]
     async for session in db_session_gen():
-        # Create SetupState with default_password_active=True (simulating setup mode)
+        # Create SetupState (simulating setup mode)
         setup_state = SetupState(
             tenant_key=test_user.tenant_key,
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),  # Required when database_initialized=True
-            default_password_active=True,  # Setup mode active
+            first_admin_created=False,  # No admin created yet
             setup_version="3.0.0"
         )
         session.add(setup_state)
@@ -117,8 +117,8 @@ async def test_auth_me_consistent_response_regardless_of_setup_state(test_client
 
     Verifies that the endpoint behavior is the same whether:
     - No SetupState exists
-    - SetupState exists with default_password_active=True
-    - SetupState exists with default_password_active=False
+    - SetupState exists with first_admin_created=False
+    - SetupState exists with first_admin_created=True
     """
     from api.app import app
     from src.giljo_mcp.auth.dependencies import get_db_session
@@ -136,14 +136,14 @@ async def test_auth_me_consistent_response_regardless_of_setup_state(test_client
     assert "username" in me_response1.json()
     assert "setup_mode" not in me_response1.json()
 
-    # Test 2: SetupState with default_password_active=True
+    # Test 2: SetupState with first_admin_created=False
     db_session_gen = app.dependency_overrides[get_db_session]
     async for session in db_session_gen():
         setup_state = SetupState(
             tenant_key=test_user.tenant_key,
             database_initialized=True,
             database_initialized_at=datetime.now(timezone.utc),  # Required
-            default_password_active=True,
+            first_admin_created=False,
             setup_version="3.0.0"
         )
         session.add(setup_state)
@@ -155,7 +155,7 @@ async def test_auth_me_consistent_response_regardless_of_setup_state(test_client
     assert "username" in me_response2.json()
     assert "setup_mode" not in me_response2.json()
 
-    # Test 3: SetupState with default_password_active=False
+    # Test 3: SetupState with first_admin_created=True
     db_session_gen = app.dependency_overrides[get_db_session]
     async for session in db_session_gen():
         # Update setup state
@@ -164,7 +164,7 @@ async def test_auth_me_consistent_response_regardless_of_setup_state(test_client
         result = await session.execute(stmt)
         setup_state = result.scalar_one_or_none()
         if setup_state:
-            setup_state.default_password_active = False
+            setup_state.first_admin_created = True
             await session.commit()
         break
 

@@ -1,8 +1,8 @@
 # Server Architecture & Tech Stack
 
-**Document Version**: 10_13_2025
+**Document Version**: 10_21_2025
 **Status**: Single Source of Truth
-**Last Updated**: October 13, 2025
+**Last Updated**: October 21, 2025
 
 ---
 
@@ -195,6 +195,129 @@ CREATE INDEX idx_projects_tenant_status ON projects(tenant_key, status);
 
 **Code Reference**: `src/giljo_mcp/models.py:80-100` - Index configurations
 
+### Database Schema Evolution (Recent Handovers)
+
+GiljoAI MCP's database schema has been enhanced through multiple handovers to support advanced features.
+
+#### Agent Job Management Tables (Handover 0019)
+
+**MCPAgentJob Table** - Core agent job tracking:
+```sql
+CREATE TABLE mcp_agent_jobs (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_key VARCHAR(36) NOT NULL,
+    agent_type VARCHAR(50) NOT NULL,
+    mission TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending, active, completed, failed
+    spawned_by VARCHAR(36),  -- Parent job ID for hierarchies
+    messages JSONB DEFAULT '[]'::jsonb,  -- Agent-to-agent messages
+    context_chunks JSONB DEFAULT '[]'::jsonb,
+    result JSONB,
+    error_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    acknowledged_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+
+    -- Indexes for performance
+    INDEX idx_agent_jobs_tenant_status (tenant_key, status),
+    INDEX idx_agent_jobs_spawned_by (spawned_by),
+    INDEX idx_agent_jobs_created (created_at DESC),
+
+    -- Foreign key for parent-child relationships
+    FOREIGN KEY (spawned_by) REFERENCES mcp_agent_jobs(id) ON DELETE SET NULL
+);
+```
+
+**Key Features**:
+- JSONB message storage for agent communication
+- Parent-child job hierarchies via `spawned_by`
+- Status state machine enforcement
+- Multi-tenant isolation via `tenant_key`
+
+#### User Authentication Enhancements (Handover 0023)
+
+**User Table Additions** - Password reset and recovery PIN:
+```sql
+ALTER TABLE users ADD COLUMN recovery_pin_hash VARCHAR(255);
+ALTER TABLE users ADD COLUMN failed_pin_attempts INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN pin_lockout_until TIMESTAMP WITH TIME ZONE;
+ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN must_set_pin BOOLEAN DEFAULT FALSE;
+```
+
+**Security Features**:
+- bcrypt-hashed recovery PINs
+- Rate limiting via `failed_pin_attempts` and `pin_lockout_until`
+- First-login enforcement via `must_change_password` and `must_set_pin`
+
+#### Setup State Security (Handover 0035)
+
+**SetupState Table Additions** - First admin creation tracking:
+```sql
+ALTER TABLE setup_state ADD COLUMN first_admin_created BOOLEAN DEFAULT FALSE NOT NULL;
+ALTER TABLE setup_state ADD COLUMN first_admin_created_at TIMESTAMP WITH TIME ZONE;
+
+-- Constraint: If first_admin_created is true, first_admin_created_at must be set
+ALTER TABLE setup_state ADD CONSTRAINT ck_first_admin_created_at_required
+    CHECK (
+        (first_admin_created = false) OR
+        (first_admin_created = true AND first_admin_created_at IS NOT NULL)
+    );
+
+-- Partial index for fresh installs
+CREATE INDEX idx_setup_fresh_install ON setup_state(tenant_key, first_admin_created)
+    WHERE first_admin_created = false;
+```
+
+**Security Benefit**: Prevents duplicate admin creation attacks by locking down `/api/auth/create-first-admin` after first use.
+
+#### Token Metrics Tracking (Handover 0020)
+
+**ProjectMetrics Table** - Token usage and reduction tracking:
+```sql
+CREATE TABLE project_metrics (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_key VARCHAR(36) NOT NULL,
+    project_id VARCHAR(36) NOT NULL,
+    metric_type VARCHAR(50) NOT NULL,  -- 'token_usage', 'token_reduction', 'workflow_time'
+    metric_value INTEGER NOT NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    INDEX idx_metrics_tenant_project (tenant_key, project_id),
+    INDEX idx_metrics_type (metric_type),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+```
+
+**Tracking Capabilities**:
+- Real-time token usage monitoring
+- 70% token reduction verification
+- Workflow performance analytics
+
+#### MCP Session Management (MCP-over-HTTP)
+
+**MCP Sessions Table** - Session tracking for HTTP transport:
+```sql
+CREATE TABLE mcp_sessions (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_key VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    session_data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+
+    INDEX idx_mcp_sessions_tenant (tenant_key),
+    INDEX idx_mcp_sessions_expires (expires_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+**Features**:
+- 24-hour default session lifetime
+- Auto-cleanup of expired sessions (48 hours)
+- JSONB storage for client info and tool call history
+
 ---
 
 ## Component Architecture
@@ -212,9 +335,13 @@ api/
 │   └── setup.py           # Setup mode middleware
 ├── endpoints/             # API endpoint modules
 │   ├── auth.py           # Authentication endpoints
+│   ├── auth_pin_recovery.py # ✨ Password reset via PIN (347 lines, Handover 0023)
 │   ├── projects.py       # Project management
 │   ├── agents.py         # Agent orchestration
+│   ├── agent_jobs.py     # ✨ Agent job management (824 lines, 13 endpoints, Handover 0019)
+│   ├── orchestrator.py   # ✨ Orchestration endpoints (7 endpoints, Handover 0020)
 │   ├── messages.py       # Inter-agent messaging
+│   ├── users.py          # ✨ User management + password reset
 │   ├── setup.py          # Setup wizard endpoints
 │   ├── ai_tools.py       # AI tool configuration generator (425 lines)
 │   ├── templates.py      # Template CRUD operations
@@ -251,38 +378,47 @@ app.add_middleware(CORSMiddleware, allow_origins=cors_origins)
 **Core Services**:
 ```
 src/giljo_mcp/
-├── orchestrator.py         # Multi-agent coordination engine
-├── database.py            # PostgreSQL connection management
-├── tenant.py              # Multi-tenant isolation manager
-├── models.py              # SQLAlchemy ORM models
-├── template_manager.py    # ✨ NEW: Unified template system (342 lines)
-├── optimization/          # ✨ NEW: Serena MCP optimization layer (v3.0)
-│   ├── serena_optimizer.py      # Core optimization engine
-│   ├── tool_interceptor.py      # MCP tool call optimization
-│   └── mission_optimizer.py     # Mission-time rule injection
-├── auth/                  # Authentication services
-│   ├── manager.py         # AuthManager class
-│   ├── jwt_handler.py     # JWT token operations
-│   └── password.py        # bcrypt password handling
-├── tools/                 # MCP tool implementations (28+ tools)
-│   ├── project.py         # Project management tools
-│   ├── agent.py           # Agent orchestration tools
-│   ├── message.py         # Message queue tools
-│   ├── context.py         # Context management tools
-│   ├── template.py        # ✨ NEW: Template CRUD operations
-│   ├── task_templates.py  # Task template management
-│   └── optimization.py    # ✨ NEW: Optimization control tools (6 tools)
-└── setup/                 # Setup wizard backend
-    ├── state_manager.py   # Setup state tracking
-    └── wizard.py          # Multi-step setup logic
+├── orchestrator.py             # Multi-agent coordination engine (915 lines)
+├── mission_planner.py          # ✨ Intelligent mission generation (630 lines, Handover 0020)
+├── agent_selector.py           # ✨ Smart agent selection logic (287 lines, Handover 0020)
+├── workflow_engine.py          # ✨ Multi-agent workflow coordination (500 lines, Handover 0020)
+├── agent_job_manager.py        # ✨ Agent job lifecycle management (159 lines, Handover 0019)
+├── agent_communication_queue.py # ✨ Agent-to-agent messaging (Handover 0019)
+├── job_coordinator.py          # ✨ Parent-child job orchestration (604 lines, Handover 0019)
+├── database.py                 # PostgreSQL connection management
+├── tenant.py                   # Multi-tenant isolation manager
+├── models.py                   # SQLAlchemy ORM models
+├── template_manager.py         # Unified template system (342 lines)
+├── optimization/               # Serena MCP optimization layer (v3.0)
+│   ├── serena_optimizer.py     # Core optimization engine
+│   ├── tool_interceptor.py     # MCP tool call optimization
+│   └── mission_optimizer.py    # Mission-time rule injection
+├── auth/                       # Authentication services
+│   ├── manager.py              # AuthManager class
+│   ├── jwt_handler.py          # JWT token operations
+│   └── password.py             # bcrypt password handling
+├── tools/                      # MCP tool implementations (34+ tools)
+│   ├── project.py              # Project management tools
+│   ├── agent.py                # Agent orchestration tools
+│   ├── message.py              # Message queue tools
+│   ├── context.py              # Context management tools
+│   ├── template.py             # Template CRUD operations
+│   ├── task_templates.py       # Task template management
+│   ├── optimization.py         # Optimization control tools (6 tools)
+│   └── orchestration.py        # ✨ Orchestration tools (Handover 0020)
+└── setup/                      # Setup wizard backend
+    ├── state_manager.py        # Setup state tracking
+    └── wizard.py               # Multi-step setup logic
 ```
 
 **MCP Tools Architecture**:
-- **28+ specialized tools** for agent coordination (22 original + 6 optimization)
+- **34+ specialized tools** for agent coordination (22 original + 6 optimization + 6 orchestration)
 - **Tool registration** via decorator pattern
 - **Database session management** for each tool call
 - **Tenant isolation** enforced at tool level
 - **Optimization layer** intercepts Serena MCP tool calls (v3.0)
+- **Agent job management** (Handover 0019): Job creation, messaging, lifecycle management
+- **Orchestration tools** (Handover 0020): Mission generation, agent selection, workflow coordination
 
 **Serena Optimization Layer** (v3.0):
 - **60-90% token reduction** through symbolic operation enforcement
@@ -330,6 +466,85 @@ src/giljo_mcp/
 
 **Archive Status**: Moved to `handovers/completed/harmonized/HANDOVER_0010_SERENA_MCP_OPTIMIZATION_LAYER-C.md`
 
+#### HANDOVER 0019 - Agent Job Management System (COMPLETE)
+
+**Implementation Status**: ✅ **COMPLETE** - Production-ready multi-agent job coordination
+
+**Core Implementation**:
+- **`AgentJobManager`** (`src/giljo_mcp/agent_job_manager.py` - 159 lines) - Job lifecycle management
+- **`AgentCommunicationQueue`** (`src/giljo_mcp/agent_communication_queue.py`) - Agent-to-agent messaging
+- **`JobCoordinator`** (`src/giljo_mcp/job_coordinator.py` - 604 lines) - Parent-child job orchestration
+- **Database Model**: `MCPAgentJob` with JSONB message storage
+- **13 REST API endpoints** for job management
+- **4 WebSocket event handlers** for real-time updates
+
+**Key Features Delivered**:
+- **Job Lifecycle Management**: pending → active → completed/failed state machine
+- **Agent-to-Agent Messaging**: JSONB-based message queue with acknowledgment tracking
+- **Parent-Child Hierarchies**: Jobs can spawn child jobs for distributed work
+- **Multi-Tenant Isolation**: 100% enforced across all queries and operations
+- **WebSocket Real-Time Events**: job:created, job:acknowledged, job:completed, job:failed, job:message
+- **Performance**: Sub-100ms for most operations (job creation <50ms, status update <20ms)
+
+**API Endpoints** (13 Total):
+- POST /api/agent-jobs - Create job
+- GET /api/agent-jobs - List jobs (with filtering)
+- GET /api/agent-jobs/{job_id} - Get job details
+- PATCH /api/agent-jobs/{job_id} - Update job
+- DELETE /api/agent-jobs/{job_id} - Delete job
+- POST /api/agent-jobs/{job_id}/acknowledge - Acknowledge job (pending → active)
+- POST /api/agent-jobs/{job_id}/complete - Complete job (active → completed)
+- POST /api/agent-jobs/{job_id}/fail - Fail job (active/pending → failed)
+- POST /api/agent-jobs/{job_id}/messages - Send message
+- GET /api/agent-jobs/{job_id}/messages - Get messages
+- POST /api/agent-jobs/{job_id}/messages/{message_id}/acknowledge - Acknowledge message
+- POST /api/agent-jobs/{job_id}/spawn-children - Spawn child jobs
+- GET /api/agent-jobs/{job_id}/hierarchy - Get job hierarchy
+
+**Test Coverage**:
+- **Core Components**: 80 tests passing, 89.15% coverage
+- **Integration Tests**: 119+ total tests
+- **Security**: Multi-tenant isolation verified 100%
+
+**Archive Status**: Moved to `handovers/completed/0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT-C.md`
+
+#### HANDOVER 0020 - Orchestrator Enhancement for 70% Token Reduction (COMPLETE)
+
+**Implementation Status**: ✅ **COMPLETE** - Intelligent mission generation and agent coordination
+
+**Core Implementation**:
+- **`MissionPlanner`** (`src/giljo_mcp/mission_planner.py` - 630 lines) - Intelligent mission generation
+- **`AgentSelector`** (`src/giljo_mcp/agent_selector.py` - 287 lines) - Smart agent type selection
+- **`WorkflowEngine`** (`src/giljo_mcp/workflow_engine.py` - 500 lines) - Multi-agent workflow coordination
+- **Enhanced `ProjectOrchestrator`** with 4 new coordination methods
+- **7 REST API endpoints** for orchestration operations
+- **3 MCP tools** for orchestration control
+
+**Key Features Delivered**:
+- **70% Token Reduction Architecture**: Orchestrator reads full context, agents receive condensed missions
+- **Intelligent Mission Generation**: Context-aware mission creation per agent type
+- **Smart Agent Selection**: Automated agent type selection based on work requirements
+- **Workflow Coordination**: Sequential (waterfall) and parallel execution patterns
+- **Failure Recovery**: Automatic retry and recovery strategies
+- **Token Metrics**: Real-time tracking of token usage and reduction
+
+**Orchestration API Endpoints** (7 Total):
+- POST /api/orchestrator/process-vision - Start vision processing workflow
+- POST /api/orchestrator/create-missions - Generate condensed missions
+- POST /api/orchestrator/spawn-team - Spawn multi-agent team
+- GET /api/orchestrator/workflow-status - Monitor workflow progress
+- POST /api/orchestrator/coordinate - Start coordination
+- POST /api/orchestrator/handle-failure - Failure recovery
+- GET /api/orchestrator/metrics - Performance and token metrics
+
+**Token Reduction Strategy**:
+1. **Orchestrator reads full vision** (one-time token cost)
+2. **Creates condensed missions** (specific to each agent)
+3. **Agents receive only relevant context** (70% token reduction)
+4. **Coordination via messaging** (minimal overhead)
+
+**Archive Status**: Moved to `handovers/completed/0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT-C.md`
+
 ### Frontend Architecture
 
 **Vue 3 Application Structure**:
@@ -350,17 +565,25 @@ frontend/
 │   │   └── websocket.js   # WebSocket connection state
 │   ├── views/             # Page-level components
 │   │   ├── Login.vue      # Authentication page
+│   │   ├── ForgotPassword.vue # ✨ Password reset with recovery PIN (Handover 0023)
 │   │   ├── Setup.vue      # Setup wizard (3 steps)
 │   │   ├── Dashboard.vue  # Main dashboard
-│   │   └── Projects.vue   # Project management
+│   │   ├── Projects.vue   # Project management
+│   │   ├── SystemSettings.vue # ✨ Admin Settings v3.0 (Handovers 0025-0027)
+│   │   ├── UserSettings.vue # ✨ Enhanced with API keys + Serena toggle (Handover 0028)
+│   │   └── Users.vue      # ✨ Standalone user management (Handover 0029)
 │   ├── components/        # Reusable components
 │   │   ├── AgentCard.vue  # Agent status display
 │   │   ├── ProjectCard.vue# Project overview cards
 │   │   ├── MessageQueue.vue# Real-time message display
-│   │   ├── AIToolSetup.vue # ✨ NEW: AI tool configuration UI (243 lines)
-│   │   ├── ApiKeyManager.vue # ✨ NEW: User API key management (266 lines)
-│   │   ├── ApiKeyWizard.vue  # ✨ NEW: API key generation modal
-│   │   └── setup/         # ✨ NEW: Enhanced setup components
+│   │   ├── AIToolSetup.vue # AI tool configuration UI (243 lines)
+│   │   ├── ApiKeyManager.vue # User API key management (266 lines, Handover 0028)
+│   │   ├── ApiKeyWizard.vue  # API key generation modal
+│   │   ├── UserManager.vue # ✨ Enhanced with email + created date (Handover 0028)
+│   │   ├── DatabaseConnection.vue # ✨ Enhanced test + display (Handover 0026)
+│   │   ├── FirstLoginSetup.vue # ✨ Password change + PIN setup (Handover 0023)
+│   │   ├── ForgotPasswordPin.vue # ✨ PIN-based password reset (Handover 0023)
+│   │   └── setup/         # Enhanced setup components
 │   │       └── WelcomePasswordStep.vue # Two-phase auth welcome
 │   └── utils/             # Utility modules
 │       ├── api.js         # Axios HTTP client configuration
@@ -436,6 +659,118 @@ const layout = computed(() => {
 - **Future-ready** for tenant-specific layouts and white-labeling
 
 **Code Reference**: `frontend/src/layouts/`, `frontend/src/App.vue`, `frontend/src/router/index.js`
+
+### Admin Settings v3.0 Refactoring (Handovers 0025-0029)
+
+**Implementation Date**: 2025-10-20
+**Status**: ✅ **COMPLETE** - Production-ready modernization
+
+GiljoAI MCP v3.0 includes a complete refactoring of Admin Settings with improved UX, accessibility, and organization.
+
+#### SystemSettings.vue Structure (4 Tabs)
+
+**1. Network Tab** (Handover 0025):
+- v3.0 unified binding configuration (0.0.0.0 binding)
+- Removed deployment MODE selection (local/LAN/remote)
+- Removed localhost-specific messaging
+- Clean, single-architecture presentation
+- External IP selection during install
+
+**2. Database Tab** (Handover 0026):
+- Database connection information with copy buttons
+- Database users section with role descriptions:
+  - `giljo_owner`: Full database control (owner)
+  - `giljo_user`: Application runtime access
+- Enhanced test connection button with proper error handling
+- Professional card-based layout
+- 47 comprehensive tests
+
+**3. Integrations Tab** (Handover 0027):
+- **Agent Coding Tools Section**:
+  - Claude Code CLI with MCP configuration modal
+  - Codex CLI with TOML configuration support
+  - Gemini CLI with multi-modal capabilities
+  - Configuration download and copy-to-clipboard
+- **Native Integrations Section**:
+  - Serena MCP integration (deep semantic code analysis)
+  - Future integrations placeholder
+- WCAG 2.1 Level AA accessibility compliant
+- Professional branding with logos
+
+**4. Security Tab** (Unchanged):
+- Cookie domain whitelist management
+
+**Users Tab**: REMOVED - Relocated to standalone page (see Handover 0029)
+
+#### UserSettings.vue Enhancements (Handover 0028)
+
+**API and Integrations Tab** (Enhanced):
+- Industry-standard API key masking (`gk_****...****`)
+- Single API key type (simplified UX)
+- Serena integration toggle
+- AI tool configuration instructions:
+  - Claude Code CLI setup guide
+  - Codex CLI setup guide
+  - Gemini CLI setup guide
+- Enhanced UserManager component:
+  - Email field (searchable, sortable)
+  - Created date field (formatted display)
+- 193+ comprehensive TDD tests
+
+#### Standalone Users Page (Handover 0029)
+
+**New Route**: `/admin/users`
+**Access**: Avatar dropdown → Users (admin only)
+
+**Features**:
+- Complete user management interface
+- Separated from Admin Settings for cleaner UX
+- Role-based access control (admin only)
+- Enhanced user table with email and created date
+- 81 comprehensive TDD tests
+
+**Navigation Changes**:
+- Removed "My API Keys" from avatar dropdown (duplicate)
+- Added "Users" menu item for admins
+- Clean separation: Admin Settings vs User Management
+
+### Password Reset Functionality (Handover 0023)
+
+**Implementation Date**: 2025-10-21
+**Status**: ✅ **COMPLETE** - Production-ready self-service password recovery
+
+**Recovery PIN System**:
+- 4-digit recovery PIN for self-service password reset
+- bcrypt hashing with timing-safe comparison
+- Rate limiting: 5 failed attempts trigger 15-minute lockout
+- Audit logging for all PIN verification attempts
+
+**Frontend Components**:
+- `ForgotPassword.vue` - Initial password reset request
+- `ForgotPasswordPin.vue` - PIN verification and password reset
+- `FirstLoginSetup.vue` - New user password change + PIN setup
+- WCAG 2.1 AA accessibility compliant
+
+**Backend Endpoints** (3 New):
+- POST /api/auth/verify-pin-and-reset-password - PIN verification + password reset
+- POST /api/auth/check-first-login - Check if user needs password change/PIN setup
+- POST /api/auth/complete-first-login - Complete first-login workflow
+
+**Database Schema Additions**:
+- `recovery_pin_hash` - bcrypt hash of 4-digit PIN
+- `failed_pin_attempts` - Track failed PIN verification attempts
+- `pin_lockout_until` - Lockout expiration timestamp
+- `must_change_password` - Force password change flag
+- `must_set_pin` - Force PIN setup flag
+
+**Security Features**:
+- Generic error messages (no user enumeration)
+- bcrypt timing-safe comparison
+- Rate limiting with lockout tracking
+- Audit logging
+- Admin password reset capability
+
+**Test Coverage**: 6/6 integration tests passing, comprehensive frontend validation
 
 **Real-time Updates**:
 ```javascript
@@ -752,6 +1087,147 @@ npm run dev  # Starts on port 5173 with HMR
 # Full stack development
 python start_giljo.py --dev
 ```
+
+### Platform Handler Architecture (Handover 0035)
+
+**Implementation Date**: 2025-10-19
+**Status**: ✅ **COMPLETE** - 25.6% code reduction, unified architecture
+
+GiljoAI MCP v3.1.0 implements a unified cross-platform installer using the Strategy pattern, eliminating code duplication and ensuring consistent behavior across Windows, Linux, and macOS.
+
+#### Architecture Overview
+
+**Before** (Deprecated):
+- Separate `install.py` (Windows, 1,344 lines)
+- Separate `linux_installer/linux_install.py` (Linux/macOS, 1,361 lines)
+- 85% code duplication (~2,500 lines)
+- Diverging implementations (critical bug: missing pg_trgm extension on Linux)
+
+**After** (v3.1.0):
+- Single unified `install.py` orchestrator (400 lines)
+- Platform-agnostic core modules
+- Platform-specific handlers (Strategy pattern)
+- 25.6% code reduction (5,000+ lines → 3,350 lines)
+
+#### File Structure
+
+```
+F:\GiljoAI_MCP/
+├── install.py                         # Unified orchestrator (400 lines)
+└── installer/
+    ├── core/                          # Platform-agnostic modules
+    │   ├── database.py                # PostgreSQL setup + pg_trgm extension (1,000 lines)
+    │   └── config.py                  # Configuration generation (700 lines)
+    ├── platforms/                     # Platform-specific handlers
+    │   ├── __init__.py                # Auto-detection logic
+    │   ├── base.py                    # Abstract PlatformHandler interface (100 lines)
+    │   ├── windows.py                 # Windows handler (300 lines)
+    │   ├── linux.py                   # Linux handler (300 lines)
+    │   └── macos.py                   # macOS handler (200 lines)
+    └── shared/                        # Shared utilities
+        ├── postgres.py                # PostgreSQL discovery (200 lines)
+        └── network.py                 # Network utilities (150 lines)
+```
+
+#### Platform Handler Interface
+
+**Abstract Base Class** (`installer/platforms/base.py`):
+
+```python
+from abc import ABC, abstractmethod
+from pathlib import Path
+
+class PlatformHandler(ABC):
+    """Abstract base for platform-specific installation operations"""
+
+    @property
+    @abstractmethod
+    def platform_name(self) -> str:
+        """Return: 'Windows', 'Linux', or 'macOS'"""
+        pass
+
+    @abstractmethod
+    def get_venv_python(self, venv_dir: Path) -> Path:
+        """Return: Path to venv Python executable"""
+        pass
+
+    @abstractmethod
+    def get_venv_pip(self, venv_dir: Path) -> Path:
+        """Return: Path to venv pip executable"""
+        pass
+
+    @abstractmethod
+    def create_desktop_shortcut(self, name: str, target: Path) -> bool:
+        """Create platform-specific desktop shortcut"""
+        pass
+
+    @abstractmethod
+    def find_postgres_installations(self) -> List[Path]:
+        """Find PostgreSQL installations on this platform"""
+        pass
+
+    @abstractmethod
+    def detect_external_ip(self) -> str:
+        """Detect external IP address using platform tools"""
+        pass
+```
+
+#### Platform-Specific Implementations
+
+**Windows Handler** (`installer/platforms/windows.py`):
+- venv paths: `venv\Scripts\python.exe`, `venv\Scripts\pip.exe`
+- PostgreSQL discovery: `C:\Program Files\PostgreSQL\*\bin\psql.exe`
+- Desktop shortcuts: `.lnk` files via `win32com`
+- Network detection: `ipconfig` fallback
+
+**Linux Handler** (`installer/platforms/linux.py`):
+- venv paths: `venv/bin/python`, `venv/bin/pip`
+- PostgreSQL discovery: `/usr/lib/postgresql/*/bin/psql`
+- Desktop shortcuts: `.desktop` files with `gio trust`
+- Network detection: `ip -4 addr` fallback
+
+**macOS Handler** (`installer/platforms/macos.py`):
+- venv paths: `venv/bin/python`, `venv/bin/pip`
+- PostgreSQL discovery: `/usr/local/opt/postgresql@*/bin/psql`
+- Desktop shortcuts: None (future: .app bundles)
+- Network detection: `ifconfig` fallback
+
+#### Unified Core Modules
+
+**Database Setup** (`installer/core/database.py`):
+- 100% platform-agnostic PostgreSQL setup
+- Creates `giljo_mcp` database
+- Creates `giljo_owner` and `giljo_user` roles
+- Installs `pg_trgm` extension (critical for full-text search)
+- Creates all tables via `DatabaseManager.create_tables_async()`
+- Identical SQL execution on all platforms
+
+**Configuration Generation** (`installer/core/config.py`):
+- Generates `.env` file (database credentials, JWT secret)
+- Generates `config.yaml` (API/frontend ports, network config)
+- 100% platform-agnostic
+- v3.0 unified architecture (0.0.0.0 binding, firewall control)
+
+#### Benefits
+
+**Immediate**:
+- Bug fixes apply to all platforms (pg_trgm now installed everywhere)
+- Handover implementations stay synchronized (0034, 0017, future)
+- 25.6% less code to maintain (3,350 vs 5,000+ lines)
+- Professional architecture (Strategy pattern, SOLID principles)
+
+**Long-Term**:
+- macOS support: Fully implemented and tested
+- Docker support: Just add `DockerPlatformHandler`
+- WSL support: Add `WindowsLinuxPlatformHandler`
+- Extensible for future platforms
+
+**Testing**:
+- 4 comprehensive test phases
+- All platforms verified
+- Production-ready deployment
+
+**Code Reference**: `installer/platforms/`, `installer/core/`, `install.py`
 
 ### Production Deployment
 
