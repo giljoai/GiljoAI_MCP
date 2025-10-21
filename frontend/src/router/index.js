@@ -129,17 +129,6 @@ const routes = [
     },
   },
   {
-    path: '/api-keys',
-    name: 'ApiKeys',
-    component: () => import('@/views/ApiKeysView.vue'),
-    meta: {
-      layout: 'default',
-      title: 'My API Keys',
-      showInNav: false, // Now in profile menu
-      requiresAuth: true,
-    },
-  },
-  {
     path: '/admin/settings',
     name: 'SystemSettings',
     component: () => import('@/views/SystemSettings.vue'),
