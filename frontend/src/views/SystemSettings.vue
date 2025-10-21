@@ -18,10 +18,7 @@
         <v-icon start>mdi-api</v-icon>
         Integrations
       </v-tab>
-      <v-tab value="users">
-        <v-icon start>mdi-account-multiple</v-icon>
-        Users
-      </v-tab>
+
       <v-tab value="security">
         <v-icon start>mdi-shield-lock</v-icon>
         Security
@@ -370,12 +367,7 @@
         </v-card>
       </v-window-item>
 
-      <!-- Users Management (Phase 5) -->
-      <v-window-item value="users">
-        <UserManager />
-      </v-window-item>
-
-      <!-- Security Settings -->
+<!-- Security Settings -->
       <v-window-item value="security">
         <v-card>
           <v-card-title>Security Settings</v-card-title>
@@ -751,7 +743,6 @@ context_sharing = true</code></pre>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
-import UserManager from '@/components/UserManager.vue'
 import { API_CONFIG } from '@/config/api'
 import api from '@/services/api'
 

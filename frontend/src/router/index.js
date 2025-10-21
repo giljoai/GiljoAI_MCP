@@ -142,14 +142,14 @@ const routes = [
     },
   },
   {
-    path: '/users',
+    path: '/admin/users',
     name: 'Users',
-    component: () => import('@/views/UsersView.vue'),
+    component: () => import('@/views/Users.vue'),
     meta: {
       layout: 'default',
       title: 'User Management',
       icon: 'mdi-account-multiple',
-      showInNav: true,
+      showInNav: false, // Accessible via avatar dropdown, not main nav
       requiresAuth: true,
       requiresAdmin: true,
     },
