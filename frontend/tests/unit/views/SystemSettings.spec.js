@@ -172,13 +172,16 @@ describe('SystemSettings.vue', () => {
     })
   })
 
-  describe('Network Tab', () => {
-    it('displays current deployment mode', async () => {
+  describe('Network Tab - Refactored v3.1', () => {
+    it('displays external host from config', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          installation: { mode: 'lan' },
-          services: { api: { host: '10.1.0.164', port: 7272 } },
+          services: {
+            external_host: '192.168.1.100',
+            api: { port: 7272 },
+            frontend: { port: 7274 }
+          },
           security: { cors: { allowed_origins: [] } }
         })
       })
@@ -187,7 +190,8 @@ describe('SystemSettings.vue', () => {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
           }
         }
       })
@@ -195,35 +199,148 @@ describe('SystemSettings.vue', () => {
       await wrapper.vm.$nextTick()
       await new Promise(resolve => setTimeout(resolve, 0))
 
-      const modeChip = wrapper.find('[data-test="mode-chip"]')
-      if (modeChip.exists()) {
-        expect(modeChip.text()).toContain('LAN')
-      }
+      expect(wrapper.vm.networkSettings.externalHost).toBe('192.168.1.100')
     })
 
-    it('displays API host and port configuration', async () => {
+    it('displays API and Frontend ports', async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          services: {
+            external_host: 'localhost',
+            api: { port: 7272 },
+            frontend: { port: 7274 }
+          },
+          security: { cors: { allowed_origins: [] } }
+        })
+      })
+
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
           }
         }
       })
 
-      const apiHostField = wrapper.find('[data-test="api-host-field"]')
-      const apiPortField = wrapper.find('[data-test="api-port-field"]')
+      await wrapper.vm.$nextTick()
+      await new Promise(resolve => setTimeout(resolve, 0))
 
-      expect(apiHostField.exists()).toBe(true)
-      expect(apiPortField.exists()).toBe(true)
+      expect(wrapper.vm.networkSettings.apiPort).toBe(7272)
+      expect(wrapper.vm.networkSettings.frontendPort).toBe(7274)
     })
 
-    it('shows CORS origins management', async () => {
+    it('shows external host field as readonly', async () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
+      })
+
+      const externalHostField = wrapper.find('[data-test="external-host-field"]')
+      if (externalHostField.exists()) {
+        expect(externalHostField.attributes('readonly')).toBeDefined()
+      }
+    })
+
+    it('shows API port field as readonly', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
+      })
+
+      const apiPortField = wrapper.find('[data-test="api-port-field"]')
+      if (apiPortField.exists()) {
+        expect(apiPortField.attributes('readonly')).toBeDefined()
+      }
+    })
+
+    it('shows frontend port field as readonly', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
+      })
+
+      const frontendPortField = wrapper.find('[data-test="frontend-port-field"]')
+      if (frontendPortField.exists()) {
+        expect(frontendPortField.attributes('readonly')).toBeDefined()
+      }
+    })
+
+    it('provides copy button for external host', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
+      })
+
+      const copyButton = wrapper.find('[data-test="copy-external-host-btn"]')
+      expect(copyButton.exists()).toBe(true)
+    })
+
+    it('copies external host to clipboard when copy button clicked', async () => {
+      const clipboardSpy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          services: {
+            external_host: '192.168.1.100',
+            api: { port: 7272 },
+            frontend: { port: 7274 }
+          },
+          security: { cors: { allowed_origins: [] } }
+        })
+      })
+
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
+      })
+
+      await wrapper.vm.$nextTick()
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      if (wrapper.vm.copyExternalHost) {
+        wrapper.vm.copyExternalHost()
+        expect(clipboardSpy).toHaveBeenCalledWith('192.168.1.100')
+      }
+
+      clipboardSpy.mockRestore()
+    })
+
+    it('shows CORS origins management section', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
           }
         }
       })
@@ -232,29 +349,60 @@ describe('SystemSettings.vue', () => {
       expect(corsSection.exists()).toBe(true)
     })
 
-    it('displays API key info in LAN mode', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          installation: { mode: 'lan' },
-          services: { api: { host: '10.1.0.164', port: 7272 } },
-          security: { cors: { allowed_origins: [] } }
-        })
+    it('does NOT show deprecated mode chip', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
       })
 
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          created_at: '2025-10-08T12:00:00Z',
-          key_preview: 'gk_1234567890abcdef'
-        })
+      const modeChip = wrapper.find('[data-test="mode-chip"]')
+      expect(modeChip.exists()).toBe(false)
+    })
+
+    it('does NOT show deprecated API key info', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
       })
+
+      const apiKeyField = wrapper.find('[data-test="api-key-field"]')
+      expect(apiKeyField.exists()).toBe(false)
+    })
+
+    it('does NOT show regenerate API key button', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
+      })
+
+      const regenerateBtn = wrapper.find('[data-test="regenerate-api-key-btn"]')
+      expect(regenerateBtn.exists()).toBe(false)
+    })
+
+    it('falls back to default values when config fails to load', async () => {
+      global.fetch.mockRejectedValueOnce(new Error('Network error'))
 
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
           }
         }
       })
@@ -262,10 +410,25 @@ describe('SystemSettings.vue', () => {
       await wrapper.vm.$nextTick()
       await new Promise(resolve => setTimeout(resolve, 0))
 
-      const apiKeyField = wrapper.find('[data-test="api-key-field"]')
-      if (apiKeyField.exists()) {
-        expect(apiKeyField.exists()).toBe(true)
-      }
+      expect(wrapper.vm.networkSettings.externalHost).toBe('localhost')
+      expect(wrapper.vm.networkSettings.apiPort).toBe(7272)
+      expect(wrapper.vm.networkSettings.frontendPort).toBe(7274)
+      expect(wrapper.vm.corsOrigins).toEqual([])
+    })
+
+    it('shows informational alert about unified v3.0 architecture', async () => {
+      wrapper = mount(SystemSettings, {
+        global: {
+          plugins: [vuetify, router, pinia],
+          stubs: {
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
+            UserManager: { template: '<div>User Manager Mock</div>' }
+          }
+        }
+      })
+
+      const unifiedAlert = wrapper.find('[data-test="v3-unified-alert"]')
+      expect(unifiedAlert.exists()).toBe(true)
     })
   })
 
