@@ -32,6 +32,7 @@ class ProjectUpdate(BaseModel):
 
 class ProjectResponse(BaseModel):
     id: str
+    alias: str
     name: str
     mission: str
     status: str
@@ -69,8 +70,18 @@ async def create_project(
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to create project"))  # noqa: TRY301
 
+        # Fetch the created project to get the alias
+        from src.giljo_mcp.models import Project
+        from sqlalchemy import select
+        
+        async with state.db_manager.get_session() as session:
+            stmt = select(Project).where(Project.id == result["project_id"])
+            db_result = await session.execute(stmt)
+            created_project = db_result.scalar_one_or_none()
+        
         response = ProjectResponse(
             id=result["project_id"],
+            alias=created_project.alias if created_project else "UNKNWN",
             name=project.name,
             mission=project.mission,
             status="inactive",
@@ -134,6 +145,7 @@ async def list_projects(
             projects.append(
                 ProjectResponse(
                     id=proj["id"],
+                    alias=proj.get("alias", "UNKNWN"),
                     name=proj["name"],
                     mission=proj["mission"],
                     status=proj["status"],
@@ -149,6 +161,61 @@ async def list_projects(
 
         return projects  # noqa: TRY300
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/by-alias/{alias}", response_model=ProjectResponse)
+async def get_project_by_alias(alias: str):
+    """Get project details by short alias"""
+    from api.app import state
+    from src.giljo_mcp.models import Project
+    from sqlalchemy import select
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session() as session:
+            # Query project by alias
+            stmt = select(Project).where(Project.alias == alias.upper())
+            result = await session.execute(stmt)
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Project with alias '{alias}' not found"
+                )
+
+            # Get agent and message counts
+            from src.giljo_mcp.models import Agent, Message
+            
+            agent_stmt = select(Agent).where(Agent.project_id == project.id)
+            agent_result = await session.execute(agent_stmt)
+            agent_count = len(agent_result.scalars().all())
+            
+            message_stmt = select(Message).where(Message.project_id == project.id)
+            message_result = await session.execute(message_stmt)
+            message_count = len(message_result.scalars().all())
+
+            return ProjectResponse(
+                id=project.id,
+                alias=project.alias,
+                name=project.name,
+                mission=project.mission,
+                status=project.status,
+                product_id=project.product_id,
+                created_at=project.created_at,
+                updated_at=project.updated_at or project.created_at,
+                context_budget=project.context_budget,
+                context_used=project.context_used,
+                agent_count=agent_count,
+                message_count=message_count,
+            )
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -170,6 +237,7 @@ async def get_project(project_id: str):
         proj = result["project"]
         return ProjectResponse(
             id=proj["id"],
+            alias=proj.get("alias", "UNKNWN"),
             name=proj["name"],
             mission=proj["mission"],
             status=proj["status"],

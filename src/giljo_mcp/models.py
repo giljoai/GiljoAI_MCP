@@ -36,6 +36,25 @@ def generate_uuid():
     return str(uuid4())
 
 
+def generate_project_alias():
+    """
+    Generate a unique 6-character alphanumeric project alias.
+
+    Format: A-Z0-9, 6 characters (e.g., "A1B2C3")
+
+    This function is used as a default callable for new Project instances.
+    Database-level uniqueness is enforced by the unique index on the alias column.
+
+    Returns:
+        str: 6-character alphanumeric alias
+    """
+    import string
+    import random
+
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=6))
+
+
 class Product(Base):
     """
     Product model - TOP-level organizational unit.
@@ -134,6 +153,8 @@ class Project(Base):
     tenant_key = Column(String(36), nullable=False, default=generate_uuid)
     product_id = Column(String(36), ForeignKey("products.id"), nullable=True)  # Projects belong to Products
     name = Column(String(255), nullable=False)
+    alias = Column(String(6), nullable=False, unique=True, index=True, default=generate_project_alias,
+                   comment="6-character alphanumeric project identifier (e.g., A1B2C3)")
     mission = Column(Text, nullable=False)
     status = Column(String(50), default="active")  # active, paused, completed, archived
     context_budget = Column(Integer, default=150000)
