@@ -128,19 +128,18 @@ describe('SystemSettings.vue', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('renders all 5 tabs (Network, Database, Integrations, Users, Security)', () => {
+    it('renders all 4 tabs (Network, Database, Integrations, Security)', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
           stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
+            DatabaseConnection: { template: '<div>Database Connection Mock</div>' }
           }
         }
       })
 
       const tabs = wrapper.findAll('.v-tab')
-      expect(tabs.length).toBe(5)
+      expect(tabs.length).toBe(4)
     })
 
     it('renders Network tab', () => {
@@ -188,7 +187,7 @@ describe('SystemSettings.vue', () => {
       expect(integrationsTab).toBeDefined()
     })
 
-    it('renders Users tab placeholder', () => {
+    it('renders Security tab', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
@@ -199,8 +198,8 @@ describe('SystemSettings.vue', () => {
       })
 
       const tabs = wrapper.findAll('.v-tab')
-      const usersTab = tabs.find(tab => tab.text().includes('Users'))
-      expect(usersTab).toBeDefined()
+      const securityTab = tabs.find(tab => tab.text().includes('Security'))
+      expect(securityTab).toBeDefined()
     })
   })
 

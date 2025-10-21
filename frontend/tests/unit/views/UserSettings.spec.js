@@ -92,7 +92,7 @@ describe('UserSettings.vue', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('renders all 4 tabs', () => {
+    it('renders all 5 tabs', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia],
@@ -103,7 +103,7 @@ describe('UserSettings.vue', () => {
       })
 
       const tabs = wrapper.findAll('.v-tab')
-      expect(tabs.length).toBe(4)
+      expect(tabs.length).toBe(5)
     })
 
     it('renders General tab', () => {
@@ -166,7 +166,7 @@ describe('UserSettings.vue', () => {
       expect(templatesTab).toBeDefined()
     })
 
-    it('does NOT render API Keys tab', () => {
+    it('renders API and Integrations tab', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia],
@@ -177,8 +177,8 @@ describe('UserSettings.vue', () => {
       })
 
       const tabs = wrapper.findAll('.v-tab')
-      const apiKeysTab = tabs.find(tab => tab.text().includes('API Keys'))
-      expect(apiKeysTab).toBeUndefined()
+      const apiTab = tabs.find(tab => tab.text().includes('API'))
+      expect(apiTab).toBeDefined()
     })
 
     it('does NOT render Database tab', () => {
