@@ -31,6 +31,19 @@ const routes = [
     },
   },
   {
+    path: '/first-login',
+    name: 'FirstLogin',
+    component: () => import('@/views/FirstLogin.vue'),
+    meta: {
+      layout: 'auth',
+      title: 'Complete Account Setup',
+      showInNav: false,
+      requiresAuth: true, // Requires authentication
+      requiresSetup: false, // Skip setup check for this route
+      requiresPasswordChange: false, // Skip password change check (this IS the password change page)
+    },
+  },
+  {
     path: '/',
     name: 'Dashboard',
     component: () => import('@/views/DashboardView.vue'),

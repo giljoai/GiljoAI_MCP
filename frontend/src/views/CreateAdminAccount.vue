@@ -89,7 +89,7 @@
               </p>
 
               <!-- Requirements List -->
-              <v-list density="compact" class="requirement-list">
+              <v-list density="compact" class="requirement-list mb-4">
                 <v-list-item v-for="req in passwordRequirements" :key="req.text" class="px-0 py-1">
                   <template #prepend>
                     <v-icon :color="req.met ? 'success' : 'error'" size="small">
@@ -99,6 +99,57 @@
                   <v-list-item-title class="text-caption">{{ req.text }}</v-list-item-title>
                 </v-list-item>
               </v-list>
+
+              <v-divider class="my-4" />
+
+              <!-- Recovery PIN Section -->
+              <h3 class="text-subtitle-1 font-weight-bold mb-2">
+                <v-icon class="mr-2">mdi-shield-key</v-icon>
+                Recovery PIN Setup
+              </h3>
+              <p class="text-caption text-medium-emphasis mb-4">
+                Create a 4-digit PIN for password recovery. This PIN can be used if you forget your password.
+              </p>
+
+              <!-- Recovery PIN -->
+              <v-text-field
+                v-model="recoveryPin"
+                label="Recovery PIN (4 digits)"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]{4}"
+                maxlength="4"
+                :rules="pinRules"
+                variant="outlined"
+                density="comfortable"
+                class="mb-3"
+                prepend-inner-icon="mdi-numeric"
+                @input="handlePinInput"
+                @keypress="onlyNumbers"
+                hint="Enter 4 digits (example: 1234)"
+                persistent-hint
+                aria-label="Enter your 4-digit recovery PIN"
+                aria-required="true"
+              />
+
+              <!-- Confirm PIN -->
+              <v-text-field
+                v-model="confirmPin"
+                label="Confirm Recovery PIN"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]{4}"
+                maxlength="4"
+                :rules="confirmPinRules"
+                variant="outlined"
+                density="comfortable"
+                class="mb-3"
+                prepend-inner-icon="mdi-numeric-positive-1"
+                @input="handleConfirmPinInput"
+                @keypress="onlyNumbers"
+                aria-label="Confirm your 4-digit recovery PIN"
+                aria-required="true"
+              />
 
               <!-- Error Message -->
               <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
@@ -138,6 +189,8 @@ const email = ref('')
 const fullName = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const recoveryPin = ref('')
+const confirmPin = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const formValid = ref(false)
@@ -170,6 +223,17 @@ const confirmPasswordRules = [
   v => v === password.value || 'Passwords do not match'
 ]
 
+const pinRules = [
+  v => !!v || 'Recovery PIN is required',
+  v => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
+]
+
+const confirmPinRules = [
+  v => !!v || 'PIN confirmation is required',
+  v => /^\d{4}$/.test(v) || 'PIN must be exactly 4 digits',
+  v => v === recoveryPin.value || 'PINs do not match'
+]
+
 // Password requirements
 const passwordRequirements = computed(() => [
   { text: 'At least 12 characters', met: password.value.length >= 12 },
@@ -197,8 +261,24 @@ const passwordStrengthText = computed(() => {
   return 'Strong'
 })
 
+// Methods for PIN input handling
+function handlePinInput(value) {
+  recoveryPin.value = value.replace(/\D/g, '').slice(0, 4)
+}
+
+function handleConfirmPinInput(value) {
+  confirmPin.value = value.replace(/\D/g, '').slice(0, 4)
+}
+
+function onlyNumbers(event) {
+  const charCode = event.which ? event.which : event.keyCode
+  if (charCode < 48 || charCode > 57) {
+    event.preventDefault()
+  }
+}
+
 // Clear error on input
-watch([username, email, password, confirmPassword], () => {
+watch([username, email, password, confirmPassword, recoveryPin, confirmPin], () => {
   errorMessage.value = ''
 })
 
@@ -216,7 +296,9 @@ const createAdmin = async () => {
       email: email.value || null,
       full_name: fullName.value || null,
       password: password.value,
-      confirm_password: confirmPassword.value
+      confirm_password: confirmPassword.value,
+      recovery_pin: recoveryPin.value,
+      confirm_pin: confirmPin.value
     })
 
     // Success - redirect to dashboard (JWT cookie set by API)

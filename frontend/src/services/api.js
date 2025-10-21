@@ -242,6 +242,11 @@ export const api = {
     listUsers: () => apiClient.get('/api/auth/users'),
     updateUser: (userId, data) => apiClient.put(`/api/auth/users/${userId}`, data),
     deleteUser: (userId) => apiClient.delete(`/api/auth/users/${userId}`),
+    // Password reset endpoints (Handover 0023)
+    checkFirstLogin: () => apiClient.post('/api/auth/check-first-login'),
+    completeFirstLogin: (data) => apiClient.post('/api/auth/complete-first-login', data),
+    verifyPinAndResetPassword: (data) => apiClient.post('/api/auth/verify-pin-and-reset-password', data),
+    resetUserPassword: (userId) => apiClient.post(`/api/users/${userId}/reset-password`),
   },
 
   // API Key Management

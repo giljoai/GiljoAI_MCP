@@ -98,8 +98,28 @@
                 <v-icon start v-if="!loading">mdi-login</v-icon>
                 {{ loading ? 'Logging in...' : 'Sign In' }}
               </v-btn>
+
+              <!-- Forgot Password Link -->
+              <div class="text-center mt-4">
+                <v-btn
+                  variant="text"
+                  color="primary"
+                  @click="showForgotPassword = true"
+                  :disabled="loading"
+                  aria-label="Open forgot password dialog"
+                >
+                  <v-icon start>mdi-lock-question</v-icon>
+                  Forgot Password?
+                </v-btn>
+              </div>
             </v-form>
           </v-card-text>
+
+          <!-- Forgot Password Modal -->
+          <ForgotPasswordPin
+            v-model:show="showForgotPassword"
+            @success="handlePasswordResetSuccess"
+          />
 
           <v-divider />
 
@@ -119,6 +139,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
+import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { useUserStore } from '@/stores/user'
@@ -135,6 +156,7 @@ const username = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 const showPassword = ref(false)
+const showForgotPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
 const successMessage = ref('')
@@ -167,10 +189,27 @@ async function handleLogin() {
       return
     }
 
-    // Check if password change is required (check from currentUser if available)
+    // Check if first login is required (password change or PIN setup)
+    try {
+      const firstLoginResponse = await api.auth.checkFirstLogin()
+      const firstLoginData = firstLoginResponse.data
+
+      if (firstLoginData.must_change_password || firstLoginData.must_set_pin) {
+        // Redirect to first login page for password change and/or PIN setup
+        console.log('[Login] First login detected, redirecting to /first-login')
+        router.push('/first-login')
+        return
+      }
+    } catch (firstLoginErr) {
+      console.warn('[Login] First login check failed:', firstLoginErr)
+      // Continue with normal login flow if check fails
+    }
+
+    // Legacy check for backward compatibility
     if (userStore.currentUser?.password_change_required) {
-      // Redirect to welcome page for password setup
-      router.push('/welcome')
+      // Redirect to first login page for password setup
+      console.log('[Login] Legacy password change required, redirecting to /first-login')
+      router.push('/first-login')
       return
     }
 
@@ -236,6 +275,12 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
+}
+
+// Handle password reset success
+function handlePasswordResetSuccess(message) {
+  successMessage.value = message
+  showForgotPassword.value = false
 }
 
 // Check if already authenticated on mount
