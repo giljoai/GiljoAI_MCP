@@ -13,21 +13,31 @@
 - **[First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md)** - Step-by-step onboarding from install to dashboard
 - **[MCP-over-HTTP Integration](MCP_OVER_HTTP_INTEGRATION.md)** - Connecting Claude Code via HTTP transport (zero dependencies)
 
-**New Implementation Features** (October 2025 Harmonization):
+**New Implementation Features** (October 2025):
 
 - **[AI Tool Configuration Management](AI_TOOL_CONFIGURATION_MANAGEMENT.md)** - Multi-AI tool support via user settings (Claude, CODEX, Gemini)
 - **[Template System Evolution](TEMPLATE_SYSTEM_EVOLUTION.md)** - Database-backed templates with AI tool preferences
 
+**Recent Production Features** (See [Recent Handovers](#recent-production-handovers-v30) for details):
+
+- Agent Job Management System (Handover 0019) - Multi-agent coordination foundation
+- 70% Token Reduction via Orchestrator Enhancement (Handover 0020) - Breakthrough efficiency
+- Self-Service Password Reset (Handover 0023) - Recovery PIN system
+- Admin Settings v3.0 Overhaul (Handovers 0025-0029) - Modern, cohesive interface
+- Unified Cross-Platform Installer (Handover 0035) - Windows, Linux, macOS support
+
 ## Table of Contents
 
 1. [System Architecture Summary](#system-architecture-summary)
-2. [Fresh Factory Installation Flow](#fresh-factory-installation-flow)
-3. [v3.0 Unified Authentication](#v30-unified-authentication)
-4. [Security Setup](#security-setup)
-5. [Network Topology & Implementation](#network-topology--implementation)
-6. [Core Components](#core-components)
-7. [Context Management Logic](#context-management-logic)
-8. [Additional Documentation](#additional-documentation)
+2. [Platform Support](#platform-support)
+3. [Fresh Factory Installation Flow](#fresh-factory-installation-flow)
+4. [v3.0 Unified Authentication](#v30-unified-authentication)
+5. [Security Setup](#security-setup)
+6. [Network Topology & Implementation](#network-topology--implementation)
+7. [Core Components](#core-components)
+8. [Context Management Logic](#context-management-logic)
+9. [Recent Production Handovers (v3.0+)](#recent-production-handovers-v30)
+10. [Additional Documentation](#additional-documentation)
 
 ---
 
@@ -92,7 +102,9 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 
 ## Platform Support
 
-**Unified Cross-Platform Installer** (v3.1.0+):
+**Unified Cross-Platform Installer** (v3.1.0+ - Handover 0035):
+
+**Status**: ✅ Production ready (October 2025) - See [Handover 0035](#unified-cross-platform-installer-october-2025)
 
 Supported Platforms:
 - Windows 10/11 - Fully tested
@@ -112,6 +124,8 @@ python install.py
 - **macOS**: Homebrew support (Intel and ARM), Postgres.app detection
 
 **Architecture**: Strategy pattern with isolated platform handlers (`installer/platforms/`)
+
+**Complete Documentation**: [Handover 0035 - Unified Cross-Platform Installer](../handovers/completed/0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER-C.md)
 
 ---
 
@@ -615,6 +629,140 @@ database:
 
 **Integration**: Available in Settings → API and Integrations → Personal API Keys
 
+---
+
+## Recent Production Handovers (v3.0+)
+
+### Agent Job Management System (October 2025)
+
+**Handover 0019 - Agent Job Management System** (✅ COMPLETE):
+- **[Complete Documentation](../handovers/completed/0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT-C.md)**
+- **Purpose**: Implement agent job tracking separate from user tasks, enabling true multi-agent coordination
+- **Key Features**:
+  - Agent-to-agent messaging with acknowledgments
+  - Job lifecycle tracking (pending → active → completed)
+  - Message queue with JSONB storage
+  - Coordination between multiple agents
+- **Core Components**:
+  - `AgentJobManager` - Job creation and status tracking
+  - Message acknowledgment system
+  - Job coordination engine
+- **Impact**: Foundation for intelligent multi-agent workflows
+
+### Orchestrator Enhancement - 70% Token Reduction (October 2025)
+
+**Handover 0020 - Orchestrator Enhancement for Intelligent Coordination** (✅ COMPLETE):
+- **[Complete Documentation](../handovers/completed/0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT-C.md)**
+- **[Completion Summary](../handovers/completed/0020_COMPLETION_SUMMARY-C.md)**
+- **Purpose**: Enhance orchestrator to become the intelligent brain for mission generation and agent coordination
+- **Key Achievements**:
+  - 70% token usage reduction through intelligent context management
+  - Automated mission generation from vision documents
+  - Smart agent selection logic
+  - Multi-agent workflow coordination
+  - Progress monitoring and failure handling
+- **Core Components**:
+  - `EnhancedOrchestrator` - Context summarization and mission creation
+  - `MissionGenerator` - Automated mission planning
+  - `AgentSelector` - Intelligent agent type selection
+  - `WorkflowCoordinator` - Multi-agent coordination
+- **Impact**: Breakthrough efficiency enabling complex projects within token limits
+
+### Password Reset via Recovery PIN (October 2025)
+
+**Handover 0023 - Password Reset Functionality** (✅ COMPLETE - PRODUCTION READY):
+- **[Complete Documentation](../handovers/completed/0023_HANDOVER_20251015_PASSWORD_RESET_FUNCTIONALITY-C.md)**
+- **Implementation Date**: October 21, 2025
+- **Status**: All 6/6 integration tests passing, WCAG 2.1 AA compliant
+- **Key Features**:
+  - Recovery PIN generation (4-digit secure PIN)
+  - Self-service password reset flow
+  - Rate limiting (5 failed attempts = 15-minute lockout)
+  - Timing-safe PIN comparisons
+  - Comprehensive audit logging
+- **Backend Components**:
+  - 3 new API endpoints (`/generate-pin`, `/validate-pin`, `/reset-password`)
+  - User model updates (recovery_pin_hash, recovery_pin_generated_at)
+  - bcrypt PIN hashing (same security as passwords)
+- **Frontend Components**:
+  - `ForgotPasswordPin.vue` - PIN generation interface
+  - `ResetPasswordPin.vue` - Password reset with PIN validation
+  - Updated Login.vue with "Forgot Password" link
+- **Security Measures**:
+  - Generic error messages (prevents user enumeration)
+  - PIN expiration (24 hours)
+  - Rate limiting per user
+  - Full audit trail
+- **Impact**: Self-service account recovery without admin intervention
+
+### Admin Settings v3.0 Refactoring (October 2025)
+
+**Handovers 0025-0029 - Complete Admin Settings Overhaul** (✅ COMPLETE):
+
+**Handover 0025 - Network Settings Refactor**:
+- **[Documentation](../handovers/completed/0025_HANDOVER_20251016_ADMIN_SETTINGS_NETWORK_REFACTOR.md)**
+- **[Completion Report](../handovers/completed/0025_COMPLETION_REPORT.md)**
+- Removed deployment mode references (v3.0 unified architecture)
+- Display 0.0.0.0 binding with OS firewall control
+- Enhanced CORS configuration UI
+- 44 tests passing (100% coverage)
+
+**Handover 0026 - Database Tab Redesign**:
+- **[Documentation](../handovers/completed/0026_HANDOVER_20251016_ADMIN_SETTINGS_DATABASE_TAB_REDESIGN.md)**
+- Fresh Material Design 3 interface
+- Real-time PostgreSQL connection status
+- Connection pool metrics and health monitoring
+- Tenant key management UI
+
+**Handover 0027 - Integrations Tab Redesign**:
+- **[Documentation](../handovers/completed/0027_HANDOVER_20251016_INTEGRATIONS_TAB_REDESIGN-C.md)**
+- MCP-over-HTTP configuration management
+- Serena MCP integration controls
+- GitHub integration settings
+- Clean, modern UI with copy-to-clipboard functionality
+
+**Handover 0028 - User Settings Panel Consolidation**:
+- **[Documentation](../handovers/completed/0028_HANDOVER_20251016_USER_PANEL_CONSOLIDATION.md)**
+- Unified user settings architecture
+- Consistent navigation pattern
+- Improved user experience
+
+**Handover 0029 - Users Management Relocation**:
+- **[Documentation](../handovers/completed/0029_HANDOVER_20251016_USERS_TAB_RELOCATION.md)**
+- Moved Users tab from Admin Settings to Avatar Dropdown
+- Standalone Users management page
+- Improved information architecture
+- Cleaner admin settings interface
+
+**Combined Impact**: Modern, cohesive admin interface aligned with v3.0 architecture principles
+
+### Unified Cross-Platform Installer (October 2025)
+
+**Handover 0035 - Unified Cross-Platform Installer Architecture** (✅ COMPLETE):
+- **[Complete Documentation](../handovers/completed/0035_HANDOVER_20251019_UNIFIED_CROSS_PLATFORM_INSTALLER-C.md)**
+- **Completion Date**: October 19, 2025
+- **Status**: Production ready, all platforms fully tested
+- **Problem Solved**: Eliminated 2,500 lines of duplicated code across separate Windows/Linux installers
+- **Key Achievements**:
+  - Single unified installer for Windows, Linux, and macOS
+  - Strategy pattern with platform handlers (`installer/platforms/`)
+  - Auto-detection of OS and appropriate handler selection
+  - Consistent pg_trgm extension creation across all platforms
+  - Fixed critical Linux installer bugs (missing pg_trgm, misleading messages)
+- **Platform Support**:
+  - Windows 10/11 - Desktop shortcuts, Program Files detection
+  - Linux (Ubuntu 22.04+, Fedora 40+, Debian 12+) - Desktop launchers, distribution-specific guides
+  - macOS (13+, Intel and ARM) - Homebrew support, Postgres.app detection
+- **Architecture**:
+  - `installer/platforms/base.py` - Abstract PlatformHandler interface
+  - `installer/platforms/windows.py` - Windows-specific operations
+  - `installer/platforms/linux.py` - Linux-specific operations
+  - `installer/platforms/macos.py` - macOS-specific operations
+  - `installer/core/` - Unified platform-agnostic modules
+- **Impact**: Single codebase, consistent behavior, easier maintenance, platform-specific features where needed
+
+---
+
 ### Installation Experience Validation (October 2025)
 
 **Handover 0014 - Installation Experience Validation** (✅ COMPLETE - ARCHIVED):
@@ -701,4 +849,4 @@ As of October 13, 2025, GiljoAI MCP documentation has been **harmonized** into s
 
 ---
 
-**Last Updated**: October 13, 2025 (v3.0.0 - Post Documentation Harmonization)
+**Last Updated**: October 21, 2025 (v3.0.0 - Recent Handovers Documentation Added)
