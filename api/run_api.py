@@ -118,14 +118,25 @@ def get_port_from_sources() -> int:
 
 
 def get_default_host() -> str:
-    """Get default host from config or mode-based default
+    """Get default host for API server binding.
+
+    v3.0 Unified Architecture:
+    - Server ALWAYS binds to 0.0.0.0 (all network interfaces)
+    - OS firewall controls access (defense in depth security model)
+    - No deployment mode logic (single unified codebase)
+    - Explicit user configuration can override default if needed
 
     Priority:
-    1. services.api.host from config.yaml (user-configured adapter IP)
-    2. Mode-based default (127.0.0.1 for localhost, 0.0.0.0 for LAN/WAN)
+    1. services.api.host from config.yaml (explicit user override)
+    2. Default: "0.0.0.0" (v3.0 unified architecture - bind to all interfaces)
 
     Returns:
-        Host to bind to
+        Host to bind to (default: "0.0.0.0")
+
+    Note:
+        v3.0 removes mode-based binding logic. All deployments bind to 0.0.0.0
+        by default. Network access is controlled via OS firewall (Windows Defender
+        Firewall, iptables, etc.) for proper defense-in-depth security.
     """
     try:
         # Import here to avoid circular dependencies
@@ -136,25 +147,20 @@ def get_default_host() -> str:
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
 
-                # FIRST: Check if user configured a specific host
+                # Check if user explicitly configured a specific host
                 configured_host = config.get('services', {}).get('api', {}).get('host')
                 if configured_host:
-                    logging.info(f"Using configured API host: {configured_host}")
+                    logging.info(f"Using explicitly configured API host: {configured_host}")
                     return configured_host
 
-                # FALLBACK: Use mode-based default only if not configured
-                mode = config.get('installation', {}).get('mode', 'localhost')
-                if mode in ('server', 'lan', 'wan'):
-                    logging.info(f"No host configured, using mode-based default for {mode}: 0.0.0.0")
-                    return "0.0.0.0"
-                else:
-                    logging.info(f"No host configured, using mode-based default for {mode}: 127.0.0.1")
-                    return "127.0.0.1"
+                # v3.0 default: bind to all interfaces (firewall controls access)
+                logging.info("No host configured, using v3.0 default: 0.0.0.0 (all interfaces)")
+                return "0.0.0.0"
     except Exception as e:
-        logging.warning(f"Could not read config: {e}, defaulting to localhost")
+        logging.warning(f"Could not read config: {e}, using v3.0 default: 0.0.0.0")
 
-    # Safe default: localhost only
-    return "127.0.0.1"
+    # v3.0 safe default: bind to all interfaces (firewall controls access)
+    return "0.0.0.0"
 
 
 def main():

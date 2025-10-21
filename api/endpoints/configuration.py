@@ -549,20 +549,22 @@ async def get_frontend_configuration():
     """
     Get frontend-specific configuration.
 
-    Returns essential configuration that the frontend needs to connect to the API,
-    specifically the correct API host for WebSocket connections in LAN mode.
-
-    This endpoint solves the problem where the frontend might be accessed via localhost
-    but needs to connect to the API via the actual LAN IP (e.g., 10.1.0.164).
+    v3.0 Unified Architecture:
+    Returns essential configuration for frontend to connect to the API server.
+    Does NOT include deployment mode (removed in v3.0 - unified architecture only).
 
     Returns:
-        - api.host: The host where the API is running (e.g., "127.0.0.1" or "10.1.0.164")
+        - api.host: The host where the API is accessible (e.g., "192.168.1.100" or "localhost")
         - api.port: The API port (e.g., 7272)
-        - websocket.url: The full WebSocket URL (e.g., "ws://10.1.0.164:7272")
-        - mode: Deployment mode ("localhost", "lan", "server", "wan")
+        - websocket.url: The full WebSocket URL (e.g., "ws://192.168.1.100:7272")
         - security.api_keys_required: Whether API keys are required
 
     This endpoint does NOT expose sensitive data like passwords or API keys.
+
+    Note:
+        v3.0 removes the 'mode' field from response. Server always binds to 0.0.0.0,
+        and the frontend connects via the configured external_host (set during installation).
+        OS firewall controls network access (defense in depth).
     """
     try:
         # Read config.yaml directly
@@ -578,9 +580,7 @@ async def get_frontend_configuration():
             raise HTTPException(status_code=500, detail="config.yaml is empty")
 
         # Extract frontend-needed configuration
-        api_host = config.get("services", {}).get("api", {}).get("host", "127.0.0.1")
         api_port = config.get("services", {}).get("api", {}).get("port", 7272)
-        mode = config.get("installation", {}).get("mode", "localhost")
         api_keys_required = config.get("features", {}).get("api_keys_required", False)
 
         # Get external host configuration (from install.py network configuration)
@@ -588,22 +588,22 @@ async def get_frontend_configuration():
         external_host = config.get("services", {}).get("external_host", "localhost")
 
         # Use external_host for frontend connections
-        # This was configured during installation based on user choice
+        # This was configured during installation based on user's network selection
         frontend_host = external_host
 
         # Build WebSocket URL (use ws:// for http, wss:// for https)
         ws_protocol = "wss" if config.get("features", {}).get("ssl_enabled", False) else "ws"
         ws_url = f"{ws_protocol}://{frontend_host}:{api_port}"
 
+        # v3.0 Unified Architecture: No 'mode' field in response
         return {
             "api": {
-                "host": frontend_host,  # Use the corrected host for frontend connection
+                "host": frontend_host,  # Frontend connection host (external_host from config)
                 "port": api_port,
             },
             "websocket": {
                 "url": ws_url,
             },
-            "mode": mode,
             "security": {
                 "api_keys_required": api_keys_required,
             },
