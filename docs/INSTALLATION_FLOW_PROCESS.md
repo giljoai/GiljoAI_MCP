@@ -1,14 +1,14 @@
 # Installation Flow & Process
 
-**Document Version**: 10_13_2025
+**Document Version**: 10_21_2025
 **Status**: Single Source of Truth
-**Last Updated**: October 13, 2025
+**Last Updated**: October 21, 2025
 
 ---
 
 ## Overview
 
-GiljoAI MCP v3.0 uses a **unified installer** (`install.py`) that handles the complete installation workflow across Windows, Linux, and macOS. The installer replaces the deprecated `installer/cli/` system with a single Python script that manages dependencies, database setup, configuration generation, and service launching.
+GiljoAI MCP v3.0 uses a **unified cross-platform installer** (`install.py`) that handles the complete installation workflow across Windows, Linux, and macOS. Implemented in Handover 0035, this installer achieves 25.6% code reduction through intelligent platform abstraction while ensuring consistent behavior across all platforms.
 
 ### Installation Methods
 
@@ -22,31 +22,67 @@ python install.py
 - Linux (Ubuntu 22.04+, Fedora 40+, Debian 12+)
 - macOS (13+, Intel and ARM)
 
-**Platform auto-detection**: Automatically detects your OS and uses appropriate platform handlers.
+**Platform auto-detection**: Automatically detects your OS and uses appropriate platform handlers from the Strategy pattern architecture.
 
 **Headless Mode** (CI/CD):
 ```bash
 python install.py --headless
 ```
 
+### Key Features (Handovers 0034, 0035)
+
+**Security Enhancements**:
+- No default admin/admin credentials (Handover 0034)
+- First admin account created during /welcome setup wizard
+- Recovery PIN system for password reset (Handover 0023)
+- Default password "GiljoMCP" only used for admin-initiated user resets
+
+**Cross-Platform Excellence**:
+- Single unified codebase with platform handlers
+- Automatic pg_trgm extension installation on ALL platforms
+- 25.6% code reduction vs. previous dual-installer approach
+- Strategy pattern for extensible platform support
+
 ---
 
 ## Installation Architecture
 
-### Unified Installation Process
+### Unified Installation Process (Handover 0035)
 
-**Code Reference**: `install.py:1-50` - Installation workflow overview
+**Architecture**: Strategy Pattern with Platform Handlers
+
+The installer uses a unified orchestrator (`install.py`) with platform-specific handlers:
+
+```
+F:\GiljoAI_MCP/
+├── install.py                     # Unified orchestrator (400 lines)
+└── installer/
+    ├── core/                      # Platform-agnostic modules
+    │   ├── database.py           # Unified DB installer
+    │   └── config.py             # Unified config generator
+    ├── platforms/                 # Platform-specific handlers
+    │   ├── __init__.py           # Auto-detection logic
+    │   ├── base.py               # Abstract interface
+    │   ├── windows.py            # Windows handler
+    │   ├── linux.py              # Linux handler
+    │   └── macos.py              # macOS handler
+    └── shared/                    # Shared utilities
+        ├── postgres.py           # PostgreSQL discovery
+        └── network.py            # Network utilities
+```
+
+**Code Reduction**: 3,350 total lines (25.6% reduction from previous 4,500+ lines across dual installers)
 
 The installer follows an 8-step process:
 
 1. **Welcome Screen** - Yellow branding and version display
 2. **Python Version Check** - Requires Python 3.10+
-3. **PostgreSQL Discovery** - Cross-platform detection  
+3. **PostgreSQL Discovery** - Cross-platform detection with version validation
 4. **Dependency Installation** - Virtual environment + requirements
 5. **Configuration Generation** - .env + config.yaml (v3.0 format)
-6. **Database Setup** - Database creation, roles, tables
+6. **Database Setup** - Database creation, roles, tables, pg_trgm extension
 7. **Service Launch** - API + Frontend startup
-8. **Browser Launch** - Opens http://localhost:7274
+8. **Browser Launch** - Opens http://localhost:7274/welcome for first admin setup
 
 ### Cross-Platform Compatibility
 
@@ -55,13 +91,18 @@ The installer follows an 8-step process:
 - **Linux** (Ubuntu 22.04+, Fedora 40+, Debian 12+) - Fully tested, desktop launchers (.desktop)
 - **macOS** (13+, Intel and ARM) - Fully tested, Homebrew support
 
-**Platform Handler Architecture**:
-- `installer/platforms/windows.py` - Windows-specific code
-- `installer/platforms/linux.py` - Linux-specific code
-- `installer/platforms/macos.py` - macOS-specific code
-- Auto-detection via `installer/platforms/__init__.py`
+**Platform Handler Architecture** (Strategy Pattern):
+- `installer/platforms/base.py` - Abstract `PlatformHandler` interface
+- `installer/platforms/windows.py` - Windows-specific operations
+- `installer/platforms/linux.py` - Linux-specific operations
+- `installer/platforms/macos.py` - macOS-specific operations
+- `installer/platforms/__init__.py` - Auto-detection via `platform.system()`
 
-**Code Reference**: `install.py:100-150` - UnifiedInstaller class initialization
+**Benefits of Unified Architecture**:
+- Bug fixes apply to ALL platforms automatically
+- Feature implementations stay synchronized across platforms
+- 25.6% less code to maintain
+- Extensible for future platforms (Docker, WSL, etc.)
 
 ---
 
@@ -75,9 +116,10 @@ The installer follows an 8-step process:
 - **venv** - Virtual environment support (usually bundled)
 
 **Database Requirements**:
-- **PostgreSQL 14+** (minimum)  
+- **PostgreSQL 14+** (minimum)
 - **PostgreSQL 18** (recommended and tested)
 - **psql** command-line client (for database setup)
+- **pg_trgm extension** (automatically installed by unified installer)
 
 **Network Requirements**:
 - **Port 7272** available (API server)
@@ -446,12 +488,15 @@ def create_database(db_credentials: dict):
             raise
 ```
 
-**PostgreSQL Extension Creation** (CRITICAL - v3.1.0+):
+**PostgreSQL Extension Creation** (CRITICAL - Handover 0035):
 ```python
 def create_postgresql_extensions():
     """
     Create required PostgreSQL extensions
     CRITICAL: pg_trgm extension required for full-text search
+
+    Handover 0035: Unified installer ensures pg_trgm is created on ALL platforms
+    Previous Issue: Linux installer was missing this critical extension
     """
     print("🔧 Creating PostgreSQL extensions...")
 
@@ -464,7 +509,8 @@ def create_postgresql_extensions():
 - Enables full-text search capabilities
 - Required for MCPContextIndex searchable_vector column
 - Must be created with superuser privileges
-- Automatically created on ALL platforms (Windows, Linux, macOS)
+- Automatically created on ALL platforms (Windows, Linux, macOS) via unified installer
+- Previous bug: Missing in old Linux installer (fixed in Handover 0035)
 
 **Table Creation via DatabaseManager**:
 ```python
@@ -489,73 +535,54 @@ async def create_database_tables():
     print("✅ Database tables created successfully")
 ```
 
-**Default Admin User Creation**:
+**First Admin Creation Setup** (Handover 0034):
 ```python
-async def create_default_admin():
-    print("👤 Prompting for first admin user credentials...")
-    
+async def initialize_setup_state():
+    """
+    Initialize SetupState for fresh installation
+
+    Handover 0034: NO default admin/admin credentials created
+    First admin account created via /welcome page after browser launch
+    """
+    print("📋 Initializing setup state...")
+
     from src.giljo_mcp.database import DatabaseManager
-    from src.giljo_mcp.models import User, SetupState
-    from src.giljo_mcp.auth.password import hash_password
-    import uuid
+    from src.giljo_mcp.models import SetupState
+    from datetime import datetime
     import os
-    
+
     database_url = os.getenv('DATABASE_URL')
     db_manager = DatabaseManager(database_url, is_async=True)
-    
-    # Prompt user for admin credentials
-    admin_username = click.prompt(
-        "🔐 Enter admin username",
-        type=str,
-        default="admin"
-    )
-    
-    admin_password = click.prompt(
-        "🔐 Enter admin password",
-        type=str,
-        hide_input=True
-    )
-    
-    # Verify password
-    admin_password_confirm = click.prompt(
-        "🔐 Confirm admin password",
-        type=str,
-        hide_input=True
-    )
-    
-    if admin_password != admin_password_confirm:
-        print("❌ Passwords do not match. Please try again.")
-        return False
-    
+
     async with db_manager.get_session_async() as session:
-        # Create first admin user with user-provided credentials
-        admin_user = User(
-            id=str(uuid.uuid4()),
-            tenant_key='default',
-            username=admin_username,
-            password_hash=hash_password(admin_password),
-            role='admin',
-            is_active=True,
-            is_system_user=False
-        )
-        session.add(admin_user)
-        
-        # Create setup state without forcing password change
+        # Create setup state for fresh installation
         setup_state = SetupState(
             tenant_key='default',
             database_initialized=True,
             database_initialized_at=datetime.utcnow(),
-            default_password_active=False,  # User set their own password
+            first_admin_created=False,          # ← No admin created yet
+            first_admin_created_at=None,        # ← Will be set during /welcome setup
             setup_completed=False,
             setup_version='3.0.0'
         )
         session.add(setup_state)
-        
         await session.commit()
-    
-    print(f"✅ Admin user '{admin_username}' created successfully")
-    print("⚠️  Password change required on first login")
+
+    print("✅ Setup state initialized")
+    print("ℹ️  First admin account will be created via /welcome page")
 ```
+
+**Why No Default Admin?** (Handover 0034):
+- Security: No predictable default credentials (admin/admin eliminated)
+- Clean UX: User creates account directly during first access
+- Simplicity: Single user creation flow (not password change flow)
+- Security Enhancement: `/api/auth/create-first-admin` endpoint automatically disables after first user created
+
+**First Admin Creation Happens Next**:
+- Browser opens to `http://localhost:7274/welcome`
+- User creates first admin account with username, password, and recovery PIN
+- System sets `SetupState.first_admin_created = True`
+- `/api/auth/create-first-admin` endpoint permanently disabled for security
 
 ### Step 6: Service Launch
 
@@ -687,50 +714,63 @@ def validate_installation():
 
 ### Step 8: Browser Launch & Completion
 
-**Browser Launch**:
+**Browser Launch** (to /welcome Setup Wizard):
 ```python
 def launch_browser():
+    """
+    Launch browser to /welcome page for first admin account creation
+
+    Handover 0034: Opens to /welcome (not /login) for fresh installs
+    Router will redirect to /welcome if total_users_count == 0
+    """
     print("🌐 Opening web browser...")
-    
-    url = f"http://localhost:{DEFAULT_FRONTEND_PORT}"
-    
+
+    url = f"http://localhost:{DEFAULT_FRONTEND_PORT}/welcome"
+
     try:
         import webbrowser
         webbrowser.open(url)
         print(f"✅ Browser opened: {url}")
+        print("ℹ️  Create your first admin account in the browser")
     except Exception as e:
         print(f"⚠️  Could not open browser automatically: {e}")
         print(f"📋 Manual access: {url}")
 ```
 
-**Installation Summary**:
+**Installation Summary** (Handover 0034, 0035):
 ```python
-def display_installation_summary(db_credentials: dict):
+def display_installation_summary():
     print("\n" + "=" * 70)
     print("🎉 GiljoAI MCP v3.0 Installation Complete!")
     print("=" * 70)
-    
+
     print(f"""
 📍 Installation Directory: {Path.cwd()}
-🗄️  Database: PostgreSQL (giljo_mcp)
-🔐 Admin Account: Created during setup
+🗄️  Database: PostgreSQL 18 (giljo_mcp) with pg_trgm extension
+🔐 First Admin: Create account at http://localhost:7274/welcome
 
-⚠️  IMPORTANT FIRST STEPS:
-   1. Configure AI tool integration via Avatar → My Settings → API & Integrations
-   2. Configure AI tool integration via Avatar → My Settings → API & Integrations
-   3. Configure firewall if needed for network access
-   
+⚠️  IMPORTANT NEXT STEPS:
+   1. Create first admin account in browser (username, password, recovery PIN)
+   2. Complete setup wizard (3 steps: Welcome, MCP Config, Serena)
+   3. Configure AI tool integration via Avatar → My Settings → API & Integrations
+   4. Configure firewall if needed for network access
+
+🔒 Security Features:
+   - No default credentials (admin/admin eliminated in Handover 0034)
+   - Recovery PIN system for password reset (Handover 0023)
+   - /api/auth/create-first-admin endpoint auto-disables after first user
+
 📚 Documentation:
    - docs/README_FIRST.md - Start here
-   - docs/FIRST_LAUNCH_EXPERIENCE.md - Next steps
-   
+   - docs/FIRST_LAUNCH_EXPERIENCE.md - Complete onboarding guide
+
 🛠️  Service Management:
    Start: python startup.py
    Stop:  Ctrl+C in terminal
-   
-Happy orchestrating! 🤖✨
+
+Happy orchestrating! 🤖
 """)
-    
+
     print("=" * 70)
 ```
 
@@ -787,25 +827,59 @@ python install.py --dev-tools
 
 ## Platform-Specific Considerations
 
-### Platform-Specific Notes (v3.1.0+)
+### Platform Handler System (Handover 0035)
+
+GiljoAI MCP v3.1.0+ uses a **unified installer with platform handlers** - a single codebase that intelligently adapts to your operating system.
+
+**Architecture**:
+- `installer/platforms/base.py` - Abstract `PlatformHandler` interface
+- `installer/platforms/__init__.py` - Auto-detects OS and returns appropriate handler
+- Platform-specific code isolated in handler classes
+
+**Platform Detection**:
+```python
+import platform
+os_name = platform.system()  # 'Windows', 'Linux', 'Darwin'
+
+# Auto-select handler
+if os_name == 'Windows':
+    handler = WindowsPlatformHandler()
+elif os_name == 'Linux':
+    handler = LinuxPlatformHandler()
+elif os_name == 'Darwin':
+    handler = MacOSPlatformHandler()
+```
+
+### Platform-Specific Details (v3.1.0+)
 
 **Windows:**
-- PostgreSQL location: `C:\Program Files\PostgreSQL\18\bin\psql.exe`
+- PostgreSQL detection: `C:\Program Files\PostgreSQL\18\bin\psql.exe`
 - Virtual environment: `venv\Scripts\python.exe`
-- Desktop shortcuts: `.lnk` files created automatically
-- npm requires: `shell=True` for subprocess execution
+- Desktop shortcuts: `.lnk` files created automatically via `win32com.client`
+- npm execution: Requires `shell=True` for subprocess calls
+- Platform handler: `installer/platforms/windows.py`
 
 **Linux:**
-- PostgreSQL location: `/usr/lib/postgresql/18/bin/psql` or `/usr/bin/psql`
+- PostgreSQL detection: `/usr/lib/postgresql/18/bin/psql` or `/usr/bin/psql`
 - Virtual environment: `venv/bin/python`
-- Desktop shortcuts: `.desktop` files created and trusted automatically
-- Distribution detection: Ubuntu, Fedora, Debian specific guides
+- Desktop shortcuts: `.desktop` files created and marked trusted automatically
+- Distribution-specific: Ubuntu, Fedora, Debian detection for installation guides
+- Platform handler: `installer/platforms/linux.py`
 
 **macOS:**
-- PostgreSQL location: Homebrew (`/opt/homebrew/opt/postgresql@18/bin/psql` for ARM, `/usr/local/opt/postgresql@18/bin/psql` for Intel)
+- PostgreSQL detection:
+  - Homebrew ARM: `/opt/homebrew/opt/postgresql@18/bin/psql`
+  - Homebrew Intel: `/usr/local/opt/postgresql@18/bin/psql`
+  - Postgres.app: `/Applications/Postgres.app/Contents/Versions/*/bin/psql`
 - Virtual environment: `venv/bin/python`
 - Desktop shortcuts: Not yet supported (future: .app bundles)
-- Postgres.app support: Automatically detected if installed
+- Platform handler: `installer/platforms/macos.py`
+
+**Benefits of Unified Approach** (vs. Old Dual Installers):
+- Bug fixes (like pg_trgm) apply to ALL platforms automatically
+- Handover implementations (0034, 0023) synchronized across all platforms
+- 25.6% code reduction (3,350 lines vs. 4,500+)
+- Extensible for future platforms (Docker, WSL, BSD, etc.)
 
 ### Windows Installation
 
@@ -909,6 +983,9 @@ export PATH="/opt/homebrew/opt/postgresql@18/bin:$PATH"
 # Windows: Download from python.org
 # Linux: sudo apt install python3.11
 # macOS: brew install python@3.11
+
+# Verify version
+python --version  # Should be 3.10+
 ```
 
 **Issue: PostgreSQL not found**
@@ -917,10 +994,24 @@ export PATH="/opt/homebrew/opt/postgresql@18/bin:$PATH"
 which psql
 psql --version
 
-# If not found, install PostgreSQL
+# If not found, install PostgreSQL 18
 # Windows: https://www.postgresql.org/download/windows/
 # Linux: sudo apt install postgresql-18
 # macOS: brew install postgresql@18
+
+# Unified installer will auto-detect PostgreSQL across all platforms
+```
+
+**Issue: pg_trgm extension creation fails** (Handover 0035)
+```bash
+# Symptom: "ERROR: permission denied to create extension pg_trgm"
+# Solution: Run installer with PostgreSQL superuser password
+
+# The unified installer automatically creates pg_trgm extension
+# Ensure you provide correct postgres user password during installation
+
+# Manual verification after install:
+psql -U postgres -d giljo_mcp -c "SELECT * FROM pg_extension WHERE extname = 'pg_trgm';"
 ```
 
 **Issue: Port already in use**
@@ -937,6 +1028,34 @@ netstat -ano | findstr :7272  # Windows
 python install.py --api-port 8000 --frontend-port 8080
 ```
 
+**Issue: Can't access /welcome page** (Handover 0034)
+```bash
+# Symptom: Browser redirects to /login instead of /welcome
+# Cause: Database already has users (not a fresh install)
+
+# Check user count:
+psql -U postgres -d giljo_mcp -c "SELECT COUNT(*) FROM users;"
+
+# For fresh install (0 users), router should redirect to /welcome
+# For existing install (>0 users), router should redirect to /login
+
+# If you need to reset to fresh install:
+psql -U postgres -d giljo_mcp -c "DELETE FROM users; UPDATE setup_state SET first_admin_created = false, first_admin_created_at = NULL;"
+```
+
+**Issue: Forgot recovery PIN** (Handover 0023)
+```bash
+# Option 1: Admin password reset (if multi-user)
+# Admin can reset your password via Users management
+# New password will be "GiljoMCP" (must change on next login)
+# Recovery PIN remains unchanged
+
+# Option 2: Database reset (single-user/self-hosting)
+psql -U postgres -d giljo_mcp
+UPDATE users SET recovery_pin_hash = NULL WHERE username = 'your_username';
+# User must set new recovery PIN on next login
+```
+
 **Issue: Permission denied**
 ```bash
 # Ensure proper file permissions
@@ -951,6 +1070,7 @@ python3.11 install.py
 # Check PostgreSQL is running
 sudo systemctl status postgresql  # Linux
 brew services list | grep postgresql  # macOS
+sc query postgresql-x64-18  # Windows
 
 # Check PostgreSQL is accepting connections
 psql -h localhost -p 5432 -U postgres -c "SELECT 1;"
@@ -1013,16 +1133,58 @@ python startup.py
 
 ## Post-Installation Steps
 
-### First Launch Checklist
+### First Launch Checklist (Handover 0034)
 
-After successful installation:
+After successful installation, the browser opens to the /welcome page:
 
-1. **Access Application**: Visit http://localhost:7274
-2. **First Login**: Access dashboard with credentials created during setup
-3. **Complete Setup Wizard**: 3-step setup (MCP, Serena, Complete)
-4. **Verify Installation**: Check all services are running
-5. **Configure Firewall**: If network access needed
+1. **Create First Admin Account** (http://localhost:7274/welcome):
+   - Enter admin username (your choice)
+   - Enter secure password (12+ characters, uppercase, lowercase, digit, special character)
+   - Confirm password
+   - **Set 4-digit Recovery PIN** (Handover 0023) - Used for password reset
+   - Confirm Recovery PIN
+
+2. **Complete Setup Wizard**: 3-step setup (Welcome, MCP Config, Serena)
+
+3. **Configure AI Tool Integration**: Avatar → My Settings → API & Integrations
+   - Set up Claude Code, CODEX, or Gemini integration
+   - Generate Personal API Key for MCP-over-HTTP access
+
+4. **Verify Installation**: Check all services are running via dashboard
+
+5. **Configure Firewall** (Optional): If network access needed for LAN/WAN
+
 6. **Connect Claude Code** (Optional): Set up MCP-over-HTTP integration
+
+### Recovery PIN System (Handover 0023)
+
+**Purpose**: Self-service password recovery without email infrastructure
+
+**PIN Requirements**:
+- **Format**: 4-digit numeric (0000-9999)
+- **Storage**: Hashed with bcrypt (same security as passwords)
+- **When Set**: During first admin creation, or on first login for admin-created users
+- **Use Case**: Forgot password recovery via /forgot-password page
+
+**Password Reset Flow**:
+1. User clicks "Forgot Password?" on login page
+2. Enter username and 4-digit recovery PIN
+3. System validates username + PIN combination
+4. User sets new password (meeting complexity requirements)
+5. Recovery PIN remains unchanged
+
+**Security Measures**:
+- PIN hashing prevents plaintext storage
+- Rate limiting: 5 failed attempts trigger 15-minute lockout
+- Timing-safe PIN comparison prevents timing attacks
+- Generic error messages prevent user enumeration
+- Audit logging for all password reset operations
+
+**Admin Password Reset** (Alternative):
+- Admin users can reset other users' passwords via Users management
+- Reset password becomes default: "GiljoMCP"
+- User must change password on next login
+- Recovery PIN remains unchanged
 
 ### Connecting Claude Code via MCP (Post-Install)
 
@@ -1121,12 +1283,25 @@ git commit -m "feat: Initial GiljoAI MCP v3.0 installation"
 
 ---
 
-**See Also**:
-- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md) - Detailed first-run walkthrough
-- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - Technical architecture details
-- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Multi-tenant system understanding
+## Related Documentation
+
+**Core Installation & Setup**:
+- [First Launch Experience](FIRST_LAUNCH_EXPERIENCE.md) - Complete first-run walkthrough including /welcome setup
+- [README_FIRST.md](README_FIRST.md) - Central navigation hub for all documentation
+
+**Technical Architecture**:
+- [Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md) - v3.0 unified architecture details
+- [User Structures & Tenants](USER_STRUCTURES_TENANTS.md) - Multi-tenant system design
 - [GiljoAI MCP Purpose](GILJOAI_MCP_PURPOSE.md) - System overview and capabilities
+
+**Recent Handovers Referenced**:
+- **Handover 0035**: Unified Cross-Platform Installer (25.6% code reduction, pg_trgm fix)
+- **Handover 0034**: Eliminate admin/admin, Clean First User Creation
+- **Handover 0023**: Password Reset via Recovery PIN System
+
+**MCP Integration**:
+- [MCP-over-HTTP Integration](MCP_OVER_HTTP_INTEGRATION.md) - Connecting Claude Code via HTTP transport
 
 ---
 
-*This document provides comprehensive installation procedures and troubleshooting guidance as the single source of truth for the October 13, 2025 documentation harmonization.*
+*This document provides comprehensive installation procedures and troubleshooting guidance as the single source of truth. Last updated: October 21, 2025 to reflect Handovers 0023 (Recovery PIN), 0034 (First Admin Creation), and 0035 (Unified Installer).*
