@@ -34,35 +34,44 @@
       <v-window-item value="network">
         <v-card>
           <v-card-title>Network Configuration</v-card-title>
-          <v-card-subtitle>Manage deployment mode and network access</v-card-subtitle>
+          <v-card-subtitle>Server network settings (configured during installation)</v-card-subtitle>
 
           <v-card-text>
-            <!-- Current Mode Display -->
-            <v-alert type="info" variant="tonal" class="mb-4">
+            <!-- v3.0 Unified Architecture Info -->
+            <v-alert type="info" variant="tonal" class="mb-4" data-test="v3-unified-alert">
               <div class="d-flex align-center">
                 <v-icon start>mdi-information</v-icon>
                 <div>
-                  <strong>Current Mode:</strong>
-                  <v-chip :color="modeColor" size="small" class="ml-2" data-test="mode-chip">
-                    {{ currentMode.toUpperCase() }}
-                  </v-chip>
+                  <strong>v3.0 Unified Architecture:</strong> Server binds to all interfaces with authentication always enabled.
+                  OS firewall controls network access (defense in depth).
                 </div>
               </div>
             </v-alert>
 
-            <!-- API Binding Info -->
-            <h3 class="text-h6 mb-3">API Server Configuration</h3>
+            <!-- Server Configuration -->
+            <h3 class="text-h6 mb-3">Server Configuration</h3>
 
             <v-text-field
-              :model-value="networkSettings.apiHost"
-              label="API Host Binding"
+              :model-value="networkSettings.externalHost"
+              label="External Host"
               variant="outlined"
               readonly
-              hint="127.0.0.1 = localhost only, specific IP = network accessible"
+              hint="Host/IP configured during installation for external access"
               persistent-hint
               class="mb-4"
-              data-test="api-host-field"
-            />
+              data-test="external-host-field"
+            >
+              <template v-slot:append>
+                <v-btn
+                  icon="mdi-content-copy"
+                  size="small"
+                  variant="text"
+                  @click="copyExternalHost"
+                  title="Copy External Host"
+                  data-test="copy-external-host-btn"
+                />
+              </template>
+            </v-text-field>
 
             <v-text-field
               :model-value="networkSettings.apiPort"
@@ -75,13 +84,29 @@
               data-test="api-port-field"
             />
 
+            <v-text-field
+              :model-value="networkSettings.frontendPort"
+              label="Frontend Port"
+              variant="outlined"
+              readonly
+              hint="Default: 7274"
+              persistent-hint
+              class="mb-4"
+              data-test="frontend-port-field"
+            />
+
             <!-- CORS Origins Management -->
             <v-divider class="my-6" />
 
             <h3 class="text-h6 mb-3">CORS Allowed Origins</h3>
 
+            <p class="text-body-2 mb-3">
+              Manage which origins can make cross-origin requests to the API server.
+              Add frontend URLs hosted on different domains or ports.
+            </p>
+
             <div data-test="cors-origins-section">
-              <v-list density="compact" class="mb-4">
+              <v-list v-if="corsOrigins.length > 0" density="compact" class="mb-4">
                 <v-list-item v-for="(origin, index) in corsOrigins" :key="index">
                   <v-list-item-title>{{ origin }}</v-list-item-title>
 
@@ -91,6 +116,7 @@
                       size="small"
                       variant="text"
                       @click="copyOrigin(origin)"
+                      title="Copy Origin"
                     />
                     <v-btn
                       v-if="!isDefaultOrigin(origin)"
@@ -99,10 +125,15 @@
                       variant="text"
                       color="error"
                       @click="removeOrigin(index)"
+                      title="Remove Origin"
                     />
                   </template>
                 </v-list-item>
               </v-list>
+
+              <v-alert v-else type="info" variant="outlined" class="mb-4">
+                No CORS origins configured. Add origins to enable cross-origin API access.
+              </v-alert>
 
               <v-text-field
                 v-model="newOrigin"
@@ -117,74 +148,20 @@
               />
             </div>
 
-            <!-- API Key Info (Readonly for now) -->
-            <v-divider class="my-6" />
-
-            <h3 class="text-h6 mb-3">API Key Information</h3>
-
-            <!-- v3.0 Unified: Authentication always enabled for all IPs -->
-            <template v-if="currentMode === 'localhost'">
-              <v-alert type="info" variant="tonal">
-                <div class="d-flex align-center">
-                  <v-icon start>mdi-shield-check</v-icon>
-                  <div>v3.0 Unified: Authentication required for all network access</div>
-                </div>
-              </v-alert>
-            </template>
-
-            <template v-else-if="currentMode === 'lan'">
-              <v-alert type="success" variant="tonal" class="mb-4">
-                <div class="d-flex align-center">
-                  <v-icon start>mdi-shield-check</v-icon>
-                  <div>LAN mode requires API key authentication for secure network access</div>
-                </div>
-              </v-alert>
-
-              <v-text-field
-                v-if="apiKeyInfo"
-                :model-value="maskedApiKey"
-                label="Active API Key"
-                variant="outlined"
-                readonly
-                hint="Key is masked for security. Clients must use this key to authenticate."
-                persistent-hint
-                class="mb-2"
-                data-test="api-key-field"
-              >
-                <template v-slot:append>
-                  <v-btn
-                    icon="mdi-content-copy"
-                    size="small"
-                    variant="text"
-                    @click="copyApiKey"
-                    title="Copy API Key"
-                  />
-                </template>
-              </v-text-field>
-
-              <v-text-field
-                v-if="apiKeyInfo"
-                :model-value="apiKeyInfo.created_at"
-                label="Created At"
-                variant="outlined"
-                readonly
-                class="mb-4"
-              />
-
-              <v-btn variant="outlined" color="warning" @click="showRegenerateDialog = true">
-                <v-icon start>mdi-refresh</v-icon>
-                Regenerate API Key
-              </v-btn>
-            </template>
-
             <!-- Network Configuration Info -->
             <v-divider class="my-6" />
 
-            <h3 class="text-h6 mb-3">Network Configuration</h3>
+            <h3 class="text-h6 mb-3">Configuration Notes</h3>
 
-            <v-alert type="info" variant="tonal" class="mb-4">
-              Network settings are configured during installation. To modify deployment mode,
-              update the system configuration file and restart the server.
+            <v-alert type="info" variant="tonal" class="mb-0">
+              <div class="mb-2">
+                <strong>Network settings are configured during installation.</strong>
+              </div>
+              <div class="text-body-2">
+                To modify the external host or ports, update <code>config.yaml</code> and restart the server.
+                Authentication is always enabled for all connections (local and remote).
+                Use OS firewall to control network access.
+              </div>
             </v-alert>
           </v-card-text>
 
@@ -500,25 +477,6 @@
       </v-window-item>
     </v-window>
 
-    <!-- Regenerate API Key Dialog -->
-    <v-dialog v-model="showRegenerateDialog" max-width="500">
-      <v-card>
-        <v-card-title>Regenerate API Key</v-card-title>
-        <v-card-text>
-          <v-alert type="warning" variant="tonal" class="mb-4">
-            <v-icon start>mdi-alert</v-icon>
-            This will invalidate the current API key. All clients will need to update their configuration with the new key.
-          </v-alert>
-          Are you sure you want to regenerate the API key?
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showRegenerateDialog = false">Cancel</v-btn>
-          <v-btn color="warning" variant="flat" @click="regenerateApiKey">Regenerate</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Claude Code Configuration Modal -->
     <v-dialog v-model="showClaudeConfigModal" max-width="800" scrollable>
       <v-card>
@@ -805,15 +763,13 @@ const activeTab = ref('network')
 
 // Network settings state
 const networkSettings = ref({
-  apiHost: '127.0.0.1',
+  externalHost: 'localhost',
   apiPort: 7272,
+  frontendPort: 7274,
 })
-const currentMode = ref('localhost')
 const corsOrigins = ref([])
 const newOrigin = ref('')
-const apiKeyInfo = ref(null)
 const networkSettingsChanged = ref(false)
-const showRegenerateDialog = ref(false)
 
 // Configuration modal state
 const showClaudeConfigModal = ref(false)
@@ -829,111 +785,49 @@ const newDomain = ref('')
 const domainError = ref('')
 const cookieDomainFeedback = ref(null)
 
-// Computed Properties
-const modeColor = computed(() => {
-  const colors = {
-    localhost: 'success',
-    lan: 'info',
-    wan: 'warning',
-  }
-  return colors[currentMode.value] || 'grey'
-})
-
-const maskedApiKey = computed(() => {
-  if (!apiKeyInfo.value || !apiKeyInfo.value.key_preview) {
-    return 'No API key configured'
-  }
-  const preview = apiKeyInfo.value.key_preview
-  return `${preview.substring(0, 8)}...${preview.substring(preview.length - 4)}`
-})
-
-
 // Network Settings Methods
 async function loadNetworkSettings() {
   try {
-    let config
-    try {
-      // First, try loading from /api/v1/config
-      const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
-        credentials: 'include',
-        timeout: 5000,
-      })
+    // Load from /api/v1/config endpoint only
+    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config`, {
+      credentials: 'include',
+      timeout: 5000,
+    })
 
-      if (!response.ok) {
-        throw new Error('Config endpoint failed')
-      }
-
-      config = await response.json()
-    } catch (configError) {
-      console.warn(
-        '[SYSTEM SETTINGS] Failed to load config from /api/v1/config, falling back to /api/setup/status',
-      )
-
-      // Fallback to /api/setup/status
-      const fallbackResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/status`, {
-        credentials: 'include',
-      })
-
-      if (!fallbackResponse.ok) {
-        throw fallbackResponse.statusText
-      }
-
-      const fallbackConfig = await fallbackResponse.json()
-
-      // Map the fallback response to the expected config structure
-      config = {
-        installation: { mode: fallbackConfig.network_mode || 'localhost' },
-        services: {
-          api: {
-            host: fallbackConfig.host || '127.0.0.1',
-            port: fallbackConfig.port || 7272,
-          },
-        },
-        security: {
-          cors: {
-            allowed_origins: fallbackConfig.allowed_origins || [],
-          },
-        },
-      }
+    if (!response.ok) {
+      throw new Error(`Config endpoint failed: ${response.statusText}`)
     }
 
-    // Set mode with robust fallback
-    currentMode.value = config.installation?.mode?.toLowerCase() || 'localhost'
+    const config = await response.json()
 
-    // Set API settings
-    networkSettings.value.apiHost = config.services?.api?.host || '127.0.0.1'
+    // Set external host (configured during installation)
+    networkSettings.value.externalHost = config.services?.external_host || 'localhost'
+
+    // Set API port
     networkSettings.value.apiPort = config.services?.api?.port || 7272
+
+    // Set Frontend port
+    networkSettings.value.frontendPort = config.services?.frontend?.port || 7274
 
     // Set CORS origins
     corsOrigins.value = config.security?.cors?.allowed_origins || []
 
-    // Load API key info for LAN mode
-    if (currentMode.value === 'lan') {
-      try {
-        const apiKeyResponse = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/api-key-info`, {
-          credentials: 'include',
-        })
-        const apiKeyData = await apiKeyResponse.json()
-
-        apiKeyInfo.value = {
-          created_at: apiKeyData.created_at || new Date().toISOString(),
-          key_preview: apiKeyData.key_preview || 'gk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-        }
-      } catch (apiKeyError) {
-        console.warn('[SYSTEM SETTINGS] Failed to load API key info', apiKeyError)
-        apiKeyInfo.value = null
-      }
-    }
-
     console.log('[SYSTEM SETTINGS] Network settings loaded successfully')
   } catch (error) {
-    console.error('Completely failed to load network settings:', error)
+    console.error('[SYSTEM SETTINGS] Failed to load network settings:', error)
 
-    // Absolute last resort fallback
-    currentMode.value = 'localhost'
-    networkSettings.value.apiHost = '127.0.0.1'
+    // Fallback to defaults
+    networkSettings.value.externalHost = 'localhost'
     networkSettings.value.apiPort = 7272
+    networkSettings.value.frontendPort = 7274
     corsOrigins.value = []
+  }
+}
+
+function copyExternalHost() {
+  if (networkSettings.value.externalHost) {
+    navigator.clipboard.writeText(networkSettings.value.externalHost)
+    console.log('[SYSTEM SETTINGS] External host copied to clipboard:', networkSettings.value.externalHost)
   }
 }
 
@@ -944,13 +838,6 @@ function isDefaultOrigin(origin) {
 function copyOrigin(origin) {
   navigator.clipboard.writeText(origin)
   console.log('[SYSTEM SETTINGS] Origin copied to clipboard:', origin)
-}
-
-function copyApiKey() {
-  if (apiKeyInfo.value && apiKeyInfo.value.key_preview) {
-    navigator.clipboard.writeText(apiKeyInfo.value.key_preview)
-    console.log('[SYSTEM SETTINGS] API key copied to clipboard')
-  }
 }
 
 function addOrigin() {
@@ -998,23 +885,6 @@ async function saveNetworkSettings() {
     }
   } catch (error) {
     console.error('Failed to save network settings:', error)
-  }
-}
-
-async function regenerateApiKey() {
-  try {
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/setup/regenerate-api-key`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-
-    if (response.ok) {
-      showRegenerateDialog.value = false
-      await loadNetworkSettings() // Reload to get new key
-      console.log('[SYSTEM SETTINGS] API key regenerated successfully')
-    }
-  } catch (error) {
-    console.error('Failed to regenerate API key:', error)
   }
 }
 
