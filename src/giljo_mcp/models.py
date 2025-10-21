@@ -1223,6 +1223,13 @@ class User(Base):
     - created_tasks: Tasks created by this user
     - assigned_tasks: Tasks assigned to this user for completion
 
+    Handover 0023: Password Reset and Recovery PIN
+    - recovery_pin_hash: Hashed 4-digit recovery PIN for password reset
+    - failed_pin_attempts: Track failed PIN attempts for rate limiting
+    - pin_lockout_until: Timestamp when PIN lockout expires
+    - must_change_password: Force password change on next login
+    - must_set_pin: Force recovery PIN setup on next login
+
     Multi-tenant isolation: Users belong to a tenant_key namespace.
     """
 
@@ -1235,6 +1242,36 @@ class User(Base):
     username = Column(String(64), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=True, index=True)
     password_hash = Column(String(255), nullable=True)  # Nullable for system users (auto-login only)
+
+    # Recovery PIN for password reset (Handover 0023)
+    recovery_pin_hash = Column(
+        String(255),
+        nullable=True,
+        comment="Bcrypt hash of 4-digit recovery PIN for password reset"
+    )
+    failed_pin_attempts = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Number of failed PIN verification attempts (rate limiting)"
+    )
+    pin_lockout_until = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when PIN lockout expires (15 minutes after 5 failed attempts)"
+    )
+    must_change_password = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        comment="Force user to change password on next login (new users, admin reset)"
+    )
+    must_set_pin = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        comment="Force user to set recovery PIN on next login (new users)"
+    )
 
     # System user flag (for auto-login localhost user)
     is_system_user = Column(Boolean, default=False, nullable=False)
@@ -1266,7 +1303,9 @@ class User(Base):
         Index("idx_user_email", "email"),
         Index("idx_user_active", "is_active"),
         Index("idx_user_system", "is_system_user"),  # Index for system user queries
+        Index("idx_user_pin_lockout", "pin_lockout_until"),  # Index for lockout queries (Handover 0023)
         CheckConstraint("role IN ('admin', 'developer', 'viewer')", name="ck_user_role"),
+        CheckConstraint("failed_pin_attempts >= 0", name="ck_user_pin_attempts_positive"),  # Handover 0023
     )
 
     def __repr__(self):

@@ -221,8 +221,8 @@ async def create_user(
                 detail=f"Email '{user_data.email}' already exists",
             )
 
-    # Hash password
-    password_hash = bcrypt.hash(user_data.password)
+    # Hash default password 'GiljoMCP' (Handover 0023)
+    password_hash = bcrypt.hash('GiljoMCP')
 
     # Create user (inherits tenant_key from admin)
     new_user = User(
@@ -233,6 +233,9 @@ async def create_user(
         role=user_data.role,
         is_active=user_data.is_active,
         tenant_key=current_user.tenant_key,  # Inherit tenant from admin
+        must_change_password=True,  # Force password change on first login
+        must_set_pin=True,  # Force PIN setup on first login
+        recovery_pin_hash=None,  # No PIN set initially
     )
 
     db.add(new_user)
@@ -519,6 +522,60 @@ async def change_password(
 
     logger.info(f"Password changed for user: {user.username}")
     return PasswordChangeResponse(message="Password updated successfully")
+
+
+@router.post("/{user_id}/reset-password", response_model=PasswordChangeResponse)
+async def reset_password(
+    user_id: UUID,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db_session),
+) -> PasswordChangeResponse:
+    """
+    Reset user password to default 'GiljoMCP' (Handover 0023).
+
+    Requires admin role. Admin can reset any user's password including their own.
+    Resets password to default 'GiljoMCP' and sets must_change_password=True.
+    Keeps recovery_pin_hash unchanged and clears PIN lockout.
+
+    Args:
+        user_id: UUID of user to reset password
+        current_user: Current authenticated admin user
+        db: Database session
+
+    Returns:
+        Password reset confirmation
+
+    Raises:
+        HTTPException: 403 if user is not admin
+        HTTPException: 404 if user not found or in different tenant
+    """
+    logger.debug(f"Admin {current_user.username} resetting password for user {user_id}")
+
+    # Query user filtered by tenant_key (multi-tenant isolation)
+    stmt = select(User).where(User.id == str(user_id), User.tenant_key == current_user.tenant_key)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Reset password to default 'GiljoMCP'
+    user.password_hash = bcrypt.hash('GiljoMCP')
+
+    # Set must_change_password flag
+    user.must_change_password = True
+
+    # Keep recovery_pin_hash unchanged (user retains PIN)
+
+    # Clear PIN lockout
+    user.failed_pin_attempts = 0
+    user.pin_lockout_until = None
+
+    await db.commit()
+
+    logger.info(f"Admin {current_user.username} reset password for user: {user.username}")
+    return PasswordChangeResponse(message="Password reset successful")
 
 
 # AI Tools Configurator Endpoint (relocated from /setup/ai-tools)

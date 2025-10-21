@@ -73,6 +73,7 @@ try:
         agents,
         ai_tools,
         auth,
+        auth_pin_recovery,
         configuration,
         context,
         database_setup,
@@ -521,6 +522,7 @@ def create_app() -> FastAPI:
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
     app.include_router(templates.router, prefix="/api/v1/templates", tags=["templates"])
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+    app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
     app.include_router(users.router, prefix="/api/users", tags=["users"])
     # v3: authenticated user-scoped settings
     app.include_router(user_settings.router, prefix="/api/v1/user", tags=["user-settings"])
