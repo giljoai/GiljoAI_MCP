@@ -4,6 +4,7 @@ Organized tool groups for MCP protocol operations
 """
 
 from .agent import register_agent_tools
+from .agent_communication import register_agent_communication_tools
 from .context import register_context_tools
 from .message import register_message_tools
 from .optimization import register_optimization_tools
@@ -14,6 +15,7 @@ from .task import register_task_tools
 
 __all__ = [
     "register_agent_tools",
+    "register_agent_communication_tools",
     "register_context_tools",
     "register_git_tools",
     "register_message_tools",
