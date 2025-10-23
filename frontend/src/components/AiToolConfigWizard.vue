@@ -43,19 +43,27 @@
         </v-btn>
 
         <div v-if="generatedPrompt" class="mt-6">
-          <v-textarea v-model="generatedPrompt" label="Configuration Instructions" readonly rows="12" />
-          <v-row class="mt-2">
-            <v-col cols="12" md="6">
-              <v-btn color="success" block prepend-icon="mdi-console" @click="copyCommand">
-                {{ commandCopied ? 'Command Copied!' : 'Copy Command Only' }}
-              </v-btn>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-btn color="primary" block prepend-icon="mdi-content-copy" @click="copyPrompt">
-                {{ copied ? 'All Copied!' : 'Copy All Instructions' }}
-              </v-btn>
-            </v-col>
-          </v-row>
+          <v-alert type="info" class="mb-4">
+            Copy and paste this command in your terminal to configure {{ detectedToolName }}:
+          </v-alert>
+          <v-textarea
+            v-model="generatedPrompt"
+            label="Configuration Command"
+            readonly
+            rows="2"
+            variant="outlined"
+            class="font-monospace"
+          />
+          <v-btn
+            class="mt-2"
+            color="primary"
+            block
+            size="large"
+            prepend-icon="mdi-content-copy"
+            @click="copyPrompt"
+          >
+            {{ copied ? 'Copied!' : 'Copy Command' }}
+          </v-btn>
         </div>
       </v-card-text>
 
@@ -100,19 +108,27 @@
         </v-btn>
 
         <div v-if="generatedPrompt" class="mt-6">
-          <v-textarea v-model="generatedPrompt" label="Configuration Instructions" readonly rows="12" />
-          <v-row class="mt-2">
-            <v-col cols="12" md="6">
-              <v-btn color="success" block prepend-icon="mdi-console" @click="copyCommand">
-                {{ commandCopied ? 'Command Copied!' : 'Copy Command Only' }}
-              </v-btn>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-btn color="primary" block prepend-icon="mdi-content-copy" @click="copyPrompt">
-                {{ copied ? 'All Copied!' : 'Copy All Instructions' }}
-              </v-btn>
-            </v-col>
-          </v-row>
+          <v-alert type="info" class="mb-4">
+            Copy and paste this command in your terminal to configure {{ detectedToolName }}:
+          </v-alert>
+          <v-textarea
+            v-model="generatedPrompt"
+            label="Configuration Command"
+            readonly
+            rows="2"
+            variant="outlined"
+            class="font-monospace"
+          />
+          <v-btn
+            class="mt-2"
+            color="primary"
+            block
+            size="large"
+            prepend-icon="mdi-content-copy"
+            @click="copyPrompt"
+          >
+            {{ copied ? 'Copied!' : 'Copy Command' }}
+          </v-btn>
         </div>
 
         <v-divider class="my-4" />
@@ -130,7 +146,6 @@ const showWizard = ref(false)
 const showAdvanced = ref(false)
 const busy = ref(false)
 const copied = ref(false)
-const commandCopied = ref(false)
 
 // Detection
 function detectServerInfo() {
@@ -179,10 +194,6 @@ async function generateApiKey() {
     const resp = await api.apiKeys.create(keyName)
     // Backend returns APIKeyCreateResponse with 'api_key'
     generatedKey.value = resp.data.api_key
-    console.log('[Debug] Generated API key:', generatedKey.value)
-    console.log('[Debug] Key length:', generatedKey.value.length)
-    console.log('[Debug] Key has newline:', generatedKey.value.includes('\n'))
-    console.log('[Debug] Key has CR:', generatedKey.value.includes('\r'))
     try {
       window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
     } catch (_) { /* no-op */ }
@@ -198,105 +209,24 @@ function buildServerUrl() {
 }
 
 function claudePrompt(serverUrl, apiKey) {
-  // Create the command as a single line for easier copying
-  const command = `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
-
-  console.log('[Debug claudePrompt] Server URL:', serverUrl)
-  console.log('[Debug claudePrompt] API Key:', apiKey)
-  console.log('[Debug claudePrompt] API Key length:', apiKey.length)
-  console.log('[Debug claudePrompt] Generated command:', command)
-  console.log('[Debug claudePrompt] Command length:', command.length)
-  console.log('[Debug claudePrompt] Command has backslash:', command.includes('\\'))
-  console.log('[Debug claudePrompt] Command has newline:', command.includes('\n'))
-
-  return `Please add the GiljoAI MCP server to your Claude Code configuration:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ IMPORTANT: Copy ONLY the command below, not this text! ⚠️
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${command}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 INSTRUCTIONS:
-1. Copy the command above (select only the command line)
-2. Open Terminal (Mac/Linux) or Git Bash (Windows)
-3. Paste and press Enter
-4. Verify with: claude mcp list
-
-✅ Works in: Git Bash, Terminal, Command Prompt, PowerShell
-❌ Do NOT copy your shell prompt ($ or PS>) with the command!
-
-Note: The command is on a single line for easier copying.`
+  // Return ONLY the command - no extra formatting that could cause issues
+  return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
 }
 
 function codexPrompt(serverUrl, apiKey) {
-  // Create the command as a single line for easier copying
-  const command = `codex mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
-
-  return `Codex CLI MCP configuration (placeholder - coming soon):
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ IMPORTANT: Copy ONLY the command below, not this text! ⚠️
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${command}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 INSTRUCTIONS:
-1. Copy the command above (single line)
-2. Paste in your terminal
-3. Verify with: codex mcp list
-
-Note: Codex CLI MCP integration is coming soon. This command syntax is a placeholder.`
+  // Return ONLY the command
+  return `codex mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
 }
 
 function geminiPrompt(serverUrl, apiKey) {
-  // Create the command as a single line for easier copying
-  const command = `gemini mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
-
-  return `Gemini CLI MCP configuration (placeholder - coming soon):
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ IMPORTANT: Copy ONLY the command below, not this text! ⚠️
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${command}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 INSTRUCTIONS:
-1. Copy the command above (single line)
-2. Paste in your terminal
-3. Verify with: gemini mcp list
-
-Note: Gemini CLI MCP integration is coming soon. This command syntax is a placeholder.`
+  // Return ONLY the command
+  return `gemini mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
 }
 
 function cursorPrompt(serverUrl, apiKey) {
-  return `Cursor MCP configuration (manual setup):
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ Configuration Values (copy each value separately) ⚠️
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Base URL: ${serverUrl}/mcp
-API Key: ${apiKey}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 INSTRUCTIONS:
-1. Copy the Base URL and API Key above
-2. Open Cursor IDE settings
-3. Add GiljoAI MCP server with:
-   - URL: Paste the Base URL
-   - Header Name: X-API-Key
-   - Header Value: Paste the API Key
-4. Restart Cursor to apply
-
-Note: Cursor requires manual configuration through its settings interface.`
+  // Cursor needs manual config, so just return the values
+  return `Base URL: ${serverUrl}/mcp
+API Key: ${apiKey}`
 }
 
 function buildPromptFor(tool, serverUrl, apiKey) {
@@ -371,79 +301,11 @@ async function copyPrompt() {
   }
 }
 
-async function copyCommand() {
-  // Extract just the command from the generated prompt
-  const promptText = String(generatedPrompt.value || '')
-  if (!promptText) return
-
-  console.log('[Debug] Full prompt text:', promptText)
-  console.log('[Debug] Prompt text length:', promptText.length)
-
-  // Find the claude mcp command line
-  let command = ''
-  if (selectedTool.value === 'claude') {
-    // Extract the command between the separator lines
-    const match = promptText.match(/claude mcp add[^\n]+/)
-    if (match) {
-      command = match[0].trim()
-      console.log('[Debug] Extracted command:', command)
-      console.log('[Debug] Command length:', command.length)
-      console.log('[Debug] Has backslash:', command.includes('\\'))
-    } else {
-      console.log('[Debug] No match found for claude command')
-    }
-  } else if (selectedTool.value === 'codex') {
-    const match = promptText.match(/codex mcp add[^\n]+/)
-    if (match) {
-      command = match[0].trim()
-    }
-  } else if (selectedTool.value === 'gemini') {
-    const match = promptText.match(/gemini mcp add[^\n]+/)
-    if (match) {
-      command = match[0].trim()
-    }
-  }
-
-  if (!command) {
-    console.warn('[Wizard] Could not extract command from prompt')
-    return
-  }
-
-  // Use the same copy logic as copyPrompt but with just the command
-  const fallbackCopy = () => {
-    try {
-      const ta = document.createElement('textarea')
-      ta.value = command
-      ta.setAttribute('readonly', '')
-      ta.style.position = 'fixed'
-      ta.style.top = '-1000px'
-      ta.style.left = '-1000px'
-      document.body.appendChild(ta)
-      ta.select()
-      const ok = document.execCommand('copy')
-      document.body.removeChild(ta)
-      return ok
-    } catch (err) {
-      console.error('[Wizard] Fallback copy failed:', err)
-      return false
-    }
-  }
-
-  try {
-    if (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-      await navigator.clipboard.writeText(command)
-      commandCopied.value = true
-    } else {
-      commandCopied.value = fallbackCopy()
-    }
-  } catch (e) {
-    console.warn('[Wizard] Clipboard API failed, using fallback:', e)
-    commandCopied.value = fallbackCopy()
-  } finally {
-    if (commandCopied.value) setTimeout(() => (commandCopied.value = false), 2000)
-  }
-}
 </script>
 
 <style scoped>
+.font-monospace :deep(textarea) {
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 14px !important;
+}
 </style>
