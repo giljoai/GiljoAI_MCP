@@ -810,3 +810,242 @@ class WebSocketManager:
             self.disconnect(client_id)
 
         logger.info(f"Broadcast agent_job:children_spawned - parent: {parent_job_id}, children: {children_spawned}")
+
+    # Agent Communication Events (Handover 0040: Professional Agent Flow Visualization)
+
+    async def broadcast_message_sent(
+        self,
+        message_id: str,
+        job_id: str,
+        tenant_key: str,
+        from_agent: str,
+        to_agent: Optional[str],
+        message_type: str,
+        content_preview: str,
+        priority: int,
+        timestamp: Optional[datetime] = None,
+    ):
+        """
+        Broadcast message sent event for agent-orchestrator communication.
+        Event type: 'agent_communication:message_sent'
+
+        Args:
+            message_id: Unique message identifier
+            job_id: Job ID associated with the message
+            tenant_key: Tenant key for multi-tenant isolation
+            from_agent: Agent that sent the message
+            to_agent: Target agent (None for broadcast)
+            message_type: Type of message (task, info, error, etc.)
+            content_preview: First 200 characters of message content
+            priority: Message priority (0=low, 1=normal, 2=high)
+            timestamp: Message timestamp
+        """
+        message = {
+            "type": "agent_communication:message_sent",
+            "data": {
+                "message_id": message_id,
+                "job_id": job_id,
+                "from_agent": from_agent,
+                "to_agent": to_agent,
+                "message_type": message_type,
+                "content_preview": content_preview[:200] if content_preview else "",
+                "priority": priority,
+                "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting message_sent to {client_id}")
+                    disconnected.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+        logger.debug(f"Broadcast message_sent - {message_id} (from: {from_agent}, to: {to_agent})")
+
+    async def broadcast_message_acknowledged(
+        self,
+        message_id: str,
+        job_id: str,
+        tenant_key: str,
+        agent_id: str,
+        response_data: Optional[dict] = None,
+        timestamp: Optional[datetime] = None,
+    ):
+        """
+        Broadcast message acknowledgment event.
+        Event type: 'agent_communication:message_acknowledged'
+
+        Args:
+            message_id: Unique message identifier
+            job_id: Job ID associated with the message
+            tenant_key: Tenant key for multi-tenant isolation
+            agent_id: Agent that acknowledged the message
+            response_data: Optional response data from agent
+            timestamp: Acknowledgment timestamp
+        """
+        message_data = {
+            "message_id": message_id,
+            "job_id": job_id,
+            "agent_id": agent_id,
+            "acknowledged_at": (timestamp or datetime.now(timezone.utc)).isoformat(),
+        }
+
+        if response_data:
+            message_data["response_data"] = response_data
+
+        message = {
+            "type": "agent_communication:message_acknowledged",
+            "data": message_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting message_acknowledged to {client_id}")
+                    disconnected.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+        logger.debug(f"Broadcast message_acknowledged - {message_id} by {agent_id}")
+
+    async def broadcast_agent_status_update(
+        self,
+        job_id: str,
+        tenant_key: str,
+        agent_id: str,
+        status: str,
+        current_task: Optional[str] = None,
+        progress_percentage: Optional[int] = None,
+        context_usage: Optional[int] = None,
+        timestamp: Optional[datetime] = None,
+    ):
+        """
+        Broadcast agent status update event.
+        Event type: 'agent_communication:status_update'
+
+        Args:
+            job_id: Agent job ID
+            tenant_key: Tenant key for multi-tenant isolation
+            agent_id: Agent reporting status
+            status: Current status (pending, active, completed, failed)
+            current_task: Description of current task
+            progress_percentage: Progress from 0-100
+            context_usage: Current context token usage
+            timestamp: Status update timestamp
+        """
+        message_data = {
+            "job_id": job_id,
+            "agent_id": agent_id,
+            "status": status,
+            "updated_at": (timestamp or datetime.now(timezone.utc)).isoformat(),
+        }
+
+        if current_task:
+            message_data["current_task"] = current_task
+
+        if progress_percentage is not None:
+            message_data["progress_percentage"] = progress_percentage
+
+        if context_usage is not None:
+            message_data["context_usage"] = context_usage
+
+        message = {
+            "type": "agent_communication:status_update",
+            "data": message_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting status_update to {client_id}")
+                    disconnected.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+        logger.debug(
+            f"Broadcast status_update - job {job_id}: {status} "
+            f"(progress: {progress_percentage}%, task: {current_task})"
+        )
+
+    async def broadcast_artifact_created(
+        self,
+        job_id: str,
+        tenant_key: str,
+        agent_id: str,
+        artifact_type: str,
+        artifact_path: str,
+        artifact_metadata: Optional[dict] = None,
+        timestamp: Optional[datetime] = None,
+    ):
+        """
+        Broadcast artifact creation event.
+        Event type: 'agent_communication:artifact_created'
+
+        Args:
+            job_id: Agent job ID that created the artifact
+            tenant_key: Tenant key for multi-tenant isolation
+            agent_id: Agent that created the artifact
+            artifact_type: Type of artifact (file, test, documentation, etc.)
+            artifact_path: Path to the artifact
+            artifact_metadata: Optional metadata (lines, size, language, etc.)
+            timestamp: Creation timestamp
+        """
+        message_data = {
+            "job_id": job_id,
+            "agent_id": agent_id,
+            "artifact_type": artifact_type,
+            "artifact_path": artifact_path,
+            "created_at": (timestamp or datetime.now(timezone.utc)).isoformat(),
+        }
+
+        if artifact_metadata:
+            message_data["metadata"] = artifact_metadata
+
+        message = {
+            "type": "agent_communication:artifact_created",
+            "data": message_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Multi-tenant isolation
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            auth_context = self.auth_contexts.get(client_id, {})
+            if auth_context.get("tenant_key") == tenant_key:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    logger.exception(f"Error broadcasting artifact_created to {client_id}")
+                    disconnected.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+        logger.info(f"Broadcast artifact_created - {artifact_type}: {artifact_path} (job: {job_id})")
