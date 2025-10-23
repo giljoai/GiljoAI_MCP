@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_db_session, require_admin
@@ -33,20 +33,29 @@ router = APIRouter()
 class CookieDomainsResponse(BaseModel):
     """Response model for cookie domain whitelist."""
 
-    domains: List[str] = Field(
-        description="List of whitelisted cookie domains"
-    )
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "domains": ["localhost", "example.com", "subdomain.example.com"]
             }
         }
+    )
+
+    domains: List[str] = Field(
+        description="List of whitelisted cookie domains"
+    )
 
 
 class AddCookieDomainRequest(BaseModel):
     """Request model for adding a domain to cookie whitelist."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "domain": "example.com"
+            }
+        }
+    )
 
     domain: str = Field(
         min_length=3,
@@ -100,29 +109,23 @@ class AddCookieDomainRequest(BaseModel):
 
         return domain
 
-    class Config:
-        json_schema_extra = {
+
+class RemoveCookieDomainRequest(BaseModel):
+    """Request model for removing a domain from cookie whitelist."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "domain": "example.com"
             }
         }
-
-
-class RemoveCookieDomainRequest(BaseModel):
-    """Request model for removing a domain from cookie whitelist."""
+    )
 
     domain: str = Field(
         min_length=3,
         max_length=255,
         description="Domain name to remove from whitelist"
     )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "domain": "example.com"
-            }
-        }
 
 
 # Helper Functions

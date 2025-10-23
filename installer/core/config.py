@@ -251,6 +251,9 @@ SECRET_KEY={self.generate_secret_key()}
 JWT_SECRET={self.generate_secret_key()}
 SESSION_SECRET={self.generate_secret_key()}
 
+# MCP Installer token signing key (for secure download links)
+MCP_INSTALLER_SECRET_KEY={self.generate_secret_key()}
+
 # =============================================================================
 # CORS CONFIGURATION
 # =============================================================================
