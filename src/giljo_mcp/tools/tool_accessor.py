@@ -31,7 +31,6 @@ class ToolAccessor:
         self,
         name: str,
         mission: str,
-        agents: Optional[list[str]] = None,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
@@ -57,26 +56,6 @@ class ToolAccessor:
                 await session.commit()
 
                 project_id = str(project.id)
-
-                # Initialize agents if provided
-                if agents:
-                    for agent_name in agents:
-                        # Extract role from agent name or use default
-                        # If agent_name contains arrows or is very long, use generic role
-                        if '→' in agent_name or '->' in agent_name or len(agent_name) > 50:
-                            role = 'team_member'
-                        else:
-                            role = agent_name
-                        
-                        agent = Agent(
-                            name=agent_name,
-                            project_id=project.id,
-                            tenant_key=tenant_key,
-                            status="active",
-                            role=role,
-                        )
-                        session.add(agent)
-                    await session.commit()
 
                 logger.info(f"Created project {project_id} with tenant key {tenant_key}")
 
