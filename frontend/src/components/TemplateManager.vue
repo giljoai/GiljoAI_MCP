@@ -628,7 +628,7 @@ const toolOptions = [
   {
     title: 'Claude',
     value: 'claude',
-    logo: '/Claude_AI_symbol.svg',
+    logo: '/claude_pix.svg',
     color: '#1976D2',
   },
   {
@@ -860,7 +860,7 @@ const getCategoryColor = (category) => {
 
 const getToolLogo = (tool) => {
   const logos = {
-    claude: '/Claude_AI_symbol.svg',
+    claude: '/claude_pix.svg',
     codex: '/codex_logo.svg',
     gemini: '/gemini-icon.svg',
   }
