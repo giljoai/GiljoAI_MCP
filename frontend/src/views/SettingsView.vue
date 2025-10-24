@@ -29,7 +29,9 @@
         Notifications
       </v-tab>
       <v-tab value="templates">
-        <v-icon start>mdi-robot</v-icon>
+        <template #prepend>
+          <v-img src="/giljo_YW_Face.svg" width="20" height="20" style="margin-right: 3px;" />
+        </template>
         Agent Templates
       </v-tab>
       <v-tab value="api">

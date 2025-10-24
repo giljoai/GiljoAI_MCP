@@ -2,18 +2,16 @@
   <v-dialog v-model="showWizard" max-width="720">
     <template #activator="{ props }">
       <v-btn v-bind="props" color="primary" size="large" block>
-        <template #prepend>
-          <v-img src="/Giljo_gray_Face.svg?v=2" width="24" height="24" class="mr-2" cover />
-        </template>
         Setup AI Tool Connection
       </v-btn>
     </template>
 
     <v-card>
-      <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-robot</v-icon>
-        AI Tool Self-Configuration
-        <v-spacer />
+      <v-card-title class="d-flex align-center justify-space-between">
+        <div class="d-flex align-center">
+          <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="mr-2" />
+          <span>AI Tool Configuration</span>
+        </div>
         <v-btn icon="mdi-close" variant="text" @click="showWizard = false" aria-label="Close" />
       </v-card-title>
 
@@ -25,7 +23,9 @@
 
         <v-list density="compact" class="mb-2">
           <v-list-item>
-            <template #prepend><v-icon>mdi-robot-happy</v-icon></template>
+            <template #prepend>
+              <v-img :src="toolLogo" width="28" height="28" class="mr-2" contain />
+            </template>
             <v-list-item-title>AI Tool: {{ detectedToolName }}</v-list-item-title>
           </v-list-item>
           <v-list-item>
@@ -168,6 +168,17 @@ const detectedToolName = computed(() => aiTools.find(t => t.value === selectedTo
 const selectedToolName = computed(() => aiTools.find(t => t.value === selectedTool.value)?.name || 'AI Tool')
 const detectedServer = computed(() => `${serverIp.value}:${serverPort.value}`)
 
+// Get the appropriate logo for the selected tool
+const toolLogo = computed(() => {
+  const logos = {
+    claude: '/claude_pix.svg',
+    codex: '/openai-logo.svg',
+    gemini: '/gemini-icon.svg',
+    cursor: '/claude_pix.svg' // Using Claude pix for Cursor too
+  }
+  return logos[selectedTool.value] || logos.claude
+})
+
 function makeKeyName(tool) {
   const map = { claude: 'Claude Code', codex: 'Codex CLI', gemini: 'Gemini', cursor: 'Cursor' }
   return `${map[tool] || 'AI Tool'} prompt key`
@@ -195,7 +206,7 @@ function buildServerUrl() {
 }
 
 function claudePrompt(serverUrl, apiKey) {
-  // Return ONLY the command - no extra formatting that could cause issues
+  // Return ONLY the command - adds to user profile by default (available in all projects)
   return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
 }
 
@@ -289,5 +300,9 @@ async function copyPrompt() {
 .font-monospace :deep(textarea) {
   font-family: 'Courier New', Courier, monospace !important;
   font-size: 14px !important;
+}
+
+.no-resize :deep(textarea) {
+  resize: none !important;
 }
 </style>

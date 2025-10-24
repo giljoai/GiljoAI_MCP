@@ -197,7 +197,20 @@
 
           <!-- Vision Document Upload -->
           <div class="mb-3">
-            <div class="text-subtitle-2 mb-2">Vision Document (Optional)</div>
+            <div class="text-subtitle-2 mb-2 d-flex align-center">
+              Vision Document (Recommended)
+              <v-tooltip location="top" max-width="350">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" size="18" class="ml-1" color="grey">
+                    mdi-help-circle-outline
+                  </v-icon>
+                </template>
+                <span>
+                  This is your product proposal document, describing the product and should be quite detailed.
+                  The MCP server will logically chunk and reference it for use with the agents as they help you build the application.
+                </span>
+              </v-tooltip>
+            </div>
 
             <!-- File Drop Zone -->
             <div
@@ -207,6 +220,7 @@
               :class="['vision-drop-zone', { 'drag-over': isDragging }]"
             >
               <v-file-input
+                ref="fileInput"
                 v-model="visionFile"
                 @update:model-value="handleFileSelect"
                 accept=".txt,.md,.markdown"
@@ -218,7 +232,7 @@
                 clearable
               >
                 <template v-slot:append>
-                  <v-btn icon variant="text" size="small" @click="triggerFileInput">
+                  <v-btn icon variant="text" size="small" @click.stop="triggerFileInput">
                     <v-icon>mdi-folder-open</v-icon>
                   </v-btn>
                 </template>
@@ -393,6 +407,7 @@ const editProductData = ref({
 const productToDelete = ref(null)
 const visionFile = ref(null)
 const isDragging = ref(false)
+const fileInput = ref(null)
 
 const productInitial = computed(() => {
   if (!productStore.currentProduct?.name) return '?'
@@ -579,7 +594,13 @@ function clearVisionFile() {
 }
 
 function triggerFileInput() {
-  // The v-file-input handles this automatically
+  // Trigger the native file input dialog
+  if (fileInput.value) {
+    const inputElement = fileInput.value.$el.querySelector('input[type="file"]')
+    if (inputElement) {
+      inputElement.click()
+    }
+  }
 }
 
 function formatFileSize(bytes) {
