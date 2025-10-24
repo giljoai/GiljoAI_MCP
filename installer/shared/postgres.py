@@ -139,6 +139,10 @@ class PostgreSQLDiscovery:
                 program_files / 'edb/languagepack/v2/PostgreSQL/bin',
             ])
 
+            # Custom drive installations (common for large databases)
+            for drive in ['D:', 'E:', 'F:', 'G:']:
+                locations.append(Path(f'{drive}/PostgreSQL/bin'))
+
         elif self.system == 'Linux':
             # Linux common locations
             locations.extend([
