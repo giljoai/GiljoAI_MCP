@@ -131,7 +131,7 @@ class EnhancedToolAccessor:
     @measure_performance("create_project")
     @with_retry(max_attempts=3)
     async def create_project(
-        self, name: str, mission: str, agents: Optional[list[str]] = None, product_id: Optional[str] = None
+        self, name: str, mission: str, product_id: Optional[str] = None
     ) -> dict[str, Any]:
         """Create a new project with transaction rollback on failure"""
         try:
@@ -154,18 +154,6 @@ class EnhancedToolAccessor:
                 await session.flush()  # Get the project ID
 
                 project_id = str(project.id)
-
-                # Initialize agents if provided
-                if agents:
-                    for agent_name in agents:
-                        agent = Agent(
-                            name=agent_name,
-                            project_id=project.id,
-                            tenant_key=tenant_key,
-                            status="active",
-                            role=agent_name,  # Use agent name as default role
-                        )
-                        session.add(agent)
 
                 # Commit handled by context manager
 
