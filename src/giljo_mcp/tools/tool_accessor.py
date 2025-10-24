@@ -61,12 +61,19 @@ class ToolAccessor:
                 # Initialize agents if provided
                 if agents:
                     for agent_name in agents:
+                        # Extract role from agent name or use default
+                        # If agent_name contains arrows or is very long, use generic role
+                        if '→' in agent_name or '->' in agent_name or len(agent_name) > 50:
+                            role = 'team_member'
+                        else:
+                            role = agent_name
+                        
                         agent = Agent(
                             name=agent_name,
                             project_id=project.id,
                             tenant_key=tenant_key,
                             status="active",
-                            role=agent_name,  # Use agent name as default role
+                            role=role,
                         )
                         session.add(agent)
                     await session.commit()

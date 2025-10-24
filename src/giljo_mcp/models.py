@@ -191,8 +191,8 @@ class Agent(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    name = Column(String(100), nullable=False)
-    role = Column(String(50), nullable=False)  # orchestrator, analyzer, implementer, tester, etc.
+    name = Column(String(200), nullable=False)
+    role = Column(String(200), nullable=False)  # orchestrator, analyzer, implementer, tester, etc.
     status = Column(String(50), default="active")  # active, idle, working, decommissioned
     mission = Column(Text, nullable=True)
     context_used = Column(Integer, default=0)

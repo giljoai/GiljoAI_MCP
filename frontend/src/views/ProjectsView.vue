@@ -301,8 +301,11 @@
               multiple
               chips
               clearable
-              hint="Add agent names to spawn on project creation"
+              hint="Add agent names (max 200 chars each). Press Enter after each agent name."
               persistent-hint
+              :rules="[
+                (v) => !v || v.every(name => name.length <= 200) || 'Agent names must be 200 characters or less',
+              ]"
             ></v-combobox>
           </v-form>
         </v-card-text>
