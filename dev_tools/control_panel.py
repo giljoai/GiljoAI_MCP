@@ -241,17 +241,30 @@ class GiljoDevControlPanel:
         self.db_exists_label = ttk.Label(section, text="Not checked")
         self.db_exists_label.grid(row=1, column=2, sticky="w", padx=(5, 0), pady=(10, 0))
 
+        # Last backup status
+        ttk.Label(section, text="Last Backup:").grid(row=2, column=0, sticky="w", pady=(10, 0))
+        self.backup_indicator = ttk.Label(section, text="●", foreground="gray")
+        self.backup_indicator.grid(row=2, column=1, pady=(10, 0))
+        self.backup_label = ttk.Label(section, text="Not checked")
+        self.backup_label.grid(row=2, column=2, sticky="w", padx=(5, 0), pady=(10, 0))
+
         # Action buttons
-        ttk.Separator(section, orient="horizontal").grid(row=2, column=0, columnspan=3, sticky="ew", pady=10)
+        ttk.Separator(section, orient="horizontal").grid(row=3, column=0, columnspan=4, sticky="ew", pady=10)
         ttk.Button(section, text="Check Connection", command=self.check_db_connection, width=20).grid(
-            row=3, column=0, padx=5, pady=2
+            row=4, column=0, padx=5, pady=2
         )
         ttk.Button(section, text="Check Database", command=self.check_db_exists, width=20).grid(
-            row=3, column=1, padx=5, pady=2
+            row=4, column=1, padx=5, pady=2
+        )
+        ttk.Button(section, text="Backup Database", command=self.backup_database, width=20).grid(
+            row=4, column=2, padx=5, pady=2
         )
         ttk.Button(section, text="Delete Database", command=self.delete_database, width=20).grid(
-            row=3, column=2, padx=5, pady=2
+            row=4, column=3, padx=5, pady=2
         )
+
+        # Check for last backup on startup
+        self.check_last_backup()
 
         return row + 1
 
@@ -1537,6 +1550,207 @@ DROP DATABASE IF EXISTS giljo_mcp;
         except Exception as e:
             self.update_status_message(f"psql.exe deletion failed: {e}")
             messagebox.showerror("Error", f"Database deletion failed:\n\n{e}")
+
+    def check_last_backup(self):
+        """
+        Check for the last database backup and update status indicator.
+
+        Looks in docs/archive/database_backups/ for the most recent backup file.
+        """
+        try:
+            backup_dir = self.project_root / "docs" / "archive" / "database_backups"
+
+            if not backup_dir.exists():
+                self.backup_label.config(text="No backups found")
+                self.backup_indicator.config(foreground="gray")
+                return
+
+            # Find all .dump files (backup files)
+            dump_files = list(backup_dir.glob("*.dump"))
+
+            if not dump_files:
+                self.backup_label.config(text="No backups found")
+                self.backup_indicator.config(foreground="gray")
+                return
+
+            # Get the most recent file by modification time
+            latest_backup = max(dump_files, key=lambda p: p.stat().st_mtime)
+
+            # Format the timestamp
+            mod_time = latest_backup.stat().st_mtime
+            from datetime import datetime
+            backup_time = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
+
+            self.backup_label.config(text=backup_time)
+            self.backup_indicator.config(foreground="green")
+
+        except Exception as e:
+            self.logger.warning(f"Could not check last backup: {e}")
+            self.backup_label.config(text="Error checking backups")
+            self.backup_indicator.config(foreground="red")
+
+    def backup_database(self):
+        """
+        Backup the giljo_mcp database using pg_dump.
+
+        Creates a timestamped backup file in docs/archive/database_backups/
+        and generates a metadata .md file with backup information.
+        """
+        self.update_status_message("Backing up database...")
+
+        try:
+            # Create backup directory if it doesn't exist
+            backup_dir = self.project_root / "docs" / "archive" / "database_backups"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create timestamped backup filename
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = backup_dir / f"giljo_mcp_{timestamp}.dump"
+            metadata_file = backup_dir / f"giljo_mcp_{timestamp}.md"
+
+            # Get database credentials
+            credentials = self.get_db_credentials()
+
+            # Build pg_dump command
+            # Using -Fc format (custom format) for better compression and restore options
+            env = os.environ.copy()
+            env["PGPASSWORD"] = credentials["password"]
+
+            command = [
+                "pg_dump",
+                "-h", credentials["host"],
+                "-p", str(credentials["port"]),
+                "-U", credentials["user"],
+                "-Fc",  # Custom format (compressed)
+                "-v",  # Verbose
+                "giljo_mcp"
+            ]
+
+            self.update_status_message("Running pg_dump (this may take a moment)...")
+
+            # Run pg_dump
+            result = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=300  # 5 minute timeout
+            )
+
+            if result.returncode != 0:
+                raise Exception(f"pg_dump failed: {result.stderr}")
+
+            # Write dump output to file
+            with open(backup_file, "wb") as f:
+                # Re-run pg_dump to get binary output
+                result = subprocess.run(
+                    command,
+                    check=False,
+                    capture_output=True,
+                    env=env,
+                    timeout=300
+                )
+                if result.returncode != 0:
+                    raise Exception(f"pg_dump failed: {result.stderr.decode()}")
+                f.write(result.stdout)
+
+            # Get backup file size
+            backup_size = backup_file.stat().st_size
+            size_mb = backup_size / (1024 * 1024)
+
+            # Create metadata file
+            metadata_content = f"""# Database Backup Metadata
+
+**Backup Date**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+**Database**: giljo_mcp
+**Format**: PostgreSQL Custom Format (pg_dump -Fc)
+**File**: {backup_file.name}
+**Size**: {size_mb:.2f} MB
+
+## Backup Information
+
+- **Host**: {credentials["host"]}
+- **Port**: {credentials["port"]}
+- **User**: {credentials["user"]}
+- **Database**: giljo_mcp
+
+## Restore Instructions
+
+To restore this backup, use pg_restore:
+
+```bash
+pg_restore -h {credentials["host"]} -p {credentials["port"]} -U {credentials["user"]} -d giljo_mcp {backup_file.name}
+```
+
+Or with password prompt:
+```bash
+PGPASSWORD=<password> pg_restore -h {credentials["host"]} -p {credentials["port"]} -U {credentials["user"]} -d giljo_mcp {backup_file.name}
+```
+
+## Notes
+
+- Backup created using pg_dump with custom format (-Fc)
+- Custom format provides compression and parallel restore capability
+- To restore, you must have an existing giljo_mcp database
+- To restore to a fresh system, first create the database and roles
+
+## Verification
+
+To verify the backup integrity:
+
+```bash
+pg_restore -l {backup_file.name} | head -20
+```
+"""
+
+            with open(metadata_file, "w") as f:
+                f.write(metadata_content)
+
+            # Update status
+            self.check_last_backup()
+            self.update_status_message(f"Database backup completed successfully ({size_mb:.2f} MB)")
+
+            messagebox.showinfo(
+                "Backup Successful",
+                f"Database backup completed successfully!\n\n"
+                f"Backup File: {backup_file.name}\n"
+                f"Size: {size_mb:.2f} MB\n"
+                f"Location: docs/archive/database_backups/\n\n"
+                f"Metadata file created: {metadata_file.name}"
+            )
+
+        except FileNotFoundError as e:
+            self.update_status_message("pg_dump not found in PATH")
+            messagebox.showerror(
+                "Error",
+                "pg_dump not found!\n\n"
+                "PostgreSQL command-line tools must be in PATH.\n"
+                "Make sure PostgreSQL is properly installed.\n\n"
+                f"Details: {e}"
+            )
+
+        except subprocess.TimeoutExpired:
+            self.update_status_message("Backup timeout (exceeded 5 minutes)")
+            messagebox.showerror(
+                "Error",
+                "Backup timeout!\n\n"
+                "The database backup took too long (> 5 minutes).\n"
+                "This may indicate a very large database or system issues."
+            )
+
+        except Exception as e:
+            self.update_status_message(f"Backup failed: {e}")
+            messagebox.showerror(
+                "Error",
+                f"Database backup failed:\n\n{e}\n\n"
+                "Make sure:\n"
+                "1. PostgreSQL is running\n"
+                "2. giljo_mcp database exists\n"
+                "3. You have permission to read the database\n"
+                "4. pg_dump is in your PATH"
+            )
 
     def verify_fresh_state(self) -> dict[str, bool]:
         """
