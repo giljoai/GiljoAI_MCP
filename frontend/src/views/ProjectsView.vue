@@ -295,18 +295,6 @@
               class="mb-3"
             ></v-select>
 
-            <v-combobox
-              v-model="projectData.agents"
-              label="Initial Agents (optional)"
-              multiple
-              chips
-              clearable
-              hint="Add agent names (max 200 chars each). Press Enter after each agent name."
-              persistent-hint
-              :rules="[
-                (v) => !v || v.every(name => name.length <= 200) || 'Agent names must be 200 characters or less',
-              ]"
-            ></v-combobox>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -412,7 +400,6 @@ const projectData = ref({
   mission: '',
   context_budget: 150000,
   status: 'inactive',
-  agents: [],
 })
 
 // Table headers
@@ -482,7 +469,6 @@ function editProject(project) {
     mission: project.mission,
     context_budget: project.context_budget || 150000,
     status: project.status,
-    agents: project.agents || [],
   }
   showCreateDialog.value = true
 }
@@ -543,7 +529,6 @@ function resetForm() {
     mission: '',
     context_budget: 150000,
     status: 'inactive',
-    agents: [],
   }
 }
 

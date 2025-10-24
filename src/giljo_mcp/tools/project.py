@@ -27,17 +27,15 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
     async def create_project(
         name: str,
         mission: str,
-        agents: Optional[list[str]] = None,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Create a new project with mission and optional agent sequence
+        Create a new project with mission
 
         Args:
             name: Project name
             mission: Project mission statement
-            agents: Optional list of agent names to initialize
             product_id: Optional product ID to associate the project with
             tenant_key: Optional tenant key to use (generates new one if not provided)
 
@@ -69,18 +67,6 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                 initial_session = Session(project_id=project.id, started_at=datetime.now(timezone.utc), status="active")
                 session.add(initial_session)
 
-                # Create agents if specified
-                if agents:
-                    for agent_name in agents:
-                        agent = Agent(
-                            project_id=project.id,
-                            name=agent_name,
-                            role=agent_name,
-                            status="pending",
-                            created_at=datetime.now(timezone.utc),
-                        )
-                        session.add(agent)
-
                 await session.commit()
 
                 # Set as current project in tenant manager
@@ -97,7 +83,6 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
                     "name": name,
                     "tenant_key": tenant_key,
                     "product_id": product_id,
-                    "agents_created": agents or [],
                     "session_id": str(initial_session.id),
                 }
 

@@ -20,7 +20,6 @@ router = APIRouter()
 class ProjectCreate(BaseModel):
     name: str = Field(..., description="Project name")
     mission: str = Field(..., description="Project mission statement")
-    agents: Optional[list[str]] = Field(None, description="Initial agent list")
     product_id: Optional[str] = Field(None, description="Product ID to associate with")
 
 
@@ -64,7 +63,7 @@ async def create_project(
 
         # Use the tool accessor, passing the tenant_key from the authenticated user
         result = await state.tool_accessor.create_project(
-            name=project.name, mission=project.mission, agents=project.agents, product_id=project.product_id, tenant_key=current_user.tenant_key
+            name=project.name, mission=project.mission, product_id=project.product_id, tenant_key=current_user.tenant_key
         )
 
         if not result.get("success"):
