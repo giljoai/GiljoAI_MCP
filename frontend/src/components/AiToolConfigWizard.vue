@@ -52,18 +52,11 @@
             readonly
             rows="2"
             variant="outlined"
-            class="font-monospace"
+            class="font-monospace no-resize"
+            append-inner-icon="mdi-content-copy"
+            @click:append-inner="copyPrompt"
+            :messages="copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'"
           />
-          <v-btn
-            class="mt-2"
-            color="primary"
-            block
-            size="large"
-            prepend-icon="mdi-content-copy"
-            @click="copyPrompt"
-          >
-            {{ copied ? 'Copied!' : 'Copy Command' }}
-          </v-btn>
         </div>
       </v-card-text>
 
@@ -117,18 +110,11 @@
             readonly
             rows="2"
             variant="outlined"
-            class="font-monospace"
+            class="font-monospace no-resize"
+            append-inner-icon="mdi-content-copy"
+            @click:append-inner="copyPrompt"
+            :messages="copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'"
           />
-          <v-btn
-            class="mt-2"
-            color="primary"
-            block
-            size="large"
-            prepend-icon="mdi-content-copy"
-            @click="copyPrompt"
-          >
-            {{ copied ? 'Copied!' : 'Copy Command' }}
-          </v-btn>
         </div>
 
         <v-divider class="my-4" />
@@ -262,42 +248,38 @@ function generateAdvancedPrompt() {
 }
 
 async function copyPrompt() {
-  const text = String(generatedPrompt.value || '')
+  const text = String(generatedPrompt.value || '').trim()
   if (!text) return
 
-  // Fallback for non-secure origins (e.g., http://LAN-IP)
-  const fallbackCopy = () => {
-    try {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      ta.setAttribute('readonly', '')
-      ta.style.position = 'fixed'
-      ta.style.top = '-1000px'
-      ta.style.left = '-1000px'
-      document.body.appendChild(ta)
-      ta.select()
-      const ok = document.execCommand('copy')
-      document.body.removeChild(ta)
-      return ok
-    } catch (err) {
-      console.error('[Wizard] Fallback copy failed:', err)
-      return false
-    }
-  }
-
+  // Simple approach - just select the text in the textarea
   try {
-    if (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-      await navigator.clipboard.writeText(text)
-      copied.value = true
-    } else {
-      // Non-secure context (e.g., LAN IP over http)
-      copied.value = fallbackCopy()
+    // Find the textarea and select its content
+    const textarea = document.querySelector('.font-monospace textarea')
+    if (textarea) {
+      textarea.focus()
+      textarea.select()
+
+      // Try to copy
+      const success = document.execCommand('copy')
+
+      if (success) {
+        copied.value = true
+        setTimeout(() => (copied.value = false), 3000)
+      } else {
+        // If copy fails, at least the text is selected for manual copy
+        copied.value = true
+        setTimeout(() => (copied.value = false), 3000)
+      }
     }
   } catch (e) {
-    console.warn('[Wizard] Clipboard API failed, using fallback:', e)
-    copied.value = fallbackCopy()
-  } finally {
-    if (copied.value) setTimeout(() => (copied.value = false), 2000)
+    // Fallback - just select the text for manual copy
+    const textarea = document.querySelector('.font-monospace textarea')
+    if (textarea) {
+      textarea.focus()
+      textarea.select()
+      copied.value = true
+      setTimeout(() => (copied.value = false), 3000)
+    }
   }
 }
 
