@@ -14,6 +14,7 @@ from sqlalchemy import select
 from .database import DatabaseManager
 from .models import AgentTemplate, TemplateAugmentation
 from .services.config_service import ConfigService
+from .template_cache import TemplateCache
 
 
 logger = logging.getLogger(__name__)
@@ -135,16 +136,22 @@ class UnifiedTemplateManager:
     Handles both database-backed and legacy templates.
     """
 
-    def __init__(self, db_manager: Optional[DatabaseManager] = None):
+    def __init__(self, db_manager: Optional[DatabaseManager] = None, redis_client=None):
         """
         Initialize the template manager.
 
         Args:
             db_manager: Optional database manager for DB-backed templates
+            redis_client: Optional Redis client for Layer 2 caching
         """
         self.db_manager = db_manager
-        self._template_cache = {}
         self._legacy_templates = self._load_legacy_templates()
+
+        # Initialize three-layer cache if database available
+        self.cache = None
+        if db_manager:
+            self.cache = TemplateCache(db_manager, redis_client)
+            logger.info("TemplateCache initialized for database-backed templates")
 
     def _load_legacy_templates(self) -> dict[str, str]:
         """Load comprehensive templates extracted from mission_templates.py"""
@@ -567,6 +574,7 @@ SUCCESS CRITERIA:
     async def get_template(
         self,
         role: str,
+        tenant_key: str,
         variables: Optional[dict[str, Any]] = None,
         augmentations: Optional[list[Union[TemplateAugmentation, dict]]] = None,
         project_type: Optional[str] = None,
@@ -579,6 +587,7 @@ SUCCESS CRITERIA:
 
         Args:
             role: Agent role (orchestrator, analyzer, etc.)
+            tenant_key: Tenant identifier for multi-tenant isolation
             variables: Variables to substitute
             augmentations: Runtime augmentations to apply
             project_type: Optional project type for specialized templates
@@ -599,12 +608,24 @@ SUCCESS CRITERIA:
             serena_config = config_service.get_serena_config()
             variables["serena_enabled"] = serena_config.get("enabled", False)
 
-            # Try database first if available
-            if self.db_manager:
-                template_content = await self._get_db_template(role, project_type, product_id, use_cache, preferred_tool)
-            else:
-                # Fall back to legacy templates
-                template_content = self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
+            # Try cache → database cascade → legacy fallback
+            template_content = None
+            if self.cache and use_cache:
+                # Use three-layer cache (memory → Redis → database cascade)
+                template = await self.cache.get_template(role, tenant_key, product_id)
+                if template:
+                    template_content = template.template_content
+                    logger.debug(
+                        f"Template resolved from cache/database: {role} "
+                        f"(tenant={tenant_key}, product={product_id})"
+                    )
+
+            # Fallback to legacy templates if not in database
+            if not template_content:
+                template_content = self._legacy_templates.get(
+                    role.lower(), f"No template available for role: {role}"
+                )
+                logger.debug(f"Using legacy fallback template for role: {role}")
 
             # Add Serena augmentation if enabled
             if variables["serena_enabled"]:
@@ -617,69 +638,57 @@ SUCCESS CRITERIA:
         except Exception:
             logger.exception(f"Failed to get template for role '{role}'")
             # Return fallback template
-            fallback = self._legacy_templates.get(role.lower(), f"Error loading template for role: {role}")
+            fallback = self._legacy_templates.get(
+                role.lower(), f"Error loading template for role: {role}"
+            )
             return process_template(fallback, variables, augmentations)
 
-    async def _get_db_template(
-        self,
-        role: str,
-        project_type: Optional[str],
-        product_id: Optional[str],
-        use_cache: bool,
-        preferred_tool: Optional[str] = None,
-    ) -> str:
-        """Get template from database with caching"""
-        # Read Serena config for cache key
-        config_service = ConfigService()
-        serena_config = config_service.get_serena_config()
-        serena_enabled = serena_config.get("enabled", False)
+    async def invalidate_cache(
+        self, role: str, tenant_key: str, product_id: Optional[str] = None
+    ) -> None:
+        """
+        Invalidate cached template across all layers.
 
-        # Include serena status and preferred_tool in cache key
-        cache_key = f"{role}_{project_type}_{product_id}_serena_{serena_enabled}_tool_{preferred_tool}"
+        Called when a template is updated via UI or API.
 
-        if use_cache and cache_key in self._template_cache:
-            return self._template_cache[cache_key]
+        Args:
+            role: Agent role
+            tenant_key: Tenant identifier
+            product_id: Optional product ID
+        """
+        if self.cache:
+            await self.cache.invalidate(role, tenant_key, product_id)
+            logger.info(
+                f"Template cache invalidated: role={role}, tenant={tenant_key}, "
+                f"product={product_id}"
+            )
 
-        async with self.db_manager.get_session() as session:
-            # Build query
-            query = select(AgentTemplate).where(AgentTemplate.role == role, AgentTemplate.is_active)
+    async def invalidate_all_cache(self, tenant_key: Optional[str] = None) -> None:
+        """
+        Invalidate all cached templates.
 
-            # Add filters
-            if product_id:
-                query = query.where(AgentTemplate.product_id == product_id)
-            if project_type:
-                query = query.where(AgentTemplate.project_type == project_type)
-            if preferred_tool:
-                query = query.where(AgentTemplate.preferred_tool == preferred_tool)
+        Args:
+            tenant_key: Optional tenant to invalidate (None = all tenants)
+        """
+        if self.cache:
+            await self.cache.invalidate_all(tenant_key)
+            logger.info(f"All template caches invalidated (tenant={tenant_key})")
 
-            # Try to get most specific template first
-            result = await session.execute(query)
-            template = result.scalar_one_or_none()
+    def get_cache_stats(self) -> dict:
+        """
+        Get cache performance statistics.
 
-            # Fall back to default template for role
-            if not template:
-                query = select(AgentTemplate).where(
-                    AgentTemplate.role == role,
-                    AgentTemplate.is_active,
-                    AgentTemplate.is_default,
-                )
-                result = await session.execute(query)
-                template = result.scalar_one_or_none()
-
-            if template:
-                # Update usage stats
-                template.usage_count += 1
-                template.last_used_at = datetime.now(timezone.utc)
-                await session.commit()
-
-                # Cache the template
-                if use_cache:
-                    self._template_cache[cache_key] = template.template_content
-
-                return template.template_content
-
-            # Fall back to legacy template
-            return self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
+        Returns:
+            Dict with cache performance metrics
+        """
+        if self.cache:
+            return self.cache.get_cache_stats()
+        return {
+            "error": "Cache not initialized",
+            "redis_enabled": False,
+            "hits": 0,
+            "misses": 0,
+        }
 
     def _create_serena_augmentation(self, role: str) -> dict:
         """
@@ -837,14 +846,25 @@ Use Serena MCP tools for semantic code analysis:
 """,
         )
 
-    def clear_cache(self):
-        """Clear the template cache"""
-        self._template_cache.clear()
-        logger.info("Template cache cleared")
+    async def clear_cache(self, tenant_key: Optional[str] = None):
+        """
+        Clear the template cache.
+
+        Args:
+            tenant_key: Optional tenant to clear (None = all tenants)
+        """
+        await self.invalidate_all_cache(tenant_key)
 
     def get_cached_templates(self) -> list[str]:
-        """Get list of cached template keys"""
-        return list(self._template_cache.keys())
+        """
+        Get list of cached template keys.
+
+        Returns:
+            List of cache keys (empty if cache not initialized)
+        """
+        if self.cache:
+            return list(self.cache._memory_cache.keys())
+        return []
 
     def get_behavioral_rules(self, role: str) -> list[str]:
         """
@@ -968,12 +988,14 @@ _template_manager_instance = None
 
 def get_template_manager(
     db_manager: Optional[DatabaseManager] = None,
+    redis_client=None,
 ) -> UnifiedTemplateManager:
     """
     Get the singleton template manager instance.
 
     Args:
         db_manager: Optional database manager
+        redis_client: Optional Redis client for Layer 2 caching
 
     Returns:
         UnifiedTemplateManager instance
@@ -981,10 +1003,14 @@ def get_template_manager(
     global _template_manager_instance
 
     if _template_manager_instance is None:
-        _template_manager_instance = UnifiedTemplateManager(db_manager)
+        _template_manager_instance = UnifiedTemplateManager(db_manager, redis_client)
     elif db_manager and _template_manager_instance.db_manager is None:
         # Update with database manager if not previously set
         _template_manager_instance.db_manager = db_manager
+        # Re-initialize cache with new db_manager
+        if db_manager:
+            _template_manager_instance.cache = TemplateCache(db_manager, redis_client)
+            logger.info("TemplateCache re-initialized with database manager")
 
     return _template_manager_instance
 

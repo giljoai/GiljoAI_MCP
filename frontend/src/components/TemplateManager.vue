@@ -140,6 +140,23 @@
             aria-label="View template version history"
           />
           <v-btn
+            icon="mdi-compare"
+            size="small"
+            variant="text"
+            @click="viewDiff(item)"
+            title="Compare with System Default"
+            aria-label="Compare template with system default"
+          />
+          <v-btn
+            icon="mdi-refresh"
+            size="small"
+            variant="text"
+            color="warning"
+            @click="confirmReset(item)"
+            title="Reset to Default"
+            aria-label="Reset template to system default"
+          />
+          <v-btn
             icon="mdi-delete"
             size="small"
             variant="text"
@@ -398,6 +415,124 @@
         @restore="handleRestore"
       />
     </v-dialog>
+
+    <!-- Reset Confirmation Dialog -->
+    <v-dialog v-model="resetDialog" max-width="600px" persistent retain-focus>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
+          <span class="text-h5">Confirm Reset to Default</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="resetDialog = false" aria-label="Close" />
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-4">
+            Are you sure you want to reset the template "{{ resettingTemplate?.name }}" to the
+            system default?
+          </p>
+          <v-alert type="warning" variant="tonal" class="mb-4">
+            This will overwrite your customizations with the latest system template. Your current
+            version will be archived and can be restored later from the version history.
+          </v-alert>
+          <p class="text-caption text-grey">
+            This action creates a backup in version history before resetting.
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="resetDialog = false">Cancel</v-btn>
+          <v-btn color="warning" variant="flat" @click="resetTemplate" :loading="resetting">
+            Reset to Default
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Diff Viewer Dialog -->
+    <v-dialog v-model="diffDialog" max-width="1200px" scrollable persistent retain-focus>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon color="primary" class="mr-2">mdi-compare</v-icon>
+          <span class="text-h5">Template Comparison</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="diffDialog = false" aria-label="Close" />
+        </v-card-title>
+        <v-card-text>
+          <v-container v-if="diffData">
+            <v-row>
+              <v-col cols="12">
+                <v-alert
+                  v-if="!diffData.has_system_template"
+                  type="info"
+                  variant="tonal"
+                  class="mb-4"
+                >
+                  No system template available for comparison. This is a custom template.
+                </v-alert>
+                <v-alert
+                  v-else-if="diffData.changes_summary.is_identical"
+                  type="success"
+                  variant="tonal"
+                  class="mb-4"
+                >
+                  This template is identical to the system default.
+                </v-alert>
+                <v-alert v-else type="info" variant="tonal" class="mb-4">
+                  <div class="d-flex justify-space-between">
+                    <div>
+                      <strong>Changes Summary:</strong>
+                      <span class="ml-4"
+                        ><v-chip size="small" color="success" class="mr-2"
+                          >+{{ diffData.changes_summary.lines_added }} lines</v-chip
+                        ></span
+                      >
+                      <span
+                        ><v-chip size="small" color="error"
+                          >-{{ diffData.changes_summary.lines_removed }} lines</v-chip
+                        ></span
+                      >
+                    </div>
+                    <div>
+                      <span class="text-caption"
+                        >Tenant: v{{ diffData.tenant_version }} | System: v{{
+                          diffData.system_version
+                        }}</span
+                      >
+                    </div>
+                  </div>
+                </v-alert>
+              </v-col>
+              <v-col cols="12">
+                <v-tabs v-model="diffViewTab" bg-color="transparent">
+                  <v-tab value="unified">Unified Diff</v-tab>
+                  <v-tab value="side-by-side">Side by Side</v-tab>
+                </v-tabs>
+                <v-window v-model="diffViewTab" class="mt-4">
+                  <v-window-item value="unified">
+                    <v-card variant="outlined" class="diff-viewer">
+                      <pre class="pa-4">{{ diffData.diff_unified || 'No differences found.' }}</pre>
+                    </v-card>
+                  </v-window-item>
+                  <v-window-item value="side-by-side">
+                    <v-card variant="outlined" class="diff-viewer">
+                      <div v-html="diffData.diff_html" class="pa-4 diff-html-container"></div>
+                    </v-card>
+                  </v-window-item>
+                </v-window>
+              </v-col>
+            </v-row>
+          </v-container>
+          <div v-else class="text-center pa-8">
+            <v-progress-circular indeterminate color="primary" />
+            <p class="mt-4">Loading comparison...</p>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="diffDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
@@ -424,6 +559,8 @@ const editDialog = ref(false)
 const previewDialog = ref(false)
 const deleteDialog = ref(false)
 const historyDialog = ref(false)
+const resetDialog = ref(false)
+const diffDialog = ref(false)
 
 // Template being edited
 const editingTemplate = ref({
@@ -448,6 +585,14 @@ const deletingTemplate = ref(null)
 
 // Template for history view
 const historyTemplate = ref(null)
+
+// Template being reset
+const resettingTemplate = ref(null)
+const resetting = ref(false)
+
+// Diff viewer data
+const diffData = ref(null)
+const diffViewTab = ref('unified')
 
 // Table configuration
 const headers = [
@@ -736,6 +881,42 @@ const formatDate = (date) => {
   return format(new Date(date), 'MMM dd, yyyy HH:mm')
 }
 
+const confirmReset = (template) => {
+  resettingTemplate.value = template
+  resetDialog.value = true
+}
+
+const resetTemplate = async () => {
+  resetting.value = true
+  try {
+    const response = await api.templates.reset(resettingTemplate.value.id)
+    console.log('Template reset response:', response.data)
+    await loadTemplates()
+    resetDialog.value = false
+    resettingTemplate.value = null
+    // Show success notification
+  } catch (error) {
+    console.error('Failed to reset template:', error)
+    // Show error notification
+  } finally {
+    resetting.value = false
+  }
+}
+
+const viewDiff = async (template) => {
+  diffData.value = null
+  diffDialog.value = true
+  diffViewTab.value = 'unified'
+
+  try {
+    const response = await api.templates.diff(template.id)
+    diffData.value = response.data
+  } catch (error) {
+    console.error('Failed to load template diff:', error)
+    // Show error notification
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadTemplates()
@@ -790,6 +971,61 @@ watch(
       white-space: pre-wrap;
       word-break: break-word;
       margin: 0;
+    }
+  }
+
+  .diff-viewer {
+    background: #0e1c2d;
+    color: #e1e1e1;
+    max-height: 600px;
+    overflow: auto;
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .diff-html-container {
+      :deep(table) {
+        background: #0e1c2d;
+        color: #e1e1e1;
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+        font-family: 'Roboto Mono', monospace;
+
+        td,
+        th {
+          padding: 2px 10px;
+          border: 1px solid #2a3f5f;
+          vertical-align: top;
+        }
+
+        th {
+          background: #182739;
+          color: #ffc300;
+          font-weight: 600;
+        }
+
+        .diff_add {
+          background-color: rgba(76, 175, 80, 0.2);
+          color: #81c784;
+        }
+
+        .diff_sub {
+          background-color: rgba(244, 67, 54, 0.2);
+          color: #e57373;
+        }
+
+        .diff_chg {
+          background-color: rgba(255, 193, 7, 0.2);
+          color: #ffd54f;
+        }
+      }
     }
   }
 }

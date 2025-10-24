@@ -228,6 +228,8 @@ export const api = {
     restore: (templateId, archiveId) =>
       apiClient.post(`/api/v1/templates/${templateId}/restore/${archiveId}/`),
     preview: (id, data) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
+    reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
+    diff: (id) => apiClient.get(`/api/v1/templates/${id}/diff/`),
   },
 
   // Authentication (JWT via httpOnly cookies)
