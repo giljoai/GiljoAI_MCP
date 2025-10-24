@@ -42,6 +42,7 @@ from colorama import Fore, Style, init
 from installer.platforms import get_platform_handler
 from installer.core.config import ConfigManager
 from installer.core.database import DatabaseInstaller
+from src.giljo_mcp.template_seeder import seed_tenant_templates
 
 
 # Initialize colorama for cross-platform colored output
@@ -740,6 +741,8 @@ class UnifiedInstaller:
                 # Create all tables (SAME AS api/app.py:186)
                 await db_manager.create_tables_async()
 
+                template_count = 0  # Track seeded templates
+
                 # Create setup_state ONLY (no admin user - Handover 0034)
                 async with db_manager.get_session_async() as session:
                     from sqlalchemy import select
@@ -765,19 +768,31 @@ class UnifiedInstaller:
                         session.add(setup_state)
                         await session.commit()
 
+                    # Seed default agent templates (Handover 0041 Phase 1)
+                    try:
+                        template_count = await seed_tenant_templates(session, default_tenant_key)
+                        if template_count > 0:
+                            logger.info(f"Seeded {template_count} default agent templates")
+                    except Exception as e:
+                        # Non-blocking - templates can be added later via UI
+                        logger.warning(f"Template seeding failed (non-critical): {e}")
+
                 await db_manager.close_async()
-                return True
+                return (True, template_count)
 
             # Run async table creation
-            tables_created = asyncio.run(create_tables_and_init())
+            tables_created, template_count = asyncio.run(create_tables_and_init())
 
             if tables_created:
                 self._print_success("Database tables created successfully")
                 self._print_success("Setup state initialized")
+                if template_count > 0:
+                    self._print_success(f"Seeded {template_count} default agent templates")
                 # REMOVED (Handover 0034): Admin user creation messaging
                 result['tables_created'] = True
                 result['setup_state_created'] = True
                 result['admin_created'] = False  # Explicitly mark as not created
+                result['templates_seeded'] = template_count
             else:
                 self._print_error("Table creation failed")
                 result['success'] = False
