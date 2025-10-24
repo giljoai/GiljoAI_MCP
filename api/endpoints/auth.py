@@ -30,6 +30,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import APIKey, User
+from src.giljo_mcp.template_seeder import seed_tenant_templates
 
 
 logger = logging.getLogger(__name__)
@@ -910,6 +911,17 @@ async def create_first_admin_user(
         )
 
         db.add(admin_user)
+
+        # Seed default agent templates for this tenant (Handover 0041 Phase 2)
+        # CRITICAL: Templates are seeded with the user's tenant_key (not default_tenant_key)
+        # This ensures templates appear in UI immediately after user creation
+        try:
+            template_count = await seed_tenant_templates(db, tenant_key)
+            logger.info(f"[SETUP] Seeded {template_count} default agent templates for tenant {tenant_key[:12]}...")
+        except Exception as e:
+            # Non-blocking - templates can be added later via UI
+            logger.warning(f"[SETUP] Template seeding failed (non-critical): {e}")
+            template_count = 0
 
         try:
             await db.commit()
