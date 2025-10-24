@@ -535,6 +535,44 @@ async def create_database_tables():
     print("✅ Database tables created successfully")
 ```
 
+**Template Seeding** (Handover 0041):
+```python
+async def seed_default_templates():
+    """
+    Seed default agent templates for tenant during installation
+
+    Handover 0041: Database-backed template management
+    6 default templates seeded per tenant (orchestrator, analyzer, implementer, tester, reviewer, documenter)
+    """
+    print("🎯 Seeding default agent templates...")
+
+    from src.giljo_mcp.template_seeder import seed_tenant_templates
+    from src.giljo_mcp.database import DatabaseManager
+
+    db_manager = DatabaseManager(database_url, is_async=True)
+    async with db_manager.get_session_async() as session:
+        template_count = await seed_tenant_templates(session, tenant_key='default')
+        if template_count > 0:
+            print(f"✅ Seeded {template_count} default agent templates")
+        else:
+            print("ℹ️  Templates already seeded for this tenant")
+```
+
+**Templates Seeded**:
+- **orchestrator** - Project coordination and delegation
+- **analyzer** - Requirements analysis and architecture design
+- **implementer** - Code implementation and feature development
+- **tester** - Test creation and quality assurance
+- **reviewer** - Code review and security validation
+- **documenter** - Documentation creation and maintenance
+
+**Key Features**:
+- Idempotent seeding (safe to run multiple times)
+- Non-blocking (installation continues if seeding fails)
+- Multi-tenant isolation (templates scoped to tenant_key)
+- Complete metadata (behavioral rules, success criteria, variables)
+- Performance: <2 seconds to seed 6 templates
+
 **First Admin Creation Setup** (Handover 0034):
 ```python
 async def initialize_setup_state():

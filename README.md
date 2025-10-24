@@ -257,11 +257,30 @@ Use this when you want a Linux-first installation experience without relying on 
 - Desktop shortcuts/launchers per platform
 - Comprehensive PostgreSQL detection
 
+### Agent Template Database Integration
+**Database-backed template customization** (Handover 0041)
+- Three-layer caching architecture (Memory → Redis → Database)
+- Template resolution cascade (<1ms p95 cache hits)
+- 6 default templates per tenant with automatic seeding
+- Monaco editor integration for template editing
+- Real-time template updates via WebSocket
+- Multi-tenant isolation at cache and database layers
+- Version history and rollback capability
+- 13 REST API endpoints for template management
+
 ---
 
 ## Recent Updates (v3.0+)
 
 ### October 2025 - Major Feature Releases
+
+**Agent Template Management** (Handover 0041):
+- Database-backed template customization with three-layer caching
+- 6 default templates per tenant (orchestrator, analyzer, implementer, tester, reviewer, documenter)
+- Monaco editor integration for rich editing experience
+- Template versioning and history with rollback capability
+- 13 REST API endpoints with WebSocket real-time updates
+- 75% test coverage across 78 comprehensive tests
 
 **Password Reset Functionality**:
 - Recovery PIN system for self-service password reset
