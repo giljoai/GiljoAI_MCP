@@ -656,3 +656,57 @@ def failed_validation_setup_state(sync_db_session, setup_state_factory):
 
     sync_db_session.commit()
     return state
+
+
+@pytest_asyncio.fixture(scope="function")
+async def async_client(db_manager):
+    """
+    Create AsyncClient for API testing with proper mocking of authentication.
+
+    Note: This is a simplified fixture. For full API tests, authentication
+    should be properly mocked using the dependency override pattern.
+    """
+    from httpx import AsyncClient as HTTPXAsyncClient
+    from unittest.mock import AsyncMock, patch
+
+    # Mock the FastAPI app import (placeholder - real tests need full API setup)
+    try:
+        from api.app import app
+
+        # Mock authentication dependencies
+        from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+
+        async def mock_get_current_user():
+            from src.giljo_mcp.models import User
+            from datetime import datetime, timezone
+            from uuid import uuid4
+
+            # Return mock authenticated user
+            return User(
+                id=str(uuid4()),
+                username="test_user",
+                email="test@example.com",
+                tenant_key="test_tenant",
+                is_active=True,
+                is_admin=False,
+                created_at=datetime.now(timezone.utc),
+                hashed_password="hashed"
+            )
+
+        async def mock_get_db_session():
+            async with db_manager.get_session_async() as session:
+                yield session
+
+        # Override dependencies
+        app.dependency_overrides[get_current_active_user] = mock_get_current_user
+        app.dependency_overrides[get_db_session] = mock_get_db_session
+
+        async with HTTPXAsyncClient(app=app, base_url="http://test") as client:
+            yield client
+
+        # Clear overrides
+        app.dependency_overrides.clear()
+
+    except ImportError:
+        # If API not available, skip tests that need it
+        pytest.skip("API application not available for testing")
