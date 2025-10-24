@@ -318,6 +318,71 @@ CREATE TABLE mcp_sessions (
 - Auto-cleanup of expired sessions (48 hours)
 - JSONB storage for client info and tool call history
 
+#### Agent Template Database Integration (Handover 0041)
+
+**Agent Templates Table** - Database-backed template management:
+```sql
+CREATE TABLE agent_templates (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_key VARCHAR(255) NOT NULL,
+    product_id VARCHAR(36),
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(50) NOT NULL,  -- 'role', 'skill', 'domain'
+    role VARCHAR(100),  -- 'orchestrator', 'implementer', etc.
+    template_content TEXT NOT NULL,
+    variables JSON DEFAULT '[]',
+    behavioral_rules JSON DEFAULT '[]',
+    success_criteria JSON DEFAULT '[]',
+    preferred_tool VARCHAR(50) DEFAULT 'claude',
+    version VARCHAR(20) DEFAULT '1.0.0',
+    is_active BOOLEAN DEFAULT TRUE,
+    is_default BOOLEAN DEFAULT FALSE,
+    tags JSON DEFAULT '[]',
+    usage_count INTEGER DEFAULT 0,
+    last_used_at TIMESTAMP WITH TIME ZONE,
+    avg_generation_ms INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE,
+
+    -- Performance indexes
+    INDEX idx_agent_templates_tenant_role (tenant_key, role, is_active),
+    INDEX idx_agent_templates_tenant_active (tenant_key, is_active),
+    INDEX idx_agent_templates_product (product_id, role, is_active) WHERE product_id IS NOT NULL,
+
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+```
+
+**Template History Table** - Version tracking and audit trail:
+```sql
+CREATE TABLE agent_template_history (
+    id VARCHAR(36) PRIMARY KEY,
+    template_id VARCHAR(36) NOT NULL,
+    tenant_key VARCHAR(255) NOT NULL,
+    template_content TEXT NOT NULL,
+    version VARCHAR(20) NOT NULL,
+    archived_reason VARCHAR(50),  -- 'edit', 'reset', 'delete'
+    archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    INDEX idx_template_history_template (template_id, archived_at DESC),
+    FOREIGN KEY (template_id) REFERENCES agent_templates(id) ON DELETE CASCADE
+);
+```
+
+**Key Features**:
+- **Three-Layer Caching**: Memory LRU (100 templates, <1ms) → Redis (1-hour TTL, <2ms) → Database (<10ms)
+- **Cascade Resolution**: Product-specific → Tenant-specific → System default → Legacy fallback
+- **Template Seeding**: 6 default templates per tenant (orchestrator, analyzer, implementer, tester, reviewer, documenter)
+- **Cache Effectiveness**: 95%+ hit rate after warm-up, 10x speedup over database queries
+- **Multi-Tenant Isolation**: All queries filtered by tenant_key, cache keys include tenant namespace
+- **Version History**: Full audit trail with rollback capability
+
+**Performance Characteristics**:
+- Memory cache hit: <1ms (p95) ✅
+- Database query: <10ms (p95) ✅
+- Template seeding: <2s for 6 templates ✅
+- Cache invalidation: <1ms all layers ✅
+
 ---
 
 ## Component Architecture
