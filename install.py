@@ -771,11 +771,10 @@ class UnifiedInstaller:
                     # Seed default agent templates (Handover 0041 Phase 1)
                     try:
                         template_count = await seed_tenant_templates(session, default_tenant_key)
-                        if template_count > 0:
-                            logger.info(f"Seeded {template_count} default agent templates")
                     except Exception as e:
                         # Non-blocking - templates can be added later via UI
-                        logger.warning(f"Template seeding failed (non-critical): {e}")
+                        template_count = 0
+                        print(f"{Fore.YELLOW}[WARNING] Template seeding failed (non-critical): {e}{Style.RESET_ALL}")
 
                 await db_manager.close_async()
                 return (True, template_count)
