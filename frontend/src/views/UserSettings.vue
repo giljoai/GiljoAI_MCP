@@ -365,6 +365,10 @@
                   Claude Code). This toggle only controls whether Serena instructions are included in
                   agent prompts.
                 </v-alert>
+
+                <!-- Claude Code Agent Export -->
+                <h3 class="text-h6 mb-4 mt-6">Claude Code Agent Export</h3>
+                <ClaudeCodeExport />
               </v-window-item>
             </v-window>
           </v-card-text>
@@ -388,6 +392,7 @@ import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import McpConfigComponent from '@/components/McpConfigComponent.vue'
 import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
+import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import setupService from '@/services/setupService'
 
 // Stores and Theme
