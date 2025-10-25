@@ -610,10 +610,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 
 const productStore = useProductStore()
 const router = useRouter()
+const { showToast } = useToast()
 
 // State
 const loading = ref(false)
@@ -700,9 +702,18 @@ function getTaskProgress(productId) {
 async function activateProduct(product) {
   try {
     await productStore.setCurrentProduct(product.id)
-    // Optional: Show success toast
+    showToast({
+      message: `${product.name} activated`,
+      type: 'success',
+      duration: 3000,
+    })
   } catch (error) {
     console.error('Failed to activate product:', error)
+    showToast({
+      message: 'Failed to activate product',
+      type: 'error',
+      duration: 5000,
+    })
   }
 }
 
@@ -772,8 +783,19 @@ async function deleteVisionDocument(doc) {
 
     // Remove from list
     existingVisionDocuments.value = existingVisionDocuments.value.filter((d) => d.id !== doc.id)
+
+    showToast({
+      message: `${doc.filename} deleted`,
+      type: 'success',
+      duration: 3000,
+    })
   } catch (error) {
     console.error('Failed to delete vision document:', error)
+    showToast({
+      message: 'Failed to delete vision document',
+      type: 'error',
+      duration: 5000,
+    })
   }
 }
 
@@ -791,6 +813,11 @@ async function confirmDelete(product) {
     cascadeImpact.value = response.data
   } catch (error) {
     console.error('Failed to get cascade impact:', error)
+    showToast({
+      message: 'Failed to load deletion impact',
+      type: 'error',
+      duration: 5000,
+    })
   } finally {
     loadingCascadeImpact.value = false
   }
@@ -843,8 +870,22 @@ async function saveProduct() {
 
     // Step 4: Close dialog
     closeDialog()
+
+    // Step 5: Show success message
+    showToast({
+      message: editingProduct.value
+        ? 'Product updated successfully'
+        : 'Product created successfully',
+      type: 'success',
+      duration: 3000,
+    })
   } catch (error) {
     console.error('Failed to save product:', error)
+    showToast({
+      message: 'Failed to save product',
+      type: 'error',
+      duration: 5000,
+    })
   } finally {
     saving.value = false
   }
@@ -870,12 +911,25 @@ async function confirmDeleteProduct() {
 
     // Close dialog
     showDeleteDialog.value = false
+    const productName = deletingProduct.value.name
     deletingProduct.value = null
 
     // Refresh products
     await loadProducts()
+
+    // Show success message
+    showToast({
+      message: `${productName} deleted successfully`,
+      type: 'success',
+      duration: 3000,
+    })
   } catch (error) {
     console.error('Failed to delete product:', error)
+    showToast({
+      message: 'Failed to delete product',
+      type: 'error',
+      duration: 5000,
+    })
   } finally {
     deleting.value = false
   }
