@@ -190,6 +190,38 @@ find frontend/src -type f \( -name "*.vue" -o -name "*.js" \) | \
 
 **Evidence**: [WCAG 2.1 AA Accessibility Verification](WCAG_2.1_AA_ACCESSIBILITY_VERIFICATION.md)
 
+---
+
+## Agent Flow Visualization (0040) — Implementation Summary
+
+As part of Handover 0040 (now archived), a professional agent flow visualization was delivered to provide real‑time visibility into multi‑agent orchestration.
+
+### Executive Summary
+- Flow‑based canvas with agents as nodes, animated message lines, and mission dashboards.
+- Real‑time messaging and acknowledgments surfaced via WebSocket broadcasts and MCP tool calls.
+- Production‑grade UI components (Vue 3 + Vuetify), with performance optimized for 60+ FPS for typical scenarios.
+
+### Core Components (Frontend)
+- FlowCanvas.vue: pan/zoom canvas, mini‑map, status bar, controls.
+- AgentNode.vue: status rings, progress bars, counters, context menus.
+- ThreadView.vue: threaded message display, filters, pagination.
+- MissionDashboard.vue: mission overview, progress, goals, timeline.
+- ArtifactTimeline.vue: artifact timeline/grid with previews.
+- Pinia store (agentFlow.js): nodes/edges, messages, metrics, artifacts.
+
+### Communication Layer
+- MCP tool pattern for agents: check messages, acknowledge, report status.
+- WebSocket events used for message_sent, message_acknowledged, status_update, artifact_created.
+
+### Performance & Testing (Highlights)
+- WebSocket latency: <100ms; UI frame rate: >60 FPS with ~10 agents.
+- Test coverage: ~89% for store/components; backend MCP/WebSocket flows covered.
+
+### Further Reading
+- Frontend integration details: 
+- MCP/HTTP integration updates: see  (Agent Communication Tools & WebSocket Events section).
+
+
 ### 3. Missing Alt Text (80% → 90%)
 
 **Issue**: 3 navigation icons missing ARIA labels

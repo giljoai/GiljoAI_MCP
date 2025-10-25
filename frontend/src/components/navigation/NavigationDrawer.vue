@@ -113,7 +113,8 @@ const agentIcon = computed(() => {
 // Navigation items - filter based on user role
 const navigationItems = computed(() => {
   const baseItems = [
-    { name: 'Dashboard', path: '/', title: 'Dashboard', icon: 'mdi-view-dashboard' },
+    { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
+    { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
     { name: 'Agents', path: '/agents', title: 'Agents', customIcon: agentIcon.value },
     { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },

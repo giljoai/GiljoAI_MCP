@@ -539,6 +539,29 @@ python -c "from src.giljo_mcp.models import MCPSession; print('OK')"
 
 Edit `api/endpoints/mcp_http.py`, add to `handle_tools_list()`:
 
+---
+
+## Agent Communication Tools & WebSocket Events (from Handover 0040)
+
+The Agent Flow Visualization work (Handover 0040) standardized a simple tool/event contract for agent–orchestrator communication:
+
+### MCP Tools (polling/ack/status)
+- `check_orchestrator_messages(agent_id|job_id, tenant_key, …)`
+- `acknowledge_message(job_id, tenant_key, message_id, response)`
+- `report_status(job_id, tenant_key, status, progress, task)`
+
+These tools are called on a 30–60s cadence by CLI/editor agents to drive live updates.
+
+### WebSocket Events (UI updates)
+- `agent_communication:message_sent`
+- `agent_communication:message_acknowledged`
+- `agent_communication:status_update`
+- `agent_communication:artifact_created`
+
+The frontend subscribes to these events to animate message lines, update node status/metrics, and append artifacts.
+
+See also: `frontend/AGENT_FLOW_VISUALIZATION_INTEGRATION.md` for component wiring and store logic.
+
 ```python
 {
     "name": "my_new_tool",

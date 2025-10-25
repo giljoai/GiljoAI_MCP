@@ -238,6 +238,12 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `docker/tests/HEALTHCHECK_PATTERNS__URGENT.md` — HEALTHCHECK PATTERNS documentation for GiljoAI MCP (tests) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `docker/tests/TEST_PLAN__URGENT.md` — TEST PLAN documentation for GiljoAI MCP (tests) purpose, usage, and context for maintainers and agents. — Tag: URGENT
 - `docker/tests/TEST_REPORT__URGENT.md` — TEST documentation for GiljoAI MCP (tests) purpose, usage, and context for maintainers and agents. — Tag: URGENT
+\n+## Recent UI/UX Additions
+
+- Agent Flow Visualization (0040) — Flow‑based, real‑time UI for multi‑agent orchestration. See:
+  - UI/UX status overview: `docs/UI_UX_IMPLEMENTATION_STATUS_SUMMARY.md` (Agent Flow Visualization section)
+  - Frontend integration details: `frontend/AGENT_FLOW_VISUALIZATION_INTEGRATION.md`
+  - MCP/HTTP integration (tool/event contract): `docs/MCP_OVER_HTTP_INTEGRATION.md` (Agent Communication Tools & WebSocket Events)
 - `DYNAMIC_IP_DETECTION__FRAGMENTED.md` — DYNAMIC IP DETECTION documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `examples/CLAUDE_CODE_ORCHESTRATION_WORKFLOW__FRAGMENTED.md` — CLAUDE CODE ORCHESTRATION WORKFLOW documentation for GiljoAI MCP (examples) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `frontend/MCP_INTEGRATION_UI__FRAGMENTED.md` — MCP INTEGRATION UI documentation for GiljoAI MCP (frontend) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
