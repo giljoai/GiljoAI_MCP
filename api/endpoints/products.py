@@ -18,7 +18,8 @@ from api.dependencies import get_tenant_key
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument, MCPContextIndex
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
-router = APIRouter()
+# Handover 0046 Issue #4: Update router prefix to /v1/products for consistency
+router = APIRouter(prefix="/v1/products", tags=["Products"])
 
 
 # Pydantic models for request/response
@@ -42,6 +43,10 @@ class ProductResponse(BaseModel):
     project_count: int = 0
     task_count: int = 0
     has_vision: bool = False
+    # Handover 0046 Issue #1: Add missing product metrics
+    unresolved_tasks: int = 0
+    unfinished_projects: int = 0
+    vision_documents_count: int = 0
 
 
 class VisionChunk(BaseModel):
@@ -158,16 +163,25 @@ async def create_product(
             await db.commit()
             await db.refresh(product)
 
-            # Get counts
+            # Get counts (Handover 0046: Include new metrics for create endpoint)
             project_count_result = await db.execute(
                 select(Project).where(Project.tenant_key == tenant_key, Project.product_id == product.id)
             )
-            project_count = len(project_count_result.scalars().all())
+            projects = project_count_result.scalars().all()
 
             task_count_result = await db.execute(
                 select(Task).where(Task.tenant_key == tenant_key, Task.product_id == product.id)
             )
-            task_count = len(task_count_result.scalars().all())
+            tasks = task_count_result.scalars().all()
+
+            vision_docs_result = await db.execute(
+                select(VisionDocument).where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id)
+            )
+            vision_docs = vision_docs_result.scalars().all()
+
+            # Calculate metrics (should all be 0 for new product)
+            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
 
             return ProductResponse(
                 id=product.id,
@@ -176,9 +190,12 @@ async def create_product(
                 vision_path=product.vision_path,
                 created_at=product.created_at,
                 updated_at=product.updated_at,
-                project_count=project_count,
-                task_count=task_count,
+                project_count=len(projects),
+                task_count=len(tasks),
                 has_vision=bool(product.vision_path),
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=len(vision_docs),
             )
 
     except HTTPException:
@@ -202,11 +219,15 @@ async def list_products(
 
     try:
         async with state.db_manager.get_session_async() as db:
-            # Query products with related counts
+            # Handover 0046 Issue #2: Query products with related counts including vision_documents
             stmt = (
                 select(Product)
                 .where(Product.tenant_key == tenant_key)
-                .options(selectinload(Product.projects), selectinload(Product.tasks))
+                .options(
+                    selectinload(Product.projects),
+                    selectinload(Product.tasks),
+                    selectinload(Product.vision_documents)  # NEW: Eager load vision documents
+                )
                 .limit(limit)
                 .offset(offset)
             )
@@ -216,6 +237,19 @@ async def list_products(
 
             response = []
             for product in products:
+                # Handover 0046 Issue #2: Calculate unfinished/unresolved counts
+                projects = product.projects or []
+                tasks = product.tasks or []
+
+                # Count projects where status != 'completed'
+                unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+
+                # Count tasks where status != 'completed'
+                unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+
+                # Count vision documents
+                vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
+
                 response.append(
                     ProductResponse(
                         id=product.id,
@@ -224,9 +258,13 @@ async def list_products(
                         vision_path=product.vision_path,
                         created_at=product.created_at,
                         updated_at=product.updated_at,
-                        project_count=len(product.projects) if product.projects else 0,
-                        task_count=len(product.tasks) if product.tasks else 0,
+                        project_count=len(projects),
+                        task_count=len(tasks),
                         has_vision=bool(product.vision_path),
+                        # NEW: Add computed metrics
+                        unfinished_projects=unfinished_projects,
+                        unresolved_tasks=unresolved_tasks,
+                        vision_documents_count=vision_doc_count,
                     )
                 )
 
@@ -247,10 +285,15 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
 
     try:
         async with state.db_manager.get_session_async() as db:
+            # Handover 0046 Issue #3: Query product with related data including vision_documents
             stmt = (
                 select(Product)
                 .where(Product.id == product_id, Product.tenant_key == tenant_key)
-                .options(selectinload(Product.projects), selectinload(Product.tasks))
+                .options(
+                    selectinload(Product.projects),
+                    selectinload(Product.tasks),
+                    selectinload(Product.vision_documents)  # NEW: Eager load vision documents
+                )
             )
 
             result = await db.execute(stmt)
@@ -259,6 +302,19 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
 
+            # Handover 0046 Issue #3: Calculate unfinished/unresolved counts
+            projects = product.projects or []
+            tasks = product.tasks or []
+
+            # Count projects where status != 'completed'
+            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+
+            # Count tasks where status != 'completed'
+            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+
+            # Count vision documents
+            vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
+
             return ProductResponse(
                 id=product.id,
                 name=product.name,
@@ -266,9 +322,13 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
                 vision_path=product.vision_path,
                 created_at=product.created_at,
                 updated_at=product.updated_at,
-                project_count=len(product.projects) if product.projects else 0,
-                task_count=len(product.tasks) if product.tasks else 0,
+                project_count=len(projects),
+                task_count=len(tasks),
                 has_vision=bool(product.vision_path),
+                # NEW: Add computed metrics
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=vision_doc_count,
             )
 
     except HTTPException:
@@ -311,16 +371,25 @@ async def update_product(product_id: str, product_update: ProductUpdate, tenant_
                 await db.commit()
                 product = result.scalar_one()
 
-            # Get counts
+            # Get counts (Handover 0046: Include new metrics for update endpoint)
             project_count_result = await db.execute(
                 select(Project).where(Project.tenant_key == tenant_key, Project.product_id == product.id)
             )
-            project_count = len(project_count_result.scalars().all())
+            projects = project_count_result.scalars().all()
 
             task_count_result = await db.execute(
                 select(Task).where(Task.tenant_key == tenant_key, Task.product_id == product.id)
             )
-            task_count = len(task_count_result.scalars().all())
+            tasks = task_count_result.scalars().all()
+
+            vision_docs_result = await db.execute(
+                select(VisionDocument).where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id)
+            )
+            vision_docs = vision_docs_result.scalars().all()
+
+            # Calculate metrics
+            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
 
             return ProductResponse(
                 id=product.id,
@@ -329,9 +398,12 @@ async def update_product(product_id: str, product_update: ProductUpdate, tenant_
                 vision_path=product.vision_path,
                 created_at=product.created_at,
                 updated_at=product.updated_at,
-                project_count=project_count,
-                task_count=task_count,
+                project_count=len(projects),
+                task_count=len(tasks),
                 has_vision=bool(product.vision_path),
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=len(vision_docs),
             )
 
     except HTTPException:
