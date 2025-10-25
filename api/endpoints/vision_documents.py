@@ -157,7 +157,7 @@ async def create_vision_document(
             )
 
         # Create vision document
-        doc = vision_repo.create(
+        doc = await vision_repo.create(
             session=db,
             tenant_key=tenant_key,
             product_id=product_id,
@@ -169,7 +169,7 @@ async def create_vision_document(
             display_order=display_order,
             version=version
         )
-        db.commit()
+        await db.commit()
 
         # Optionally chunk immediately
         if auto_chunk:
@@ -187,15 +187,15 @@ async def create_vision_document(
                 logger.error(f"Chunking error for document {doc.id}: {chunk_error}")
                 # Continue - document created successfully
 
-        db.refresh(doc)
+        await db.refresh(doc)
 
         return VisionDocumentResponse.model_validate(doc)
 
     except HTTPException:
-        db.rollback()
+        await db.rollback()
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"Failed to create vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -233,7 +233,7 @@ async def list_vision_documents(
         HTTPException 500: If listing fails
     """
     try:
-        docs = vision_repo.list_by_product(
+        docs = await vision_repo.list_by_product(
             session=db,
             tenant_key=tenant_key,
             product_id=product_id,
@@ -287,7 +287,7 @@ async def update_vision_document(
     """
     try:
         # Update content
-        doc = vision_repo.update_content(
+        doc = await vision_repo.update_content(
             session=db,
             tenant_key=tenant_key,
             document_id=document_id,
@@ -300,7 +300,7 @@ async def update_vision_document(
                 detail=f"Vision document {document_id} not found"
             )
 
-        db.commit()
+        await db.commit()
 
         # Optionally re-chunk
         if auto_rechunk:
@@ -318,15 +318,15 @@ async def update_vision_document(
                 logger.error(f"Re-chunking error for document {document_id}: {chunk_error}")
                 # Continue - content updated successfully
 
-        db.refresh(doc)
+        await db.refresh(doc)
 
         return VisionDocumentResponse.model_validate(doc)
 
     except HTTPException:
-        db.rollback()
+        await db.rollback()
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"Failed to update vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -361,7 +361,7 @@ async def delete_vision_document(
         HTTPException 500: If deletion fails
     """
     try:
-        result = vision_repo.delete(
+        result = await vision_repo.delete(
             session=db,
             tenant_key=tenant_key,
             document_id=document_id
@@ -373,15 +373,15 @@ async def delete_vision_document(
                 detail=result["message"]
             )
 
-        db.commit()
+        await db.commit()
 
         return DeleteResponse(**result)
 
     except HTTPException:
-        db.rollback()
+        await db.rollback()
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"Failed to delete vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -425,7 +425,7 @@ async def rechunk_vision_document(
         from src.giljo_mcp.context_management.chunker import ContextManagementSystem
 
         # Verify document exists and belongs to tenant
-        doc = vision_repo.get_by_id(db, tenant_key, document_id)
+        doc = await vision_repo.get_by_id(db, tenant_key, document_id)
         if not doc:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -442,15 +442,15 @@ async def rechunk_vision_document(
                 detail=f"Chunking failed: {result.get('error')}"
             )
 
-        db.commit()
+        await db.commit()
 
         return RechunkResponse(**result)
 
     except HTTPException:
-        db.rollback()
+        await db.rollback()
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error(f"Failed to rechunk vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

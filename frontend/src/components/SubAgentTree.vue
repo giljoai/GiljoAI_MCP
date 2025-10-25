@@ -341,20 +341,22 @@ const contextMenu = ref({
 
 // Color scheme - theme-aware (dark/light mode support)
 const colors = computed(() => {
-  const currentTheme = theme.global.current.value
+  const isDark = theme.global.current.value.dark
+  const currentColors = theme.global.current.value.colors
+
   return {
-    background: currentTheme.colors['surface-variant'],
-    nodeBackground: currentTheme.colors.surface,
-    orchestratorBackground: currentTheme.colors['surface-variant'],
-    trackBackground: currentTheme.colors.surface,
-    active: currentTheme.colors.success,
-    pending: currentTheme.colors.secondary,
-    completed: currentTheme.colors.info,
-    failed: currentTheme.colors.error,
-    connectionLine: currentTheme.colors.value.$1,
-    text: currentTheme.colors['on-surface'],
-    textSecondary: currentTheme.colors.info,
-    primary: currentTheme.colors.secondary,
+    background: currentColors['surface-variant'] || (isDark ? '#1e3147' : '#e0e0e0'),
+    nodeBackground: currentColors.surface || (isDark ? '#182739' : '#f5f5f5'),
+    orchestratorBackground: currentColors['surface-variant'] || (isDark ? '#1e3147' : '#e0e0e0'),
+    trackBackground: currentColors.surface || (isDark ? '#182739' : '#f5f5f5'),
+    active: currentColors.success || '#67bd6d',
+    pending: currentColors.secondary || '#ffc300',
+    completed: currentColors.info || (isDark ? '#8f97b7' : '#315074'),
+    failed: currentColors.error || '#c6298c',
+    connectionLine: currentColors.primary || '#315074',
+    text: currentColors['on-surface'] || (isDark ? '#e1e1e1' : '#363636'),
+    textSecondary: currentColors.info || (isDark ? '#8f97b7' : '#315074'),
+    primary: currentColors.secondary || '#ffc300',
   }
 })
 
