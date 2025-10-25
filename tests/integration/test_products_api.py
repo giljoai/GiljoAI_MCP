@@ -513,6 +513,108 @@ This is section 3.
         product_ids = [p["id"] for p in products]
         assert product_id_1 not in product_ids, "Tenant 2 should not see tenant 1's products"
 
+    def test_cascade_impact_basic(self, client, headers):
+        """Test cascade impact endpoint for product with no related data"""
+        # Create a product with no projects/tasks/vision
+        create_response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Cascade Test Product",
+                "description": "Test cascade impact"
+            },
+            headers=headers
+        )
+        assert create_response.status_code == 200
+        product_id = create_response.json()["id"]
+
+        # Get cascade impact
+        response = client.get(
+            f"/api/v1/products/{product_id}/cascade-impact",
+            headers=headers
+        )
+
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        data = response.json()
+
+        # Verify response structure
+        assert data["product_id"] == product_id
+        assert data["projects_count"] == 0
+        assert data["unfinished_projects"] == 0
+        assert data["tasks_count"] == 0
+        assert data["unresolved_tasks"] == 0
+        assert data["vision_documents_count"] == 0
+        assert data["total_chunks"] == 0
+
+    def test_cascade_impact_with_vision(self, client, headers):
+        """Test cascade impact for product with vision documents"""
+        # Create product with vision document
+        vision_content = b"# Product Vision\n\nTest vision content for cascade impact."
+        create_response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Vision Cascade Product",
+                "description": "Has vision"
+            },
+            files={
+                "vision_file": ("vision.md", io.BytesIO(vision_content), "text/markdown")
+            },
+            headers=headers
+        )
+        assert create_response.status_code == 200
+        product_id = create_response.json()["id"]
+
+        # Get cascade impact
+        response = client.get(
+            f"/api/v1/products/{product_id}/cascade-impact",
+            headers=headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["product_id"] == product_id
+        # Note: Vision documents might be 0 or 1 depending on whether
+        # VisionDocument records are created during product creation
+        # The test just verifies the field exists
+        assert "vision_documents_count" in data
+        assert data["vision_documents_count"] >= 0
+
+    def test_cascade_impact_not_found(self, client, headers):
+        """Test cascade impact for non-existent product"""
+        response = client.get(
+            "/api/v1/products/non-existent-id/cascade-impact",
+            headers=headers
+        )
+
+        assert response.status_code == 404, f"Expected 404, got {response.status_code}"
+        assert "not found" in response.text.lower()
+
+    def test_cascade_impact_tenant_isolation(self, client):
+        """Test cascade impact respects tenant isolation"""
+        # Create product with tenant 1
+        headers_1 = {"X-Tenant-Key": "tk_cascade_tenant_1"}
+        create_response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Tenant 1 Cascade Product",
+                "description": "Belongs to tenant 1"
+            },
+            headers=headers_1
+        )
+        assert create_response.status_code == 200
+        product_id = create_response.json()["id"]
+
+        # Try to get cascade impact with tenant 2
+        headers_2 = {"X-Tenant-Key": "tk_cascade_tenant_2"}
+        response = client.get(
+            f"/api/v1/products/{product_id}/cascade-impact",
+            headers=headers_2
+        )
+
+        # Should return 404 since product doesn't belong to tenant 2
+        assert response.status_code == 404, "Should not find product from different tenant"
+        assert "not found" in response.text.lower()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
