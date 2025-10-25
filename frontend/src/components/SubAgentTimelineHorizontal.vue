@@ -76,7 +76,7 @@
       <div class="timeline-wrapper" ref="timelineWrapper">
         <svg :width="timelineWidth" :height="timelineHeight" class="timeline-svg">
           <!-- Background -->
-          <rect :width="timelineWidth" :height="timelineHeight" :fill="colors.trackBackground" />
+          <rect :width="timelineWidth" :height="timelineHeight" :fill="colors.value.trackBackground" />
 
           <!-- Time Axis -->
           <g class="time-axis">
@@ -85,7 +85,7 @@
               :y1="timelineHeight - padding.bottom"
               :x2="timelineWidth - padding.right"
               :y2="timelineHeight - padding.bottom"
-              :stroke="colors.gridLines"
+              :stroke="colors.value.$1"
               stroke-width="1"
             />
             <g v-for="tick in timeTicks" :key="tick.value">
@@ -94,13 +94,13 @@
                 :y1="timelineHeight - padding.bottom"
                 :x2="tick.x"
                 :y2="timelineHeight - padding.bottom + 5"
-                :stroke="colors.gridLines"
+                :stroke="colors.value.$1"
                 stroke-width="1"
               />
               <text
                 :x="tick.x"
                 :y="timelineHeight - padding.bottom + 20"
-                :fill="colors.text"
+                :fill="colors.value.text"
                 text-anchor="middle"
                 font-size="12"
               >
@@ -115,7 +115,7 @@
             <text
               :x="10"
               :y="getTrackY(index) + trackHeight / 2 + 5"
-              :fill="colors.text"
+              :fill="colors.value.text"
               font-size="14"
               font-weight="500"
             >
@@ -128,7 +128,7 @@
               :y="getTrackY(index)"
               :width="timelineWidth - padding.left - padding.right"
               :height="trackHeight"
-              :fill="colors.trackBackground"
+              :fill="colors.value.trackBackground"
               fill-opacity="0.3"
               rx="4"
             />
@@ -186,7 +186,7 @@
           <g v-for="connection in connections" :key="connection.id" class="connection">
             <path
               :d="connection.path"
-              :stroke="colors.connectionLine"
+              :stroke="colors.value.$1"
               stroke-width="1"
               stroke-dasharray="2,2"
               fill="none"
@@ -204,7 +204,7 @@
               refY="3.5"
               orient="auto"
             >
-              <polygon points="0 0, 10 3.5, 0 7" :fill="colors.primary" />
+              <polygon points="0 0, 10 3.5, 0 7" :fill="colors.value.primary" />
             </marker>
           </defs>
         </svg>
@@ -277,6 +277,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useTheme } from 'vuetify'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectStore } from '@/stores/projects'
 import websocketService from '@/services/websocket'
@@ -309,6 +310,7 @@ const emit = defineEmits(['agent-selected', 'time-range-changed', 'export-reques
 // Store references
 const agentStore = useAgentStore()
 const projectStore = useProjectStore()
+const theme = useTheme()
 
 // Refs
 const timelineWrapper = ref(null)
@@ -331,19 +333,22 @@ const currentTime = ref(Date.now())
 let animationFrame = null
 let refreshInterval = null
 
-// Color scheme from docs/color_themes.md
-const colors = {
-  background: '#1e3147',
-  trackBackground: '#182739',
-  active: '#67bd6d',
-  pending: '#ffc300',
-  completed: '#8f97b7',
-  failed: '#c6298c',
-  gridLines: '#315074',
-  text: '#e1e1e1',
-  primary: '#ffc300',
-  connectionLine: '#315074',
-}
+// Color scheme - theme-aware (dark/light mode support)
+const colors = computed(() => {
+  const currentTheme = theme.global.current.value
+  return {
+    background: currentTheme.colors['surface-variant'],
+    trackBackground: currentTheme.colors.surface,
+    active: currentTheme.colors.success,
+    pending: currentTheme.colors.secondary,
+    completed: currentTheme.colors.info,
+    failed: currentTheme.colors.error,
+    gridLines: currentTheme.colors.primary,
+    text: currentTheme.colors['on-surface'],
+    primary: currentTheme.colors.secondary,
+    connectionLine: currentTheme.colors.primary,
+  }
+})
 
 // Computed
 const projects = computed(() =>
@@ -481,12 +486,12 @@ const timeToX = (time) => {
 
 const getStatusColor = (status) => {
   const statusColors = {
-    active: colors.active,
-    pending: colors.pending,
-    completed: colors.completed,
-    failed: colors.failed,
+    active: colors.value.active,
+    pending: colors.value.pending,
+    completed: colors.value.completed,
+    failed: colors.value.failed,
   }
-  return statusColors[status] || colors.gridLines
+  return statusColors[status] || colors.value.gridLines
 }
 
 const getStatusIcon = (status) => {
@@ -675,11 +680,11 @@ watch(viewMode, (newMode) => {
 
 <style scoped lang="scss">
 .sub-agent-timeline {
-  background: #1e3147;
+  background: rgb(var(--v-theme-surface-variant));
 
   .filters-section {
-    background: #182739;
-    border-top: 1px solid #315074;
+    background: rgb(var(--v-theme-surface));
+    border-top: 1px solid rgb(var(--v-theme-primary));
   }
 
   .timeline-container {
@@ -692,16 +697,16 @@ watch(viewMode, (newMode) => {
     }
 
     &::-webkit-scrollbar-track {
-      background: #182739;
+      background: rgb(var(--v-theme-surface));
       border-radius: 4px;
     }
 
     &::-webkit-scrollbar-thumb {
-      background: #315074;
+      background: rgb(var(--v-theme-primary));
       border-radius: 4px;
 
       &:hover {
-        background: #ffc300;
+        background: rgb(var(--v-theme-secondary));
       }
     }
   }
@@ -720,29 +725,29 @@ watch(viewMode, (newMode) => {
   }
 
   .agent-details {
-    background: #182739;
-    border-top: 1px solid #315074;
+    background: rgb(var(--v-theme-surface));
+    border-top: 1px solid rgb(var(--v-theme-primary));
 
     .detail-item {
       margin-bottom: 12px;
-      color: #e1e1e1;
+      color: rgb(var(--v-theme-on-surface));
 
       strong {
-        color: #ffc300;
+        color: rgb(var(--v-theme-secondary));
         margin-right: 8px;
       }
     }
 
     .mission-text {
-      color: #8f97b7;
+      color: rgb(var(--v-theme-info));
       cursor: help;
     }
   }
 
   .timeline-tooltip {
     position: absolute;
-    background: #0e1c2d;
-    border: 1px solid #315074;
+    background: rgb(var(--v-theme-background));
+    border: 1px solid rgb(var(--v-theme-primary));
     border-radius: 4px;
     padding: 8px;
     pointer-events: none;
@@ -750,13 +755,13 @@ watch(viewMode, (newMode) => {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 
     .tooltip-header {
-      color: #ffc300;
+      color: rgb(var(--v-theme-secondary));
       margin-bottom: 4px;
       font-weight: 500;
     }
 
     .tooltip-content {
-      color: #e1e1e1;
+      color: rgb(var(--v-theme-on-surface));
       font-size: 0.875rem;
 
       div {

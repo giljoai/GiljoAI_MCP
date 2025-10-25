@@ -185,164 +185,137 @@
 
         <v-divider></v-divider>
 
-        <!-- Tabs -->
-        <v-tabs v-model="createTab" color="primary">
-          <v-tab value="details">
-            <v-icon start>mdi-text-box-outline</v-icon>
-            Details
-          </v-tab>
-          <v-tab value="vision">
-            <v-icon start>mdi-file-document-multiple-outline</v-icon>
-            Vision Documents
-          </v-tab>
-        </v-tabs>
-
-        <v-divider></v-divider>
-
         <v-card-text style="min-height: 400px; max-height: 600px; overflow-y: auto">
-          <v-window v-model="createTab">
-            <!-- Details Tab -->
-            <v-window-item value="details">
-              <v-form ref="productForm" v-model="formValid">
-                <v-text-field
-                  v-model="productForm.name"
-                  label="Product Name"
-                  :rules="[(v) => !!v || 'Name is required']"
-                  variant="outlined"
-                  density="comfortable"
-                  required
-                ></v-text-field>
+          <v-form ref="formRef" v-model="formValid">
+            <!-- Product Name -->
+            <v-text-field
+              v-model="productForm.name"
+              label="Product Name"
+              :rules="[(v) => !!v || 'Name is required']"
+              variant="outlined"
+              density="comfortable"
+              required
+              class="mb-4"
+            ></v-text-field>
 
-                <v-textarea
-                  v-model="productForm.description"
-                  label="Description (Context for Orchestrator)"
-                  variant="outlined"
-                  density="comfortable"
-                  rows="8"
-                  auto-grow
-                  hint="This description will be used by the orchestrator for mission generation"
-                  persistent-hint
-                ></v-textarea>
-              </v-form>
-            </v-window-item>
+            <!-- Description -->
+            <v-textarea
+              v-model="productForm.description"
+              label="Description (Context for Orchestrator)"
+              variant="outlined"
+              density="comfortable"
+              rows="6"
+              auto-grow
+              hint="This description will be used by the orchestrator for mission generation"
+              persistent-hint
+              class="mb-4"
+            ></v-textarea>
 
-            <!-- Vision Documents Tab -->
-            <v-window-item value="vision">
-              <!-- Existing Documents (Edit Mode Only) -->
-              <div v-if="editingProduct && existingVisionDocuments.length > 0">
-                <div class="text-subtitle-2 mb-2">
-                  Existing Documents ({{ existingVisionDocuments.length }})
-                </div>
+            <!-- Vision Documents Section -->
+            <v-divider class="my-4"></v-divider>
 
-                <v-list density="compact" class="mb-4">
-                  <v-list-item
-                    v-for="doc in existingVisionDocuments"
-                    :key="doc.id"
-                    class="border rounded mb-2"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon :color="doc.chunked ? 'success' : 'warning'">
-                        {{ doc.chunked ? 'mdi-check-circle' : 'mdi-clock-outline' }}
-                      </v-icon>
-                    </template>
+            <div class="text-h6 mb-3">
+              <v-icon start>mdi-file-document-multiple-outline</v-icon>
+              Vision Documents
+            </div>
 
-                    <v-list-item-title>{{ doc.filename || doc.document_name }}</v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ doc.chunk_count || 0 }} chunks • {{ formatDate(doc.created_at) }}
-                    </v-list-item-subtitle>
-
-                    <template v-slot:append>
-                      <v-btn
-                        icon
-                        size="small"
-                        variant="text"
-                        color="error"
-                        @click="deleteVisionDocument(doc)"
-                      >
-                        <v-icon size="20">mdi-delete</v-icon>
-                      </v-btn>
-                    </template>
-                  </v-list-item>
-                </v-list>
-
-                <v-divider class="my-3"></v-divider>
+            <!-- Existing Documents (Edit Mode Only) -->
+            <div v-if="editingProduct && existingVisionDocuments.length > 0" class="mb-4">
+              <div class="text-subtitle-2 mb-2">
+                Existing Documents ({{ existingVisionDocuments.length }})
               </div>
 
-              <!-- File Upload Component -->
-              <div class="mb-3">
-                <div class="text-subtitle-2 mb-2">
-                  {{ editingProduct ? 'Add More Documents' : 'Upload Documents' }}
-                </div>
-                <div class="text-caption text-medium-emphasis mb-3">
-                  Product requirements, proposals, specifications (.md, .txt files)
-                </div>
-
-                <v-file-input
-                  v-model="visionFiles"
-                  accept=".txt,.md,.markdown"
-                  label="Choose files"
-                  variant="outlined"
-                  density="comfortable"
-                  multiple
-                  show-size
-                  clearable
-                  prepend-icon="mdi-file-document-outline"
-                  hint="Select multiple files (Ctrl/Cmd + Click)"
-                  persistent-hint
+              <v-list density="compact" class="mb-3">
+                <v-list-item
+                  v-for="doc in existingVisionDocuments"
+                  :key="doc.id"
+                  class="border rounded mb-2"
                 >
-                  <template v-slot:append>
-                    <v-icon>mdi-upload</v-icon>
+                  <template v-slot:prepend>
+                    <v-icon :color="doc.chunked ? 'success' : 'warning'">
+                      {{ doc.chunked ? 'mdi-check-circle' : 'mdi-clock-outline' }}
+                    </v-icon>
                   </template>
-                </v-file-input>
+
+                  <v-list-item-title>{{ doc.filename || doc.document_name }}</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ doc.chunk_count || 0 }} chunks • {{ formatDate(doc.created_at) }}
+                  </v-list-item-subtitle>
+
+                  <template v-slot:append>
+                    <v-btn
+                      icon
+                      size="small"
+                      variant="text"
+                      color="error"
+                      @click="deleteVisionDocument(doc)"
+                    >
+                      <v-icon size="20">mdi-delete</v-icon>
+                    </v-btn>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </div>
+
+            <!-- File Upload Component -->
+            <div class="text-caption text-medium-emphasis mb-3">
+              Upload product requirements, proposals, specifications (.md, .txt files)
+            </div>
+
+            <v-file-input
+              v-model="visionFiles"
+              accept=".txt,.md,.markdown"
+              label="Choose files"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              show-size
+              clearable
+              prepend-icon="mdi-folder-open"
+              hint="Select multiple files (Ctrl/Cmd + Click)"
+              persistent-hint
+              class="mb-3"
+            ></v-file-input>
+
+            <!-- File List -->
+            <div v-if="visionFiles && visionFiles.length > 0">
+              <div class="text-subtitle-2 mb-2">
+                Files to Upload ({{ visionFiles.length }})
               </div>
 
-              <!-- File List -->
-              <div v-if="visionFiles && visionFiles.length > 0">
-                <v-divider class="my-3"></v-divider>
-                <div class="text-subtitle-2 mb-2">
-                  Files to Upload ({{ visionFiles.length }})
-                </div>
+              <v-list density="compact" class="mb-3">
+                <v-list-item
+                  v-for="(file, index) in visionFiles"
+                  :key="index"
+                  class="border rounded mb-2"
+                >
+                  <template v-slot:prepend>
+                    <v-icon color="primary">mdi-file-document</v-icon>
+                  </template>
 
-                <v-list density="compact">
-                  <v-list-item
-                    v-for="(file, index) in visionFiles"
-                    :key="index"
-                    class="border rounded mb-2"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon color="primary">mdi-file-document</v-icon>
-                    </template>
+                  <v-list-item-title>{{ file.name }}</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ formatFileSize(file.size) }}
+                  </v-list-item-subtitle>
 
-                    <v-list-item-title>{{ file.name }}</v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ formatFileSize(file.size) }}
-                    </v-list-item-subtitle>
+                  <template v-slot:append>
+                    <v-btn
+                      icon
+                      size="small"
+                      variant="text"
+                      @click="removeVisionFile(index)"
+                    >
+                      <v-icon size="20">mdi-close</v-icon>
+                    </v-btn>
+                  </template>
+                </v-list-item>
+              </v-list>
 
-                    <template v-slot:append>
-                      <v-btn
-                        icon
-                        size="small"
-                        variant="text"
-                        @click="removeVisionFile(index)"
-                      >
-                        <v-icon size="20">mdi-close</v-icon>
-                      </v-btn>
-                    </template>
-                  </v-list-item>
-                </v-list>
-
-                <v-alert type="info" variant="tonal" density="compact" class="mt-3">
-                  Files will be auto-chunked for context (25K token limit)
-                </v-alert>
-              </div>
-
-              <div v-else>
-                <v-alert type="info" variant="tonal" density="compact">
-                  No files selected. You can upload vision documents now or add them later.
-                </v-alert>
-              </div>
-            </v-window-item>
-          </v-window>
+              <v-alert type="info" variant="tonal" density="compact">
+                Files will be auto-chunked for context (25K token limit)
+              </v-alert>
+            </div>
+          </v-form>
         </v-card-text>
 
         <v-divider></v-divider>
@@ -595,7 +568,7 @@ const selectedProduct = ref(null)
 const saving = ref(false)
 const deleting = ref(false)
 const formValid = ref(false)
-const createTab = ref('details')
+const formRef = ref(null)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
 const detailsVisionDocuments = ref([])
@@ -768,7 +741,6 @@ async function editProduct(product) {
   await loadExistingVisionDocuments(product.id)
 
   showDialog.value = true
-  createTab.value = 'details'
 }
 
 async function loadExistingVisionDocuments(productId) {
@@ -951,7 +923,6 @@ function cancelDelete() {
 function closeDialog() {
   showDialog.value = false
   editingProduct.value = null
-  createTab.value = 'details'
   visionFiles.value = []
   existingVisionDocuments.value = []
   productForm.value = {

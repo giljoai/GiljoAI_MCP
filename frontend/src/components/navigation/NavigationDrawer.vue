@@ -77,6 +77,7 @@ import { computed } from 'vue'
 import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useSettingsStore } from '@/stores/settings'
 
 const props = defineProps({
   modelValue: {
@@ -98,6 +99,7 @@ const emit = defineEmits(['update:model-value'])
 const theme = useTheme()
 const route = useRoute()
 const userStore = useUserStore()
+const settingsStore = useSettingsStore()
 
 // Dynamic agent icon based on route and theme
 const agentIcon = computed(() => {
@@ -135,8 +137,14 @@ const toggleTheme = () => {
   // Update data-theme attribute for CSS variables
   document.documentElement.setAttribute('data-theme', theme.global.name.value)
 
-  // Store preference
+  // CRITICAL: Synchronize BOTH localStorage stores
+  // 1. Update theme-preference (source of truth)
   localStorage.setItem('theme-preference', theme.global.name.value)
+
+  // 2. Update settingsStore to keep giljo_settings synchronized
+  settingsStore.settings.theme = theme.global.name.value
+  // Manually save to localStorage to update giljo_settings
+  localStorage.setItem('giljo_settings', JSON.stringify(settingsStore.settings))
 }
 </script>
 

@@ -179,7 +179,7 @@ export const api = {
   // Vision Documents (Multi-Document Support - Handover 0043)
   visionDocuments: {
     // List all vision documents for a product
-    listByProduct: (productId) => apiClient.get(`/api/vision-documents/product/${productId}`),
+    listByProduct: (productId) => apiClient.get(`/api/vision-documents/product/${productId}?active_only=false`),
     // Get a specific vision document
     get: (documentId) => apiClient.get(`/api/vision-documents/${documentId}`),
     // Upload a new vision document (accepts FormData)
