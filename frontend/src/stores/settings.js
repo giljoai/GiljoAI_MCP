@@ -39,13 +39,29 @@ export const useSettingsStore = defineStore('settings', () => {
       const savedSettings = localStorage.getItem('giljo_settings')
       if (savedSettings) {
         settings.value = { ...settings.value, ...JSON.parse(savedSettings) }
-        applyTheme()
       }
+
+      // CRITICAL: Check theme-preference as source of truth
+      // This prevents NavigationDrawer theme toggles from being overwritten
+      const themePreference = localStorage.getItem('theme-preference')
+      if (themePreference && (themePreference === 'dark' || themePreference === 'light')) {
+        settings.value.theme = themePreference
+      }
+
+      // Apply theme after synchronization
+      applyTheme()
 
       // Then try to load from server
       try {
         const response = await api.settings.get()
         settings.value = { ...settings.value, ...response.data }
+
+        // Re-check theme-preference after server load
+        const currentThemePreference = localStorage.getItem('theme-preference')
+        if (currentThemePreference && (currentThemePreference === 'dark' || currentThemePreference === 'light')) {
+          settings.value.theme = currentThemePreference
+        }
+
         saveToLocalStorage()
       } catch (serverError) {
         console.log('Using local settings, server not available')

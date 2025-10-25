@@ -92,7 +92,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useTheme } from 'vuetify'
 import { Chart, registerables } from 'chart.js'
 import api from '@/services/api'
 
@@ -110,6 +111,23 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['refresh'])
+
+// Theme
+const theme = useTheme()
+
+// Computed colors based on theme
+const chartColors = computed(() => {
+  const currentTheme = theme.global.current.value
+  return {
+    success: currentTheme.colors.success,
+    secondary: currentTheme.colors.secondary,
+    accent: currentTheme.colors.accent,
+    error: currentTheme.colors.error,
+    info: currentTheme.colors.info,
+    primary: currentTheme.colors.primary,
+    text: currentTheme.colors['on-surface'],
+  }
+})
 
 // Refs
 const roleChart = ref(null)
@@ -152,7 +170,13 @@ const createRoleChart = () => {
       datasets: [
         {
           data: Object.values(data),
-          backgroundColor: ['#67bd6d', '#ffc300', '#8b5cf6', '#c6298c', '#8f97b7'],
+          backgroundColor: [
+            chartColors.value.success,
+            chartColors.value.secondary,
+            chartColors.value.accent,
+            chartColors.value.error,
+            chartColors.value.info,
+          ],
         },
       ],
     },
@@ -163,7 +187,7 @@ const createRoleChart = () => {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#e1e1e1',
+            color: chartColors.value.text,
           },
         },
       },
@@ -190,8 +214,8 @@ const createActivityChart = () => {
         {
           label: 'Agent Activity',
           data: Object.values(data),
-          borderColor: '#ffc300',
-          backgroundColor: 'rgba(255, 195, 0, 0.1)',
+          borderColor: chartColors.value.secondary,
+          backgroundColor: `${chartColors.value.secondary}1A`,
           tension: 0.4,
         },
       ],
@@ -207,18 +231,18 @@ const createActivityChart = () => {
       scales: {
         x: {
           grid: {
-            color: '#315074',
+            color: chartColors.value.primary,
           },
           ticks: {
-            color: '#8f97b7',
+            color: chartColors.value.info,
           },
         },
         y: {
           grid: {
-            color: '#315074',
+            color: chartColors.value.primary,
           },
           ticks: {
-            color: '#8f97b7',
+            color: chartColors.value.info,
           },
         },
       },
@@ -247,18 +271,18 @@ watch(
 
 <style scoped lang="scss">
 .agent-metrics {
-  background: #1e3147;
+  background: rgb(var(--v-theme-surface-variant));
 
   :deep(.v-card) {
-    background: #182739;
+    background: rgb(var(--v-theme-surface));
   }
 
   :deep(.v-card-text) {
-    color: #e1e1e1;
+    color: rgb(var(--v-theme-on-surface));
   }
 
   :deep(.v-list-item-title) {
-    color: #e1e1e1;
+    color: rgb(var(--v-theme-on-surface));
   }
 }
 </style>
