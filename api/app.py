@@ -92,6 +92,7 @@ try:
         templates,
         users,
         user_settings,
+        vision_documents,
     )
     from .middleware import AuthMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
     from .websocket import WebSocketManager
@@ -508,7 +509,9 @@ def create_app() -> FastAPI:
     )
 
     # Include routers
-    app.include_router(products.router, prefix="/api/v1/products", tags=["products"])
+    # Handover 0046 Issue #4: Router prefix moved to router definition
+    app.include_router(products.router, prefix="/api")
+    app.include_router(vision_documents.router, prefix="/api", tags=["vision-documents"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
     app.include_router(agent_management.router, tags=["Agent Management"])
