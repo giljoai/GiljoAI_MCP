@@ -88,7 +88,7 @@
                       <div class="text-h6">{{ product.name }}</div>
                       <v-chip
                         v-if="product.id === productStore.currentProductId"
-                        color="primary"
+                        color="success"
                         size="small"
                         variant="flat"
                       >
@@ -105,15 +105,15 @@
                     <v-row dense>
                       <v-col cols="4">
                         <div class="text-caption text-medium-emphasis">Unresolved Tasks</div>
-                        <div class="text-h6">{{ product.unresolved_tasks || 0 }}</div>
+                        <div class="text-h6" style="color: #ffc300">{{ product.unresolved_tasks || 0 }}</div>
                       </v-col>
                       <v-col cols="4">
                         <div class="text-caption text-medium-emphasis">Unfinished Projects</div>
-                        <div class="text-h6">{{ product.unfinished_projects || 0 }}</div>
+                        <div class="text-h6" style="color: #ffc300">{{ product.unfinished_projects || 0 }}</div>
                       </v-col>
                       <v-col cols="4">
                         <div class="text-caption text-medium-emphasis">Vision Docs</div>
-                        <div class="text-h6">{{ product.vision_documents_count || 0 }}</div>
+                        <div class="text-h6" style="color: #ffc300">{{ product.vision_documents_count || 0 }}</div>
                       </v-col>
                     </v-row>
 
@@ -126,16 +126,27 @@
                     <v-btn
                       variant="text"
                       size="small"
-                      @click="activateProduct(product)"
-                      :disabled="product.id === productStore.currentProductId"
+                      @click="toggleProductActivation(product)"
                     >
-                      {{ product.id === productStore.currentProductId ? 'Active' : 'Activate' }}
+                      {{ product.id === productStore.currentProductId ? 'Deactivate' : 'Activate' }}
                     </v-btn>
                     <v-spacer></v-spacer>
-                    <v-btn icon size="small" variant="text" @click="showProductDetails(product)">
+                    <v-btn
+                      icon
+                      size="small"
+                      variant="text"
+                      @click="showProductDetails(product)"
+                      :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
+                    >
                       <v-icon>mdi-information-outline</v-icon>
                     </v-btn>
-                    <v-btn icon size="small" variant="text" @click="editProduct(product)">
+                    <v-btn
+                      icon
+                      size="small"
+                      variant="text"
+                      @click="editProduct(product)"
+                      :style="product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''"
+                    >
                       <v-icon>mdi-pencil</v-icon>
                     </v-btn>
                     <v-btn
@@ -673,18 +684,31 @@ function getTaskProgress(productId) {
   return (metrics.completedTasks / metrics.totalTasks) * 100
 }
 
-async function activateProduct(product) {
+async function toggleProductActivation(product) {
   try {
-    await productStore.setCurrentProduct(product.id)
-    showToast({
-      message: `${product.name} activated`,
-      type: 'success',
-      duration: 3000,
-    })
+    if (product.id === productStore.currentProductId) {
+      // Deactivate - clear current product
+      productStore.currentProductId = null
+      productStore.currentProduct = null
+      localStorage.removeItem('currentProductId')
+      showToast({
+        message: `${product.name} deactivated`,
+        type: 'info',
+        duration: 3000,
+      })
+    } else {
+      // Activate product
+      await productStore.setCurrentProduct(product.id)
+      showToast({
+        message: `${product.name} activated`,
+        type: 'success',
+        duration: 3000,
+      })
+    }
   } catch (error) {
-    console.error('Failed to activate product:', error)
+    console.error('Failed to toggle product activation:', error)
     showToast({
-      message: 'Failed to activate product',
+      message: 'Failed to change product status',
       type: 'error',
       duration: 5000,
     })
