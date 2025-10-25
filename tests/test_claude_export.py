@@ -90,16 +90,15 @@ async def test_templates(db_session: AsyncSession) -> list[AgentTemplate]:
 async def test_user(db_session: AsyncSession) -> User:
     """Create test user for authentication"""
     user = User(
-        id="user_test_001",
         tenant_key="test_tenant_001",
         username="test_user",
         email="test@example.com",
-        hashed_password="hashed_password_placeholder",
-        role="user",
-        is_active=True,
+        password_hash="hashed_password_placeholder",
+        role="developer",
     )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
 
@@ -107,16 +106,15 @@ async def test_user(db_session: AsyncSession) -> User:
 async def admin_user(db_session: AsyncSession) -> User:
     """Create admin user for authentication"""
     user = User(
-        id="user_admin_001",
         tenant_key="test_tenant_001",
         username="admin_user",
         email="admin@example.com",
-        hashed_password="hashed_password_placeholder",
+        password_hash="hashed_password_placeholder",
         role="admin",
-        is_active=True,
     )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
 
@@ -304,16 +302,15 @@ async def test_multi_tenant_isolation(
 
     # Create user in tenant_001
     user1 = User(
-        id="user_tenant1_001",
         tenant_key="test_tenant_001",
         username="user1",
         email="user1@example.com",
-        hashed_password="hash",
-        role="user",
-        is_active=True,
+        password_hash="hash",
+        role="developer",
     )
     db_session.add(user1)
     await db_session.commit()
+    await db_session.refresh(user1)
 
     claude_dir = temp_export_dir / ".claude" / "agents"
     claude_dir.mkdir(parents=True, exist_ok=True)
@@ -509,16 +506,15 @@ async def test_error_handling_no_templates(
 
     # Create user with tenant that has no templates
     user = User(
-        id="user_empty_001",
         tenant_key="empty_tenant",
         username="empty_user",
         email="empty@example.com",
-        hashed_password="hash",
-        role="user",
-        is_active=True,
+        password_hash="hash",
+        role="developer",
     )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
 
     claude_dir = temp_export_dir / ".claude" / "agents"
     claude_dir.mkdir(parents=True, exist_ok=True)
@@ -591,9 +587,7 @@ async def test_api_endpoint_post_export(
     request = ClaudeExportRequest(export_path=str(claude_dir))
 
     # Call endpoint directly
-    result = await export_claude_code_endpoint(
-        request=request, current_user=test_user, db=db_session
-    )
+    result = await export_claude_code_endpoint(request=request, current_user=test_user, db=db_session)
 
     assert result.success is True
     assert result.exported_count >= 2
