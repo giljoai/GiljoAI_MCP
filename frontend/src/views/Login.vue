@@ -191,7 +191,7 @@ async function handleLogin() {
 
     // Check if first login is required (password change or PIN setup)
     try {
-      const firstLoginResponse = await api.auth.checkFirstLogin()
+      const firstLoginResponse = await api.auth.checkFirstLogin(username.value)
       const firstLoginData = firstLoginResponse.data
 
       if (firstLoginData.must_change_password || firstLoginData.must_set_pin) {

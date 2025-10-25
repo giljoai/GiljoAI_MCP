@@ -132,7 +132,7 @@ const toggleTheme = () => {
   document.documentElement.classList.remove('no-transition')
 
   // Toggle the theme
-  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
+  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'  // TODO: Upgrade to theme.change() after Vuetify 3.7+
 
   // Update data-theme attribute for CSS variables
   document.documentElement.setAttribute('data-theme', theme.global.name.value)
