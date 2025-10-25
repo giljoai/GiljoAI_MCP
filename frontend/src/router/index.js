@@ -45,6 +45,17 @@ const routes = [
   },
   {
     path: '/',
+    name: 'Welcome',
+    component: () => import('@/views/WelcomeView.vue'),
+    meta: {
+      layout: 'default',
+      title: 'Welcome',
+      showInNav: false,
+      requiresAuth: true,
+    },
+  },
+  {
+    path: '/Dashboard',
     name: 'Dashboard',
     component: () => import('@/views/DashboardView.vue'),
     meta: {
@@ -55,7 +66,7 @@ const routes = [
     },
   },
   {
-    path: '/products',
+    path: '/Products',
     name: 'Products',
     component: () => import('@/views/ProductsView.vue'),
     meta: {

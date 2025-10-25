@@ -74,15 +74,16 @@ class Product(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
-    # Vision storage - Hybrid approach (file OR inline)
+    # DEPRECATED (Handover 0043): Legacy single-vision fields - Use vision_documents relationship instead
+    # These fields remain for backward compatibility but new code should use VisionDocument model
     vision_path = Column(String(500), nullable=True,
-        comment="File path to vision document (file-based workflow)")
+        comment="DEPRECATED: File path to vision document (use vision_documents relationship)")
     vision_document = Column(Text, nullable=True,
-        comment="Inline vision text (alternative to vision_path for agentic workflow)")
+        comment="DEPRECATED: Inline vision text (use vision_documents relationship)")
     vision_type = Column(String(20), default="none",
-        comment="Vision source: 'file', 'inline', or 'none'")
+        comment="DEPRECATED: Vision source (use vision_documents relationship)")
     chunked = Column(Boolean, default=False,
-        comment="Has vision been chunked into mcp_context_index for agentic RAG")
+        comment="DEPRECATED: Chunking status (use vision_documents.chunked)")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -99,6 +100,11 @@ class Product(Base):
     # Relationships
     projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
+    
+    # Handover 0043: Multi-Vision Document Support
+    vision_documents = relationship("VisionDocument", back_populates="product", 
+                                   cascade="all, delete-orphan",
+                                   order_by="VisionDocument.display_order")
 
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),
@@ -139,6 +145,235 @@ class Product(Base):
                 return default
 
         return value
+    
+    # Handover 0043: Vision Documents properties
+    @property
+    def has_vision_documents(self) -> bool:
+        """Check if product has any active vision documents"""
+        if not hasattr(self, 'vision_documents') or not self.vision_documents:
+            return False
+        return any(doc.is_active for doc in self.vision_documents)
+    
+    @property
+    def all_documents_chunked(self) -> bool:
+        """Check if all active vision documents have been chunked"""
+        if not self.has_vision_documents:
+            return False
+        active_docs = [doc for doc in self.vision_documents if doc.is_active]
+        if not active_docs:
+            return False
+        return all(doc.chunked for doc in active_docs)
+
+
+class VisionDocument(Base):
+    """
+    Vision Document model - stores multiple vision documents per product.
+    
+    Handover 0043: Multi-Vision Document Support - Phase 1
+    Enables products to have multiple vision documents (architecture, features, setup, etc.)
+    with chunking, versioning, and flexible storage (file-based or inline).
+    
+    Storage Types:
+    - 'file': vision_path points to file, vision_document is NULL
+    - 'inline': vision_document contains text, vision_path is NULL
+    - 'hybrid': Both vision_path and vision_document populated (file + inline)
+    
+    Document Types:
+    - 'vision': Primary vision document
+    - 'architecture': Architecture/design documents
+    - 'features': Feature specifications
+    - 'setup': Setup/installation guides
+    - 'api': API documentation
+    - 'testing': Test plans and strategies
+    - 'deployment': Deployment guides
+    - 'custom': User-defined document types
+    
+    Multi-tenant isolation: All queries filter by tenant_key.
+    CASCADE deletes: Deleting VisionDocument deletes all chunks (via MCPContextIndex).
+    """
+    
+    __tablename__ = "vision_documents"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    
+    # Document identification
+    document_name = Column(String(255), nullable=False,
+        comment="User-friendly document name (e.g., 'Product Architecture', 'API Design')")
+    document_type = Column(String(50), nullable=False, default="vision",
+        comment="Document category: vision, architecture, features, setup, api, testing, deployment, custom")
+    
+    # Storage configuration (flexible: file, inline, or hybrid)
+    vision_path = Column(String(500), nullable=True,
+        comment="File path to vision document (file-based or hybrid storage)")
+    vision_document = Column(Text, nullable=True,
+        comment="Inline vision text (inline or hybrid storage)")
+    storage_type = Column(String(20), nullable=False, default="file",
+        comment="Storage mode: 'file', 'inline', or 'hybrid'")
+    
+    # Chunking state
+    chunked = Column(Boolean, default=False, nullable=False,
+        comment="Has document been chunked into mcp_context_index for RAG")
+    chunk_count = Column(Integer, default=0, nullable=False,
+        comment="Number of chunks created for this document")
+    total_tokens = Column(Integer, nullable=True,
+        comment="Estimated total tokens in document")
+    
+    # Versioning and integrity
+    version = Column(String(50), default="1.0.0", nullable=False,
+        comment="Document version using semantic versioning")
+    content_hash = Column(String(64), nullable=True,
+        comment="SHA-256 hash of document content for change detection")
+    
+    # Status and display
+    is_active = Column(Boolean, default=True, nullable=False,
+        comment="Active documents are used for context; inactive are archived")
+    display_order = Column(Integer, default=0, nullable=False,
+        comment="Display order in UI (lower numbers first)")
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Additional metadata
+    meta_data = Column(JSON, default=dict,
+        comment="Additional metadata: author, tags, source_url, etc.")
+    
+    # Relationships
+    product = relationship("Product", back_populates="vision_documents")
+    chunks = relationship("MCPContextIndex", back_populates="vision_document", 
+                         cascade="all, delete-orphan",
+                         foreign_keys="MCPContextIndex.vision_document_id")
+    
+    __table_args__ = (
+        # Unique constraint: one document name per product
+        UniqueConstraint("product_id", "document_name", name="uq_vision_doc_product_name"),
+        
+        # Multi-tenant isolation index (PRIMARY)
+        Index("idx_vision_doc_tenant", "tenant_key"),
+        Index("idx_vision_doc_product", "product_id"),
+        
+        # Query optimization indexes
+        Index("idx_vision_doc_type", "document_type"),
+        Index("idx_vision_doc_active", "is_active"),
+        Index("idx_vision_doc_chunked", "chunked"),
+        
+        # Composite indexes for common queries
+        Index("idx_vision_doc_tenant_product", "tenant_key", "product_id"),
+        Index("idx_vision_doc_product_type", "product_id", "document_type"),
+        Index("idx_vision_doc_product_active", "product_id", "is_active", "display_order"),
+        
+        # Storage type constraint
+        CheckConstraint(
+            "storage_type IN ('file', 'inline', 'hybrid')",
+            name="ck_vision_doc_storage_type"
+        ),
+        
+        # Document type constraint
+        CheckConstraint(
+            "document_type IN ('vision', 'architecture', 'features', 'setup', 'api', 'testing', 'deployment', 'custom')",
+            name="ck_vision_doc_document_type"
+        ),
+        
+        # Storage consistency constraints
+        CheckConstraint(
+            "(storage_type = 'file' AND vision_path IS NOT NULL) OR "
+            "(storage_type = 'inline' AND vision_document IS NOT NULL) OR "
+            "(storage_type = 'hybrid' AND vision_path IS NOT NULL AND vision_document IS NOT NULL)",
+            name="ck_vision_doc_storage_consistency"
+        ),
+        
+        # Chunk count consistency
+        CheckConstraint("chunk_count >= 0", name="ck_vision_doc_chunk_count"),
+        CheckConstraint(
+            "(chunked = false AND chunk_count = 0) OR (chunked = true AND chunk_count > 0)",
+            name="ck_vision_doc_chunked_consistency"
+        ),
+    )
+    
+    @property
+    def needs_rechunking(self) -> bool:
+        """
+        Check if document needs rechunking based on content changes.
+        
+        Returns:
+            True if content_hash is None or content has changed since last chunking
+        """
+        if not self.chunked:
+            return True
+        
+        if self.content_hash is None:
+            return True
+        
+        # Calculate current content hash
+        import hashlib
+        content = ""
+        
+        if self.storage_type == "file" and self.vision_path:
+            try:
+                from pathlib import Path
+                path = Path(self.vision_path)
+                if path.exists():
+                    content = path.read_text(encoding='utf-8')
+            except Exception:
+                return True
+        elif self.storage_type == "inline" and self.vision_document:
+            content = self.vision_document
+        elif self.storage_type == "hybrid":
+            # For hybrid, combine both sources
+            if self.vision_path:
+                try:
+                    from pathlib import Path
+                    path = Path(self.vision_path)
+                    if path.exists():
+                        content += path.read_text(encoding='utf-8')
+                except Exception:
+                    pass
+            if self.vision_document:
+                content += self.vision_document
+        
+        current_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        return current_hash != self.content_hash
+    
+    def update_content_hash(self) -> str:
+        """
+        Update content_hash based on current content.
+        
+        Returns:
+            The new content hash (SHA-256)
+        """
+        import hashlib
+        content = ""
+        
+        if self.storage_type == "file" and self.vision_path:
+            try:
+                from pathlib import Path
+                path = Path(self.vision_path)
+                if path.exists():
+                    content = path.read_text(encoding='utf-8')
+            except Exception:
+                pass
+        elif self.storage_type == "inline" and self.vision_document:
+            content = self.vision_document
+        elif self.storage_type == "hybrid":
+            # For hybrid, combine both sources
+            if self.vision_path:
+                try:
+                    from pathlib import Path
+                    path = Path(self.vision_path)
+                    if path.exists():
+                        content += path.read_text(encoding='utf-8')
+                except Exception:
+                    pass
+            if self.vision_document:
+                content += self.vision_document
+        
+        self.content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        return self.content_hash
+    
+    def __repr__(self):
+        return f"<VisionDocument(id={self.id}, name={self.document_name}, type={self.document_type}, chunked={self.chunked})>"
 
 
 class Project(Base):
@@ -1556,6 +1791,10 @@ class MCPContextIndex(Base):
     tenant_key = Column(String(36), nullable=False, index=True)
     chunk_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
     product_id = Column(String(36), ForeignKey("products.id"), nullable=True)
+    
+    # Handover 0043: Multi-Vision Document Support
+    vision_document_id = Column(String(36), ForeignKey("vision_documents.id", ondelete="CASCADE"), nullable=True,
+        comment="Link to specific vision document (NULL for legacy product-level chunks)")
     content = Column(Text, nullable=False)
     summary = Column(Text, nullable=True,
         comment="Optional LLM-generated summary (NULL for Phase 1 non-LLM chunking)")
@@ -1572,11 +1811,16 @@ class MCPContextIndex(Base):
     
     # Relationships
     product = relationship("Product", backref="context_chunks")
+    vision_document = relationship("VisionDocument", back_populates="chunks", 
+                                   foreign_keys=[vision_document_id])
     
     __table_args__ = (
         Index("idx_mcp_context_tenant_product", "tenant_key", "product_id"),
         Index("idx_mcp_context_searchable", "searchable_vector", postgresql_using="gin"),
         Index("idx_mcp_context_chunk_id", "chunk_id"),
+        # Handover 0043: Vision document indexes
+        Index("idx_mcp_context_vision_doc", "vision_document_id"),
+        Index("idx_mcp_context_product_vision_doc", "product_id", "vision_document_id"),
     )
     
     def __repr__(self):

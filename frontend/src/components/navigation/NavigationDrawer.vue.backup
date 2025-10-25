@@ -75,7 +75,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useTheme } from 'vuetify'
-import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
@@ -96,26 +95,15 @@ const props = defineProps({
 const emit = defineEmits(['update:model-value'])
 
 const theme = useTheme()
-const route = useRoute()
 const userStore = useUserStore()
-
-// Dynamic agent icon based on route and theme
-const agentIcon = computed(() => {
-  const isAgentsRoute = route.path === '/agents'
-  const isDark = theme.global.current.value.dark
-  
-  if (isAgentsRoute) {
-    return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
-  }
-  return '/icons/Giljo_gray_Face.svg'
-})
 
 // Navigation items - filter based on user role
 const navigationItems = computed(() => {
   const baseItems = [
-    { name: 'Dashboard', path: '/', title: 'Dashboard', icon: 'mdi-view-dashboard' },
+    { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
+    { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-    { name: 'Agents', path: '/agents', title: 'Agents', customIcon: agentIcon.value },
+    { name: 'Agents', path: '/agents', title: 'Agents', customIcon: '/Giljo_gray_Face.svg?v=2' },
     { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]

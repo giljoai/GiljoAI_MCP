@@ -241,3 +241,77 @@ frontend/src/components/
 ### Missing
 - `frontend/src/components/agents/` - Agent monitoring components
 - `.claude/commands/` - MCP slash commands
+---
+
+## 9. UI Architecture Technical Debt
+
+### Issue: Nested `<v-window>` Components Theme Inheritance
+
+**Date Added**: 2025-10-24
+**Priority**: MEDIUM
+**Effort**: 2-3 days
+
+**Problem**:
+Multiple pages use nested `<v-window>` components which fail to inherit theme correctly from parent. When user toggles dark/light mode, nested windows remain in default theme (light), causing theme inconsistencies.
+
+**Affected Components**:
+- `frontend/src/views/UserSettings.vue` - Main tabs contain sub-tabs (Templates tab)
+- `frontend/src/views/DashboardView.vue` - Main tabs contain sub-tabs (Timeline/Hierarchy/Metrics)
+- Any future components with nested `<v-window>` structures
+
+**Current Workaround** (Applied):
+- Explicitly pass `:theme="theme.global.name.value"` prop to all nested `<v-window>` components
+- Quick fix but doesn't solve architectural issue
+
+**Root Cause**:
+Vuetify's `<v-window>` component doesn't properly propagate theme to nested instances. This is a known Vuetify limitation with double-nested windows.
+
+**Proper Solution** (Tech Debt to Address):
+**Option C: Flatten nested window architecture**
+
+Replace nested `<v-window>` with one of:
+
+1. **Route-based rendering** (Recommended):
+   ```
+   /settings → UserSettings.vue (main tabs)
+   /settings/templates → TemplateManager.vue (full page)
+   /settings/api → ApiSettings.vue (full page)
+   ```
+   - Single-level tabs at each route
+   - Clean URL structure
+   - No nesting issues
+   - Better deep linking
+
+2. **Conditional rendering with v-show**:
+   ```vue
+   <v-card v-show="activeSubTab === 'timeline'">...</v-card>
+   <v-card v-show="activeSubTab === 'hierarchy'">...</v-card>
+   ```
+   - No `<v-window>` nesting
+   - All content in DOM (may impact performance)
+   - Simpler state management
+
+3. **Component-based rendering**:
+   ```vue
+   <component :is="currentSubTabComponent" />
+   ```
+   - Dynamic component loading
+   - Clean separation
+   - Better code organization
+
+**Benefits of Flattening**:
+- Eliminates theme inheritance issues
+- Improves performance (no nested reactivity)
+- Cleaner component structure
+- Better accessibility (simpler DOM)
+- Easier to maintain
+
+**Implementation Roadmap**:
+1. **Audit**: Identify all nested `<v-window>` instances (2-3 components)
+2. **Design**: Choose flattening strategy per component (route vs v-show)
+3. **Refactor**: Update components one-by-one
+4. **Test**: Ensure theme switching works correctly
+5. **Remove**: Delete `:theme` workaround props
+
+**Risk**: LOW - Changes are localized to specific components
+**Testing**: Theme toggle on all affected pages in both light/dark modes
