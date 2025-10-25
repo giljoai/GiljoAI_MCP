@@ -129,7 +129,7 @@
           </v-tab>
         </v-tabs>
 
-        <v-window v-model="activeTab" :theme="theme.global.name.value">
+        <v-window v-model="activeTab">
           <!-- Timeline Tab -->
           <v-window-item value="timeline">
             <SubAgentTimelineHorizontal
