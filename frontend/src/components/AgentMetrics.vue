@@ -117,15 +117,17 @@ const theme = useTheme()
 
 // Computed colors based on theme
 const chartColors = computed(() => {
-  const currentTheme = theme.global.current.value
+  const isDark = theme.global.current.value.dark
+  const currentColors = theme.global.current.value.colors
+
   return {
-    success: currentTheme.colors.success,
-    secondary: currentTheme.colors.secondary,
-    accent: currentTheme.colors.accent,
-    error: currentTheme.colors.error,
-    info: currentTheme.colors.info,
-    primary: currentTheme.colors.primary,
-    text: currentTheme.colors['on-surface'],
+    success: currentColors.success || '#67bd6d',
+    secondary: currentColors.secondary || '#ffc300',
+    accent: currentColors.accent || (isDark ? '#c6298c' : '#8b5cf6'),
+    error: currentColors.error || '#c6298c',
+    info: currentColors.info || (isDark ? '#8f97b7' : '#315074'),
+    primary: currentColors.primary || '#315074',
+    text: currentColors['on-surface'] || (isDark ? '#e1e1e1' : '#363636'),
   }
 })
 
