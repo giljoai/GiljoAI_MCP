@@ -548,7 +548,9 @@ async function toggleSerena(enabled) {
 onMounted(async () => {
   // Check for tab parameter in query string
   const route = router.currentRoute.value
+
   if (route.query.tab) {
+
     activeTab.value = route.query.tab
   }
 
@@ -560,6 +562,10 @@ onMounted(async () => {
   if (storedSettings) {
     Object.assign(settings.value, storedSettings)
   }
+
+  // Initialize theme from current Vuetify theme AFTER loading stored settings
+  // This ensures UI reflects actual current theme (restored in main.js from localStorage)
+  settings.value.appearance.theme = theme.global.name.value
 })
 </script>
 

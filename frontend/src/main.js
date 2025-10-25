@@ -57,6 +57,20 @@ console.log('[MAIN] Pinia registered')
 app.use(vuetify)
 console.log('[MAIN] Vuetify registered')
 
+// Restore theme preference from localStorage BEFORE mounting
+// This prevents theme flashing and ensures Settings page reads correct theme
+const savedTheme = localStorage.getItem('theme-preference')
+if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+  vuetify.theme.global.name.value = savedTheme
+  document.documentElement.setAttribute('data-theme', savedTheme)
+  console.log(`[MAIN] Theme restored from localStorage: ${savedTheme}`)
+} else {
+  // Set default theme in localStorage if not present
+  localStorage.setItem('theme-preference', 'dark')
+  document.documentElement.setAttribute('data-theme', 'dark')
+  console.log('[MAIN] Theme initialized to default: dark')
+}
+
 // Mount app SYNCHRONOUSLY
 app.mount('#app')
 console.log('[MAIN] App mounted to #app')

@@ -79,13 +79,16 @@
               >
                 <v-card
                   :elevation="product.id === productStore.currentProductId ? 8 : 2"
-                  :color="product.id === productStore.currentProductId ? 'primary' : undefined"
-                  :variant="product.id === productStore.currentProductId ? 'tonal' : 'elevated'"
                   class="product-card h-100"
                 >
                   <v-card-text>
-                    <div class="d-flex align-center justify-space-between mb-3">
-                      <div class="text-h6">{{ product.name }}</div>
+                    <div class="d-flex align-center justify-space-between mb-2">
+                      <div
+                        class="text-h6"
+                        :style="product.id === productStore.currentProductId ? 'color: #ffc300' : ''"
+                      >
+                        {{ product.name }}
+                      </div>
                       <v-chip
                         v-if="product.id === productStore.currentProductId"
                         color="success"
@@ -96,30 +99,33 @@
                       </v-chip>
                     </div>
 
-                    <div class="text-caption text-medium-emphasis mb-1">
-                      ID: {{ product.id.slice(0, 8) }}...
+                    <div class="text-caption text-medium-emphasis mb-3">
+                      Created: {{ formatDate(product.created_at) }}
+                    </div>
+
+                    <div class="mb-3">
+                      <div class="text-caption text-medium-emphasis">Product ID:</div>
+                      <div class="font-monospace" style="font-size: 0.65rem; word-break: break-all; line-height: 1.3;">
+                        {{ product.id }}
+                      </div>
                     </div>
 
                     <!-- Statistics -->
                     <v-divider class="my-3"></v-divider>
                     <v-row dense>
-                      <v-col cols="4">
-                        <div class="text-caption text-medium-emphasis">Unresolved Tasks</div>
-                        <div class="text-h6" style="color: #ffc300">{{ product.unresolved_tasks || 0 }}</div>
+                      <v-col cols="6" class="text-center">
+                        <div class="text-caption text-medium-emphasis">Tasks</div>
+                        <div class="text-h6" style="color: #ffc300">
+                          {{ product.unresolved_tasks || 0 }}/{{ product.task_count || 0 }}
+                        </div>
                       </v-col>
-                      <v-col cols="4">
-                        <div class="text-caption text-medium-emphasis">Unfinished Projects</div>
-                        <div class="text-h6" style="color: #ffc300">{{ product.unfinished_projects || 0 }}</div>
-                      </v-col>
-                      <v-col cols="4">
-                        <div class="text-caption text-medium-emphasis">Vision Docs</div>
-                        <div class="text-h6" style="color: #ffc300">{{ product.vision_documents_count || 0 }}</div>
+                      <v-col cols="6" class="text-center">
+                        <div class="text-caption text-medium-emphasis">Projects</div>
+                        <div class="text-h6" style="color: #ffc300">
+                          {{ product.unfinished_projects || 0 }}/{{ product.project_count || 0 }}
+                        </div>
                       </v-col>
                     </v-row>
-
-                    <div class="text-caption text-medium-emphasis mt-3">
-                      Created: {{ formatDate(product.created_at) }}
-                    </div>
                   </v-card-text>
 
                   <v-card-actions>
