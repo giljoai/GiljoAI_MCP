@@ -18,7 +18,7 @@ from typing import List, Optional
 
 import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
 from api.schemas.vision_document import (
@@ -36,25 +36,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/vision-documents", tags=["Vision Documents"])
 
 
-def get_db():
+async def get_db():
     """
-    Get database session dependency.
+    Get database session dependency (async).
 
     Returns:
-        Session: SQLAlchemy database session
+        AsyncSession: SQLAlchemy async database session
     """
     from api.app import state
 
     if not state.db_manager:
         raise RuntimeError("Database manager not initialized")
 
-    # Get a synchronous session context manager
-    session_ctx = state.db_manager.get_session()
-    db = session_ctx.__enter__()
-    try:
-        yield db
-    finally:
-        session_ctx.__exit__(None, None, None)
+    # Get an async session context manager
+    async with state.db_manager.get_session_async() as session:
+        yield session
 
 
 def get_vision_repo():
@@ -85,7 +81,7 @@ async def create_vision_document(
     auto_chunk: bool = Form(True),
     display_order: int = Form(0),
     version: str = Form("1.0.0"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
 ):
@@ -211,7 +207,7 @@ async def create_vision_document(
 async def list_vision_documents(
     product_id: str,
     active_only: bool = True,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
 ):
@@ -259,7 +255,7 @@ async def update_vision_document(
     document_id: str,
     content: str = Form(...),
     auto_rechunk: bool = Form(True),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
 ):
@@ -341,7 +337,7 @@ async def update_vision_document(
 @router.delete("/{document_id}", response_model=DeleteResponse)
 async def delete_vision_document(
     document_id: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
 ):
@@ -396,7 +392,7 @@ async def delete_vision_document(
 @router.post("/{document_id}/rechunk", response_model=RechunkResponse)
 async def rechunk_vision_document(
     document_id: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo)
 ):

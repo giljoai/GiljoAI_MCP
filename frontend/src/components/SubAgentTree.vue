@@ -49,13 +49,13 @@
 
             <!-- Gradient definitions for status colors -->
             <linearGradient id="activeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" :style="`stop-color:${colors.active};stop-opacity:1`" />
-              <stop offset="100%" :style="`stop-color:${colors.active};stop-opacity:0.7`" />
+              <stop offset="0%" :style="`stop-color:${colors.value.$1};stop-opacity:1`" />
+              <stop offset="100%" :style="`stop-color:${colors.value.$1};stop-opacity:0.7`" />
             </linearGradient>
 
             <linearGradient id="pendingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" :style="`stop-color:${colors.pending};stop-opacity:1`" />
-              <stop offset="100%" :style="`stop-color:${colors.pending};stop-opacity:0.7`" />
+              <stop offset="0%" :style="`stop-color:${colors.value.$1};stop-opacity:1`" />
+              <stop offset="100%" :style="`stop-color:${colors.value.$1};stop-opacity:0.7`" />
             </linearGradient>
           </defs>
 
@@ -65,7 +65,7 @@
               v-for="link in treeLinks"
               :key="`link-${link.source.id}-${link.target.id}`"
               :d="getLinkPath(link)"
-              :stroke="link.active ? colors.active : colors.connectionLine"
+              :stroke="link.active ? colors.value.$1 : colors.value.$1"
               :stroke-width="link.active ? 2 : 1"
               :stroke-dasharray="link.active ? 'none' : '2,2'"
               fill="none"
@@ -113,7 +113,7 @@
               <text
                 x="0"
                 :y="-nodeHeight / 2 + 20"
-                :fill="colors.text"
+                :fill="colors.value.text"
                 text-anchor="middle"
                 font-size="14"
                 font-weight="500"
@@ -129,7 +129,7 @@
                 :y="0"
                 :width="nodeWidth - 20"
                 height="4"
-                :fill="colors.trackBackground"
+                :fill="colors.value.trackBackground"
                 rx="2"
               />
               <rect
@@ -154,7 +154,7 @@
               <text
                 x="0"
                 :y="nodeHeight / 2 - 8"
-                :fill="colors.textSecondary"
+                :fill="colors.value.textSecondary"
                 text-anchor="middle"
                 font-size="12"
                 class="node-status"
@@ -169,7 +169,7 @@
                 class="expand-indicator"
                 @click="toggleNode(node)"
               >
-                <circle r="8" :fill="colors.primary" opacity="0.8" />
+                <circle r="8" :fill="colors.value.primary" opacity="0.8" />
                 <text
                   x="0"
                   y="3"
@@ -271,6 +271,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useTheme } from 'vuetify'
 import { useAgentStore } from '@/stores/agents'
 import * as d3 from 'd3'
 import api from '@/services/api'
@@ -303,6 +304,7 @@ const emit = defineEmits(['node-selected', 'node-expanded', 'node-collapsed', 'c
 
 // Store
 const agentStore = useAgentStore()
+const theme = useTheme()
 
 // Refs
 const treeWrapper = ref(null)
@@ -337,21 +339,24 @@ const contextMenu = ref({
   node: null,
 })
 
-// Color scheme from docs/color_themes.md
-const colors = {
-  background: '#1e3147',
-  nodeBackground: '#182739',
-  orchestratorBackground: '#1e3147',
-  trackBackground: '#182739',
-  active: '#67bd6d',
-  pending: '#ffc300',
-  completed: '#8f97b7',
-  failed: '#c6298c',
-  connectionLine: '#315074',
-  text: '#e1e1e1',
-  textSecondary: '#8f97b7',
-  primary: '#ffc300',
-}
+// Color scheme - theme-aware (dark/light mode support)
+const colors = computed(() => {
+  const currentTheme = theme.global.current.value
+  return {
+    background: currentTheme.colors['surface-variant'],
+    nodeBackground: currentTheme.colors.surface,
+    orchestratorBackground: currentTheme.colors['surface-variant'],
+    trackBackground: currentTheme.colors.surface,
+    active: currentTheme.colors.success,
+    pending: currentTheme.colors.secondary,
+    completed: currentTheme.colors.info,
+    failed: currentTheme.colors.error,
+    connectionLine: currentTheme.colors.value.$1,
+    text: currentTheme.colors['on-surface'],
+    textSecondary: currentTheme.colors.info,
+    primary: currentTheme.colors.secondary,
+  }
+})
 
 // Status types for legend
 const statusTypes = [
@@ -441,19 +446,19 @@ const getLinkPath = (link) => {
 
 const getNodeBackground = (node) => {
   if (node.role === 'orchestrator') {
-    return colors.orchestratorBackground
+    return colors.value.$1
   }
-  return colors.nodeBackground
+  return colors.value.$1
 }
 
 const getNodeBorderColor = (node) => {
   const statusColors = {
-    active: colors.active,
-    pending: colors.pending,
-    completed: colors.completed,
-    failed: colors.failed,
+    active: colors.value.$1,
+    pending: colors.value.$1,
+    completed: colors.value.$1,
+    failed: colors.value.$1,
   }
-  return statusColors[node.status] || colors.connectionLine
+  return statusColors[node.status] || colors.value.$1
 }
 
 const getNodeIcon = (node) => {
@@ -467,10 +472,10 @@ const getNodeIcon = (node) => {
 
 const getContextColor = (usage) => {
   const percentage = (usage / 150000) * 100
-  if (percentage < 50) return colors.active
-  if (percentage < 70) return colors.pending
+  if (percentage < 50) return colors.value.$1
+  if (percentage < 70) return colors.value.$1
   if (percentage < 80) return '#ff9800'
-  return colors.failed
+  return colors.value.$1
 }
 
 const formatContextUsage = (usage) => {
@@ -622,13 +627,13 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .sub-agent-tree {
-  background: #1e3147;
+  background: rgb(var(--v-theme-surface-variant));
 
   .tree-container {
     position: relative;
     height: 600px;
     overflow: hidden;
-    background: #182739;
+    background: rgb(var(--v-theme-surface));
     border-radius: 8px;
   }
 
@@ -690,8 +695,8 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #0e1c2d;
-    border: 1px solid #315074;
+    background: rgb(var(--v-theme-background));
+    border: 1px solid rgb(var(--v-theme-primary));
     border-radius: 8px;
     padding: 8px;
 
@@ -705,19 +710,19 @@ onMounted(async () => {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: #ffc300;
+      color: rgb(var(--v-theme-secondary));
       margin-bottom: 8px;
     }
 
     .tooltip-content {
-      color: #e1e1e1;
+      color: rgb(var(--v-theme-on-surface));
       font-size: 0.875rem;
 
       div {
         margin: 4px 0;
 
         strong {
-          color: #8f97b7;
+          color: rgb(var(--v-theme-info));
           margin-right: 4px;
         }
       }
@@ -725,8 +730,8 @@ onMounted(async () => {
   }
 
   .legend-section {
-    background: #182739;
-    border-top: 1px solid #315074;
+    background: rgb(var(--v-theme-surface));
+    border-top: 1px solid rgb(var(--v-theme-primary));
     padding: 12px 16px;
   }
 }
