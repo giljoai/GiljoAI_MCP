@@ -5,12 +5,7 @@
       <v-col cols="12">
         <div class="d-flex align-center mb-6">
           <v-icon size="32" color="primary" class="mr-3">mdi-package-variant</v-icon>
-          <div>
-            <h1 class="text-h4 font-weight-bold">Products Overview</h1>
-            <p class="text-body-2 text-medium-emphasis mt-1">
-              Manage and monitor all products across the system
-            </p>
-          </div>
+          <h1 class="text-h4 font-weight-bold">Products</h1>
           <v-spacer></v-spacer>
           <v-btn color="primary" prepend-icon="mdi-plus" @click="showDialog = true">
             New Product
@@ -19,72 +14,26 @@
       </v-col>
     </v-row>
 
-    <!-- Summary Cards -->
-    <v-row>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="40" color="primary" class="mr-3">mdi-package-variant</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ totalProducts }}</div>
-                <div class="text-caption text-medium-emphasis">Total Products</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="40" color="success" class="mr-3">mdi-check-circle</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ activeProducts }}</div>
-                <div class="text-caption text-medium-emphasis">Active Products</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="40" color="info" class="mr-3">mdi-clipboard-list</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ totalTasks }}</div>
-                <div class="text-caption text-medium-emphasis">Total Tasks</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="40" color="warning" class="mr-3">mdi-robot</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ totalAgents }}</div>
-                <div class="text-caption text-medium-emphasis">Active Agents</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
     <!-- Products Grid -->
-    <v-row class="mt-4">
+    <v-row>
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
             <span>All Products</span>
             <v-spacer></v-spacer>
+            <v-select
+              v-model="sortBy"
+              :items="sortOptions"
+              item-title="label"
+              item-value="value"
+              prepend-inner-icon="mdi-sort"
+              label="Sort by"
+              variant="outlined"
+              density="compact"
+              hide-details
+              class="mr-3"
+              style="max-width: 200px"
+            ></v-select>
             <v-text-field
               v-model="search"
               prepend-inner-icon="mdi-magnify"
@@ -93,7 +42,6 @@
               hide-details
               variant="outlined"
               density="compact"
-              class="ml-4"
               style="max-width: 300px"
             ></v-text-field>
           </v-card-title>
@@ -620,6 +568,7 @@ const { showToast } = useToast()
 // State
 const loading = ref(false)
 const search = ref('')
+const sortBy = ref('name')
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDetailsDialog = ref(false)
@@ -645,6 +594,13 @@ const productForm = ref({
   visionPath: '',
 })
 
+// Sort options
+const sortOptions = [
+  { label: 'Name (A-Z)', value: 'name' },
+  { label: 'Date Created (Newest)', value: 'date-newest' },
+  { label: 'Date Created (Oldest)', value: 'date-oldest' },
+]
+
 // Computed
 const isDeleteConfirmed = computed(() => {
   return (
@@ -655,14 +611,32 @@ const isDeleteConfirmed = computed(() => {
 
 // Computed
 const filteredProducts = computed(() => {
-  if (!search.value) return productStore.products
+  // Filter by search
+  let products = productStore.products
+  if (search.value) {
+    const searchLower = search.value.toLowerCase()
+    products = products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(searchLower) ||
+        product.description?.toLowerCase().includes(searchLower),
+    )
+  }
 
-  const searchLower = search.value.toLowerCase()
-  return productStore.products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchLower) ||
-      product.description?.toLowerCase().includes(searchLower),
-  )
+  // Sort products
+  const sorted = [...products]
+  switch (sortBy.value) {
+    case 'name':
+      sorted.sort((a, b) => a.name.localeCompare(b.name))
+      break
+    case 'date-newest':
+      sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      break
+    case 'date-oldest':
+      sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      break
+  }
+
+  return sorted
 })
 
 const totalProducts = computed(() => productStore.productCount)
