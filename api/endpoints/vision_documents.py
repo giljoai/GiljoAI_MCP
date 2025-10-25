@@ -18,6 +18,7 @@ from typing import List, Optional
 
 import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
@@ -33,7 +34,7 @@ from src.giljo_mcp.repositories.vision_document_repository import VisionDocument
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/vision-documents", tags=["Vision Documents"])
+router = APIRouter(tags=["Vision Documents"])
 
 
 async def get_db():
@@ -120,11 +121,26 @@ async def create_vision_document(
         HTTPException 500: If creation or chunking fails
     """
     try:
-        # Validate product exists and belongs to tenant
-        product = db.query(Product).filter(
-            Product.id == product_id,
-            Product.tenant_key == tenant_key
-        ).first()
+        # DEBUG: Log tenant_key and product_id
+        logger.info(f"[VisionDoc Upload] product_id={product_id}, tenant_key={tenant_key}")
+
+        # Validate product exists and belongs to tenant (ASYNC query)
+        result = await db.execute(
+            select(Product).filter(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key
+            )
+        )
+        product = result.scalar_one_or_none()
+
+        # DEBUG: Log query result
+        logger.info(f"[VisionDoc Upload] Product found: {bool(product)}")
+        if not product:
+            # DEBUG: Check if product exists with different tenant_key
+            all_result = await db.execute(select(Product).filter(Product.id == product_id))
+            any_product = all_result.scalar_one_or_none()
+            if any_product:
+                logger.warning(f"[VisionDoc Upload] Product exists but tenant mismatch! Product tenant: {any_product.tenant_key}, Request tenant: {tenant_key}")
 
         if not product:
             raise HTTPException(
