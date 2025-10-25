@@ -15,7 +15,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.models import Product, Project, Task
+from src.giljo_mcp.models import Product, Project, Task, VisionDocument, MCPContextIndex
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 router = APIRouter()
@@ -53,6 +53,17 @@ class VisionChunk(BaseModel):
     boundary_type: str
     keywords: List[str]
     headers: List[str]
+
+
+class CascadeImpact(BaseModel):
+    """Cascade impact response for product deletion"""
+    product_id: str
+    projects_count: int = Field(..., description="Total number of projects")
+    unfinished_projects: int = Field(..., description="Number of unfinished projects")
+    tasks_count: int = Field(..., description="Total number of tasks")
+    unresolved_tasks: int = Field(..., description="Number of unresolved tasks")
+    vision_documents_count: int = Field(..., description="Number of vision documents")
+    total_chunks: int = Field(..., description="Total number of context chunks")
 
 
 def get_vision_storage_path(tenant_key: str, product_id: str) -> Path:
@@ -321,6 +332,87 @@ async def update_product(product_id: str, product_update: ProductUpdate, tenant_
                 project_count=project_count,
                 task_count=task_count,
                 has_vision=bool(product.vision_path),
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{product_id}/cascade-impact", response_model=CascadeImpact)
+async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tenant_key)):
+    """Get cascade impact for deleting a product
+
+    Returns counts of all data that will be cascade-deleted if this product is deleted:
+    - Projects (total and unfinished)
+    - Tasks (total and unresolved)
+    - Vision documents
+    - Context chunks
+    """
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Verify product exists and belongs to tenant
+            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Count projects
+            projects_stmt = select(Project).where(
+                Project.product_id == product_id,
+                Project.tenant_key == tenant_key
+            )
+            projects_result = await db.execute(projects_stmt)
+            projects = projects_result.scalars().all()
+            projects_count = len(projects)
+
+            # Count unfinished projects (status != 'completed')
+            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+
+            # Count tasks
+            tasks_stmt = select(Task).where(
+                Task.product_id == product_id,
+                Task.tenant_key == tenant_key
+            )
+            tasks_result = await db.execute(tasks_stmt)
+            tasks = tasks_result.scalars().all()
+            tasks_count = len(tasks)
+
+            # Count unresolved tasks (status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+
+            # Count vision documents
+            vision_docs_stmt = select(VisionDocument).where(
+                VisionDocument.product_id == product_id,
+                VisionDocument.tenant_key == tenant_key
+            )
+            vision_docs_result = await db.execute(vision_docs_stmt)
+            vision_documents_count = len(vision_docs_result.scalars().all())
+
+            # Count total chunks
+            chunks_stmt = select(MCPContextIndex).where(
+                MCPContextIndex.product_id == product_id,
+                MCPContextIndex.tenant_key == tenant_key
+            )
+            chunks_result = await db.execute(chunks_stmt)
+            total_chunks = len(chunks_result.scalars().all())
+
+            return CascadeImpact(
+                product_id=product_id,
+                projects_count=projects_count,
+                unfinished_projects=unfinished_projects,
+                tasks_count=tasks_count,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=vision_documents_count,
+                total_chunks=total_chunks
             )
 
     except HTTPException:
