@@ -20,7 +20,7 @@
       </v-tab>
       <v-tab value="templates">
         <template #prepend>
-          <v-img src="/giljo_YW_Face.svg" width="20" height="20" style="margin-right: 3px;" />
+          <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
         </template>
         Agent Templates
       </v-tab>
@@ -271,7 +271,7 @@
               <v-tab value="api-keys"><v-icon start>mdi-key-variant</v-icon>API Keys</v-tab>
               <v-tab value="mcp-config">
                 <template #prepend>
-                  <v-img src="/Giljo_gray_Face.svg" width="20" height="20" style="margin-right: 3px;" />
+                  <v-img :src="theme.global.current.value.dark ? '/Giljo_gray_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
                 </template>
                 MCP Configuration
               </v-tab>
@@ -279,7 +279,7 @@
             </v-tabs>
             <v-divider class="mb-4" thickness="3" style="border-color: #FFFFFF !important; opacity: 1 !important;"></v-divider>
 
-            <v-window v-model="apiSubTab">
+            <v-window v-model="apiSubTab" :theme="theme.global.name.value">
               <!-- API Keys Tab -->
               <v-window-item value="api-keys">
                 <ApiKeyManager />
@@ -289,7 +289,7 @@
               <v-window-item value="mcp-config">
                 <div class="mb-2">
                   <div class="d-flex align-center" style="padding-left: 10px;">
-                    <v-img src="/giljo_YW_Face.svg" width="28" height="28" class="mr-2" cover style="flex: 0 0 28px;" />
+                    <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="28" height="28" class="mr-2" cover style="flex: 0 0 28px;" />
                     <h3 class="text-h6 mb-0">AI Tool Self-Configuration</h3>
                   </div>
                 </div>

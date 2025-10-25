@@ -35,7 +35,7 @@
 
       <!-- Right: Product Switcher, Connection Status, User Menu -->
       <div style="flex: 0 0 auto; display: flex; align-items: center">
-        <ProductSwitcher class="mr-3" />
+        <ActiveProductDisplay class="mr-3" />
         <ConnectionStatus class="mr-2" />
         <v-btn
           icon="mdi-bell"
@@ -115,7 +115,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
 import ConnectionStatus from '@/components/ConnectionStatus.vue'
-import ProductSwitcher from '@/components/ProductSwitcher.vue'
+import ActiveProductDisplay from '@/components/ActiveProductDisplay.vue'
 import api from '@/services/api'
 
 const props = defineProps({

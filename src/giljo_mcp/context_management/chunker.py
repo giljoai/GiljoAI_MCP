@@ -238,3 +238,157 @@ class VisionDocumentChunker:
         )
 
         return processed_chunks
+
+    def chunk_vision_document(
+        self,
+        session,
+        tenant_key: str,
+        vision_document_id: str
+    ) -> Dict[str, Any]:
+        """
+        Chunk a specific vision document with selective re-chunking.
+
+        Handover 0043 Phase 3: Multi-vision document chunking support.
+
+        Steps:
+        1. Get vision document from repository
+        2. Delete existing chunks for this document only
+        3. Chunk content using semantic boundaries
+        4. Create new chunk records with vision_document_id link
+        5. Update vision document metadata (chunked status, counts)
+
+        This enables selective re-chunking - only the updated document
+        is re-chunked, not the entire product's vision content.
+
+        Args:
+            session: SQLAlchemy database session
+            tenant_key: Tenant key for multi-tenant isolation
+            vision_document_id: Vision document ID to chunk
+
+        Returns:
+            Dictionary with chunking results:
+            {
+                "success": bool,
+                "document_id": str,
+                "document_name": str,
+                "chunks_created": int,
+                "total_tokens": int,
+                "old_chunks_deleted": int,
+                "error": str (if failed)
+            }
+        """
+        from pathlib import Path
+        import uuid
+
+        # Import repositories
+        try:
+            from ..repositories.vision_document_repository import VisionDocumentRepository
+            from ..repositories.context_repository import ContextRepository
+            from ..models import MCPContextIndex
+        except ImportError as e:
+            logger.error(f"Failed to import repositories: {e}")
+            return {"success": False, "error": f"Import error: {e}"}
+
+        vision_repo = VisionDocumentRepository()
+        context_repo = ContextRepository(db_manager=None)
+
+        # Get vision document with tenant isolation
+        doc = vision_repo.get_by_id(session, tenant_key, vision_document_id)
+        if not doc:
+            error_msg = f"Vision document {vision_document_id} not found for tenant {tenant_key}"
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
+
+        # Get content based on storage type
+        content = ""
+        try:
+            if doc.storage_type in ("file", "hybrid") and doc.vision_path:
+                file_path = Path(doc.vision_path)
+                if file_path.exists():
+                    content += file_path.read_text(encoding="utf-8")
+                else:
+                    logger.warning(
+                        f"File path {doc.vision_path} does not exist for document {vision_document_id}"
+                    )
+                    if doc.storage_type == "file":
+                        # For file-only storage, this is an error
+                        return {
+                            "success": False,
+                            "error": f"File not found: {doc.vision_path}"
+                        }
+
+            if doc.storage_type in ("inline", "hybrid") and doc.vision_document:
+                content += doc.vision_document
+
+        except Exception as e:
+            error_msg = f"Error reading content for document {vision_document_id}: {e}"
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
+
+        if not content or not content.strip():
+            error_msg = f"Document {vision_document_id} has no content to chunk"
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
+
+        # Delete existing chunks for this document (selective deletion)
+        deleted_count = context_repo.delete_chunks_by_vision_document(
+            session, tenant_key, vision_document_id
+        )
+
+        logger.info(
+            f"Deleted {deleted_count} existing chunks for document {vision_document_id}"
+        )
+
+        # Chunk content using existing chunk_document method
+        # This uses EnhancedChunker with semantic boundaries
+        chunks = self.chunk_document(content, doc.product_id)
+
+        if not chunks:
+            error_msg = f"No chunks generated for document {vision_document_id}"
+            logger.warning(error_msg)
+            return {
+                "success": True,
+                "document_id": vision_document_id,
+                "document_name": doc.document_name,
+                "chunks_created": 0,
+                "total_tokens": 0,
+                "old_chunks_deleted": deleted_count
+            }
+
+        # Create chunk records with vision_document_id link
+        total_tokens = 0
+        for idx, chunk_data in enumerate(chunks):
+            chunk_record = MCPContextIndex(
+                tenant_key=tenant_key,
+                product_id=doc.product_id,
+                vision_document_id=vision_document_id,  # Link to vision document
+                content=chunk_data["content"],
+                keywords=chunk_data.get("keywords", []),
+                token_count=chunk_data.get("tokens", 0),
+                chunk_order=idx,
+                summary=chunk_data.get("summary", None)
+            )
+            session.add(chunk_record)
+            total_tokens += chunk_data.get("tokens", 0)
+
+        session.flush()
+
+        # Update vision document metadata
+        vision_repo.mark_chunked(
+            session, vision_document_id, len(chunks), total_tokens
+        )
+
+        logger.info(
+            f"Successfully chunked document {vision_document_id}: "
+            f"{len(chunks)} chunks, {total_tokens} tokens, "
+            f"{deleted_count} old chunks deleted"
+        )
+
+        return {
+            "success": True,
+            "document_id": vision_document_id,
+            "document_name": doc.document_name,
+            "chunks_created": len(chunks),
+            "total_tokens": total_tokens,
+            "old_chunks_deleted": deleted_count
+        }

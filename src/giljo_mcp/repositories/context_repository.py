@@ -179,6 +179,38 @@ class ContextRepository:
 
         return count
 
+    def delete_chunks_by_vision_document(
+        self,
+        session: Session,
+        tenant_key: str,
+        vision_document_id: str
+    ) -> int:
+        """
+        Delete all chunks for a specific vision document.
+
+        Handover 0043 Phase 2: Selective deletion for multi-vision document support.
+        Allows re-chunking of individual documents without affecting others.
+
+        Args:
+            session: Database session
+            tenant_key: Tenant key for multi-tenant isolation
+            vision_document_id: Vision document ID to delete chunks for
+
+        Returns:
+            Number of chunks deleted
+        """
+        count = session.query(MCPContextIndex).filter(
+            MCPContextIndex.tenant_key == tenant_key,
+            MCPContextIndex.vision_document_id == vision_document_id
+        ).count()
+
+        session.query(MCPContextIndex).filter(
+            MCPContextIndex.tenant_key == tenant_key,
+            MCPContextIndex.vision_document_id == vision_document_id
+        ).delete()
+
+        return count
+
     # MCPContextSummary operations
 
     def create_summary(self, session: Session, tenant_key: str,
