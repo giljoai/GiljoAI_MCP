@@ -263,11 +263,15 @@ const passwordStrengthText = computed(() => {
 
 // Methods for PIN input handling
 function handlePinInput(value) {
-  recoveryPin.value = value.replace(/\D/g, '').slice(0, 4)
+  // Handle both string and event objects
+  const val = typeof value === 'string' ? value : (value?.target?.value || '')
+  recoveryPin.value = val.replace(/\D/g, '').slice(0, 4)
 }
 
 function handleConfirmPinInput(value) {
-  confirmPin.value = value.replace(/\D/g, '').slice(0, 4)
+  // Handle both string and event objects
+  const val = typeof value === 'string' ? value : (value?.target?.value || '')
+  confirmPin.value = val.replace(/\D/g, '').slice(0, 4)
 }
 
 function onlyNumbers(event) {

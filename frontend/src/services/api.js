@@ -111,6 +111,7 @@ export const api = {
     },
     update: (id, data) => apiClient.put(`/api/v1/products/${id}/`, data),
     delete: (id) => apiClient.delete(`/api/v1/products/${id}/`),
+    getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
     uploadVision: (id, file) => {
       const formData = new FormData()
       formData.append('vision_file', file)
@@ -175,7 +176,25 @@ export const api = {
     list: () => apiClient.get('/api/auth/users'),
   },
 
-  // Vision Documents
+  // Vision Documents (Multi-Document Support - Handover 0043)
+  visionDocuments: {
+    // List all vision documents for a product
+    listByProduct: (productId) => apiClient.get(`/api/vision-documents/product/${productId}`),
+    // Get a specific vision document
+    get: (documentId) => apiClient.get(`/api/vision-documents/${documentId}`),
+    // Upload a new vision document (accepts FormData)
+    upload: (formData) => {
+      return apiClient.post('/api/vision-documents/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    // Delete a vision document
+    delete: (documentId) => apiClient.delete(`/api/vision-documents/${documentId}`),
+    // Get chunks for a specific document
+    getChunks: (documentId) => apiClient.get(`/api/vision-documents/${documentId}/chunks`),
+  },
+
+  // Legacy Vision API (Single Document - Deprecated)
   vision: {
     get: () => apiClient.get('/api/v1/context/vision/'),
     getChunk: (part, maxTokens = 20000) =>

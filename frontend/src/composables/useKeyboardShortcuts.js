@@ -7,7 +7,7 @@ export function useKeyboardShortcuts() {
   const shortcuts = ref([
     // Global Navigation
     { key: 'Ctrl+K, Cmd+K', description: 'Quick search/command palette', action: 'search' },
-    { key: 'Alt+1', description: 'Navigate to Dashboard', action: () => router.push('/') },
+    { key: 'Alt+1', description: 'Navigate to Dashboard', action: () => router.push('/Dashboard') },
     { key: 'Alt+2', description: 'Navigate to Projects', action: () => router.push('/projects') },
     { key: 'Alt+3', description: 'Navigate to Agents', action: () => router.push('/agents') },
     { key: 'Alt+4', description: 'Navigate to Messages', action: () => router.push('/messages') },
@@ -148,7 +148,7 @@ export function useKeyboardShortcuts() {
     // Check for Alt+Number navigation
     if (event.altKey && event.key >= '1' && event.key <= '6') {
       event.preventDefault()
-      const routes = ['/', '/projects', '/agents', '/messages', '/tasks', '/settings']
+      const routes = ['/Dashboard', '/projects', '/agents', '/messages', '/tasks', '/settings']
       const index = parseInt(event.key) - 1
       if (routes[index]) {
         router.push(routes[index])
