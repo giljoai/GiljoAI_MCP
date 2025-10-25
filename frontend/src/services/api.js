@@ -249,6 +249,7 @@ export const api = {
     preview: (id, data) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     diff: (id) => apiClient.get(`/api/v1/templates/${id}/diff/`),
+    exportClaudeCode: (data) => apiClient.post('/api/export/claude-code', data),
   },
 
   // Authentication (JWT via httpOnly cookies)
