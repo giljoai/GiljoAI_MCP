@@ -511,7 +511,7 @@ def create_app() -> FastAPI:
     # Include routers
     # Handover 0046 Issue #4: Router prefix moved to router definition
     app.include_router(products.router, prefix="/api")
-    app.include_router(vision_documents.router, prefix="/api", tags=["vision-documents"])
+    app.include_router(vision_documents.router, prefix="/api/vision-documents", tags=["vision-documents"])
     app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
     app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
     app.include_router(agent_management.router, tags=["Agent Management"])

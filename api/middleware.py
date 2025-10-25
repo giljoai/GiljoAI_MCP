@@ -105,9 +105,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/auth/create-first-admin",  # First admin creation (Handover 0034)
             "/api/setup/status",  # Fresh install detection (Handover 0034)
             "/api/v1/config/frontend",  # Frontend config
-            "/api/v1/products",  # Product listing
-            "/api/v1/agents",  # Agent listing
-            "/api/v1/messages",  # Message listing
             "/api/auth/me",  # Auth status check
             "/mcp",  # MCP-over-HTTP endpoint (handles own auth via X-API-Key)
         ]
