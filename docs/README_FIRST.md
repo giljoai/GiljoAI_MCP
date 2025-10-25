@@ -26,6 +26,7 @@
 - Self-Service Password Reset (Handover 0023) - Recovery PIN system
 - Admin Settings v3.0 Overhaul (Handovers 0025-0029) - Modern, cohesive interface
 - Unified Cross-Platform Installer (Handover 0035) - Windows, Linux, macOS support
+ - Agent Flow Visualization (Handover 0040) - Flow‑based, real‑time UI for multi‑agent orchestration (see UI/UX Status Summary and frontend integration guide)
 
 ## Table of Contents
 
