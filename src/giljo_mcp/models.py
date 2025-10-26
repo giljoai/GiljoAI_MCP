@@ -386,7 +386,7 @@ class Project(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, default=generate_uuid)
-    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)  # Projects belong to Products
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)  # Projects belong to Products
     name = Column(String(255), nullable=False)
     alias = Column(String(6), nullable=False, unique=True, index=True, default=generate_project_alias,
                    comment="6-character alphanumeric project identifier (e.g., A1B2C3)")
@@ -521,7 +521,7 @@ class Task(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
-    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)  # Product-level scope for task isolation
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)  # Product-level scope for task isolation
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
     assigned_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
@@ -1797,8 +1797,8 @@ class MCPContextIndex(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)
     chunk_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
-    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)
-    
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)
+
     # Handover 0043: Multi-Vision Document Support
     vision_document_id = Column(String(36), ForeignKey("vision_documents.id", ondelete="CASCADE"), nullable=True,
         comment="Link to specific vision document (NULL for legacy product-level chunks)")
