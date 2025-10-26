@@ -239,7 +239,7 @@ class VisionDocumentChunker:
 
         return processed_chunks
 
-    def chunk_vision_document(
+    async def chunk_vision_document(
         self,
         session,
         tenant_key: str,
@@ -249,19 +249,20 @@ class VisionDocumentChunker:
         Chunk a specific vision document with selective re-chunking.
 
         Handover 0043 Phase 3: Multi-vision document chunking support.
+        Handover 0047: Converted to async for proper async/await propagation.
 
         Steps:
-        1. Get vision document from repository
-        2. Delete existing chunks for this document only
+        1. Get vision document from repository (async)
+        2. Delete existing chunks for this document only (async)
         3. Chunk content using semantic boundaries
         4. Create new chunk records with vision_document_id link
-        5. Update vision document metadata (chunked status, counts)
+        5. Update vision document metadata (chunked status, counts) (async)
 
         This enables selective re-chunking - only the updated document
         is re-chunked, not the entire product's vision content.
 
         Args:
-            session: SQLAlchemy database session
+            session: SQLAlchemy async database session
             tenant_key: Tenant key for multi-tenant isolation
             vision_document_id: Vision document ID to chunk
 
@@ -289,11 +290,11 @@ class VisionDocumentChunker:
             logger.error(f"Failed to import repositories: {e}")
             return {"success": False, "error": f"Import error: {e}"}
 
-        vision_repo = VisionDocumentRepository()
+        vision_repo = VisionDocumentRepository(db_manager=None)
         context_repo = ContextRepository(db_manager=None)
 
-        # Get vision document with tenant isolation
-        doc = vision_repo.get_by_id(session, tenant_key, vision_document_id)
+        # Get vision document with tenant isolation (async)
+        doc = await vision_repo.get_by_id(session, tenant_key, vision_document_id)
         if not doc:
             error_msg = f"Vision document {vision_document_id} not found for tenant {tenant_key}"
             logger.error(error_msg)
@@ -334,8 +335,8 @@ class VisionDocumentChunker:
             logger.error(error_msg)
             return {"success": False, "error": error_msg}
 
-        # Delete existing chunks for this document (selective deletion)
-        deleted_count = context_repo.delete_chunks_by_vision_document(
+        # Delete existing chunks for this document (selective deletion, async)
+        deleted_count = await context_repo.delete_chunks_by_vision_document(
             session, tenant_key, vision_document_id
         )
 
@@ -375,10 +376,10 @@ class VisionDocumentChunker:
             session.add(chunk_record)
             total_tokens += chunk_data.get("tokens", 0)
 
-        session.flush()
+        await session.flush()
 
-        # Update vision document metadata
-        vision_repo.mark_chunked(
+        # Update vision document metadata (async)
+        await vision_repo.mark_chunked(
             session, vision_document_id, len(chunks), total_tokens
         )
 

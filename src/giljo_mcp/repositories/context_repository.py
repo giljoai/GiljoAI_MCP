@@ -7,6 +7,7 @@ All operations enforce tenant isolation for security.
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from ..models import MCPContextIndex, MCPContextSummary
 from .base import BaseRepository
@@ -179,9 +180,9 @@ class ContextRepository:
 
         return count
 
-    def delete_chunks_by_vision_document(
+    async def delete_chunks_by_vision_document(
         self,
-        session: Session,
+        session: AsyncSession,
         tenant_key: str,
         vision_document_id: str
     ) -> int:
@@ -191,23 +192,33 @@ class ContextRepository:
         Handover 0043 Phase 2: Selective deletion for multi-vision document support.
         Allows re-chunking of individual documents without affecting others.
 
+        Handover 0047: Converted to async for proper async/await propagation.
+
         Args:
-            session: Database session
+            session: Async database session
             tenant_key: Tenant key for multi-tenant isolation
             vision_document_id: Vision document ID to delete chunks for
 
         Returns:
             Number of chunks deleted
         """
-        count = session.query(MCPContextIndex).filter(
-            MCPContextIndex.tenant_key == tenant_key,
-            MCPContextIndex.vision_document_id == vision_document_id
-        ).count()
+        from sqlalchemy import select, delete
 
-        session.query(MCPContextIndex).filter(
+        # Count chunks before deletion
+        stmt = select(MCPContextIndex).where(
             MCPContextIndex.tenant_key == tenant_key,
             MCPContextIndex.vision_document_id == vision_document_id
-        ).delete()
+        )
+        result = await session.execute(stmt)
+        chunks = result.scalars().all()
+        count = len(chunks)
+
+        # Delete chunks
+        delete_stmt = delete(MCPContextIndex).where(
+            MCPContextIndex.tenant_key == tenant_key,
+            MCPContextIndex.vision_document_id == vision_document_id
+        )
+        await session.execute(delete_stmt)
 
         return count
 
