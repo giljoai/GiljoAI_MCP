@@ -494,7 +494,6 @@ class AuthManager:
                                 jwt_result["user_obj"] = user_obj
                                 # Update tenant_key from user object (authoritative source)
                                 jwt_result["tenant_key"] = user_obj.tenant_key
-                                logger.info(f"[AUTH FIX] Updated tenant_key from user object: {user_obj.tenant_key}")
                     except Exception as e:
                         logger.warning(f"Failed to load user object for JWT: {e}")
 
