@@ -16,11 +16,18 @@ import pytest
 from datetime import datetime, timezone
 from pathlib import Path
 import hashlib
+from uuid import uuid4
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from src.giljo_mcp.models import VisionDocument, Product
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
+
+
+@pytest.fixture
+def test_tenant_key():
+    """Generate test tenant key."""
+    return f"test-tenant-{uuid4()}"
 
 
 @pytest.fixture
@@ -30,17 +37,16 @@ def vision_repo(db_manager):
 
 
 @pytest.fixture
-async def test_product(db_session_async, test_tenant_key):
-    """Create a test product"""
+def test_product_file_size(db_session, test_tenant_key):
+    """Create a test product for file size tests"""
     product = Product(
         id="test_product_file_size",
         tenant_key=test_tenant_key,
         name="Test Product for File Size",
         description="Product for testing file size tracking"
     )
-    db_session_async.add(product)
-    await db_session_async.commit()
-    await db_session_async.refresh(product)
+    db_session.add(product)
+    db_session.commit()
     return product
 
 
@@ -73,58 +79,52 @@ def sample_vision_content_large():
 class TestVisionDocumentFileSizeModel:
     """Test file_size field in VisionDocument model"""
 
-    @pytest.mark.asyncio
-    async def test_vision_document_model_has_file_size_field(self, db_session_async, test_tenant_key, test_product):
+    def test_vision_document_model_has_file_size_field(self, db_session, test_tenant_key, test_product_file_size):
         """Test that VisionDocument model has file_size field"""
         doc = VisionDocument(
             id="test_doc_size_001",
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Test Document",
             vision_document="Test content",
             storage_type="inline",
             file_size=12  # bytes
         )
-        db_session_async.add(doc)
-        await db_session_async.commit()
-        await db_session_async.refresh(doc)
+        db_session.add(doc)
+        db_session.commit()
 
         # Verify file_size field exists and is stored correctly
         assert hasattr(doc, 'file_size')
         assert doc.file_size == 12
 
-    @pytest.mark.asyncio
-    async def test_file_size_can_be_null(self, db_session_async, test_tenant_key, test_product):
+    def test_file_size_can_be_null(self, db_session, test_tenant_key, test_product_file_size):
         """Test that file_size can be NULL (for inline content with no file)"""
         doc = VisionDocument(
             id="test_doc_size_002",
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Test Document",
             vision_document="Test content",
             storage_type="inline",
             file_size=None
         )
-        db_session_async.add(doc)
-        await db_session_async.commit()
-        await db_session_async.refresh(doc)
+        db_session.add(doc)
+        db_session.commit()
 
         assert doc.file_size is None
 
-    @pytest.mark.asyncio
-    async def test_file_size_defaults_to_null(self, db_session_async, test_tenant_key, test_product):
+    def test_file_size_defaults_to_null(self, db_session, test_tenant_key, test_product_file_size):
         """Test that file_size defaults to NULL if not specified"""
         doc = VisionDocument(
             id="test_doc_size_003",
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Test Document",
             vision_document="Test content",
             storage_type="inline"
         )
-        db_session_async.add(doc)
-        await db_session_async.commit()
-        await db_session_async.refresh(doc)
+        db_session.add(doc)
+        db_session.commit()
 
         # Should default to NULL
         assert doc.file_size is None
@@ -133,15 +133,14 @@ class TestVisionDocumentFileSizeModel:
 class TestVisionDocumentRepositoryFileSize:
     """Test VisionDocumentRepository file size handling"""
 
-    @pytest.mark.asyncio
-    async def test_create_with_file_size(self, db_session_async, vision_repo, test_tenant_key, test_product, sample_vision_content_small):
+    def test_create_with_file_size(self, db_session, vision_repo, test_tenant_key, test_product_file_size, sample_vision_content_small):
         """Test creating vision document with file_size specified"""
         file_size = len(sample_vision_content_small.encode('utf-8'))
 
-        doc = await vision_repo.create(
-            session=db_session_async,
+        doc = vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Small Vision",
             content=sample_vision_content_small,
             document_type="vision",
@@ -153,15 +152,14 @@ class TestVisionDocumentRepositoryFileSize:
         assert doc.file_size == file_size
         assert doc.file_size > 0
 
-    @pytest.mark.asyncio
-    async def test_create_with_large_file_size(self, db_session_async, vision_repo, test_tenant_key, test_product, sample_vision_content_large):
+    def test_create_with_large_file_size(self, db_session, vision_repo, test_tenant_key, test_product_file_size, sample_vision_content_large):
         """Test creating vision document with larger file_size"""
         file_size = len(sample_vision_content_large.encode('utf-8'))
 
-        doc = await vision_repo.create(
-            session=db_session_async,
+        doc = vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Large Vision",
             content=sample_vision_content_large,
             document_type="architecture",
@@ -173,24 +171,23 @@ class TestVisionDocumentRepositoryFileSize:
         assert doc.file_size == file_size
         assert doc.file_size > 1000  # Should be > 1KB
 
-    @pytest.mark.asyncio
-    async def test_list_by_product_includes_file_size(self, db_session_async, vision_repo, test_tenant_key, test_product):
+    def test_list_by_product_includes_file_size(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
         """Test that list_by_product returns file_size in results"""
         # Create multiple documents with different sizes
-        doc1 = await vision_repo.create(
-            session=db_session_async,
+        doc1 = vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc 1",
             content="Small content",
             storage_type="inline",
             file_size=100
         )
 
-        doc2 = await vision_repo.create(
-            session=db_session_async,
+        doc2 = vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc 2",
             content="Larger content here",
             storage_type="inline",
@@ -198,10 +195,10 @@ class TestVisionDocumentRepositoryFileSize:
         )
 
         # List documents
-        docs = await vision_repo.list_by_product(
-            session=db_session_async,
+        docs = vision_repo.list_by_product(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id
+            product_id=test_product_file_size.id
         )
 
         assert len(docs) >= 2
@@ -217,8 +214,7 @@ class TestVisionDocumentRepositoryFileSize:
 class TestVisionDocumentAPIFileSize:
     """Test API endpoints return file_size correctly"""
 
-    @pytest.mark.asyncio
-    async def test_vision_document_response_schema_includes_file_size(self):
+    def test_vision_document_response_schema_includes_file_size(self):
         """Test that VisionDocumentResponse schema includes file_size field"""
         from api.schemas.vision_document import VisionDocumentResponse
         from pydantic import BaseModel
@@ -227,20 +223,6 @@ class TestVisionDocumentAPIFileSize:
         assert hasattr(VisionDocumentResponse, 'model_fields')
         fields = VisionDocumentResponse.model_fields
         assert 'file_size' in fields
-
-    @pytest.mark.asyncio
-    async def test_api_create_vision_document_stores_file_size(self, async_client, test_tenant_key, test_product, sample_vision_content_small):
-        """Test that POST /vision-documents/ stores file_size"""
-        # This test requires mocking or integration test setup
-        # Placeholder for future implementation
-        pytest.skip("Integration test - requires full API setup")
-
-    @pytest.mark.asyncio
-    async def test_api_list_vision_documents_returns_file_size(self, async_client, test_tenant_key, test_product):
-        """Test that GET /vision-documents/product/{id} returns file_size"""
-        # This test requires mocking or integration test setup
-        # Placeholder for future implementation
-        pytest.skip("Integration test - requires full API setup")
 
 
 class TestFileSizeCalculation:
@@ -285,13 +267,12 @@ class TestFileSizeCalculation:
 class TestFileSizeEdgeCases:
     """Test edge cases for file size handling"""
 
-    @pytest.mark.asyncio
-    async def test_file_size_zero_for_empty_content(self, db_session_async, vision_repo, test_tenant_key, test_product):
+    def test_file_size_zero_for_empty_content(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
         """Test that empty content results in file_size=0"""
-        doc = await vision_repo.create(
-            session=db_session_async,
+        doc = vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Empty Document",
             content="",
             storage_type="inline",
@@ -300,13 +281,12 @@ class TestFileSizeEdgeCases:
 
         assert doc.file_size == 0
 
-    @pytest.mark.asyncio
-    async def test_file_size_null_for_inline_without_file(self, db_session_async, vision_repo, test_tenant_key, test_product):
+    def test_file_size_null_for_inline_without_file(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
         """Test that inline content without original file can have NULL file_size"""
-        doc = await vision_repo.create(
-            session=db_session_async,
+        doc = vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Inline Document",
             content="Direct input content",
             storage_type="inline",
@@ -315,15 +295,14 @@ class TestFileSizeEdgeCases:
 
         assert doc.file_size is None
 
-    @pytest.mark.asyncio
-    async def test_file_size_for_large_file(self, db_session_async, vision_repo, test_tenant_key, test_product):
+    def test_file_size_for_large_file(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
         """Test handling of large file sizes (e.g., 10MB)"""
         large_size = 10 * 1024 * 1024  # 10 MB
 
-        doc = await vision_repo.create(
-            session=db_session_async,
+        doc = vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Large Document",
             content="Large content...",
             storage_type="file",
@@ -336,34 +315,33 @@ class TestFileSizeEdgeCases:
 class TestAggregateFileSizeStats:
     """Test aggregate file size statistics for product details"""
 
-    @pytest.mark.asyncio
-    async def test_calculate_total_file_size(self, db_session_async, vision_repo, test_tenant_key, test_product):
+    def test_calculate_total_file_size(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
         """Test calculating total file size across multiple vision documents"""
         # Create multiple documents
-        await vision_repo.create(
-            session=db_session_async,
+        vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc A",
             content="Content A",
             storage_type="inline",
             file_size=1000
         )
 
-        await vision_repo.create(
-            session=db_session_async,
+        vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc B",
             content="Content B",
             storage_type="inline",
             file_size=2000
         )
 
-        await vision_repo.create(
-            session=db_session_async,
+        vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc C",
             content="Content C",
             storage_type="inline",
@@ -371,33 +349,32 @@ class TestAggregateFileSizeStats:
         )
 
         # List and calculate total
-        docs = await vision_repo.list_by_product(
-            session=db_session_async,
+        docs = vision_repo.list_by_product(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id
+            product_id=test_product_file_size.id
         )
 
         total_size = sum(doc.file_size or 0 for doc in docs)
         assert total_size == 6000
 
-    @pytest.mark.asyncio
-    async def test_calculate_total_chunks(self, db_session_async, vision_repo, test_tenant_key, test_product):
+    def test_calculate_total_chunks(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
         """Test calculating total chunks across multiple vision documents"""
         # Create documents with chunk counts
-        await vision_repo.create(
-            session=db_session_async,
+        vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc A",
             content="Content A",
             storage_type="inline",
             file_size=1000
         )
 
-        await vision_repo.create(
-            session=db_session_async,
+        vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc B",
             content="Content B",
             storage_type="inline",
@@ -405,9 +382,9 @@ class TestAggregateFileSizeStats:
         )
 
         # Manually set chunk_count for testing
-        result = await db_session_async.execute(
+        result = db_session.execute(
             select(VisionDocument).filter(
-                VisionDocument.product_id == test_product.id,
+                VisionDocument.product_id == test_product_file_size.id,
                 VisionDocument.tenant_key == test_tenant_key
             )
         )
@@ -416,33 +393,29 @@ class TestAggregateFileSizeStats:
         if len(docs) >= 2:
             docs[0].chunk_count = 5
             docs[1].chunk_count = 8
-            await db_session_async.commit()
+            db_session.commit()
 
-            # Refresh and calculate total
-            await db_session_async.refresh(docs[0])
-            await db_session_async.refresh(docs[1])
-
+            # Calculate total
             total_chunks = sum(doc.chunk_count for doc in docs)
             assert total_chunks == 13
 
-    @pytest.mark.asyncio
-    async def test_aggregate_stats_with_null_file_sizes(self, db_session_async, vision_repo, test_tenant_key, test_product):
+    def test_aggregate_stats_with_null_file_sizes(self, db_session, vision_repo, test_tenant_key, test_product_file_size):
         """Test that aggregate stats handle NULL file_size correctly"""
         # Create documents with mixed NULL and valid file_size
-        await vision_repo.create(
-            session=db_session_async,
+        vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc with size",
             content="Content",
             storage_type="inline",
             file_size=1000
         )
 
-        await vision_repo.create(
-            session=db_session_async,
+        vision_repo.create(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Doc without size",
             content="Content",
             storage_type="inline",
@@ -450,10 +423,10 @@ class TestAggregateFileSizeStats:
         )
 
         # List and calculate total (should treat NULL as 0)
-        docs = await vision_repo.list_by_product(
-            session=db_session_async,
+        docs = vision_repo.list_by_product(
+            session=db_session,
             tenant_key=test_tenant_key,
-            product_id=test_product.id
+            product_id=test_product_file_size.id
         )
 
         total_size = sum(doc.file_size or 0 for doc in docs)
@@ -463,8 +436,7 @@ class TestAggregateFileSizeStats:
 class TestMultiTenantFileSizeIsolation:
     """Test multi-tenant isolation for file_size data"""
 
-    @pytest.mark.asyncio
-    async def test_file_size_isolated_by_tenant(self, db_session_async, vision_repo, test_product):
+    def test_file_size_isolated_by_tenant(self, db_session, vision_repo, test_product_file_size):
         """Test that file_size data is properly isolated by tenant_key"""
         tenant1 = "tenant_001"
         tenant2 = "tenant_002"
@@ -476,22 +448,22 @@ class TestMultiTenantFileSizeIsolation:
             name="Tenant 2 Product",
             description="Product for tenant 2"
         )
-        db_session_async.add(product2)
-        await db_session_async.commit()
+        db_session.add(product2)
+        db_session.commit()
 
         # Create documents for both tenants
-        doc1 = await vision_repo.create(
-            session=db_session_async,
+        doc1 = vision_repo.create(
+            session=db_session,
             tenant_key=tenant1,
-            product_id=test_product.id,
+            product_id=test_product_file_size.id,
             document_name="Tenant 1 Doc",
             content="Content 1",
             storage_type="inline",
             file_size=1000
         )
 
-        doc2 = await vision_repo.create(
-            session=db_session_async,
+        doc2 = vision_repo.create(
+            session=db_session,
             tenant_key=tenant2,
             product_id=product2.id,
             document_name="Tenant 2 Doc",
@@ -501,10 +473,10 @@ class TestMultiTenantFileSizeIsolation:
         )
 
         # Verify tenant1 can only see their documents
-        tenant1_docs = await vision_repo.list_by_product(
-            session=db_session_async,
+        tenant1_docs = vision_repo.list_by_product(
+            session=db_session,
             tenant_key=tenant1,
-            product_id=test_product.id
+            product_id=test_product_file_size.id
         )
 
         tenant1_sizes = [doc.file_size for doc in tenant1_docs]
@@ -512,8 +484,8 @@ class TestMultiTenantFileSizeIsolation:
         assert 2000 not in tenant1_sizes
 
         # Verify tenant2 can only see their documents
-        tenant2_docs = await vision_repo.list_by_product(
-            session=db_session_async,
+        tenant2_docs = vision_repo.list_by_product(
+            session=db_session,
             tenant_key=tenant2,
             product_id=product2.id
         )
