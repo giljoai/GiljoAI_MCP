@@ -152,6 +152,7 @@ async def create_vision_document(
         document_content = content
         storage_type = "inline"
         file_path = None
+        file_size = None
 
         if vision_file:
             # File uploaded - save using cross-platform Path handling
@@ -163,8 +164,14 @@ async def create_vision_document(
                 content_bytes = await vision_file.read()
                 await f.write(content_bytes)
 
+            # Calculate file size from uploaded file
+            file_size = len(content_bytes)
+
             document_content = content_bytes.decode('utf-8')
             storage_type = "hybrid" if content else "file"
+        elif content:
+            # Inline content - calculate size from string
+            file_size = len(content.encode('utf-8'))
 
         if not document_content:
             raise HTTPException(
@@ -185,6 +192,7 @@ async def create_vision_document(
             document_type=document_type,
             storage_type=storage_type,
             file_path=normalized_path,
+            file_size=file_size,
             display_order=display_order,
             version=version
         )
