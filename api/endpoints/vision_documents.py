@@ -173,6 +173,9 @@ async def create_vision_document(
             )
 
         # Create vision document
+        # IMPORTANT: Store path with forward slashes (OS-neutral, prevents escape sequence bugs)
+        normalized_path = str(file_path).replace('\\', '/') if file_path else None
+
         doc = await vision_repo.create(
             session=db,
             tenant_key=tenant_key,
@@ -181,7 +184,7 @@ async def create_vision_document(
             content=document_content,
             document_type=document_type,
             storage_type=storage_type,
-            file_path=str(file_path) if file_path else None,
+            file_path=normalized_path,
             display_order=display_order,
             version=version
         )

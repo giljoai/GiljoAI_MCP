@@ -303,18 +303,22 @@ class VisionDocumentChunker:
         content = ""
         try:
             if doc.storage_type in ("file", "hybrid") and doc.vision_path:
-                file_path = Path(doc.vision_path)
+                # IMPORTANT: Normalize path to handle legacy backslash paths
+                # (prevents escape sequence bugs like \v being interpreted as vertical tab)
+                normalized_path = doc.vision_path.replace('\\', '/')
+                file_path = Path(normalized_path)
+
                 if file_path.exists():
                     content += file_path.read_text(encoding="utf-8")
                 else:
                     logger.warning(
-                        f"File path {doc.vision_path} does not exist for document {vision_document_id}"
+                        f"File path {normalized_path} does not exist for document {vision_document_id}"
                     )
                     if doc.storage_type == "file":
                         # For file-only storage, this is an error
                         return {
                             "success": False,
-                            "error": f"File not found: {doc.vision_path}"
+                            "error": f"File not found: {normalized_path}"
                         }
 
             if doc.storage_type in ("inline", "hybrid") and doc.vision_document:
