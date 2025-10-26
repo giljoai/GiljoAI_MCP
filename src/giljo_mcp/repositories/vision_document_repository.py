@@ -266,9 +266,9 @@ class VisionDocumentRepository:
             "chunks_deleted": chunk_count
         }
 
-    def mark_chunked(
+    async def mark_chunked(
         self,
-        session: Session,
+        session: AsyncSession,
         document_id: str,
         chunk_count: int,
         total_tokens: int
@@ -283,15 +283,19 @@ class VisionDocumentRepository:
         - chunked_at timestamp
         - content_hash (ensures hash is current)
 
+        Handover 0047: Converted to async for proper async/await propagation.
+
         Args:
-            session: Database session
+            session: Async database session
             document_id: Document ID to mark as chunked
             chunk_count: Number of chunks created
             total_tokens: Total estimated tokens in document
         """
-        doc = session.query(VisionDocument).filter(
+        stmt = select(VisionDocument).where(
             VisionDocument.id == document_id
-        ).first()
+        )
+        result = await session.execute(stmt)
+        doc = result.scalar_one_or_none()
 
         if doc:
             doc.chunked = True
@@ -303,7 +307,7 @@ class VisionDocumentRepository:
             if doc.vision_document:
                 doc.content_hash = hashlib.sha256(doc.vision_document.encode('utf-8')).hexdigest()
 
-            session.flush()
+            await session.flush()
 
     def get_by_type(
         self,
