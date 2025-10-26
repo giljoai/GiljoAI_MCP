@@ -193,18 +193,28 @@ async def create_vision_document(
         # Optionally chunk immediately
         if auto_chunk:
             try:
-                from src.giljo_mcp.context_management.chunker import ContextManagementSystem
+                from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
-                cms = ContextManagementSystem(vision_repo.db)
-                result = cms.chunk_vision_document(db, tenant_key, doc.id)
+                chunker = VisionDocumentChunker()
+                result = await chunker.chunk_vision_document(db, tenant_key, doc.id)
 
                 if not result.get("success"):
-                    logger.warning(f"Chunking failed for document {doc.id}: {result.get('error')}")
-                    # Don't fail the request - document is created, chunking can be retried
+                    # Chunking failed - rollback document creation (fail-fast)
+                    await db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Document upload failed during chunking: {result.get('error')}"
+                    )
 
+            except HTTPException:
+                raise
             except Exception as chunk_error:
-                logger.error(f"Chunking error for document {doc.id}: {chunk_error}")
-                # Continue - document created successfully
+                logger.error(f"Chunking error for document {doc.id}: {chunk_error}", exc_info=True)
+                await db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Document upload failed during chunking: {str(chunk_error)}"
+                )
 
         await db.refresh(doc)
 
@@ -324,18 +334,18 @@ async def update_vision_document(
         # Optionally re-chunk
         if auto_rechunk:
             try:
-                from src.giljo_mcp.context_management.chunker import ContextManagementSystem
+                from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
-                cms = ContextManagementSystem(vision_repo.db)
-                result = cms.chunk_vision_document(db, tenant_key, document_id)
+                chunker = VisionDocumentChunker()
+                result = await chunker.chunk_vision_document(db, tenant_key, document_id)
 
                 if not result.get("success"):
                     logger.warning(f"Re-chunking failed for document {document_id}: {result.get('error')}")
-                    # Don't fail the request - content updated successfully
+                    # Don't rollback - content update succeeded, chunking can be retried
 
             except Exception as chunk_error:
-                logger.error(f"Re-chunking error for document {document_id}: {chunk_error}")
-                # Continue - content updated successfully
+                logger.error(f"Re-chunking error for document {document_id}: {chunk_error}", exc_info=True)
+                # Continue - content updated successfully, chunking can be retried later
 
         await db.refresh(doc)
 
@@ -441,7 +451,7 @@ async def rechunk_vision_document(
         HTTPException 500: If re-chunking fails
     """
     try:
-        from src.giljo_mcp.context_management.chunker import ContextManagementSystem
+        from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 
         # Verify document exists and belongs to tenant
         doc = await vision_repo.get_by_id(db, tenant_key, document_id)
@@ -452,10 +462,11 @@ async def rechunk_vision_document(
             )
 
         # Trigger re-chunking
-        cms = ContextManagementSystem(vision_repo.db)
-        result = cms.chunk_vision_document(db, tenant_key, document_id)
+        chunker = VisionDocumentChunker()
+        result = await chunker.chunk_vision_document(db, tenant_key, document_id)
 
         if not result.get("success"):
+            await db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Chunking failed: {result.get('error')}"
