@@ -405,6 +405,23 @@
             <v-alert v-else type="info" variant="tonal" density="compact">
               No vision documents attached
             </v-alert>
+
+            <!-- Aggregate Stats (only show if documents exist) -->
+            <v-card
+              v-if="detailsVisionDocuments.length > 0"
+              variant="tonal"
+              color="primary"
+              class="mt-3"
+            >
+              <v-card-text class="py-2">
+                <div class="text-caption">
+                  <v-icon size="16" class="mr-1">mdi-chart-box-outline</v-icon>
+                  <strong>Total chunks:</strong> {{ totalChunks }} @ ~20K tokens each<br>
+                  <v-icon size="16" class="mr-1">mdi-folder-outline</v-icon>
+                  <strong>Total file sizes:</strong> {{ totalFileSize }} across {{ detailsVisionDocuments.length }} document(s)
+                </div>
+              </v-card-text>
+            </v-card>
           </div>
 
           <!-- Created/Updated -->
@@ -646,6 +663,16 @@ const totalAgents = computed(() => {
     (sum, metrics) => sum + (metrics.activeAgents || 0),
     0,
   )
+})
+
+// Vision document aggregate stats for product details
+const totalChunks = computed(() => {
+  return detailsVisionDocuments.value.reduce((sum, doc) => sum + (doc.chunk_count || 0), 0)
+})
+
+const totalFileSize = computed(() => {
+  const bytes = detailsVisionDocuments.value.reduce((sum, doc) => sum + (doc.file_size || 0), 0)
+  return formatFileSize(bytes)
 })
 
 // Methods

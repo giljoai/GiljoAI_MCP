@@ -53,6 +53,7 @@ class VisionDocumentRepository:
         document_type: str = "vision",
         storage_type: str = "inline",
         file_path: Optional[str] = None,
+        file_size: Optional[int] = None,
         is_active: bool = True,
         display_order: int = 0,
         version: str = "1.0.0",
@@ -70,6 +71,7 @@ class VisionDocumentRepository:
             document_type: Document category (vision, architecture, features, etc.)
             storage_type: Storage mode (file, inline, hybrid)
             file_path: Optional file path for file-based storage
+            file_size: Optional file size in bytes (NULL if inline without file)
             is_active: Whether document is active (default: True)
             display_order: Display order in UI (default: 0)
             version: Semantic version (default: "1.0.0")
@@ -105,6 +107,7 @@ class VisionDocumentRepository:
             storage_type=storage_type,
             document_type=document_type,
             content_hash=content_hash,
+            file_size=file_size,
             is_active=is_active,
             display_order=display_order,
             version=version,

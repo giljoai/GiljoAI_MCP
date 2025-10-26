@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
@@ -219,6 +220,8 @@ class VisionDocument(Base):
         comment="Number of chunks created for this document")
     total_tokens = Column(Integer, nullable=True,
         comment="Estimated total tokens in document")
+    file_size = Column(BigInteger, nullable=True,
+        comment="Original file size in bytes (NULL for inline content without file)")
     
     # Versioning and integrity
     version = Column(String(50), default="1.0.0", nullable=False,
