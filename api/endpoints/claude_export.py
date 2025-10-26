@@ -169,6 +169,105 @@ def create_backup(file_path: Path) -> Optional[Path]:
         return backup_path
 
 
+async def export_template_to_claude_code(
+    template_id: str,
+    tenant_key: str,
+    db: AsyncSession,
+    export_path: Path,
+) -> str:
+    """
+    Export SINGLE agent template to Claude Code format.
+
+    Programmatic function for use by orchestrator during agent spawning.
+    Exports one specific template to .claude/agents/<role>.md file.
+
+    Args:
+        template_id: Template ID to export
+        tenant_key: Tenant key for multi-tenant isolation
+        db: Database session
+        export_path: Path to .claude/agents/ directory (must exist)
+
+    Returns:
+        str: Path to exported .md file
+
+    Raises:
+        ValueError: If template not found or path invalid
+        PermissionError: If tenant doesn't own template
+
+    Example:
+        >>> file_path = await export_template_to_claude_code(
+        ...     template_id="tpl-123",
+        ...     tenant_key="tenant-abc",
+        ...     db=session,
+        ...     export_path=Path.cwd() / ".claude" / "agents"
+        ... )
+        >>> print(file_path)
+        F:/project/.claude/agents/implementer.md
+    """
+    # Validate export path exists
+    if not export_path.exists():
+        raise ValueError(f"Export directory does not exist: {export_path}")
+
+    if not export_path.is_dir():
+        raise ValueError(f"Export path is not a directory: {export_path}")
+
+    # Query template with tenant isolation
+    stmt = select(AgentTemplate).where(
+        AgentTemplate.id == template_id,
+        AgentTemplate.tenant_key == tenant_key,
+    )
+
+    result = await db.execute(stmt)
+    template = result.scalar_one_or_none()
+
+    if not template:
+        raise ValueError(f"Template {template_id} not found for tenant {tenant_key}")
+
+    # Generate filename
+    filename = f"{template.name}.md"
+    file_path = export_path / filename
+
+    # Create backup if file exists
+    if file_path.exists():
+        create_backup(file_path)
+
+    # Generate YAML frontmatter
+    frontmatter = generate_yaml_frontmatter(
+        name=template.name,
+        role=template.role or template.name,
+        preferred_tool=template.tool,  # Use 'tool' field
+        description=template.description,
+    )
+
+    # Build complete file content
+    content_parts = [frontmatter]
+
+    # Add template content
+    content_parts.append("\n")
+    content_parts.append(template.template_content.strip())
+    content_parts.append("\n")
+
+    # Add behavioral rules if present
+    if template.behavioral_rules and len(template.behavioral_rules) > 0:
+        content_parts.append("\n## Behavioral Rules\n")
+        content_parts.extend(f"- {rule}\n" for rule in template.behavioral_rules)
+
+    # Add success criteria if present
+    if template.success_criteria and len(template.success_criteria) > 0:
+        content_parts.append("\n## Success Criteria\n")
+        content_parts.extend(f"- {criterion}\n" for criterion in template.success_criteria)
+
+    # Write file
+    full_content = "".join(content_parts)
+    file_path.write_text(full_content, encoding="utf-8")
+
+    logger.info(
+        f"[export_template_to_claude_code] Exported template {template.name} " f"to {file_path} for tenant {tenant_key}"
+    )
+
+    return str(file_path)
+
+
 async def export_templates_to_claude_code(
     db: AsyncSession,
     current_user: User,
@@ -298,9 +397,7 @@ async def export_templates_to_claude_code(
             # Add success criteria if present
             if template.success_criteria and len(template.success_criteria) > 0:
                 content_parts.append("\n## Success Criteria\n")
-                content_parts.extend(
-                    f"- {criterion}\n" for criterion in template.success_criteria
-                )
+                content_parts.extend(f"- {criterion}\n" for criterion in template.success_criteria)
 
             # Write file
             full_content = "".join(content_parts)

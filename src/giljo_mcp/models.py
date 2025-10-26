@@ -436,6 +436,10 @@ class Agent(Base):
     decommissioned_at = Column(DateTime(timezone=True), nullable=True)
     meta_data = Column(JSON, default=dict)
 
+    # Multi-tool orchestration (Handover 0045 - Phase 3)
+    job_id = Column(String(36), nullable=True, index=True)  # Links to MCPAgentJob
+    mode = Column(String(20), default="claude", server_default="claude")  # claude | codex | gemini
+
     # Relationships
     project = relationship("Project", back_populates="agents")
     sent_messages = relationship("Message", foreign_keys="Message.from_agent_id", back_populates="sender")
@@ -852,7 +856,9 @@ class AgentTemplate(Base):
     variables = Column(JSON, default=list)  # List of required variables
     behavioral_rules = Column(JSON, default=list)  # Role-specific rules
     success_criteria = Column(JSON, default=list)  # Success metrics
-    preferred_tool = Column(String(50), default="claude")  # Preferred AI tool: claude, codex, gemini
+
+    # Tool assignment (Handover 0045 - Multi-Tool Agent Orchestration)
+    tool = Column(String(50), nullable=False, default="claude", index=True)  # AI tool: claude, codex, gemini
 
     # Usage tracking
     usage_count = Column(Integer, default=0)
@@ -884,6 +890,7 @@ class AgentTemplate(Base):
         Index("idx_template_category", "category"),
         Index("idx_template_role", "role"),
         Index("idx_template_active", "is_active"),
+        Index("idx_template_tool", "tool"),  # Handover 0045 - Tool-based filtering
     )
 
     @property
