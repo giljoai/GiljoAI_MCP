@@ -73,6 +73,7 @@ class VisionDocumentResponse(BaseModel):
     chunked: bool = Field(..., description="Has document been chunked")
     chunk_count: int = Field(..., description="Number of chunks created")
     total_tokens: Optional[int] = Field(None, description="Estimated total tokens")
+    file_size: Optional[int] = Field(None, description="Original file size in bytes")
     content_hash: Optional[str] = Field(None, description="SHA-256 content hash")
     version: str = Field(..., description="Document version")
     is_active: bool = Field(..., description="Active status")
