@@ -3,10 +3,32 @@
 **Date**: 2025-10-26
 **From Agent**: Deep Researcher + System Architect
 **To Agent**: Backend Integration Specialist + TDD Implementor
-**Priority**: Critical
+**Priority**: Critical (Phase 1 - Must Complete First)
 **Estimated Effort**: 3-4 hours
 **Status**: Not Started
 **Risk Level**: High (Core functionality broken, async/sync mismatch)
+**Blocks**: Handover 0042 (Product Rich Context Fields UI)
+
+---
+
+## ⚠️ CRITICAL PATH: This Unblocks 0042
+
+**This handover is PHASE 1 of the Product Context Management System.**
+
+**BLOCKS HANDOVER 0042**: Product Rich Context Fields UI
+- Handover 0042 adds rich metadata (tech_stack, architecture, features)
+- Those fields COMPLEMENT vision document chunks
+- But vision chunking is currently 100% broken
+- **Must fix chunking first** → Then 0042 adds the metadata layer
+
+**COMPLETE PRODUCT CONTEXT SYSTEM**:
+```
+Phase 1 (0047): Fix Vision Chunking ← YOU ARE HERE
+  └─ Chunks work → Agents get vision content ✅
+
+Phase 2 (0042): Add Rich Metadata Fields
+  └─ Config fields work → Agents get metadata + vision ✅✅
+```
 
 ---
 
