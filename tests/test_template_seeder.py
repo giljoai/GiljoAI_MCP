@@ -106,7 +106,7 @@ class TestTemplateMetadata:
         assert len(template.success_criteria) >= 3, "Should have at least 3 success criteria"
         assert template.variables, "Should have variables"
         assert "project_name" in template.variables
-        assert template.preferred_tool == "claude"
+        assert template.tool == "claude"
         assert template.version == "3.0.0"
         assert template.is_active is True
         assert template.is_default is False
@@ -139,7 +139,7 @@ class TestTemplateMetadata:
             assert len(template.variables) >= 1, f"{template.role} should have at least 1 variable"
 
             # Settings
-            assert template.preferred_tool == "claude"
+            assert template.tool == "claude"
             assert template.version == "3.0.0"
             assert template.is_active is True
             assert template.is_default is False
@@ -206,7 +206,7 @@ class TestIdempotency:
             variables=["project_name"],
             behavioral_rules=["Rule 1"],
             success_criteria=["Success 1"],
-            preferred_tool="claude",
+            tool="claude",
             version="1.0.0",
             is_active=True,
             is_default=False,
@@ -338,7 +338,7 @@ class TestTemplateContent:
     """Tests for template content integrity"""
 
     async def test_orchestrator_content_matches_legacy(self, db_session: AsyncSession, tenant_key: str):
-        """Test that orchestrator template content matches legacy template"""
+        """Test that orchestrator template content starts with legacy template and includes MCP section"""
         # Act
         await seed_tenant_templates(db_session, tenant_key)
 
@@ -356,8 +356,9 @@ class TestTemplateContent:
         template_mgr = UnifiedTemplateManager()
         legacy_content = template_mgr._legacy_templates["orchestrator"]
 
-        # Compare
-        assert db_content == legacy_content, "Database content should match legacy template"
+        # Compare - should start with legacy content and include MCP section
+        assert db_content.startswith(legacy_content), "Database content should start with legacy template"
+        assert "MCP COMMUNICATION PROTOCOL" in db_content, "Should have MCP coordination section appended"
 
     async def test_all_templates_have_variable_placeholders(self, db_session: AsyncSession, tenant_key: str):
         """Test that templates contain their declared variables as placeholders"""
