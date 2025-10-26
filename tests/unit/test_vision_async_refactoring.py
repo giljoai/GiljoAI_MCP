@@ -131,9 +131,10 @@ class TestVisionDocumentChunkerAsync:
         mock_doc.vision_document = "Test content for chunking"
         mock_doc.vision_path = None
 
-        # Patch repository classes at import location
-        with patch('giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockVisionRepo, \
-             patch('giljo_mcp.repositories.context_repository.ContextRepository') as MockContextRepo:
+        # Patch repository classes where chunker imports them from
+        # chunker.py uses: from ..repositories.vision_document_repository import VisionDocumentRepository
+        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockVisionRepo, \
+             patch('src.giljo_mcp.repositories.context_repository.ContextRepository') as MockContextRepo:
 
             mock_vision_repo_instance = MockVisionRepo.return_value
             mock_vision_repo_instance.get_by_id = AsyncMock(return_value=mock_doc)
@@ -160,6 +161,38 @@ class TestVisionDocumentChunkerAsync:
             assert result["total_tokens"] == 100
 
             # Verify async methods were awaited
-            mock_vision_repo_instance.get_by_id.assert_awaited_once()
-            mock_context_repo_instance.delete_chunks_by_vision_document.assert_awaited_once()
-            mock_vision_repo_instance.mark_chunked.assert_awaited_once()
+            mock_vision_repo_instance.get_by_id.assert_awaited_once_with(
+                mock_session, "test-tenant", "test-doc-id"
+            )
+            mock_context_repo_instance.delete_chunks_by_vision_document.assert_awaited_once_with(
+                mock_session, "test-tenant", "test-doc-id"
+            )
+            mock_session.flush.assert_awaited_once()
+            mock_vision_repo_instance.mark_chunked.assert_awaited_once_with(
+                mock_session, "test-doc-id", 2, 100
+            )
+
+    @pytest.mark.asyncio
+    async def test_chunk_vision_document_handles_missing_document(self, chunker):
+        """Test chunk_vision_document handles missing document gracefully."""
+        mock_session = AsyncMock(spec=AsyncSession)
+
+        # Patch repository to return None (document not found)
+        with patch('src.giljo_mcp.repositories.vision_document_repository.VisionDocumentRepository') as MockVisionRepo:
+            mock_vision_repo_instance = MockVisionRepo.return_value
+            mock_vision_repo_instance.get_by_id = AsyncMock(return_value=None)
+
+            # Call async method
+            result = await chunker.chunk_vision_document(
+                mock_session, "test-tenant", "nonexistent-doc-id"
+            )
+
+            # Verify error response
+            assert result["success"] is False
+            assert "error" in result
+            assert "not found" in result["error"].lower()
+
+            # Verify get_by_id was awaited
+            mock_vision_repo_instance.get_by_id.assert_awaited_once_with(
+                mock_session, "test-tenant", "nonexistent-doc-id"
+            )
