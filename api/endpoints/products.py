@@ -523,7 +523,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
                     pass  # Don't fail deletion if file cleanup fails
 
             # Delete product (cascade will handle related records)
-            db.delete(product)
+            await db.delete(product)
             await db.commit()
 
             return {"message": "Product deleted successfully"}

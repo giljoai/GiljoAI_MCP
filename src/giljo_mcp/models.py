@@ -1849,7 +1849,7 @@ class MCPContextSummary(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)
     context_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
-    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)
     full_content = Column(Text, nullable=False,
         comment="Original full context before condensation")
     condensed_mission = Column(Text, nullable=False,
