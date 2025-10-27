@@ -675,9 +675,8 @@ async function saveNotificationSettings() {
 }
 
 function resetGeneralSettings() {
-  settings.value.general = {
-    projectName: 'GiljoAI MCP Orchestrator',
-  }
+  // Handover 0052: General settings are empty after projectName field removal
+  settings.value.general = {}
 }
 
 function resetAppearanceSettings() {
@@ -751,18 +750,21 @@ const activeProductName = computed(() => {
   return activeProductTokens.value?.name || 'No Active Product'
 })
 
-// Field Priority Configuration computed properties (Handover 0048)
+// Field Priority Configuration computed properties (Handover 0048, 0052)
 const estimatedTokens = computed(() => {
-  // Use real-time data from active product if available (Handover 0049)
-  if (activeProductTokens.value?.total_tokens) {
+  // Handover 0052: Prefer real token data from active product (when available)
+  // This provides accurate token counts based on actual field values, not just field counts
+  if (activeProductTokens.value?.total_tokens !== undefined) {
     return activeProductTokens.value.total_tokens
   }
 
-  // Fallback to generic calculation
+  // Fallback: Use static estimates based on field counts (for drag-and-drop preview)
+  // Only used when no active product exists or API call failed
   const p1 = priority1Fields.value.length * 50
   const p2 = priority2Fields.value.length * 30
   const p3 = priority3Fields.value.length * 20
-  return p1 + p2 + p3 + 500
+  // Unassigned fields contribute 0 tokens (explicitly excluded)
+  return p1 + p2 + p3 + 500 // +500 for mission overhead
 })
 
 const tokenPercentage = computed(() => {
@@ -851,6 +853,10 @@ async function saveFieldPriority() {
     await settingsStore.updateFieldPriorityConfig(config)
     fieldPriorityHasChanges.value = false
     console.log('[USER SETTINGS] Field priority config saved successfully')
+
+    // Handover 0052: Refresh token estimate from active product after save
+    // This ensures the token indicator reflects the new field priority configuration
+    await fetchActiveProductTokenEstimate()
   } catch (error) {
     console.error('[USER SETTINGS] Failed to save field priority config:', error)
   } finally {
@@ -865,6 +871,9 @@ async function resetFieldPriorityToDefaults() {
     await loadFieldPriorityConfig()
     fieldPriorityHasChanges.value = false
     console.log('[USER SETTINGS] Field priority config reset to defaults')
+
+    // Handover 0052: Refresh token estimate from active product after reset
+    await fetchActiveProductTokenEstimate()
   } catch (error) {
     console.error('[USER SETTINGS] Failed to reset field priority config:', error)
   } finally {
