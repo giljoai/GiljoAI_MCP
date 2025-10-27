@@ -186,7 +186,20 @@
         <v-divider></v-divider>
 
         <v-card-text style="min-height: 400px; max-height: 600px; overflow-y: auto">
+          <!-- Handover 0042: Tabbed interface for product configuration -->
+          <v-tabs v-model="dialogTab" class="mb-4" color="primary">
+            <v-tab value="basic">Basic Info</v-tab>
+            <v-tab value="vision">Vision Docs</v-tab>
+            <v-tab value="tech">Tech Stack</v-tab>
+            <v-tab value="arch">Architecture</v-tab>
+            <v-tab value="features">Features & Testing</v-tab>
+          </v-tabs>
+
           <v-form ref="formRef" v-model="formValid">
+            <!-- Handover 0042: Tab windows -->
+            <v-tabs-window v-model="dialogTab">
+              <!-- Basic Info Tab -->
+              <v-tabs-window-item value="basic">
             <!-- Product Name -->
             <v-text-field
               v-model="productForm.name"
@@ -210,9 +223,11 @@
               persistent-hint
               class="mb-4"
             ></v-textarea>
+              </v-tabs-window-item>
 
+              <!-- Vision Documents Tab -->
+              <v-tabs-window-item value="vision">
             <!-- Vision Documents Section -->
-            <v-divider class="my-4"></v-divider>
 
             <div class="text-h6 mb-3">
               <v-icon start>mdi-file-document-multiple-outline</v-icon>
@@ -315,6 +330,190 @@
                 Files will be auto-chunked for context (25K token limit)
               </v-alert>
             </div>
+              </v-tabs-window-item>
+
+              <!-- Tech Stack Tab (Handover 0042) -->
+              <v-tabs-window-item value="tech">
+                <div class="text-subtitle-1 mb-4">Technology Stack Configuration</div>
+
+                <v-combobox
+                  v-model="productForm.configData.tech_stack.languages"
+                  label="Programming Languages"
+                  hint="e.g., Python, JavaScript, TypeScript"
+                  persistent-hint
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['Python', 'JavaScript', 'TypeScript', 'Java', 'Go', 'Rust', 'C#', 'C++', 'PHP', 'Ruby']"
+                  class="mb-4"
+                ></v-combobox>
+
+                <v-combobox
+                  v-model="productForm.configData.tech_stack.frontend"
+                  label="Frontend Frameworks"
+                  hint="e.g., Vue 3, React, Angular"
+                  persistent-hint
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['Vue 3', 'React', 'Angular', 'Svelte', 'Next.js', 'Nuxt', 'SvelteKit']"
+                  class="mb-4"
+                ></v-combobox>
+
+                <v-combobox
+                  v-model="productForm.configData.tech_stack.backend"
+                  label="Backend Frameworks"
+                  hint="e.g., FastAPI, Express, Django"
+                  persistent-hint
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['FastAPI', 'Django', 'Flask', 'Express', 'NestJS', 'Spring Boot', 'ASP.NET Core']"
+                  class="mb-4"
+                ></v-combobox>
+
+                <v-combobox
+                  v-model="productForm.configData.tech_stack.database"
+                  label="Databases"
+                  hint="e.g., PostgreSQL, MongoDB, Redis"
+                  persistent-hint
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'Elasticsearch', 'DynamoDB']"
+                  class="mb-4"
+                ></v-combobox>
+
+                <v-combobox
+                  v-model="productForm.configData.tech_stack.infrastructure"
+                  label="Infrastructure & DevOps"
+                  hint="e.g., Docker, Kubernetes, AWS"
+                  persistent-hint
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'Terraform', 'Ansible']"
+                  class="mb-4"
+                ></v-combobox>
+              </v-tabs-window-item>
+
+              <!-- Architecture Tab (Handover 0042) -->
+              <v-tabs-window-item value="arch">
+                <div class="text-subtitle-1 mb-4">Architecture & Design Patterns</div>
+
+                <v-select
+                  v-model="productForm.configData.architecture.pattern"
+                  label="Primary Architecture Pattern"
+                  hint="Overall system architecture approach"
+                  persistent-hint
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['Monolithic', 'Microservices', 'Modular Monolith', 'Serverless', 'Event-Driven', 'Layered Architecture']"
+                  class="mb-4"
+                ></v-select>
+
+                <v-combobox
+                  v-model="productForm.configData.architecture.design_patterns"
+                  label="Design Patterns"
+                  hint="e.g., MVC, Repository, Factory"
+                  persistent-hint
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['MVC', 'Repository', 'Factory', 'Singleton', 'Observer', 'Strategy', 'Dependency Injection', 'CQRS']"
+                  class="mb-4"
+                ></v-combobox>
+
+                <v-select
+                  v-model="productForm.configData.architecture.api_style"
+                  label="API Style"
+                  hint="Primary API communication pattern"
+                  persistent-hint
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['REST', 'GraphQL', 'gRPC', 'WebSocket', 'Mixed']"
+                  class="mb-4"
+                ></v-select>
+
+                <v-textarea
+                  v-model="productForm.configData.architecture.notes"
+                  label="Architecture Notes"
+                  hint="Additional architectural decisions, constraints, or context"
+                  persistent-hint
+                  variant="outlined"
+                  density="comfortable"
+                  rows="4"
+                  auto-grow
+                  class="mb-4"
+                ></v-textarea>
+              </v-tabs-window-item>
+
+              <!-- Features & Testing Tab (Handover 0042) -->
+              <v-tabs-window-item value="features">
+                <div class="text-subtitle-1 mb-4">Features & Quality Standards</div>
+
+                <v-textarea
+                  v-model="productForm.configData.features.core"
+                  label="Core Features"
+                  hint="Main functionality and capabilities of this product"
+                  persistent-hint
+                  variant="outlined"
+                  density="comfortable"
+                  rows="4"
+                  auto-grow
+                  class="mb-4"
+                ></v-textarea>
+
+                <v-select
+                  v-model="productForm.configData.test_config.strategy"
+                  label="Testing Strategy"
+                  hint="Development approach for testing"
+                  persistent-hint
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['TDD', 'BDD', 'Manual', 'Mixed']"
+                  class="mb-4"
+                ></v-select>
+
+                <div class="mb-4">
+                  <label class="text-caption text-medium-emphasis">Test Coverage Target: {{ productForm.configData.test_config.coverage_target }}%</label>
+                  <v-slider
+                    v-model="productForm.configData.test_config.coverage_target"
+                    min="0"
+                    max="100"
+                    step="5"
+                    thumb-label
+                    color="primary"
+                  ></v-slider>
+                </div>
+
+                <v-combobox
+                  v-model="productForm.configData.test_config.frameworks"
+                  label="Testing Frameworks"
+                  hint="e.g., pytest, Jest, Cypress"
+                  persistent-hint
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="comfortable"
+                  :items="['pytest', 'Jest', 'Mocha', 'Cypress', 'Playwright', 'Vitest', 'JUnit']"
+                  class="mb-4"
+                ></v-combobox>
+              </v-tabs-window-item>
+            </v-tabs-window>
           </v-form>
         </v-card-text>
 
@@ -422,6 +621,122 @@
                 </div>
               </v-card-text>
             </v-card>
+          </div>
+
+          <!-- Handover 0042: Configuration Data Display -->
+          <div v-if="selectedProduct.has_config_data" class="mt-4">
+            <v-divider class="mb-3"></v-divider>
+            <div class="text-subtitle-2 mb-2">Configuration Data</div>
+            
+            <v-expansion-panels variant="accordion">
+              <!-- Tech Stack -->
+              <v-expansion-panel v-if="selectedProduct.config_data?.tech_stack">
+                <v-expansion-panel-title>
+                  <v-icon start>mdi-code-tags</v-icon>
+                  Tech Stack
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <div v-if="selectedProduct.config_data.tech_stack.languages?.length" class="mb-2">
+                    <div class="text-caption font-weight-bold">Languages:</div>
+                    <v-chip-group>
+                      <v-chip
+                        v-for="lang in selectedProduct.config_data.tech_stack.languages"
+                        :key="lang"
+                        size="small"
+                        color="primary"
+                        variant="tonal"
+                      >{{ lang }}</v-chip>
+                    </v-chip-group>
+                  </div>
+                  <div v-if="selectedProduct.config_data.tech_stack.frontend?.length" class="mb-2">
+                    <div class="text-caption font-weight-bold">Frontend:</div>
+                    <v-chip-group>
+                      <v-chip
+                        v-for="fw in selectedProduct.config_data.tech_stack.frontend"
+                        :key="fw"
+                        size="small"
+                        color="success"
+                        variant="tonal"
+                      >{{ fw }}</v-chip>
+                    </v-chip-group>
+                  </div>
+                  <div v-if="selectedProduct.config_data.tech_stack.backend?.length" class="mb-2">
+                    <div class="text-caption font-weight-bold">Backend:</div>
+                    <v-chip-group>
+                      <v-chip
+                        v-for="fw in selectedProduct.config_data.tech_stack.backend"
+                        :key="fw"
+                        size="small"
+                        color="info"
+                        variant="tonal"
+                      >{{ fw }}</v-chip>
+                    </v-chip-group>
+                  </div>
+                  <div v-if="selectedProduct.config_data.tech_stack.database?.length">
+                    <div class="text-caption font-weight-bold">Databases:</div>
+                    <v-chip-group>
+                      <v-chip
+                        v-for="db in selectedProduct.config_data.tech_stack.database"
+                        :key="db"
+                        size="small"
+                        color="warning"
+                        variant="tonal"
+                      >{{ db }}</v-chip>
+                    </v-chip-group>
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+
+              <!-- Architecture -->
+              <v-expansion-panel v-if="selectedProduct.config_data?.architecture">
+                <v-expansion-panel-title>
+                  <v-icon start>mdi-sitemap</v-icon>
+                  Architecture
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <div v-if="selectedProduct.config_data.architecture.pattern" class="mb-2">
+                    <div class="text-caption font-weight-bold">Pattern:</div>
+                    <div class="text-body-2">{{ selectedProduct.config_data.architecture.pattern }}</div>
+                  </div>
+                  <div v-if="selectedProduct.config_data.architecture.api_style" class="mb-2">
+                    <div class="text-caption font-weight-bold">API Style:</div>
+                    <div class="text-body-2">{{ selectedProduct.config_data.architecture.api_style }}</div>
+                  </div>
+                  <div v-if="selectedProduct.config_data.architecture.design_patterns?.length">
+                    <div class="text-caption font-weight-bold">Design Patterns:</div>
+                    <v-chip-group>
+                      <v-chip
+                        v-for="pattern in selectedProduct.config_data.architecture.design_patterns"
+                        :key="pattern"
+                        size="small"
+                      >{{ pattern }}</v-chip>
+                    </v-chip-group>
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+
+              <!-- Features & Testing -->
+              <v-expansion-panel v-if="selectedProduct.config_data?.features || selectedProduct.config_data?.test_config">
+                <v-expansion-panel-title>
+                  <v-icon start>mdi-star-outline</v-icon>
+                  Features & Testing
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <div v-if="selectedProduct.config_data.features?.core" class="mb-2">
+                    <div class="text-caption font-weight-bold">Core Features:</div>
+                    <div class="text-body-2">{{ selectedProduct.config_data.features.core }}</div>
+                  </div>
+                  <div v-if="selectedProduct.config_data.test_config?.strategy" class="mb-2">
+                    <div class="text-caption font-weight-bold">Testing Strategy:</div>
+                    <div class="text-body-2">{{ selectedProduct.config_data.test_config.strategy }}</div>
+                  </div>
+                  <div v-if="selectedProduct.config_data.test_config?.coverage_target">
+                    <div class="text-caption font-weight-bold">Coverage Target:</div>
+                    <div class="text-body-2">{{ selectedProduct.config_data.test_config.coverage_target }}%</div>
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
           </div>
 
           <!-- Created/Updated -->
@@ -594,11 +909,36 @@ const loadingCascadeImpact = ref(false)
 const deleteConfirmationName = ref('')
 const deleteConfirmationCheck = ref(false)
 const deleteConfirmationError = ref(false)
+const dialogTab = ref('basic')  // Handover 0042: Tab for product dialog (basic, tech, arch, features)
 
 const productForm = ref({
   name: '',
   description: '',
   visionPath: '',
+  // Handover 0042: Rich configuration data
+  configData: {
+    tech_stack: {
+      languages: [],
+      frontend: [],
+      backend: [],
+      database: [],
+      infrastructure: [],
+    },
+    architecture: {
+      pattern: '',
+      design_patterns: [],
+      api_style: '',
+      notes: '',
+    },
+    features: {
+      core: '',
+    },
+    test_config: {
+      strategy: 'TDD',
+      coverage_target: 80,
+      frameworks: [],
+    },
+  },
 })
 
 // Sort options
@@ -758,10 +1098,38 @@ async function showProductDetails(product) {
 
 async function editProduct(product) {
   editingProduct.value = product
+  
+  // Handover 0042: Default config structure
+  const defaultConfig = {
+    tech_stack: {
+      languages: [],
+      frontend: [],
+      backend: [],
+      database: [],
+      infrastructure: [],
+    },
+    architecture: {
+      pattern: '',
+      design_patterns: [],
+      api_style: '',
+      notes: '',
+    },
+    features: {
+      core: '',
+    },
+    test_config: {
+      strategy: 'TDD',
+      coverage_target: 80,
+      frameworks: [],
+    },
+  }
+  
   productForm.value = {
     name: product.name,
     description: product.description || '',
     visionPath: product.vision_path || '',
+    // Handover 0042: Merge with existing config_data
+    configData: product.config_data ? { ...defaultConfig, ...product.config_data } : defaultConfig,
   }
 
   // Fetch existing vision documents
@@ -837,11 +1205,13 @@ async function saveProduct() {
       product = await productStore.updateProduct(editingProduct.value.id, {
         name: productForm.value.name,
         description: productForm.value.description,
+        configData: productForm.value.configData,  // Handover 0042
       })
     } else {
       product = await productStore.createProduct({
         name: productForm.value.name,
         description: productForm.value.description,
+        configData: productForm.value.configData,  // Handover 0042
       })
     }
 
@@ -952,10 +1322,35 @@ function closeDialog() {
   editingProduct.value = null
   visionFiles.value = []
   existingVisionDocuments.value = []
+  dialogTab.value = 'basic'  // Handover 0042: Reset tab
   productForm.value = {
     name: '',
     description: '',
     visionPath: '',
+    // Handover 0042: Reset config_data
+    configData: {
+      tech_stack: {
+        languages: [],
+        frontend: [],
+        backend: [],
+        database: [],
+        infrastructure: [],
+      },
+      architecture: {
+        pattern: '',
+        design_patterns: [],
+        api_style: '',
+        notes: '',
+      },
+      features: {
+        core: '',
+      },
+      test_config: {
+        strategy: 'TDD',
+        coverage_target: 80,
+        frameworks: [],
+      },
+    },
   }
 }
 
