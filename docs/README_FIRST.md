@@ -86,8 +86,8 @@ GiljoAI MCP Coding Orchestrator is a multi-agent orchestration system that trans
 **ONE Authentication Flow**:
 - NO localhost auto-login
 - Same authentication for localhost, LAN, WAN
-- Admin account: Created during setup wizard (user-defined credentials)
-- Forced password change on first access
+- Fresh install detection: User count = 0
+- Admin account: Created via /welcome → /first-login flow
 - JWT-based session management
 
 **Network Binding**:
@@ -146,28 +146,18 @@ python install.py
 
 **1. Environment Detection**:
 - Detects PostgreSQL 18 installation
-- Validates database connectivity (password: 4010)
+- Validates database connectivity
 - Checks port availability (7272, 7274)
 
 **2. Database Setup**:
 - Creates `giljo_mcp` database
 - **Creates all tables using Base.metadata.create_all()** (NOT Alembic)
-- Initializes setup state
+- Initializes setup state (user count = 0)
 
-**3. Default Admin Account Creation**:
-- Creates user with username: `admin`, password: `admin`
-- Password hashed with bcrypt
-- Sets `default_password_active: true` in setup_state table
-- Displays credentials in terminal:
-  ```
-  ====================================
-  Default Admin Credentials:
-    Username: admin
-    Password: admin
-
-  ⚠️ IMPORTANT: Change this password on first login!
-  ====================================
-  ```
+**3. NO Default Admin Created**:
+- **User count = 0** → Fresh install detected by router
+- No default credentials (admin/admin eliminated)
+- First admin created via browser flow
 
 **4. Configuration Generation**:
 - Creates `config.yaml` at project root
@@ -179,40 +169,40 @@ python install.py
 - Starts frontend dev server on port 7274
 - Opens browser to `http://localhost:7274`
 
-### 2. First Access (Any IP)
+### 2. First Access (Fresh Install Flow)
 
-**User visits**: `http://localhost:7274` OR `http://<network-ip>:7274`
+**User visits**: `http://localhost:7274`
 
 **Flow**:
 
 **1. Router Navigation Guard**:
-- Checks setup state via `GET /api/setup/status`
-- If `default_password_active: true`, redirects to `/change-password`
+- Checks user count via `GET /api/auth/user-count`
+- If count = 0, redirects to `/welcome`
 
-**2. Password Change Screen** (`/change-password`):
-- Forced password change form (cannot skip)
-- Pre-filled username: `admin`
-- Current password hint: `admin`
-- New password requirements:
-  - Minimum 12 characters
-  - At least 1 uppercase letter
-  - At least 1 lowercase letter
-  - At least 1 digit
-  - At least 1 special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
-- Real-time password strength meter
-- Confirmation field (must match)
+**2. Welcome Screen** (`/welcome`):
+- Displays welcome message
+- Explains fresh install setup
+- "Continue" button → redirects to `/first-login`
 
-**3. Password Change Submission**:
-- `POST /api/auth/change-password`
-- Backend validates current password is `admin`
-- Validates new password meets requirements
-- Updates admin user password_hash (bcrypt)
-- Sets `default_password_active: false`
-- Records `password_changed_at` timestamp
+**3. First Login Screen** (`/first-login`):
+- Create admin account form
+- Fields:
+  - Username (required)
+  - Password (minimum 12 characters, complexity requirements)
+  - Confirm Password
+  - Recovery PIN (4-digit, for password reset)
+  - Confirm Recovery PIN
+- Real-time validation and password strength meter
+
+**4. Admin Account Creation**:
+- `POST /api/auth/create-first-admin`
+- Backend validates user count = 0 (race condition protection)
+- Creates admin user with bcrypt-hashed password and PIN
+- Endpoint automatically disables (user count > 0)
 - Returns JWT token for immediate login
 - Token stored in localStorage
 
-**4. Redirect to Dashboard**:
+**5. Redirect to Dashboard**:
 - User redirected to `/dashboard`
 - WebSocket connection established (authenticated mode)
 - Ready for normal operation
@@ -222,7 +212,7 @@ python install.py
 **Login Flow**:
 - User visits application
 - Router redirects to `/login` (if not authenticated)
-- Login with password (not default)
+- Login with username and password
 - `POST /api/auth/login`
 - JWT token returned and stored
 - Redirected to `/dashboard`
