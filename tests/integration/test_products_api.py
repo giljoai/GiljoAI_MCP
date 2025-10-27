@@ -6,6 +6,7 @@ Tests async database operations and endpoint functionality
 
 import asyncio
 import io
+import json
 import sys
 from pathlib import Path
 
@@ -682,5 +683,197 @@ This is section 3.
         assert product_data["vision_documents_count"] >= 0
 
 
+class TestProductsConfigData:
+    """Test suite for Products API config_data functionality (Handover 0042)"""
+
+    def test_create_product_with_config_data(self, client, headers):
+        """Test creating product with rich config_data"""
+        config_data = {
+            "tech_stack": {
+                "languages": ["Python", "JavaScript"],
+                "backend": ["FastAPI"],
+                "database": ["PostgreSQL"],
+            },
+            "architecture": {
+                "pattern": "Modular Monolith",
+                "api_style": "REST",
+            },
+            "features": {
+                "core": "Multi-tenant product management",
+            },
+            "test_config": {
+                "strategy": "TDD",
+                "coverage_target": 90,
+            },
+        }
+
+        response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Config Test Product",
+                "description": "Testing config_data",
+                "config_data": json.dumps(config_data),
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        data = response.json()
+
+        # Verify basic fields
+        assert data["name"] == "Config Test Product"
+        assert data["has_config_data"] is True
+
+        # Verify config_data structure
+        assert data["config_data"] is not None
+        assert data["config_data"]["tech_stack"]["languages"] == ["Python", "JavaScript"]
+        assert data["config_data"]["architecture"]["pattern"] == "Modular Monolith"
+        assert data["config_data"]["features"]["core"] == "Multi-tenant product management"
+        assert data["config_data"]["test_config"]["coverage_target"] == 90
+
+    def test_create_product_with_invalid_json_config(self, client, headers):
+        """Test that invalid JSON in config_data fails gracefully"""
+        response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Invalid Config Product",
+                "config_data": "{invalid json}",
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 400
+        assert "Invalid config_data JSON" in response.json()["detail"]
+
+    def test_create_product_with_non_dict_config(self, client, headers):
+        """Test that non-dict config_data fails validation"""
+        response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Non-Dict Config Product",
+                "config_data": json.dumps(["not", "a", "dict"]),
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 400
+        assert "must be a JSON object" in response.json()["detail"]
+
+    def test_create_product_without_config_data(self, client, headers):
+        """Test creating product without config_data (backward compatibility)"""
+        response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "No Config Product",
+                "description": "No config_data provided",
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["has_config_data"] is False
+        assert data["config_data"] is None or data["config_data"] == {}
+
+    def test_update_product_config_data(self, client, headers):
+        """Test updating product config_data"""
+        # First create a product
+        create_response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Update Config Test",
+                "description": "Will update config",
+            },
+            headers=headers,
+        )
+        assert create_response.status_code == 200
+        product_id = create_response.json()["id"]
+
+        # Update with config_data
+        updated_config = {
+            "tech_stack": {
+                "languages": ["TypeScript", "Go"],
+                "frontend": ["Vue 3"],
+            },
+            "architecture": {
+                "pattern": "Microservices",
+            },
+        }
+
+        update_response = client.put(
+            f"/api/v1/products/{product_id}/",
+            data={
+                "name": "Updated Config Product",
+                "config_data": json.dumps(updated_config),
+            },
+            headers=headers,
+        )
+
+        assert update_response.status_code == 200
+        data = update_response.json()
+        assert data["name"] == "Updated Config Product"
+        assert data["has_config_data"] is True
+        assert data["config_data"]["tech_stack"]["languages"] == ["TypeScript", "Go"]
+        assert data["config_data"]["architecture"]["pattern"] == "Microservices"
+
+    def test_list_products_includes_config_data(self, client, headers):
+        """Test that listing products includes config_data"""
+        # Create product with config
+        config_data = {
+            "tech_stack": {"languages": ["Python"]},
+        }
+
+        create_response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "List Test Product",
+                "config_data": json.dumps(config_data),
+            },
+            headers=headers,
+        )
+        assert create_response.status_code == 200
+
+        # List products
+        list_response = client.get("/api/v1/products/", headers=headers)
+        assert list_response.status_code == 200
+
+        products = list_response.json()
+        assert len(products) > 0
+
+        # Find our test product
+        test_product = next((p for p in products if p["name"] == "List Test Product"), None)
+        assert test_product is not None
+        assert test_product["has_config_data"] is True
+        assert test_product["config_data"]["tech_stack"]["languages"] == ["Python"]
+
+    def test_get_product_by_id_includes_config_data(self, client, headers):
+        """Test that getting a product by ID includes config_data"""
+        # Create product
+        config_data = {
+            "features": {"core": "Test feature"},
+        }
+
+        create_response = client.post(
+            "/api/v1/products/",
+            data={
+                "name": "Get By ID Test",
+                "config_data": json.dumps(config_data),
+            },
+            headers=headers,
+        )
+        assert create_response.status_code == 200
+        product_id = create_response.json()["id"]
+
+        # Get by ID
+        get_response = client.get(f"/api/v1/products/{product_id}/", headers=headers)
+        assert get_response.status_code == 200
+
+        data = get_response.json()
+        assert data["has_config_data"] is True
+        assert data["config_data"]["features"]["core"] == "Test feature"
+
+
 if __name__ == "__main__":
+    # Import json at module level for tests
+    import json
     pytest.main([__file__, "-v", "-s"])
