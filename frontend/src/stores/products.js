@@ -10,6 +10,8 @@ export const useProductStore = defineStore('products', () => {
   const loading = ref(false)
   const error = ref(null)
   const productMetrics = ref({})
+  const activeProduct = ref(null)
+  const activeProductLoading = ref(false)
 
   // Getters
   const hasProducts = computed(() => products.value.length > 0)
@@ -39,8 +41,6 @@ export const useProductStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      // This will be connected to the API endpoint when implementer creates it
-      // For now, using placeholder logic
       const response = (await api.products?.list()) || { data: [] }
       products.value = response.data
     } catch (err) {
@@ -59,7 +59,6 @@ export const useProductStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      // This will be connected to the API endpoint when implementer creates it
       const response = (await api.products?.get(productId)) || { data: null }
       return response.data
     } catch (err) {
@@ -76,23 +75,19 @@ export const useProductStore = defineStore('products', () => {
       return
     }
 
-    // If no products exist, do nothing
     await fetchProducts()
     if (products.value.length === 0) {
       console.warn('No products available to set as current product')
       return
     }
 
-    // Validate the product ID
     const product = await fetchProductById(productId)
     if (!product) {
       console.warn(`Product ${productId} not found`)
 
-      // If the requested product doesn't exist, set the first available product
       if (products.value.length > 0) {
         productId = products.value[0].id
       } else {
-        // Clear current product if no products exist
         currentProductId.value = null
         currentProduct.value = null
         localStorage.removeItem('currentProductId')
@@ -103,13 +98,10 @@ export const useProductStore = defineStore('products', () => {
     currentProductId.value = productId
     currentProduct.value = product
 
-    // Store in localStorage for persistence
     localStorage.setItem('currentProductId', productId)
 
-    // Fetch metrics for this product
     await fetchProductMetrics(productId)
 
-    // Emit event for other stores to react
     window.dispatchEvent(
       new CustomEvent('product-changed', {
         detail: { productId, product },
@@ -123,8 +115,6 @@ export const useProductStore = defineStore('products', () => {
     }
 
     try {
-      // This will be connected to the API endpoint when implementer creates it
-      // For now, using placeholder logic
       const response = (await api.products?.metrics?.(productId)) || {
         data: {
           totalTasks: 0,
@@ -143,11 +133,9 @@ export const useProductStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      // This will be connected to the API endpoint when implementer creates it
       const response = (await api.products?.create(productData)) || { data: null }
       if (response.data) {
         products.value.push(response.data)
-        // Automatically switch to new product
         await setCurrentProduct(response.data.id)
       }
       return response.data
@@ -164,7 +152,6 @@ export const useProductStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      // This will be connected to the API endpoint when implementer creates it
       const response = (await api.products?.update(productId, updates)) || { data: null }
       if (response.data) {
         const index = products.value.findIndex((p) => p.id === productId)
@@ -187,14 +174,12 @@ export const useProductStore = defineStore('products', () => {
 
   async function deleteProduct(productId) {
     loading.value = true
-    error.value = null
+    error.value = false
     try {
-      // This will be connected to the API endpoint when implementer creates it
       await api.products?.delete(productId)
       products.value = products.value.filter((p) => p.id !== productId)
 
       if (productId === currentProductId.value) {
-        // Clear current product if it was deleted
         await setCurrentProduct(null)
       }
     } catch (err) {
@@ -206,22 +191,37 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
-  // Initialize from localStorage
+  async function fetchActiveProduct() {
+    activeProductLoading.value = true
+    error.value = null
+    try {
+      const response = await api.products.list({ is_active: true })
+      if (response.data && response.data.length > 0) {
+        activeProduct.value = response.data[0]
+      } else {
+        activeProduct.value = null
+      }
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to fetch active product:', err)
+      activeProduct.value = null
+    } finally {
+      activeProductLoading.value = false
+    }
+  }
+
   async function initializeFromStorage() {
     try {
-      // Auth guard - skip if no authentication token
       const authToken = localStorage.getItem('auth_token')
       if (!authToken) {
         console.log('[PRODUCTS] No auth token - skipping product initialization')
         return
       }
 
-      // Setup check using API client (proper port and auth handling)
       try {
         const response = await api.setup.status()
         const setupStatus = response.data
 
-        // Skip product fetch during setup phases
         if (setupStatus.default_password_active || !setupStatus.database_initialized) {
           console.log('[PRODUCTS] Setup incomplete - skipping product initialization')
           localStorage.removeItem('currentProductId')
@@ -232,35 +232,33 @@ export const useProductStore = defineStore('products', () => {
         return
       }
 
-      // Fetch products (auth header automatically added by API client)
       await fetchProducts()
 
-      // Restore selected product from localStorage
       const storedProductId = localStorage.getItem('currentProductId')
       if (storedProductId && products.value.length > 0) {
         const product = products.value.find(p => p.id === parseInt(storedProductId))
         if (product) {
           await setCurrentProduct(parseInt(storedProductId))
         } else {
-          // Product doesn't exist, clear localStorage and select first available
           localStorage.removeItem('currentProductId')
           await setCurrentProduct(products.value[0].id)
         }
       } else if (products.value.length > 0) {
-        // No stored product, select first available
         await setCurrentProduct(products.value[0].id)
       }
+
+      await fetchActiveProduct()
     } catch (error) {
       console.error('[PRODUCTS] Failed to initialize from storage:', error)
     }
   }
 
-  // Clear all product data
   function clearProductData() {
     products.value = []
     currentProductId.value = null
     currentProduct.value = null
     productMetrics.value = {}
+    activeProduct.value = null
     localStorage.removeItem('currentProductId')
   }
 
@@ -272,6 +270,8 @@ export const useProductStore = defineStore('products', () => {
     loading,
     error,
     productMetrics,
+    activeProduct,
+    activeProductLoading,
 
     // Getters
     hasProducts,
@@ -288,6 +288,7 @@ export const useProductStore = defineStore('products', () => {
     createProduct,
     updateProduct,
     deleteProduct,
+    fetchActiveProduct,
     initializeFromStorage,
     clearProductData,
   }

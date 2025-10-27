@@ -35,7 +35,7 @@ Priority Tiers:
         dropped first when token budget is exceeded.
 
 Token Budget:
-    Default token budget of 1500 tokens for mission condensation. This limit
+    Default token budget of 2000 tokens for mission condensation. This limit
     ensures missions remain focused and cost-effective while providing agents
     with essential context.
 
@@ -57,6 +57,9 @@ Version History:
         - Three-tier priority system
         - 1500 token default budget
         - 12 prioritized configuration fields
+    1.1 (2025-10-27): Token budget increase (Handover 0049)
+        - Increased token budget from 1500 to 2000 tokens
+        - Supports richer product configuration data
 
 Related:
     - Handover 0042: Product Configuration Free-Text Migration
@@ -70,7 +73,7 @@ from typing import Dict, Any
 
 DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
     "version": "1.0",
-    "token_budget": 1500,
+    "token_budget": 2000,
     "fields": {
         # Priority 1: Critical - Always Included
         # Core technical foundation that defines the product

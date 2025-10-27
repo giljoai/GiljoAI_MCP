@@ -16,7 +16,9 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.models import Product, Project, Task, VisionDocument, MCPContextIndex
+from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+from src.giljo_mcp.models import Product, Project, Task, VisionDocument, MCPContextIndex, User
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 # Handover 0046 Issue #4: Update router prefix to /v1/products for consistency
@@ -63,6 +65,18 @@ class VisionChunk(BaseModel):
     boundary_type: str
     keywords: List[str]
     headers: List[str]
+
+
+class TokenEstimateResponse(BaseModel):
+    """Token estimation response for active product (Handover 0049)"""
+    product_id: str = Field(..., description="Active product ID")
+    product_name: str = Field(..., description="Active product name")
+    field_tokens: Dict[str, int] = Field(..., description="Token count per prioritized field")
+    total_field_tokens: int = Field(..., description="Sum of all field tokens")
+    overhead_tokens: int = Field(..., description="Fixed overhead for mission structure (500 tokens)")
+    total_tokens: int = Field(..., description="Total tokens (field_tokens + overhead)")
+    token_budget: int = Field(..., description="User's configured token budget")
+    percentage_used: float = Field(..., description="Percentage of budget used (total/budget * 100)")
 
 
 class CascadeImpact(BaseModel):
@@ -701,6 +715,162 @@ async def get_vision_chunks(product_id: str, tenant_key: str = Depends(get_tenan
                 )
 
             return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _get_nested_value(data: dict, path: str) -> Any:
+    """
+    Extract nested value from dictionary using dot notation.
+
+    Args:
+        data: Dictionary to extract from
+        path: Dot-separated path (e.g., 'tech_stack.languages')
+
+    Returns:
+        Value at path, or None if not found
+
+    Example:
+        >>> config = {"tech_stack": {"languages": "Python"}}
+        >>> _get_nested_value(config, "tech_stack.languages")
+        'Python'
+        >>> _get_nested_value(config, "tech_stack.missing")
+        None
+    """
+    if not data:
+        return None
+
+    keys = path.split(".")
+    value = data
+
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return None
+
+    return value
+
+
+@router.get("/active/token-estimate", response_model=TokenEstimateResponse)
+async def get_active_product_token_estimate(
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Calculate token estimate for active product's config_data fields (Handover 0049).
+
+    This endpoint:
+    1. Fetches the active product (is_active=True) for current user's tenant
+    2. Gets user's field_priority_config (or uses default from defaults.py)
+    3. Extracts values from product.config_data using dot notation
+    4. Calculates tokens per field using character/4 formula
+    5. Adds 500 token overhead for mission structure
+    6. Returns detailed breakdown with budget percentage
+
+    Token Calculation:
+        - Per field: len(field_value) / 4 (rounded up)
+        - Overhead: 500 tokens (fixed)
+        - Total: sum(field_tokens) + overhead
+
+    Multi-Tenant Isolation:
+        Only returns active product for current_user's tenant_key.
+
+    Returns:
+        TokenEstimateResponse with detailed token breakdown
+
+    Raises:
+        404: No active product found for user's tenant
+        401: User not authenticated
+
+    Example Response:
+        {
+            "product_id": "prod-123",
+            "product_name": "My Product",
+            "field_tokens": {
+                "tech_stack.languages": 15,
+                "tech_stack.backend": 12,
+                ...
+            },
+            "total_field_tokens": 285,
+            "overhead_tokens": 500,
+            "total_tokens": 785,
+            "token_budget": 2000,
+            "percentage_used": 39.25
+        }
+    """
+    from api.app import state
+    from math import ceil
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Fetch active product for user's tenant (CRITICAL: Multi-tenant isolation)
+            stmt = select(Product).where(
+                Product.tenant_key == current_user.tenant_key,
+                Product.is_active == True
+            )
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No active product found for tenant. Please activate a product first."
+                )
+
+            # Get user's field priority config (or use default)
+            field_config = current_user.field_priority_config or DEFAULT_FIELD_PRIORITY
+
+            # Extract token budget and field priorities
+            token_budget = field_config.get("token_budget", DEFAULT_FIELD_PRIORITY["token_budget"])
+            field_priorities = field_config.get("fields", DEFAULT_FIELD_PRIORITY["fields"])
+
+            # Calculate token count for each prioritized field
+            field_tokens: Dict[str, int] = {}
+            product_config = product.config_data or {}
+
+            for field_path in field_priorities.keys():
+                # Extract field value using dot notation
+                field_value = _get_nested_value(product_config, field_path)
+
+                if field_value is None:
+                    # Field not present in config_data
+                    field_tokens[field_path] = 0
+                elif isinstance(field_value, str):
+                    # Calculate tokens: character count / 4 (rounded up)
+                    char_count = len(field_value)
+                    tokens = ceil(char_count / 4.0)
+                    field_tokens[field_path] = tokens
+                else:
+                    # Non-string value (dict, list, etc.) - convert to JSON string
+                    json_str = json.dumps(field_value)
+                    char_count = len(json_str)
+                    tokens = ceil(char_count / 4.0)
+                    field_tokens[field_path] = tokens
+
+            # Calculate totals
+            total_field_tokens = sum(field_tokens.values())
+            overhead_tokens = 500  # Fixed overhead for mission structure
+            total_tokens = total_field_tokens + overhead_tokens
+
+            # Calculate percentage used
+            percentage_used = round((total_tokens / token_budget) * 100, 2) if token_budget > 0 else 0.0
+
+            return TokenEstimateResponse(
+                product_id=product.id,
+                product_name=product.name,
+                field_tokens=field_tokens,
+                total_field_tokens=total_field_tokens,
+                overhead_tokens=overhead_tokens,
+                total_tokens=total_tokens,
+                token_budget=token_budget,
+                percentage_used=percentage_used
+            )
 
     except HTTPException:
         raise

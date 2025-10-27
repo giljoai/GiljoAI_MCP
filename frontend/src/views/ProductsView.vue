@@ -338,7 +338,6 @@
 
                 <v-textarea
                   v-model="productForm.configData.tech_stack.languages"
-                  label="Programming Languages"
                   placeholder="Python 3.11, JavaScript ES2023, TypeScript 5.2"
                   hint="List all programming languages used (comma-separated or line-by-line)"
                   persistent-hint
@@ -347,11 +346,41 @@
                   rows="3"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Programming Languages</span>
+                    <v-chip
+                      v-if="hasFieldPriority('tech_stack.languages')"
+                      :color="getPriorityColor(getPriorityForField('tech_stack.languages'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('tech_stack.languages')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('tech_stack.languages')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('tech_stack.languages'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.tech_stack.frontend"
-                  label="Frontend Frameworks & Libraries"
                   placeholder="Vue 3, Vuetify 3, Pinia, Vue Router"
                   hint="List frontend technologies (frameworks, libraries, tools)"
                   persistent-hint
@@ -360,11 +389,41 @@
                   rows="3"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Frontend Frameworks & Libraries</span>
+                    <v-chip
+                      v-if="hasFieldPriority('tech_stack.frontend')"
+                      :color="getPriorityColor(getPriorityForField('tech_stack.frontend'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('tech_stack.frontend')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('tech_stack.frontend')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('tech_stack.frontend'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.tech_stack.backend"
-                  label="Backend Frameworks & Services"
                   placeholder="FastAPI 0.104, SQLAlchemy 2.0, Alembic, asyncio"
                   hint="List backend technologies (frameworks, ORMs, services)"
                   persistent-hint
@@ -373,11 +432,41 @@
                   rows="3"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Backend Frameworks & Services</span>
+                    <v-chip
+                      v-if="hasFieldPriority('tech_stack.backend')"
+                      :color="getPriorityColor(getPriorityForField('tech_stack.backend'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('tech_stack.backend')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('tech_stack.backend')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('tech_stack.backend'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.tech_stack.database"
-                  label="Databases & Data Storage"
                   placeholder="PostgreSQL 16, Redis 7, Vector embeddings (pgvector)"
                   hint="List databases and data storage solutions"
                   persistent-hint
@@ -386,11 +475,41 @@
                   rows="3"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Databases & Data Storage</span>
+                    <v-chip
+                      v-if="hasFieldPriority('tech_stack.database')"
+                      :color="getPriorityColor(getPriorityForField('tech_stack.database'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('tech_stack.database')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('tech_stack.database')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('tech_stack.database'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.tech_stack.infrastructure"
-                  label="Infrastructure & DevOps"
                   placeholder="Docker, Kubernetes, GitHub Actions CI/CD, AWS (EC2, S3, RDS)"
                   hint="List infrastructure and deployment tools"
                   persistent-hint
@@ -399,7 +518,38 @@
                   rows="3"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Infrastructure & DevOps</span>
+                    <v-chip
+                      v-if="hasFieldPriority('tech_stack.infrastructure')"
+                      :color="getPriorityColor(getPriorityForField('tech_stack.infrastructure'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('tech_stack.infrastructure')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('tech_stack.infrastructure')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('tech_stack.infrastructure'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
               </v-tabs-window-item>
 
               <!-- Architecture Tab (Handover 0042) -->
@@ -408,7 +558,6 @@
 
                 <v-textarea
                   v-model="productForm.configData.architecture.pattern"
-                  label="Primary Architecture Pattern"
                   placeholder="Modular Monolith with Event-Driven components, CQRS for high-traffic modules"
                   hint="Describe the overall system architecture approach"
                   persistent-hint
@@ -417,11 +566,41 @@
                   rows="2"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Primary Architecture Pattern</span>
+                    <v-chip
+                      v-if="hasFieldPriority('architecture.pattern')"
+                      :color="getPriorityColor(getPriorityForField('architecture.pattern'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('architecture.pattern')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('architecture.pattern')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('architecture.pattern'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.architecture.design_patterns"
-                  label="Design Patterns & Principles"
                   placeholder="Repository Pattern, Dependency Injection, Factory Pattern, SOLID principles"
                   hint="List design patterns and architectural principles used"
                   persistent-hint
@@ -430,11 +609,41 @@
                   rows="3"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Design Patterns & Principles</span>
+                    <v-chip
+                      v-if="hasFieldPriority('architecture.design_patterns')"
+                      :color="getPriorityColor(getPriorityForField('architecture.design_patterns'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('architecture.design_patterns')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('architecture.design_patterns')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('architecture.design_patterns'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.architecture.api_style"
-                  label="API Style & Communication"
                   placeholder="REST API (OpenAPI 3.0), WebSocket for real-time updates, GraphQL for complex queries"
                   hint="Describe API communication patterns and protocols"
                   persistent-hint
@@ -443,11 +652,41 @@
                   rows="2"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>API Style & Communication</span>
+                    <v-chip
+                      v-if="hasFieldPriority('architecture.api_style')"
+                      :color="getPriorityColor(getPriorityForField('architecture.api_style'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('architecture.api_style')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('architecture.api_style')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('architecture.api_style'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.architecture.notes"
-                  label="Architecture Notes"
                   hint="Additional architectural decisions, constraints, or context"
                   persistent-hint
                   variant="outlined"
@@ -455,7 +694,38 @@
                   rows="4"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Architecture Notes</span>
+                    <v-chip
+                      v-if="hasFieldPriority('architecture.notes')"
+                      :color="getPriorityColor(getPriorityForField('architecture.notes'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('architecture.notes')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('architecture.notes')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('architecture.notes'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
               </v-tabs-window-item>
 
               <!-- Features & Testing Tab (Handover 0042) -->
@@ -464,7 +734,6 @@
 
                 <v-textarea
                   v-model="productForm.configData.features.core"
-                  label="Core Features"
                   hint="Main functionality and capabilities of this product"
                   persistent-hint
                   variant="outlined"
@@ -472,11 +741,41 @@
                   rows="4"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Core Features</span>
+                    <v-chip
+                      v-if="hasFieldPriority('features.core')"
+                      :color="getPriorityColor(getPriorityForField('features.core'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('features.core')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('features.core')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('features.core'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.test_config.strategy"
-                  label="Testing Strategy & Approach"
                   placeholder="TDD for core business logic, Integration tests for API endpoints, E2E with Playwright"
                   hint="Describe testing methodology and quality assurance approach"
                   persistent-hint
@@ -485,10 +784,70 @@
                   rows="2"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Testing Strategy & Approach</span>
+                    <v-chip
+                      v-if="hasFieldPriority('test_config.strategy')"
+                      :color="getPriorityColor(getPriorityForField('test_config.strategy'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('test_config.strategy')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('test_config.strategy')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('test_config.strategy'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
 
                 <div class="mb-4">
-                  <label class="text-caption text-medium-emphasis">Test Coverage Target: {{ productForm.configData.test_config.coverage_target }}%</label>
+                  <label class="text-caption text-medium-emphasis">
+                    Test Coverage Target: {{ productForm.configData.test_config.coverage_target }}%
+                    <v-chip
+                      v-if="hasFieldPriority('test_config.coverage_target')"
+                      :color="getPriorityColor(getPriorityForField('test_config.coverage_target'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('test_config.coverage_target')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('test_config.coverage_target')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="x-small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('test_config.coverage_target'))
+                      }}</span>
+                    </v-tooltip>
+                  </label>
                   <v-slider
                     v-model="productForm.configData.test_config.coverage_target"
                     min="0"
@@ -501,7 +860,6 @@
 
                 <v-textarea
                   v-model="productForm.configData.test_config.frameworks"
-                  label="Testing Frameworks & Tools"
                   placeholder="pytest, pytest-asyncio, Playwright, coverage.py"
                   hint="List testing frameworks and quality assurance tools"
                   persistent-hint
@@ -510,7 +868,38 @@
                   rows="3"
                   auto-grow
                   class="mb-4"
-                ></v-textarea>
+                >
+                  <template #label>
+                    <span>Testing Frameworks & Tools</span>
+                    <v-chip
+                      v-if="hasFieldPriority('test_config.frameworks')"
+                      :color="getPriorityColor(getPriorityForField('test_config.frameworks'))"
+                      size="x-small"
+                      class="ml-2"
+                    >
+                      {{ getPriorityLabel(getPriorityForField('test_config.frameworks')) }}
+                    </v-chip>
+                    <v-tooltip
+                      v-if="hasFieldPriority('test_config.frameworks')"
+                      location="top"
+                      max-width="300"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          size="small"
+                          class="ml-1"
+                          style="vertical-align: middle"
+                        >
+                          mdi-information-outline
+                        </v-icon>
+                      </template>
+                      <span style="white-space: pre-line">{{
+                        getPriorityTooltip(getPriorityForField('test_config.frameworks'))
+                      }}</span>
+                    </v-tooltip>
+                  </template>
+                </v-textarea>
               </v-tabs-window-item>
             </v-tabs-window>
           </v-form>
@@ -840,13 +1229,18 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useProductStore } from '@/stores/products'
+import { useSettingsStore } from '@/stores/settings'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useFieldPriority } from '@/composables/useFieldPriority'
 import api from '@/services/api'
 
 const productStore = useProductStore()
+const settingsStore = useSettingsStore()
 const router = useRouter()
 const { showToast } = useToast()
+const { getPriorityForField, getPriorityLabel, getPriorityColor, getPriorityTooltip } =
+  useFieldPriority()
 
 // State
 const loading = ref(false)
@@ -1328,8 +1722,19 @@ async function loadProducts() {
   }
 }
 
+// Handover 0049: Helper to check if a field has priority
+function hasFieldPriority(fieldPath) {
+  return getPriorityForField(fieldPath) !== null
+}
+
 onMounted(async () => {
   await loadProducts()
+  // Load field priority configuration for badge display (Handover 0049)
+  try {
+    await settingsStore.fetchFieldPriorityConfig()
+  } catch (error) {
+    console.log('Field priority config not available:', error)
+  }
   // Product metrics updates via WebSocket (product:updated events)
 })
 </script>
