@@ -250,26 +250,38 @@ ALTER TABLE users ADD COLUMN must_set_pin BOOLEAN DEFAULT FALSE;
 - Rate limiting via `failed_pin_attempts` and `pin_lockout_until`
 - First-login enforcement via `must_change_password` and `must_set_pin`
 
-#### Setup State Security (Handover 0035)
+#### Fresh Install Detection Architecture (Handover 0034)
 
-**SetupState Table Additions** - First admin creation tracking:
+**Fresh Install Detection Method**: User count = 0 (not config flags)
+
+**SetupState Tracking**:
 ```sql
-ALTER TABLE setup_state ADD COLUMN first_admin_created BOOLEAN DEFAULT FALSE NOT NULL;
-ALTER TABLE setup_state ADD COLUMN first_admin_created_at TIMESTAMP WITH TIME ZONE;
+-- SetupState model tracks per-tenant setup status
+-- Fresh install detection via user count query, not flags
+SELECT COUNT(*) FROM users WHERE tenant_key = 'default';
 
--- Constraint: If first_admin_created is true, first_admin_created_at must be set
-ALTER TABLE setup_state ADD CONSTRAINT ck_first_admin_created_at_required
-    CHECK (
-        (first_admin_created = false) OR
-        (first_admin_created = true AND first_admin_created_at IS NOT NULL)
-    );
-
--- Partial index for fresh installs
-CREATE INDEX idx_setup_fresh_install ON setup_state(tenant_key, first_admin_created)
-    WHERE first_admin_created = false;
+-- SetupState stores setup completion status
+CREATE TABLE setup_state (
+    tenant_key VARCHAR(36) PRIMARY KEY,
+    database_initialized BOOLEAN DEFAULT FALSE,
+    setup_completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 ```
 
-**Security Benefit**: Prevents duplicate admin creation attacks by locking down `/api/auth/create-first-admin` after first use.
+**Fresh Install Flow**:
+1. Router checks user count via `/api/auth/user-count`
+2. If count = 0 → Redirect to `/welcome`
+3. User proceeds to `/first-login`
+4. Backend validates count = 0 before allowing admin creation
+5. After first user created → Router allows dashboard access
+
+**Security Benefits**:
+- No config-based detection (eliminates race conditions)
+- Two-layer validation (frontend router + backend endpoint)
+- Automatic endpoint disablement (user count > 0)
+- No default credentials (admin/admin eliminated)
 
 #### Token Metrics Tracking (Handover 0020)
 

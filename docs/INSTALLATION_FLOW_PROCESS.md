@@ -573,14 +573,15 @@ async def seed_default_templates():
 - Complete metadata (behavioral rules, success criteria, variables)
 - Performance: <2 seconds to seed 6 templates
 
-**First Admin Creation Setup** (Handover 0034):
+**Fresh Install Detection** (Handover 0034):
 ```python
 async def initialize_setup_state():
     """
     Initialize SetupState for fresh installation
 
-    Handover 0034: NO default admin/admin credentials created
-    First admin account created via /welcome page after browser launch
+    Handover 0034: NO default credentials created
+    Fresh install detection: User count = 0
+    First admin account created via /welcome → /first-login flow
     """
     print("📋 Initializing setup state...")
 
@@ -598,8 +599,7 @@ async def initialize_setup_state():
             tenant_key='default',
             database_initialized=True,
             database_initialized_at=datetime.utcnow(),
-            first_admin_created=False,          # ← No admin created yet
-            first_admin_created_at=None,        # ← Will be set during /welcome setup
+            first_admin_created=False,          # ← Detected via user count = 0
             setup_completed=False,
             setup_version='3.0.0'
         )
@@ -607,20 +607,23 @@ async def initialize_setup_state():
         await session.commit()
 
     print("✅ Setup state initialized")
-    print("ℹ️  First admin account will be created via /welcome page")
+    print("ℹ️  Fresh install will be detected by router (user count = 0)")
 ```
 
-**Why No Default Admin?** (Handover 0034):
-- Security: No predictable default credentials (admin/admin eliminated)
-- Clean UX: User creates account directly during first access
-- Simplicity: Single user creation flow (not password change flow)
-- Security Enhancement: `/api/auth/create-first-admin` endpoint automatically disables after first user created
+**Fresh Install Flow** (Current Architecture):
+1. **install.py** completes → User count = 0
+2. **Browser opens** → `http://localhost:7274`
+3. **Router guard checks** → User count via `/api/auth/user-count`
+4. **Redirect to** → `/welcome` (if count = 0)
+5. **User creates admin** → `/first-login` endpoint
+6. **System updates** → User count > 0, router allows dashboard access
 
-**First Admin Creation Happens Next**:
-- Browser opens to `http://localhost:7274/welcome`
-- User creates first admin account with username, password, and recovery PIN
-- System sets `SetupState.first_admin_created = True`
-- `/api/auth/create-first-admin` endpoint permanently disabled for security
+**Security Features**:
+- No default credentials (admin/admin eliminated in Handover 0034)
+- Fresh install detection via user count (not config flags)
+- `/api/auth/create-first-admin` endpoint with race condition protection
+- Two-layer security gate (frontend router + backend validation)
+- Automatic endpoint disablement after first user creation
 
 ### Step 6: Service Launch
 
@@ -752,24 +755,28 @@ def validate_installation():
 
 ### Step 8: Browser Launch & Completion
 
-**Browser Launch** (to /welcome Setup Wizard):
+**Browser Launch** (to Dashboard Root):
 ```python
 def launch_browser():
     """
-    Launch browser to /welcome page for first admin account creation
+    Launch browser to root URL for fresh install detection
 
-    Handover 0034: Opens to /welcome (not /login) for fresh installs
-    Router will redirect to /welcome if total_users_count == 0
+    Fresh install flow:
+    1. Browser opens to http://localhost:7274/
+    2. Router checks user count via /api/auth/user-count
+    3. If count = 0: Auto-redirect to /welcome
+    4. User clicks through to /first-login
+    5. Creates admin account with username, password, recovery PIN
     """
     print("🌐 Opening web browser...")
 
-    url = f"http://localhost:{DEFAULT_FRONTEND_PORT}/welcome"
+    url = f"http://localhost:{DEFAULT_FRONTEND_PORT}"
 
     try:
         import webbrowser
         webbrowser.open(url)
         print(f"✅ Browser opened: {url}")
-        print("ℹ️  Create your first admin account in the browser")
+        print("ℹ️  Fresh install will redirect to /welcome → /first-login")
     except Exception as e:
         print(f"⚠️  Could not open browser automatically: {e}")
         print(f"📋 Manual access: {url}")
@@ -785,18 +792,20 @@ def display_installation_summary():
     print(f"""
 📍 Installation Directory: {Path.cwd()}
 🗄️  Database: PostgreSQL 18 (giljo_mcp) with pg_trgm extension
-🔐 First Admin: Create account at http://localhost:7274/welcome
+🔐 Fresh Install: Will auto-redirect to /welcome (user count = 0)
 
 ⚠️  IMPORTANT NEXT STEPS:
-   1. Create first admin account in browser (username, password, recovery PIN)
-   2. Complete setup wizard (3 steps: Welcome, MCP Config, Serena)
-   3. Configure AI tool integration via Avatar → My Settings → API & Integrations
-   4. Configure firewall if needed for network access
+   1. Browser redirects to /welcome → /first-login
+   2. Create first admin account (username, password, recovery PIN)
+   3. Login and access dashboard
+   4. Configure AI tools via Avatar → My Settings → API & Integrations
+   5. Configure firewall if needed for network access
 
 🔒 Security Features:
-   - No default credentials (admin/admin eliminated in Handover 0034)
+   - No default credentials (admin/admin eliminated)
+   - Fresh install detection via user count (not config flags)
    - Recovery PIN system for password reset (Handover 0023)
-   - /api/auth/create-first-admin endpoint auto-disables after first user
+   - Two-layer security gate (router + backend validation)
 
 📚 Documentation:
    - docs/README_FIRST.md - Start here
