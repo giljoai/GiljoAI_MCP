@@ -133,6 +133,9 @@ export const api = {
     getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks/`),
     // Real-time token estimate for active product (Handover 0049)
     getActiveProductTokenEstimate: () => apiClient.get('/api/v1/products/active/token-estimate'),
+    // Product activation endpoints (Handover 0049)
+    activate: (id) => apiClient.post(`/api/v1/products/${id}/activate`),
+    deactivate: (id) => apiClient.post(`/api/v1/products/${id}/deactivate`),
   },
 
   // Projects

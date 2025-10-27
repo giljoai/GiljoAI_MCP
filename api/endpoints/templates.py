@@ -228,7 +228,7 @@ async def get_templates(
                     created_at=template.created_at,
                     updated_at=template.updated_at,
                     created_by=template.created_by,
-                    preferred_tool=template.preferred_tool or "claude",
+                    preferred_tool=template.tool or "claude",
                 )
             )
 
@@ -299,7 +299,7 @@ async def create_template(
             is_active=True,
             is_default=template.is_default,
             tags=template.tags or [],
-            preferred_tool=template.preferred_tool,
+            preferred_tool=template.tool,
             created_by=current_user.username,
         )
 
@@ -343,7 +343,7 @@ async def create_template(
             created_at=new_template.created_at,
             updated_at=new_template.updated_at,
             created_by=new_template.created_by,
-            preferred_tool=getattr(new_template, 'preferred_tool', 'claude'),
+            preferred_tool=getattr(new_template, 'tool', 'claude'),
         )
 
     except Exception as e:
@@ -428,7 +428,7 @@ async def update_template(
         if update.is_active is not None:
             template.is_active = update.is_active
         if update.preferred_tool is not None:
-            template.preferred_tool = update.preferred_tool
+            template.tool = update.preferred_tool
 
         # Handle default flag
         if update.is_default is not None and update.is_default and template.role:
@@ -495,7 +495,7 @@ async def update_template(
             created_at=template.created_at,
             updated_at=template.updated_at,
             created_by=template.created_by,
-            preferred_tool=template.preferred_tool or "claude",
+            preferred_tool=template.tool or "claude",
         )
 
     except HTTPException:
