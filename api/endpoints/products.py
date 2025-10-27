@@ -7,7 +7,8 @@ import uuid
 import aiofiles
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+import json
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
@@ -47,6 +48,10 @@ class ProductResponse(BaseModel):
     unresolved_tasks: int = 0
     unfinished_projects: int = 0
     vision_documents_count: int = 0
+    
+    # Handover 0042: Rich context fields
+    config_data: Optional[dict] = Field(None, description="Rich configuration: tech_stack, architecture, features")
+    has_config_data: bool = Field(False, description="Whether product has config_data populated")
 
 
 class VisionChunk(BaseModel):
@@ -95,6 +100,7 @@ async def create_product(
     name: str = Form(...),
     description: Optional[str] = Form(None),
     vision_file: Optional[UploadFile] = File(None),
+    config_data: Optional[str] = Form(None),  # Handover 0042: Rich configuration as JSON string
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Create a new product with optional vision document upload"""
@@ -104,8 +110,24 @@ async def create_product(
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
+        # Handover 0042: Parse and validate config_data JSON
+        config_dict: Dict[str, Any] = {}
+        if config_data:
+            try:
+                config_dict = json.loads(config_data)
+                if not isinstance(config_dict, dict):
+                    raise HTTPException(status_code=400, detail="config_data must be a JSON object")
+            except json.JSONDecodeError as e:
+                raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {str(e)}")
+        
         # Create product in database
-        product = Product(id=str(uuid.uuid4()), tenant_key=tenant_key, name=name, description=description)
+        product = Product(
+            id=str(uuid.uuid4()), 
+            tenant_key=tenant_key, 
+            name=name, 
+            description=description,
+            config_data=config_dict if config_dict else None
+        )
 
         # Handle vision document upload if provided
         if vision_file:
@@ -196,6 +218,97 @@ async def create_product(
                 unfinished_projects=unfinished_projects,
                 unresolved_tasks=unresolved_tasks,
                 vision_documents_count=len(vision_docs),
+                # Handover 0042: Include config_data in response
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{product_id}", response_model=ProductResponse)
+async def update_product(
+    product_id: str,
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    config_data: Optional[str] = Form(None),  # Handover 0042: Rich configuration as JSON string
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """Update an existing product (Handover 0042)"""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Fetch existing product
+            result = await db.execute(
+                select(Product)
+                .where(Product.id == product_id, Product.tenant_key == tenant_key)
+                .options(selectinload(Product.projects), selectinload(Product.tasks))
+            )
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Update fields if provided
+            if name is not None:
+                product.name = name
+            if description is not None:
+                product.description = description
+
+            # Handover 0042: Parse and update config_data
+            if config_data is not None:
+                try:
+                    config_dict = json.loads(config_data)
+                    if not isinstance(config_dict, dict):
+                        raise HTTPException(status_code=400, detail="config_data must be a JSON object")
+                    product.config_data = config_dict
+                except json.JSONDecodeError as e:
+                    raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {str(e)}")
+
+            await db.commit()
+            await db.refresh(product)
+
+            # Get counts for response
+            project_count_result = await db.execute(
+                select(Project).where(Project.tenant_key == tenant_key, Project.product_id == product.id)
+            )
+            projects = project_count_result.scalars().all()
+
+            task_count_result = await db.execute(
+                select(Task).where(Task.tenant_key == tenant_key, Task.product_id == product.id)
+            )
+            tasks = task_count_result.scalars().all()
+
+            vision_docs_result = await db.execute(
+                select(VisionDocument).where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id)
+            )
+            vision_docs = vision_docs_result.scalars().all()
+
+            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+
+            return ProductResponse(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                vision_path=product.vision_path,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+                project_count=len(projects),
+                task_count=len(tasks),
+                has_vision=bool(product.vision_path),
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=len(vision_docs),
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
             )
 
     except HTTPException:
@@ -325,85 +438,12 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
                 project_count=len(projects),
                 task_count=len(tasks),
                 has_vision=bool(product.vision_path),
-                # NEW: Add computed metrics
-                unfinished_projects=unfinished_projects,
-                unresolved_tasks=unresolved_tasks,
-                vision_documents_count=vision_doc_count,
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.put("/{product_id}", response_model=ProductResponse)
-async def update_product(product_id: str, product_update: ProductUpdate, tenant_key: str = Depends(get_tenant_key)):
-    """Update a product"""
-    from api.app import state
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as db:
-            # Get existing product
-            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-            result = await db.execute(stmt)
-            product = result.scalar_one_or_none()
-
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
-
-            # Update fields
-            update_data = {}
-            if product_update.name is not None:
-                update_data["name"] = product_update.name
-            if product_update.description is not None:
-                update_data["description"] = product_update.description
-
-            if update_data:
-                update_data["updated_at"] = datetime.now(timezone.utc)
-
-                stmt = update(Product).where(Product.id == product_id).values(**update_data).returning(Product)
-
-                result = await db.execute(stmt)
-                await db.commit()
-                product = result.scalar_one()
-
-            # Get counts (Handover 0046: Include new metrics for update endpoint)
-            project_count_result = await db.execute(
-                select(Project).where(Project.tenant_key == tenant_key, Project.product_id == product.id)
-            )
-            projects = project_count_result.scalars().all()
-
-            task_count_result = await db.execute(
-                select(Task).where(Task.tenant_key == tenant_key, Task.product_id == product.id)
-            )
-            tasks = task_count_result.scalars().all()
-
-            vision_docs_result = await db.execute(
-                select(VisionDocument).where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id)
-            )
-            vision_docs = vision_docs_result.scalars().all()
-
-            # Calculate metrics
-            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
-            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
-
-            return ProductResponse(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                vision_path=product.vision_path,
-                created_at=product.created_at,
-                updated_at=product.updated_at,
-                project_count=len(projects),
-                task_count=len(tasks),
-                has_vision=bool(product.vision_path),
                 unfinished_projects=unfinished_projects,
                 unresolved_tasks=unresolved_tasks,
                 vision_documents_count=len(vision_docs),
+                # Handover 0042: Include config_data in response
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
             )
 
     except HTTPException:

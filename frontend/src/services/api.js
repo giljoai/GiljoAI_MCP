@@ -105,11 +105,22 @@ export const api = {
       const formData = new FormData()
       formData.append('name', data.name)
       if (data.description) formData.append('description', data.description)
+      // Handover 0042: Add config_data as JSON string
+      if (data.configData) formData.append('config_data', JSON.stringify(data.configData))
       return apiClient.post('/api/v1/products/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
-    update: (id, data) => apiClient.put(`/api/v1/products/${id}/`, data),
+    update: (id, data) => {
+      // Handover 0042: Convert to FormData for config_data support
+      const formData = new FormData()
+      if (data.name) formData.append('name', data.name)
+      if (data.description) formData.append('description', data.description)
+      if (data.configData) formData.append('config_data', JSON.stringify(data.configData))
+      return apiClient.put(`/api/v1/products/${id}/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
     delete: (id) => apiClient.delete(`/api/v1/products/${id}/`),
     getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
     uploadVision: (id, file) => {
