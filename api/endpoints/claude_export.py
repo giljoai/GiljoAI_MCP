@@ -377,7 +377,7 @@ async def export_templates_to_claude_code(
             frontmatter = generate_yaml_frontmatter(
                 name=template.name,
                 role=template.role or template.name,
-                preferred_tool=template.preferred_tool,
+                preferred_tool=template.tool,
                 description=template.description,
             )
 

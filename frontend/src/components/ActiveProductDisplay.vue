@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useWebSocketStore } from '@/stores/websocket'
 
@@ -62,12 +62,24 @@ onMounted(async () => {
   loading.value = true
   try {
     await productsStore.fetchActiveProduct()
+    console.log('[ActiveProductDisplay] Initial active product:', productsStore.activeProduct)
   } catch (err) {
     console.error('[ActiveProductDisplay] Failed to fetch active product:', err)
   } finally {
     loading.value = false
   }
 })
+
+// Watch for changes to activeProduct (for debugging)
+watch(
+  () => productsStore.activeProduct,
+  (newProduct, oldProduct) => {
+    console.log('[ActiveProductDisplay] Active product changed:', {
+      from: oldProduct?.name || 'null',
+      to: newProduct?.name || 'null'
+    })
+  }
+)
 
 // Listen for product activation events via WebSocket (when implemented)
 // Whenever a product is activated, refresh the display
