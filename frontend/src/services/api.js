@@ -186,9 +186,9 @@ export const api = {
   users: {
     list: () => apiClient.get('/api/auth/users'),
     // Field priority configuration (Handover 0048)
-    getFieldPriorityConfig: () => apiClient.get('/api/v1/users/me/field-priority'),
-    updateFieldPriorityConfig: (config) => apiClient.put('/api/v1/users/me/field-priority', config),
-    resetFieldPriorityConfig: () => apiClient.post('/api/v1/users/me/field-priority/reset'),
+    getFieldPriorityConfig: () => apiClient.get('/api/users/me/field-priority'),
+    updateFieldPriorityConfig: (config) => apiClient.put('/api/users/me/field-priority', config),
+    resetFieldPriorityConfig: () => apiClient.post('/api/users/me/field-priority/reset'),
   },
 
   // Vision Documents (Multi-Document Support - Handover 0043)
