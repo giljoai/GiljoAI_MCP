@@ -336,116 +336,114 @@
               <v-tabs-window-item value="tech">
                 <div class="text-subtitle-1 mb-4">Technology Stack Configuration</div>
 
-                <v-combobox
+                <v-textarea
                   v-model="productForm.configData.tech_stack.languages"
                   label="Programming Languages"
-                  hint="e.g., Python, JavaScript, TypeScript"
+                  placeholder="Python 3.11, JavaScript ES2023, TypeScript 5.2"
+                  hint="List all programming languages used (comma-separated or line-by-line)"
                   persistent-hint
-                  multiple
-                  chips
-                  closable-chips
                   variant="outlined"
                   density="comfortable"
-                  :items="['Python', 'JavaScript', 'TypeScript', 'Java', 'Go', 'Rust', 'C#', 'C++', 'PHP', 'Ruby']"
+                  rows="3"
+                  auto-grow
                   class="mb-4"
-                ></v-combobox>
+                ></v-textarea>
 
-                <v-combobox
+                <v-textarea
                   v-model="productForm.configData.tech_stack.frontend"
-                  label="Frontend Frameworks"
-                  hint="e.g., Vue 3, React, Angular"
+                  label="Frontend Frameworks & Libraries"
+                  placeholder="Vue 3, Vuetify 3, Pinia, Vue Router"
+                  hint="List frontend technologies (frameworks, libraries, tools)"
                   persistent-hint
-                  multiple
-                  chips
-                  closable-chips
                   variant="outlined"
                   density="comfortable"
-                  :items="['Vue 3', 'React', 'Angular', 'Svelte', 'Next.js', 'Nuxt', 'SvelteKit']"
+                  rows="3"
+                  auto-grow
                   class="mb-4"
-                ></v-combobox>
+                ></v-textarea>
 
-                <v-combobox
+                <v-textarea
                   v-model="productForm.configData.tech_stack.backend"
-                  label="Backend Frameworks"
-                  hint="e.g., FastAPI, Express, Django"
+                  label="Backend Frameworks & Services"
+                  placeholder="FastAPI 0.104, SQLAlchemy 2.0, Alembic, asyncio"
+                  hint="List backend technologies (frameworks, ORMs, services)"
                   persistent-hint
-                  multiple
-                  chips
-                  closable-chips
                   variant="outlined"
                   density="comfortable"
-                  :items="['FastAPI', 'Django', 'Flask', 'Express', 'NestJS', 'Spring Boot', 'ASP.NET Core']"
+                  rows="3"
+                  auto-grow
                   class="mb-4"
-                ></v-combobox>
+                ></v-textarea>
 
-                <v-combobox
+                <v-textarea
                   v-model="productForm.configData.tech_stack.database"
-                  label="Databases"
-                  hint="e.g., PostgreSQL, MongoDB, Redis"
+                  label="Databases & Data Storage"
+                  placeholder="PostgreSQL 16, Redis 7, Vector embeddings (pgvector)"
+                  hint="List databases and data storage solutions"
                   persistent-hint
-                  multiple
-                  chips
-                  closable-chips
                   variant="outlined"
                   density="comfortable"
-                  :items="['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'Elasticsearch', 'DynamoDB']"
+                  rows="3"
+                  auto-grow
                   class="mb-4"
-                ></v-combobox>
+                ></v-textarea>
 
-                <v-combobox
+                <v-textarea
                   v-model="productForm.configData.tech_stack.infrastructure"
                   label="Infrastructure & DevOps"
-                  hint="e.g., Docker, Kubernetes, AWS"
+                  placeholder="Docker, Kubernetes, GitHub Actions CI/CD, AWS (EC2, S3, RDS)"
+                  hint="List infrastructure and deployment tools"
                   persistent-hint
-                  multiple
-                  chips
-                  closable-chips
                   variant="outlined"
                   density="comfortable"
-                  :items="['Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'Terraform', 'Ansible']"
+                  rows="3"
+                  auto-grow
                   class="mb-4"
-                ></v-combobox>
+                ></v-textarea>
               </v-tabs-window-item>
 
               <!-- Architecture Tab (Handover 0042) -->
               <v-tabs-window-item value="arch">
                 <div class="text-subtitle-1 mb-4">Architecture & Design Patterns</div>
 
-                <v-select
+                <v-textarea
                   v-model="productForm.configData.architecture.pattern"
                   label="Primary Architecture Pattern"
-                  hint="Overall system architecture approach"
+                  placeholder="Modular Monolith with Event-Driven components, CQRS for high-traffic modules"
+                  hint="Describe the overall system architecture approach"
                   persistent-hint
                   variant="outlined"
                   density="comfortable"
-                  :items="['Monolithic', 'Microservices', 'Modular Monolith', 'Serverless', 'Event-Driven', 'Layered Architecture']"
+                  rows="2"
+                  auto-grow
                   class="mb-4"
-                ></v-select>
+                ></v-textarea>
 
-                <v-combobox
+                <v-textarea
                   v-model="productForm.configData.architecture.design_patterns"
-                  label="Design Patterns"
-                  hint="e.g., MVC, Repository, Factory"
+                  label="Design Patterns & Principles"
+                  placeholder="Repository Pattern, Dependency Injection, Factory Pattern, SOLID principles"
+                  hint="List design patterns and architectural principles used"
                   persistent-hint
-                  multiple
-                  chips
-                  closable-chips
                   variant="outlined"
                   density="comfortable"
-                  :items="['MVC', 'Repository', 'Factory', 'Singleton', 'Observer', 'Strategy', 'Dependency Injection', 'CQRS']"
+                  rows="3"
+                  auto-grow
                   class="mb-4"
-                ></v-combobox>
+                ></v-textarea>
 
-                <v-select
+                <v-textarea
                   v-model="productForm.configData.architecture.api_style"
-                  label="API Style"
-                  hint="Primary API communication pattern"
+                  label="API Style & Communication"
+                  placeholder="REST API (OpenAPI 3.0), WebSocket for real-time updates, GraphQL for complex queries"
+                  hint="Describe API communication patterns and protocols"
                   persistent-hint
                   variant="outlined"
                   density="comfortable"
-                  :items="['REST', 'GraphQL', 'gRPC', 'WebSocket', 'Mixed']"
+                  rows="2"
+                  auto-grow
                   class="mb-4"
-                ></v-select>
+                ></v-textarea>
 
                 <v-textarea
                   v-model="productForm.configData.architecture.notes"
@@ -476,16 +474,18 @@
                   class="mb-4"
                 ></v-textarea>
 
-                <v-select
+                <v-textarea
                   v-model="productForm.configData.test_config.strategy"
-                  label="Testing Strategy"
-                  hint="Development approach for testing"
+                  label="Testing Strategy & Approach"
+                  placeholder="TDD for core business logic, Integration tests for API endpoints, E2E with Playwright"
+                  hint="Describe testing methodology and quality assurance approach"
                   persistent-hint
                   variant="outlined"
                   density="comfortable"
-                  :items="['TDD', 'BDD', 'Manual', 'Mixed']"
+                  rows="2"
+                  auto-grow
                   class="mb-4"
-                ></v-select>
+                ></v-textarea>
 
                 <div class="mb-4">
                   <label class="text-caption text-medium-emphasis">Test Coverage Target: {{ productForm.configData.test_config.coverage_target }}%</label>
@@ -499,19 +499,18 @@
                   ></v-slider>
                 </div>
 
-                <v-combobox
+                <v-textarea
                   v-model="productForm.configData.test_config.frameworks"
-                  label="Testing Frameworks"
-                  hint="e.g., pytest, Jest, Cypress"
+                  label="Testing Frameworks & Tools"
+                  placeholder="pytest, pytest-asyncio, Playwright, coverage.py"
+                  hint="List testing frameworks and quality assurance tools"
                   persistent-hint
-                  multiple
-                  chips
-                  closable-chips
                   variant="outlined"
                   density="comfortable"
-                  :items="['pytest', 'Jest', 'Mocha', 'Cypress', 'Playwright', 'Vitest', 'JUnit']"
+                  rows="3"
+                  auto-grow
                   class="mb-4"
-                ></v-combobox>
+                ></v-textarea>
               </v-tabs-window-item>
             </v-tabs-window>
           </v-form>
@@ -636,53 +635,21 @@
                   Tech Stack
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <div v-if="selectedProduct.config_data.tech_stack.languages?.length" class="mb-2">
+                  <div v-if="selectedProduct.config_data.tech_stack.languages" class="mb-2">
                     <div class="text-caption font-weight-bold">Languages:</div>
-                    <v-chip-group>
-                      <v-chip
-                        v-for="lang in selectedProduct.config_data.tech_stack.languages"
-                        :key="lang"
-                        size="small"
-                        color="primary"
-                        variant="tonal"
-                      >{{ lang }}</v-chip>
-                    </v-chip-group>
+                    <div class="text-body-2">{{ selectedProduct.config_data.tech_stack.languages }}</div>
                   </div>
-                  <div v-if="selectedProduct.config_data.tech_stack.frontend?.length" class="mb-2">
+                  <div v-if="selectedProduct.config_data.tech_stack.frontend" class="mb-2">
                     <div class="text-caption font-weight-bold">Frontend:</div>
-                    <v-chip-group>
-                      <v-chip
-                        v-for="fw in selectedProduct.config_data.tech_stack.frontend"
-                        :key="fw"
-                        size="small"
-                        color="success"
-                        variant="tonal"
-                      >{{ fw }}</v-chip>
-                    </v-chip-group>
+                    <div class="text-body-2">{{ selectedProduct.config_data.tech_stack.frontend }}</div>
                   </div>
-                  <div v-if="selectedProduct.config_data.tech_stack.backend?.length" class="mb-2">
+                  <div v-if="selectedProduct.config_data.tech_stack.backend" class="mb-2">
                     <div class="text-caption font-weight-bold">Backend:</div>
-                    <v-chip-group>
-                      <v-chip
-                        v-for="fw in selectedProduct.config_data.tech_stack.backend"
-                        :key="fw"
-                        size="small"
-                        color="info"
-                        variant="tonal"
-                      >{{ fw }}</v-chip>
-                    </v-chip-group>
+                    <div class="text-body-2">{{ selectedProduct.config_data.tech_stack.backend }}</div>
                   </div>
-                  <div v-if="selectedProduct.config_data.tech_stack.database?.length">
+                  <div v-if="selectedProduct.config_data.tech_stack.database">
                     <div class="text-caption font-weight-bold">Databases:</div>
-                    <v-chip-group>
-                      <v-chip
-                        v-for="db in selectedProduct.config_data.tech_stack.database"
-                        :key="db"
-                        size="small"
-                        color="warning"
-                        variant="tonal"
-                      >{{ db }}</v-chip>
-                    </v-chip-group>
+                    <div class="text-body-2">{{ selectedProduct.config_data.tech_stack.database }}</div>
                   </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -702,15 +669,9 @@
                     <div class="text-caption font-weight-bold">API Style:</div>
                     <div class="text-body-2">{{ selectedProduct.config_data.architecture.api_style }}</div>
                   </div>
-                  <div v-if="selectedProduct.config_data.architecture.design_patterns?.length">
+                  <div v-if="selectedProduct.config_data.architecture.design_patterns">
                     <div class="text-caption font-weight-bold">Design Patterns:</div>
-                    <v-chip-group>
-                      <v-chip
-                        v-for="pattern in selectedProduct.config_data.architecture.design_patterns"
-                        :key="pattern"
-                        size="small"
-                      >{{ pattern }}</v-chip>
-                    </v-chip-group>
+                    <div class="text-body-2">{{ selectedProduct.config_data.architecture.design_patterns }}</div>
                   </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -918,15 +879,15 @@ const productForm = ref({
   // Handover 0042: Rich configuration data
   configData: {
     tech_stack: {
-      languages: [],
-      frontend: [],
-      backend: [],
-      database: [],
-      infrastructure: [],
+      languages: '',
+      frontend: '',
+      backend: '',
+      database: '',
+      infrastructure: '',
     },
     architecture: {
       pattern: '',
-      design_patterns: [],
+      design_patterns: '',
       api_style: '',
       notes: '',
     },
@@ -936,7 +897,7 @@ const productForm = ref({
     test_config: {
       strategy: 'TDD',
       coverage_target: 80,
-      frameworks: [],
+      frameworks: '',
     },
   },
 })
@@ -1102,15 +1063,15 @@ async function editProduct(product) {
   // Handover 0042: Default config structure
   const defaultConfig = {
     tech_stack: {
-      languages: [],
-      frontend: [],
-      backend: [],
-      database: [],
-      infrastructure: [],
+      languages: '',
+      frontend: '',
+      backend: '',
+      database: '',
+      infrastructure: '',
     },
     architecture: {
       pattern: '',
-      design_patterns: [],
+      design_patterns: '',
       api_style: '',
       notes: '',
     },
@@ -1120,7 +1081,7 @@ async function editProduct(product) {
     test_config: {
       strategy: 'TDD',
       coverage_target: 80,
-      frameworks: [],
+      frameworks: '',
     },
   }
   
@@ -1330,15 +1291,15 @@ function closeDialog() {
     // Handover 0042: Reset config_data
     configData: {
       tech_stack: {
-        languages: [],
-        frontend: [],
-        backend: [],
-        database: [],
-        infrastructure: [],
-      },
-      architecture: {
-        pattern: '',
-        design_patterns: [],
+      languages: '',
+      frontend: '',
+      backend: '',
+      database: '',
+      infrastructure: '',
+    },
+    architecture: {
+      pattern: '',
+      design_patterns: '',
         api_style: '',
         notes: '',
       },
@@ -1346,9 +1307,9 @@ function closeDialog() {
         core: '',
       },
       test_config: {
-        strategy: 'TDD',
-        coverage_target: 80,
-        frameworks: [],
+      strategy: 'TDD',
+      coverage_target: 80,
+      frameworks: '',
       },
     },
   }
