@@ -236,81 +236,20 @@
         <v-divider></v-divider>
 
         <v-card-text style="min-height: 400px; max-height: 600px; overflow-y: auto">
-          <!-- Handover 0042: Tabbed interface for product configuration -->
-          <v-tabs v-model="dialogTab" class="mb-4" color="primary">
-            <v-tab value="basic">
-              <span class="d-flex align-center">
-                Basic Info
-                <v-badge
-                  v-if="tabValidation.basic.valid"
-                  color="success"
-                  dot
-                  inline
-                  class="ml-2"
-                  aria-label="Basic info completed"
-                ></v-badge>
-              </span>
-              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
-            </v-tab>
-
-            <v-tab value="vision">
-              <span class="d-flex align-center">
-                Vision Docs
-                <v-badge
-                  v-if="tabValidation.vision.hasWarning"
-                  color="success"
-                  dot
-                  inline
-                  class="ml-2"
-                  aria-label="Optional section"
-                ></v-badge>
-              </span>
-              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
-            </v-tab>
-
-            <v-tab value="tech">
-              <span class="d-flex align-center">
-                Tech Stack
-                <v-badge
-                  v-if="tabValidation.tech.hasWarning"
-                  color="success"
-                  dot
-                  inline
-                  class="ml-2"
-                  aria-label="Optional section"
-                ></v-badge>
-              </span>
-              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
-            </v-tab>
-
-            <v-tab value="arch">
-              <span class="d-flex align-center">
-                Architecture
-                <v-badge
-                  v-if="tabValidation.arch.hasWarning"
-                  color="success"
-                  dot
-                  inline
-                  class="ml-2"
-                  aria-label="Optional section"
-                ></v-badge>
-              </span>
-              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
-            </v-tab>
-
-            <v-tab value="features">
-              <span class="d-flex align-center">
-                Features & Testing
-                <v-badge
-                  v-if="tabValidation.features.hasWarning"
-                  color="success"
-                  dot
-                  inline
-                  class="ml-2"
-                  aria-label="Optional section"
-                ></v-badge>
-              </span>
-            </v-tab>
+          <!-- Tabbed interface for product configuration (single line tabs, no dots) -->
+          <v-tabs
+            v-model="dialogTab"
+            class="mb-4 tabs-with-arrows"
+            color="primary"
+            show-arrows
+            prev-icon="mdi-chevron-left"
+            next-icon="mdi-chevron-right"
+          >
+            <v-tab value="basic">Basic Info</v-tab>
+            <v-tab value="vision">Vision Docs</v-tab>
+            <v-tab value="tech">Tech Stack</v-tab>
+            <v-tab value="arch">Architecture</v-tab>
+            <v-tab value="features">Features & Testing</v-tab>
           </v-tabs>
 
           <v-form ref="formRef" v-model="formValid">
@@ -318,6 +257,9 @@
             <v-tabs-window v-model="dialogTab">
               <!-- Basic Info Tab -->
               <v-tabs-window-item value="basic">
+            <!-- Basic tab heading -->
+            <div class="text-subtitle-1 mb-4">Product Information</div>
+
             <!-- Product Name -->
             <v-text-field
               v-model="productForm.name"
@@ -326,7 +268,7 @@
               variant="outlined"
               density="comfortable"
               required
-              class="mb-4"
+              class="mb-4 mt-2"
             ></v-text-field>
 
             <!-- Description -->
@@ -347,8 +289,7 @@
               <v-tabs-window-item value="vision">
             <!-- Vision Documents Section -->
 
-            <div class="text-h6 mb-3">
-              <v-icon start>mdi-file-document-multiple-outline</v-icon>
+            <div class="text-subtitle-1 mb-4">
               Vision Documents
             </div>
 
@@ -1409,9 +1350,7 @@ const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
 // Wizard tab order and navigation helpers
 const tabOrder = ['basic', 'vision', 'tech', 'arch', 'features']
 const isFirstTab = computed(() => tabOrder.indexOf(dialogTab.value) === 0)
-const isLastTab = computed(
-  () => tabOrder.indexOf(dialogTab.value) === tabOrder.length - 1,
-)
+const isLastTab = computed(() => tabOrder.indexOf(dialogTab.value) === tabOrder.length - 1)
 
 function goNextTab() {
   const idx = tabOrder.indexOf(dialogTab.value)
@@ -2012,23 +1951,29 @@ watch(showDialog, (isOpen) => {
     const cached = autoSave.value.restoreFromCache()
     if (cached) {
       const metadata = autoSave.value.getCacheMetadata()
-      const ageMinutes = metadata?.ageMinutes || 0
+      const ageMinutes = metadata?.ageMinutes ?? 0
+      // Snapshot current initial state for comparison
+      const initialSnapshot = JSON.parse(JSON.stringify(productForm.value))
+      const differs = JSON.stringify(cached) !== JSON.stringify(initialSnapshot)
 
-      // Prompt user to restore
-      const shouldRestore = confirm(
-        `Found unsaved changes from ${ageMinutes} minute(s) ago. Restore draft?`
-      )
-
-      if (shouldRestore) {
-        productForm.value = { ...productForm.value, ...cached }
-        showToast({
-          message: 'Draft restored successfully',
-          type: 'info',
-          duration: 3000
-        })
-      } else {
-        autoSave.value.clearCache()
+      // Only prompt if the cached draft is meaningfully different and not just-created
+      if (differs && ageMinutes >= 1) {
+        const shouldRestore = confirm(
+          `Found unsaved changes from ${ageMinutes} minute(s) ago. Restore draft?`
+        )
+        if (shouldRestore) {
+          productForm.value = { ...productForm.value, ...cached }
+          showToast({
+            message: 'Draft restored successfully',
+            type: 'info',
+            duration: 3000,
+          })
+        } else {
+          // User declined a real, older draft; clear it
+          autoSave.value.clearCache()
+        }
       }
+      // If not differs or just created (<1 minute), do not prompt
     }
   } else {
     // Dialog closed - cleanup auto-save
@@ -2088,8 +2033,13 @@ onUnmounted(() => {
   }
 }
 
-/* Wizard chevrons between tabs */
-.tab-chevron {
-  opacity: 0.6;
+/* Bright (white) when enabled, dim when disabled; arrows no longer overlay tabs */
+.tabs-with-arrows :deep(.v-slide-group__prev .v-btn .v-icon),
+.tabs-with-arrows :deep(.v-slide-group__next .v-btn .v-icon) {
+  color: white;
+}
+.tabs-with-arrows :deep(.v-slide-group__prev .v-btn.v-btn--disabled .v-icon),
+.tabs-with-arrows :deep(.v-slide-group__next .v-btn.v-btn--disabled .v-icon) {
+  opacity: 0.4;
 }
 </style>
