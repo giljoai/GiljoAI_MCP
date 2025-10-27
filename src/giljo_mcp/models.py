@@ -90,6 +90,10 @@ class Product(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     meta_data = Column(JSON, default=dict)
 
+    # Product status (Handover 0049)
+    is_active = Column(Boolean, default=False, nullable=False,
+        comment="Active product for token estimation and mission planning (one per tenant)")
+
     # Rich configuration data (JSONB for PostgreSQL performance)
     config_data = Column(
         JSONB,

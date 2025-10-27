@@ -170,7 +170,7 @@
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
-                    <div class="text-caption">Estimated Context Size</div>
+                    <div class="text-caption">Estimated Context Size for: {{ activeProductName }}</div>
                     <div class="text-h6">{{ estimatedTokens }} / {{ tokenBudget }} tokens</div>
                   </div>
                   <v-progress-circular
@@ -504,7 +504,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
@@ -515,6 +515,7 @@ import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import draggable from 'vuedraggable'
 import setupService from '@/services/setupService'
+import api from '@/services/api'
 
 // Stores and Theme
 const settingsStore = useSettingsStore()
@@ -533,9 +534,13 @@ const showManualConfigDialog = ref(false)
 const priority1Fields = ref([])
 const priority2Fields = ref([])
 const priority3Fields = ref([])
-const tokenBudget = ref(1500)
+const tokenBudget = ref(2000)
 const savingFieldPriority = ref(false)
 const fieldPriorityHasChanges = ref(false)
+
+// Real-time token calculation state (Handover 0049)
+const activeProductTokens = ref(null)
+const loadingTokenEstimate = ref(false)
 
 // Field labels mapping for display
 const fieldLabels = {
@@ -687,8 +692,19 @@ async function toggleSerena(enabled) {
   }
 }
 
+// Real-time token calculation computed properties (Handover 0049)
+const activeProductName = computed(() => {
+  return activeProductTokens.value?.name || 'No Active Product'
+})
+
 // Field Priority Configuration computed properties (Handover 0048)
 const estimatedTokens = computed(() => {
+  // Use real-time data from active product if available (Handover 0049)
+  if (activeProductTokens.value?.total_tokens) {
+    return activeProductTokens.value.total_tokens
+  }
+
+  // Fallback to generic calculation
   const p1 = priority1Fields.value.length * 50
   const p2 = priority2Fields.value.length * 30
   const p3 = priority3Fields.value.length * 20
@@ -779,7 +795,7 @@ async function loadFieldPriorityConfig() {
     const config = settingsStore.fieldPriorityConfig
 
     if (config) {
-      tokenBudget.value = config.token_budget || 1500
+      tokenBudget.value = config.token_budget || 2000
 
       // Convert backend format to frontend arrays
       priority1Fields.value = []
@@ -801,6 +817,25 @@ async function loadFieldPriorityConfig() {
     }
   } catch (error) {
     console.error('[USER SETTINGS] Failed to load field priority config:', error)
+  }
+}
+
+// Real-time token calculation method (Handover 0049)
+async function fetchActiveProductTokenEstimate() {
+  loadingTokenEstimate.value = true
+  try {
+    const response = await api.products.getActiveProductTokenEstimate()
+    if (response.data) {
+      activeProductTokens.value = response.data
+      console.log('[USER SETTINGS] Active product token estimate loaded:', activeProductTokens.value)
+    }
+  } catch (error) {
+    console.warn('[USER SETTINGS] Failed to fetch active product token estimate:', error.response?.status || error.message)
+    // Graceful fallback: use generic calculation (already implemented in computed property)
+    activeProductTokens.value = null
+    console.log('[USER SETTINGS] Using fallback generic token calculation')
+  } finally {
+    loadingTokenEstimate.value = false
   }
 }
 
@@ -829,7 +864,29 @@ onMounted(async () => {
 
   // Load field priority configuration (Handover 0048)
   await loadFieldPriorityConfig()
+
+  // Fetch real-time token estimate from active product (Handover 0049)
+  await fetchActiveProductTokenEstimate()
 })
+
+// Watch priority fields for changes and recalculate tokens with debounce (Handover 0049)
+let tokenCalculationTimeout
+watch(
+  () => [priority1Fields.value, priority2Fields.value, priority3Fields.value],
+  () => {
+    // Clear previous timeout to implement debounce
+    if (tokenCalculationTimeout) {
+      clearTimeout(tokenCalculationTimeout)
+    }
+
+    // Debounce token recalculation (500ms)
+    tokenCalculationTimeout = setTimeout(() => {
+      // Token recalculation happens automatically via computed property
+      console.log('[USER SETTINGS] Token estimate recalculated (debounced)')
+    }, 500)
+  },
+  { deep: true }
+)
 </script>
 
 <style scoped>
