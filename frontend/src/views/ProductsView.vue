@@ -242,14 +242,15 @@
               <span class="d-flex align-center">
                 Basic Info
                 <v-badge
-                  v-if="tabValidation.basic.hasError"
-                  color="error"
+                  v-if="tabValidation.basic.valid"
+                  color="success"
                   dot
                   inline
                   class="ml-2"
-                  aria-label="Required field missing"
+                  aria-label="Basic info completed"
                 ></v-badge>
               </span>
+              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
             </v-tab>
 
             <v-tab value="vision">
@@ -257,13 +258,14 @@
                 Vision Docs
                 <v-badge
                   v-if="tabValidation.vision.hasWarning"
-                  color="warning"
+                  color="success"
                   dot
                   inline
                   class="ml-2"
-                  aria-label="No vision documents"
+                  aria-label="Optional section"
                 ></v-badge>
               </span>
+              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
             </v-tab>
 
             <v-tab value="tech">
@@ -271,13 +273,14 @@
                 Tech Stack
                 <v-badge
                   v-if="tabValidation.tech.hasWarning"
-                  color="warning"
+                  color="success"
                   dot
                   inline
                   class="ml-2"
-                  aria-label="Incomplete tech stack"
+                  aria-label="Optional section"
                 ></v-badge>
               </span>
+              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
             </v-tab>
 
             <v-tab value="arch">
@@ -285,13 +288,14 @@
                 Architecture
                 <v-badge
                   v-if="tabValidation.arch.hasWarning"
-                  color="warning"
+                  color="success"
                   dot
                   inline
                   class="ml-2"
-                  aria-label="Incomplete architecture"
+                  aria-label="Optional section"
                 ></v-badge>
               </span>
+              <v-icon class="tab-chevron mx-2" size="18">mdi-chevron-right</v-icon>
             </v-tab>
 
             <v-tab value="features">
@@ -299,11 +303,11 @@
                 Features & Testing
                 <v-badge
                   v-if="tabValidation.features.hasWarning"
-                  color="warning"
+                  color="success"
                   dot
                   inline
                   class="ml-2"
-                  aria-label="Incomplete features"
+                  aria-label="Optional section"
                 ></v-badge>
               </span>
             </v-tab>
@@ -1043,15 +1047,15 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="closeDialog">Cancel</v-btn>
+          <v-btn variant="text" @click="goPrevTab" :disabled="isFirstTab">Back</v-btn>
           <v-btn
             color="primary"
             variant="flat"
-            @click="saveProduct"
-            :disabled="!formValid || saving"
-            :loading="saving"
+            @click="editingProduct ? saveProduct() : (isLastTab ? saveProduct() : goNextTab())"
+            :disabled="editingProduct ? (!formValid || saving) : (isLastTab ? (!formValid || saving) : saving)"
+            :loading="editingProduct ? saving : (isLastTab ? saving : false)"
           >
-            {{ editingProduct ? 'Save Changes' : 'Create Product' }}
+            {{ editingProduct ? 'Save Changes' : (isLastTab ? 'Create Product' : 'Next') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1401,6 +1405,27 @@ const deleteConfirmationCheck = ref(false)
 const deleteConfirmationError = ref(false)
 const dialogTab = ref('basic')  // Handover 0042: Tab for product dialog (basic, tech, arch, features)
 const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
+
+// Wizard tab order and navigation helpers
+const tabOrder = ['basic', 'vision', 'tech', 'arch', 'features']
+const isFirstTab = computed(() => tabOrder.indexOf(dialogTab.value) === 0)
+const isLastTab = computed(
+  () => tabOrder.indexOf(dialogTab.value) === tabOrder.length - 1,
+)
+
+function goNextTab() {
+  const idx = tabOrder.indexOf(dialogTab.value)
+  if (idx >= 0 && idx < tabOrder.length - 1) {
+    dialogTab.value = tabOrder[idx + 1]
+  }
+}
+
+function goPrevTab() {
+  const idx = tabOrder.indexOf(dialogTab.value)
+  if (idx > 0) {
+    dialogTab.value = tabOrder[idx - 1]
+  }
+}
 
 const productForm = ref({
   name: '',
@@ -2061,5 +2086,10 @@ onUnmounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Wizard chevrons between tabs */
+.tab-chevron {
+  opacity: 0.6;
 }
 </style>
