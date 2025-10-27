@@ -244,7 +244,6 @@ const taskStore = useTaskStore()
 const activeTab = ref('timeline')
 const selectedProject = ref(null)
 const agentMetrics = ref(null)
-const refreshInterval = ref(null)
 const setupStatus = ref({
   setup_mode: false,
   setup_complete: true,
@@ -496,10 +495,7 @@ onMounted(async () => {
 
   await refreshData()
 
-  // Set up refresh interval
-  refreshInterval.value = setInterval(refreshData, 30000)
-
-  // Set up WebSocket listeners
+  // Set up WebSocket listeners for real-time updates
   const unsubscribe = websocketService.onMessage('stats:update', handleRealtimeUpdate)
 
   // Select first project if available
@@ -509,9 +505,6 @@ onMounted(async () => {
   }
 
   onUnmounted(() => {
-    if (refreshInterval.value) {
-      clearInterval(refreshInterval.value)
-    }
     unsubscribe()
   })
 })

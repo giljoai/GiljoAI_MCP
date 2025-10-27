@@ -1328,24 +1328,9 @@ async function loadProducts() {
   }
 }
 
-// Auto-refresh metrics
-let refreshInterval = null
-
 onMounted(async () => {
   await loadProducts()
-
-  // Refresh metrics every 30 seconds
-  refreshInterval = setInterval(async () => {
-    for (const product of productStore.products) {
-      await productStore.fetchProductMetrics(product.id)
-    }
-  }, 30000)
-})
-
-onUnmounted(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval)
-  }
+  // Product metrics updates via WebSocket (product:updated events)
 })
 </script>
 
