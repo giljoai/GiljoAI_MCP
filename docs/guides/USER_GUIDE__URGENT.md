@@ -629,6 +629,474 @@ python -m giljo_mcp.server --debug
 tail -f logs/giljo-mcp.log
 ```
 
+## Product Management
+
+### Product Configuration
+
+Products in GiljoAI MCP can be configured with rich context fields to provide agents with comprehensive information about your project.
+
+#### 5-Tab Product Form
+
+When creating or editing a product, you'll use a multi-tabbed interface that organizes configuration into logical sections:
+
+**Tab 1: Basic Info**
+- **Product Name**: Unique identifier for your product (required)
+- **Description**: Overview of the product that provides context for AI agents
+- **Vision Type**: Choose how to provide vision context:
+  - **File**: Upload a vision document from your file system
+  - **Inline**: Write vision directly in the form editor
+  - **None**: No vision document
+
+**Tab 2: Tech Stack**
+Configure the technologies, frameworks, and tools used in your product:
+- **Programming Languages**: Languages used in the project (e.g., Python 3.11+, TypeScript 5.0)
+- **Backend Stack**: Backend frameworks and runtime (e.g., FastAPI, Node.js)
+- **Frontend Stack**: Frontend frameworks and libraries (e.g., Vue 3, React)
+- **Databases**: Database systems (e.g., PostgreSQL 18, MongoDB)
+- **Infrastructure**: Deployment and infrastructure details (e.g., Docker, Kubernetes)
+
+**Tab 3: Architecture**
+Describe your product's architectural approach:
+- **Architecture Pattern**: Overall architectural style (e.g., Microservices, Modular Monolith)
+- **API Style**: API communication style (e.g., REST, GraphQL, gRPC)
+- **Design Patterns**: Specific design patterns used (e.g., Repository, Factory, Strategy)
+- **Additional Notes**: Extra architectural context and decisions
+
+**Tab 4: Features**
+Document your product's features and roadmap:
+- **Core Features**: Currently implemented features
+- **Optional Features**: Planned or future features
+- **Integrations**: External system integrations
+
+**Tab 5: Test Config**
+Define testing requirements and strategies:
+- **Testing Strategy**: Testing methodology (e.g., TDD, BDD)
+- **Testing Frameworks**: Tools and frameworks used (e.g., pytest, vitest)
+- **Coverage Target**: Required code coverage percentage
+- **Additional Notes**: Extra testing context
+
+#### Best Practices for Product Configuration
+
+- **Use free-text format**: All fields accept any text format for maximum flexibility
+- **Provide detailed context**: More information helps agents work more effectively
+- **Update regularly**: Keep product configuration current as your product evolves
+- **Use consistent terminology**: Maintain consistency across all configuration fields
+
+### Products View Management
+
+The Products view provides unified management for all your products, including vision documents, metrics, and lifecycle operations.
+
+#### Product Cards
+
+Each product is displayed as a card showing:
+- **Product Name** and description
+- **Status**: Active (highlighted) or Inactive
+- **Metrics**:
+  - Unresolved Tasks count
+  - Unfinished Projects count
+  - Vision Documents count
+- **Date Created**: When the product was first created
+- **Actions**: Edit, Activate/Deactivate, Delete buttons
+
+#### Creating a Product
+
+1. Click the **"+ New Product"** button in the Products view
+2. Fill in the **Basic Info** tab:
+   - Enter a unique product name (required)
+   - Add a description
+   - Select vision type and provide vision content if needed
+3. Configure **Tech Stack** (optional but recommended):
+   - Enter programming languages
+   - Specify backend and frontend frameworks
+   - List databases and infrastructure
+4. Define **Architecture** details (optional):
+   - Document architectural patterns
+   - Specify API style
+   - Note design patterns used
+5. Describe **Features** (optional):
+   - List core features
+   - Document planned features
+   - Note integrations
+6. Configure **Test Settings** (optional):
+   - Define testing strategy
+   - List testing frameworks
+   - Set coverage targets
+7. Click **"Create Product"** to save
+
+**Vision Document Upload** (if using File type):
+- Drag and drop files into the upload area
+- OR click to browse and select files
+- Supported formats: .md, .txt, .pdf, .docx
+- Multiple files can be uploaded
+- Files are automatically chunked for efficient processing (25K tokens per chunk)
+
+#### Editing a Product
+
+1. Click the **"Edit"** button on the product card
+2. Modify any fields across the 5 tabs
+3. **Update vision documents** if needed:
+   - View existing vision documents
+   - Upload additional files
+   - Remove existing files
+4. Click **"Save Changes"** to apply updates
+
+#### Managing Vision Documents in Edit Mode
+
+When editing a product:
+- **Existing Documents** section shows all attached vision files with:
+  - Filename
+  - Chunk count (indicates processing status)
+  - Created date
+  - Delete button (with confirmation)
+- **Add More Documents** section allows uploading additional files
+- Removing a document also deletes its chunks from the system
+
+#### Activating and Deactivating Products
+
+Products use a **single-active-product architecture** - only one product can be active at a time:
+
+- **Active products** are available for mission creation and appear in agent context
+- **Inactive products** are archived but can be reactivated anytime
+- Click **"Activate"** button on a product card to set it as active
+- The previously active product automatically becomes inactive
+- Active product is visually indicated with a highlighted border or badge
+
+**Active Product Benefits**:
+- Tasks and projects are filtered to show only those belonging to the active product
+- AI agents receive context specific to the active product
+- Dashboard displays active product name for quick reference
+
+#### Deleting a Product
+
+**Warning**: Product deletion is irreversible and cascades to all related data.
+
+1. Click the **"Delete"** button on the product card
+2. Review the **cascade impact** display showing what will be deleted:
+   - Number of projects (total and unfinished)
+   - Number of tasks (total and unresolved)
+   - Number of vision documents
+   - Number of context chunks
+3. Read the warning: **"THIS ACTION CANNOT BE UNDONE"**
+4. Type the product name exactly to confirm deletion (safety measure)
+5. Check the confirmation box: "I understand this action is permanent"
+6. Click **"Delete Forever"** to proceed
+
+**What Gets Deleted**:
+- The product record
+- All associated projects (and their tasks)
+- All associated tasks
+- All vision documents and their chunks
+- All product-specific context data
+
+### Field Priority Configuration
+
+Control how product configuration fields are prioritized for token budget allocation when building AI agent context.
+
+#### Overview
+
+When AI agents are created for missions, they receive product context from the fields you configured. The Field Priority system (also called **Context Priority Management**) allows you to control which fields are most important and should be prioritized when building agent context within token budget constraints.
+
+#### Accessing Field Priority Settings
+
+1. Click the **Avatar dropdown** in the top right corner
+2. Select **"Settings"**
+3. Navigate to the **"General"** tab
+4. Scroll to the **"Context Priority Management"** section
+
+#### Understanding the Priority System
+
+The system uses a **3-tier priority hierarchy** plus an **Unassigned** category:
+
+**Priority 1 (P1) - Always Included**
+- Highest token allocation (~40% of budget)
+- Fields essential for agent understanding
+- Always sent to AI agents in missions
+- Badge color: Red
+
+**Priority 2 (P2) - High Priority**
+- Medium token allocation (~35% of budget)
+- Important context that significantly improves agent performance
+- Included when token budget allows
+- Badge color: Orange
+
+**Priority 3 (P3) - Medium Priority**
+- Lower token allocation (~25% of budget)
+- Nice-to-have context that provides additional detail
+- Included last, may be dropped if budget exceeded
+- Badge color: Blue
+
+**Unassigned Fields**
+- Zero token allocation
+- Fields not currently assigned to any priority level
+- Excluded from agent missions
+- Can be dragged back to priority categories anytime
+- Badge color: Grey (dashed border)
+
+#### Default Priority Configuration
+
+The system comes with smart defaults optimized for most projects:
+
+**Priority 1 (P1)**:
+- Programming Languages
+- Backend Stack
+- Frontend Stack
+- Architecture Pattern
+- Core Features
+
+**Priority 2 (P2)**:
+- Databases
+- API Style
+- Testing Strategy
+
+**Priority 3 (P3)**:
+- Infrastructure
+- Design Patterns
+- Architecture Notes
+- Testing Frameworks
+- Coverage Target
+
+#### Customizing Field Priorities
+
+**Drag-and-Drop Reordering**:
+
+1. Navigate to **Settings → General → Context Priority Management**
+2. **Drag fields** between priority sections using the drag handle icon
+3. Drop fields in the desired priority level (P1, P2, P3, or Unassigned)
+4. Fields update position immediately
+5. Token estimator recalculates in real-time
+
+**Removing Fields from Priority**:
+
+1. Click the **"X"** button on any field chip
+2. Field moves to the **Unassigned** category automatically
+3. Token count decreases immediately
+4. Field remains visible and can be restored by dragging back
+
+**Restoring Fields**:
+
+1. Find the field in the **Unassigned** category
+2. Drag it to your desired priority level (P1, P2, or P3)
+3. Token count increases immediately
+
+#### Token Budget Estimator
+
+The real-time token estimator shows:
+
+**Header Information**:
+- Active product name (context for estimates)
+- Current token usage vs. budget (e.g., "1,247 / 2,000 tokens")
+- Percentage indicator with color-coded status:
+  - Green: Under 70% (healthy)
+  - Yellow/Orange: 70-90% (warning)
+  - Red: Over 90% (at capacity)
+
+**How It Works**:
+- Fetches actual field content from your active product
+- Calculates real token usage based on field values
+- Updates automatically when you change priorities
+- Refreshes after saving changes
+- Shows accurate impact of your configuration
+
+**Token Allocation**:
+- Priority 1 fields: ~50 tokens per field
+- Priority 2 fields: ~30 tokens per field
+- Priority 3 fields: ~20 tokens per field
+- Unassigned fields: 0 tokens
+- Mission overhead: ~500 tokens (always included)
+
+#### Saving Priority Changes
+
+1. Adjust field priorities using drag-and-drop or remove buttons
+2. Review the token estimate to ensure it fits your budget
+3. Click **"Save Field Priority"** button
+4. Token estimator refreshes with updated calculations
+5. Changes apply to the **active product** immediately
+
+**When changes take effect**:
+- New missions created after saving use the updated priorities
+- Existing missions are not affected
+- Each mission snapshot preserves the configuration at creation time
+
+#### Resetting to Defaults
+
+If you want to start over or undo customizations:
+
+1. Click the **"Reset to Defaults"** button
+2. Confirm the reset action in the dialog
+3. System restores the original default priority configuration
+4. Token estimator refreshes automatically
+5. All customizations are lost (cannot be undone)
+
+**When to reset**:
+- Experimenting with priorities went wrong
+- Want to return to proven defaults
+- Unsure about current configuration
+- Starting fresh with a new project type
+
+#### Best Practices for Field Priorities
+
+**Prioritize Essential Information**:
+- Put fields agents need for every mission in P1
+- Consider which fields appear in most of your mission types
+- Tech stack and architecture are usually high priority
+
+**Balance Token Budget**:
+- Monitor the token percentage indicator
+- Keep under 90% to leave room for mission-specific context
+- If over budget, move less critical fields to lower priorities or Unassigned
+
+**Test Different Configurations**:
+- Try different priority arrangements for your workflow
+- Monitor agent performance with different configurations
+- Use Reset to Defaults if uncertain - defaults are well-tested
+
+**Context Matters**:
+- Backend-heavy projects: Prioritize backend stack, databases, API style
+- Frontend-heavy projects: Prioritize frontend stack, design patterns
+- Testing-focused work: Elevate testing fields to higher priorities
+
+### Active Product Indicator
+
+The dashboard displays the currently active product for quick reference throughout your workflow.
+
+#### Features
+
+- **Product name** displayed in the application header (top navigation bar)
+- **Visual indicator** showing active status (highlighted chip or badge)
+- **Click-through**: Click the indicator to navigate to the Products view
+- **Always visible**: Displayed on all pages for consistent context awareness
+
+#### Understanding the Indicator
+
+**Active Product Shown**:
+- Displays as: "Active: [Product Name]"
+- Color: Primary color (blue/purple)
+- Icon: Package or project icon
+- Clickable to navigate to Products view
+
+**No Active Product**:
+- Displays as: "No Active Product"
+- Color: Grey/disabled
+- Indicates you need to activate a product before creating missions
+
+#### Changing the Active Product
+
+1. Navigate to the **Products** view (click the active product indicator or use main navigation)
+2. Click the **"Activate"** button on your desired product
+3. The active product indicator updates immediately
+4. Tasks and projects filter to show only items for the newly active product
+5. Future missions will use the new active product's context
+
+#### Benefits of Active Product Context
+
+- **Focused Workflow**: See only tasks and projects relevant to current work
+- **Accurate Agent Context**: Agents receive configuration specific to the active product
+- **Clear Visual Feedback**: Always know which product context you're working in
+- **Quick Switching**: Change context instantly from any page
+
+**Note**: The active product indicator also serves as the foundation for token visualization features, showing where agent context is coming from.
+
+### Priority Badges in Product Edit Form
+
+When editing product configuration, you'll see visual priority indicators on each field showing how it's prioritized for AI agent missions.
+
+#### What Are Priority Badges?
+
+Priority badges are small colored chips that appear next to field labels in the product edit form, indicating the field's priority level for agent context generation.
+
+**Badge Format**: `[Priority 1]` with an info icon (ⓘ)
+
+**Badge Colors**:
+- **Red**: Priority 1 - Always Included
+- **Orange**: Priority 2 - High Priority
+- **Blue**: Priority 3 - Medium Priority
+- **No Badge**: Unassigned (not sent to agents)
+
+#### Where Badges Appear
+
+Badges are shown on all configuration fields across tabs:
+
+**Tech Stack Tab**:
+- Programming Languages
+- Backend Stack
+- Frontend Stack
+- Databases
+- Infrastructure
+
+**Architecture Tab**:
+- Architecture Pattern
+- API Style
+- Design Patterns
+- Architecture Notes
+
+**Features Tab**:
+- Core Features
+
+**Test Config Tab**:
+- Testing Strategy
+- Testing Frameworks
+- Coverage Target
+
+#### Understanding Badge Tooltips
+
+Hover over the **info icon (ⓘ)** next to any badge to see:
+
+**Priority 1 Tooltip**:
+```
+Priority 1 - Always Included
+This field is always sent to AI agents in missions.
+
+You can change field priorities in:
+User Settings → General → Field Priority Configuration
+```
+
+**Priority 2 Tooltip**:
+```
+Priority 2 - High Priority
+This field is included when token budget allows.
+
+You can change field priorities in:
+User Settings → General → Field Priority Configuration
+```
+
+**Priority 3 Tooltip**:
+```
+Priority 3 - Medium Priority
+This field is included last, may be dropped if budget exceeded.
+
+You can change field priorities in:
+User Settings → General → Field Priority Configuration
+```
+
+#### Using Badges to Guide Data Entry
+
+**High Priority Fields** (Red/Orange badges):
+- Fill these first - they're most important for agents
+- Provide detailed, accurate information
+- Update these regularly as your product evolves
+
+**Medium Priority Fields** (Blue badges):
+- Fill after high priority fields
+- Provide good context but not critical
+- Can be more general or high-level
+
+**Unassigned Fields** (No badge):
+- These fields won't be sent to agents
+- Still useful for documentation purposes
+- Consider assigning priority if agents need this info
+
+#### Changing Field Priorities
+
+If you notice a field that should have different priority:
+
+1. Click the info icon tooltip to see the link to Settings
+2. Navigate to **User Settings → General → Field Priority Configuration**
+3. Drag the field to your desired priority level
+4. Save changes
+5. Return to product edit form - badge will update on next page load
+
+**Note**: Priority changes affect all products, not just the one you're editing. Priorities are a user-wide preference for how you want agents to receive context.
+
 ## Next Steps
 
 - Explore [Example Projects](../examples/) for real-world patterns
@@ -638,5 +1106,5 @@ tail -f logs/giljo-mcp.log
 
 ---
 
-_Last Updated: 2025-09-16_
-_Version: 1.0.0_
+_Last Updated: 2025-10-27_
+_Version: 1.1.0_

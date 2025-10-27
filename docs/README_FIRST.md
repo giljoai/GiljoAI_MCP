@@ -20,13 +20,16 @@
 
 **Recent Production Features** (See [Recent Handovers](#recent-production-handovers-v30) for details):
 
+- Context Priority Management (Handover 0052) - User-customizable token budgets per field
+- Multi-Tool Agent Orchestration (Handover 0045) - 40-60% cost optimization via tool mixing
+- Products View Unified Management (Handover 0046) - Complete product lifecycle management
+- Product Rich Context Fields (Handover 0042) - 13+ fields for maximum agent context
 - Agent Template Database Integration (Handover 0041) - Customizable agent behavior with three-layer caching
-- Agent Job Management System (Handover 0019) - Multi-agent coordination foundation
-- 70% Token Reduction via Orchestrator Enhancement (Handover 0020) - Breakthrough efficiency
-- Self-Service Password Reset (Handover 0023) - Recovery PIN system
-- Admin Settings v3.0 Overhaul (Handovers 0025-0029) - Modern, cohesive interface
 - Unified Cross-Platform Installer (Handover 0035) - Windows, Linux, macOS support
- - Agent Flow Visualization (Handover 0040) - Flow‑based, real‑time UI for multi‑agent orchestration (see UI/UX Status Summary and frontend integration guide)
+- Admin Settings v3.0 Overhaul (Handovers 0025-0029) - Modern, cohesive interface
+- 70% Token Reduction via Orchestrator Enhancement (Handover 0020) - Breakthrough efficiency
+- Agent Job Management System (Handover 0019) - Multi-agent coordination foundation
+- Agent Flow Visualization (Handover 0040) - Flow-based, real-time UI for multi-agent orchestration
 
 ## Table of Contents
 
@@ -39,7 +42,8 @@
 7. [Core Components](#core-components)
 8. [Context Management Logic](#context-management-logic)
 9. [Recent Production Handovers (v3.0+)](#recent-production-handovers-v30)
-10. [Additional Documentation](#additional-documentation)
+10. [Testing & Validation Documentation](#testing--validation-documentation)
+11. [Additional Documentation](#additional-documentation)
 
 ---
 
@@ -785,6 +789,188 @@ database:
   - System templates read-only protection
 - **Impact**: Enables per-tenant agent behavior customization, foundation for template marketplace, intelligent template selection
 
+### Product Rich Context Fields UI (October 2025)
+
+**Handover 0042 - Product Rich Context Fields UI** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0042_COMPLETION_SUMMARY.md)**
+- **Completion Date**: October 2025
+- **Status**: Production ready
+- **Problem Solved**: Limited product context prevented agents from understanding full project scope and technical requirements
+- **Key Features**:
+  - 5-tab product form (Basic Info, Tech Stack, Architecture, Features, Test Configuration)
+  - Vision type selector (file upload / inline text / none)
+  - 13+ configuration fields for rich agent context
+  - Free-text format for maximum flexibility
+  - JSONB config_data schema for extensibility
+- **Core Components**:
+  - Frontend: `frontend/src/views/Products.vue` (enhanced form with tabs)
+  - Backend: `api/models/product.py` (config_data JSONB schema)
+- **Impact**: Agents receive complete project context including tech stack, architecture patterns, feature requirements, and testing preferences
+
+### Multi-Vision Document Support (October 2025)
+
+**Handover 0043 - Multi-Vision Document Support** (❌ RETIRED - DESIGN ONLY):
+- **Status**: Design document only, no implementation
+- **Rationale**: Feature proposal for multiple vision documents per product. Retired in favor of simpler single-vision approach with rich context fields (Handover 0042)
+- **Archive**: Preserved as reference for potential future implementation
+
+### Agent Template Export System (October 2025)
+
+**Handover 0044 - Agent Template Export System** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0044_HANDOVER_AGENT_TEMPLATE_EXPORT_SYSTEM-C.md)**
+- **Completion Date**: October 2025
+- **Status**: Production ready
+- **Problem Solved**: Manual template file management for Claude Code integration
+- **Key Features**:
+  - Export agent templates to `.claude/agents/` directory
+  - Seamless Claude Code workflow integration
+  - Integrated with template management system (Handover 0041)
+- **Core Components**:
+  - Backend: `src/giljo_mcp/template_manager.py` (export functionality)
+  - API: Template management endpoints (export operations)
+- **Impact**: One-click export of customized agent templates for external AI tool usage
+
+### Multi-Tool Agent Orchestration (October 2025)
+
+**Handover 0045 - Multi-Tool Agent Orchestration** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0045_COMPLETION_SUMMARY.md)**
+- **[Migration Guide](../MIGRATION_GUIDE_V3_TO_V3.1.md)**
+- **[Reference Documentation](../references/0045/)** - 8 comprehensive guides
+- **Completion Date**: October 2025
+- **Status**: Production ready with comprehensive documentation
+- **Problem Solved**: Single-tool limitation prevented cost optimization through strategic AI tool mixing
+- **Key Achievements**:
+  - Template-based routing system (agent_config.json specifies preferred tools)
+  - 7 new MCP coordination tools for agent lifecycle management
+  - Agent-Job linking for backward compatibility with legacy modes
+  - 40-60% cost optimization through intelligent tool mixing
+  - Seamless multi-tool coordination within single missions
+- **Core Components**:
+  - Core: `src/giljo_mcp/multi_tool_manager.py` (routing engine, 450+ lines)
+  - MCP Tools: `src/giljo_mcp/tools/agent_*.py` (7 coordination tools)
+  - API: `api/endpoints/agents.py` (agent-job linking endpoints)
+- **7 MCP Coordination Tools**:
+  - `agent_create` - Spawn agents with tool preferences
+  - `agent_assign_job` - Link agents to jobs
+  - `agent_get_status` - Query agent state
+  - `agent_send_message` - Inter-agent messaging
+  - `agent_complete_job` - Mark jobs complete
+  - `agent_fail_job` - Handle failures
+  - `agent_list_jobs` - Query job status
+- **Documentation**:
+  - [Developer Guide](../references/0045/DEVELOPER_GUIDE.md) - Implementation details
+  - [User Guide](../references/0045/USER_GUIDE.md) - Configuration and usage
+  - [API Reference](../references/0045/API_REFERENCE.md) - 7 MCP tools documented
+  - [Migration Guide](../MIGRATION_GUIDE_V3_TO_V3.1.md) - Upgrade instructions
+- **Impact**: Foundation for cost-optimized multi-AI orchestration, enabling strategic tool selection per mission phase
+
+### Products View Unified Management (October 2025)
+
+**Handover 0046 - Products View Unified Management** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0046_HANDOVER_PRODUCTS_VIEW_UNIFIED_MANAGEMENT-C.md)**
+- **[Testing Documentation](../testing/HANDOVER_0046_INDEX.md)** - 7 comprehensive test documents
+- **Completion Date**: October 2025
+- **Status**: Production ready with comprehensive testing
+- **Problem Solved**: Fragmented product management across multiple views, inconsistent vision document handling
+- **Key Features**:
+  - Vision document upload in create/edit dialogs
+  - Product cards with metrics display (missions count, agents count, token usage)
+  - Activate/deactivate functionality with visual state indicators
+  - Delete with cascade impact display (warns about affected missions/agents)
+  - Product-as-context architecture foundation
+- **Core Components**:
+  - Frontend: `frontend/src/views/Products.vue` (unified interface)
+  - API: `api/endpoints/products.py` (vision upload endpoints)
+- **Testing Highlights**:
+  - [Validation Report](../testing/HANDOVER_0046_VALIDATION_REPORT.md) - 9 issues identified and documented
+  - [Accessibility Audit](../testing/HANDOVER_0046_ACCESSIBILITY_AUDIT.md) - WCAG 2.1 AA compliance
+  - 7 comprehensive test documents covering UI, UX, and accessibility
+- **Impact**: Single source of truth for product management, streamlined vision document workflow
+
+### Vision Document Chunking Async Fix (October 2025)
+
+**Handover 0047 - Vision Document Chunking Async Fix** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0047_HANDOVER_VISION_DOCUMENT_CHUNKING_ASYNC_FIX-C.md)**
+- **[Testing Documentation](../testing/HANDOVER_0047_TEST_FIX_REPORT.md)**
+- **Completion Date**: October 2025
+- **Status**: Production ready with bug fixes
+- **Problem Solved**: Blocking synchronous chunking caused UI freezes, product deletion bugs
+- **Key Features**:
+  - EnhancedChunker with 25K token chunks (optimized for Sonnet 4.5)
+  - Async chunking implementation prevents UI blocking
+  - Product deletion cascade fixes
+  - Vision document processing optimization
+- **Core Components**:
+  - Core: `src/giljo_mcp/vision_chunker.py` (EnhancedChunker implementation)
+  - API: `api/endpoints/products.py` (async integration, deletion fixes)
+- **Testing Highlights**:
+  - [Bug Report](../testing/HANDOVER_0047_BUG_REPORT.md) - Product deletion bug analysis and resolution
+  - [Test Fix Report](../testing/HANDOVER_0047_TEST_FIX_REPORT.md) - Test suite updates
+- **Impact**: Responsive UI during vision document processing, reliable product lifecycle management
+
+### Product Field Priority Configuration (October 2025)
+
+**Handover 0048 - Product Field Priority Configuration** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0048_HANDOVER_PRODUCT_FIELD_PRIORITY_CONFIGURATION-C.md)**
+- **Completion Date**: October 2025
+- **Status**: Production ready
+- **Problem Solved**: Fixed token budgets prevented users from controlling context trade-offs per mission
+- **Key Features**:
+  - 3-tier priority system (P1/P2/P3) for product context fields
+  - Drag-drop UI in User Settings for intuitive configuration
+  - Token budget enforcement per priority tier
+  - User-customizable priorities per field (tech_stack, features, architecture, etc.)
+  - Default priority configuration for new users
+- **Core Components**:
+  - Frontend: `frontend/src/components/UserSettings.vue` (priority configuration UI)
+  - Backend: `src/giljo_mcp/models.py` (field_priority_config JSONB column)
+  - API: `api/endpoints/users.py` (3 endpoints: get, update, reset)
+- **Priority Tiers**:
+  - P1 (Critical): Always included, high token budget
+  - P2 (Standard): Included when budget allows
+  - P3 (Optional): Included only if excess budget available
+- **Documentation**: Field priority schema documented in `SERVER_ARCHITECTURE_TECH_STACK.md`
+- **Impact**: Users control context inclusion per mission type, optimized token usage based on task requirements
+
+### Active Product Token Visualization (October 2025)
+
+**Handover 0049 - Active Product Token Visualization** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0049_IMPLEMENTATION_SUMMARY.md)**
+- **Completion Date**: October 2025
+- **Status**: Foundation complete
+- **Problem Solved**: No visibility into active product context or token consumption
+- **Key Features**:
+  - Active product display in dashboard header
+  - Foundation for real-time token visualization
+  - ActiveProductDisplay component integration
+- **Core Components**:
+  - Frontend: `frontend/src/components/ActiveProductDisplay.vue`
+- **Impact**: Foundation for real-time context budget monitoring and active product awareness
+
+### Context Priority Unassigned Category (October 2025)
+
+**Handover 0052 - Context Priority Management** (✅ COMPLETE):
+- **[Implementation](../handovers/completed/0052_COMPLETION_SUMMARY.md)**
+- **[Testing Documentation](../testing/HANDOVER_0052_README.md)** - 6 comprehensive test documents
+- **Completion Date**: October 2025
+- **Status**: Production ready with 100% deployment readiness
+- **Problem Solved**: Critical bugs in field priority system and missing token refresh functionality
+- **Key Achievements**:
+  - Fixed resetGeneralSettings() bug (proper defaults restoration)
+  - Token estimator connected to active product context
+  - Automatic token refresh after save/reset operations
+  - Unassigned category handling for uncategorized fields
+  - Integration testing with active product token system
+- **Core Components**:
+  - Frontend: `frontend/src/components/UserSettings.vue` (bug fixes and token integration)
+  - API: `api/endpoints/users.py` (reset defaults endpoint)
+- **Testing Highlights**:
+  - [Test Results](../testing/HANDOVER_0052_TEST_RESULTS.md) - 32 detailed test cases (100% pass rate)
+  - [Executive Report](../testing/HANDOVER_0052_EXECUTIVE_REPORT.md) - Deployment readiness summary
+  - 6 comprehensive test documents (1200+ lines of validation)
+  - 32 test cases covering UI, API, integration, edge cases
+- **Impact**: Production-grade field priority system with complete token budget integration and validation
+
 ---
 
 ### Installation Experience Validation (October 2025)
@@ -816,6 +1002,48 @@ database:
 - **Interactive docs**: `http://localhost:7272/docs` (Swagger UI)
 - **ReDoc**: `http://localhost:7272/redoc`
 - **OpenAPI spec**: `http://localhost:7272/openapi.json`
+
+---
+
+## Testing & Validation Documentation
+
+### Testing Infrastructure
+
+- **[Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing strategies (unit, integration, frontend)
+- **[Testing Reports](/docs/testing/)** - Per-handover validation and QA reports
+
+### Handover Validation Reports
+
+All testing artifacts organized by handover number in `/docs/testing/`:
+
+#### Handover 0046: Products View Unified Management
+
+Frontend UI validation, accessibility audit, UX testing
+
+- [Validation Report](testing/HANDOVER_0046_VALIDATION_REPORT.md) - 9 issues identified
+- [Accessibility Audit](testing/HANDOVER_0046_ACCESSIBILITY_AUDIT.md) - WCAG compliance
+- [Full Test Suite](testing/HANDOVER_0046_INDEX.md) - 7 comprehensive documents
+
+#### Handover 0047: Vision Document Chunking Async Fix
+
+Backend fix validation, async testing, bug resolution
+
+- [Test Fix Report](testing/HANDOVER_0047_TEST_FIX_REPORT.md) - Test suite fixes
+- [Bug Report](testing/HANDOVER_0047_BUG_REPORT.md) - Product deletion bug analysis
+
+#### Handover 0052: Context Priority Management
+
+Integration testing, token budget validation, user settings
+
+- [Test Results](testing/HANDOVER_0052_TEST_RESULTS.md) - 32 detailed test cases
+- [Executive Report](testing/HANDOVER_0052_EXECUTIVE_REPORT.md) - Deployment readiness
+- [Full Test Suite](testing/HANDOVER_0052_README.md) - 6 comprehensive documents
+
+### System-Wide Testing
+
+- **[Installation Validation](INSTALLATION_VALIDATION_SUMMARY.md)** - Install testing (19KB)
+- **[WCAG 2.1 AA Audit](WCAG_2_1_AA_ACCESSIBILITY_AUDIT.md)** - System-wide accessibility
+- **[Backup Tests](testing/BACKUP_TEST_SUMMARY.md)** - Database backup utility
 
 ---
 
@@ -873,4 +1101,4 @@ As of October 13, 2025, GiljoAI MCP documentation has been **harmonized** into s
 
 ---
 
-**Last Updated**: October 21, 2025 (v3.0.0 - Recent Handovers Documentation Added)
+**Last Updated**: October 27, 2025 (v3.0.0 - Handovers 0042-0052 & Testing Documentation Added)
