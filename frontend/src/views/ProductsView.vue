@@ -180,6 +180,56 @@
           <v-icon class="mr-2">{{ editingProduct ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           <span>{{ editingProduct ? 'Edit Product' : 'Create New Product' }}</span>
           <v-spacer />
+
+          <!-- Handover 0051: Save Status Indicator -->
+          <v-chip
+            v-if="autoSave && autoSave.saveStatus.value === 'saving'"
+            color="info"
+            size="small"
+            variant="flat"
+            class="mr-2"
+            aria-live="polite"
+          >
+            <v-icon start size="small" class="mdi-spin">mdi-loading</v-icon>
+            Saving...
+          </v-chip>
+
+          <v-chip
+            v-else-if="autoSave && autoSave.saveStatus.value === 'unsaved'"
+            color="warning"
+            size="small"
+            variant="flat"
+            class="mr-2"
+            aria-live="polite"
+          >
+            <v-icon start size="small">mdi-content-save-alert</v-icon>
+            Unsaved changes
+          </v-chip>
+
+          <v-chip
+            v-else-if="autoSave && autoSave.saveStatus.value === 'saved'"
+            color="success"
+            size="small"
+            variant="flat"
+            class="mr-2"
+            aria-live="polite"
+          >
+            <v-icon start size="small">mdi-check</v-icon>
+            Saved
+          </v-chip>
+
+          <v-chip
+            v-else-if="autoSave && autoSave.saveStatus.value === 'error'"
+            color="error"
+            size="small"
+            variant="flat"
+            class="mr-2"
+            aria-live="assertive"
+          >
+            <v-icon start size="small">mdi-alert-circle</v-icon>
+            Error
+          </v-chip>
+
           <v-btn icon="mdi-close" variant="text" @click="closeDialog" aria-label="Close" />
         </v-card-title>
 
@@ -188,11 +238,75 @@
         <v-card-text style="min-height: 400px; max-height: 600px; overflow-y: auto">
           <!-- Handover 0042: Tabbed interface for product configuration -->
           <v-tabs v-model="dialogTab" class="mb-4" color="primary">
-            <v-tab value="basic">Basic Info</v-tab>
-            <v-tab value="vision">Vision Docs</v-tab>
-            <v-tab value="tech">Tech Stack</v-tab>
-            <v-tab value="arch">Architecture</v-tab>
-            <v-tab value="features">Features & Testing</v-tab>
+            <v-tab value="basic">
+              <span class="d-flex align-center">
+                Basic Info
+                <v-badge
+                  v-if="tabValidation.basic.hasError"
+                  color="error"
+                  dot
+                  inline
+                  class="ml-2"
+                  aria-label="Required field missing"
+                ></v-badge>
+              </span>
+            </v-tab>
+
+            <v-tab value="vision">
+              <span class="d-flex align-center">
+                Vision Docs
+                <v-badge
+                  v-if="tabValidation.vision.hasWarning"
+                  color="warning"
+                  dot
+                  inline
+                  class="ml-2"
+                  aria-label="No vision documents"
+                ></v-badge>
+              </span>
+            </v-tab>
+
+            <v-tab value="tech">
+              <span class="d-flex align-center">
+                Tech Stack
+                <v-badge
+                  v-if="tabValidation.tech.hasWarning"
+                  color="warning"
+                  dot
+                  inline
+                  class="ml-2"
+                  aria-label="Incomplete tech stack"
+                ></v-badge>
+              </span>
+            </v-tab>
+
+            <v-tab value="arch">
+              <span class="d-flex align-center">
+                Architecture
+                <v-badge
+                  v-if="tabValidation.arch.hasWarning"
+                  color="warning"
+                  dot
+                  inline
+                  class="ml-2"
+                  aria-label="Incomplete architecture"
+                ></v-badge>
+              </span>
+            </v-tab>
+
+            <v-tab value="features">
+              <span class="d-flex align-center">
+                Features & Testing
+                <v-badge
+                  v-if="tabValidation.features.hasWarning"
+                  color="warning"
+                  dot
+                  inline
+                  class="ml-2"
+                  aria-label="Incomplete features"
+                ></v-badge>
+              </span>
+            </v-tab>
           </v-tabs>
 
           <v-form ref="formRef" v-model="formValid">
@@ -774,15 +888,16 @@
                   </template>
                 </v-textarea>
 
-                <v-textarea
+                <!-- Handover 0051: Enhanced testing strategy dropdown -->
+                <v-select
                   v-model="productForm.configData.test_config.strategy"
-                  placeholder="TDD for core business logic, Integration tests for API endpoints, E2E with Playwright"
-                  hint="Describe testing methodology and quality assurance approach"
+                  :items="testingStrategies"
+                  item-title="title"
+                  item-value="value"
+                  hint="Choose the primary testing methodology for this product"
                   persistent-hint
                   variant="outlined"
                   density="comfortable"
-                  rows="2"
-                  auto-grow
                   class="mb-4"
                 >
                   <template #label>
@@ -815,7 +930,26 @@
                       }}</span>
                     </v-tooltip>
                   </template>
-                </v-textarea>
+
+                  <!-- Handover 0051: Enhanced dropdown items with icons and subtitles -->
+                  <template #item="{ props, item }">
+                    <v-list-item v-bind="props">
+                      <template #prepend>
+                        <v-icon :icon="item.raw.icon" class="mr-2"></v-icon>
+                      </template>
+                      <v-list-item-title>{{ item.raw.title }}</v-list-item-title>
+                      <v-list-item-subtitle>{{ item.raw.subtitle }}</v-list-item-subtitle>
+                    </v-list-item>
+                  </template>
+
+                  <!-- Handover 0051: Enhanced selection display with icon -->
+                  <template #selection="{ item }">
+                    <div class="d-flex align-center">
+                      <v-icon :icon="item.raw.icon" size="small" class="mr-2"></v-icon>
+                      <span>{{ item.raw.title }}</span>
+                    </div>
+                  </template>
+                </v-select>
 
                 <div class="mb-4">
                   <label class="text-caption text-medium-emphasis">
@@ -1227,12 +1361,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useFieldPriority } from '@/composables/useFieldPriority'
+import { useAutoSave } from '@/composables/useAutoSave'
 import api from '@/services/api'
 
 const productStore = useProductStore()
@@ -1265,6 +1400,7 @@ const deleteConfirmationName = ref('')
 const deleteConfirmationCheck = ref(false)
 const deleteConfirmationError = ref(false)
 const dialogTab = ref('basic')  // Handover 0042: Tab for product dialog (basic, tech, arch, features)
+const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
 
 const productForm = ref({
   name: '',
@@ -1303,12 +1439,88 @@ const sortOptions = [
   { label: 'Date Created (Oldest)', value: 'date-oldest' },
 ]
 
+// Handover 0051: Testing strategies with enhanced dropdown
+const testingStrategies = [
+  {
+    value: 'TDD',
+    title: 'TDD (Test-Driven Development)',
+    subtitle: 'Write tests before implementation code',
+    icon: 'mdi-test-tube',
+  },
+  {
+    value: 'BDD',
+    title: 'BDD (Behavior-Driven Development)',
+    subtitle: 'Tests based on user stories and behavior specs',
+    icon: 'mdi-comment-text-multiple',
+  },
+  {
+    value: 'Integration-First',
+    title: 'Integration-First',
+    subtitle: 'Focus on testing component interactions',
+    icon: 'mdi-connection',
+  },
+  {
+    value: 'E2E-First',
+    title: 'E2E-First',
+    subtitle: 'Prioritize end-to-end user workflow tests',
+    icon: 'mdi-path',
+  },
+  {
+    value: 'Manual',
+    title: 'Manual Testing',
+    subtitle: 'Human-driven QA and exploratory testing',
+    icon: 'mdi-human-male',
+  },
+  {
+    value: 'Hybrid',
+    title: 'Hybrid Approach',
+    subtitle: 'Combination of multiple testing strategies',
+    icon: 'mdi-view-grid-plus',
+  },
+]
+
 // Computed
 const isDeleteConfirmed = computed(() => {
   return (
     deleteConfirmationName.value === deletingProduct.value?.name &&
     deleteConfirmationCheck.value
   )
+})
+
+// Handover 0051: Unsaved changes computed
+const hasUnsavedChanges = computed(() => {
+  return autoSave.value?.hasUnsavedChanges.value || false
+})
+
+// Handover 0051: Tab validation indicators
+const tabValidation = computed(() => {
+  return {
+    basic: {
+      valid: !!productForm.value.name,
+      hasError: !productForm.value.name,
+      hasWarning: false,
+    },
+    vision: {
+      valid: true,
+      hasError: false,
+      hasWarning: visionFiles.value.length === 0 && existingVisionDocuments.value.length === 0,
+    },
+    tech: {
+      valid: true,
+      hasError: false,
+      hasWarning: !productForm.value.configData.tech_stack.languages,
+    },
+    arch: {
+      valid: true,
+      hasError: false,
+      hasWarning: !productForm.value.configData.architecture.pattern,
+    },
+    features: {
+      valid: true,
+      hasError: false,
+      hasWarning: !productForm.value.configData.features.core,
+    },
+  }
 })
 
 // Computed
@@ -1602,13 +1814,18 @@ async function saveProduct() {
       }
     }
 
-    // Step 3: Refresh products
+    // Step 3: Clear auto-save cache (Handover 0051)
+    if (autoSave.value) {
+      autoSave.value.clearCache()
+    }
+
+    // Step 4: Refresh products
     await loadProducts()
 
-    // Step 4: Close dialog
+    // Step 5: Close dialog
     closeDialog()
 
-    // Step 5: Show success message
+    // Step 6: Show success message
     showToast({
       message: editingProduct.value
         ? 'Product updated successfully'
@@ -1623,6 +1840,7 @@ async function saveProduct() {
       type: 'error',
       duration: 5000,
     })
+    // Handover 0051: Do NOT close dialog on error - keep form data visible
   } finally {
     saving.value = false
   }
@@ -1682,6 +1900,19 @@ function cancelDelete() {
 }
 
 function closeDialog() {
+  // Handover 0051: Check for unsaved changes before closing
+  if (hasUnsavedChanges.value) {
+    const confirmed = confirm('You have unsaved changes. Close anyway?')
+    if (!confirmed) {
+      return // User cancelled - keep dialog open
+    }
+  }
+
+  // Handover 0051: Clear auto-save cache
+  if (autoSave.value) {
+    autoSave.value.clearCache()
+  }
+
   showDialog.value = false
   editingProduct.value = null
   visionFiles.value = []
@@ -1736,6 +1967,60 @@ function hasFieldPriority(fieldPath) {
   return getPriorityForField(fieldPath) !== null
 }
 
+// Handover 0051: Watch for dialog open/close to initialize auto-save
+watch(showDialog, (isOpen) => {
+  if (isOpen) {
+    // Generate unique cache key based on edit mode
+    const cacheKey = editingProduct.value
+      ? `product_form_draft_${editingProduct.value.id}`
+      : 'product_form_draft_new'
+
+    // Initialize auto-save composable
+    autoSave.value = useAutoSave({
+      key: cacheKey,
+      data: productForm,
+      debounceMs: 500,
+      enableBackgroundSave: false, // LocalStorage only (no API saves during typing)
+    })
+
+    // Check for existing cache
+    const cached = autoSave.value.restoreFromCache()
+    if (cached) {
+      const metadata = autoSave.value.getCacheMetadata()
+      const ageMinutes = metadata?.ageMinutes || 0
+
+      // Prompt user to restore
+      const shouldRestore = confirm(
+        `Found unsaved changes from ${ageMinutes} minute(s) ago. Restore draft?`
+      )
+
+      if (shouldRestore) {
+        productForm.value = { ...productForm.value, ...cached }
+        showToast({
+          message: 'Draft restored successfully',
+          type: 'info',
+          duration: 3000
+        })
+      } else {
+        autoSave.value.clearCache()
+      }
+    }
+  } else {
+    // Dialog closed - cleanup auto-save
+    if (autoSave.value) {
+      autoSave.value = null
+    }
+  }
+})
+
+// Handover 0051: Browser beforeunload handler (warn on refresh/close with unsaved changes)
+function handleBeforeUnload(event) {
+  if (showDialog.value && hasUnsavedChanges.value) {
+    event.preventDefault()
+    event.returnValue = '' // Required for Chrome
+  }
+}
+
 onMounted(async () => {
   await loadProducts()
   // Load field priority configuration for badge display (Handover 0049)
@@ -1744,7 +2029,14 @@ onMounted(async () => {
   } catch (error) {
     console.log('Field priority config not available:', error)
   }
+  // Handover 0051: Add beforeunload listener
+  window.addEventListener('beforeunload', handleBeforeUnload)
   // Product metrics updates via WebSocket (product:updated events)
+})
+
+onUnmounted(() => {
+  // Handover 0051: Remove beforeunload listener
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 
@@ -1755,5 +2047,19 @@ onMounted(async () => {
 
 .product-card:hover {
   transform: translateY(-2px);
+}
+
+/* Handover 0051: Spinning icon animation for save status */
+.mdi-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
