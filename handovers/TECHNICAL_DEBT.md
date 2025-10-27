@@ -315,3 +315,9 @@ Replace nested `<v-window>` with one of:
 
 **Risk**: LOW - Changes are localized to specific components
 **Testing**: Theme toggle on all affected pages in both light/dark modes
+
+
+### add agent core behaviour context free txt field.
+this field should be used to tune the agent philosophy and behaviour , and should be injected into the agent templates.
+
+Cuch as Read, Comitt, code test yadda yaddda.
