@@ -37,22 +37,10 @@
         <v-card data-test="general-settings">
           <v-card-title>General Settings</v-card-title>
           <v-card-text>
-            <v-form ref="generalForm">
-              <v-text-field
-                v-model="settings.general.projectName"
-                label="Project Name"
-                variant="outlined"
-                hint="The name of your orchestrator project"
-                persistent-hint
-                data-test="project-name-field"
-              />
-            </v-form>
-
-            <v-divider class="my-6"></v-divider>
 
             <div class="text-h6 mb-4">
               <v-icon start>mdi-priority-high</v-icon>
-              Field Priority for AI Agents
+              Context Priority Management
             </div>
 
             <v-alert type="info" variant="tonal" density="compact" class="mb-4">
@@ -161,6 +149,48 @@
                 </draggable>
                 <div v-if="priority3Fields.length === 0" class="text-caption text-medium-emphasis">
                   No fields assigned to Priority 3
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Unassigned Fields Card -->
+            <v-card variant="outlined" class="mb-4 unassigned-card">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="grey" start>mdi-tray-arrow-down</v-icon>
+                Unassigned Fields
+                <v-chip size="small" variant="outlined" color="grey" class="ml-2">
+                  0 tokens
+                </v-chip>
+              </v-card-title>
+              <v-card-subtitle class="text-caption">
+                Fields not included in AI agent missions
+              </v-card-subtitle>
+              <v-card-text>
+                <draggable
+                  v-model="unassignedFields"
+                  group="fields"
+                  item-key="id"
+                  handle=".drag-handle"
+                  @change="onPriorityChange"
+                  class="d-flex flex-wrap"
+                >
+                  <template #item="{ element }">
+                    <v-chip
+                      class="ma-1 drag-handle"
+                      closable
+                      @click:close="removeField(element, 'unassigned')"
+                      style="cursor: move;"
+                      color="grey"
+                      variant="outlined"
+                    >
+                      <v-icon start size="small">mdi-drag-vertical</v-icon>
+                      {{ getFieldLabel(element) }}
+                    </v-chip>
+                  </template>
+                </draggable>
+                <div v-if="unassignedFields.length === 0" class="text-caption text-medium-emphasis text-center py-4">
+                  <v-icon size="large" color="grey-lighten-1" class="mb-2">mdi-check-circle-outline</v-icon>
+                  <div>All fields are assigned to priorities</div>
                 </div>
               </v-card-text>
             </v-card>
@@ -536,13 +566,31 @@ const serenaEnabled = ref(false)
 const toggling = ref(false)
 const showManualConfigDialog = ref(false)
 
-// Field Priority Configuration state (Handover 0048)
+// Field Priority Configuration state (Handover 0048, 0052)
 const priority1Fields = ref([])
 const priority2Fields = ref([])
 const priority3Fields = ref([])
+const unassignedFields = ref([]) // Handover 0052: Unassigned category
 const tokenBudget = ref(2000)
 const savingFieldPriority = ref(false)
 const fieldPriorityHasChanges = ref(false)
+
+// All available fields (Handover 0052)
+const ALL_AVAILABLE_FIELDS = [
+  'architecture.api_style',
+  'architecture.design_patterns',
+  'architecture.notes',
+  'architecture.pattern',
+  'features.core',
+  'tech_stack.backend',
+  'tech_stack.database',
+  'tech_stack.frontend',
+  'tech_stack.infrastructure',
+  'tech_stack.languages',
+  'test_config.coverage_target',
+  'test_config.frameworks',
+  'test_config.strategy',
+]
 
 // Real-time token calculation state (Handover 0049)
 const activeProductTokens = ref(null)
@@ -568,7 +616,7 @@ const fieldLabels = {
 // Settings object
 const settings = ref({
   general: {
-    projectName: 'GiljoAI MCP Orchestrator',
+    // Handover 0052: Removed unused projectName field (had broken save function)
   },
   appearance: {
     theme: 'dark',
@@ -737,23 +785,52 @@ function onPriorityChange() {
 }
 
 function removeField(field, priority) {
+  let removed = false
+
   if (priority === 'priority_1') {
     const index = priority1Fields.value.indexOf(field)
-    if (index > -1) priority1Fields.value.splice(index, 1)
+    if (index > -1) {
+      priority1Fields.value.splice(index, 1)
+      removed = true
+    }
   } else if (priority === 'priority_2') {
     const index = priority2Fields.value.indexOf(field)
-    if (index > -1) priority2Fields.value.splice(index, 1)
+    if (index > -1) {
+      priority2Fields.value.splice(index, 1)
+      removed = true
+    }
   } else if (priority === 'priority_3') {
     const index = priority3Fields.value.indexOf(field)
-    if (index > -1) priority3Fields.value.splice(index, 1)
+    if (index > -1) {
+      priority3Fields.value.splice(index, 1)
+      removed = true
+    }
+  } else if (priority === 'unassigned') {
+    // Handover 0052: Remove from unassigned (no-op, just mark changed)
+    const index = unassignedFields.value.indexOf(field)
+    if (index > -1) {
+      unassignedFields.value.splice(index, 1)
+      removed = true
+    }
   }
-  fieldPriorityHasChanges.value = true
+
+  // Handover 0052: Move to unassigned instead of deleting
+  if (removed && priority !== 'unassigned') {
+    if (!unassignedFields.value.includes(field)) {
+      unassignedFields.value.push(field)
+    }
+  }
+
+  if (removed) {
+    fieldPriorityHasChanges.value = true
+  }
 }
 
 async function saveFieldPriority() {
   savingFieldPriority.value = true
   try {
     // Convert frontend arrays to backend format
+    // Handover 0052: Unassigned fields are NOT included (backend only stores assigned fields)
     const fieldsConfig = {}
     priority1Fields.value.forEach(field => {
       fieldsConfig[field] = 1
@@ -818,8 +895,19 @@ async function loadFieldPriorityConfig() {
         }
       })
 
+      // Handover 0052: Compute unassigned fields
+      const assignedSet = new Set([
+        ...priority1Fields.value,
+        ...priority2Fields.value,
+        ...priority3Fields.value,
+      ])
+      unassignedFields.value = ALL_AVAILABLE_FIELDS.filter(
+        field => !assignedSet.has(field)
+      )
+
       fieldPriorityHasChanges.value = false
       console.log('[USER SETTINGS] Field priority config loaded successfully')
+      console.log(`[USER SETTINGS] Unassigned fields: ${unassignedFields.value.length}`)
     }
   } catch (error) {
     console.error('[USER SETTINGS] Failed to load field priority config:', error)
@@ -927,5 +1015,17 @@ watch(
     min-height: 56px; /* Larger touch targets on mobile */
     font-size: 14px;
   }
+}
+
+/* Handover 0052: Unassigned card styling */
+.unassigned-card {
+  border-style: dashed !important;
+  border-width: 2px;
+  border-color: rgba(var(--v-theme-on-surface), 0.3);
+  background-color: rgba(var(--v-theme-surface-variant), 0.05);
+}
+
+.unassigned-card .v-card-title {
+  color: rgba(var(--v-theme-on-surface), 0.7);
 }
 </style>
