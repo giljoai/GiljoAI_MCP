@@ -46,15 +46,6 @@
                 persistent-hint
                 data-test="project-name-field"
               />
-
-              <v-select
-                v-model="settings.general.defaultPriority"
-                :items="['low', 'normal', 'high', 'urgent', 'critical']"
-                label="Default Message Priority"
-                variant="outlined"
-                class="mt-4"
-                data-test="default-priority-select"
-              />
             </v-form>
           </v-card-text>
           <v-card-actions>
@@ -382,7 +373,6 @@ const showManualConfigDialog = ref(false)
 const settings = ref({
   general: {
     projectName: 'GiljoAI MCP Orchestrator',
-    defaultPriority: 'normal',
   },
   appearance: {
     theme: 'dark',
@@ -443,7 +433,6 @@ async function saveNotificationSettings() {
 function resetGeneralSettings() {
   settings.value.general = {
     projectName: 'GiljoAI MCP Orchestrator',
-    defaultPriority: 'normal',
   }
 }
 

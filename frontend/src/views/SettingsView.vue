@@ -67,14 +67,6 @@
                 hint="The name of your orchestrator project"
                 persistent-hint
               />
-
-              <v-select
-                v-model="settings.general.defaultPriority"
-                :items="['low', 'normal', 'high', 'urgent', 'critical']"
-                label="Default Message Priority"
-                variant="outlined"
-                class="mt-4"
-              />
             </v-form>
 
             <v-divider class="my-6"></v-divider>
@@ -805,7 +797,6 @@ const fieldLabels = {
 const settings = ref({
   general: {
     projectName: 'GiljoAI MCP Orchestrator',
-    defaultPriority: 'normal',
   },
   appearance: {
     theme: 'dark',
@@ -969,7 +960,6 @@ async function saveDatabaseSettings() {
 function resetGeneralSettings() {
   settings.value.general = {
     projectName: 'GiljoAI MCP Orchestrator',
-    defaultPriority: 'normal',
   }
 }
 
