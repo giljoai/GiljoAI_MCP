@@ -443,7 +443,6 @@ const wsStore = useWebSocketStore()
 const statusFilter = ref(['all'])
 const showDetailsDialog = ref(false)
 const selectedAgent = ref(null)
-const refreshInterval = ref(null)
 
 // Computed properties
 const agents = computed(() => agentStore.agents)
@@ -563,17 +562,8 @@ function subscribeToUpdates() {
 onMounted(async () => {
   await refreshAgents()
 
-  // Set up auto-refresh
-  refreshInterval.value = setInterval(refreshAgents, REFRESH_INTERVALS.AGENT_HEALTH)
-
-  // Subscribe to WebSocket updates
+  // Subscribe to WebSocket updates for real-time agent status
   subscribeToUpdates()
-})
-
-onUnmounted(() => {
-  if (refreshInterval.value) {
-    clearInterval(refreshInterval.value)
-  }
 })
 </script>
 

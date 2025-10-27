@@ -85,24 +85,6 @@
                 variant="outlined"
                 class="mt-4"
               />
-
-              <v-switch
-                v-model="settings.general.autoRefresh"
-                label="Auto-refresh data"
-                color="primary"
-                class="mt-4"
-              />
-
-              <v-slider
-                v-if="settings.general.autoRefresh"
-                v-model="settings.general.refreshInterval"
-                :min="5"
-                :max="60"
-                :step="5"
-                label="Refresh Interval (seconds)"
-                thumb-label
-                class="mt-4"
-              />
             </v-form>
           </v-card-text>
           <v-card-actions>
@@ -612,6 +594,7 @@ import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 import { useUserStore } from '@/stores/user'
 import { useTheme } from 'vuetify'
+import draggable from 'vuedraggable'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
@@ -644,14 +627,37 @@ const apiKeyInfo = ref(null)
 const networkSettingsChanged = ref(false)
 const showRegenerateDialog = ref(false)
 
+// Field Priority Configuration state
+const priority1Fields = ref([])
+const priority2Fields = ref([])
+const priority3Fields = ref([])
+const tokenBudget = ref(1500)
+const savingFieldPriority = ref(false)
+const fieldPriorityHasChanges = ref(false)
+
+// Field labels mapping for display
+const fieldLabels = {
+  'tech_stack.languages': 'Programming Languages',
+  'tech_stack.backend': 'Backend Stack',
+  'tech_stack.frontend': 'Frontend Stack',
+  'tech_stack.database': 'Databases',
+  'tech_stack.infrastructure': 'Infrastructure',
+  'architecture.pattern': 'Architecture Pattern',
+  'architecture.api_style': 'API Style',
+  'architecture.design_patterns': 'Design Patterns',
+  'architecture.notes': 'Architecture Notes',
+  'features.core': 'Core Features',
+  'test_config.strategy': 'Testing Strategy',
+  'test_config.frameworks': 'Testing Frameworks',
+  'test_config.coverage_target': 'Coverage Target',
+}
+
 // Settings object
 const settings = ref({
   general: {
     projectName: 'GiljoAI MCP Orchestrator',
     contextBudget: 150000,
     defaultPriority: 'normal',
-    autoRefresh: true,
-    refreshInterval: 10,
   },
   appearance: {
     theme: 'dark',
@@ -706,6 +712,24 @@ const maskedApiKey = computed(() => {
   }
   const preview = apiKeyInfo.value.key_preview
   return `${preview.substring(0, 8)}...${preview.substring(preview.length - 4)}`
+})
+
+// Field Priority Configuration computed properties
+const estimatedTokens = computed(() => {
+  const p1 = priority1Fields.value.length * 50
+  const p2 = priority2Fields.value.length * 30
+  const p3 = priority3Fields.value.length * 20
+  return p1 + p2 + p3 + 500
+})
+
+const tokenPercentage = computed(() => {
+  return Math.min(Math.round((estimatedTokens.value / tokenBudget.value) * 100), 100)
+})
+
+const tokenIndicatorColor = computed(() => {
+  if (tokenPercentage.value > 90) return 'error'
+  if (tokenPercentage.value > 70) return 'warning'
+  return 'success'
 })
 
 // Serena MCP Methods
@@ -799,8 +823,6 @@ function resetGeneralSettings() {
     projectName: 'GiljoAI MCP Orchestrator',
     contextBudget: 150000,
     defaultPriority: 'normal',
-    autoRefresh: true,
-    refreshInterval: 10,
   }
 }
 
