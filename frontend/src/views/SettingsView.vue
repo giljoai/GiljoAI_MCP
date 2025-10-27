@@ -68,16 +68,6 @@
                 persistent-hint
               />
 
-              <v-text-field
-                v-model="settings.general.contextBudget"
-                label="Context Budget (tokens)"
-                type="number"
-                variant="outlined"
-                hint="Maximum context tokens per agent"
-                persistent-hint
-                class="mt-4"
-              />
-
               <v-select
                 v-model="settings.general.defaultPriority"
                 :items="['low', 'normal', 'high', 'urgent', 'critical']"
@@ -86,6 +76,165 @@
                 class="mt-4"
               />
             </v-form>
+
+            <v-divider class="my-6"></v-divider>
+
+            <div class="text-h6 mb-4">
+              <v-icon start>mdi-priority-high</v-icon>
+              Field Priority for AI Agents
+            </div>
+
+            <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+              Controls which product configuration fields are prioritized when generating
+              AI agent missions. Fields are included top-to-bottom until token budget ({{ tokenBudget }}) is reached.
+            </v-alert>
+
+            <!-- Priority 1 Card -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="error" start>mdi-numeric-1-circle</v-icon>
+                Priority 1 - Always Included
+              </v-card-title>
+              <v-card-text>
+                <draggable
+                  v-model="priority1Fields"
+                  group="fields"
+                  item-key="id"
+                  handle=".drag-handle"
+                  @change="onPriorityChange"
+                  class="d-flex flex-wrap"
+                >
+                  <template #item="{ element }">
+                    <v-chip
+                      class="ma-1 drag-handle"
+                      closable
+                      @click:close="removeField(element, 'priority_1')"
+                      style="cursor: move;"
+                      color="error"
+                      variant="outlined"
+                    >
+                      <v-icon start size="small">mdi-drag-vertical</v-icon>
+                      {{ getFieldLabel(element) }}
+                    </v-chip>
+                  </template>
+                </draggable>
+                <div v-if="priority1Fields.length === 0" class="text-caption text-medium-emphasis">
+                  No fields assigned to Priority 1
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Priority 2 Card -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="warning" start>mdi-numeric-2-circle</v-icon>
+                Priority 2 - High Priority
+              </v-card-title>
+              <v-card-text>
+                <draggable
+                  v-model="priority2Fields"
+                  group="fields"
+                  item-key="id"
+                  handle=".drag-handle"
+                  @change="onPriorityChange"
+                  class="d-flex flex-wrap"
+                >
+                  <template #item="{ element }">
+                    <v-chip
+                      class="ma-1 drag-handle"
+                      closable
+                      @click:close="removeField(element, 'priority_2')"
+                      style="cursor: move;"
+                      color="warning"
+                      variant="outlined"
+                    >
+                      <v-icon start size="small">mdi-drag-vertical</v-icon>
+                      {{ getFieldLabel(element) }}
+                    </v-chip>
+                  </template>
+                </draggable>
+                <div v-if="priority2Fields.length === 0" class="text-caption text-medium-emphasis">
+                  No fields assigned to Priority 2
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Priority 3 Card -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="info" start>mdi-numeric-3-circle</v-icon>
+                Priority 3 - Medium Priority
+              </v-card-title>
+              <v-card-text>
+                <draggable
+                  v-model="priority3Fields"
+                  group="fields"
+                  item-key="id"
+                  handle=".drag-handle"
+                  @change="onPriorityChange"
+                  class="d-flex flex-wrap"
+                >
+                  <template #item="{ element }">
+                    <v-chip
+                      class="ma-1 drag-handle"
+                      closable
+                      @click:close="removeField(element, 'priority_3')"
+                      style="cursor: move;"
+                      color="info"
+                      variant="outlined"
+                    >
+                      <v-icon start size="small">mdi-drag-vertical</v-icon>
+                      {{ getFieldLabel(element) }}
+                    </v-chip>
+                  </template>
+                </draggable>
+                <div v-if="priority3Fields.length === 0" class="text-caption text-medium-emphasis">
+                  No fields assigned to Priority 3
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Token Budget Indicator -->
+            <v-card variant="tonal" :color="tokenIndicatorColor" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center justify-space-between">
+                  <div>
+                    <div class="text-caption">Estimated Context Size</div>
+                    <div class="text-h6">{{ estimatedTokens }} / {{ tokenBudget }} tokens</div>
+                  </div>
+                  <v-progress-circular
+                    :model-value="tokenPercentage"
+                    :color="tokenIndicatorColor"
+                    size="64"
+                  >
+                    {{ tokenPercentage }}%
+                  </v-progress-circular>
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Action Buttons -->
+            <div class="d-flex gap-2 mb-4">
+              <v-btn
+                color="primary"
+                variant="flat"
+                @click="saveFieldPriority"
+                :loading="savingFieldPriority"
+                :disabled="!fieldPriorityHasChanges"
+              >
+                <v-icon start>mdi-content-save</v-icon>
+                Save Field Priority
+              </v-btn>
+
+              <v-btn
+                variant="outlined"
+                @click="resetFieldPriorityToDefaults"
+                :disabled="savingFieldPriority"
+              >
+                <v-icon start>mdi-restore</v-icon>
+                Reset to Defaults
+              </v-btn>
+            </div>
           </v-card-text>
           <v-card-actions>
             <v-spacer />
@@ -656,7 +805,6 @@ const fieldLabels = {
 const settings = ref({
   general: {
     projectName: 'GiljoAI MCP Orchestrator',
-    contextBudget: 150000,
     defaultPriority: 'normal',
   },
   appearance: {
@@ -821,7 +969,6 @@ async function saveDatabaseSettings() {
 function resetGeneralSettings() {
   settings.value.general = {
     projectName: 'GiljoAI MCP Orchestrator',
-    contextBudget: 150000,
     defaultPriority: 'normal',
   }
 }
@@ -1061,6 +1208,105 @@ const checkSetupStatus = async () => {
   }
 }
 
+// Field Priority Configuration Methods
+function getFieldLabel(fieldPath) {
+  return fieldLabels[fieldPath] || fieldPath
+}
+
+function onPriorityChange() {
+  fieldPriorityHasChanges.value = true
+}
+
+function removeField(field, priority) {
+  if (priority === 'priority_1') {
+    const index = priority1Fields.value.indexOf(field)
+    if (index > -1) priority1Fields.value.splice(index, 1)
+  } else if (priority === 'priority_2') {
+    const index = priority2Fields.value.indexOf(field)
+    if (index > -1) priority2Fields.value.splice(index, 1)
+  } else if (priority === 'priority_3') {
+    const index = priority3Fields.value.indexOf(field)
+    if (index > -1) priority3Fields.value.splice(index, 1)
+  }
+  fieldPriorityHasChanges.value = true
+}
+
+async function saveFieldPriority() {
+  savingFieldPriority.value = true
+  try {
+    // Convert frontend arrays to backend format
+    const fieldsConfig = {}
+    priority1Fields.value.forEach(field => {
+      fieldsConfig[field] = 1
+    })
+    priority2Fields.value.forEach(field => {
+      fieldsConfig[field] = 2
+    })
+    priority3Fields.value.forEach(field => {
+      fieldsConfig[field] = 3
+    })
+
+    const config = {
+      version: '1.0',
+      token_budget: tokenBudget.value,
+      fields: fieldsConfig
+    }
+
+    await settingsStore.updateFieldPriorityConfig(config)
+    fieldPriorityHasChanges.value = false
+    console.log('[SETTINGS] Field priority config saved successfully')
+  } catch (error) {
+    console.error('[SETTINGS] Failed to save field priority config:', error)
+  } finally {
+    savingFieldPriority.value = false
+  }
+}
+
+async function resetFieldPriorityToDefaults() {
+  savingFieldPriority.value = true
+  try {
+    await settingsStore.resetFieldPriorityConfig()
+    await loadFieldPriorityConfig()
+    fieldPriorityHasChanges.value = false
+    console.log('[SETTINGS] Field priority config reset to defaults')
+  } catch (error) {
+    console.error('[SETTINGS] Failed to reset field priority config:', error)
+  } finally {
+    savingFieldPriority.value = false
+  }
+}
+
+async function loadFieldPriorityConfig() {
+  try {
+    await settingsStore.fetchFieldPriorityConfig()
+    const config = settingsStore.fieldPriorityConfig
+
+    if (config) {
+      tokenBudget.value = config.token_budget || 1500
+
+      // Convert backend format to frontend arrays
+      priority1Fields.value = []
+      priority2Fields.value = []
+      priority3Fields.value = []
+
+      Object.entries(config.fields || {}).forEach(([field, priority]) => {
+        if (priority === 1) {
+          priority1Fields.value.push(field)
+        } else if (priority === 2) {
+          priority2Fields.value.push(field)
+        } else if (priority === 3) {
+          priority3Fields.value.push(field)
+        }
+      })
+
+      fieldPriorityHasChanges.value = false
+      console.log('[SETTINGS] Field priority config loaded successfully')
+    }
+  } catch (error) {
+    console.error('[SETTINGS] Failed to load field priority config:', error)
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   // Check setup status
@@ -1080,6 +1326,9 @@ onMounted(async () => {
   if (storedSettings) {
     Object.assign(settings.value, storedSettings)
   }
+
+  // Load field priority configuration
+  await loadFieldPriorityConfig()
 })
 </script>
 
@@ -1091,5 +1340,29 @@ onMounted(async () => {
 
 .serena-toggle :deep(.v-switch__thumb) {
   border: 2px solid rgba(var(--v-theme-primary), 0.8);
+}
+
+/* Field Priority drag-and-drop styling */
+.drag-handle {
+  touch-action: none;
+  user-select: none;
+  min-height: 48px; /* WCAG touch target size */
+}
+
+.drag-handle:hover {
+  opacity: 0.9;
+}
+
+.drag-handle:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 600px) {
+  .drag-handle {
+    min-height: 56px; /* Larger touch targets on mobile */
+    font-size: 14px;
+  }
 }
 </style>
