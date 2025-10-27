@@ -142,7 +142,7 @@ import { API_CONFIG } from '@/config/api'
 /**
  * DatabaseConnection - Reusable database connection testing component
  *
- * Extracted from SettingsView.vue for reuse in:
+ * Extracted from Settings component for reuse in:
  * 1. Settings page (database tab)
  * 2. Setup wizard (database verification step)
  *

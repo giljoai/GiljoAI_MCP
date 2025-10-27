@@ -9,7 +9,7 @@ Provides fixtures specific to API integration testing including:
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient as HTTPXAsyncClient
+from httpx import AsyncClient as HTTPXAsyncClient, ASGITransport
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -39,8 +39,9 @@ async def api_client(db_manager):
     # Override database session dependency
     app.dependency_overrides[get_db_session] = mock_get_db_session
 
-    # Create async client
-    async with HTTPXAsyncClient(app=app, base_url="http://test") as client:
+    # Create async client with ASGI transport
+    transport = ASGITransport(app=app)
+    async with HTTPXAsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
     # Clear overrides after test
