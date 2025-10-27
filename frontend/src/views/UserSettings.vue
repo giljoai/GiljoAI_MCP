@@ -47,17 +47,6 @@
                 data-test="project-name-field"
               />
 
-              <v-text-field
-                v-model="settings.general.contextBudget"
-                label="Context Budget (tokens)"
-                type="number"
-                variant="outlined"
-                hint="Maximum context tokens per agent"
-                persistent-hint
-                class="mt-4"
-                data-test="context-budget-field"
-              />
-
               <v-select
                 v-model="settings.general.defaultPriority"
                 :items="['low', 'normal', 'high', 'urgent', 'critical']"
@@ -393,7 +382,6 @@ const showManualConfigDialog = ref(false)
 const settings = ref({
   general: {
     projectName: 'GiljoAI MCP Orchestrator',
-    contextBudget: 150000,
     defaultPriority: 'normal',
   },
   appearance: {
@@ -455,7 +443,6 @@ async function saveNotificationSettings() {
 function resetGeneralSettings() {
   settings.value.general = {
     projectName: 'GiljoAI MCP Orchestrator',
-    contextBudget: 150000,
     defaultPriority: 'normal',
   }
 }

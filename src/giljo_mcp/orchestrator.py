@@ -631,7 +631,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             name: Project name
             mission: Project mission/description
             tenant_key: Optional tenant key for isolation
-            context_budget: Token budget for the project
+            context_budget: Internal - hardcoded budget (not user-configurable)
 
         Returns:
             Created Project instance
