@@ -66,25 +66,6 @@
                 class="mt-4"
                 data-test="default-priority-select"
               />
-
-              <v-switch
-                v-model="settings.general.autoRefresh"
-                label="Auto-refresh data"
-                color="primary"
-                class="mt-4"
-                data-test="auto-refresh-toggle"
-              />
-
-              <v-slider
-                v-if="settings.general.autoRefresh"
-                v-model="settings.general.refreshInterval"
-                :min="5"
-                :max="60"
-                :step="5"
-                label="Refresh Interval (seconds)"
-                thumb-label
-                class="mt-4"
-              />
             </v-form>
           </v-card-text>
           <v-card-actions>
@@ -414,8 +395,6 @@ const settings = ref({
     projectName: 'GiljoAI MCP Orchestrator',
     contextBudget: 150000,
     defaultPriority: 'normal',
-    autoRefresh: true,
-    refreshInterval: 10,
   },
   appearance: {
     theme: 'dark',
@@ -478,8 +457,6 @@ function resetGeneralSettings() {
     projectName: 'GiljoAI MCP Orchestrator',
     contextBudget: 150000,
     defaultPriority: 'normal',
-    autoRefresh: true,
-    refreshInterval: 10,
   }
 }
 

@@ -9,12 +9,13 @@ Phase 1 Implementation: Template-based analysis (no LLM calls)
 
 import logging
 import re
-from typing import Dict, List
+from typing import ClassVar, Optional
 
 import tiktoken
 
+from .config.defaults import DEFAULT_FIELD_PRIORITY
 from .database import DatabaseManager
-from .models import Product, Project
+from .models import Product, Project, User
 from .orchestration_types import AgentConfig, Mission, RequirementAnalysis
 from .repositories.context_repository import ContextRepository
 
@@ -67,7 +68,25 @@ class MissionPlanner:
             "orchestrator": ["architecture", "coordination", "workflow", "planning", "overview"],
         }
 
-    def _extract_keywords(self, text: str) -> List[str]:
+
+    # Field labels mapping for human-readable display
+    FIELD_LABELS: ClassVar[dict[str, str]] = {
+        "tech_stack.languages": "Programming Languages",
+        "tech_stack.backend": "Backend Stack",
+        "tech_stack.frontend": "Frontend Stack",
+        "tech_stack.database": "Databases",
+        "tech_stack.infrastructure": "Infrastructure",
+        "architecture.pattern": "Architecture Pattern",
+        "architecture.api_style": "API Style",
+        "architecture.design_patterns": "Design Patterns",
+        "architecture.notes": "Architecture Notes",
+        "features.core": "Core Features",
+        "test_config.strategy": "Testing Strategy",
+        "test_config.frameworks": "Testing Frameworks",
+        "test_config.coverage_target": "Coverage Target",
+    }
+
+    def _extract_keywords(self, text: str) -> list[str]:
         """
         Extract keywords from text using predefined keyword mapping.
 
@@ -89,7 +108,7 @@ class MissionPlanner:
 
         return found_keywords
 
-    def _categorize_work(self, keywords: List[str], features: List[str]) -> Dict[str, str]:
+    def _categorize_work(self, keywords: list[str], features: list[str]) -> dict[str, str]:
         """
         Categorize work types based on keywords and features.
 
@@ -169,7 +188,7 @@ class MissionPlanner:
         else:
             return "simple"
 
-    def _estimate_agent_count(self, work_types: Dict[str, str], complexity: str) -> int:
+    def _estimate_agent_count(self, work_types: dict[str, str], complexity: str) -> int:
         """
         Estimate number of agents needed based on work types and complexity.
 
@@ -213,8 +232,8 @@ class MissionPlanner:
         return len(text) // 4
 
     def _filter_vision_for_role(
-        self, vision_chunks: List[str], agent_role: str
-    ) -> List[str]:
+        self, vision_chunks: list[str], agent_role: str
+    ) -> list[str]:
         """
         Filter vision chunks to find most relevant content for agent role.
 
@@ -395,13 +414,125 @@ Success Criteria:
             feature_categories=features if features else None,
         )
 
+    def _get_field_priority_config(self, user_id: Optional[str]) -> dict:
+        """
+        Get user's field priority configuration or default.
+
+        Args:
+            user_id: User ID (optional)
+
+        Returns:
+            Field priority config dict
+        """
+        if not user_id:
+            return DEFAULT_FIELD_PRIORITY
+
+        # Query user settings
+        try:
+            user = self.db_manager.session.query(User).filter_by(id=user_id).first()
+            if user and user.field_priority_config:
+                return user.field_priority_config
+        except Exception as e:
+            logger.warning(f"Failed to load user field priority config: {e}")
+
+        return DEFAULT_FIELD_PRIORITY
+
+    def _get_field_value(self, config_data: dict, field_path: str):
+        """
+        Get field value from config_data using dot notation.
+
+        Args:
+            config_data: Product config_data dict
+            field_path: Dot-separated path (e.g., "tech_stack.languages")
+
+        Returns:
+            Field value or None
+        """
+        keys = field_path.split(".")
+        value = config_data
+
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+
+        return value
+
+    def _format_field(self, field_path: str, value) -> str:
+        """
+        Format field for mission content.
+
+        Args:
+            field_path: Field path (e.g., "tech_stack.languages")
+            value: Field value
+
+        Returns:
+            Formatted section
+        """
+        label = self.FIELD_LABELS.get(field_path, field_path)
+
+        # Format based on type
+        if isinstance(value, list):
+            items = "\n".join(f"- {item}" for item in value)
+            return f"\n### {label}\n{items}\n"
+        elif isinstance(value, (int, float)):
+            return f"\n### {label}\n{value}%\n"
+        else:
+            return f"\n### {label}\n{value}\n"
+
+    def _build_config_data_section(
+        self, product: Product, priority_config: dict, token_budget: int
+    ) -> tuple[str, int]:
+        """
+        Build config_data section respecting priority and token budget.
+
+        Args:
+            product: Product with config_data
+            priority_config: Priority configuration
+            token_budget: Remaining token budget
+
+        Returns:
+            (section_content, tokens_used)
+        """
+        if not product.config_data:
+            return "", 0
+
+        content = "\n## Product Configuration\n"
+        tokens_used = self._count_tokens(content)
+
+        # Get fields by priority using the config/defaults.py structure
+        fields_dict = priority_config.get("fields", {})
+        
+        # Sort fields by priority value
+        sorted_fields = sorted(fields_dict.items(), key=lambda x: x[1])
+        
+        # Process fields in priority order
+        for field_path, priority in sorted_fields:
+            field_content = self._get_field_value(product.config_data, field_path)
+            if field_content:
+                section = self._format_field(field_path, field_content)
+                section_tokens = self._count_tokens(section)
+
+                # Priority 1 always included, others respect budget
+                if priority == 1 or (tokens_used + section_tokens <= token_budget):
+                    content += section
+                    tokens_used += section_tokens
+                else:
+                    # Stop adding fields if budget exceeded (unless P1)
+                    if priority > 1:
+                        logger.debug(f"Skipping field {field_path} (priority {priority}) due to token budget")
+
+        return content, tokens_used
+
     async def _generate_agent_mission(
         self,
         agent_config: AgentConfig,
         analysis: RequirementAnalysis,
         product: Product,
         project: Project,
-        vision_chunks: List[str],
+        vision_chunks: list[str],
+        user_id: Optional[str] = None,
     ) -> Mission:
         """
         Generate a condensed mission for a specific agent.
@@ -412,6 +543,7 @@ Success Criteria:
             product: Product with vision
             project: Project being worked on
             vision_chunks: Filtered vision document chunks
+            user_id: User ID for field priority configuration (optional)
 
         Returns:
             Mission object with condensed content (500-1500 tokens)
@@ -442,11 +574,25 @@ Complexity: {analysis.complexity}
         for i, chunk in enumerate(relevant_chunks, 1):
             mission_content += f"\n### Section {i}\n{chunk}\n"
 
-        # Add tech stack
-        if analysis.tech_stack:
-            mission_content += f"\n## Technology Stack\n"
-            for tech in analysis.tech_stack:
-                mission_content += f"- {tech}\n"
+        # Calculate base token usage
+        base_tokens = self._count_tokens(mission_content)
+        
+        # Get user's field priority configuration
+        priority_config = self._get_field_priority_config(user_id)
+        token_budget = priority_config.get("token_budget", 1500)
+        
+        # Reserve tokens for footer sections (success criteria, scope, protocol)
+        reserved_tokens = 200
+        remaining_budget = token_budget - base_tokens - reserved_tokens
+        
+        # Add config_data section with priority (Handover 0048)
+        if remaining_budget > 0:
+            config_section, config_tokens = self._build_config_data_section(
+                product, priority_config, remaining_budget
+            )
+            mission_content += config_section
+        else:
+            logger.warning(f"No token budget remaining for config_data section (base={base_tokens}, budget={token_budget})")
 
         # Add success criteria
         mission_content += f"\n## Success Criteria\n{success_criteria}"
@@ -469,7 +615,7 @@ Complexity: {analysis.complexity}
 - Update mission status regularly
 """
 
-        # Count tokens
+        # Count final tokens
         token_count = self._count_tokens(mission_content)
 
         # Extract chunk IDs if available
@@ -495,8 +641,9 @@ Complexity: {analysis.complexity}
         analysis: RequirementAnalysis,
         product: Product,
         project: Project,
-        selected_agents: List[AgentConfig],
-    ) -> Dict[str, Mission]:
+        selected_agents: list[AgentConfig],
+        user_id: Optional[str] = None,
+    ) -> dict[str, Mission]:
         """
         Generate condensed missions for all selected agents.
 
@@ -505,6 +652,7 @@ Complexity: {analysis.complexity}
             product: Product with vision document
             project: Project being worked on
             selected_agents: List of agent configurations
+            user_id: User ID for field priority configuration (optional)
 
         Returns:
             Dictionary mapping agent role to Mission object
@@ -551,10 +699,10 @@ Complexity: {analysis.complexity}
         # Calculate original token count
         original_tokens = self._count_tokens(product.vision_document or "")
 
-        # Generate mission for each agent
+        # Generate mission for each agent (Handover 0048: pass user_id for field priority)
         for agent_config in selected_agents:
             mission = await self._generate_agent_mission(
-                agent_config, analysis, product, project, vision_chunks
+                agent_config, analysis, product, project, vision_chunks, user_id
             )
             missions[agent_config.role] = mission
 

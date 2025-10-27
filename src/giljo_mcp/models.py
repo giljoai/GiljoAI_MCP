@@ -1535,6 +1535,9 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
 
+    # User Preferences (Handover 0048)
+    field_priority_config = Column(JSONB, nullable=True, default=None, comment="User-customizable field priority for agent mission generation")
+
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
 

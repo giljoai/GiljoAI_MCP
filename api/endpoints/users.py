@@ -9,7 +9,10 @@ Provides REST API for comprehensive user CRUD operations:
 - Soft-delete user (admin only)
 - Change user role (admin only)
 - Change password (self or admin)
-- AI Tools Configurator (authenticated access)
+- Field Priority Configuration (Handover 0048):
+  - GET /me/field-priority: Get user's config or defaults
+  - PUT /me/field-priority: Update user's field priority config
+  - POST /me/field-priority/reset: Reset to system defaults
 
 All endpoints enforce role-based access control and multi-tenant isolation.
 """
@@ -124,6 +127,14 @@ class PasswordChangeResponse(BaseModel):
     """Response model for password change"""
 
     message: str
+
+
+class FieldPriorityConfig(BaseModel):
+    """Request/Response model for field priority configuration"""
+
+    fields: dict[str, int] = Field(..., description="Field paths mapped to priority (1-3)")
+    token_budget: int = Field(1500, description="Maximum tokens for config_data section")
+    version: str = Field("1.0", description="Config schema version")
 
 
 # Helper Functions
@@ -576,6 +587,180 @@ async def reset_password(
 
     logger.info(f"Admin {current_user.username} reset password for user: {user.username}")
     return PasswordChangeResponse(message="Password reset successful")
+
+
+# Field Priority Configuration Endpoints (Handover 0048)
+
+
+@router.get("/me/field-priority", response_model=FieldPriorityConfig)
+async def get_field_priority_config(
+    current_user: User = Depends(get_current_active_user),
+) -> FieldPriorityConfig:
+    """
+    Get user's field priority configuration or default.
+
+    Returns the authenticated user's custom field priority configuration if set,
+    otherwise returns the system default configuration.
+
+    Args:
+        current_user: Current authenticated user
+
+    Returns:
+        FieldPriorityConfig: User's custom config or system defaults
+
+    Example Response:
+        {
+            "version": "1.0",
+            "token_budget": 1500,
+            "fields": {
+                "tech_stack.languages": 1,
+                "tech_stack.backend": 1,
+                ...
+            }
+        }
+    """
+    logger.debug(f"User {current_user.username} retrieving field priority config")
+
+    # Return user's custom config if set
+    if current_user.field_priority_config:
+        logger.debug(f"Returning custom field priority config for user {current_user.username}")
+        return FieldPriorityConfig(**current_user.field_priority_config)
+
+    # Return system defaults if no custom config
+    logger.debug(f"Returning default field priority config for user {current_user.username}")
+    from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+    return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
+
+
+@router.put("/me/field-priority", response_model=FieldPriorityConfig)
+async def update_field_priority_config(
+    config: FieldPriorityConfig,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> FieldPriorityConfig:
+    """
+    Update user's field priority configuration.
+
+    Validates field paths and priority values before saving. All fields must be
+    valid configuration paths, and all priorities must be integers 1-3.
+
+    Args:
+        config: New field priority configuration
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        FieldPriorityConfig: Updated configuration
+
+    Raises:
+        HTTPException: 400 if invalid field path or priority value
+
+    Example Request:
+        {
+            "version": "1.0",
+            "token_budget": 2000,
+            "fields": {
+                "tech_stack.languages": 1,
+                "tech_stack.backend": 1,
+                "tech_stack.database": 2
+            }
+        }
+    """
+    logger.debug(f"User {current_user.username} updating field priority config")
+
+    # Validate fields are valid configuration paths
+    valid_fields = {
+        "tech_stack.languages",
+        "tech_stack.backend",
+        "tech_stack.frontend",
+        "tech_stack.database",
+        "tech_stack.infrastructure",
+        "architecture.pattern",
+        "architecture.api_style",
+        "architecture.design_patterns",
+        "architecture.notes",
+        "features.core",
+        "test_config.strategy",
+        "test_config.frameworks",
+        "test_config.coverage_target",
+    }
+
+    # Validate all provided fields
+    for field in config.fields.keys():
+        if field not in valid_fields:
+            logger.warning(f"User {current_user.username} provided invalid field: {field}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid field: {field}. Must be one of: {', '.join(sorted(valid_fields))}",
+            )
+
+    # Validate all priority values are 1-3
+    for field, priority in config.fields.items():
+        if not isinstance(priority, int) or priority < 1 or priority > 3:
+            logger.warning(f"User {current_user.username} provided invalid priority {priority} for field {field}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid priority {priority} for field '{field}'. Priority must be integer between 1 and 3.",
+            )
+
+    # Validate token budget is positive
+    if config.token_budget < 100:
+        logger.warning(f"User {current_user.username} provided invalid token budget: {config.token_budget}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token budget must be at least 100 tokens",
+        )
+
+    # Update user's config (store as dict for JSONB column)
+    current_user.field_priority_config = config.model_dump()
+    await db.commit()
+    await db.refresh(current_user)
+
+    logger.info(f"Updated field priority config for user: {current_user.username}")
+    return config
+
+
+@router.post("/me/field-priority/reset", response_model=FieldPriorityConfig)
+async def reset_field_priority_config(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> FieldPriorityConfig:
+    """
+    Reset field priority configuration to system defaults.
+
+    Clears user's custom configuration and returns system defaults.
+    Useful for reverting customizations.
+
+    Args:
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        FieldPriorityConfig: System default configuration
+
+    Example Response:
+        {
+            "version": "1.0",
+            "token_budget": 1500,
+            "fields": {
+                "tech_stack.languages": 1,
+                "tech_stack.backend": 1,
+                ...
+            }
+        }
+    """
+    logger.debug(f"User {current_user.username} resetting field priority config to defaults")
+
+    # Clear user's custom config
+    current_user.field_priority_config = None
+    await db.commit()
+    await db.refresh(current_user)
+
+    logger.info(f"Reset field priority config to defaults for user: {current_user.username}")
+
+    # Return system defaults
+    from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+    return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
 
 
 # AI Tools Configurator Endpoint (relocated from /setup/ai-tools)
