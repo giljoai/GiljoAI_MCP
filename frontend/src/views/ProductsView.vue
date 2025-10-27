@@ -78,24 +78,24 @@
                 lg="3"
               >
                 <v-card
-                  :elevation="product.id === productStore.currentProductId ? 8 : 2"
+                  :elevation="product.is_active ? 8 : 2"
                   class="product-card h-100"
                 >
                   <v-card-text>
                     <div class="d-flex align-center justify-space-between mb-2">
                       <div
                         class="text-h6"
-                        :style="product.id === productStore.currentProductId ? 'color: #ffc300' : ''"
+                        :style="product.is_active ? 'color: #ffc300' : ''"
                       >
                         {{ product.name }}
                       </div>
                       <v-chip
-                        v-if="product.id === productStore.currentProductId"
-                        color="success"
-                        size="small"
-                        variant="flat"
-                      >
-                        Active
+                        v-if="product.is_active"
+                      color="success"
+                      size="small"
+                      variant="flat"
+                    >
+                      Active
                       </v-chip>
                     </div>
 
@@ -134,7 +134,7 @@
                       size="small"
                       @click="toggleProductActivation(product)"
                     >
-                      {{ product.id === productStore.currentProductId ? 'Deactivate' : 'Activate' }}
+                      {{ product.is_active ? 'Deactivate' : 'Activate' }}
                     </v-btn>
                     <v-spacer></v-spacer>
                     <v-btn
@@ -1387,25 +1387,34 @@ function getTaskProgress(productId) {
 
 async function toggleProductActivation(product) {
   try {
-    if (product.id === productStore.currentProductId) {
-      // Deactivate - clear current product
-      productStore.currentProductId = null
-      productStore.currentProduct = null
-      localStorage.removeItem('currentProductId')
+    if (product.is_active) {
+      // Deactivate product via API
+      await api.products.deactivate(product.id)
+      
+      // Refresh active product in store (will now be null)
+      await productStore.fetchActiveProduct()
+      
       showToast({
         message: `${product.name} deactivated`,
         type: 'info',
         duration: 3000,
       })
     } else {
-      // Activate product
-      await productStore.setCurrentProduct(product.id)
+      // Activate product via API
+      await api.products.activate(product.id)
+      
+      // Refresh active product in store (will now be this product)
+      await productStore.fetchActiveProduct()
+      
       showToast({
         message: `${product.name} activated`,
         type: 'success',
         duration: 3000,
       })
     }
+    
+    // Reload products list to update UI
+    await loadProducts()
   } catch (error) {
     console.error('Failed to toggle product activation:', error)
     showToast({

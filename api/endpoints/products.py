@@ -340,6 +340,7 @@ async def update_product(
 async def list_products(
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
+    is_active: bool | None = Query(None, description="Filter by activation status"),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """List all products for the tenant"""
@@ -352,9 +353,14 @@ async def list_products(
     try:
         async with state.db_manager.get_session_async() as db:
             # Handover 0046 Issue #2: Query products with related counts including vision_documents
+            # Apply optional is_active filter
+            where_clauses = [Product.tenant_key == tenant_key]
+            if is_active is not None:
+                where_clauses.append(Product.is_active == is_active)
+            
             stmt = (
                 select(Product)
-                .where(Product.tenant_key == tenant_key)
+                .where(*where_clauses)
                 .options(
                     selectinload(Product.projects),
                     selectinload(Product.tasks),

@@ -166,7 +166,7 @@
             </v-card>
 
             <!-- Token Budget Indicator -->
-            <v-card variant="tonal" :color="tokenIndicatorColor" class="mb-4">
+            <v-card v-if="activeProductTokens" variant="tonal" :color="tokenIndicatorColor" class="mb-4">
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
@@ -183,6 +183,12 @@
                 </div>
               </v-card-text>
             </v-card>
+
+            <!-- No Active Product Message -->
+            <v-alert v-else type="info" variant="tonal" class="mb-4">
+              <v-icon start>mdi-information</v-icon>
+              No active product / Token estimation unavailable
+            </v-alert>
 
             <!-- Action Buttons -->
             <div class="d-flex gap-2 mb-4">
