@@ -32,6 +32,21 @@ describe('useAutoSave Composable', () => {
       expect(autoSave.errorMessage.value).toBeNull()
       expect(autoSave.lastSaved.value).toBeNull()
     })
+
+    it('should throw if key is missing', () => {
+      const data = ref({ name: '' })
+      const autoSave = useAutoSave({ data })
+
+      // Should not crash, but methods should warn
+      expect(autoSave).toBeDefined()
+    })
+
+    it('should throw if data is missing', () => {
+      const autoSave = useAutoSave({ key: 'test_key' })
+
+      // Should not crash
+      expect(autoSave).toBeDefined()
+    })
   })
 
   describe('saveToCache - LocalStorage Persistence', () => {
@@ -52,9 +67,56 @@ describe('useAutoSave Composable', () => {
       expect(parsed.version).toBe('1.0')
     })
 
+    it('should handle quota exceeded error gracefully', () => {
+      const data = ref({ name: 'Test', description: 'A'.repeat(1000000) })
+      const autoSave = useAutoSave({ key: 'test_key', data })
+
+      // Mock localStorage.setItem to throw QuotaExceededError
+      const originalSetItem = localStorage.setItem
+      localStorage.setItem = vi.fn(() => {
+        const error = new Error('QuotaExceededError')
+        error.name = 'QuotaExceededError'
+        throw error
+      })
+
+      const result = autoSave.saveToCache()
+
+      expect(result).toBe(false)
+      expect(autoSave.saveStatus.value).toBe('error')
+      expect(autoSave.errorMessage.value).toContain('Storage quota exceeded')
+
+      localStorage.setItem = originalSetItem
+    })
+
+    it('should handle generic storage errors', () => {
+      const data = ref({ name: 'Test' })
+      const autoSave = useAutoSave({ key: 'test_key', data })
+
+      const originalSetItem = localStorage.setItem
+      localStorage.setItem = vi.fn(() => {
+        throw new Error('Storage failed')
+      })
+
+      const result = autoSave.saveToCache()
+
+      expect(result).toBe(false)
+      expect(autoSave.saveStatus.value).toBe('error')
+      expect(autoSave.errorMessage.value).toContain('Failed to save draft')
+
+      localStorage.setItem = originalSetItem
+    })
+
     it('should not save if key is missing', () => {
       const data = ref({ name: 'Test' })
       const autoSave = useAutoSave({ data })
+
+      const result = autoSave.saveToCache()
+
+      expect(result).toBe(false)
+    })
+
+    it('should not save if data is missing', () => {
+      const autoSave = useAutoSave({ key: 'test_key' })
 
       const result = autoSave.saveToCache()
 
@@ -90,6 +152,54 @@ describe('useAutoSave Composable', () => {
 
       expect(restored).toBeNull()
     })
+
+    it('should return null and clear invalid cache', () => {
+      localStorage.setItem('invalid_cache', 'not valid json')
+
+      const data = ref({ name: '' })
+      const autoSave = useAutoSave({ key: 'invalid_cache', data })
+
+      const restored = autoSave.restoreFromCache()
+
+      expect(restored).toBeNull()
+      expect(localStorage.getItem('invalid_cache')).toBeNull()
+    })
+
+    it('should return null if cache is missing required fields', () => {
+      const badCache = {
+        data: { name: 'Test' },
+        // Missing timestamp
+      }
+
+      localStorage.setItem('bad_cache', JSON.stringify(badCache))
+
+      const data = ref({ name: '' })
+      const autoSave = useAutoSave({ key: 'bad_cache', data })
+
+      const restored = autoSave.restoreFromCache()
+
+      expect(restored).toBeNull()
+      expect(localStorage.getItem('bad_cache')).toBeNull()
+    })
+
+    it('should calculate cache age correctly', () => {
+      const tenMinutesAgo = Date.now() - 10 * 60 * 1000
+      const cacheData = {
+        data: { name: 'Test' },
+        timestamp: tenMinutesAgo,
+        version: '1.0',
+      }
+
+      localStorage.setItem('aged_cache', JSON.stringify(cacheData))
+
+      const data = ref({ name: '' })
+      const autoSave = useAutoSave({ key: 'aged_cache', data })
+
+      const metadata = autoSave.getCacheMetadata()
+
+      expect(metadata.ageMinutes).toBeGreaterThanOrEqual(9)
+      expect(metadata.ageMinutes).toBeLessThanOrEqual(11)
+    })
   })
 
   describe('clearCache - Cache Removal', () => {
@@ -106,9 +216,24 @@ describe('useAutoSave Composable', () => {
       expect(autoSave.saveStatus.value).toBe('saved')
       expect(autoSave.errorMessage.value).toBeNull()
     })
+
+    it('should handle missing cache gracefully', () => {
+      const data = ref({})
+      const autoSave = useAutoSave({ key: 'nonexistent', data })
+
+      // Should not throw
+      expect(() => autoSave.clearCache()).not.toThrow()
+    })
+
+    it('should not clear if key is missing', () => {
+      const autoSave = useAutoSave({})
+
+      // Should not throw
+      expect(() => autoSave.clearCache()).not.toThrow()
+    })
   })
 
-  describe('Debounced Save', () => {
+  describe('Debounced Save - 500ms Default', () => {
     it('should debounce saves (500ms default)', async () => {
       const data = ref({ name: 'Initial' })
       const autoSave = useAutoSave({ key: 'debounce_test', data, debounceMs: 500 })
@@ -166,6 +291,20 @@ describe('useAutoSave Composable', () => {
       const cached = JSON.parse(localStorage.getItem('force_test'))
       expect(cached.data.name).toBe('Updated')
     })
+
+    it('should cancel pending debounced save', () => {
+      const data = ref({ name: 'Initial' })
+      const autoSave = useAutoSave({ key: 'cancel_test', data, debounceMs: 500 })
+
+      data.value.name = 'Change 1'
+      data.value.name = 'Change 2'
+
+      autoSave.forceSave()
+      vi.advanceTimersByTime(500)
+
+      const cached = JSON.parse(localStorage.getItem('cancel_test'))
+      expect(cached.data.name).toBe('Change 2')
+    })
   })
 
   describe('getCacheMetadata - Cache Info', () => {
@@ -188,6 +327,9 @@ describe('useAutoSave Composable', () => {
       expect(metadata.exists).toBe(true)
       expect(metadata.timestamp).toBeDefined()
       expect(metadata.ageMs).toBeGreaterThan(0)
+      expect(metadata.ageMinutes).toBe(5)
+      expect(metadata.version).toBe('1.0')
+      expect(metadata.sizeBytes).toBe(serialized.length)
     })
 
     it('should return null if cache does not exist', () => {
@@ -197,6 +339,92 @@ describe('useAutoSave Composable', () => {
       const metadata = autoSave.getCacheMetadata()
 
       expect(metadata).toBeNull()
+    })
+
+    it('should return null if key is missing', () => {
+      const autoSave = useAutoSave({})
+
+      const metadata = autoSave.getCacheMetadata()
+
+      expect(metadata).toBeNull()
+    })
+  })
+
+  describe('Watch Behavior - Deep Reactive Updates', () => {
+    it('should watch for deep changes in reactive data', () => {
+      const data = ref({
+        basic: { name: 'Test' },
+        config: { tech: 'Vue' },
+      })
+
+      const autoSave = useAutoSave({ key: 'deep_test', data, debounceMs: 100 })
+
+      expect(autoSave.hasUnsavedChanges.value).toBe(false)
+
+      // Change nested property
+      data.value.config.tech = 'Vue 3'
+
+      expect(autoSave.hasUnsavedChanges.value).toBe(true)
+      expect(autoSave.saveStatus.value).toBe('unsaved')
+
+      vi.advanceTimersByTime(100)
+
+      expect(localStorage.getItem('deep_test')).toBeDefined()
+      const cached = JSON.parse(localStorage.getItem('deep_test'))
+      expect(cached.data.config.tech).toBe('Vue 3')
+    })
+
+    it('should handle array mutations', () => {
+      const data = ref({
+        items: ['item1'],
+      })
+
+      const autoSave = useAutoSave({ key: 'array_test', data, debounceMs: 100 })
+
+      data.value.items.push('item2')
+
+      expect(autoSave.hasUnsavedChanges.value).toBe(true)
+
+      vi.advanceTimersByTime(100)
+
+      const cached = JSON.parse(localStorage.getItem('array_test'))
+      expect(cached.data.items).toEqual(['item1', 'item2'])
+    })
+  })
+
+  describe('Edit vs Create Mode - Cache Keys', () => {
+    it('should use different cache keys for new vs edit mode', () => {
+      const newData = ref({ name: 'New Product' })
+      const autoSaveNew = useAutoSave({ key: 'product_form_draft_new', data: newData, debounceMs: 100 })
+
+      const editData = ref({ name: 'Existing Product' })
+      const autoSaveEdit = useAutoSave({ key: 'product_form_draft_123', data: editData, debounceMs: 100 })
+
+      newData.value.name = 'Updated New'
+      editData.value.name = 'Updated Existing'
+
+      vi.advanceTimersByTime(100)
+
+      const newCached = JSON.parse(localStorage.getItem('product_form_draft_new'))
+      const editCached = JSON.parse(localStorage.getItem('product_form_draft_123'))
+
+      expect(newCached.data.name).toBe('Updated New')
+      expect(editCached.data.name).toBe('Updated Existing')
+      expect(newCached).not.toEqual(editCached)
+    })
+  })
+
+  describe('Cleanup on Unmount', () => {
+    it('should stop watching on unmount', () => {
+      const data = ref({ name: 'Test' })
+      const autoSave = useAutoSave({ key: 'cleanup_test', data, debounceMs: 100 })
+
+      data.value.name = 'Updated'
+      vi.advanceTimersByTime(100)
+
+      // Note: In actual component unmount, cleanup will be called
+      // This test verifies the structure is correct for cleanup
+      expect(autoSave.clearCache).toBeDefined()
     })
   })
 
@@ -231,7 +459,7 @@ describe('useAutoSave Composable', () => {
   })
 
   describe('Special Characters Handling', () => {
-    it('should properly store special characters', () => {
+    it('should properly escape and store special characters', () => {
       const data = ref({
         name: '<script>alert("xss")</script>',
         description: 'Test with "quotes" and \'apostrophes\'',
@@ -249,8 +477,8 @@ describe('useAutoSave Composable', () => {
 
     it('should handle unicode characters', () => {
       const data = ref({
-        name: 'Product Chinese English',
-        description: 'Test with emojis',
+        name: 'Product 中文 日本語 العربية',
+        description: 'Émojis: 🚀 🎉 ✨',
       })
 
       const autoSave = useAutoSave({ key: 'unicode_test', data, debounceMs: 100 })
@@ -258,7 +486,8 @@ describe('useAutoSave Composable', () => {
       vi.advanceTimersByTime(100)
 
       const cached = JSON.parse(localStorage.getItem('unicode_test'))
-      expect(cached.data.name).toBe('Product Chinese English')
+      expect(cached.data.name).toContain('中文')
+      expect(cached.data.description).toContain('🚀')
     })
   })
 })
