@@ -54,6 +54,9 @@ class ProductResponse(BaseModel):
     # Handover 0042: Rich context fields
     config_data: Optional[dict] = Field(None, description="Rich configuration: tech_stack, architecture, features")
     has_config_data: bool = Field(False, description="Whether product has config_data populated")
+    
+    # Handover 0049: Active product indicator
+    is_active: bool = Field(False, description="Whether this product is currently active")
 
 
 class VisionChunk(BaseModel):
@@ -235,6 +238,8 @@ async def create_product(
                 # Handover 0042: Include config_data in response
                 config_data=product.config_data,
                 has_config_data=product.has_config_data,
+                # Handover 0049: Include is_active status
+                is_active=product.is_active,
             )
 
     except HTTPException:
@@ -392,6 +397,11 @@ async def list_products(
                         unfinished_projects=unfinished_projects,
                         unresolved_tasks=unresolved_tasks,
                         vision_documents_count=vision_doc_count,
+                        # Handover 0042: Include config_data in response
+                        config_data=product.config_data,
+                        has_config_data=product.has_config_data,
+                        # Handover 0049: Include is_active status (BUG FIX)
+                        is_active=product.is_active,
                     )
                 )
 
@@ -454,10 +464,12 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
                 has_vision=bool(product.vision_path),
                 unfinished_projects=unfinished_projects,
                 unresolved_tasks=unresolved_tasks,
-                vision_documents_count=len(vision_docs),
+                vision_documents_count=vision_doc_count,
                 # Handover 0042: Include config_data in response
                 config_data=product.config_data,
                 has_config_data=product.has_config_data,
+                # Handover 0049: Include is_active status
+                is_active=product.is_active,
             )
 
     except HTTPException:
@@ -539,6 +551,153 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
                 unresolved_tasks=unresolved_tasks,
                 vision_documents_count=vision_documents_count,
                 total_chunks=total_chunks
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.post("/{product_id}/activate", response_model=ProductResponse)
+async def activate_product(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Activate a product (Handover 0049)
+    
+    Sets this product as the active product for the tenant. Only one product
+    can be active per tenant - activating this product will deactivate all others.
+    """
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Verify product exists and belongs to tenant
+            result = await db.execute(
+                select(Product)
+                .where(Product.id == product_id, Product.tenant_key == tenant_key)
+                .options(
+                    selectinload(Product.projects),
+                    selectinload(Product.tasks),
+                    selectinload(Product.vision_documents)
+                )
+            )
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Deactivate all other products in the tenant
+            await db.execute(
+                update(Product)
+                .where(Product.tenant_key == tenant_key, Product.id != product_id)
+                .values(is_active=False)
+            )
+
+            # Activate this product
+            product.is_active = True
+            await db.commit()
+            await db.refresh(product)
+
+            # Calculate metrics for response
+            projects = product.projects or []
+            tasks = product.tasks or []
+            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
+
+            return ProductResponse(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                vision_path=product.vision_path,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+                project_count=len(projects),
+                task_count=len(tasks),
+                has_vision=bool(product.vision_path),
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=vision_doc_count,
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
+                is_active=product.is_active,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{product_id}/deactivate", response_model=ProductResponse)
+async def deactivate_product(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Deactivate a product (Handover 0049)
+    
+    Removes the active status from this product.
+    """
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Verify product exists and belongs to tenant
+            result = await db.execute(
+                select(Product)
+                .where(Product.id == product_id, Product.tenant_key == tenant_key)
+                .options(
+                    selectinload(Product.projects),
+                    selectinload(Product.tasks),
+                    selectinload(Product.vision_documents)
+                )
+            )
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Deactivate this product
+            product.is_active = False
+            await db.commit()
+            await db.refresh(product)
+
+            # Calculate metrics for response
+            projects = product.projects or []
+            tasks = product.tasks or []
+            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
+
+            return ProductResponse(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                vision_path=product.vision_path,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+                project_count=len(projects),
+                task_count=len(tasks),
+                has_vision=bool(product.vision_path),
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=vision_doc_count,
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
+                is_active=product.is_active,
             )
 
     except HTTPException:
