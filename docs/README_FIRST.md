@@ -20,6 +20,7 @@
 
 **Recent Production Features** (See [Recent Handovers](#recent-production-handovers-v30) for details):
 
+- **Project Soft Delete with Recovery (Handover 0070)** - 10-day recovery window with UI in Settings → Database
 - Single Active Product Architecture (Handover 0050) - One active product per tenant with database enforcement. **Extension (0050b)**: Projects also follow single-active pattern - one active project per product with cascade deactivation.
 - Context Priority Management (Handover 0052) - User-customizable token budgets per field
 - Multi-Tool Agent Orchestration (Handover 0045) - 40-60% cost optimization via tool mixing
@@ -234,6 +235,13 @@ python install.py
 - **Manual AI Tool Configuration**: Custom setup for any AI tool
 - **Personal API Keys**: Generate and manage user API keys
 - **Serena MCP**: Advanced code analysis integration
+
+**Project Recovery** (Avatar → Settings → Database tab):
+- **Deleted Projects**: View all soft-deleted projects
+- **Recovery Window**: 10-day window to restore deleted projects
+- **Purge Countdown**: Visual countdown showing days until permanent deletion
+- **One-Click Restore**: Restore deleted projects to inactive status
+- **Auto-Purge**: Projects automatically purged after 10 days (on startup)
 
 ---
 
