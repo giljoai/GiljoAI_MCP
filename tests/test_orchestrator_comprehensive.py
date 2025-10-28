@@ -44,7 +44,7 @@ def mock_project():
     project.tenant_key = "test-tenant"
     project.name = "Test Project"
     project.mission = "Test mission"
-    project.status = ProjectStatus.DRAFT.value
+    project.status = ProjectStatus.INACTIVE.value
     project.created_at = datetime.now()
     project.context_budget = 150000
     project.context_used = 0
@@ -93,9 +93,9 @@ class TestProjectLifecycle:
         mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_activate_project_from_draft(self, orchestrator, mock_project):
-        """Test activating a project from draft state."""
-        mock_project.status = ProjectStatus.DRAFT.value
+    async def test_activate_project_from_inactive(self, orchestrator, mock_project):
+        """Test activating a project from inactive state."""
+        mock_project.status = ProjectStatus.INACTIVE.value
 
         # Setup mock session
         mock_session = AsyncMock()
@@ -179,8 +179,8 @@ class TestProjectLifecycle:
     @pytest.mark.asyncio
     async def test_state_transition_validation(self, orchestrator, mock_project):
         """Test invalid state transitions are prevented."""
-        # Can't deactivate a draft project
-        mock_project.status = ProjectStatus.DRAFT.value
+        # Can't deactivate an already inactive project
+        mock_project.status = ProjectStatus.INACTIVE.value
 
         mock_session = AsyncMock()
         orchestrator.db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
