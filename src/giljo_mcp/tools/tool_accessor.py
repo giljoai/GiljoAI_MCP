@@ -33,6 +33,8 @@ class ToolAccessor:
         mission: str,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
+        status: str = "inactive",  # Handover 0050b: projects default to inactive
+        context_budget: int = 150000,
     ) -> dict[str, Any]:
         """Create a new project"""
         try:
@@ -47,8 +49,8 @@ class ToolAccessor:
                     mission=mission,
                     tenant_key=tenant_key,
                     product_id=product_id,
-                    status="active",
-                    context_budget=150000,
+                    status=status,  # Use the passed status parameter
+                    context_budget=context_budget,
                     context_used=0,
                 )
 
@@ -57,7 +59,7 @@ class ToolAccessor:
 
                 project_id = str(project.id)
 
-                logger.info(f"Created project {project_id} with tenant key {tenant_key}")
+                logger.info(f"Created project {project_id} with status '{status}' and tenant key {tenant_key}")
 
                 return {
                     "success": True,
@@ -65,7 +67,7 @@ class ToolAccessor:
                     "tenant_key": tenant_key,
                     "product_id": product_id,
                     "name": name,
-                    "status": "active",
+                    "status": status,  # Return the actual status used
                 }
 
         except Exception as e:

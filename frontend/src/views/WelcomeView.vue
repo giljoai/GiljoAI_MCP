@@ -10,7 +10,7 @@
 
           <!-- Friendly greeting with user's first name -->
           <h1 class="text-h4 mb-2 font-weight-bold">
-            {{ greeting }} {{ firstName }}!
+            {{ fullGreeting }}
           </h1>
           <p class="text-subtitle-1 text-medium-emphasis mb-6">
             Intelligent multi-agent coordination for complex software development
@@ -93,29 +93,51 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
-const greeting = computed(() => {
+const fullGreeting = computed(() => {
+  const name = firstName.value
   const hour = new Date().getHours()
-  const morning = ['Good morning!', 'Top of the morning!', 'Morning!', 'Rise and shine!']
-  const afternoon = ['Good afternoon!', 'Hope your day’s going well!', 'Hello there!', 'Welcome back!']
-  const evening = ['Good evening!', 'Great to see you!', 'Nice to see you!', 'Welcome back!']
-  const general = [
-    'Welcome back!',
-    'Here you are again!',
-    'Great to see you!',
-    'Glad you’re here!',
-    'Let’s get rolling!',
-    'Ready when you are!',
-    'Let’s build something great!',
-    'Howdy!',
-    'Hi again!',
-    'Welcome!',
-    'Back in action!',
-    'Let’s make progress!',
+
+  // Prefer messages with name placeholders for correct grammar
+  const morning = [
+    'Good morning, {name}!',
+    'Morning, {name}!',
+    'Rise and shine, {name}!',
   ]
-  if (hour < 12) return pick(morning)
-  if (hour < 17) return pick(afternoon)
-  if (hour < 22) return pick(evening)
-  return pick(general)
+  const afternoon = [
+    'Good afternoon, {name}!',
+    'Hello there, {name}!',
+    'Hope your day’s going well, {name}!',
+  ]
+  const evening = [
+    'Good evening, {name}!',
+    'Great to see you, {name}!',
+    'Nice to see you, {name}!',
+  ]
+  // Generic messages without punctuation; we will add ", {name}!"
+  const general = [
+    'Welcome back',
+    'Here you are again',
+    'Glad you’re here',
+    'Let’s get rolling',
+    'Ready when you are',
+    'Let’s build something great',
+    'Howdy',
+    'Hi again',
+    'Welcome',
+    'Back in action',
+    'Let’s make progress',
+  ]
+
+  function choose(arr) { return arr[Math.floor(Math.random() * arr.length)] }
+
+  const pool = hour < 12 ? morning : hour < 17 ? afternoon : hour < 22 ? evening : general
+  let msg = choose(pool)
+  if (msg.includes('{name}')) {
+    return msg.replace('{name}', name)
+  }
+  // Ensure no trailing punctuation before appending name
+  msg = msg.replace(/[!?.]+$/, '')
+  return `${msg}, ${name}!`
 })
 
 // Tutorial CTA logic
