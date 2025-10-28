@@ -67,12 +67,12 @@ class TestProjectLifecycle:
         # Create mock project
         mock_project = MagicMock()
         mock_project.id = str(uuid4())
-        mock_project.status = ProjectStatus.DRAFT.value
+        mock_project.status = ProjectStatus.INACTIVE.value
 
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
         mock_session.commit = AsyncMock()
 
-        # Draft -> Active
+        # Inactive -> Active
         await orchestrator.activate_project(mock_project.id)
         assert mock_project.status == ProjectStatus.ACTIVE.value
 
@@ -101,8 +101,8 @@ class TestProjectLifecycle:
 
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
 
-        # Can't deactivate draft project
-        mock_project.status = ProjectStatus.DRAFT.value
+        # Can't deactivate inactive project
+        mock_project.status = ProjectStatus.INACTIVE.value
         with pytest.raises(ValueError, match="Cannot deactivate"):
             await orchestrator.deactivate_project(mock_project.id)
 

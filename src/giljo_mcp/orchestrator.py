@@ -693,6 +693,47 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             logger.info(f"Activated project {project_id}")
             return project
 
+    async def deactivate_project(self, project_id: str) -> Project:
+        """
+        Deactivate an active project, transitioning from ACTIVE to INACTIVE (Handover 0071).
+
+        Sets project status to INACTIVE, stops context monitoring, and removes from active cache.
+        This frees up the active project slot for the product.
+
+        Args:
+            project_id: Project UUID
+
+        Returns:
+            Updated Project instance
+
+        Raises:
+            ValueError: If project not found or not in ACTIVE status
+        """
+        async with self.db_manager.get_session_async() as session:
+            result = await session.execute(select(Project).where(Project.id == project_id))
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+
+            if project.status != ProjectStatus.ACTIVE.value:
+                raise ValueError(
+                    f"Cannot deactivate project in {project.status} state. " f"Only ACTIVE projects can be deactivated."
+                )
+
+            project.status = ProjectStatus.INACTIVE.value
+            await session.commit()
+            await session.refresh(project)
+
+            # Stop context monitoring
+            await self._stop_context_monitor(project_id)
+
+            # Remove from active cache
+            self._active_projects.pop(project_id, None)
+
+            logger.info(f"[Handover 0071] Deactivated project {project_id}")
+            return project
+
     async def complete_project(self, project_id: str, summary: Optional[str] = None) -> Project:
         """
         Complete a project, marking it as finished.
