@@ -391,6 +391,101 @@ Settings → Database tab → Deleted Projects section
 - Maintains clean database (auto-purge after 10 days)
 - Foundation for similar soft delete patterns (products, agents)
 
+#### Project State Management (Handover 0071)
+
+**Implementation Date**: October 28, 2025
+**Status**: Production-ready simplified state machine with enhanced validation
+
+**State Machine**: 5 states (simplified from 6)
+- **active**: Currently being worked on (ONE per product)
+- **inactive**: Paused, can be reactivated
+- **completed**: Finished successfully
+- **cancelled**: Abandoned
+- **deleted**: Soft deleted (10-day recovery)
+
+**State Reduction**:
+- **Before**: 6 states (active, paused, archived, completed, cancelled, deleted)
+- **After**: 5 states (active, inactive, completed, cancelled, deleted)
+- **Eliminated**: "paused" (replaced with "inactive"), "archived" (redundant)
+- **Benefit**: 17% reduction in complexity, clearer semantics
+
+**Key Features**:
+- Single active project per product (database + application enforcement)
+- Deactivate endpoint frees active slot
+- Product-scoped View Deleted (shows only active product's deleted projects)
+- Data preservation on deactivate/complete/cancel
+- WebSocket events for real-time updates
+
+**Enforcement**:
+- Database constraint: `idx_project_single_active_per_product` (inherited from 0050b)
+- Application validation: Clear error messages with resolution hints
+- Race condition protection: Atomic constraint check
+
+**State Transitions**:
+```
+ACTIVE → inactive (deactivate) | completed | cancelled | deleted
+INACTIVE → active (activate, validates single active)
+COMPLETED → active (reopen, validates single active) | deleted
+CANCELLED → active (reopen, validates single active) | deleted
+DELETED → inactive (restore, within 10 days)
+```
+
+**API Endpoints**:
+- POST /projects/{id}/deactivate - Deactivate active project
+- PATCH /projects/{id} - Enhanced with single active validation
+- GET /projects/deleted - Product-scoped filtering (active product only)
+- POST /projects/{id}/restore - Restore deleted project to inactive
+
+**Database Schema** (inherited from 0050b):
+```sql
+-- Single active project per product (enforced)
+CREATE UNIQUE INDEX idx_project_single_active_per_product
+ON projects (product_id)
+WHERE status = 'active';
+
+-- Soft delete support (from 0070)
+ALTER TABLE projects ADD COLUMN deleted_at TIMESTAMP NULL;
+```
+
+**Product-Scoped Deleted View**:
+- GET /projects/deleted filters by active product
+- If active product exists: Returns that product's deleted projects
+- If no active product: Returns empty array []
+- Reduces clutter in recovery UI
+
+**Enhanced Validation**:
+When activating a project (PATCH status to "active"), validates:
+1. No other project is active for this product
+2. Returns error with conflicting project name: "Another project ('X') is already active"
+3. User must deactivate conflicting project first
+
+**WebSocket Events**:
+- `project:deactivated` - Broadcast when project deactivated
+- `project:updated` - Broadcast on status change
+- `project:restored` - Broadcast when deleted project restored
+
+**Terminology Improvements**:
+- **Before**: "Pause" (ambiguous - is it active or not?)
+- **After**: "Deactivate" (clear - project becomes inactive)
+- **Benefit**: Clearer user intent, better API semantics
+
+**Migration** (from previous versions):
+- Projects with `status = 'paused'` migrated to `status = 'inactive'`
+- Projects with `status = 'archived'` migrated to `status = 'inactive'`
+- Idempotent migration (safe to re-run)
+- Zero data loss
+
+**Business Impact**:
+- Simplified mental model (5 states vs 6 states)
+- Clear terminology (deactivate vs pause)
+- Better product scoping (less clutter in deleted view)
+- Enhanced validation (prevents invalid active states)
+- Foundation for future state machine features
+
+**Documentation**:
+- [User Guide](../features/project_state_management.md) - Complete user documentation
+- [API Reference](../api/projects_endpoints.md) - Full API documentation with examples
+
 #### Agent Job Management Tables (Handover 0019)
 
 **MCPAgentJob Table** - Core agent job tracking:

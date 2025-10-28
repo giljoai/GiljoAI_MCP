@@ -7,6 +7,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added (Handover 0071 - Simplified Project State Management)
+
+**New Endpoint**:
+- **POST /api/v1/projects/{id}/deactivate** - Deactivate active project to free up active slot
+  - Returns project with updated status "inactive"
+  - Broadcasts WebSocket event `project:deactivated`
+  - Validates project is currently active before deactivation
+
+**Enhanced Validation**:
+- **Single Active Project Rule** - PATCH /projects/{id} now validates that no other project is active when activating a project
+  - Error message includes conflicting project name: "Another project ('X') is already active for this product. Please deactivate it first."
+  - Prevents invalid state where multiple projects are active for same product
+
+**Product-Scoped Deleted View**:
+- **GET /api/v1/projects/deleted** - Now filters deleted projects by **active product only**
+  - If active product exists: Returns that product's deleted projects
+  - If no active product: Returns empty array []
+  - Reduces clutter by showing only relevant deleted projects
+
+**Documentation Suite**:
+- **User Documentation**: `docs/features/project_state_management.md` - Complete user guide (400+ lines)
+- **API Reference**: `docs/api/projects_endpoints.md` - Full API documentation with examples (800+ lines)
+- **Architecture Documentation**: Enhanced `docs/SERVER_ARCHITECTURE_TECH_STACK.md` with Project State Management section
+
+### Changed (Handover 0071)
+
+**State Machine Simplification**:
+- **Project Status Enum**: Reduced from 6 states to 5 states (17% reduction)
+  - **Removed**: `PAUSED` (replaced with `INACTIVE`), `ARCHIVED` (redundant with completed/cancelled)
+  - **Kept**: `ACTIVE`, `INACTIVE`, `COMPLETED`, `CANCELLED`, `DELETED`
+  - **Benefit**: Clearer semantics, simpler mental model
+
+**Terminology Improvements**:
+- **"Deactivate" replaces "Pause"**: Clearer terminology for making project inactive
+  - Before: "Pause project" (ambiguous - is it still active?)
+  - After: "Deactivate project" (clear - project becomes inactive)
+
+**Product Switch Cascade** (from 0050b):
+- Projects become **inactive** when product is switched (was "paused")
+- Consistent terminology across all workflows
+
+**Activation Validation**:
+- Enhanced PATCH /projects/{id} with single active project validation
+- Clear error messages with resolution hints
+- Rich context returned (name of conflicting project)
+
+**View Deleted Filtering**:
+- Scoped to active product only (was all products for tenant)
+- Better UX by reducing clutter in recovery list
+
+### Removed (Handover 0071)
+
+**Deprecated Status Values**:
+- **PAUSED** - Replaced with INACTIVE (clearer semantics)
+- **ARCHIVED** - Redundant, use COMPLETED or CANCELLED instead
+
+**Legacy Pause/Resume Feature**:
+- Removed ambiguous pause/resume workflow
+- Replaced with clear deactivate/activate workflow
+
+### Fixed (Handover 0071)
+
+**State Machine Clarity**:
+- Eliminated confusion between "paused" and "inactive" states
+- Clear distinction: INACTIVE = temporarily not active, COMPLETED/CANCELLED = finished
+- Reduced complexity: 6 states → 5 states (17% reduction)
+
+**Product Context Clarity**:
+- View Deleted now product-scoped (less clutter, more relevant results)
+- Activation validation prevents invalid states
+- Better error messages guide users to resolution
+
+### Migration (Handover 0071)
+
+**Database Migration**:
+- Idempotent migration script converts existing status values:
+  - `status = 'paused'` → `status = 'inactive'`
+  - `status = 'archived'` → `status = 'inactive'`
+- Zero data loss, all project data preserved
+- Safe to re-run (idempotent)
+
+**API Compatibility**:
+- All existing endpoints remain functional
+- New /deactivate endpoint added (not breaking change)
+- Enhanced validation on PATCH (returns clear error if violated)
+
+---
+
 ## [3.1.0] - 2025-10-25
 
 ### Added - Multi-Tool Agent Orchestration (Handover 0045)
