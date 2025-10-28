@@ -277,6 +277,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useTheme } from 'vuetify'
 import { useAgentStore } from '@/stores/agents'
 import { useProjectStore } from '@/stores/projects'
 import websocketService from '@/services/websocket'
@@ -331,19 +332,24 @@ const currentTime = ref(Date.now())
 let animationFrame = null
 let refreshInterval = null
 
-// Color scheme from docs/color_themes.md
-const colors = {
-  background: '#1e3147',
-  trackBackground: '#182739',
-  active: '#67bd6d',
-  pending: '#ffc300',
-  completed: '#8f97b7',
-  failed: '#c6298c',
-  gridLines: '#315074',
-  text: '#e1e1e1',
-  primary: '#ffc300',
-  connectionLine: '#315074',
-}
+// Theme-aware color palette
+const theme = useTheme()
+const colors = computed(() => {
+  const t = theme.global.current.value
+  const c = t.colors || {}
+  return {
+    background: c['surface-variant'],
+    trackBackground: c.surface,
+    active: c.success,
+    pending: c.warning,
+    completed: c.info,
+    failed: c.error,
+    gridLines: c['on-surface-variant'],
+    text: c['on-surface'],
+    primary: c.primary,
+    connectionLine: c['on-surface-variant'],
+  }
+})
 
 // Computed
 const projects = computed(() =>
@@ -481,12 +487,12 @@ const timeToX = (time) => {
 
 const getStatusColor = (status) => {
   const statusColors = {
-    active: colors.active,
-    pending: colors.pending,
-    completed: colors.completed,
-    failed: colors.failed,
+    active: colors.value.active,
+    pending: colors.value.pending,
+    completed: colors.value.completed,
+    failed: colors.value.failed,
   }
-  return statusColors[status] || colors.gridLines
+  return statusColors[status] || colors.value.gridLines
 }
 
 const getStatusIcon = (status) => {
@@ -500,10 +506,10 @@ const getStatusIcon = (status) => {
 }
 
 const getContextColor = (usage) => {
-  if (usage < 50) return colors.active
-  if (usage < 70) return colors.pending
+  if (usage < 50) return colors.value.active
+  if (usage < 70) return colors.value.pending
   if (usage < 80) return '#ff9800' // Orange blend
-  return colors.failed
+  return colors.value.failed
 }
 
 const formatDuration = (ms) => {
@@ -675,11 +681,11 @@ watch(viewMode, (newMode) => {
 
 <style scoped lang="scss">
 .sub-agent-timeline {
-  background: #1e3147;
+  background: var(--v-theme-surface-variant);
 
   .filters-section {
-    background: #182739;
-    border-top: 1px solid #315074;
+    background: var(--v-theme-surface);
+    border-top: 1px solid var(--v-theme-on-surface-variant);
   }
 
   .timeline-container {
@@ -692,16 +698,16 @@ watch(viewMode, (newMode) => {
     }
 
     &::-webkit-scrollbar-track {
-      background: #182739;
+      background: var(--v-theme-surface);
       border-radius: 4px;
     }
 
     &::-webkit-scrollbar-thumb {
-      background: #315074;
+      background: var(--v-theme-on-surface-variant);
       border-radius: 4px;
 
       &:hover {
-        background: #ffc300;
+        background: var(--v-theme-primary);
       }
     }
   }
@@ -720,29 +726,29 @@ watch(viewMode, (newMode) => {
   }
 
   .agent-details {
-    background: #182739;
-    border-top: 1px solid #315074;
+    background: var(--v-theme-surface);
+    border-top: 1px solid var(--v-theme-on-surface-variant);
 
     .detail-item {
       margin-bottom: 12px;
-      color: #e1e1e1;
+      color: var(--v-theme-on-surface);
 
       strong {
-        color: #ffc300;
+        color: var(--v-theme-primary);
         margin-right: 8px;
       }
     }
 
     .mission-text {
-      color: #8f97b7;
+      color: var(--v-theme-info);
       cursor: help;
     }
   }
 
   .timeline-tooltip {
     position: absolute;
-    background: #0e1c2d;
-    border: 1px solid #315074;
+    background: var(--v-theme-surface);
+    border: 1px solid var(--v-theme-on-surface-variant);
     border-radius: 4px;
     padding: 8px;
     pointer-events: none;
@@ -750,13 +756,13 @@ watch(viewMode, (newMode) => {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 
     .tooltip-header {
-      color: #ffc300;
+      color: var(--v-theme-primary);
       margin-bottom: 4px;
       font-weight: 500;
     }
 
     .tooltip-content {
-      color: #e1e1e1;
+      color: var(--v-theme-on-surface);
       font-size: 0.875rem;
 
       div {

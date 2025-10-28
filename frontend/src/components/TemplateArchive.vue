@@ -416,7 +416,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .template-archive {
-  background: #1e3147;
+  background: var(--v-theme-surface-variant);
 
   .version-timeline {
     max-height: 600px;
@@ -428,16 +428,16 @@ onMounted(() => {
     }
 
     &::-webkit-scrollbar-track {
-      background: #182739;
+      background: var(--v-theme-surface);
       border-radius: 4px;
     }
 
     &::-webkit-scrollbar-thumb {
-      background: #315074;
+      background: var(--v-theme-on-surface-variant);
       border-radius: 4px;
 
       &:hover {
-        background: #ffc300;
+        background: var(--v-theme-primary);
       }
     }
   }
@@ -451,20 +451,20 @@ onMounted(() => {
   }
 
   .version-metadata {
-    color: #e1e1e1;
+    color: var(--v-theme-on-surface);
 
     strong {
-      color: #8f97b7;
+      color: var(--v-theme-info);
     }
   }
 
   .template-content {
     font-family: 'Roboto Mono', monospace;
     font-size: 0.75rem;
-    background: #0e1c2d;
+    background: var(--v-theme-background);
     padding: 12px;
     border-radius: 4px;
-    color: #e1e1e1;
+    color: var(--v-theme-on-surface);
     white-space: pre-wrap;
     word-break: break-word;
     max-height: 300px;
@@ -472,7 +472,7 @@ onMounted(() => {
   }
 
   .diff-panel {
-    background: #182739;
+    background: var(--v-theme-surface);
     height: 400px;
     overflow: auto;
   }
@@ -481,7 +481,7 @@ onMounted(() => {
     font-family: 'Roboto Mono', monospace;
     font-size: 0.75rem;
     padding: 12px;
-    color: #e1e1e1;
+    color: var(--v-theme-on-surface);
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
@@ -490,7 +490,7 @@ onMounted(() => {
   .diff-summary {
     font-family: 'Roboto Mono', monospace;
     font-size: 0.875rem;
-    background: #0e1c2d;
+    background: var(--v-theme-background);
     padding: 12px;
     border-radius: 4px;
     max-height: 300px;
@@ -501,22 +501,22 @@ onMounted(() => {
     }
 
     .diff-add {
-      color: #67bd6d;
-      background: rgba(103, 189, 109, 0.1);
+      color: var(--v-theme-success);
+      background: rgba(var(--v-theme-success), 0.1);
       padding: 2px 4px;
       border-radius: 2px;
     }
 
     .diff-remove {
-      color: #c6298c;
-      background: rgba(198, 41, 140, 0.1);
+      color: var(--v-theme-error);
+      background: rgba(var(--v-theme-error), 0.1);
       padding: 2px 4px;
       border-radius: 2px;
     }
 
     .diff-modify {
-      color: #ffc300;
-      background: rgba(255, 195, 0, 0.1);
+      color: var(--v-theme-warning);
+      background: rgba(var(--v-theme-warning), 0.1);
       padding: 2px 4px;
       border-radius: 2px;
     }

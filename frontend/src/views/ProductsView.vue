@@ -1302,6 +1302,15 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Handover 0050: Activation Warning Dialog -->
+    <ActivationWarningDialog
+      v-model="showActivationWarning"
+      :new-product="pendingActivation || {}"
+      :current-active="currentActiveProduct || {}"
+      @confirm="confirmActivation"
+      @cancel="cancelActivation"
+    />
   </v-container>
 </template>
 
@@ -1314,6 +1323,7 @@ import { useToast } from '@/composables/useToast'
 import { useFieldPriority } from '@/composables/useFieldPriority'
 import { useAutoSave } from '@/composables/useAutoSave'
 import api from '@/services/api'
+import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
@@ -1346,6 +1356,11 @@ const deleteConfirmationCheck = ref(false)
 const deleteConfirmationError = ref(false)
 const dialogTab = ref('basic')  // Handover 0042: Tab for product dialog (basic, tech, arch, features)
 const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
+
+// Handover 0050: Activation warning dialog state
+const showActivationWarning = ref(false)
+const pendingActivation = ref(null)
+const currentActiveProduct = ref(null)
 
 // Wizard tab order and navigation helpers
 const tabOrder = ['basic', 'vision', 'tech', 'arch', 'features']
@@ -1561,36 +1576,47 @@ function getTaskProgress(productId) {
   return (metrics.completedTasks / metrics.totalTasks) * 100
 }
 
+// Handover 0050: Enhanced activation with warning dialog
 async function toggleProductActivation(product) {
   try {
     if (product.is_active) {
-      // Deactivate product via API
+      // Deactivating - no warning needed
       await api.products.deactivate(product.id)
-      
-      // Refresh active product in store (will now be null)
       await productStore.fetchActiveProduct()
-      
+
       showToast({
         message: `${product.name} deactivated`,
         type: 'info',
         duration: 3000,
       })
+
+      await loadProducts()
     } else {
-      // Activate product via API
-      await api.products.activate(product.id)
-      
-      // Refresh active product in store (will now be this product)
+      // Activating - call API to check if there's a previous active product
+      const response = await api.products.activate(product.id)
+
+      // Check if there was a previous active product
+      if (response.data.previous_active_product) {
+        // Show warning dialog
+        currentActiveProduct.value = response.data.previous_active_product
+        pendingActivation.value = product
+        showActivationWarning.value = true
+
+        // Don't proceed yet - wait for user confirmation
+        return
+      }
+
+      // No previous active product - activation succeeded
       await productStore.fetchActiveProduct()
-      
+
       showToast({
         message: `${product.name} activated`,
         type: 'success',
         duration: 3000,
       })
+
+      await loadProducts()
     }
-    
-    // Reload products list to update UI
-    await loadProducts()
   } catch (error) {
     console.error('Failed to toggle product activation:', error)
     showToast({
@@ -1599,6 +1625,55 @@ async function toggleProductActivation(product) {
       duration: 5000,
     })
   }
+}
+
+// Handover 0050: Confirm activation after warning
+async function confirmActivation(productId) {
+  try {
+    // User confirmed - activation already happened on backend, just update UI
+    await productStore.fetchActiveProduct()
+
+    showToast({
+      message: `${pendingActivation.value?.name} activated`,
+      type: 'success',
+      duration: 3000,
+    })
+
+    await loadProducts()
+
+    // Close dialog
+    showActivationWarning.value = false
+    pendingActivation.value = null
+    currentActiveProduct.value = null
+  } catch (error) {
+    console.error('Failed to confirm activation:', error)
+    showToast({
+      message: 'Failed to activate product',
+      type: 'error',
+      duration: 5000,
+    })
+  }
+}
+
+// Handover 0050: Cancel activation
+function cancelActivation() {
+  // User cancelled - need to revert the activation on backend
+  // Since activation already happened, we need to deactivate
+  if (pendingActivation.value && currentActiveProduct.value) {
+    // Reactivate the previous product
+    api.products.activate(currentActiveProduct.value.id)
+      .then(() => {
+        productStore.fetchActiveProduct()
+        loadProducts()
+      })
+      .catch((error) => {
+        console.error('Failed to revert activation:', error)
+      })
+  }
+
+  showActivationWarning.value = false
+  pendingActivation.value = null
+  currentActiveProduct.value = null
 }
 
 function formatDate(dateString) {
