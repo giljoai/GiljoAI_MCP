@@ -40,7 +40,7 @@ describe('Projects Workflow Integration Tests', () => {
     {
       id: 'proj-payment',
       name: 'Payment Integration',
-      status: 'paused',
+      status: 'inactive',
       product_id: 'prod-1',
       mission: 'Integrate Stripe payment processing',
       context_budget: 150000,
@@ -156,8 +156,8 @@ describe('Projects Workflow Integration Tests', () => {
     projectStore.activateProject = vi.fn((id) =>
       projectStore.updateProject(id, { status: 'active' })
     )
-    projectStore.pauseProject = vi.fn((id) =>
-      projectStore.updateProject(id, { status: 'paused' })
+    projectStore.deactivateProject = vi.fn((id) =>
+      projectStore.updateProject(id, { status: 'inactive' })
     )
     projectStore.completeProject = vi.fn((id) =>
       projectStore.updateProject(id, { status: 'completed' })
@@ -201,7 +201,7 @@ describe('Projects Workflow Integration Tests', () => {
       const wrapper = createWrapper()
 
       expect(wrapper.vm.statusCounts.active).toBe(1)
-      expect(wrapper.vm.statusCounts.paused).toBe(1)
+      expect(wrapper.vm.statusCounts.inactive).toBe(1)
       expect(wrapper.vm.statusCounts.inactive).toBe(1)
       expect(wrapper.vm.statusCounts.completed).toBe(1)
     })
@@ -343,7 +343,7 @@ describe('Projects Workflow Integration Tests', () => {
       expect(updated.status).toBe('active')
     })
 
-    it('pauses active project', async () => {
+    it('deactivates active project', async () => {
       const wrapper = createWrapper()
       const userAuthProject = projectStore.projects.find(
         (p) => p.id === 'proj-user-auth'
@@ -352,15 +352,15 @@ describe('Projects Workflow Integration Tests', () => {
       expect(userAuthProject.status).toBe('active')
 
       await wrapper.vm.handleStatusAction({
-        action: 'pause',
+        action: 'deactivate',
         projectId: 'proj-user-auth',
       })
 
-      expect(projectStore.pauseProject).toHaveBeenCalledWith('proj-user-auth')
+      expect(projectStore.deactivateProject).toHaveBeenCalledWith('proj-user-auth')
       const updated = projectStore.projects.find(
         (p) => p.id === 'proj-user-auth'
       )
-      expect(updated.status).toBe('paused')
+      expect(updated.status).toBe('inactive')
     })
 
     it('completes active project', async () => {
@@ -407,7 +407,7 @@ describe('Projects Workflow Integration Tests', () => {
 
       // Initial state
       expect(wrapper.vm.statusCounts.active).toBe(1)
-      expect(wrapper.vm.statusCounts.paused).toBe(1)
+      expect(wrapper.vm.statusCounts.inactive).toBe(1)
 
       // Activate an inactive project
       await wrapper.vm.handleStatusAction({
@@ -637,7 +637,7 @@ describe('Projects Workflow Integration Tests', () => {
       // Simulate real-time status update
       projectStore.$patch({
         projects: projectStore.projects.map((p) =>
-          p.id === 'proj-user-auth' ? { ...p, status: 'paused' } : p
+          p.id === 'proj-user-auth' ? { ...p, status: 'inactive' } : p
         ),
       })
 
@@ -646,9 +646,9 @@ describe('Projects Workflow Integration Tests', () => {
       const updated = projectStore.projects.find(
         (p) => p.id === 'proj-user-auth'
       )
-      expect(updated.status).toBe('paused')
+      expect(updated.status).toBe('inactive')
       expect(wrapper.vm.statusCounts.active).toBe(0)
-      expect(wrapper.vm.statusCounts.paused).toBe(2)
+      expect(wrapper.vm.statusCounts.inactive).toBe(2)
     })
 
     it('handles new project creation in real-time', async () => {

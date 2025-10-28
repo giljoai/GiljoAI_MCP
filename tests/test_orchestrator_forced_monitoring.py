@@ -91,14 +91,13 @@ class TestOrchestratorForcedMonitoring:
         # Let monitoring run briefly
         await asyncio.sleep(0.05)
 
-        # Pause project to trigger the break condition (line 673)
-        await orchestrator.pause_project(project.id)
+        # Deactivate project to trigger the break condition
+        await orchestrator.deactivate_project(project.id)
 
         # Let monitoring detect the inactive status and break
         await asyncio.sleep(0.1)
 
         # The monitoring task should have stopped due to inactive project
-        # This should have executed lines 667-682 including the break condition
         assert monitor_task.done() or monitor_task.cancelled()
 
     async def test_monitor_loop_exception_handling_paths(self, orchestrator):

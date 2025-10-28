@@ -76,17 +76,10 @@ class TestProjectLifecycle:
         await orchestrator.activate_project(mock_project.id)
         assert mock_project.status == ProjectStatus.ACTIVE.value
 
-        # Active -> Paused (with agents)
-        mock_agents = [MagicMock(status="active")]
-        mock_session.execute.return_value.scalars.return_value.all.return_value = mock_agents
-
-        await orchestrator.pause_project(mock_project.id)
-        assert mock_project.status == ProjectStatus.PAUSED.value
-        assert mock_agents[0].status == "paused"
-
-        # Paused -> Active
-        await orchestrator.resume_project(mock_project.id)
-        assert mock_project.status == ProjectStatus.ACTIVE.value
+        # Active -> Inactive (deactivate)
+        mock_project.id = "test-project-id"
+        await orchestrator.deactivate_project(mock_project.id)
+        assert mock_project.status == ProjectStatus.INACTIVE.value
 
         # Active -> Completed
         mock_agents[0].status = "active"
@@ -108,10 +101,10 @@ class TestProjectLifecycle:
 
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
 
-        # Can't pause draft project
+        # Can't deactivate draft project
         mock_project.status = ProjectStatus.DRAFT.value
-        with pytest.raises(ValueError, match="Cannot pause"):
-            await orchestrator.pause_project(mock_project.id)
+        with pytest.raises(ValueError, match="Cannot deactivate"):
+            await orchestrator.deactivate_project(mock_project.id)
 
         # Can't activate completed project
         mock_project.status = ProjectStatus.COMPLETED.value

@@ -47,14 +47,14 @@ class TestOrchestratorNinetyPlusCoverage:
         with pytest.raises(ValueError, match="Cannot activate project in .* state"):
             await orchestrator.activate_project(project.id)
 
-    async def test_pause_non_active_project_error(self, orchestrator):
-        """Test pausing non-active project (line 180)."""
+    async def test_deactivate_non_active_project_error(self, orchestrator):
+        """Test deactivating non-active project."""
         # Create project but don't activate it
         project = await orchestrator.create_project(name="Draft Project", mission="Test mission")
 
-        # Try to pause draft project (should fail)
-        with pytest.raises(ValueError, match="Can only pause active projects"):
-            await orchestrator.pause_project(project.id)
+        # Try to deactivate draft project (should fail)
+        with pytest.raises(ValueError, match="Cannot deactivate project"):
+            await orchestrator.deactivate_project(project.id)
 
     async def test_archive_non_completed_project_error(self, orchestrator):
         """Test archiving non-completed project (line 223)."""
@@ -66,16 +66,16 @@ class TestOrchestratorNinetyPlusCoverage:
         with pytest.raises(ValueError, match="Can only archive completed projects"):
             await orchestrator.archive_project(project.id)
 
-    async def test_resume_project_calls_activate(self, orchestrator):
-        """Test resume project calls activate project (line 229-231)."""
-        # Create, activate, then pause project
-        project = await orchestrator.create_project(name="Resume Test", mission="Test mission")
+    async def test_reactivate_inactive_project(self, orchestrator):
+        """Test reactivating an inactive project."""
+        # Create, activate, then deactivate project
+        project = await orchestrator.create_project(name="Reactivate Test", mission="Test mission")
         await orchestrator.activate_project(project.id)
-        await orchestrator.pause_project(project.id)
+        await orchestrator.deactivate_project(project.id)
 
-        # Resume should call activate_project internally
-        resumed = await orchestrator.resume_project(project.id)
-        assert resumed.status == ProjectStatus.ACTIVE.value
+        # Reactivate the project
+        reactivated = await orchestrator.activate_project(project.id)
+        assert reactivated.status == ProjectStatus.ACTIVE.value
 
     async def test_complete_project_without_summary(self, orchestrator):
         """Test completing project without summary (line 258)."""
@@ -173,7 +173,7 @@ class TestOrchestratorNinetyPlusCoverage:
         await orchestrator.complete_project(project.id)
 
     async def test_context_monitoring_project_inactive_break(self, orchestrator):
-        """Test context monitoring exits when project becomes inactive (line 673)."""
+        """Test context monitoring exits when project becomes inactive."""
         # Create and activate project
         project = await orchestrator.create_project(name="Inactive Break", mission="Test")
         await orchestrator.activate_project(project.id)
@@ -181,8 +181,8 @@ class TestOrchestratorNinetyPlusCoverage:
         # Verify monitoring started
         assert project.id in orchestrator._context_monitors
 
-        # Pause project (makes it inactive)
-        await orchestrator.pause_project(project.id)
+        # Deactivate project (makes it inactive)
+        await orchestrator.deactivate_project(project.id)
 
         # Give monitoring task time to detect inactive status and break
         await asyncio.sleep(0.1)
@@ -279,27 +279,27 @@ class TestOrchestratorNinetyPlusCoverage:
 
     async def test_additional_edge_cases_for_90_percent(self, orchestrator):
         """Additional targeted tests for specific uncovered lines."""
-        # Test line 180 - pause non-active project
-        project = await orchestrator.create_project(name="Line 180", mission="Test")
-        # Project is in PLANNING state, try to pause it
-        with pytest.raises(ValueError, match="Can only pause active projects"):
-            await orchestrator.pause_project(project.id)
+        # Test deactivate non-active project
+        project = await orchestrator.create_project(name="Deactivate Test", mission="Test")
+        # Project is in DRAFT state, try to deactivate it
+        with pytest.raises(ValueError, match="Cannot deactivate project"):
+            await orchestrator.deactivate_project(project.id)
 
-        # Test line 223 - archive non-completed project
-        project2 = await orchestrator.create_project(name="Line 223", mission="Test")
+        # Test archive non-completed project
+        project2 = await orchestrator.create_project(name="Archive Test", mission="Test")
         await orchestrator.activate_project(project2.id)
         with pytest.raises(ValueError, match="Can only archive completed projects"):
             await orchestrator.archive_project(project2.id)
 
-        # Test line 258 - complete project without summary (no summary case)
-        project3 = await orchestrator.create_project(name="Line 258", mission="Test")
+        # Test complete project without summary
+        project3 = await orchestrator.create_project(name="No Summary", mission="Test")
         await orchestrator.activate_project(project3.id)
         completed = await orchestrator.complete_project(project3.id, summary=None)
         assert completed.status == ProjectStatus.COMPLETED.value
 
-        # Test resume project path (lines 229-231)
-        project4 = await orchestrator.create_project(name="Line 229", mission="Test")
+        # Test reactivate inactive project
+        project4 = await orchestrator.create_project(name="Reactivate", mission="Test")
         await orchestrator.activate_project(project4.id)
-        await orchestrator.pause_project(project4.id)
-        resumed = await orchestrator.resume_project(project4.id)
-        assert resumed.status == ProjectStatus.ACTIVE.value
+        await orchestrator.deactivate_project(project4.id)
+        reactivated = await orchestrator.activate_project(project4.id)
+        assert reactivated.status == ProjectStatus.ACTIVE.value

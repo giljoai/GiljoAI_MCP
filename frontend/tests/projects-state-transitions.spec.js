@@ -70,9 +70,9 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
         updated_at: '2025-01-01T00:00:00Z',
       },
       {
-        id: 'proj-paused',
-        name: 'Paused Project',
-        status: 'paused',
+        id: 'proj-inactive',
+        name: 'Inactive Project',
+        status: 'inactive',
         product_id: 'prod-1',
         mission: 'Test mission',
         context_budget: 150000,
@@ -102,76 +102,76 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
   // =====================================
   // TEST SET 1: Active → Paused
   // =====================================
-  describe('State Transition: Active → Paused', () => {
-    it('TEST 1.1: Should pause an active project via API', async () => {
+  describe('State Transition: Active → Deactivate', () => {
+    it('TEST 1.1: Should deactivate an active project via API', async () => {
       const project = projectStore.projects[0]
       expect(project.status).toBe('active')
 
       const mockResponse = {
         data: {
           ...project,
-          status: 'paused',
+          status: 'inactive',
           updated_at: new Date().toISOString(),
         }
       }
 
       api.api.projects.changeStatus.mockResolvedValue(mockResponse)
 
-      const result = await projectStore.pauseProject(project.id)
+      const result = await projectStore.deactivateProject(project.id)
 
-      expect(api.api.projects.changeStatus).toHaveBeenCalledWith(project.id, 'paused')
-      expect(result.status).toBe('paused')
+      expect(api.api.projects.changeStatus).toHaveBeenCalledWith(project.id, 'inactive')
+      expect(result.status).toBe('inactive')
 
       const updatedProject = projectStore.projects.find(p => p.id === project.id)
-      expect(updatedProject.status).toBe('paused')
+      expect(updatedProject.status).toBe('inactive')
     })
 
-    it('TEST 1.2: Should show pause option in StatusBadge menu', () => {
+    it('TEST 1.2: Should show deactivate option in StatusBadge menu', () => {
       const actionsByStatus = {
-        active: ['pause', 'complete', 'cancel', 'deactivate', 'delete'],
+        active: ['deactivate', 'complete', 'cancel', 'delete'],
       }
-      expect(actionsByStatus.active).toContain('pause')
+      expect(actionsByStatus.active).toContain('deactivate')
     })
 
-    it('TEST 1.3: Should NOT require confirmation for pause action', () => {
-      const pauseAction = { value: 'pause', requiresConfirm: false }
-      expect(pauseAction.requiresConfirm).toBe(false)
+    it('TEST 1.3: Should NOT require confirmation for deactivate action', () => {
+      const deactivateAction = { value: 'deactivate', requiresConfirm: false }
+      expect(deactivateAction.requiresConfirm).toBe(false)
     })
 
-    it('TEST 1.4: Should update status badge UI after pause', async () => {
+    it('TEST 1.4: Should update status badge UI after deactivate', async () => {
       const project = projectStore.projects[0]
 
       api.api.projects.changeStatus.mockResolvedValue({
-        data: { ...project, status: 'paused' }
+        data: { ...project, status: 'inactive' }
       })
 
-      await projectStore.pauseProject(project.id)
+      await projectStore.deactivateProject(project.id)
 
       const updated = projectStore.projects.find(p => p.id === project.id)
-      expect(updated.status).toBe('paused')
+      expect(updated.status).toBe('inactive')
     })
 
     it('TEST 1.5: Should use PATCH /api/v1/projects/{id}/ endpoint', async () => {
       const project = projectStore.projects[0]
 
       api.api.projects.changeStatus.mockResolvedValue({
-        data: { ...project, status: 'paused' }
+        data: { ...project, status: 'inactive' }
       })
 
-      await projectStore.pauseProject(project.id)
+      await projectStore.deactivateProject(project.id)
 
       // changeStatus should be the PATCH endpoint
-      expect(api.api.projects.changeStatus).toHaveBeenCalledWith(project.id, 'paused')
+      expect(api.api.projects.changeStatus).toHaveBeenCalledWith(project.id, 'inactive')
     })
   })
 
   // =====================================
-  // TEST SET 2: Paused → Active (Resume)
+  // TEST SET 2: Inactive → Active (Activate)
   // =====================================
-  describe('State Transition: Paused → Active', () => {
-    it('TEST 2.1: Should resume (activate) a paused project', async () => {
-      const project = projectStore.projects[2]
-      expect(project.status).toBe('paused')
+  describe('State Transition: Inactive → Active', () => {
+    it('TEST 2.1: Should activate an inactive project', async () => {
+      const project = projectStore.projects[1]
+      expect(project.status).toBe('inactive')
 
       const mockResponse = {
         data: { ...project, status: 'active', updated_at: new Date().toISOString() }
@@ -188,23 +188,22 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
       expect(updatedProject.status).toBe('active')
     })
 
-    it('TEST 2.2: Should show resume option in StatusBadge menu for paused', () => {
+    it('TEST 2.2: Should show activate option in StatusBadge menu for inactive', () => {
       const actionsByStatus = {
-        paused: ['resume', 'complete', 'cancel', 'deactivate', 'delete'],
+        inactive: ['activate', 'complete', 'cancel', 'delete'],
       }
-      expect(actionsByStatus.paused).toContain('resume')
-      // Resume maps to activate action with newStatus: 'active'
+      expect(actionsByStatus.inactive).toContain('activate')
     })
 
-    it('TEST 2.3: Should NOT require confirmation for resume', () => {
-      const resumeAction = { value: 'resume', requiresConfirm: false }
-      expect(resumeAction.requiresConfirm).toBe(false)
+    it('TEST 2.3: Should NOT require confirmation for activate', () => {
+      const activateAction = { value: 'activate', requiresConfirm: false }
+      expect(activateAction.requiresConfirm).toBe(false)
     })
 
-    it('TEST 2.4: Should handle Paused → Active → Paused cycle', async () => {
-      const project = projectStore.projects[2]
+    it('TEST 2.4: Should handle Inactive → Active → Inactive cycle', async () => {
+      const project = projectStore.projects[1]
 
-      // Paused → Active
+      // Inactive → Active
       api.api.projects.changeStatus.mockResolvedValue({
         data: { ...project, status: 'active' }
       })
@@ -212,17 +211,17 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
       let result = await projectStore.activateProject(project.id)
       expect(result.status).toBe('active')
 
-      // Active → Paused
+      // Active → Inactive
       api.api.projects.changeStatus.mockResolvedValue({
-        data: { ...result, status: 'paused' }
+        data: { ...result, status: 'inactive' }
       })
 
-      result = await projectStore.pauseProject(project.id)
-      expect(result.status).toBe('paused')
+      result = await projectStore.deactivateProject(project.id)
+      expect(result.status).toBe('inactive')
     })
 
     it('TEST 2.5: Should use PATCH /api/v1/projects/{id}/ with status: active', async () => {
-      const project = projectStore.projects[2]
+      const project = projectStore.projects[1]
 
       api.api.projects.changeStatus.mockResolvedValue({
         data: { ...project, status: 'active' }
@@ -405,9 +404,9 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
       expect(projectStore.deletedProjects.length).toBeGreaterThan(0)
     })
 
-    it('TEST 5.2: Should soft delete a paused project', async () => {
-      const project = projectStore.projects[2]
-      expect(project.status).toBe('paused')
+    it('TEST 5.2: Should soft delete an inactive project', async () => {
+      const project = projectStore.projects[1]
+      expect(project.status).toBe('inactive')
 
       api.api.projects.delete.mockResolvedValue({ data: { success: true } })
       api.api.projects.fetchDeleted.mockResolvedValue({ data: [] })
@@ -530,7 +529,7 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
       const deletedProject = {
         id: 'proj-del-2',
         name: 'Deleted Project',
-        status: 'paused', // Original status preserved in deleted record
+        status: 'inactive', // Original status preserved in deleted record
         product_id: 'prod-1',
         deleted_at: '2025-01-20T12:00:00Z',
       }
@@ -651,7 +650,7 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
         {
           id: 'del-2',
           name: 'Deleted Project 2',
-          status: 'paused',
+          status: 'inactive',
           deleted_at: '2025-01-20T12:00:00Z',
         },
       ]
@@ -861,65 +860,62 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
       const statusConfig = {
         active: { label: 'Active' },
         inactive: { label: 'Inactive' },
-        paused: { label: 'Paused' },
         completed: { label: 'Completed' },
         cancelled: { label: 'Cancelled' },
       }
 
       expect(statusConfig.active.label).toBe('Active')
-      expect(statusConfig.paused.label).toBe('Paused')
+      expect(statusConfig.inactive.label).toBe('Inactive')
       expect(statusConfig.completed.label).toBe('Completed')
     })
 
     it('TEST 10.2: Should use correct status color', () => {
       const statusConfig = {
         active: { color: 'success' },
-        paused: { color: 'warning' },
+        inactive: { color: 'grey' },
         completed: { color: 'info' },
         cancelled: { color: 'error' },
-        inactive: { color: 'grey' },
       }
 
       expect(statusConfig.active.color).toBe('success')
-      expect(statusConfig.paused.color).toBe('warning')
+      expect(statusConfig.inactive.color).toBe('grey')
       expect(statusConfig.completed.color).toBe('info')
     })
 
     it('TEST 10.3: Should use correct status icon', () => {
       const statusConfig = {
         active: { icon: 'mdi-play-circle' },
-        paused: { icon: 'mdi-pause-circle' },
+        inactive: { icon: 'mdi-circle-outline' },
         completed: { icon: 'mdi-check-circle' },
         cancelled: { icon: 'mdi-cancel' },
-        inactive: { icon: 'mdi-circle-outline' },
       }
 
       expect(statusConfig.active.icon).toContain('play')
-      expect(statusConfig.paused.icon).toContain('pause')
+      expect(statusConfig.inactive.icon).toContain('circle')
       expect(statusConfig.completed.icon).toContain('check')
     })
 
     it('TEST 10.4: Should provide correct actions for active status', () => {
       const actionsByStatus = {
-        active: ['pause', 'complete', 'cancel', 'deactivate', 'delete'],
+        active: ['deactivate', 'complete', 'cancel', 'delete'],
       }
 
       const activeActions = actionsByStatus.active
-      expect(activeActions).toContain('pause')
+      expect(activeActions).toContain('deactivate')
       expect(activeActions).toContain('complete')
       expect(activeActions).toContain('delete')
-      expect(activeActions).not.toContain('resume')
+      expect(activeActions).not.toContain('activate')
     })
 
-    it('TEST 10.5: Should provide correct actions for paused status', () => {
+    it('TEST 10.5: Should provide correct actions for inactive status', () => {
       const actionsByStatus = {
-        paused: ['resume', 'complete', 'cancel', 'deactivate', 'delete'],
+        inactive: ['activate', 'complete', 'cancel', 'delete'],
       }
 
-      const pausedActions = actionsByStatus.paused
-      expect(pausedActions).toContain('resume')
-      expect(pausedActions).toContain('complete')
-      expect(pausedActions).not.toContain('pause')
+      const inactiveActions = actionsByStatus.inactive
+      expect(inactiveActions).toContain('activate')
+      expect(inactiveActions).toContain('complete')
+      expect(inactiveActions).not.toContain('deactivate')
     })
 
     it('TEST 10.6: Should provide correct actions for completed status', () => {
@@ -929,8 +925,8 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
 
       const completedActions = actionsByStatus.completed
       expect(completedActions).toContain('reopen')
-      expect(completedActions).not.toContain('pause')
-      expect(completedActions).not.toContain('resume')
+      expect(completedActions).not.toContain('deactivate')
+      expect(completedActions).not.toContain('activate')
       expect(completedActions).not.toContain('complete')
     })
   })
@@ -944,9 +940,9 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
       expect(activeProjects.length).toBe(1)
     })
 
-    it('TEST 11.2: Should calculate paused project count', () => {
-      const pausedProjects = projectStore.projects.filter(p => p.status === 'paused')
-      expect(pausedProjects.length).toBe(1)
+    it('TEST 11.2: Should calculate inactive project count', () => {
+      const inactiveProjects = projectStore.projects.filter(p => p.status === 'inactive')
+      expect(inactiveProjects.length).toBe(1)
     })
 
     it('TEST 11.3: Should calculate completed project count', () => {
@@ -970,17 +966,17 @@ describe('Project State Transitions - Comprehensive Test Suite', () => {
   // TEST SET 12: Integration Scenarios
   // =====================================
   describe('Integration Scenarios', () => {
-    it('TEST 12.1: Should handle complete Active→Paused→Active workflow', async () => {
+    it('TEST 12.1: Should handle complete Active→Inactive→Active workflow', async () => {
       const project = projectStore.projects[0]
 
-      // Active → Paused
+      // Active → Inactive
       api.api.projects.changeStatus.mockResolvedValue({
-        data: { ...project, status: 'paused' }
+        data: { ...project, status: 'inactive' }
       })
-      let result = await projectStore.pauseProject(project.id)
-      expect(result.status).toBe('paused')
+      let result = await projectStore.deactivateProject(project.id)
+      expect(result.status).toBe('inactive')
 
-      // Paused → Active
+      // Inactive → Active
       api.api.projects.changeStatus.mockResolvedValue({
         data: { ...project, status: 'active' }
       })

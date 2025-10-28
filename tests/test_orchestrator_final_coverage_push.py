@@ -104,7 +104,7 @@ class TestOrchestratorFinalCoveragePush:
         assert call_count >= 0
 
     async def test_monitor_project_context_inactive_project_detection(self, orchestrator):
-        """Test monitoring detects inactive project and breaks loop (line 673)."""
+        """Test monitoring detects inactive project and breaks loop."""
         # Create and activate project
         project = await orchestrator.create_project(name="Inactive Detection", mission="Test inactive detection")
         await orchestrator.activate_project(project.id)
@@ -118,8 +118,8 @@ class TestOrchestratorFinalCoveragePush:
         # Let monitoring run briefly
         await asyncio.sleep(0.1)
 
-        # Pause project (makes it inactive)
-        await orchestrator.pause_project(project.id)
+        # Deactivate project (makes it inactive)
+        await orchestrator.deactivate_project(project.id)
 
         # Give monitoring time to detect inactive status and exit loop
         await asyncio.sleep(0.2)

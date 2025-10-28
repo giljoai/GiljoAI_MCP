@@ -106,7 +106,7 @@ class TestOrchestratorFinalNinety:
         assert exception_count >= 0
 
     async def test_monitor_project_context_inactive_project_break(self, orchestrator):
-        """Test monitoring loop breaking when project becomes inactive (line 673)."""
+        """Test monitoring loop breaking when project becomes inactive."""
         # Create and activate project
         project = await orchestrator.create_project(name="Inactive Test", mission="Test inactive break")
         await orchestrator.activate_project(project.id)
@@ -120,8 +120,8 @@ class TestOrchestratorFinalNinety:
         # Let monitoring run briefly
         await asyncio.sleep(0.1)
 
-        # Pause project to make it inactive
-        await orchestrator.pause_project(project.id)
+        # Deactivate project to make it inactive
+        await orchestrator.deactivate_project(project.id)
 
         # Give monitoring time to detect inactive status and break out of loop
         await asyncio.sleep(0.2)

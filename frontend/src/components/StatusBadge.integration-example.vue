@@ -111,12 +111,8 @@ const handleStatusAction = async ({ action, newStatus, projectId }) => {
     const actionLabels = {
       activate: 'activated',
       deactivate: 'deactivated',
-      pause: 'paused',
-      resume: 'resumed',
       complete: 'completed',
       cancel: 'cancelled',
-      archive: 'archived',
-      reopen: 'reopened',
       restore: 'restored'
     }
 
