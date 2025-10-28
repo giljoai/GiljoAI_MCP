@@ -76,29 +76,17 @@
                 @click:append-inner="showConfirmPassword = !showConfirmPassword"
               />
 
-              <!-- Password Strength -->
-              <v-progress-linear
-                :model-value="passwordStrength"
-                :color="passwordStrengthColor"
-                height="8"
-                rounded
-                class="mb-2"
-              />
-              <p class="text-caption mb-4" :class="passwordStrengthColor + '--text'">
-                Password Strength: {{ passwordStrengthText }}
-              </p>
-
-              <!-- Requirements List -->
-              <v-list density="compact" class="requirement-list mb-4">
-                <v-list-item v-for="req in passwordRequirements" :key="req.text" class="px-0 py-1">
-                  <template #prepend>
-                    <v-icon :color="req.met ? 'success' : 'error'" size="small">
-                      {{ req.met ? 'mdi-check-circle' : 'mdi-close-circle' }}
-                    </v-icon>
+              <!-- Compact Password Compliance Indicator -->
+              <div class="d-flex align-center mb-4" v-if="passwordMeetsAll">
+                <v-icon color="success" size="16" class="mr-1">mdi-check-circle</v-icon>
+                <span class="text-caption">Meets password requirements</span>
+                <v-tooltip location="top" max-width="300">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" size="16" class="ml-1">mdi-information-outline</v-icon>
                   </template>
-                  <v-list-item-title class="text-caption">{{ req.text }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
+                  <span class="text-caption">At least 12 characters, one uppercase, one lowercase, one digit, and one special character.</span>
+                </v-tooltip>
+              </div>
 
               <v-divider class="my-4" />
 
@@ -123,7 +111,6 @@
                 variant="outlined"
                 density="comfortable"
                 class="mb-3"
-                prepend-inner-icon="mdi-numeric"
                 @input="handlePinInput"
                 @keypress="onlyNumbers"
                 hint="Enter 4 digits (example: 1234)"
@@ -144,7 +131,6 @@
                 variant="outlined"
                 density="comfortable"
                 class="mb-3"
-                prepend-inner-icon="mdi-numeric-positive-1"
                 @input="handleConfirmPinInput"
                 @keypress="onlyNumbers"
                 aria-label="Confirm your 4-digit recovery PIN"
@@ -260,6 +246,9 @@ const passwordStrengthText = computed(() => {
   if (passwordStrength.value < 70) return 'Good'
   return 'Strong'
 })
+
+// All requirements satisfied?
+const passwordMeetsAll = computed(() => passwordRequirements.value.every(r => r.met))
 
 // Methods for PIN input handling
 function handlePinInput(value) {

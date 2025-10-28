@@ -38,6 +38,24 @@
           </div>
         </div>
 
+        <!-- Handover 0050b: Show project deactivation impact -->
+        <v-alert
+          v-if="currentActive?.active_projects_count > 0"
+          type="warning"
+          variant="tonal"
+          class="mb-4"
+        >
+          <div class="font-weight-bold mb-2">Project Impact:</div>
+          <strong>{{ currentActive.active_projects_count }}</strong>
+          active project{{ currentActive.active_projects_count > 1 ? 's' : '' }}
+          under <strong>{{ currentActive.name }}</strong> will be paused.
+
+          <div class="text-caption mt-2">
+            Only one project can be active at a time. You can reactivate
+            projects after switching back to this product.
+          </div>
+        </v-alert>
+
         <v-expansion-panels class="mt-4">
           <v-expansion-panel>
             <v-expansion-panel-title>

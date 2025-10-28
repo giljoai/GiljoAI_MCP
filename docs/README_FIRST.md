@@ -20,7 +20,7 @@
 
 **Recent Production Features** (See [Recent Handovers](#recent-production-handovers-v30) for details):
 
-- Single Active Product Architecture (Handover 0050) - One active product per tenant with database enforcement
+- Single Active Product Architecture (Handover 0050) - One active product per tenant with database enforcement. **Extension (0050b)**: Projects also follow single-active pattern - one active project per product with cascade deactivation.
 - Context Priority Management (Handover 0052) - User-customizable token budgets per field
 - Multi-Tool Agent Orchestration (Handover 0045) - 40-60% cost optimization via tool mixing
 - Products View Unified Management (Handover 0046) - Complete product lifecycle management

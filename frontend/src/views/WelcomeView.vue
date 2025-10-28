@@ -3,25 +3,39 @@
     <v-row align="center" justify="center">
       <v-col cols="12" md="8" lg="6">
         <v-card elevation="0" class="text-center pa-8">
-          <v-img
-            :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
-            alt="GiljoAI"
-            height="120"
-            contain
-            class="mb-6"
-          ></v-img>
+          <!-- Gil mascot (blinking) on top -->
+          <div class="mascot-wrapper mb-4">
+            <iframe
+              class="mascot-frame"
+              :src="mascotSrc"
+              :width="mascotSize.width"
+              :height="mascotSize.height"
+              frameborder="0"
+              allowtransparency="true"
+              style="background: transparent"
+              title="Giljo mascot"
+            ></iframe>
+          </div>
 
-          <h1 class="text-h3 mb-4 font-weight-bold">
-            Welcome to GiljoAI Agent Orchestration MCP Server
+          <!-- Friendly greeting with user's first name -->
+          <h1 class="text-h4 mb-2 font-weight-bold">
+            {{ greeting }} {{ firstName }}!
           </h1>
-
-          <p class="text-h6 text-medium-emphasis mb-8">
+          <p class="text-subtitle-1 text-medium-emphasis mb-6">
             Intelligent multi-agent coordination for complex software development
           </p>
 
+          <!-- Contextual CTA: Get Started or Relaunch Tutorial -->
+          <div class="mb-6" v-if="showTutorialCta">
+            <v-btn color="primary" size="large" @click="handleTutorialCta" prepend-icon="mdi-play-circle">
+              {{ tutorialCtaLabel }}
+            </v-btn>
+          </div>
+
           <v-divider class="my-6"></v-divider>
 
-          <v-row class="mt-8">
+          <!-- Quick navigation -->
+          <v-row class="mt-2">
             <v-col cols="12" md="4">
               <v-btn
                 to="/Dashboard"
@@ -62,12 +76,87 @@
       </v-col>
     </v-row>
   </v-container>
+  
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import { useTheme } from 'vuetify'
+import { useUserStore } from '@/stores/user'
+import { useProductStore } from '@/stores/products'
 
 const theme = useTheme()
+const userStore = useUserStore()
+const productStore = useProductStore()
+
+// Mascot iframe settings
+const mascotSize = { width: 150, height: 170 }
+const mascotSrc = computed(() => {
+  const darkEyes = !theme.global.current.value.dark // dark eyes on light backgrounds
+  // Add cache-busting query param to ensure latest transparent background loads
+  return `/mascot/giljo_mascot_loader_v2.html?size=${mascotSize.width}&darkEyes=${darkEyes}&v=2`
+})
+
+// User name and greeting
+const firstName = computed(() => {
+  const name = userStore.currentUser?.full_name || userStore.currentUser?.username || 'Friend'
+  return String(name).split(' ')[0]
+})
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  const morning = ['Good morning!', 'Top of the morning!', 'Morning!', 'Rise and shine!']
+  const afternoon = ['Good afternoon!', 'Hope your day’s going well!', 'Hello there!', 'Welcome back!']
+  const evening = ['Good evening!', 'Great to see you!', 'Nice to see you!', 'Welcome back!']
+  const general = [
+    'Welcome back!',
+    'Here you are again!',
+    'Great to see you!',
+    'Glad you’re here!',
+    'Let’s get rolling!',
+    'Ready when you are!',
+    'Let’s build something great!',
+    'Howdy!',
+    'Hi again!',
+    'Welcome!',
+    'Back in action!',
+    'Let’s make progress!',
+  ]
+  if (hour < 12) return pick(morning)
+  if (hour < 17) return pick(afternoon)
+  if (hour < 22) return pick(evening)
+  return pick(general)
+})
+
+// Tutorial CTA logic
+const tutorialKey = 'giljo_tutorial_launched'
+const tutorialLaunched = ref(false)
+const showTutorialCta = computed(() => {
+  // Show when there are no products OR user wants to relaunch
+  return (!productStore.hasProducts) || tutorialLaunched.value
+})
+const tutorialCtaLabel = computed(() => (tutorialLaunched.value || productStore.hasProducts ? 'Relaunch Tutorial' : 'Get Started'))
+
+function handleTutorialCta() {
+  tutorialLaunched.value = true
+  localStorage.setItem(tutorialKey, 'true')
+  // Placeholder for tutorial launch hook
+  // For now: take the user to Products to create their first product
+  window.location.href = '/Products'
+}
+
+onMounted(async () => {
+  try {
+    await productStore.fetchProducts()
+  } catch (e) {
+    // ignore
+  }
+  tutorialLaunched.value = localStorage.getItem(tutorialKey) === 'true'
+})
 </script>
 
 <style scoped>
@@ -77,5 +166,12 @@ const theme = useTheme()
     rgba(var(--v-theme-primary), 0.05) 0%,
     rgba(var(--v-theme-surface), 1) 100%
   );
+}
+.mascot-wrapper {
+  display: flex;
+  justify-content: center;
+}
+.mascot-frame {
+  background: transparent;
 }
 </style>

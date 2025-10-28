@@ -601,6 +601,16 @@ All items completed:
 
 ---
 
+## Related Handovers
+
+**Handover 0050b** (Single Active Project Per Product):
+- Extends single-active architecture from products to projects
+- Database constraint: One active project per product
+- Product switch cascades to project deactivation
+- See: `handovers/0050b_single_active_project_per_product.md`
+
+---
+
 **END OF STATUS DOCUMENT**
 
 **Status**: ✅ 100% COMPLETE - PRODUCTION READY - ALL PHASES DELIVERED ✅
