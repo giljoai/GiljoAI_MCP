@@ -53,7 +53,12 @@
           </template>
 
           <v-list density="compact" min-width="200">
-            <v-list-item v-if="currentUser" prepend-icon="mdi-account">
+            <v-list-item
+              v-if="currentUser"
+              prepend-icon="mdi-account"
+              @click="profileDialog = true"
+              style="cursor: pointer"
+            >
               <v-list-item-title class="font-weight-medium">
                 {{ currentUser.username }}
               </v-list-item-title>
@@ -104,18 +109,21 @@
             />
           </v-list>
         </v-menu>
+        <UserProfileDialog v-model="profileDialog" :user="currentUser" />
       </div>
     </div>
   </v-app-bar>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useTheme, useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
 import ConnectionStatus from '@/components/ConnectionStatus.vue'
 import ActiveProductDisplay from '@/components/ActiveProductDisplay.vue'
+import UserProfileDialog from '@/components/UserProfileDialog.vue'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -136,6 +144,7 @@ const { mobile } = useDisplay()
 const router = useRouter()
 const userStore = useUserStore()
 const wsStore = useWebSocketStore()
+const profileDialog = ref(false)
 
 const getRoleColor = (role) => {
   if (!role) return 'grey'

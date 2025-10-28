@@ -291,6 +291,7 @@ export const api = {
     checkFirstLogin: (username) => apiClient.post('/api/auth/check-first-login', { username }),
     completeFirstLogin: (data) => apiClient.post('/api/auth/complete-first-login', data),
     verifyPinAndResetPassword: (data) => apiClient.post('/api/auth/verify-pin-and-reset-password', data),
+    setRecoveryPin: (data) => apiClient.post('/api/auth/set-recovery-pin', data),
     resetUserPassword: (userId) => apiClient.post(`/api/users/${userId}/reset-password`),
   },
 
