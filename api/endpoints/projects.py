@@ -51,7 +51,7 @@ class ProjectResponse(BaseModel):
 async def create_project(
     project: ProjectCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """Create a new project"""
     from api.app import state
@@ -71,7 +71,7 @@ async def create_project(
             product_id=project.product_id,
             tenant_key=current_user.tenant_key,
             status=project.status,  # Pass status from request (Handover 0050b)
-            context_budget=project.context_budget
+            context_budget=project.context_budget,
         )
 
         if not result.get("success"):
@@ -85,7 +85,7 @@ async def create_project(
             stmt = select(Project).where(Project.id == result["project_id"])
             db_result = await session.execute(stmt)
             created_project = db_result.scalar_one_or_none()
-        
+
         response = ProjectResponse(
             id=result["project_id"],
             alias=created_project.alias if created_project else "UNKNWN",
@@ -128,7 +128,7 @@ async def list_projects(
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
 ):
     """
     List all projects (filtered by user's tenant).
@@ -140,10 +140,13 @@ async def list_projects(
     from src.giljo_mcp.models import Project
     from sqlalchemy import select, or_
     import logging
+
     logger = logging.getLogger(__name__)
 
     # DIAGNOSTIC: Log authentication success
-    logger.info(f"[PROJECTS] Authentication successful - User: {current_user.username}, Tenant: {current_user.tenant_key}, Role: {current_user.role}")
+    logger.info(
+        f"[PROJECTS] Authentication successful - User: {current_user.username}, Tenant: {current_user.tenant_key}, Role: {current_user.role}"
+    )
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -154,10 +157,7 @@ async def list_projects(
             stmt = select(Project).where(
                 Project.tenant_key == current_user.tenant_key,
                 # Exclude deleted projects
-                or_(
-                    Project.status != "deleted",
-                    Project.deleted_at.is_(None)
-                )
+                or_(Project.status != "deleted", Project.deleted_at.is_(None)),
             )
 
             # Apply status filter if provided
@@ -228,19 +228,13 @@ async def get_project_by_alias(alias: str):
             stmt = select(Project).where(
                 Project.alias == alias.upper(),
                 # Exclude deleted projects
-                or_(
-                    Project.status != "deleted",
-                    Project.deleted_at.is_(None)
-                )
+                or_(Project.status != "deleted", Project.deleted_at.is_(None)),
             )
             result = await session.execute(stmt)
             project = result.scalar_one_or_none()
 
             if not project:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Project with alias '{alias}' not found"
-                )
+                raise HTTPException(status_code=404, detail=f"Project with alias '{alias}' not found")
 
             # Get agent and message counts
             from src.giljo_mcp.models import Agent, Message
@@ -288,8 +282,7 @@ class DeletedProjectResponse(BaseModel):
 
 @router.get("/deleted", response_model=list[DeletedProjectResponse])
 async def list_deleted_projects(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     List deleted projects for the ACTIVE product only (Handover 0071).
@@ -317,15 +310,14 @@ async def list_deleted_projects(
         async with state.db_manager.get_session_async() as session:
             # Get active product first (Handover 0071: Product-scoped deleted view)
             active_product_result = await session.execute(
-                select(Product).where(
-                    Product.tenant_key == current_user.tenant_key,
-                    Product.is_active == True
-                )
+                select(Product).where(Product.tenant_key == current_user.tenant_key, Product.is_active == True)
             )
             active_product = active_product_result.scalar_one_or_none()
 
             if not active_product:
-                logger.info(f"[Handover 0071] No active product - returning empty deleted list for user {current_user.username}")
+                logger.info(
+                    f"[Handover 0071] No active product - returning empty deleted list for user {current_user.username}"
+                )
                 return []
 
             # Query deleted projects ONLY for active product
@@ -335,7 +327,7 @@ async def list_deleted_projects(
                 .where(
                     Project.tenant_key == current_user.tenant_key,
                     Project.product_id == active_product.id,  # NEW: Product filter
-                    Project.deleted_at.isnot(None)
+                    Project.deleted_at.isnot(None),
                 )
                 .order_by(Project.deleted_at.desc())
             )
@@ -349,7 +341,11 @@ async def list_deleted_projects(
             for project, product in rows:
                 # Calculate days until purge (10 days from deletion)
                 # Convert naive datetime to UTC-aware for comparison
-                deleted_at_utc = project.deleted_at.replace(tzinfo=timezone.utc) if project.deleted_at.tzinfo is None else project.deleted_at
+                deleted_at_utc = (
+                    project.deleted_at.replace(tzinfo=timezone.utc)
+                    if project.deleted_at.tzinfo is None
+                    else project.deleted_at
+                )
                 purge_date = deleted_at_utc + timedelta(days=10)
                 days_until_purge = max(0, (purge_date - now).days)
 
@@ -362,7 +358,7 @@ async def list_deleted_projects(
                         product_name=product.name if product else None,
                         deleted_at=deleted_at_utc,
                         days_until_purge=days_until_purge,
-                        purge_date=purge_date
+                        purge_date=purge_date,
                     )
                 )
 
@@ -427,7 +423,9 @@ async def update_project(project_id: str, update: ProjectUpdate):
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        logger.info(f"PATCH /projects/{project_id} - Received update: name={update.name}, mission={update.mission}, status={update.status}")
+        logger.info(
+            f"PATCH /projects/{project_id} - Received update: name={update.name}, mission={update.mission}, status={update.status}"
+        )
 
         # Use a single session for all updates
         async with state.db_manager.get_session_async() as session:
@@ -451,28 +449,29 @@ async def update_project(project_id: str, update: ProjectUpdate):
 
             if update.status is not None:
                 logger.info(f"Updating status from '{project.status}' to '{update.status}'")
-                
+
                 # Handover 0050 Phase 4: Validate parent product is active when activating project
                 if update.status == "active" and project.product_id:
                     from giljo_mcp.models import Product
-                    
+
                     # Fetch parent product
                     product_query = select(Product).where(Product.id == project.product_id)
                     product_result = await session.execute(product_query)
                     parent_product = product_result.scalar_one_or_none()
-                    
+
                     if not parent_product:
                         logger.error(f"Cannot activate project - parent product not found: {project.product_id}")
                         raise HTTPException(
-                            status_code=400,
-                            detail="Cannot activate project - parent product not found"
+                            status_code=400, detail="Cannot activate project - parent product not found"
                         )
-                    
+
                     if not parent_product.is_active:
-                        logger.warning(f"Cannot activate project - parent product '{parent_product.name}' is not active")
+                        logger.warning(
+                            f"Cannot activate project - parent product '{parent_product.name}' is not active"
+                        )
                         raise HTTPException(
                             status_code=400,
-                            detail=f"Cannot activate project - parent product '{parent_product.name}' is not active. Please activate the product first."
+                            detail=f"Cannot activate project - parent product '{parent_product.name}' is not active. Please activate the product first.",
                         )
 
                     logger.info(f"Project activation validated - parent product '{parent_product.name}' is active")
@@ -482,7 +481,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
                         select(Project).where(
                             Project.product_id == project.product_id,
                             Project.status == "active",
-                            Project.id != project_id
+                            Project.id != project_id,
                         )
                     )
                     existing_active = active_check.scalar_one_or_none()
@@ -497,7 +496,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
                             detail=(
                                 f"Another project ('{existing_active.name}') is already active "
                                 f"for this product. Please deactivate it first."
-                            )
+                            ),
                         )
 
                     logger.info(f"[Handover 0071] Single active project validation passed")
@@ -520,9 +519,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
                     update_data["status"] = update.status
 
                 await state.websocket_manager.broadcast_project_update(
-                    project_id=project_id,
-                    update_type="updated",
-                    project_data=update_data
+                    project_id=project_id, update_type="updated", project_data=update_data
                 )
 
         # Get updated project
@@ -536,10 +533,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
 
 
 @router.post("/{project_id}/deactivate", response_model=ProjectResponse)
-async def deactivate_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user)
-):
+async def deactivate_project(project_id: str, current_user: User = Depends(get_current_active_user)):
     """
     Deactivate a project (Handover 0071).
 
@@ -578,10 +572,7 @@ async def deactivate_project(
         async with state.db_manager.get_session_async() as db:
             # Get project with tenant isolation
             result = await db.execute(
-                select(Project).where(
-                    Project.id == project_id,
-                    Project.tenant_key == current_user.tenant_key
-                )
+                select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
             )
             project = result.scalar_one_or_none()
 
@@ -591,7 +582,7 @@ async def deactivate_project(
             if project.status != "active":
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot deactivate project with status '{project.status}'. Only active projects can be deactivated."
+                    detail=f"Cannot deactivate project with status '{project.status}'. Only active projects can be deactivated.",
                 )
 
             # Deactivate project
@@ -599,17 +590,15 @@ async def deactivate_project(
             await db.commit()
             await db.refresh(project)
 
-            logger.info(f"[Handover 0071] Project '{project.name}' (ID: {project_id}) deactivated by user {current_user.username}")
+            logger.info(
+                f"[Handover 0071] Project '{project.name}' (ID: {project_id}) deactivated by user {current_user.username}"
+            )
 
             # Broadcast WebSocket event
             if state.websocket_manager:
                 await state.websocket_manager.broadcast(
                     "project:deactivated",
-                    {
-                        "project_id": project.id,
-                        "status": "inactive",
-                        "tenant_key": current_user.tenant_key
-                    }
+                    {"project_id": project.id, "status": "inactive", "tenant_key": current_user.tenant_key},
                 )
 
             # Build response using helper function
@@ -624,13 +613,11 @@ async def deactivate_project(
 
 @router.post("/{project_id}/complete", response_model=ProjectResponse)
 async def complete_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Mark a project as completed.
-    
+
     Sets status='completed' and completed_at=NOW().
     Completed projects can be restored via the restore endpoint.
     """
@@ -647,10 +634,7 @@ async def complete_project(
     try:
         async with state.db_manager.get_session_async() as session:
             # Fetch project and verify tenant ownership
-            stmt = select(Project).where(
-                Project.id == project_id,
-                Project.tenant_key == current_user.tenant_key
-            )
+            stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
             result = await session.execute(stmt)
             project = result.scalar_one_or_none()
 
@@ -659,10 +643,7 @@ async def complete_project(
 
             # Verify project is not already completed or cancelled
             if project.status in ("completed", "cancelled"):
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Project is already {project.status}"
-                )
+                raise HTTPException(status_code=400, detail=f"Project is already {project.status}")
 
             # Mark as completed
             project.status = "completed"
@@ -687,10 +668,7 @@ async def complete_project(
             await state.websocket_manager.broadcast_project_update(
                 project_id=project_id,
                 update_type="completed",
-                project_data={
-                    "status": "completed",
-                    "completed_at": project.completed_at.isoformat()
-                }
+                project_data={"status": "completed", "completed_at": project.completed_at.isoformat()},
             )
 
         # Return completed project
@@ -719,13 +697,11 @@ async def complete_project(
 
 @router.post("/{project_id}/cancel", response_model=ProjectResponse)
 async def cancel_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Cancel a project.
-    
+
     Sets status='cancelled' and completed_at=NOW().
     Cancelled projects can be restored via the restore endpoint.
     """
@@ -742,10 +718,7 @@ async def cancel_project(
     try:
         async with state.db_manager.get_session_async() as session:
             # Fetch project and verify tenant ownership
-            stmt = select(Project).where(
-                Project.id == project_id,
-                Project.tenant_key == current_user.tenant_key
-            )
+            stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
             result = await session.execute(stmt)
             project = result.scalar_one_or_none()
 
@@ -754,10 +727,7 @@ async def cancel_project(
 
             # Verify project is not already completed or cancelled
             if project.status in ("completed", "cancelled"):
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Project is already {project.status}"
-                )
+                raise HTTPException(status_code=400, detail=f"Project is already {project.status}")
 
             # Mark as cancelled
             project.status = "cancelled"
@@ -782,10 +752,7 @@ async def cancel_project(
             await state.websocket_manager.broadcast_project_update(
                 project_id=project_id,
                 update_type="cancelled",
-                project_data={
-                    "status": "cancelled",
-                    "completed_at": project.completed_at.isoformat()
-                }
+                project_data={"status": "cancelled", "completed_at": project.completed_at.isoformat()},
             )
 
         # Return cancelled project
@@ -814,13 +781,11 @@ async def cancel_project(
 
 @router.post("/{project_id}/restore-completed", response_model=ProjectResponse)
 async def restore_completed_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Restore a completed or cancelled project.
-    
+
     Sets status='inactive' (safe default) and clears completed_at.
     User must manually activate project after restoration.
     """
@@ -837,10 +802,7 @@ async def restore_completed_project(
     try:
         async with state.db_manager.get_session_async() as session:
             # Fetch project and verify tenant ownership
-            stmt = select(Project).where(
-                Project.id == project_id,
-                Project.tenant_key == current_user.tenant_key
-            )
+            stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
             result = await session.execute(stmt)
             project = result.scalar_one_or_none()
 
@@ -850,8 +812,7 @@ async def restore_completed_project(
             # Verify project is completed or cancelled
             if project.status not in ("completed", "cancelled"):
                 raise HTTPException(
-                    status_code=400, 
-                    detail=f"Project is not completed or cancelled (current status: {project.status})"
+                    status_code=400, detail=f"Project is not completed or cancelled (current status: {project.status})"
                 )
 
             # Restore project: Set to inactive (safe default)
@@ -870,18 +831,16 @@ async def restore_completed_project(
             message_result = await session.execute(message_stmt)
             message_count = len(message_result.scalars().all())
 
-            logger.info(f"Project '{project.name}' (id: {project_id}) restored from completed/cancelled by {current_user.username}")
+            logger.info(
+                f"Project '{project.name}' (id: {project_id}) restored from completed/cancelled by {current_user.username}"
+            )
 
         # Broadcast project restoration
         if state.websocket_manager:
             await state.websocket_manager.broadcast_project_update(
                 project_id=project_id,
                 update_type="restored",
-                project_data={
-                    "status": "inactive",
-                    "completed_at": None,
-                    "message": "Project restored successfully"
-                }
+                project_data={"status": "inactive", "completed_at": None, "message": "Project restored successfully"},
             )
 
         # Return restored project
@@ -910,9 +869,7 @@ async def restore_completed_project(
 
 @router.delete("/{project_id}")
 async def delete_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Soft delete a project (Handover 0070).
@@ -933,10 +890,7 @@ async def delete_project(
     try:
         async with state.db_manager.get_session_async() as session:
             # Fetch project and verify tenant ownership
-            stmt = select(Project).where(
-                Project.id == project_id,
-                Project.tenant_key == current_user.tenant_key
-            )
+            stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
             result = await session.execute(stmt)
             project = result.scalar_one_or_none()
 
@@ -954,7 +908,9 @@ async def delete_project(
 
             await session.flush()
 
-            logger.info(f"[Handover 0070] Project '{project.name}' (id: {project_id}) soft deleted by {current_user.username}")
+            logger.info(
+                f"[Handover 0070] Project '{project.name}' (id: {project_id}) soft deleted by {current_user.username}"
+            )
 
         # Broadcast project deletion
         if state.websocket_manager:
@@ -964,14 +920,14 @@ async def delete_project(
                 project_data={
                     "status": "deleted",
                     "deleted_at": project.deleted_at.isoformat(),
-                    "message": "Project will be permanently purged in 10 days"
-                }
+                    "message": "Project will be permanently purged in 10 days",
+                },
             )
 
         return {
             "success": True,
             "message": "Project deleted from view. Will be permanently purged in 10 days.",
-            "recovery_info": "To recover: Settings → Database → Deleted Projects"
+            "recovery_info": "To recover: Settings → Database → Deleted Projects",
         }
 
     except HTTPException:
@@ -983,9 +939,7 @@ async def delete_project(
 
 @router.post("/{project_id}/restore", response_model=ProjectResponse)
 async def restore_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Restore a soft-deleted project (Handover 0070).
@@ -1006,10 +960,7 @@ async def restore_project(
     try:
         async with state.db_manager.get_session_async() as session:
             # Fetch project and verify tenant ownership
-            stmt = select(Project).where(
-                Project.id == project_id,
-                Project.tenant_key == current_user.tenant_key
-            )
+            stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
             result = await session.execute(stmt)
             project = result.scalar_one_or_none()
 
@@ -1036,18 +987,16 @@ async def restore_project(
             message_result = await session.execute(message_stmt)
             message_count = len(message_result.scalars().all())
 
-            logger.info(f"[Handover 0070] Project '{project.name}' (id: {project_id}) restored by {current_user.username}")
+            logger.info(
+                f"[Handover 0070] Project '{project.name}' (id: {project_id}) restored by {current_user.username}"
+            )
 
         # Broadcast project restoration
         if state.websocket_manager:
             await state.websocket_manager.broadcast_project_update(
                 project_id=project_id,
                 update_type="restored",
-                project_data={
-                    "status": "inactive",
-                    "deleted_at": None,
-                    "message": "Project restored successfully"
-                }
+                project_data={"status": "inactive", "deleted_at": None, "message": "Project restored successfully"},
             )
 
         # Return restored project
@@ -1108,10 +1057,7 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
             # Find projects deleted more than 10 days ago
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=10)
 
-            stmt = select(Project).where(
-                Project.deleted_at.isnot(None),
-                Project.deleted_at < cutoff_date
-            )
+            stmt = select(Project).where(Project.deleted_at.isnot(None), Project.deleted_at < cutoff_date)
 
             result = await session.execute(stmt)
             expired_projects = result.scalars().all()
@@ -1127,7 +1073,7 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
                     "id": project.id,
                     "name": project.name,
                     "tenant_key": project.tenant_key,
-                    "deleted_at": project.deleted_at.isoformat()
+                    "deleted_at": project.deleted_at.isoformat(),
                 }
 
                 # Cascade delete: agents
@@ -1165,16 +1111,8 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
 
             logger.info(f"[Handover 0070] Successfully purged {len(purged_projects)} expired deleted projects")
 
-            return {
-                "success": True,
-                "purged_count": len(purged_projects),
-                "projects": purged_projects
-            }
+            return {"success": True, "purged_count": len(purged_projects), "projects": purged_projects}
 
     except Exception as e:
         logger.error(f"[Handover 0070] Failed to purge expired deleted projects: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-            "purged_count": 0
-        }
+        return {"success": False, "error": str(e), "purged_count": 0}

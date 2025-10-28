@@ -37,7 +37,8 @@ export const PROJECT_STATUS = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
   COMPLETED: 'completed',
-  ARCHIVED: 'archived',
+  CANCELLED: 'cancelled',
+  DELETED: 'deleted',
 }
 
 export const JOB_TYPES = {
