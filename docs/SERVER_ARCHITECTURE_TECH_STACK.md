@@ -199,6 +199,29 @@ CREATE INDEX idx_projects_tenant_status ON projects(tenant_key, status);
 
 GiljoAI MCP's database schema has been enhanced through multiple handovers to support advanced features.
 
+#### Single Active Product Architecture (Handover 0050)
+
+**Product Table Constraint** - Enforce single active product per tenant:
+```sql
+-- Partial unique index (PostgreSQL 9.0+)
+CREATE UNIQUE INDEX idx_product_single_active_per_tenant
+ON products (tenant_key)
+WHERE is_active = true;
+```
+
+**Key Features**:
+- Only ONE product can be active per tenant at any time
+- Database-level atomicity prevents race conditions
+- Partial index (efficient - only indexes active products)
+- Clear constraint violation errors guide users
+- Migration includes auto-repair logic for existing conflicts
+
+**Business Impact**:
+- Prevents context confusion in multi-agent workflows
+- Clear product lifecycle semantics
+- Foundation for product-scoped agent jobs
+- Enables proper orchestrator validation
+
 #### Agent Job Management Tables (Handover 0019)
 
 **MCPAgentJob Table** - Core agent job tracking:

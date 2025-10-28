@@ -178,7 +178,18 @@ async def process_vision(request: ProcessVisionRequest) -> ProcessVisionResponse
         )
 
     except ValueError as e:
-        # ValueError from orchestrator indicates missing vision or invalid data
+        # Handover 0050: Handle inactive product error with 409 Conflict
+        error_msg = str(e)
+        if "not active" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "inactive_product",
+                    "message": error_msg,
+                    "hint": "Activate the product in the Products view before creating agent missions."
+                }
+            )
+        # Other ValueError indicates missing vision or invalid data
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except HTTPException:
         raise

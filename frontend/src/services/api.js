@@ -239,6 +239,9 @@ export const api = {
     get: () => apiClient.get('/api/v1/config/'),
     update: (data) => apiClient.put('/api/v1/config/', data),
     getProduct: () => apiClient.get('/api/v1/config/product/'),
+    // Database config and health
+    getDatabase: () => apiClient.get('/api/v1/config/database'),
+    testDatabase: () => apiClient.get('/api/v1/config/health/database'),
     getCookieDomains: () => apiClient.get('/api/v1/user/settings/cookie-domains'),
     addCookieDomain: (domain) => apiClient.post('/api/v1/user/settings/cookie-domains', { domain }),
     removeCookieDomain: (domain) => apiClient.delete('/api/v1/user/settings/cookie-domains', { data: { domain } }),

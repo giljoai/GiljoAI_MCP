@@ -213,8 +213,9 @@
             size="small"
             variant="text"
             color="success"
+            :disabled="!canActivateProject(item)"
             @click="activateProject(item)"
-            title="Activate Project"
+            :title="getActivationTooltip(item)"
             aria-label="Activate project"
           ></v-btn>
           <v-btn
@@ -368,6 +369,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { useProjectStore } from '@/stores/projects'
+import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
 import { useTaskStore } from '@/stores/tasks'
 import { formatDate, formatNumber, formatStatus } from '@/utils/formatters'
@@ -379,6 +381,7 @@ const router = useRouter()
 
 // Stores
 const projectStore = useProjectStore()
+const productStore = useProductStore()
 const agentStore = useAgentStore()
 const taskStore = useTaskStore()
 
@@ -414,6 +417,7 @@ const headers = [
 
 // Computed properties
 const projects = computed(() => projectStore.projects)
+const products = computed(() => productStore.products)
 const loading = computed(() => projectStore.loading)
 
 const filteredProjects = computed(() => {
@@ -434,7 +438,32 @@ const totalAgents = computed(() => agentStore.agents.length)
 
 const activeTasks = computed(() => taskStore.inProgressTasks.length + taskStore.pendingTasks.length)
 
+// Handover 0050 Phase 4: Validate parent product is active before activating project
+const canActivateProject = computed(() => {
+  return (project) => {
+    if (!project.product_id) {
+      // Projects without a parent product can always be activated
+      return true
+    }
+    const parentProduct = products.value.find(p => p.id === project.product_id)
+    return parentProduct?.is_active === true
+  }
+})
+
 // Methods
+function getActivationTooltip(project) {
+  if (!project.product_id) {
+    return 'Activate Project'
+  }
+  const parentProduct = products.value.find(p => p.id === project.product_id)
+  if (!parentProduct) {
+    return 'Parent product not found'
+  }
+  if (!parentProduct.is_active) {
+    return `Cannot activate - parent product '${parentProduct.name}' is not active`
+  }
+  return 'Activate Project'
+}
 function getStatusColor(status) {
   const colors = {
     active: 'success',
@@ -583,8 +612,9 @@ async function saveProject() {
 
 // Lifecycle
 onMounted(async () => {
-  // Load initial data
+  // Load initial data (Handover 0050 Phase 4: fetch products for validation)
   await Promise.all([
+    productStore.fetchProducts(),
     projectStore.fetchProjects(),
     agentStore.fetchAgents(),
     taskStore.fetchTasks(),
