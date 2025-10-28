@@ -110,6 +110,26 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
 
+  async function activateProject(id) {
+    return updateProject(id, { status: 'active' })
+  }
+
+  async function pauseProject(id) {
+    return updateProject(id, { status: 'paused' })
+  }
+
+  async function completeProject(id) {
+    return updateProject(id, { status: 'completed' })
+  }
+
+  async function cancelProject(id) {
+    return updateProject(id, { status: 'cancelled' })
+  }
+
+  async function restoreProject(id) {
+    return updateProject(id, { status: 'inactive' })
+  }
+
   function clearError() {
     error.value = null
   }
@@ -186,6 +206,11 @@ export const useProjectStore = defineStore('projects', () => {
     createProject,
     updateProject,
     deleteProject,
+    activateProject,
+    pauseProject,
+    completeProject,
+    cancelProject,
+    restoreProject,
     clearError,
     handleRealtimeUpdate,
   }

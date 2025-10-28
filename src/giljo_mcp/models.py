@@ -406,7 +406,7 @@ class Project(Base):
     alias = Column(String(6), nullable=False, unique=True, index=True, default=generate_project_alias,
                    comment="6-character alphanumeric project identifier (e.g., A1B2C3)")
     mission = Column(Text, nullable=False)
-    status = Column(String(50), default="inactive")  # inactive, active, paused, completed, archived (Handover 0050b: projects start inactive)
+    status = Column(String(50), default="inactive")  # inactive, active, paused, completed, cancelled, archived (Handover 0050b: projects start inactive)
     context_budget = Column(Integer, default=150000)
     context_used = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

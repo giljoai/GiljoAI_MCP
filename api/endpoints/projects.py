@@ -40,6 +40,7 @@ class ProjectResponse(BaseModel):
     product_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    completed_at: Optional[datetime] = None
     context_budget: int
     context_used: int
     agent_count: int
@@ -94,6 +95,7 @@ async def create_project(
             product_id=project.product_id,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
+            completed_at=None,
             context_budget=150000,
             context_used=0,
             agent_count=0,
@@ -191,6 +193,7 @@ async def list_projects(
                         product_id=proj.product_id,
                         created_at=proj.created_at,
                         updated_at=proj.updated_at or proj.created_at,
+                        completed_at=proj.completed_at,
                         context_budget=proj.context_budget,
                         context_used=proj.context_used,
                         agent_count=agent_count,
@@ -259,6 +262,7 @@ async def get_project_by_alias(alias: str):
                 product_id=project.product_id,
                 created_at=project.created_at,
                 updated_at=project.updated_at or project.created_at,
+                completed_at=project.completed_at,
                 context_budget=project.context_budget,
                 context_used=project.context_used,
                 agent_count=agent_count,
@@ -295,6 +299,7 @@ async def get_project(project_id: str):
             product_id=proj.get("product_id"),
             created_at=datetime.fromisoformat(proj["created_at"]),
             updated_at=datetime.fromisoformat(proj.get("updated_at", proj["created_at"])),
+            completed_at=datetime.fromisoformat(proj["completed_at"]) if proj.get("completed_at") else None,
             context_budget=proj.get("context_budget", 150000),
             context_used=proj.get("context_used", 0),
             agent_count=len(result.get("agents", [])),
@@ -399,6 +404,293 @@ async def update_project(project_id: str, update: ProjectUpdate):
 
     except Exception as e:
         logger.error(f"Failed to update project: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.post("/{project_id}/complete", response_model=ProjectResponse)
+async def complete_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Mark a project as completed.
+    
+    Sets status='completed' and completed_at=NOW().
+    Completed projects can be restored via the restore endpoint.
+    """
+    from api.app import state
+    from src.giljo_mcp.models import Project, Agent, Message
+    from sqlalchemy import select
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as session:
+            # Fetch project and verify tenant ownership
+            stmt = select(Project).where(
+                Project.id == project_id,
+                Project.tenant_key == current_user.tenant_key
+            )
+            result = await session.execute(stmt)
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            # Verify project is not already completed or cancelled
+            if project.status in ("completed", "cancelled"):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Project is already {project.status}"
+                )
+
+            # Mark as completed
+            project.status = "completed"
+            project.completed_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(timezone.utc)
+
+            await session.flush()
+
+            # Get agent and message counts
+            agent_stmt = select(Agent).where(Agent.project_id == project.id)
+            agent_result = await session.execute(agent_stmt)
+            agent_count = len(agent_result.scalars().all())
+
+            message_stmt = select(Message).where(Message.project_id == project.id)
+            message_result = await session.execute(message_stmt)
+            message_count = len(message_result.scalars().all())
+
+            logger.info(f"Project '{project.name}' (id: {project_id}) marked as completed by {current_user.username}")
+
+        # Broadcast project completion
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_project_update(
+                project_id=project_id,
+                update_type="completed",
+                project_data={
+                    "status": "completed",
+                    "completed_at": project.completed_at.isoformat()
+                }
+            )
+
+        # Return completed project
+        return ProjectResponse(
+            id=project.id,
+            alias=project.alias,
+            name=project.name,
+            mission=project.mission,
+            status=project.status,
+            product_id=project.product_id,
+            created_at=project.created_at,
+            updated_at=project.updated_at,
+            completed_at=project.completed_at,
+            context_budget=project.context_budget,
+            context_used=project.context_used,
+            agent_count=agent_count,
+            message_count=message_count,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to complete project {project_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{project_id}/cancel", response_model=ProjectResponse)
+async def cancel_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Cancel a project.
+    
+    Sets status='cancelled' and completed_at=NOW().
+    Cancelled projects can be restored via the restore endpoint.
+    """
+    from api.app import state
+    from src.giljo_mcp.models import Project, Agent, Message
+    from sqlalchemy import select
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as session:
+            # Fetch project and verify tenant ownership
+            stmt = select(Project).where(
+                Project.id == project_id,
+                Project.tenant_key == current_user.tenant_key
+            )
+            result = await session.execute(stmt)
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            # Verify project is not already completed or cancelled
+            if project.status in ("completed", "cancelled"):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Project is already {project.status}"
+                )
+
+            # Mark as cancelled
+            project.status = "cancelled"
+            project.completed_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(timezone.utc)
+
+            await session.flush()
+
+            # Get agent and message counts
+            agent_stmt = select(Agent).where(Agent.project_id == project.id)
+            agent_result = await session.execute(agent_stmt)
+            agent_count = len(agent_result.scalars().all())
+
+            message_stmt = select(Message).where(Message.project_id == project.id)
+            message_result = await session.execute(message_stmt)
+            message_count = len(message_result.scalars().all())
+
+            logger.info(f"Project '{project.name}' (id: {project_id}) cancelled by {current_user.username}")
+
+        # Broadcast project cancellation
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_project_update(
+                project_id=project_id,
+                update_type="cancelled",
+                project_data={
+                    "status": "cancelled",
+                    "completed_at": project.completed_at.isoformat()
+                }
+            )
+
+        # Return cancelled project
+        return ProjectResponse(
+            id=project.id,
+            alias=project.alias,
+            name=project.name,
+            mission=project.mission,
+            status=project.status,
+            product_id=project.product_id,
+            created_at=project.created_at,
+            updated_at=project.updated_at,
+            completed_at=project.completed_at,
+            context_budget=project.context_budget,
+            context_used=project.context_used,
+            agent_count=agent_count,
+            message_count=message_count,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel project {project_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{project_id}/restore-completed", response_model=ProjectResponse)
+async def restore_completed_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Restore a completed or cancelled project.
+    
+    Sets status='inactive' (safe default) and clears completed_at.
+    User must manually activate project after restoration.
+    """
+    from api.app import state
+    from src.giljo_mcp.models import Project, Agent, Message
+    from sqlalchemy import select
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as session:
+            # Fetch project and verify tenant ownership
+            stmt = select(Project).where(
+                Project.id == project_id,
+                Project.tenant_key == current_user.tenant_key
+            )
+            result = await session.execute(stmt)
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            # Verify project is completed or cancelled
+            if project.status not in ("completed", "cancelled"):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Project is not completed or cancelled (current status: {project.status})"
+                )
+
+            # Restore project: Set to inactive (safe default)
+            project.status = "inactive"
+            project.completed_at = None
+            project.updated_at = datetime.now(timezone.utc)
+
+            await session.flush()
+
+            # Get agent and message counts
+            agent_stmt = select(Agent).where(Agent.project_id == project.id)
+            agent_result = await session.execute(agent_stmt)
+            agent_count = len(agent_result.scalars().all())
+
+            message_stmt = select(Message).where(Message.project_id == project.id)
+            message_result = await session.execute(message_stmt)
+            message_count = len(message_result.scalars().all())
+
+            logger.info(f"Project '{project.name}' (id: {project_id}) restored from completed/cancelled by {current_user.username}")
+
+        # Broadcast project restoration
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_project_update(
+                project_id=project_id,
+                update_type="restored",
+                project_data={
+                    "status": "inactive",
+                    "completed_at": None,
+                    "message": "Project restored successfully"
+                }
+            )
+
+        # Return restored project
+        return ProjectResponse(
+            id=project.id,
+            alias=project.alias,
+            name=project.name,
+            mission=project.mission,
+            status=project.status,
+            product_id=project.product_id,
+            created_at=project.created_at,
+            updated_at=project.updated_at,
+            completed_at=project.completed_at,
+            context_budget=project.context_budget,
+            context_used=project.context_used,
+            agent_count=agent_count,
+            message_count=message_count,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to restore project {project_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -629,6 +921,7 @@ async def restore_project(
             product_id=project.product_id,
             created_at=project.created_at,
             updated_at=project.updated_at,
+            completed_at=project.completed_at,
             context_budget=project.context_budget,
             context_used=project.context_used,
             agent_count=agent_count,

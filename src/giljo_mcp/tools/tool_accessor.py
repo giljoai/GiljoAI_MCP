@@ -243,6 +243,7 @@ class ToolAccessor:
                         "tenant_key": project.tenant_key,
                         "product_id": project.product_id,
                         "created_at": project.created_at.isoformat(),
+                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
                         "context_budget": project.context_budget,
                         "context_used": project.context_used,
                     },
@@ -255,15 +256,16 @@ class ToolAccessor:
             return {"success": False, "error": str(e)}
 
     async def close_project(self, project_id: str, summary: str) -> dict[str, Any]:
-        """Close a completed project with summary"""
+        """Close a completed project with summary (DEPRECATED: Use complete_project instead)"""
         try:
             async with self.db_manager.get_session_async() as session:
-                # Update project status
+                # Update project status with completed_at timestamp
                 result = await session.execute(
                     update(Project)
                     .where(Project.id == project_id)
                     .values(
                         status="completed",
+                        completed_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
                         meta_data={"summary": summary},
                     )
@@ -283,6 +285,111 @@ class ToolAccessor:
 
         except Exception as e:
             logger.exception(f"Failed to close project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def complete_project(self, project_id: str, summary: Optional[str] = None) -> dict[str, Any]:
+        """Mark a project as completed with completed_at timestamp"""
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Build update values
+                update_values = {
+                    "status": "completed",
+                    "completed_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+                
+                # Add summary to meta_data if provided
+                if summary:
+                    update_values["meta_data"] = {"summary": summary}
+                
+                result = await session.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(**update_values)
+                )
+
+                if result.rowcount == 0:
+                    return {"success": False, "error": "Project not found"}
+
+                await session.commit()
+
+                logger.info(f"Completed project {project_id}")
+
+                return {
+                    "success": True,
+                    "message": f"Project {project_id} completed successfully",
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to complete project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def cancel_project(self, project_id: str, reason: Optional[str] = None) -> dict[str, Any]:
+        """Cancel a project with completed_at timestamp"""
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Build update values
+                update_values = {
+                    "status": "cancelled",
+                    "completed_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+                
+                # Add reason to meta_data if provided
+                if reason:
+                    update_values["meta_data"] = {"cancellation_reason": reason}
+                
+                result = await session.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(**update_values)
+                )
+
+                if result.rowcount == 0:
+                    return {"success": False, "error": "Project not found"}
+
+                await session.commit()
+
+                logger.info(f"Cancelled project {project_id}")
+
+                return {
+                    "success": True,
+                    "message": f"Project {project_id} cancelled successfully",
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to cancel project: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def restore_project(self, project_id: str) -> dict[str, Any]:
+        """Restore a completed or cancelled project to inactive status"""
+        try:
+            async with self.db_manager.get_session_async() as session:
+                # Update project to inactive and clear completed_at
+                result = await session.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(
+                        status="inactive",
+                        completed_at=None,
+                        updated_at=datetime.utcnow(),
+                    )
+                )
+
+                if result.rowcount == 0:
+                    return {"success": False, "error": "Project not found"}
+
+                await session.commit()
+
+                logger.info(f"Restored project {project_id}")
+
+                return {
+                    "success": True,
+                    "message": f"Project {project_id} restored successfully",
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to restore project: {e}")
             return {"success": False, "error": str(e)}
 
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
