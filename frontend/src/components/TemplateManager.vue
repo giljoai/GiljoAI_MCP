@@ -933,39 +933,39 @@ watch(
 
 <style scoped lang="scss">
 .template-manager {
-  background: #1e3147;
+  background: var(--v-theme-surface-variant);
 
   .templates-table {
-    background: #182739;
+    background: var(--v-theme-surface);
 
     :deep(.v-data-table__th) {
-      background: #0e1c2d !important;
-      color: #ffc300 !important;
+      background: var(--v-theme-background) !important;
+      color: var(--v-theme-primary) !important;
       font-weight: 600;
     }
 
     :deep(.v-data-table__td) {
-      color: #e1e1e1;
+      color: var(--v-theme-on-surface);
     }
 
     :deep(.v-data-table-footer) {
-      background: #182739;
-      color: #e1e1e1;
+      background: var(--v-theme-surface);
+      color: var(--v-theme-on-surface);
     }
   }
 
   .template-editor {
     font-family: 'Roboto Mono', monospace;
-    background: #0e1c2d;
+    background: var(--v-theme-background);
 
     :deep(.v-field__input) {
-      color: #e1e1e1;
+      color: var(--v-theme-on-surface);
     }
   }
 
   .generated-mission {
-    background: #0e1c2d;
-    color: #e1e1e1;
+    background: var(--v-theme-background);
+    color: var(--v-theme-on-surface);
 
     pre {
       white-space: pre-wrap;
@@ -975,8 +975,8 @@ watch(
   }
 
   .diff-viewer {
-    background: #0e1c2d;
-    color: #e1e1e1;
+    background: var(--v-theme-background);
+    color: var(--v-theme-on-surface);
     max-height: 600px;
     overflow: auto;
 
@@ -991,8 +991,8 @@ watch(
 
     .diff-html-container {
       :deep(table) {
-        background: #0e1c2d;
-        color: #e1e1e1;
+        background: var(--v-theme-background);
+        color: var(--v-theme-on-surface);
         border-collapse: collapse;
         width: 100%;
         font-size: 12px;
@@ -1001,29 +1001,29 @@ watch(
         td,
         th {
           padding: 2px 10px;
-          border: 1px solid #2a3f5f;
+          border: 1px solid var(--v-theme-on-surface-variant);
           vertical-align: top;
         }
 
         th {
-          background: #182739;
-          color: #ffc300;
+          background: var(--v-theme-surface);
+          color: var(--v-theme-primary);
           font-weight: 600;
         }
 
         .diff_add {
-          background-color: rgba(76, 175, 80, 0.2);
-          color: #81c784;
+          background-color: rgba(var(--v-theme-success), 0.1);
+          color: var(--v-theme-success);
         }
 
         .diff_sub {
-          background-color: rgba(244, 67, 54, 0.2);
-          color: #e57373;
+          background-color: rgba(var(--v-theme-error), 0.1);
+          color: var(--v-theme-error);
         }
 
         .diff_chg {
-          background-color: rgba(255, 193, 7, 0.2);
-          color: #ffd54f;
+          background-color: rgba(var(--v-theme-warning), 0.1);
+          color: var(--v-theme-warning);
         }
       }
     }

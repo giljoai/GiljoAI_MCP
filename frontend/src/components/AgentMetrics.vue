@@ -92,7 +92,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useTheme } from 'vuetify'
 import { Chart, registerables } from 'chart.js'
 import api from '@/services/api'
 
@@ -116,6 +117,19 @@ const roleChart = ref(null)
 const activityChart = ref(null)
 let roleChartInstance = null
 let activityChartInstance = null
+
+// Theme-aware colors for charts
+const theme = useTheme()
+const chartColors = computed(() => {
+  const t = theme.global.current.value
+  const c = t.colors || {}
+  return {
+    text: c['on-surface'],
+    grid: c['on-surface-variant'],
+    primary: c.primary,
+    accent: c.info,
+  }
+})
 
 // Methods
 const formatContext = (value) => {
@@ -152,7 +166,7 @@ const createRoleChart = () => {
       datasets: [
         {
           data: Object.values(data),
-          backgroundColor: ['#67bd6d', '#ffc300', '#8b5cf6', '#c6298c', '#8f97b7'],
+          backgroundColor: [theme.global.current.value.colors.success, theme.global.current.value.colors.primary, theme.global.current.value.colors.accent, theme.global.current.value.colors.error, theme.global.current.value.colors.info],
         },
       ],
     },
@@ -163,7 +177,7 @@ const createRoleChart = () => {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#e1e1e1',
+            color: chartColors.value.text,
           },
         },
       },
@@ -190,8 +204,8 @@ const createActivityChart = () => {
         {
           label: 'Agent Activity',
           data: Object.values(data),
-          borderColor: '#ffc300',
-          backgroundColor: 'rgba(255, 195, 0, 0.1)',
+          borderColor: chartColors.value.primary,
+          backgroundColor: tToRgba(chartColors.value.primary, 0.1),
           tension: 0.4,
         },
       ],
@@ -207,18 +221,18 @@ const createActivityChart = () => {
       scales: {
         x: {
           grid: {
-            color: '#315074',
+            color: chartColors.value.grid,
           },
           ticks: {
-            color: '#8f97b7',
+            color: chartColors.value.text,
           },
         },
         y: {
           grid: {
-            color: '#315074',
+            color: chartColors.value.grid,
           },
           ticks: {
-            color: '#8f97b7',
+            color: chartColors.value.text,
           },
         },
       },
@@ -243,22 +257,42 @@ watch(
   },
   { deep: true },
 )
+
+// Watch for theme changes to refresh chart colors
+watch(
+  () => theme.global.current.value.dark,
+  () => {
+    createRoleChart()
+    createActivityChart()
+  },
+)
+
+// Helper to convert hex to rgba with alpha for chart background
+function tToRgba(hex, alpha = 0.1) {
+  if (!hex) return `rgba(0,0,0,${alpha})`
+  const h = hex.replace('#', '')
+  const bigint = parseInt(h, 16)
+  const r = (bigint >> 16) & 255
+  const g = (bigint >> 8) & 255
+  const b = bigint & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 </script>
 
 <style scoped lang="scss">
 .agent-metrics {
-  background: #1e3147;
+  background: var(--v-theme-surface-variant);
 
   :deep(.v-card) {
-    background: #182739;
+    background: var(--v-theme-surface);
   }
 
   :deep(.v-card-text) {
-    color: #e1e1e1;
+    color: var(--v-theme-on-surface);
   }
 
   :deep(.v-list-item-title) {
-    color: #e1e1e1;
+    color: var(--v-theme-on-surface);
   }
 }
 </style>

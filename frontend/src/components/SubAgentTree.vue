@@ -173,7 +173,7 @@
                 <text
                   x="0"
                   y="3"
-                  fill="#0e1c2d"
+                  :fill="colors.onPrimary"
                   text-anchor="middle"
                   font-size="12"
                   font-weight="bold"
@@ -271,6 +271,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useTheme } from 'vuetify'
 import { useAgentStore } from '@/stores/agents'
 import * as d3 from 'd3'
 import api from '@/services/api'
@@ -337,21 +338,27 @@ const contextMenu = ref({
   node: null,
 })
 
-// Color scheme from docs/color_themes.md
-const colors = {
-  background: '#1e3147',
-  nodeBackground: '#182739',
-  orchestratorBackground: '#1e3147',
-  trackBackground: '#182739',
-  active: '#67bd6d',
-  pending: '#ffc300',
-  completed: '#8f97b7',
-  failed: '#c6298c',
-  connectionLine: '#315074',
-  text: '#e1e1e1',
-  textSecondary: '#8f97b7',
-  primary: '#ffc300',
-}
+// Theme-aware color palette
+const theme = useTheme()
+const colors = computed(() => {
+  const t = theme.global.current.value
+  const c = t.colors || {}
+  return {
+    background: c['surface-variant'],
+    nodeBackground: c.surface,
+    orchestratorBackground: c['surface-variant'],
+    trackBackground: c.surface,
+    active: c.success,
+    pending: c.warning,
+    completed: c.info,
+    failed: c.error,
+    connectionLine: c['on-surface-variant'],
+    text: c['on-surface'],
+    textSecondary: c['on-surface-variant'],
+    primary: c.primary,
+    onPrimary: c['on-primary'],
+  }
+})
 
 // Status types for legend
 const statusTypes = [
@@ -441,19 +448,19 @@ const getLinkPath = (link) => {
 
 const getNodeBackground = (node) => {
   if (node.role === 'orchestrator') {
-    return colors.orchestratorBackground
+    return colors.value.orchestratorBackground
   }
-  return colors.nodeBackground
+  return colors.value.nodeBackground
 }
 
 const getNodeBorderColor = (node) => {
   const statusColors = {
-    active: colors.active,
-    pending: colors.pending,
-    completed: colors.completed,
-    failed: colors.failed,
+    active: colors.value.active,
+    pending: colors.value.pending,
+    completed: colors.value.completed,
+    failed: colors.value.failed,
   }
-  return statusColors[node.status] || colors.connectionLine
+  return statusColors[node.status] || colors.value.connectionLine
 }
 
 const getNodeIcon = (node) => {
@@ -467,10 +474,10 @@ const getNodeIcon = (node) => {
 
 const getContextColor = (usage) => {
   const percentage = (usage / 150000) * 100
-  if (percentage < 50) return colors.active
-  if (percentage < 70) return colors.pending
+  if (percentage < 50) return colors.value.active
+  if (percentage < 70) return colors.value.pending
   if (percentage < 80) return '#ff9800'
-  return colors.failed
+  return colors.value.failed
 }
 
 const formatContextUsage = (usage) => {
@@ -622,13 +629,13 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .sub-agent-tree {
-  background: #1e3147;
+  background: var(--v-theme-surface-variant);
 
   .tree-container {
     position: relative;
     height: 600px;
     overflow: hidden;
-    background: #182739;
+    background: var(--v-theme-surface);
     border-radius: 8px;
   }
 
@@ -690,8 +697,8 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #0e1c2d;
-    border: 1px solid #315074;
+    background: var(--v-theme-background);
+    border: 1px solid var(--v-theme-on-surface-variant);
     border-radius: 8px;
     padding: 8px;
 
@@ -705,19 +712,19 @@ onMounted(async () => {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: #ffc300;
+      color: var(--v-theme-primary);
       margin-bottom: 8px;
     }
 
     .tooltip-content {
-      color: #e1e1e1;
+      color: var(--v-theme-on-surface);
       font-size: 0.875rem;
 
       div {
         margin: 4px 0;
 
         strong {
-          color: #8f97b7;
+          color: var(--v-theme-info);
           margin-right: 4px;
         }
       }
@@ -725,8 +732,8 @@ onMounted(async () => {
   }
 
   .legend-section {
-    background: #182739;
-    border-top: 1px solid #315074;
+    background: var(--v-theme-surface);
+    border-top: 1px solid var(--v-theme-on-surface-variant);
     padding: 12px 16px;
   }
 }

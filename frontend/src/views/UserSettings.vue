@@ -433,7 +433,7 @@
               </v-tab>
               <v-tab value="integrations"><v-icon start>mdi-puzzle</v-icon>Integrations</v-tab>
             </v-tabs>
-            <v-divider class="mb-4" thickness="3" style="border-color: #FFFFFF !important; opacity: 1 !important;"></v-divider>
+            <v-divider class="mb-4 api-divider" thickness="3"></v-divider>
 
             <v-window v-model="apiSubTab" :theme="theme.global.name.value">
               <!-- API Keys Tab -->
@@ -993,6 +993,12 @@ watch(
 </script>
 
 <style scoped>
+/* API section divider should follow theme */
+.api-divider {
+  --v-theme-overlay-multiplier: 1; /* ensure visibility */
+  border-color: var(--v-theme-on-surface) !important;
+  opacity: 0.3 !important;
+}
 /* Make Serena toggle more visible */
 .serena-toggle :deep(.v-switch__track) {
   border: 2px solid rgba(var(--v-theme-primary), 0.5);

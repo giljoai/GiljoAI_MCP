@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Session, declarative_base, relationship
@@ -118,6 +119,13 @@ class Product(Base):
         CheckConstraint(
             "vision_type IN ('file', 'inline', 'none')",
             name="ck_product_vision_type"
+        ),
+        # Handover 0050: Enforce single active product per tenant (defense in depth)
+        Index(
+            "idx_product_single_active_per_tenant",
+            "tenant_key",
+            unique=True,
+            postgresql_where=text("is_active = true")
         ),
     )
 
