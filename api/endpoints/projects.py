@@ -72,8 +72,8 @@ async def create_project(
         # Fetch the created project to get the alias
         from src.giljo_mcp.models import Project
         from sqlalchemy import select
-        
-        async with state.db_manager.get_session() as session:
+
+        async with state.db_manager.get_session_async() as session:
             stmt = select(Project).where(Project.id == result["project_id"])
             db_result = await session.execute(stmt)
             created_project = db_result.scalar_one_or_none()
@@ -175,7 +175,7 @@ async def get_project_by_alias(alias: str):
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-        async with state.db_manager.get_session() as session:
+        async with state.db_manager.get_session_async() as session:
             # Query project by alias
             stmt = select(Project).where(Project.alias == alias.upper())
             result = await session.execute(stmt)

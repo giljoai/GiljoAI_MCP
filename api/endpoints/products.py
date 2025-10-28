@@ -66,6 +66,7 @@ class ActiveProductInfo(BaseModel):
     name: str
     description: Optional[str]
     activated_at: datetime = Field(description="When this product was activated")
+    active_projects_count: int = Field(default=0, description="Handover 0050b: Number of active projects")
 
 
 class ProductActivationResponse(ProductResponse):
@@ -623,12 +624,13 @@ async def get_active_product_info(
         tenant_key: Tenant identifier
 
     Returns:
-        {id, name, description, activated_at} or None if no active product
+        {id, name, description, activated_at, active_projects_count} or None if no active product
 
     Performance: <10ms (database query)
     Note: Future enhancement - add Redis caching for <1ms response
     """
     from sqlalchemy import func
+    from src.giljo_mcp.models import Project  # Handover 0050b
 
     # Find currently active product for tenant
     result = await db.execute(
@@ -643,11 +645,22 @@ async def get_active_product_info(
     if not active_product:
         return None
 
+    # Handover 0050b: Count active projects (status='active' not is_active field)
+    count_result = await db.execute(
+        select(func.count(Project.id))
+        .where(
+            Project.product_id == active_product.id,
+            Project.status == 'active'  # Status field, not is_active
+        )
+    )
+    active_projects_count = count_result.scalar() or 0
+
     return {
         "id": str(active_product.id),
         "name": active_product.name,
         "description": active_product.description,
-        "activated_at": active_product.updated_at or active_product.created_at
+        "activated_at": active_product.updated_at or active_product.created_at,
+        "active_projects_count": active_projects_count  # Handover 0050b
     }
 
 
@@ -697,6 +710,23 @@ async def activate_product(
                 .where(Product.tenant_key == tenant_key, Product.id != product_id)
                 .values(is_active=False)
             )
+
+            # Handover 0050b: Deactivate all projects under previous active product(s)
+            if previous_active:
+                from src.giljo_mcp.models import Project
+                
+                # Get all active projects under previous product
+                prev_projects_query = select(Project).where(
+                    Project.product_id == previous_active["id"],
+                    Project.status == "active"
+                )
+                prev_projects_result = await db.execute(prev_projects_query)
+                prev_active_projects = prev_projects_result.scalars().all()
+                
+                # Deactivate them (set to paused)
+                for proj in prev_active_projects:
+                    proj.status = "paused"
+                    logger.info(f"[Handover 0050b] Pausing project '{proj.name}' (parent product deactivated)")
 
             # Activate this product
             product.is_active = True

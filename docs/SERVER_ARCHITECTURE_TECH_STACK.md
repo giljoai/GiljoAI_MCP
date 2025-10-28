@@ -222,6 +222,29 @@ WHERE is_active = true;
 - Foundation for product-scoped agent jobs
 - Enables proper orchestrator validation
 
+#### Single Active Project Extension (Handover 0050b)
+
+Building on the single active product architecture, only ONE project can be active per product:
+
+```sql
+-- Partial unique index on projects table
+CREATE UNIQUE INDEX idx_project_single_active_per_product
+ON projects (product_id)
+WHERE status = 'active';
+```
+
+**Key Features**:
+- **Cascade Deactivation**: Switching products automatically pauses all projects under previous product
+- **Product Scoping**: Projects view filtered to show only active product's projects
+- **Context Clarity**: Agents operate on single product → single project context
+- **Enhanced Warning**: Dialog shows project impact before product switch
+
+**Business Impact**:
+- Prevents project context confusion
+- Ensures clear agent focus
+- Maintains token budget consistency
+- Supports hierarchical architecture (Tenant → Product → Project → Agents)
+
 #### Agent Job Management Tables (Handover 0019)
 
 **MCPAgentJob Table** - Core agent job tracking:

@@ -87,8 +87,34 @@
       </v-col>
     </v-row>
 
+    <!-- Handover 0050b: Product context -->
+    <v-toolbar flat color="transparent" class="mb-4">
+      <v-toolbar-title>
+        Projects for: <strong>{{ activeProduct?.name || 'No Active Product' }}</strong>
+      </v-toolbar-title>
+      <v-spacer />
+      <v-chip
+        v-if="filteredProjects.length > 0"
+        color="primary"
+        variant="flat"
+        size="small"
+      >
+        {{ filteredProjects.length }} project{{ filteredProjects.length !== 1 ? 's' : '' }}
+      </v-chip>
+    </v-toolbar>
+
+    <!-- Handover 0050b: Show message when no active product -->
+    <v-alert
+      v-if="!activeProduct"
+      type="info"
+      variant="tonal"
+      class="ma-4"
+    >
+      No active product selected. Please activate a product to view its projects.
+    </v-alert>
+
     <!-- Projects Table -->
-    <v-card>
+    <v-card v-else>
       <v-card-title>
         <v-row align="center">
           <v-col>
@@ -419,24 +445,48 @@ const headers = [
 const projects = computed(() => projectStore.projects)
 const products = computed(() => productStore.products)
 const loading = computed(() => projectStore.loading)
+// Handover 0050b: Get active product for filtering
+const activeProduct = computed(() => productStore.activeProduct)
 
+// Handover 0050b: Filter projects by active product
 const filteredProjects = computed(() => {
-  if (!search.value) return projects.value
+  // If no active product, show empty list
+  if (!activeProduct.value) {
+    return []
+  }
 
-  const searchLower = search.value.toLowerCase()
-  return projects.value.filter(
-    (project) =>
-      project.name.toLowerCase().includes(searchLower) ||
-      project.mission?.toLowerCase().includes(searchLower) ||
-      project.status.toLowerCase().includes(searchLower),
-  )
+  // Filter by active product first
+  let filtered = projects.value.filter(p => p.product_id === activeProduct.value.id)
+
+  // Then apply search filter if present
+  if (search.value) {
+    const searchLower = search.value.toLowerCase()
+    filtered = filtered.filter(
+      (project) =>
+        project.name.toLowerCase().includes(searchLower) ||
+        project.mission?.toLowerCase().includes(searchLower) ||
+        project.status.toLowerCase().includes(searchLower),
+    )
+  }
+
+  return filtered
 })
 
-const activeCount = computed(() => projects.value.filter((p) => p.status === 'active').length)
+// Handover 0050b: Statistics scoped to active product's projects
+const activeCount = computed(() => filteredProjects.value.filter((p) => p.status === 'active').length)
 
-const totalAgents = computed(() => agentStore.agents.length)
+// Handover 0050b: Agents scoped to active product's projects
+const totalAgents = computed(() => {
+  if (!activeProduct.value) return 0
+  const productProjectIds = filteredProjects.value.map(p => p.id)
+  return agentStore.agents.filter(a => productProjectIds.includes(a.project_id)).length
+})
 
-const activeTasks = computed(() => taskStore.inProgressTasks.length + taskStore.pendingTasks.length)
+// Handover 0050b: Tasks scoped to active product
+const activeTasks = computed(() => {
+  if (!activeProduct.value) return 0
+  return taskStore.tasks.filter(t => t.product_id === activeProduct.value.id && (t.status === 'in_progress' || t.status === 'pending')).length
+})
 
 // Handover 0050 Phase 4: Validate parent product is active before activating project
 const canActivateProject = computed(() => {
@@ -596,11 +646,14 @@ async function saveProject() {
       const result = await projectStore.createProject(projectData.value)
       console.log('Project created successfully:', result)
 
-      // Show the UUID in the dialog
-      createdProjectId.value = result.id
+      // Refresh the project list to show new project
+      await projectStore.fetchProjects()
 
-      // Keep the dialog open to show the UUID
-      // User can close it manually after noting the UUID
+      // Close dialog and reset form
+      showCreateDialog.value = false
+      editingProject.value = null
+      createdProjectId.value = null
+      resetForm()
     }
   } catch (error) {
     console.error('Failed to save project:', error)
@@ -613,8 +666,10 @@ async function saveProject() {
 // Lifecycle
 onMounted(async () => {
   // Load initial data (Handover 0050 Phase 4: fetch products for validation)
+  // Handover 0050b: Fetch active product for filtering
   await Promise.all([
     productStore.fetchProducts(),
+    productStore.fetchActiveProduct(),  // NEW: Fetch active product
     projectStore.fetchProjects(),
     agentStore.fetchAgents(),
     taskStore.fetchTasks(),
