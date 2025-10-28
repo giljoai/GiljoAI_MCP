@@ -368,14 +368,14 @@ class TestEdgeCases:
 
             # Check if over budget
             if project.context_used >= project.context_budget:
-                project.status = "paused"
+                project.status = "inactive"
                 db_session.commit()
                 break
 
         # Verify budget tracking
         db_session.refresh(project)
         assert project.context_used == 1000
-        assert project.status == "paused"
+        assert project.status == "inactive"
 
 
 class TestPathHandling:
