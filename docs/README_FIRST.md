@@ -20,6 +20,7 @@
 
 **Recent Production Features** (See [Recent Handovers](#recent-production-handovers-v30) for details):
 
+- Single Active Product Architecture (Handover 0050) - One active product per tenant with database enforcement
 - Context Priority Management (Handover 0052) - User-customizable token budgets per field
 - Multi-Tool Agent Orchestration (Handover 0045) - 40-60% cost optimization via tool mixing
 - Products View Unified Management (Handover 0046) - Complete product lifecycle management
@@ -946,6 +947,36 @@ database:
 - **Core Components**:
   - Frontend: `frontend/src/components/ActiveProductDisplay.vue`
 - **Impact**: Foundation for real-time context budget monitoring and active product awareness
+
+### Single Active Product Architecture (October 2025)
+
+**Handover 0050 - Single Active Product Architecture** (✅ COMPLETE):
+- **[Implementation Summary](../handovers/0050_IMPLEMENTATION_SUMMARY.md)** - Complete implementation details
+- **[Implementation Status](../handovers/0050_IMPLEMENTATION_STATUS.md)** - Phase-by-phase breakdown
+- **Completion Date**: October 27, 2025
+- **Status**: Production ready with database migration
+- **Problem Solved**: Multiple active products per tenant caused context confusion and invalid orchestration states
+- **Key Features**:
+  - Database-enforced single active product per tenant (partial unique index)
+  - Warning dialog before product switch (user confirmation flow)
+  - Auto-activation on deletion (oldest product becomes active)
+  - Project validation (parent product must be active)
+  - Agent job validation (product must be active)
+  - Orchestrator validation (mission assignment requires active product)
+- **Core Components**:
+  - Database: `migrations/versions/20251027_enforce_single_active_product.py` (migration with auto-repair)
+  - Backend: `api/endpoints/products.py` (enhanced endpoints with rich context)
+  - Frontend: `frontend/src/components/products/ActivationWarningDialog.vue` (warning dialog)
+  - Validation: Enhanced project, agent job, and orchestrator validation
+- **Architecture**:
+  - Defense-in-depth enforcement (database, API, frontend, business logic)
+  - Atomic database operations (no race conditions)
+  - Clear error messages with resolution hints
+  - Migration includes auto-repair for existing conflicts
+- **Migration Required**: Database migration with auto-repair logic
+- **Impact**: Clear product lifecycle semantics, prevents context confusion, foundation for product-scoped workflows
+
+---
 
 ### Context Priority Unassigned Category (October 2025)
 

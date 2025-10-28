@@ -34,12 +34,12 @@
           <v-card-subtitle>Server network settings (configured during installation)</v-card-subtitle>
 
           <v-card-text>
-            <!-- v3.0 Unified Architecture Info -->
-            <v-alert type="info" variant="tonal" class="mb-4" data-test="v3-unified-alert">
+            <!-- Unified Architecture Info -->
+            <v-alert type="info" variant="tonal" class="mb-4" data-test="v3-unified-alert" :icon="false">
               <div class="d-flex align-center">
                 <v-icon start>mdi-information</v-icon>
                 <div>
-                  <strong>v3.0 Unified Architecture:</strong> Server binds to all interfaces with authentication always enabled.
+                  <strong>Unified Architecture:</strong> Server binds to all interfaces with authentication always enabled.
                   OS firewall controls network access (defense in depth).
                 </div>
               </div>
@@ -383,7 +383,7 @@
               or subdomains on the same machine.
             </p>
 
-            <v-alert type="info" variant="tonal" class="mb-4">
+            <v-alert type="info" variant="tonal" class="mb-4" :icon="false">
               <v-icon start>mdi-information</v-icon>
               IP addresses are automatically allowed. Only add domain names here (e.g., app.example.com, localhost).
             </v-alert>

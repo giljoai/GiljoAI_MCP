@@ -18,7 +18,7 @@
 
     <v-card-text>
       <!-- Empty State -->
-      <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4">
+      <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4" :icon="false">
         <div class="d-flex align-center">
           <v-icon start>mdi-information</v-icon>
           <div>
