@@ -245,6 +245,152 @@ WHERE status = 'active';
 - Maintains token budget consistency
 - Supports hierarchical architecture (Tenant → Product → Project → Agents)
 
+#### Project Soft Delete with Recovery (Handover 0070)
+
+**Implementation Date**: October 27, 2025
+**Status**: Production-ready soft delete pattern with user-facing recovery UI
+
+Projects support soft delete with a 10-day recovery window, providing users with a safety net while maintaining clean data management.
+
+**Database Schema**:
+```sql
+-- Add deleted_at timestamp column to projects table
+ALTER TABLE projects ADD COLUMN deleted_at TIMESTAMP NULL;
+
+-- Partial index for efficient deleted project queries
+CREATE INDEX idx_projects_deleted_at ON projects(deleted_at)
+WHERE deleted_at IS NOT NULL;
+```
+
+**Soft Delete Pattern**:
+```sql
+-- Soft delete operation (DELETE endpoint)
+UPDATE projects
+SET status = 'deleted',
+    deleted_at = NOW()
+WHERE id = ? AND tenant_key = ?;
+
+-- Filter deleted projects from normal views
+SELECT * FROM projects
+WHERE tenant_key = ?
+  AND (status != 'deleted' OR deleted_at IS NULL);
+
+-- Query deleted projects (recovery UI)
+SELECT * FROM projects
+WHERE tenant_key = ?
+  AND deleted_at IS NOT NULL
+ORDER BY deleted_at DESC;
+```
+
+**Recovery Operations**:
+```sql
+-- Restore deleted project (POST /projects/{id}/restore)
+UPDATE projects
+SET status = 'inactive',
+    deleted_at = NULL
+WHERE id = ? AND tenant_key = ?
+  AND deleted_at IS NOT NULL;
+
+-- Calculate days until purge (used in UI)
+SELECT
+  id,
+  name,
+  deleted_at,
+  10 - EXTRACT(DAY FROM NOW() - deleted_at) as days_until_purge
+FROM projects
+WHERE tenant_key = ?
+  AND deleted_at IS NOT NULL;
+```
+
+**Purge Strategy**:
+
+GiljoAI MCP uses **startup-based purge** (Option C from design):
+- Purge runs on application startup via `startup.py`
+- Zero infrastructure requirements (no background scheduler needed)
+- Simple, reliable, and sufficient for typical usage patterns
+
+```python
+# Executed during startup.py
+async def purge_expired_deleted_projects():
+    """Permanently delete projects older than 10 days"""
+    cutoff_date = datetime.utcnow() - timedelta(days=10)
+
+    expired = await session.execute(
+        select(Project)
+        .where(Project.deleted_at < cutoff_date)
+        .where(Project.deleted_at.isnot(None))
+    )
+
+    for project in expired.scalars().all():
+        # Cascade delete child records
+        await delete_project_agents(session, project.id)
+        await delete_project_tasks(session, project.id)
+        await delete_project_messages(session, project.id)
+        await delete_project_jobs(session, project.id)
+
+        # Permanently delete project
+        await session.delete(project)
+        logger.info(f"Purged expired project: {project.name} (id: {project.id})")
+
+    await session.commit()
+```
+
+**Cascade Delete Rules**:
+When permanently purging a project, all child records are deleted:
+```
+Project (deleted_at > 10 days ago)
+  ├── Agents (CASCADE DELETE)
+  ├── Tasks (CASCADE DELETE)
+  ├── Messages (CASCADE DELETE)
+  └── Agent Jobs (CASCADE DELETE)
+```
+
+**Multi-Tenant Isolation**:
+All soft delete operations enforce tenant boundaries:
+- Delete: Only projects matching tenant_key can be deleted
+- Recovery: GET /deleted and POST /restore filtered by tenant_key
+- Purge: Expired project query includes tenant_key filter
+- Zero cross-tenant leakage in recovery UI
+
+**API Endpoints** (3 Total):
+- DELETE `/api/v1/projects/{project_id}` - Soft delete project
+- GET `/api/v1/projects/deleted` - List deleted projects with purge countdown
+- POST `/api/v1/projects/{project_id}/restore` - Restore deleted project
+
+**Recovery UI Location**:
+Settings → Database tab → Deleted Projects section
+- Table displays: Project Name, Product, Deleted Date, Days Until Purge
+- Restore button with confirmation dialog
+- Empty state when no deleted projects exist
+
+**User Experience Flow**:
+1. User deletes project via trash icon
+2. Confirmation dialog: "Delete project 'X'?"
+3. Success modal displays: "Project deleted. Will be purged in 10 days. To recover: Settings → Database → Deleted Projects"
+4. Project immediately disappears from all views
+5. User can recover from Settings → Database within 10-day window
+6. After 10 days, project automatically purged on next startup
+
+**Key Features**:
+- **Safety Net**: 10-day recovery window prevents accidental data loss
+- **Clean UX**: Deleted projects immediately hidden from normal views
+- **Easy Recovery**: Accessible via Settings → Database tab
+- **Auto Cleanup**: Startup-based purge requires zero infrastructure
+- **Tenant Isolation**: Complete multi-tenant security maintained
+
+**Edge Cases Handled**:
+- Product deleted with soft-deleted projects: Cascade purge all deleted projects
+- Restore when another project active: Restores as inactive (safe default)
+- Concurrent restore attempts: Idempotent operation (safe to retry)
+- Double delete attempt: Returns 400 error with clear message
+
+**Business Impact**:
+- Improved user confidence (accidental deletes recoverable)
+- Clear data lifecycle management
+- Reduced support burden (self-service recovery)
+- Maintains clean database (auto-purge after 10 days)
+- Foundation for similar soft delete patterns (products, agents)
+
 #### Agent Job Management Tables (Handover 0019)
 
 **MCPAgentJob Table** - Core agent job tracking:

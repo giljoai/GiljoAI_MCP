@@ -29,7 +29,7 @@
               <v-icon size="32" color="primary" class="mr-3">mdi-folder-multiple</v-icon>
               <div>
                 <div class="text-caption">Total Projects</div>
-                <div class="text-h5">{{ projects.length }}</div>
+                <div class="text-h5">{{ filteredProjects.length }}</div>
               </div>
             </div>
           </v-card-text>
@@ -608,6 +608,7 @@ function resetForm() {
     mission: '',
     context_budget: 150000,
     status: 'inactive',
+    product_id: activeProduct.value?.id || null,  // Handover 0050b: Auto-link to active product
   }
 }
 
@@ -641,9 +642,14 @@ async function saveProject() {
       createdProjectId.value = null
       resetForm()
     } else {
-      // Create new project - send all fields
-      console.log('Creating new project')
-      const result = await projectStore.createProject(projectData.value)
+      // Create new project - ensure product_id is set from active product
+      const createData = {
+        ...projectData.value,
+        product_id: activeProduct.value?.id || projectData.value.product_id
+      }
+
+      console.log('Creating new project with product_id:', createData.product_id)
+      const result = await projectStore.createProject(createData)
       console.log('Project created successfully:', result)
 
       // Refresh the project list to show new project
