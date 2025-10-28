@@ -109,7 +109,7 @@
             />
           </v-list>
         </v-menu>
-        <UserProfileDialog v-model="profileDialog" :user="currentUser" />
+        <UserProfileDialog v-if="currentUser" v-model="profileDialog" :user="currentUser" />
       </div>
     </div>
   </v-app-bar>

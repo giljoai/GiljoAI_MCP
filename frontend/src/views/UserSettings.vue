@@ -427,7 +427,7 @@
               <v-tab value="api-keys"><v-icon start>mdi-key-variant</v-icon>API Keys</v-tab>
               <v-tab value="mcp-config">
                 <template #prepend>
-                  <v-img :src="theme.global.current.value.dark ? '/Giljo_gray_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
+                  <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
                 </template>
                 MCP Configuration
               </v-tab>

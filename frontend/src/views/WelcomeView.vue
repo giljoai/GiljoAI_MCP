@@ -5,16 +5,7 @@
         <v-card elevation="0" class="text-center pa-8">
           <!-- Gil mascot (blinking) on top -->
           <div class="mascot-wrapper mb-4">
-            <iframe
-              class="mascot-frame"
-              :src="mascotSrc"
-              :width="mascotSize.width"
-              :height="mascotSize.height"
-              frameborder="0"
-              allowtransparency="true"
-              style="background: transparent"
-              title="Giljo mascot"
-            ></iframe>
+            <GilMascot :size="150" :dark-eyes="!theme.global.current.value.dark" />
           </div>
 
           <!-- Friendly greeting with user's first name -->
@@ -84,18 +75,13 @@ import { computed, onMounted, ref } from 'vue'
 import { useTheme } from 'vuetify'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
+import GilMascot from '@/components/GilMascot.vue'
 
 const theme = useTheme()
 const userStore = useUserStore()
 const productStore = useProductStore()
 
-// Mascot iframe settings
-const mascotSize = { width: 150, height: 170 }
-const mascotSrc = computed(() => {
-  const darkEyes = !theme.global.current.value.dark // dark eyes on light backgrounds
-  // Add cache-busting query param to ensure latest transparent background loads
-  return `/mascot/giljo_mascot_loader_v2.html?size=${mascotSize.width}&darkEyes=${darkEyes}&v=2`
-})
+// Mascot handled by inline component (no iframe to avoid background issues)
 
 // User name and greeting
 const firstName = computed(() => {

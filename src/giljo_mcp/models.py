@@ -412,6 +412,8 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True,
+                       comment="Timestamp when project was soft deleted (NULL for active projects)")
     meta_data = Column(JSON, default=dict)
 
     # Relationships
@@ -427,6 +429,8 @@ class Project(Base):
     __table_args__ = (
         Index("idx_project_tenant", "tenant_key"),
         Index("idx_project_status", "status"),
+        # Handover 0070: Soft delete support
+        Index("idx_projects_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")),
     )
 
 
