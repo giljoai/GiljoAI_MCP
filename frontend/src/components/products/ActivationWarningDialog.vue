@@ -116,9 +116,11 @@ const props = defineProps({
   },
   newProduct: {
     type: Object,
-    required: true,
+    required: false,
+    default: () => ({}),
     validator: (val) => {
-      return val && typeof val.name === 'string'
+      // Allow empty object or object with name
+      return !val || typeof val.name === 'string' || Object.keys(val).length === 0
     }
   },
   currentActive: {

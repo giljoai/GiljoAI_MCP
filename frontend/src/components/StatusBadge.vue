@@ -133,7 +133,7 @@ const props = defineProps({
   status: {
     type: String,
     required: true,
-    validator: (value) => ['inactive', 'active', 'paused', 'completed', 'cancelled', 'archived'].includes(value)
+    validator: (value) => ['inactive', 'active', 'completed', 'cancelled', 'deleted'].includes(value)
   },
   projectId: {
     type: String,
@@ -164,12 +164,7 @@ const statusConfig = {
   inactive: {
     label: 'Inactive',
     color: 'grey',
-    icon: 'mdi-circle-outline'
-  },
-  paused: {
-    label: 'Paused',
-    color: 'warning',
-    icon: 'mdi-pause-circle'
+    icon: 'mdi-stop-circle-outline'
   },
   completed: {
     label: 'Completed',
@@ -178,13 +173,13 @@ const statusConfig = {
   },
   cancelled: {
     label: 'Cancelled',
-    color: 'error',
+    color: 'warning',
     icon: 'mdi-cancel'
   },
-  archived: {
-    label: 'Archived',
-    color: 'grey-darken-2',
-    icon: 'mdi-archive'
+  deleted: {
+    label: 'Deleted',
+    color: 'error',
+    icon: 'mdi-delete'
   }
 }
 
@@ -201,26 +196,10 @@ const actionDefinitions = {
   deactivate: {
     value: 'deactivate',
     label: 'Deactivate',
-    icon: 'mdi-stop',
+    icon: 'mdi-pause-circle-outline',
     newStatus: 'inactive',
     destructive: false,
-    requiresConfirm: false
-  },
-  pause: {
-    value: 'pause',
-    label: 'Pause',
-    icon: 'mdi-pause',
-    newStatus: 'paused',
-    destructive: false,
-    requiresConfirm: false
-  },
-  resume: {
-    value: 'resume',
-    label: 'Resume',
-    icon: 'mdi-play-circle',
-    newStatus: 'active',
-    destructive: false,
-    requiresConfirm: false
+    requiresConfirm: true
   },
   complete: {
     value: 'complete',
@@ -238,25 +217,9 @@ const actionDefinitions = {
     destructive: true,
     requiresConfirm: true
   },
-  archive: {
-    value: 'archive',
-    label: 'Archive',
-    icon: 'mdi-archive',
-    newStatus: 'archived',
-    destructive: false,
-    requiresConfirm: true
-  },
   reopen: {
     value: 'reopen',
     label: 'Reopen',
-    icon: 'mdi-restore',
-    newStatus: 'inactive',
-    destructive: false,
-    requiresConfirm: false
-  },
-  restore: {
-    value: 'restore',
-    label: 'Restore',
     icon: 'mdi-restore',
     newStatus: 'inactive',
     destructive: false,
@@ -274,12 +237,10 @@ const actionDefinitions = {
 
 // Context-Aware Action Mapping
 const actionsByStatus = {
-  inactive: ['activate', 'pause', 'complete', 'cancel', 'archive', 'delete'],
-  active: ['pause', 'complete', 'cancel', 'deactivate', 'delete'],
-  paused: ['resume', 'complete', 'cancel', 'deactivate', 'delete'],
-  completed: ['reopen', 'archive', 'delete'],
-  cancelled: ['reopen', 'archive', 'delete'],
-  archived: ['restore', 'delete']
+  inactive: ['activate', 'delete'],
+  active: ['deactivate', 'complete', 'cancel', 'delete'],
+  completed: ['reopen', 'delete'],
+  cancelled: ['reopen', 'delete']
 }
 
 // Computed
@@ -318,8 +279,8 @@ const confirmMessage = computed(() => {
     return `Mark "${projectName}" as completed? This will close the project and update its status.`
   }
 
-  if (pendingAction.value.value === 'archive') {
-    return `Archive "${projectName}"? The project will be moved to archived status and hidden from active views.`
+  if (pendingAction.value.value === 'deactivate') {
+    return `This will free up the active project slot. The project can be reactivated later.`
   }
 
   return `Are you sure you want to ${actionLabel} "${projectName}"?`

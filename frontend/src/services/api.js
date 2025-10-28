@@ -147,6 +147,16 @@ export const api = {
     delete: (id) => apiClient.delete(`/api/v1/projects/${id}/`),
     close: (id, summary) => apiClient.delete(`/api/v1/projects/${id}/`, { params: { summary } }),
     status: (id) => apiClient.get(`/api/v1/projects/${id}/status/`),
+    fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
+    // Status change endpoints - use PATCH for generic status updates
+    changeStatus: (id, newStatus) => apiClient.patch(`/api/v1/projects/${id}/`, { status: newStatus }),
+    // Specific action endpoints
+    activate: (id) => apiClient.post(`/api/v1/projects/${id}/activate`),
+    deactivate: (id) => apiClient.post(`/api/v1/projects/${id}/deactivate`),
+    complete: (id) => apiClient.post(`/api/v1/projects/${id}/complete`),
+    cancel: (id) => apiClient.post(`/api/v1/projects/${id}/cancel`),
+    restore: (id) => apiClient.post(`/api/v1/projects/${id}/restore`),
+    restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/restore-completed`),
   },
 
   // Agents
