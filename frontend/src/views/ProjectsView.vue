@@ -1,11 +1,10 @@
 <template>
   <v-container>
-    <!-- Header -->
-    <v-row align="center" class="mb-4">
+    <!-- Header -->\n    <v-row align="center" class="mb-4">
       <v-col>
         <h1 class="text-h4">Project Management</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
-          Manage orchestration projects and their configurations
+          Manage orchestration projects for: <strong>{{ activeProduct?.name || 'No Active Product' }}</strong>
         </p>
       </v-col>
       <v-col cols="auto">
@@ -13,6 +12,7 @@
           color="primary"
           prepend-icon="mdi-plus"
           @click="showCreateDialog = true"
+          :disabled="!activeProduct"
           aria-label="Create new project"
         >
           New Project
@@ -20,8 +20,19 @@
       </v-col>
     </v-row>
 
+    <!-- No Active Product Alert -->
+    <v-alert
+      v-if="!activeProduct"
+      type="info"
+      variant="tonal"
+      class="ma-4"
+      closable
+    >
+      No active product selected. Please activate a product to view and manage its projects.
+    </v-alert>
+
     <!-- Stats Cards -->
-    <v-row class="mb-4">
+    <v-row v-if="activeProduct" class="mb-4">
       <v-col cols="12" sm="6" md="3">
         <v-card>
           <v-card-text>
@@ -42,7 +53,7 @@
               <v-icon size="32" color="success" class="mr-3">mdi-check-circle</v-icon>
               <div>
                 <div class="text-caption">Active</div>
-                <div class="text-h5">{{ activeCount }}</div>
+                <div class="text-h5">{{ statusCounts.active }}</div>
               </div>
             </div>
           </v-card-text>
@@ -52,21 +63,10 @@
         <v-card>
           <v-card-text>
             <div class="d-flex align-center">
-              <div style="width: 35px; height: 35px; margin-right: 12px">
-                <v-img
-                  :src="
-                    theme.global.current.value.dark
-                      ? '/icons/Giljo_YW_Face.svg'
-                      : '/icons/Giljo_BY_Face.svg'
-                  "
-                  alt="Total Agents"
-                  width="35"
-                  height="35"
-                ></v-img>
-              </div>
+              <v-icon size="32" color="warning" class="mr-3">mdi-pause-circle</v-icon>
               <div>
-                <div class="text-caption">Total Agents</div>
-                <div class="text-h5">{{ totalAgents }}</div>
+                <div class="text-caption">Paused</div>
+                <div class="text-h5">{{ statusCounts.paused }}</div>
               </div>
             </div>
           </v-card-text>
@@ -76,10 +76,10 @@
         <v-card>
           <v-card-text>
             <div class="d-flex align-center">
-              <v-icon size="32" color="warning" class="mr-3">mdi-clipboard-check</v-icon>
+              <v-icon size="32" color="info" class="mr-3">mdi-clipboard-check</v-icon>
               <div>
-                <div class="text-caption">Active Tasks</div>
-                <div class="text-h5">{{ activeTasks }}</div>
+                <div class="text-caption">Completed</div>
+                <div class="text-h5">{{ statusCounts.completed }}</div>
               </div>
             </div>
           </v-card-text>
@@ -87,172 +87,163 @@
       </v-col>
     </v-row>
 
-    <!-- Handover 0050b: Product context -->
-    <v-toolbar flat color="transparent" class="mb-4">
-      <v-toolbar-title>
-        Projects for: <strong>{{ activeProduct?.name || 'No Active Product' }}</strong>
-      </v-toolbar-title>
-      <v-spacer />
-      <v-chip
-        v-if="filteredProjects.length > 0"
-        color="primary"
-        variant="flat"
-        size="small"
-      >
-        {{ filteredProjects.length }} project{{ filteredProjects.length !== 1 ? 's' : '' }}
-      </v-chip>
-    </v-toolbar>
-
-    <!-- Handover 0050b: Show message when no active product -->
-    <v-alert
-      v-if="!activeProduct"
-      type="info"
-      variant="tonal"
-      class="ma-4"
-    >
-      No active product selected. Please activate a product to view its projects.
-    </v-alert>
-
-    <!-- Projects Table -->
-    <v-card v-else>
-      <v-card-title>
-        <v-row align="center">
+    <!-- Filters & Search Section -->
+    <v-card v-if="activeProduct" class="mb-4">
+      <v-card-text class="pb-2">
+        <!-- Search Bar -->
+        <v-row align="center" class="mb-4">
           <v-col>
-            <span>Projects</span>
-          </v-col>
-          <v-col cols="auto">
             <v-text-field
-              v-model="search"
+              v-model="searchQuery"
               prepend-inner-icon="mdi-magnify"
-              label="Search projects..."
+              label="Search Projects..."
               single-line
               hide-details
               density="compact"
               variant="outlined"
               clearable
+              aria-label="Search projects by name"
             ></v-text-field>
           </v-col>
+          <v-col cols="auto">
+            <v-btn
+              variant="outlined"
+              prepend-icon="mdi-delete-restore"
+              :text="deletedCount > 0 ? `View Deleted (${deletedCount})` : 'View Deleted'"
+              @click="showDeletedDialog = true"
+              :disabled="deletedCount === 0"
+              aria-label="View deleted projects"
+            >
+            </v-btn>
+          </v-col>
         </v-row>
-      </v-card-title>
 
+        <!-- Status Filter Chips -->
+        <div class="d-flex gap-2 flex-wrap">
+          <v-chip
+            v-for="status in filterOptions"
+            :key="status.value"
+            :color="filterStatus === status.value ? 'primary' : 'default'"
+            :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
+            @click="filterStatus = status.value"
+            :aria-label="`Filter by ${status.label}`"
+            class="cursor-pointer"
+          >
+            {{ status.label }} ({{ status.count }})
+          </v-chip>
+        </div>
+      </v-card-text>
+    </v-card>
+
+    <!-- Projects Table -->
+    <v-card v-if="activeProduct">
       <v-data-table
         :headers="headers"
-        :items="filteredProjects"
-        :search="search"
+        :items="sortedProjects"
         :loading="loading"
-        :items-per-page="10"
+        :items-per-page="itemsPerPage"
+        :page="currentPage"
+        @update:page="currentPage = $event"
+        :sort-by="sortConfig"
+        @update:sort-by="sortConfig = $event"
         class="elevation-0"
+        item-key="id"
       >
-        <!-- Name Column with UUID -->
+        <!-- Name Column with ID -->
         <template v-slot:item.name="{ item }">
-          <div>
-            <div class="text-body-1">{{ item.name }}</div>
-            <div
-              class="text-caption text-medium-emphasis"
-              style="font-family: monospace; font-size: 0.7rem"
-            >
+          <div class="py-2">
+            <div class="font-weight-bold text-body-2">{{ item.name }}</div>
+            <div class="text-caption text-medium-emphasis" style="font-family: monospace">
               Project ID: {{ item.id }}
             </div>
           </div>
         </template>
 
-        <!-- Status Column -->
+        <!-- Status Column with Badge -->
         <template v-slot:item.status="{ item }">
-          <v-chip :color="getStatusColor(item.status)" variant="tonal" size="small">
-            {{ formatStatus(item.status) }}
-          </v-chip>
+          <StatusBadge
+            :status="item.status"
+            :project-id="item.id"
+            @action="handleStatusAction"
+          />
+        </template>
+
+        <!-- Product Column -->
+        <template v-slot:item.product="{ item }">
+          <span class="text-caption">
+            {{ activeProduct?.name || '—' }}
+          </span>
         </template>
 
         <!-- Agents Column -->
         <template v-slot:item.agents="{ item }">
           <v-chip size="small" variant="outlined">
-            <template v-slot:prepend>
-              <v-img
-                :src="
-                  theme.global.current.value.dark
-                    ? '/icons/Giljo_YW_Face.svg'
-                    : '/icons/Giljo_BY_Face.svg'
-                "
-                alt="Agents"
-                width="16"
-                height="16"
-                class="mr-1"
-              ></v-img>
-            </template>
             {{ item.agent_count || 0 }}
           </v-chip>
         </template>
 
-        <!-- Context Usage -->
-        <template v-slot:item.context="{ item }">
-          <v-progress-linear
-            :model-value="getContextUsage(item)"
-            :color="getContextColor(item)"
-            height="20"
-            rounded
-          >
-            <template v-slot:default>
-              <span class="text-caption">
-                {{ formatNumber(item.context_used || 0) }} /
-                {{ formatNumber(item.context_budget || 0) }}
-              </span>
-            </template>
-          </v-progress-linear>
+        <!-- Created Date Column -->
+        <template v-slot:item.created="{ item }">
+          {{ formatDateShort(item.created_at) }}
         </template>
 
-        <!-- Created Date -->
-        <template v-slot:item.created="{ item }">
-          {{ formatDate(item.created_at) }}
+        <!-- Completed Date Column -->
+        <template v-slot:item.completed="{ item }">
+          {{
+            item.status === 'completed' || item.status === 'cancelled'
+              ? formatDateShort(item.completed_at || item.updated_at)
+              : '—'
+          }}
         </template>
 
         <!-- Actions Column -->
         <template v-slot:item.actions="{ item }">
-          <v-btn
-            icon="mdi-eye"
-            size="small"
-            variant="text"
-            @click="viewProject(item)"
-            title="View Details"
-            aria-label="View project details"
-          ></v-btn>
-          <v-btn
-            icon="mdi-pencil"
-            size="small"
-            variant="text"
-            @click="editProject(item)"
-            title="Edit Project"
-            aria-label="Edit project"
-          ></v-btn>
-          <v-btn
-            v-if="item.status === 'active'"
-            icon="mdi-stop"
-            size="small"
-            variant="text"
-            color="warning"
-            @click="closeProject(item)"
-            title="Close Project"
-            aria-label="Close project"
-          ></v-btn>
-          <v-btn
-            v-else
-            icon="mdi-play"
-            size="small"
-            variant="text"
-            color="success"
-            :disabled="!canActivateProject(item)"
-            @click="activateProject(item)"
-            :title="getActivationTooltip(item)"
-            aria-label="Activate project"
-          ></v-btn>
-          <v-btn
-            icon="mdi-delete"
-            size="small"
-            variant="text"
-            color="error"
-            @click="confirmDelete(item)"
-            title="Delete Project"
-            aria-label="Delete project"
-          ></v-btn>
+          <v-menu>
+            <template v-slot:activator="{ props }">
+              <v-btn
+                icon="mdi-dots-vertical"
+                size="small"
+                variant="text"
+                v-bind="props"
+                aria-label="Project actions"
+              ></v-btn>
+            </template>
+
+            <v-list density="compact" min-width="150">
+              <v-list-item
+                @click="viewProject(item)"
+                prepend-icon="mdi-eye"
+                title="View Details"
+              ></v-list-item>
+              <v-list-item
+                @click="editProject(item)"
+                prepend-icon="mdi-pencil"
+                title="Edit Project"
+              ></v-list-item>
+              <v-divider class="my-1" />
+              <v-list-item
+                @click="confirmDelete(item)"
+                prepend-icon="mdi-delete"
+                title="Delete Project"
+              ></v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+
+        <!-- No data state -->
+        <template v-slot:no-data>
+          <div class="text-center py-8">
+            <v-icon size="48" color="medium-emphasis" class="mb-4">mdi-folder-open</v-icon>
+            <p class="text-body-2 text-medium-emphasis">No projects found</p>
+            <v-btn
+              size="small"
+              color="primary"
+              @click="showCreateDialog = true"
+              class="mt-4"
+            >
+              Create First Project
+            </v-btn>
+          </div>
         </template>
       </v-data-table>
     </v-card>
@@ -263,16 +254,23 @@
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="cancelEdit" aria-label="Close" />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="cancelEdit"
+            aria-label="Close dialog"
+          />
         </v-card-title>
+
         <v-card-text>
-          <!-- Show UUID for newly created project -->
+          <!-- Success Alert -->
           <v-alert
             v-if="createdProjectId"
             type="success"
             variant="tonal"
             density="compact"
             class="mb-4"
+            closable
           >
             <div class="text-body-2 mb-1">Project created successfully!</div>
             <div class="text-caption">
@@ -281,7 +279,7 @@
             </div>
           </v-alert>
 
-          <!-- Show Project ID when editing -->
+          <!-- Project ID Info Alert -->
           <v-alert v-if="editingProject" type="info" variant="tonal" density="compact" class="mb-4">
             <div class="text-caption">
               <strong>Project ID:</strong>
@@ -289,6 +287,7 @@
             </div>
           </v-alert>
 
+          <!-- Form -->
           <v-form ref="projectForm" v-model="formValid">
             <v-text-field
               v-model="projectData.name"
@@ -296,6 +295,7 @@
               :rules="[(v) => !!v || 'Name is required']"
               required
               class="mb-3"
+              aria-label="Project name"
             ></v-text-field>
 
             <v-textarea
@@ -305,6 +305,7 @@
               rows="4"
               required
               class="mb-3"
+              aria-label="Mission statement"
             ></v-textarea>
 
             <v-text-field
@@ -313,21 +314,28 @@
               type="number"
               :rules="[(v) => v > 0 || 'Must be positive']"
               class="mb-3"
+              aria-label="Context budget"
             ></v-text-field>
 
             <v-select
               v-model="projectData.status"
               label="Status"
-              :items="['active', 'inactive', 'completed']"
+              :items="statusOptions"
               class="mb-3"
+              aria-label="Project status"
             ></v-select>
-
           </v-form>
         </v-card-text>
+
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
-          <v-btn color="primary" variant="flat" :disabled="!formValid" @click="saveProject">
+          <v-btn
+            color="primary"
+            variant="flat"
+            :disabled="!formValid"
+            @click="saveProject"
+          >
             {{ editingProject ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>
@@ -344,13 +352,15 @@
             icon="mdi-close"
             variant="text"
             @click="showDeleteDialog = false"
-            aria-label="Close"
+            aria-label="Close dialog"
           />
         </v-card-title>
+
         <v-card-text>
-          Are you sure you want to delete project "{{ projectToDelete?.name }}"? This action cannot
-          be undone.
+          Are you sure you want to delete project <strong>"{{ projectToDelete?.name }}"</strong>?
+          This action cannot be undone.
         </v-card-text>
+
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="showDeleteDialog = false">Cancel</v-btn>
@@ -359,48 +369,75 @@
       </v-card>
     </v-dialog>
 
-    <!-- Close Project Dialog -->
-    <v-dialog v-model="showCloseDialog" max-width="500" persistent retain-focus>
+    <!-- Deleted Projects Modal -->
+    <v-dialog v-model="showDeletedDialog" max-width="800" persistent retain-focus>
       <v-card>
         <v-card-title class="d-flex align-center">
-          <span>Close Project</span>
+          <span>Deleted Projects ({{ deletedProjects.length }})</span>
           <v-spacer />
           <v-btn
             icon="mdi-close"
             variant="text"
-            @click="showCloseDialog = false"
-            aria-label="Close"
+            @click="showDeletedDialog = false"
+            aria-label="Close dialog"
           />
         </v-card-title>
+
         <v-card-text>
-          <p class="mb-3">Closing project "{{ projectToClose?.name }}"</p>
-          <v-textarea
-            v-model="closeSummary"
-            label="Completion Summary"
-            rows="3"
-            required
-          ></v-textarea>
+          <v-list v-if="deletedProjects.length > 0" class="border rounded">
+            <v-list-item
+              v-for="(project, index) in deletedProjects"
+              :key="project.id"
+            >
+              <template v-slot:prepend>
+                <v-icon icon="mdi-folder-minus"></v-icon>
+              </template>
+
+              <div class="flex-grow-1">
+                <div class="font-weight-bold">{{ project.name }}</div>
+                <div class="text-caption text-medium-emphasis">
+                  {{ project.id }}
+                </div>
+              </div>
+
+              <template v-slot:append>
+                <v-btn
+                  icon="mdi-restore"
+                  size="small"
+                  variant="text"
+                  @click="restoreFromDelete(project)"
+                  title="Restore project"
+                  aria-label="Restore deleted project"
+                ></v-btn>
+              </template>
+
+              <v-divider v-if="index < deletedProjects.length - 1" class="my-2" />
+            </v-list-item>
+          </v-list>
+
+          <div v-else class="text-center py-8 text-medium-emphasis">
+            <v-icon size="48" class="mb-4">mdi-folder-open</v-icon>
+            <p>No deleted projects</p>
+          </div>
         </v-card-text>
+
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="showCloseDialog = false">Cancel</v-btn>
-          <v-btn color="warning" variant="flat" @click="confirmClose">Close Project</v-btn>
+          <v-btn variant="text" @click="showDeletedDialog = false">Close</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
   </v-container>
 </template>
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTheme } from 'vuetify'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
-import { useTaskStore } from '@/stores/tasks'
-import { formatDate, formatNumber, formatStatus } from '@/utils/formatters'
-
-const theme = useTheme()
+import StatusBadge from '@/components/StatusBadge.vue'
+import { formatStatus } from '@/utils/formatters'
 
 // Router
 const router = useRouter()
@@ -409,19 +446,22 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const productStore = useProductStore()
 const agentStore = useAgentStore()
-const taskStore = useTaskStore()
 
 // Reactive state
-const search = ref('')
+const searchQuery = ref('')
+const filterStatus = ref('all')
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
-const showCloseDialog = ref(false)
+const showDeletedDialog = ref(false)
 const formValid = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
-const projectToClose = ref(null)
-const closeSummary = ref('')
 const createdProjectId = ref(null)
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+
+// Sort configuration
+const sortConfig = ref([{ key: 'created_at', order: 'desc' }])
 
 // Form data
 const projectData = ref({
@@ -431,111 +471,130 @@ const projectData = ref({
   status: 'inactive',
 })
 
+// Status options
+const statusOptions = ['active', 'inactive', 'paused', 'completed', 'cancelled']
+
+// Filter options computed
+const filterOptions = computed(() => {
+  const counts = statusCounts.value
+  return [
+    { label: 'All', value: 'all', count: filteredBySearch.value.length },
+    { label: 'Active', value: 'active', count: counts.active },
+    { label: 'Inactive', value: 'inactive', count: counts.inactive },
+    { label: 'Paused', value: 'paused', count: counts.paused },
+    { label: 'Completed', value: 'completed', count: counts.completed },
+    { label: 'Cancelled', value: 'cancelled', count: counts.cancelled },
+  ]
+})
+
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Agents', key: 'agents', sortable: false },
-  { title: 'Context Usage', key: 'context', sortable: false },
-  { title: 'Created', key: 'created', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
+  { title: 'Name', key: 'name', sortable: true, width: '25%' },
+  { title: 'Status', key: 'status', sortable: true, width: '12%' },
+  { title: 'Product', key: 'product', sortable: false, width: '15%' },
+  { title: 'Agents', key: 'agents', sortable: false, width: '10%', align: 'center' },
+  { title: 'Created', key: 'created_at', sortable: true, width: '15%' },
+  { title: 'Completed', key: 'completed', sortable: false, width: '15%' },
+  { title: 'Actions', key: 'actions', sortable: false, width: '8%', align: 'end' },
 ]
 
 // Computed properties
-const projects = computed(() => projectStore.projects)
-const products = computed(() => productStore.products)
-const loading = computed(() => projectStore.loading)
-// Handover 0050b: Get active product for filtering
 const activeProduct = computed(() => productStore.activeProduct)
+const projects = computed(() => projectStore.projects)
+const loading = computed(() => projectStore.loading)
 
-// Handover 0050b: Filter projects by active product
+// Filter projects by active product
+const activeProductProjects = computed(() => {
+  if (!activeProduct.value) return []
+  return projects.value.filter((p) => p.product_id === activeProduct.value.id && !p.deleted_at)
+})
+
+// Filter by search query
+const filteredBySearch = computed(() => {
+  if (!searchQuery.value) return activeProductProjects.value
+
+  const query = searchQuery.value.toLowerCase()
+  return activeProductProjects.value.filter(
+    (p) =>
+      p.name.toLowerCase().includes(query) ||
+      p.mission?.toLowerCase().includes(query) ||
+      p.id.toLowerCase().includes(query)
+  )
+})
+
+// Filter by status
 const filteredProjects = computed(() => {
-  // If no active product, show empty list
-  if (!activeProduct.value) {
-    return []
+  if (filterStatus.value === 'all') return filteredBySearch.value
+  return filteredBySearch.value.filter((p) => p.status === filterStatus.value)
+})
+
+// Sort projects
+const sortedProjects = computed(() => {
+  const sorted = [...filteredProjects.value]
+
+  if (sortConfig.value && sortConfig.value.length > 0) {
+    const { key, order } = sortConfig.value[0]
+    const isAsc = order === 'asc'
+
+    sorted.sort((a, b) => {
+      let aVal = a[key]
+      let bVal = b[key]
+
+      if (!aVal) aVal = ''
+      if (!bVal) bVal = ''
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase()
+        bVal = bVal.toLowerCase()
+      }
+
+      if (aVal < bVal) return isAsc ? -1 : 1
+      if (aVal > bVal) return isAsc ? 1 : -1
+      return 0
+    })
   }
 
-  // Filter by active product first
-  let filtered = projects.value.filter(p => p.product_id === activeProduct.value.id)
-
-  // Then apply search filter if present
-  if (search.value) {
-    const searchLower = search.value.toLowerCase()
-    filtered = filtered.filter(
-      (project) =>
-        project.name.toLowerCase().includes(searchLower) ||
-        project.mission?.toLowerCase().includes(searchLower) ||
-        project.status.toLowerCase().includes(searchLower),
-    )
-  }
-
-  return filtered
+  return sorted
 })
 
-// Handover 0050b: Statistics scoped to active product's projects
-const activeCount = computed(() => filteredProjects.value.filter((p) => p.status === 'active').length)
-
-// Handover 0050b: Agents scoped to active product's projects
-const totalAgents = computed(() => {
-  if (!activeProduct.value) return 0
-  const productProjectIds = filteredProjects.value.map(p => p.id)
-  return agentStore.agents.filter(a => productProjectIds.includes(a.project_id)).length
-})
-
-// Handover 0050b: Tasks scoped to active product
-const activeTasks = computed(() => {
-  if (!activeProduct.value) return 0
-  return taskStore.tasks.filter(t => t.product_id === activeProduct.value.id && (t.status === 'in_progress' || t.status === 'pending')).length
-})
-
-// Handover 0050 Phase 4: Validate parent product is active before activating project
-const canActivateProject = computed(() => {
-  return (project) => {
-    if (!project.product_id) {
-      // Projects without a parent product can always be activated
-      return true
-    }
-    const parentProduct = products.value.find(p => p.id === project.product_id)
-    return parentProduct?.is_active === true
+// Count projects by status
+const statusCounts = computed(() => {
+  return {
+    active: activeProductProjects.value.filter((p) => p.status === 'active').length,
+    inactive: activeProductProjects.value.filter((p) => p.status === 'inactive').length,
+    paused: activeProductProjects.value.filter((p) => p.status === 'paused').length,
+    completed: activeProductProjects.value.filter((p) => p.status === 'completed').length,
+    cancelled: activeProductProjects.value.filter((p) => p.status === 'cancelled').length,
   }
 })
+
+// Deleted projects
+const deletedProjects = computed(() => {
+  if (!activeProduct.value) return []
+  return projects.value.filter((p) => p.product_id === activeProduct.value.id && p.deleted_at)
+})
+
+const deletedCount = computed(() => deletedProjects.value.length)
+
+// Format date short (MM/DD or MM/DD/YY)
+function formatDateShort(dateStr) {
+  if (!dateStr) return '—'
+  const date = new Date(dateStr)
+  const today = new Date()
+  const isCurrentYear = date.getFullYear() === today.getFullYear()
+
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  if (isCurrentYear) {
+    return `${month}/${day}`
+  }
+
+  const year = String(date.getFullYear()).slice(-2)
+  return `${month}/${day}/${year}`
+}
 
 // Methods
-function getActivationTooltip(project) {
-  if (!project.product_id) {
-    return 'Activate Project'
-  }
-  const parentProduct = products.value.find(p => p.id === project.product_id)
-  if (!parentProduct) {
-    return 'Parent product not found'
-  }
-  if (!parentProduct.is_active) {
-    return `Cannot activate - parent product '${parentProduct.name}' is not active`
-  }
-  return 'Activate Project'
-}
-function getStatusColor(status) {
-  const colors = {
-    active: 'success',
-    inactive: 'grey',
-    completed: 'info',
-    archived: 'warning',
-  }
-  return colors[status] || 'default'
-}
-
-function getContextUsage(project) {
-  if (!project.context_budget) return 0
-  return (project.context_used / project.context_budget) * 100
-}
-
-function getContextColor(project) {
-  const usage = getContextUsage(project)
-  if (usage > 90) return 'error'
-  if (usage > 70) return 'warning'
-  return 'success'
-}
-
 function viewProject(project) {
   router.push(`/projects/${project.id}`)
 }
@@ -550,32 +609,6 @@ function editProject(project) {
     status: project.status,
   }
   showCreateDialog.value = true
-}
-
-function activateProject(project) {
-  projectStore.updateProject(project.id, { status: 'active' })
-}
-
-function closeProject(project) {
-  projectToClose.value = project
-  closeSummary.value = ''
-  showCloseDialog.value = true
-}
-
-async function confirmClose() {
-  if (projectToClose.value && closeSummary.value) {
-    try {
-      await projectStore.updateProject(projectToClose.value.id, {
-        status: 'completed',
-        summary: closeSummary.value,
-      })
-      showCloseDialog.value = false
-      projectToClose.value = null
-      closeSummary.value = ''
-    } catch (error) {
-      console.error('Failed to close project:', error)
-    }
-  }
 }
 
 function confirmDelete(project) {
@@ -595,6 +628,45 @@ async function deleteProject() {
   }
 }
 
+async function restoreFromDelete(project) {
+  try {
+    await projectStore.restoreProject(project.id)
+    showDeletedDialog.value = false
+  } catch (error) {
+    console.error('Failed to restore project:', error)
+  }
+}
+
+async function handleStatusAction({ action, projectId }) {
+  try {
+    switch (action) {
+      case 'activate':
+        await projectStore.activateProject(projectId)
+        break
+      case 'pause':
+        await projectStore.pauseProject(projectId)
+        break
+      case 'complete':
+        await projectStore.completeProject(projectId)
+        break
+      case 'cancel':
+        await projectStore.cancelProject(projectId)
+        break
+      case 'restore':
+        await projectStore.restoreProject(projectId)
+        break
+      case 'delete':
+        const project = projectStore.projectById(projectId)
+        if (project) {
+          confirmDelete(project)
+        }
+        break
+    }
+  } catch (error) {
+    console.error('Failed to perform action:', error)
+  }
+}
+
 function cancelEdit() {
   showCreateDialog.value = false
   editingProject.value = null
@@ -608,7 +680,6 @@ function resetForm() {
     mission: '',
     context_budget: 150000,
     status: 'inactive',
-    product_id: activeProduct.value?.id || null,  // Handover 0050b: Auto-link to active product
   }
 }
 
@@ -618,14 +689,9 @@ async function saveProject() {
     return
   }
 
-  console.log('Saving project with data:', projectData.value)
-
   try {
     if (editingProject.value) {
       // Update existing project
-      console.log('Updating project:', editingProject.value.id)
-
-      // Only send fields that the API supports for updates
       const updateData = {
         name: projectData.value.name,
         mission: projectData.value.mission,
@@ -633,8 +699,6 @@ async function saveProject() {
       }
 
       await projectStore.updateProject(editingProject.value.id, updateData)
-
-      // Refresh the project list to show updated data
       await projectStore.fetchProjects()
 
       showCreateDialog.value = false
@@ -642,43 +706,59 @@ async function saveProject() {
       createdProjectId.value = null
       resetForm()
     } else {
-      // Create new project - ensure product_id is set from active product
+      // Create new project
       const createData = {
         ...projectData.value,
-        product_id: activeProduct.value?.id || projectData.value.product_id
+        product_id: activeProduct.value?.id,
       }
 
-      console.log('Creating new project with full data:', JSON.stringify(createData, null, 2))
       const result = await projectStore.createProject(createData)
-      console.log('Project created successfully:', result)
+      createdProjectId.value = result.id
 
-      // Refresh the project list to show new project
       await projectStore.fetchProjects()
 
-      // Close dialog and reset form
-      showCreateDialog.value = false
-      editingProject.value = null
-      createdProjectId.value = null
+      // Reset form but keep dialog open to show success
       resetForm()
+      setTimeout(() => {
+        showCreateDialog.value = false
+        createdProjectId.value = null
+      }, 2000)
     }
   } catch (error) {
     console.error('Failed to save project:', error)
-    console.error('Error details:', error.response?.data || error.message)
-    // Show error to user
     alert(`Failed to save project: ${error.response?.data?.error || error.message}`)
   }
 }
 
 // Lifecycle
 onMounted(async () => {
-  // Load initial data (Handover 0050 Phase 4: fetch products for validation)
-  // Handover 0050b: Fetch active product for filtering
-  await Promise.all([
-    productStore.fetchProducts(),
-    productStore.fetchActiveProduct(),  // NEW: Fetch active product
-    projectStore.fetchProjects(),
-    agentStore.fetchAgents(),
-    taskStore.fetchTasks(),
-  ])
+  try {
+    await Promise.all([
+      productStore.fetchProducts(),
+      productStore.fetchActiveProduct(),
+      projectStore.fetchProjects(),
+      agentStore.fetchAgents(),
+    ])
+  } catch (error) {
+    console.error('Failed to load data:', error)
+  }
 })
 </script>
+
+<style scoped>
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.border {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.rounded {
+  border-radius: 4px;
+}
+</style>

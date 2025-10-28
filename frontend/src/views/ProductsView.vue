@@ -1592,21 +1592,20 @@ async function toggleProductActivation(product) {
 
       await loadProducts()
     } else {
-      // Activating - call API to check if there's a previous active product
-      const response = await api.products.activate(product.id)
+      // Activating - check if there's currently an active product FIRST
+      const currentActive = productStore.products.find(p => p.is_active)
 
-      // Check if there was a previous active product
-      if (response.data.previous_active_product) {
-        // Show warning dialog
-        currentActiveProduct.value = response.data.previous_active_product
+      if (currentActive && currentActive.id !== product.id) {
+        // There's already an active product - show warning BEFORE activating
+        currentActiveProduct.value = currentActive
         pendingActivation.value = product
         showActivationWarning.value = true
-
-        // Don't proceed yet - wait for user confirmation
+        // Don't proceed yet - wait for user confirmation via confirmActivation()
         return
       }
 
-      // No previous active product - activation succeeded
+      // No active product - proceed with activation
+      await api.products.activate(product.id)
       await productStore.fetchActiveProduct()
 
       showToast({
@@ -1630,7 +1629,8 @@ async function toggleProductActivation(product) {
 // Handover 0050: Confirm activation after warning
 async function confirmActivation(productId) {
   try {
-    // User confirmed - activation already happened on backend, just update UI
+    // User confirmed - NOW actually activate the product
+    await api.products.activate(pendingActivation.value.id)
     await productStore.fetchActiveProduct()
 
     showToast({
@@ -1657,20 +1657,7 @@ async function confirmActivation(productId) {
 
 // Handover 0050: Cancel activation
 function cancelActivation() {
-  // User cancelled - need to revert the activation on backend
-  // Since activation already happened, we need to deactivate
-  if (pendingActivation.value && currentActiveProduct.value) {
-    // Reactivate the previous product
-    api.products.activate(currentActiveProduct.value.id)
-      .then(() => {
-        productStore.fetchActiveProduct()
-        loadProducts()
-      })
-      .catch((error) => {
-        console.error('Failed to revert activation:', error)
-      })
-  }
-
+  // User cancelled - just close dialog, activation never happened
   showActivationWarning.value = false
   pendingActivation.value = null
   currentActiveProduct.value = null
