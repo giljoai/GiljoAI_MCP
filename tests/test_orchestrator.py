@@ -42,7 +42,7 @@ class TestProjectLifecycle:
 
         assert project.name == "Test Project"
         assert project.mission == "Test mission"
-        assert project.status == ProjectStatus.PLANNING.value
+        assert project.status == ProjectStatus.DRAFT.value
         assert project.context_budget == 100000
         assert project.context_used == 0
         assert project.tenant_key is not None
@@ -59,30 +59,17 @@ class TestProjectLifecycle:
         assert project.id in orchestrator._active_projects
         assert project.id in orchestrator._context_monitors
 
-    async def test_pause_project(self, orchestrator):
-        """Test pausing an active project."""
+    async def test_deactivate_project(self, orchestrator):
+        """Test deactivating an active project."""
         # Create and activate project
         project = await orchestrator.create_project(name="Test Project", mission="Test mission")
         await orchestrator.activate_project(project.id)
 
-        # Pause it
-        paused = await orchestrator.pause_project(project.id)
+        # Deactivate it by setting status to inactive
+        deactivated = await orchestrator.deactivate_project(project.id)
 
-        assert paused.status == ProjectStatus.PAUSED.value
+        assert deactivated.status == ProjectStatus.INACTIVE.value
         assert project.id not in orchestrator._context_monitors
-
-    async def test_resume_project(self, orchestrator):
-        """Test resuming a paused project."""
-        # Create, activate, and pause project
-        project = await orchestrator.create_project(name="Test Project", mission="Test mission")
-        await orchestrator.activate_project(project.id)
-        await orchestrator.pause_project(project.id)
-
-        # Resume it
-        resumed = await orchestrator.resume_project(project.id)
-
-        assert resumed.status == ProjectStatus.ACTIVE.value
-        assert project.id in orchestrator._active_projects
 
     async def test_complete_project(self, orchestrator):
         """Test completing a project."""
@@ -99,30 +86,31 @@ class TestProjectLifecycle:
         assert project.id not in orchestrator._active_projects
         assert project.id not in orchestrator._context_monitors
 
-    async def test_archive_project(self, orchestrator):
-        """Test archiving a completed project."""
-        # Create, activate, and complete project
+    async def test_cancel_project(self, orchestrator):
+        """Test cancelling an active project."""
+        # Create and activate project
         project = await orchestrator.create_project(name="Test Project", mission="Test mission")
         await orchestrator.activate_project(project.id)
-        await orchestrator.complete_project(project.id)
 
-        # Archive it
-        archived = await orchestrator.archive_project(project.id)
+        # Cancel it
+        cancelled = await orchestrator.cancel_project(project.id)
 
-        assert archived.status == ProjectStatus.ARCHIVED.value
+        assert cancelled.status == ProjectStatus.CANCELLED.value
+        assert project.id not in orchestrator._active_projects
+        assert project.id not in orchestrator._context_monitors
 
     async def test_invalid_state_transitions(self, orchestrator):
         """Test invalid state transitions raise errors."""
         # Create project
         project = await orchestrator.create_project(name="Test Project", mission="Test mission")
 
-        # Cannot pause a draft project
-        with pytest.raises(ValueError, match="Can only pause active projects"):
-            await orchestrator.pause_project(project.id)
+        # Cannot deactivate a non-active project
+        with pytest.raises(ValueError, match="Can only deactivate active projects"):
+            await orchestrator.deactivate_project(project.id)
 
-        # Cannot archive non-completed project
-        with pytest.raises(ValueError, match="Can only archive completed projects"):
-            await orchestrator.archive_project(project.id)
+        # Cannot complete non-active project
+        with pytest.raises(ValueError, match="Can only complete active projects"):
+            await orchestrator.complete_project(project.id)
 
 
 @pytest.mark.asyncio

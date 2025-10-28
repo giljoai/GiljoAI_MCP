@@ -93,11 +93,18 @@ class TestProjectStatuss:
 
     def test_state_enum_values(self):
         """Test state enum has correct values."""
-        assert ProjectStatus.DRAFT.value == "draft"
+        # Verify all expected statuses exist (Handover 0071)
         assert ProjectStatus.ACTIVE.value == "active"
-        assert ProjectStatus.PAUSED.value == "paused"
-        assert ProjectStatus.COMPLETED.value == "database_initialized"
-        assert ProjectStatus.ARCHIVED.value == "archived"
+        assert ProjectStatus.INACTIVE.value == "inactive"
+        assert ProjectStatus.COMPLETED.value == "completed"
+        assert ProjectStatus.CANCELLED.value == "cancelled"
+        assert ProjectStatus.DELETED.value == "deleted"
+
+        # Verify old statuses don't exist
+        assert not hasattr(ProjectStatus, 'DRAFT')
+        assert not hasattr(ProjectStatus, 'PAUSED')
+        assert not hasattr(ProjectStatus, 'ARCHIVED')
+        assert not hasattr(ProjectStatus, 'PLANNING')
 
 
 class TestHandoffLogic:

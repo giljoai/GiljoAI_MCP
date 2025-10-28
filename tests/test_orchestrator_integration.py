@@ -60,16 +60,16 @@ class TestOrchestratorIntegration:
         result = await orchestrator.activate_project(mock_project.id)
         assert mock_project.status == ProjectStatus.ACTIVE.value
 
-        # Test pause project
+        # Test deactivate project
         mock_agents = [MagicMock(status="active")]
         mock_session.execute.return_value.scalars.return_value.all.return_value = mock_agents
 
-        result = await orchestrator.pause_project(mock_project.id)
-        assert mock_project.status == ProjectStatus.PAUSED.value
-        assert mock_agents[0].status == "paused"
+        result = await orchestrator.deactivate_project(mock_project.id)
+        assert mock_project.status == ProjectStatus.INACTIVE.value
+        assert mock_agents[0].status == "inactive"
 
-        # Test resume project
-        result = await orchestrator.resume_project(mock_project.id)
+        # Test reactivate project
+        result = await orchestrator.activate_project(mock_project.id)
         assert mock_project.status == ProjectStatus.ACTIVE.value
 
         # Test complete project
@@ -78,9 +78,10 @@ class TestOrchestratorIntegration:
         assert mock_project.status == ProjectStatus.COMPLETED.value
         assert mock_project.completion_summary == "Project completed successfully"
 
-        # Test archive project
-        result = await orchestrator.archive_project(mock_project.id)
-        assert mock_project.status == ProjectStatus.ARCHIVED.value
+        # Test cancel project (from active)
+        mock_project.status = ProjectStatus.ACTIVE.value
+        result = await orchestrator.cancel_project(mock_project.id)
+        assert mock_project.status == ProjectStatus.CANCELLED.value
 
     @pytest.mark.asyncio
     async def test_agent_lifecycle_with_handoff(self):
