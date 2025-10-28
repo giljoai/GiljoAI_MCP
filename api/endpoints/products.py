@@ -51,11 +51,11 @@ class ProductResponse(BaseModel):
     unresolved_tasks: int = 0
     unfinished_projects: int = 0
     vision_documents_count: int = 0
-    
+
     # Handover 0042: Rich context fields
     config_data: Optional[dict] = Field(None, description="Rich configuration: tech_stack, architecture, features")
     has_config_data: bool = Field(False, description="Whether product has config_data populated")
-    
+
     # Handover 0049: Active product indicator
     is_active: bool = Field(False, description="Whether this product is currently active")
 
@@ -63,6 +63,7 @@ class ProductResponse(BaseModel):
 # Handover 0050: Enhanced response models for single active product architecture
 class ActiveProductInfo(BaseModel):
     """Minimal active product info for efficient responses"""
+
     id: str
     name: str
     description: Optional[str]
@@ -72,35 +73,33 @@ class ActiveProductInfo(BaseModel):
 
 class ProductActivationResponse(ProductResponse):
     """Enhanced response for product activation with context"""
+
     previous_active_product: Optional[ActiveProductInfo] = Field(
-        None,
-        description="Previously active product (if any) that was deactivated"
+        None, description="Previously active product (if any) that was deactivated"
     )
     activation_timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        description="When this activation occurred"
+        default_factory=lambda: datetime.now(timezone.utc), description="When this activation occurred"
     )
 
 
 class ProductDeleteResponse(BaseModel):
     """Enhanced response for product deletion"""
+
     message: str
     deleted_product_id: str
     was_active: bool = Field(description="Whether the deleted product was active")
     remaining_products_count: int
     new_active_product: Optional[ActiveProductInfo] = Field(
-        None,
-        description="Auto-activated product (if deleted product was active)"
+        None, description="Auto-activated product (if deleted product was active)"
     )
 
 
 class ActiveProductRefreshResponse(BaseModel):
     """Response for /refresh-active endpoint"""
+
     active_product: Optional[ActiveProductInfo]
     total_products_count: int
-    last_refreshed_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    last_refreshed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class VisionChunk(BaseModel):
@@ -116,6 +115,7 @@ class VisionChunk(BaseModel):
 
 class TokenEstimateResponse(BaseModel):
     """Token estimation response for active product (Handover 0049)"""
+
     product_id: str = Field(..., description="Active product ID")
     product_name: str = Field(..., description="Active product name")
     field_tokens: Dict[str, int] = Field(..., description="Token count per prioritized field")
@@ -128,6 +128,7 @@ class TokenEstimateResponse(BaseModel):
 
 class CascadeImpact(BaseModel):
     """Cascade impact response for product deletion"""
+
     product_id: str
     projects_count: int = Field(..., description="Total number of projects")
     unfinished_projects: int = Field(..., description="Number of unfinished projects")
@@ -180,14 +181,14 @@ async def create_product(
                     raise HTTPException(status_code=400, detail="config_data must be a JSON object")
             except json.JSONDecodeError as e:
                 raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {str(e)}")
-        
+
         # Create product in database
         product = Product(
-            id=str(uuid.uuid4()), 
-            tenant_key=tenant_key, 
-            name=name, 
+            id=str(uuid.uuid4()),
+            tenant_key=tenant_key,
+            name=name,
             description=description,
-            config_data=config_dict if config_dict else None
+            config_data=config_dict if config_dict else None,
         )
 
         # Handle vision document upload if provided
@@ -258,13 +259,15 @@ async def create_product(
             tasks = task_count_result.scalars().all()
 
             vision_docs_result = await db.execute(
-                select(VisionDocument).where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id)
+                select(VisionDocument).where(
+                    VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id
+                )
             )
             vision_docs = vision_docs_result.scalars().all()
 
             # Calculate metrics (should all be 0 for new product)
-            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
-            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
 
             return ProductResponse(
                 id=product.id,
@@ -350,12 +353,14 @@ async def update_product(
             tasks = task_count_result.scalars().all()
 
             vision_docs_result = await db.execute(
-                select(VisionDocument).where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id)
+                select(VisionDocument).where(
+                    VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id
+                )
             )
             vision_docs = vision_docs_result.scalars().all()
 
-            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
-            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
 
             return ProductResponse(
                 id=product.id,
@@ -401,14 +406,14 @@ async def list_products(
             where_clauses = [Product.tenant_key == tenant_key]
             if is_active is not None:
                 where_clauses.append(Product.is_active == is_active)
-            
+
             stmt = (
                 select(Product)
                 .where(*where_clauses)
                 .options(
                     selectinload(Product.projects),
                     selectinload(Product.tasks),
-                    selectinload(Product.vision_documents)  # NEW: Eager load vision documents
+                    selectinload(Product.vision_documents),  # NEW: Eager load vision documents
                 )
                 .limit(limit)
                 .offset(offset)
@@ -424,10 +429,10 @@ async def list_products(
                 tasks = product.tasks or []
 
                 # Count projects where status != 'completed'
-                unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+                unfinished_projects = sum(1 for p in projects if p.status != "completed")
 
                 # Count tasks where status != 'completed'
-                unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+                unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
 
                 # Count vision documents
                 vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
@@ -479,7 +484,7 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
                 .options(
                     selectinload(Product.projects),
                     selectinload(Product.tasks),
-                    selectinload(Product.vision_documents)  # NEW: Eager load vision documents
+                    selectinload(Product.vision_documents),  # NEW: Eager load vision documents
                 )
             )
 
@@ -494,10 +499,10 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
             tasks = product.tasks or []
 
             # Count projects where status != 'completed'
-            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
 
             # Count tasks where status != 'completed'
-            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
 
             # Count vision documents
             vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
@@ -554,41 +559,33 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
                 raise HTTPException(status_code=404, detail="Product not found")
 
             # Count projects
-            projects_stmt = select(Project).where(
-                Project.product_id == product_id,
-                Project.tenant_key == tenant_key
-            )
+            projects_stmt = select(Project).where(Project.product_id == product_id, Project.tenant_key == tenant_key)
             projects_result = await db.execute(projects_stmt)
             projects = projects_result.scalars().all()
             projects_count = len(projects)
 
             # Count unfinished projects (status != 'completed')
-            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
 
             # Count tasks
-            tasks_stmt = select(Task).where(
-                Task.product_id == product_id,
-                Task.tenant_key == tenant_key
-            )
+            tasks_stmt = select(Task).where(Task.product_id == product_id, Task.tenant_key == tenant_key)
             tasks_result = await db.execute(tasks_stmt)
             tasks = tasks_result.scalars().all()
             tasks_count = len(tasks)
 
             # Count unresolved tasks (status != 'completed')
-            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
 
             # Count vision documents
             vision_docs_stmt = select(VisionDocument).where(
-                VisionDocument.product_id == product_id,
-                VisionDocument.tenant_key == tenant_key
+                VisionDocument.product_id == product_id, VisionDocument.tenant_key == tenant_key
             )
             vision_docs_result = await db.execute(vision_docs_stmt)
             vision_documents_count = len(vision_docs_result.scalars().all())
 
             # Count total chunks
             chunks_stmt = select(MCPContextIndex).where(
-                MCPContextIndex.product_id == product_id,
-                MCPContextIndex.tenant_key == tenant_key
+                MCPContextIndex.product_id == product_id, MCPContextIndex.tenant_key == tenant_key
             )
             chunks_result = await db.execute(chunks_stmt)
             total_chunks = len(chunks_result.scalars().all())
@@ -600,7 +597,7 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
                 tasks_count=tasks_count,
                 unresolved_tasks=unresolved_tasks,
                 vision_documents_count=vision_documents_count,
-                total_chunks=total_chunks
+                total_chunks=total_chunks,
             )
 
     except HTTPException:
@@ -610,10 +607,7 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
 
 
 # Handover 0050: Helper function for active product info
-async def get_active_product_info(
-    db,
-    tenant_key: str
-) -> Optional[Dict[str, Any]]:
+async def get_active_product_info(db, tenant_key: str) -> Optional[Dict[str, Any]]:
     """
     Get active product summary info for tenant.
 
@@ -634,13 +628,7 @@ async def get_active_product_info(
     from src.giljo_mcp.models import Project  # Handover 0050b
 
     # Find currently active product for tenant
-    result = await db.execute(
-        select(Product)
-        .where(
-            Product.tenant_key == tenant_key,
-            Product.is_active == True
-        )
-    )
+    result = await db.execute(select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True))
     active_product = result.scalar_one_or_none()
 
     if not active_product:
@@ -648,10 +636,8 @@ async def get_active_product_info(
 
     # Handover 0050b: Count active projects (status='active' not is_active field)
     count_result = await db.execute(
-        select(func.count(Project.id))
-        .where(
-            Project.product_id == active_product.id,
-            Project.status == 'active'  # Status field, not is_active
+        select(func.count(Project.id)).where(
+            Project.product_id == active_product.id, Project.status == "active"  # Status field, not is_active
         )
     )
     active_projects_count = count_result.scalar() or 0
@@ -661,15 +647,13 @@ async def get_active_product_info(
         "name": active_product.name,
         "description": active_product.description,
         "activated_at": active_product.updated_at or active_product.created_at,
-        "active_projects_count": active_projects_count  # Handover 0050b
+        "active_projects_count": active_projects_count,  # Handover 0050b
     }
 
 
 @router.post("/{product_id}/activate", response_model=ProductActivationResponse)
 async def activate_product(
-    product_id: str,
-    tenant_key: str = Depends(get_tenant_key),
-    current_user: User = Depends(get_current_active_user)
+    product_id: str, tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
 ):
     """
     Activate a product (Handover 0050)
@@ -697,9 +681,7 @@ async def activate_product(
                 select(Product)
                 .where(Product.id == product_id, Product.tenant_key == tenant_key)
                 .options(
-                    selectinload(Product.projects),
-                    selectinload(Product.tasks),
-                    selectinload(Product.vision_documents)
+                    selectinload(Product.projects), selectinload(Product.tasks), selectinload(Product.vision_documents)
                 )
             )
             product = result.scalar_one_or_none()
@@ -717,15 +699,14 @@ async def activate_product(
             # Handover 0050b: Deactivate all projects under previous active product(s)
             if previous_active:
                 from src.giljo_mcp.models import Project
-                
+
                 # Get all active projects under previous product
                 prev_projects_query = select(Project).where(
-                    Project.product_id == previous_active["id"],
-                    Project.status == "active"
+                    Project.product_id == previous_active["id"], Project.status == "active"
                 )
                 prev_projects_result = await db.execute(prev_projects_query)
                 prev_active_projects = prev_projects_result.scalars().all()
-                
+
                 # Deactivate them (set to inactive - Handover 0071)
                 for proj in prev_active_projects:
                     proj.status = "inactive"
@@ -739,8 +720,8 @@ async def activate_product(
             # PHASE 4: Calculate metrics for response
             projects = product.projects or []
             tasks = product.tasks or []
-            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
-            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
             vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
 
             # PHASE 5: Build enhanced response with previous active product context
@@ -762,7 +743,7 @@ async def activate_product(
                 is_active=product.is_active,
                 # Handover 0050: Enhanced fields
                 previous_active_product=ActiveProductInfo(**previous_active) if previous_active else None,
-                activation_timestamp=datetime.now(timezone.utc)
+                activation_timestamp=datetime.now(timezone.utc),
             )
 
     except HTTPException:
@@ -773,13 +754,11 @@ async def activate_product(
 
 @router.post("/{product_id}/deactivate", response_model=ProductResponse)
 async def deactivate_product(
-    product_id: str,
-    tenant_key: str = Depends(get_tenant_key),
-    current_user: User = Depends(get_current_active_user)
+    product_id: str, tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
 ):
     """
     Deactivate a product (Handover 0049)
-    
+
     Removes the active status from this product.
     """
     from api.app import state
@@ -794,9 +773,7 @@ async def deactivate_product(
                 select(Product)
                 .where(Product.id == product_id, Product.tenant_key == tenant_key)
                 .options(
-                    selectinload(Product.projects),
-                    selectinload(Product.tasks),
-                    selectinload(Product.vision_documents)
+                    selectinload(Product.projects), selectinload(Product.tasks), selectinload(Product.vision_documents)
                 )
             )
             product = result.scalar_one_or_none()
@@ -812,8 +789,8 @@ async def deactivate_product(
             # Calculate metrics for response
             projects = product.projects or []
             tasks = product.tasks or []
-            unfinished_projects = sum(1 for p in projects if p.status != 'completed')
-            unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
             vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
 
             return ProductResponse(
@@ -842,8 +819,7 @@ async def deactivate_product(
 
 @router.get("/refresh-active", response_model=ActiveProductRefreshResponse)
 async def refresh_active_product(
-    tenant_key: str = Depends(get_tenant_key),
-    current_user: User = Depends(get_current_active_user)
+    tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
 ):
     """
     Get current active product state (Handover 0050)
@@ -880,7 +856,7 @@ async def refresh_active_product(
             return ActiveProductRefreshResponse(
                 active_product=ActiveProductInfo(**active_info) if active_info else None,
                 total_products_count=total_count,
-                last_refreshed_at=datetime.now(timezone.utc)
+                last_refreshed_at=datetime.now(timezone.utc),
             )
 
     except HTTPException:
@@ -942,10 +918,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
             if was_active and remaining_count > 0:
                 # Get oldest product (by created_at)
                 oldest_result = await db.execute(
-                    select(Product)
-                    .where(Product.tenant_key == tenant_key)
-                    .order_by(Product.created_at.asc())
-                    .limit(1)
+                    select(Product).where(Product.tenant_key == tenant_key).order_by(Product.created_at.asc()).limit(1)
                 )
                 oldest_product = oldest_result.scalar_one_or_none()
 
@@ -959,7 +932,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
                         "id": str(oldest_product.id),
                         "name": oldest_product.name,
                         "description": oldest_product.description,
-                        "activated_at": datetime.now(timezone.utc)
+                        "activated_at": datetime.now(timezone.utc),
                     }
 
             return ProductDeleteResponse(
@@ -967,7 +940,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
                 deleted_product_id=str(product_id),
                 was_active=was_active,
                 remaining_products_count=remaining_count,
-                new_active_product=ActiveProductInfo(**new_active) if new_active else None
+                new_active_product=ActiveProductInfo(**new_active) if new_active else None,
             )
 
     except HTTPException:
@@ -1144,9 +1117,7 @@ def _get_nested_value(data: dict, path: str) -> Any:
 
 
 @router.get("/active/token-estimate", response_model=TokenEstimateResponse)
-async def get_active_product_token_estimate(
-    current_user: User = Depends(get_current_active_user)
-):
+async def get_active_product_token_estimate(current_user: User = Depends(get_current_active_user)):
     """
     Calculate token estimate for active product's config_data fields (Handover 0049).
 
@@ -1198,17 +1169,13 @@ async def get_active_product_token_estimate(
     try:
         async with state.db_manager.get_session_async() as db:
             # Fetch active product for user's tenant (CRITICAL: Multi-tenant isolation)
-            stmt = select(Product).where(
-                Product.tenant_key == current_user.tenant_key,
-                Product.is_active == True
-            )
+            stmt = select(Product).where(Product.tenant_key == current_user.tenant_key, Product.is_active == True)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
             if not product:
                 raise HTTPException(
-                    status_code=404,
-                    detail=f"No active product found for tenant. Please activate a product first."
+                    status_code=404, detail=f"No active product found for tenant. Please activate a product first."
                 )
 
             # Get user's field priority config (or use default)
@@ -1257,7 +1224,7 @@ async def get_active_product_token_estimate(
                 overhead_tokens=overhead_tokens,
                 total_tokens=total_tokens,
                 token_budget=token_budget,
-                percentage_used=percentage_used
+                percentage_used=percentage_used,
             )
 
     except HTTPException:

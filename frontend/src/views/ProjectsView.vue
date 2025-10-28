@@ -1,6 +1,7 @@
 <template>
   <v-container>
-    <!-- Header -->\n    <v-row align="center" class="mb-4">
+    <!-- Header -->
+    <v-row align="center" class="mb-4">
       <v-col>
         <h1 class="text-h4">Project Management</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
@@ -63,10 +64,10 @@
         <v-card>
           <v-card-text>
             <div class="d-flex align-center">
-              <v-icon size="32" color="warning" class="mr-3">mdi-pause-circle</v-icon>
+              <v-icon size="32" color="grey" class="mr-3">mdi-stop-circle-outline</v-icon>
               <div>
-                <div class="text-caption">Paused</div>
-                <div class="text-h5">{{ statusCounts.paused }}</div>
+                <div class="text-caption">Inactive</div>
+                <div class="text-h5">{{ statusCounts.inactive }}</div>
               </div>
             </div>
           </v-card-text>
@@ -472,7 +473,7 @@ const projectData = ref({
 })
 
 // Status options
-const statusOptions = ['active', 'inactive', 'paused', 'completed', 'cancelled']
+const statusOptions = ['active', 'inactive', 'completed', 'cancelled']
 
 // Filter options computed
 const filterOptions = computed(() => {
@@ -481,7 +482,6 @@ const filterOptions = computed(() => {
     { label: 'All', value: 'all', count: filteredBySearch.value.length },
     { label: 'Active', value: 'active', count: counts.active },
     { label: 'Inactive', value: 'inactive', count: counts.inactive },
-    { label: 'Paused', value: 'paused', count: counts.paused },
     { label: 'Completed', value: 'completed', count: counts.completed },
     { label: 'Cancelled', value: 'cancelled', count: counts.cancelled },
   ]
@@ -562,17 +562,13 @@ const statusCounts = computed(() => {
   return {
     active: activeProductProjects.value.filter((p) => p.status === 'active').length,
     inactive: activeProductProjects.value.filter((p) => p.status === 'inactive').length,
-    paused: activeProductProjects.value.filter((p) => p.status === 'paused').length,
     completed: activeProductProjects.value.filter((p) => p.status === 'completed').length,
     cancelled: activeProductProjects.value.filter((p) => p.status === 'cancelled').length,
   }
 })
 
 // Deleted projects
-const deletedProjects = computed(() => {
-  if (!activeProduct.value) return []
-  return projects.value.filter((p) => p.product_id === activeProduct.value.id && p.deleted_at)
-})
+const deletedProjects = computed(() => projectStore.deletedProjects)
 
 const deletedCount = computed(() => deletedProjects.value.length)
 
@@ -643,17 +639,17 @@ async function handleStatusAction({ action, projectId }) {
       case 'activate':
         await projectStore.activateProject(projectId)
         break
-      case 'pause':
-        await projectStore.pauseProject(projectId)
+      case 'deactivate':
+        await projectStore.deactivateProject(projectId)
         break
       case 'complete':
         await projectStore.completeProject(projectId)
         break
+      case 'reopen':
+        await projectStore.restoreCompletedProject(projectId)
+        break
       case 'cancel':
         await projectStore.cancelProject(projectId)
-        break
-      case 'restore':
-        await projectStore.restoreProject(projectId)
         break
       case 'delete':
         const project = projectStore.projectById(projectId)
@@ -737,6 +733,7 @@ onMounted(async () => {
       productStore.fetchProducts(),
       productStore.fetchActiveProduct(),
       projectStore.fetchProjects(),
+      projectStore.fetchDeletedProjects(),
       agentStore.fetchAgents(),
     ])
   } catch (error) {

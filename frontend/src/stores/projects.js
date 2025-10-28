@@ -5,6 +5,7 @@ import { api } from '@/services/api'
 export const useProjectStore = defineStore('projects', () => {
   // State
   const projects = ref([])
+  const deletedProjects = ref([])
   const currentProject = ref(null)
   const loading = ref(false)
   const error = ref(null)
@@ -24,6 +25,20 @@ export const useProjectStore = defineStore('projects', () => {
     } catch (err) {
       error.value = err.message
       console.error('Failed to fetch projects:', err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchDeletedProjects() {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.projects.fetchDeleted()
+      deletedProjects.value = response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to fetch deleted projects:', err)
     } finally {
       loading.value = false
     }
@@ -101,6 +116,9 @@ export const useProjectStore = defineStore('projects', () => {
       if (currentProject.value?.id === id) {
         currentProject.value = null
       }
+
+      // Refresh deleted projects list after deletion
+      await fetchDeletedProjects()
     } catch (err) {
       error.value = err.message
       console.error('Failed to delete project:', err)
@@ -111,23 +129,140 @@ export const useProjectStore = defineStore('projects', () => {
   }
 
   async function activateProject(id) {
-    return updateProject(id, { status: 'active' })
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.projects.changeStatus(id, 'active')
+      
+      const index = projects.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = response.data
+      }
+
+      if (currentProject.value?.id === id) {
+        currentProject.value = response.data
+      }
+
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to activate project:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
-  async function pauseProject(id) {
-    return updateProject(id, { status: 'paused' })
+  async function deactivateProject(id) {
+    loading.value = true
+    error.value = null
+    try {
+      await api.projects.deactivate(id)
+      await fetchProjects()
+      // Success handled by fetchProjects refresh
+    } catch (err) {
+      error.value = err.message || 'Failed to deactivate project'
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   async function completeProject(id) {
-    return updateProject(id, { status: 'completed' })
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.projects.complete(id)
+      
+      const index = projects.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = response.data
+      }
+
+      if (currentProject.value?.id === id) {
+        currentProject.value = response.data
+      }
+
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to complete project:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   async function cancelProject(id) {
-    return updateProject(id, { status: 'cancelled' })
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.projects.cancel(id)
+      
+      const index = projects.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = response.data
+      }
+
+      if (currentProject.value?.id === id) {
+        currentProject.value = response.data
+      }
+
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to cancel project:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   async function restoreProject(id) {
-    return updateProject(id, { status: 'inactive' })
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.projects.restore(id)
+      
+      // Remove from deleted projects list
+      deletedProjects.value = deletedProjects.value.filter((p) => p.id !== id)
+      
+      // Add to active projects list
+      projects.value.push(response.data)
+
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to restore project:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function restoreCompletedProject(id) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.projects.restoreCompleted(id)
+      
+      const index = projects.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = response.data
+      }
+
+      if (currentProject.value?.id === id) {
+        currentProject.value = response.data
+      }
+
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to restore completed project:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   function clearError() {
@@ -192,6 +327,7 @@ export const useProjectStore = defineStore('projects', () => {
   return {
     // State
     projects,
+    deletedProjects,
     currentProject,
     loading,
     error,
@@ -202,15 +338,17 @@ export const useProjectStore = defineStore('projects', () => {
 
     // Actions
     fetchProjects,
+    fetchDeletedProjects,
     fetchProject,
     createProject,
     updateProject,
     deleteProject,
     activateProject,
-    pauseProject,
+    deactivateProject,
     completeProject,
     cancelProject,
     restoreProject,
+    restoreCompletedProject,
     clearError,
     handleRealtimeUpdate,
   }
