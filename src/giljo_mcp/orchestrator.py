@@ -838,11 +838,20 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             if not project:
                 raise ValueError(f"Project {project_id} not found")
 
+            # Handover 0050: Validate product is active before spawning agents
+            if project.product_id:
+                product = await session.get(Product, project.product_id)
+                if product and not product.is_active:
+                    raise ValueError(
+                        f"Cannot spawn agent - product '{product.name}' is not active. "
+                        f"Please activate the product before spawning agents."
+                    )
+
             # HANDOVER 0045: Try to get agent template for routing
             template = await self._get_agent_template(
                 role=role.value,
                 tenant_key=project.tenant_key,
-                product_id=None,  # Could pass project.product_id if available
+                product_id=project.product_id,  # Pass product_id for product-specific templates
             )
 
             # Route based on template.tool field
@@ -1606,12 +1615,22 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             - spawned_jobs: List of job IDs
             - workflow_result: Workflow execution result
             - token_reduction: Token reduction metrics
+
+        Raises:
+            ValueError: If product not found or not active (Handover 0050)
         """
         # 1. Load product and validate vision
         async with self.db_manager.get_session_async() as session:
             product = await session.get(Product, product_id)
             if not product or product.tenant_key != tenant_key:
                 raise ValueError(f"Product {product_id} not found")
+
+            # Handover 0050: Validate product is active before processing
+            if not product.is_active:
+                raise ValueError(
+                    f"Cannot process product vision - product '{product.name}' is not active. "
+                    f"Activate the product before creating agent missions."
+                )
 
             # Get vision content (inline or file-based)
             if product.vision_type == "inline":

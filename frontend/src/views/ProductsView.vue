@@ -2027,28 +2027,25 @@ watch(showDialog, (isOpen) => {
     if (cached) {
       const metadata = autoSave.value.getCacheMetadata()
       const ageMinutes = metadata?.ageMinutes ?? 0
+      const TTL_MINUTES = 15
       // Snapshot current initial state for comparison
       const initialSnapshot = JSON.parse(JSON.stringify(productForm.value))
       const differs = JSON.stringify(cached) !== JSON.stringify(initialSnapshot)
 
-      // Only prompt if the cached draft is meaningfully different and not just-created
-      if (differs && ageMinutes >= 1) {
-        const shouldRestore = confirm(
-          `Found unsaved changes from ${ageMinutes} minute(s) ago. Restore draft?`
-        )
-        if (shouldRestore) {
+      // Disable modal prompts. Silent policy:
+      // - Editing existing product: auto-restore only if draft differs and is fresh (<= TTL)
+      // - New product: do not auto-restore; clear any existing cached draft
+      if (editingProduct.value) {
+        if (differs && ageMinutes <= TTL_MINUTES) {
           productForm.value = { ...productForm.value, ...cached }
-          showToast({
-            message: 'Draft restored successfully',
-            type: 'info',
-            duration: 3000,
-          })
+          showToast({ message: 'Draft restored', type: 'info', duration: 2000 })
         } else {
-          // User declined a real, older draft; clear it
           autoSave.value.clearCache()
         }
+      } else {
+        // New product flow: never restore cached drafts
+        autoSave.value.clearCache()
       }
-      // If not differs or just created (<1 minute), do not prompt
     }
   } else {
     // Dialog closed - cleanup auto-save

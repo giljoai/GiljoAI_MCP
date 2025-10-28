@@ -20,7 +20,7 @@
           </p>
           
           <!-- Tool Selection -->
-          <v-alert type="info" variant="tonal" class="mb-6">
+          <v-alert type="info" variant="tonal" class="mb-6" :icon="false">
             <div class="d-flex align-center">
               <v-icon start>mdi-information</v-icon>
               <div>
@@ -61,7 +61,7 @@
       </div>
 
       <!-- Error State -->
-      <v-alert v-if="error" type="error" variant="tonal" class="mt-6">
+      <v-alert v-if="error" type="error" variant="tonal" class="mt-6" :icon="false">
         <div class="d-flex align-center">
           <v-icon start>mdi-alert-circle</v-icon>
           <div>
@@ -80,6 +80,7 @@
           prominent
           class="mb-4"
           data-test="api-key-warning"
+          :icon="false"
         >
           <v-alert-title class="text-h6 mb-2">
             <v-icon start>mdi-shield-alert</v-icon>
@@ -96,6 +97,7 @@
           variant="tonal"
           class="mb-4"
           data-test="api-key-success"
+          :icon="false"
         >
           <div class="d-flex align-center">
             <v-icon start>mdi-key-check</v-icon>
@@ -117,7 +119,7 @@
         </v-alert>
 
         <!-- Setup Method -->
-        <v-alert type="info" variant="tonal" class="mb-4">
+        <v-alert type="info" variant="tonal" class="mb-4" :icon="false">
           <div class="d-flex align-center">
             <v-icon start>mdi-hammer-wrench</v-icon>
             <div>

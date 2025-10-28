@@ -101,7 +101,7 @@ def upgrade() -> None:
         postgresql_where=text('is_active = true')
     )
 
-    print("[Handover 0050 Migration] ✓ Migration complete - single active product enforcement enabled\n")
+    print("[Handover 0050 Migration] Migration complete - single active product enforcement enabled\n")
 
 
 def downgrade() -> None:

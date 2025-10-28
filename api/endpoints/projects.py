@@ -291,6 +291,32 @@ async def update_project(project_id: str, update: ProjectUpdate):
 
             if update.status is not None:
                 logger.info(f"Updating status from '{project.status}' to '{update.status}'")
+                
+                # Handover 0050 Phase 4: Validate parent product is active when activating project
+                if update.status == "active" and project.product_id:
+                    from giljo_mcp.models import Product
+                    
+                    # Fetch parent product
+                    product_query = select(Product).where(Product.id == project.product_id)
+                    product_result = await session.execute(product_query)
+                    parent_product = product_result.scalar_one_or_none()
+                    
+                    if not parent_product:
+                        logger.error(f"Cannot activate project - parent product not found: {project.product_id}")
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Cannot activate project - parent product not found"
+                        )
+                    
+                    if not parent_product.is_active:
+                        logger.warning(f"Cannot activate project - parent product '{parent_product.name}' is not active")
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Cannot activate project - parent product '{parent_product.name}' is not active. Please activate the product first."
+                        )
+                    
+                    logger.info(f"Project activation validated - parent product '{parent_product.name}' is active")
+                
                 project.status = update.status
                 logger.info(f"Project status after assignment: {project.status}")
 

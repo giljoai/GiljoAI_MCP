@@ -138,6 +138,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { API_CONFIG } from '@/config/api'
+import api from '@/services/api'
 
 /**
  * DatabaseConnection - Reusable database connection testing component
@@ -237,13 +238,8 @@ const testConnection = async () => {
   connectionTestResult.value = null
 
   try {
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/health/database`)
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    const result = await response.json()
+    // Use axios client with credentials to avoid cross-origin cookie issues
+    const { data: result } = await api.settings.testDatabase()
 
     if (result.success) {
       connectionTestResult.value = {
@@ -286,13 +282,8 @@ const testConnection = async () => {
  */
 const loadSettings = async () => {
   try {
-    const response = await fetch(`${API_CONFIG.REST_API.baseURL}/api/v1/config/database`)
-
-    if (!response.ok) {
-      throw new Error('Failed to load database configuration')
-    }
-
-    const config = await response.json()
+    // Use axios client with credentials for config fetch as well
+    const { data: config } = await api.settings.getDatabase()
 
     dbConfig.value = {
       type: 'postgresql',
