@@ -35,14 +35,14 @@ async def orchestrator(db_manager):
 class TestOrchestratorTargetedLines:
     """Target specific lines for 90%+ coverage."""
 
-    async def test_line_180_pause_non_active_project(self, orchestrator):
-        """Target line 180: 'Can only pause active projects' error."""
-        # Create project but keep it in PLANNING state (don't activate)
-        project = await orchestrator.create_project(name="Line 180 Test", mission="Test line 180")
+    async def test_deactivate_non_active_project(self, orchestrator):
+        """Test deactivating non-active project error."""
+        # Create project but keep it in DRAFT state (don't activate)
+        project = await orchestrator.create_project(name="Deactivate Test", mission="Test deactivate")
 
-        # Project is in PLANNING state, try to pause it (should hit line 180)
-        with pytest.raises(ValueError, match="Can only pause active projects"):
-            await orchestrator.pause_project(project.id)
+        # Project is in DRAFT state, try to deactivate it
+        with pytest.raises(ValueError, match="Cannot deactivate project"):
+            await orchestrator.deactivate_project(project.id)
 
     async def test_line_223_archive_non_completed_project(self, orchestrator):
         """Target line 223: 'Can only archive completed projects' error."""
@@ -54,16 +54,16 @@ class TestOrchestratorTargetedLines:
         with pytest.raises(ValueError, match="Can only archive completed projects"):
             await orchestrator.archive_project(project.id)
 
-    async def test_lines_229_231_resume_project(self, orchestrator):
-        """Target lines 229-231: resume_project calling activate_project."""
-        # Create, activate, then pause project
-        project = await orchestrator.create_project(name="Lines 229-231 Test", mission="Test lines 229-231")
+    async def test_reactivate_inactive_project(self, orchestrator):
+        """Test reactivating an inactive project."""
+        # Create, activate, then deactivate project
+        project = await orchestrator.create_project(name="Reactivate Test", mission="Test reactivate")
         await orchestrator.activate_project(project.id)
-        await orchestrator.pause_project(project.id)
+        await orchestrator.deactivate_project(project.id)
 
-        # Resume project (should hit lines 229-231)
-        resumed_project = await orchestrator.resume_project(project.id)
-        assert resumed_project.status == ProjectStatus.ACTIVE.value
+        # Reactivate project
+        reactivated_project = await orchestrator.activate_project(project.id)
+        assert reactivated_project.status == ProjectStatus.ACTIVE.value
 
     async def test_line_258_complete_project_without_summary(self, orchestrator):
         """Target line 258: complete project without summary."""
@@ -116,20 +116,20 @@ class TestOrchestratorTargetedLines:
 
     async def test_additional_edge_cases_for_coverage(self, orchestrator):
         """Additional edge cases to push coverage higher."""
-        # Test complete project with empty string summary (edge case of line 258)
+        # Test complete project with empty string summary
         project1 = await orchestrator.create_project(name="Empty Summary", mission="Test empty summary")
         await orchestrator.activate_project(project1.id)
         completed = await orchestrator.complete_project(project1.id, summary="")
         assert completed.status == ProjectStatus.COMPLETED.value
 
-        # Test pause project that is already paused (edge case)
-        project2 = await orchestrator.create_project(name="Already Paused", mission="Test already paused")
+        # Test deactivate project that is already inactive
+        project2 = await orchestrator.create_project(name="Already Inactive", mission="Test already inactive")
         await orchestrator.activate_project(project2.id)
-        await orchestrator.pause_project(project2.id)
+        await orchestrator.deactivate_project(project2.id)
 
-        # Try to pause already paused project
-        with pytest.raises(ValueError, match="Can only pause active projects"):
-            await orchestrator.pause_project(project2.id)
+        # Try to deactivate already inactive project
+        with pytest.raises(ValueError, match="Cannot deactivate project"):
+            await orchestrator.deactivate_project(project2.id)
 
     async def test_context_usage_edge_cases(self, orchestrator):
         """Test context usage update edge cases."""
