@@ -648,7 +648,7 @@ async function saveProject() {
         product_id: activeProduct.value?.id || projectData.value.product_id
       }
 
-      console.log('Creating new project with product_id:', createData.product_id)
+      console.log('Creating new project with full data:', JSON.stringify(createData, null, 2))
       const result = await projectStore.createProject(createData)
       console.log('Project created successfully:', result)
 
