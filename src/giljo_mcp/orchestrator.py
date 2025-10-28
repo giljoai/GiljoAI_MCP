@@ -645,7 +645,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 name=name,
                 mission=mission,
                 tenant_key=tenant_key,
-                status=ProjectStatus.PLANNING.value,
+                status=ProjectStatus.INACTIVE.value,  # Handover 0071: Projects start as inactive
                 context_budget=context_budget,
                 context_used=0,
             )
@@ -659,7 +659,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
     async def activate_project(self, project_id: str) -> Project:
         """
-        Activate a project, transitioning from DRAFT to ACTIVE.
+        Activate a project, transitioning from INACTIVE to ACTIVE (Handover 0071).
 
         Args:
             project_id: Project UUID
@@ -675,8 +675,8 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
                 raise ValueError(f"Project {project_id} not found")
 
             if project.status not in [
-                ProjectStatus.PLANNING.value,
-                ProjectStatus.PAUSED.value,
+                ProjectStatus.INACTIVE.value,
+                ProjectStatus.COMPLETED.value,
             ]:
                 raise ValueError(f"Cannot activate project in {project.status} state")
 
@@ -692,48 +692,6 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
             logger.info(f"Activated project {project_id}")
             return project
-
-    async def pause_project(self, project_id: str) -> Project:
-        """
-        Pause an active project.
-
-        Args:
-            project_id: Project UUID
-
-        Returns:
-            Updated Project instance
-        """
-        async with self.db_manager.get_session_async() as session:
-            result = await session.execute(select(Project).where(Project.id == project_id))
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ValueError(f"Project {project_id} not found")
-
-            if project.status != ProjectStatus.ACTIVE.value:
-                raise ValueError("Can only pause active projects")
-
-            project.status = ProjectStatus.PAUSED.value
-            await session.commit()
-            await session.refresh(project)
-
-            # Stop context monitoring
-            await self._stop_context_monitor(project_id)
-
-            logger.info(f"Paused project {project_id}")
-            return project
-
-    async def resume_project(self, project_id: str) -> Project:
-        """
-        Resume a paused project.
-
-        Args:
-            project_id: Project UUID
-
-        Returns:
-            Updated Project instance
-        """
-        return await self.activate_project(project_id)
 
     async def complete_project(self, project_id: str, summary: Optional[str] = None) -> Project:
         """
@@ -769,33 +727,6 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             self._active_projects.pop(project_id, None)
 
             logger.info(f"Completed project {project_id}")
-            return project
-
-    async def archive_project(self, project_id: str) -> Project:
-        """
-        Archive a completed project.
-
-        Args:
-            project_id: Project UUID
-
-        Returns:
-            Updated Project instance
-        """
-        async with self.db_manager.get_session_async() as session:
-            result = await session.execute(select(Project).where(Project.id == project_id))
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ValueError(f"Project {project_id} not found")
-
-            if project.status != ProjectStatus.COMPLETED.value:
-                raise ValueError("Can only archive completed projects")
-
-            project.status = ProjectStatus.ARCHIVED.value
-            await session.commit()
-            await session.refresh(project)
-
-            logger.info(f"Archived project {project_id}")
             return project
 
     async def spawn_agent(

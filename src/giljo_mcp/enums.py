@@ -40,14 +40,13 @@ class AgentStatus(Enum):
 
 
 class ProjectStatus(Enum):
-    """Project lifecycle status."""
+    """Project lifecycle status (Handover 0071)."""
 
-    PLANNING = "planning"
     ACTIVE = "active"
-    PAUSED = "paused"
+    INACTIVE = "inactive"  # Deactivated projects (can be reactivated)
     COMPLETED = "completed"
     CANCELLED = "cancelled"
-    ARCHIVED = "archived"
+    DELETED = "deleted"  # Soft-deleted projects (Handover 0070)
 
 
 class MessageType(Enum):

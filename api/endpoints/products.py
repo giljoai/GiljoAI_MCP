@@ -5,6 +5,7 @@ Product management API endpoints with vision document upload support
 import os
 import uuid
 import aiofiles
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -681,6 +682,8 @@ async def activate_product(
     """
     from api.app import state
 
+    logger = logging.getLogger(__name__)
+
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -723,10 +726,10 @@ async def activate_product(
                 prev_projects_result = await db.execute(prev_projects_query)
                 prev_active_projects = prev_projects_result.scalars().all()
                 
-                # Deactivate them (set to paused)
+                # Deactivate them (set to inactive - Handover 0071)
                 for proj in prev_active_projects:
-                    proj.status = "paused"
-                    logger.info(f"[Handover 0050b] Pausing project '{proj.name}' (parent product deactivated)")
+                    proj.status = "inactive"
+                    logger.info(f"[Handover 0071] Deactivating project '{proj.name}' (parent product deactivated)")
 
             # Activate this product
             product.is_active = True
