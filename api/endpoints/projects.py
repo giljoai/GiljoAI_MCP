@@ -244,11 +244,11 @@ async def get_project_by_alias(alias: str):
 
             # Get agent and message counts
             from src.giljo_mcp.models import Agent, Message
-            
+
             agent_stmt = select(Agent).where(Agent.project_id == project.id)
             agent_result = await session.execute(agent_stmt)
             agent_count = len(agent_result.scalars().all())
-            
+
             message_stmt = select(Message).where(Message.project_id == project.id)
             message_result = await session.execute(message_stmt)
             message_count = len(message_result.scalars().all())
@@ -272,6 +272,109 @@ async def get_project_by_alias(alias: str):
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class DeletedProjectResponse(BaseModel):
+    id: str
+    alias: str
+    name: str
+    product_id: Optional[str] = None
+    product_name: Optional[str] = None
+    deleted_at: datetime
+    days_until_purge: int
+    purge_date: datetime
+
+
+@router.get("/deleted", response_model=list[DeletedProjectResponse])
+async def list_deleted_projects(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    List deleted projects for the ACTIVE product only (Handover 0071).
+
+    Returns empty list if no active product.
+
+    Args:
+        current_user: Authenticated user
+
+    Returns:
+        List of deleted projects from active product with 10-day recovery window
+    """
+    from api.app import state
+    from src.giljo_mcp.models import Project, Product
+    from sqlalchemy import select
+    from datetime import timedelta
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as session:
+            # Get active product first (Handover 0071: Product-scoped deleted view)
+            active_product_result = await session.execute(
+                select(Product).where(
+                    Product.tenant_key == current_user.tenant_key,
+                    Product.is_active == True
+                )
+            )
+            active_product = active_product_result.scalar_one_or_none()
+
+            if not active_product:
+                logger.info(f"[Handover 0071] No active product - returning empty deleted list for user {current_user.username}")
+                return []
+
+            # Query deleted projects ONLY for active product
+            stmt = (
+                select(Project, Product)
+                .outerjoin(Product, Project.product_id == Product.id)
+                .where(
+                    Project.tenant_key == current_user.tenant_key,
+                    Project.product_id == active_product.id,  # NEW: Product filter
+                    Project.deleted_at.isnot(None)
+                )
+                .order_by(Project.deleted_at.desc())
+            )
+
+            result = await session.execute(stmt)
+            rows = result.all()
+
+            deleted_projects = []
+            now = datetime.now(timezone.utc)
+
+            for project, product in rows:
+                # Calculate days until purge (10 days from deletion)
+                # Convert naive datetime to UTC-aware for comparison
+                deleted_at_utc = project.deleted_at.replace(tzinfo=timezone.utc) if project.deleted_at.tzinfo is None else project.deleted_at
+                purge_date = deleted_at_utc + timedelta(days=10)
+                days_until_purge = max(0, (purge_date - now).days)
+
+                deleted_projects.append(
+                    DeletedProjectResponse(
+                        id=project.id,
+                        alias=project.alias,
+                        name=project.name,
+                        product_id=project.product_id,
+                        product_name=product.name if product else None,
+                        deleted_at=deleted_at_utc,
+                        days_until_purge=days_until_purge,
+                        purge_date=purge_date
+                    )
+                )
+
+            logger.info(
+                f"[Handover 0071] Retrieved {len(deleted_projects)} deleted projects "
+                f"for active product '{active_product.name}' (user: {current_user.username})"
+            )
+
+            return deleted_projects
+
+    except Exception as e:
+        logger.error(f"[Handover 0071] Failed to list deleted projects: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -371,9 +474,34 @@ async def update_project(project_id: str, update: ProjectUpdate):
                             status_code=400,
                             detail=f"Cannot activate project - parent product '{parent_product.name}' is not active. Please activate the product first."
                         )
-                    
+
                     logger.info(f"Project activation validated - parent product '{parent_product.name}' is active")
-                
+
+                    # Handover 0071: Enforce single active project per product (application-level validation)
+                    active_check = await session.execute(
+                        select(Project).where(
+                            Project.product_id == project.product_id,
+                            Project.status == "active",
+                            Project.id != project_id
+                        )
+                    )
+                    existing_active = active_check.scalar_one_or_none()
+
+                    if existing_active:
+                        logger.warning(
+                            f"[Handover 0071] Cannot activate project '{project.name}' - "
+                            f"project '{existing_active.name}' already active for product '{parent_product.name}'"
+                        )
+                        raise HTTPException(
+                            status_code=400,
+                            detail=(
+                                f"Another project ('{existing_active.name}') is already active "
+                                f"for this product. Please deactivate it first."
+                            )
+                        )
+
+                    logger.info(f"[Handover 0071] Single active project validation passed")
+
                 project.status = update.status
                 logger.info(f"Project status after assignment: {project.status}")
 
@@ -406,6 +534,92 @@ async def update_project(project_id: str, update: ProjectUpdate):
         logger.error(f"Failed to update project: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/{project_id}/deactivate", response_model=ProjectResponse)
+async def deactivate_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Deactivate a project (Handover 0071).
+
+    Sets project status to 'inactive', freeing up the active project slot.
+    This allows another project to be activated for this product.
+
+    Rules:
+    - Can deactivate from 'active' status only
+    - Frees up active project slot (single active per product)
+    - Preserves missions/agents/context (keep for reactivation)
+    - Broadcasts WebSocket event
+
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user
+
+    Returns:
+        Updated project with status='inactive'
+
+    Raises:
+        404: Project not found
+        400: Project not in 'active' status
+        500: Database error
+    """
+    from api.app import state
+    from src.giljo_mcp.models import Project
+    from sqlalchemy import select
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Get project with tenant isolation
+            result = await db.execute(
+                select(Project).where(
+                    Project.id == project_id,
+                    Project.tenant_key == current_user.tenant_key
+                )
+            )
+            project = result.scalar_one_or_none()
+
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            if project.status != "active":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot deactivate project with status '{project.status}'. Only active projects can be deactivated."
+                )
+
+            # Deactivate project
+            project.status = "inactive"
+            await db.commit()
+            await db.refresh(project)
+
+            logger.info(f"[Handover 0071] Project '{project.name}' (ID: {project_id}) deactivated by user {current_user.username}")
+
+            # Broadcast WebSocket event
+            if state.websocket_manager:
+                await state.websocket_manager.broadcast(
+                    "project:deactivated",
+                    {
+                        "project_id": project.id,
+                        "status": "inactive",
+                        "tenant_key": current_user.tenant_key
+                    }
+                )
+
+            # Build response using helper function
+            return await get_project(project_id)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Handover 0071] Failed to deactivate project: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{project_id}/complete", response_model=ProjectResponse)
@@ -764,81 +978,6 @@ async def delete_project(
         raise
     except Exception as e:
         logger.error(f"Failed to delete project {project_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-class DeletedProjectResponse(BaseModel):
-    id: str
-    alias: str
-    name: str
-    product_id: Optional[str] = None
-    product_name: Optional[str] = None
-    deleted_at: datetime
-    days_until_purge: int
-    purge_date: datetime
-
-
-@router.get("/deleted", response_model=list[DeletedProjectResponse])
-async def list_deleted_projects(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
-):
-    """
-    List all deleted projects for the current tenant (Handover 0070).
-
-    Returns projects with status='deleted' and calculated purge countdown.
-    Projects are purged 10 days after deletion.
-    """
-    from api.app import state
-    from src.giljo_mcp.models import Project, Product
-    from sqlalchemy import select
-    from datetime import timedelta
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as session:
-            # Query deleted projects for this tenant
-            stmt = select(Project, Product).outerjoin(
-                Product, Project.product_id == Product.id
-            ).where(
-                Project.tenant_key == current_user.tenant_key,
-                Project.deleted_at.isnot(None)
-            ).order_by(Project.deleted_at.desc())
-
-            result = await session.execute(stmt)
-            rows = result.all()
-
-            deleted_projects = []
-            now = datetime.now(timezone.utc)
-
-            for project, product in rows:
-                # Calculate days until purge (10 days from deletion)
-                purge_date = project.deleted_at + timedelta(days=10)
-                days_until_purge = max(0, (purge_date - now).days)
-
-                deleted_projects.append(
-                    DeletedProjectResponse(
-                        id=project.id,
-                        alias=project.alias,
-                        name=project.name,
-                        product_id=project.product_id,
-                        product_name=product.name if product else None,
-                        deleted_at=project.deleted_at,
-                        days_until_purge=days_until_purge,
-                        purge_date=purge_date
-                    )
-                )
-
-            logger.info(f"[Handover 0070] Retrieved {len(deleted_projects)} deleted projects for tenant {current_user.tenant_key}")
-            return deleted_projects
-
-    except Exception as e:
-        logger.error(f"Failed to list deleted projects: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
