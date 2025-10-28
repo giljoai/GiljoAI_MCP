@@ -59,6 +59,48 @@ class ProductResponse(BaseModel):
     is_active: bool = Field(False, description="Whether this product is currently active")
 
 
+# Handover 0050: Enhanced response models for single active product architecture
+class ActiveProductInfo(BaseModel):
+    """Minimal active product info for efficient responses"""
+    id: str
+    name: str
+    description: Optional[str]
+    activated_at: datetime = Field(description="When this product was activated")
+
+
+class ProductActivationResponse(ProductResponse):
+    """Enhanced response for product activation with context"""
+    previous_active_product: Optional[ActiveProductInfo] = Field(
+        None,
+        description="Previously active product (if any) that was deactivated"
+    )
+    activation_timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="When this activation occurred"
+    )
+
+
+class ProductDeleteResponse(BaseModel):
+    """Enhanced response for product deletion"""
+    message: str
+    deleted_product_id: str
+    was_active: bool = Field(description="Whether the deleted product was active")
+    remaining_products_count: int
+    new_active_product: Optional[ActiveProductInfo] = Field(
+        None,
+        description="Auto-activated product (if deleted product was active)"
+    )
+
+
+class ActiveProductRefreshResponse(BaseModel):
+    """Response for /refresh-active endpoint"""
+    active_product: Optional[ActiveProductInfo]
+    total_products_count: int
+    last_refreshed_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+
 class VisionChunk(BaseModel):
     chunk_number: int
     total_chunks: int
@@ -565,18 +607,64 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Handover 0050: Helper function for active product info
+async def get_active_product_info(
+    db,
+    tenant_key: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get active product summary info for tenant.
 
-@router.post("/{product_id}/activate", response_model=ProductResponse)
+    Returns minimal product info for API responses and frontend state sync.
+    Used by activation/deletion endpoints to provide context.
+
+    Args:
+        db: AsyncSession
+        tenant_key: Tenant identifier
+
+    Returns:
+        {id, name, description, activated_at} or None if no active product
+
+    Performance: <10ms (database query)
+    Note: Future enhancement - add Redis caching for <1ms response
+    """
+    from sqlalchemy import func
+
+    # Find currently active product for tenant
+    result = await db.execute(
+        select(Product)
+        .where(
+            Product.tenant_key == tenant_key,
+            Product.is_active == True
+        )
+    )
+    active_product = result.scalar_one_or_none()
+
+    if not active_product:
+        return None
+
+    return {
+        "id": str(active_product.id),
+        "name": active_product.name,
+        "description": active_product.description,
+        "activated_at": active_product.updated_at or active_product.created_at
+    }
+
+
+@router.post("/{product_id}/activate", response_model=ProductActivationResponse)
 async def activate_product(
     product_id: str,
     tenant_key: str = Depends(get_tenant_key),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Activate a product (Handover 0049)
-    
+    Activate a product (Handover 0050)
+
     Sets this product as the active product for the tenant. Only one product
     can be active per tenant - activating this product will deactivate all others.
+
+    Returns enhanced response with previous active product info for frontend
+    warning dialog context.
     """
     from api.app import state
 
@@ -585,7 +673,10 @@ async def activate_product(
 
     try:
         async with state.db_manager.get_session_async() as db:
-            # Verify product exists and belongs to tenant
+            # PHASE 1: Get current active product (for response context)
+            previous_active = await get_active_product_info(db, tenant_key)
+
+            # PHASE 2: Verify product exists and belongs to tenant
             result = await db.execute(
                 select(Product)
                 .where(Product.id == product_id, Product.tenant_key == tenant_key)
@@ -600,7 +691,7 @@ async def activate_product(
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
 
-            # Deactivate all other products in the tenant
+            # PHASE 3: Atomic activation (deactivate others + activate this)
             await db.execute(
                 update(Product)
                 .where(Product.tenant_key == tenant_key, Product.id != product_id)
@@ -612,14 +703,15 @@ async def activate_product(
             await db.commit()
             await db.refresh(product)
 
-            # Calculate metrics for response
+            # PHASE 4: Calculate metrics for response
             projects = product.projects or []
             tasks = product.tasks or []
             unfinished_projects = sum(1 for p in projects if p.status != 'completed')
             unresolved_tasks = sum(1 for t in tasks if t.status != 'completed')
             vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
 
-            return ProductResponse(
+            # PHASE 5: Build enhanced response with previous active product context
+            return ProductActivationResponse(
                 id=product.id,
                 name=product.name,
                 description=product.description,
@@ -635,6 +727,9 @@ async def activate_product(
                 config_data=product.config_data,
                 has_config_data=product.has_config_data,
                 is_active=product.is_active,
+                # Handover 0050: Enhanced fields
+                previous_active_product=ActiveProductInfo(**previous_active) if previous_active else None,
+                activation_timestamp=datetime.now(timezone.utc)
             )
 
     except HTTPException:
@@ -712,17 +807,72 @@ async def deactivate_product(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{product_id}")
-async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_key)):
-    """Delete a product and all related data"""
+@router.get("/refresh-active", response_model=ActiveProductRefreshResponse)
+async def refresh_active_product(
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get current active product state (Handover 0050)
+
+    Returns the currently active product for the tenant, or None if no active product.
+    Used for frontend state synchronization, especially after product deletions or
+    when recovering from stale state.
+
+    Use Cases:
+    - Frontend initialization/boot-up
+    - After deleting active product
+    - Manual refresh after detecting stale state
+    - Cross-browser-tab synchronization
+
+    Performance: <10ms (database query)
+    """
     from api.app import state
+    from sqlalchemy import func
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.get_session_async() as db:
-            # Get product
+            # Get active product info
+            active_info = await get_active_product_info(db, tenant_key)
+
+            # Get total product count for UI state
+            total_count_result = await db.execute(
+                select(func.count(Product.id)).where(Product.tenant_key == tenant_key)
+            )
+            total_count = total_count_result.scalar() or 0
+
+            return ActiveProductRefreshResponse(
+                active_product=ActiveProductInfo(**active_info) if active_info else None,
+                total_products_count=total_count,
+                last_refreshed_at=datetime.now(timezone.utc)
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{product_id}", response_model=ProductDeleteResponse)
+async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_key)):
+    """
+    Delete a product and all related data (Handover 0050)
+
+    If the deleted product was active and other products exist, automatically
+    activates the oldest product (by created_at) to maintain system consistency.
+    """
+    from api.app import state
+    from sqlalchemy import func
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # PHASE 1: Get product and check active status
             stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
@@ -730,7 +880,10 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
 
-            # Delete vision document files if they exist
+            was_active = product.is_active
+            product_name = product.name
+
+            # PHASE 2: Delete vision document files if they exist
             if product.vision_path and os.path.exists(product.vision_path):
                 try:
                     os.remove(product.vision_path)
@@ -741,11 +894,48 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
                 except Exception:
                     pass  # Don't fail deletion if file cleanup fails
 
-            # Delete product (cascade will handle related records)
+            # PHASE 3: Delete product (cascade will handle related records)
             await db.delete(product)
             await db.commit()
 
-            return {"message": "Product deleted successfully"}
+            # PHASE 4: Count remaining products
+            remaining_count_result = await db.execute(
+                select(func.count(Product.id)).where(Product.tenant_key == tenant_key)
+            )
+            remaining_count = remaining_count_result.scalar() or 0
+
+            # PHASE 5: Auto-activate oldest product if deleted product was active
+            new_active = None
+            if was_active and remaining_count > 0:
+                # Get oldest product (by created_at)
+                oldest_result = await db.execute(
+                    select(Product)
+                    .where(Product.tenant_key == tenant_key)
+                    .order_by(Product.created_at.asc())
+                    .limit(1)
+                )
+                oldest_product = oldest_result.scalar_one_or_none()
+
+                if oldest_product:
+                    # Activate it
+                    oldest_product.is_active = True
+                    await db.commit()
+
+                    # Get info for response
+                    new_active = {
+                        "id": str(oldest_product.id),
+                        "name": oldest_product.name,
+                        "description": oldest_product.description,
+                        "activated_at": datetime.now(timezone.utc)
+                    }
+
+            return ProductDeleteResponse(
+                message=f"Product '{product_name}' deleted successfully",
+                deleted_product_id=str(product_id),
+                was_active=was_active,
+                remaining_products_count=remaining_count,
+                new_active_product=ActiveProductInfo(**new_active) if new_active else None
+            )
 
     except HTTPException:
         raise
