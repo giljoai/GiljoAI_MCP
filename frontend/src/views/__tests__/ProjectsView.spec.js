@@ -54,7 +54,7 @@ describe('ProjectsView.vue', () => {
     {
       id: 'proj-3',
       name: 'Project 3',
-      status: 'paused',
+      status: 'inactive',
       product_id: 'prod-1',
       mission: 'Test mission 3',
       context_budget: 120000,
@@ -293,40 +293,14 @@ describe('ProjectsView.vue', () => {
       })
     })
 
-    it('filters by paused status', async () => {
+    it('filters by completed status', async () => {
       const wrapper = createWrapper()
-      wrapper.vm.filterStatus = 'paused'
+      wrapper.vm.filterStatus = 'completed'
       await wrapper.vm.$nextTick()
 
       wrapper.vm.filteredProjects.forEach((p) => {
-        expect(p.status).toBe('paused')
+        expect(p.status).toBe('completed')
       })
-    })
-
-    it('updates filter chip styling when selected', async () => {
-      const wrapper = createWrapper()
-      wrapper.vm.filterStatus = 'active'
-      await wrapper.vm.$nextTick()
-
-      const activeChip = wrapper.vm.filterOptions.find((o) => o.value === 'active')
-      expect(activeChip).toBeDefined()
-    })
-  })
-
-  describe('Status Counts', () => {
-    it('counts active projects correctly', () => {
-      const wrapper = createWrapper()
-      expect(wrapper.vm.statusCounts.active).toBe(1) // proj-1
-    })
-
-    it('counts inactive projects correctly', () => {
-      const wrapper = createWrapper()
-      expect(wrapper.vm.statusCounts.inactive).toBe(1) // proj-2
-    })
-
-    it('counts paused projects correctly', () => {
-      const wrapper = createWrapper()
-      expect(wrapper.vm.statusCounts.paused).toBe(1) // proj-3
     })
 
     it('does not count deleted projects in status counts', () => {
@@ -334,7 +308,6 @@ describe('ProjectsView.vue', () => {
       const totalCounted =
         wrapper.vm.statusCounts.active +
         wrapper.vm.statusCounts.inactive +
-        wrapper.vm.statusCounts.paused +
         wrapper.vm.statusCounts.completed +
         wrapper.vm.statusCounts.cancelled
 

@@ -122,40 +122,22 @@ class TestProjectLifecycle:
             await orchestrator.activate_project(mock_project.id)
 
     @pytest.mark.asyncio
-    async def test_pause_active_project(self, orchestrator, mock_project):
-        """Test pausing an active project."""
+    async def test_deactivate_active_project(self, orchestrator, mock_project):
+        """Test deactivating an active project."""
         mock_project.status = ProjectStatus.ACTIVE.value
-
-        mock_session = AsyncMock()
-        orchestrator.db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
-
-        # Mock agents query
-        mock_agents = [MagicMock(status="active"), MagicMock(status="active")]
-        mock_session.execute.return_value.scalars.return_value.all.return_value = mock_agents
-        mock_session.commit = AsyncMock()
-
-        result = await orchestrator.pause_project(mock_project.id)
-
-        assert result == mock_project
-        assert mock_project.status == ProjectStatus.PAUSED.value
-        for agent in mock_agents:
-            assert agent.status == "paused"
-
-    @pytest.mark.asyncio
-    async def test_resume_paused_project(self, orchestrator, mock_project):
-        """Test resuming a paused project."""
-        mock_project.status = ProjectStatus.PAUSED.value
+        mock_project.id = "test-project-id"
 
         mock_session = AsyncMock()
         orchestrator.db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
         mock_session.commit = AsyncMock()
 
-        result = await orchestrator.resume_project(mock_project.id)
+        result = await orchestrator.deactivate_project(mock_project.id)
 
         assert result == mock_project
-        assert mock_project.status == ProjectStatus.ACTIVE.value
+        assert mock_project.status == ProjectStatus.INACTIVE.value
+        # Verify context monitoring stopped
+        assert mock_project.id not in orchestrator._context_monitors
 
     @pytest.mark.asyncio
     async def test_complete_project(self, orchestrator, mock_project):
@@ -197,15 +179,15 @@ class TestProjectLifecycle:
     @pytest.mark.asyncio
     async def test_state_transition_validation(self, orchestrator, mock_project):
         """Test invalid state transitions are prevented."""
-        # Can't pause a draft project
+        # Can't deactivate a draft project
         mock_project.status = ProjectStatus.DRAFT.value
 
         mock_session = AsyncMock()
         orchestrator.db_manager.get_session_async.return_value.__aenter__.return_value = mock_session
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_project
 
-        with pytest.raises(ValueError, match="Cannot pause project"):
-            await orchestrator.pause_project(mock_project.id)
+        with pytest.raises(ValueError, match="Cannot deactivate project"):
+            await orchestrator.deactivate_project(mock_project.id)
 
         # Can't archive non-completed project
         mock_project.status = ProjectStatus.ACTIVE.value

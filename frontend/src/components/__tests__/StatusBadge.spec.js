@@ -36,9 +36,9 @@ describe('StatusBadge.vue', () => {
       const statusColors = {
         active: 'success',
         inactive: 'grey',
-        paused: 'warning',
         completed: 'info',
         cancelled: 'error',
+        deleted: 'secondary',
       }
 
       Object.entries(statusColors).forEach(([status, color]) => {
@@ -100,7 +100,7 @@ describe('StatusBadge.vue', () => {
     })
 
     it('always shows delete action', async () => {
-      const statuses = ['active', 'inactive', 'paused', 'completed', 'cancelled']
+      const statuses = ['active', 'inactive', 'completed', 'cancelled', 'deleted']
 
       statuses.forEach((status) => {
         const wrapper = createWrapper({ status })
@@ -162,8 +162,13 @@ describe('StatusBadge.vue', () => {
   })
 
   describe('Status Transitions', () => {
-    it('correctly handles transition from active to paused', () => {
+    it('correctly handles transition from active to inactive', () => {
       const wrapper = createWrapper({ status: 'active' })
+      const activeActions = wrapper.vm.availableActions
+
+      expect(activeActions.some((a) => a.value === 'deactivate')).toBe(true)
+      expect(activeActions.some((a) => a.value === 'activate')).toBe(false)
+    })
       const activeActions = wrapper.vm.availableActions
 
       expect(activeActions.some((a) => a.value === 'pause')).toBe(true)
@@ -233,9 +238,9 @@ describe('StatusBadge.vue', () => {
       const statuses = {
         active: 'Active',
         inactive: 'Inactive',
-        paused: 'Paused',
         completed: 'Completed',
         cancelled: 'Cancelled',
+        deleted: 'Deleted',
       }
 
       Object.entries(statuses).forEach(([status, expected]) => {
