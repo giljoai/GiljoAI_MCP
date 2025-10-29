@@ -97,7 +97,6 @@ const routes = [
       showInNav: true,
     },
   },
-  $1
   {
     path: '/projects/:projectId/launch',
     name: 'ProjectLaunch',
@@ -108,7 +107,6 @@ const routes = [
       showInNav: false,
       requiresAuth: true,
     },
-  },
   },
   {
     path: '/agents',

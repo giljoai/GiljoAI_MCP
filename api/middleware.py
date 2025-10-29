@@ -140,12 +140,35 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.request_times = {}
+        # Exempt endpoints from rate limiting (health checks, auth status, etc.)
+        self.exempt_paths = [
+            "/api/health",
+            "/api/auth/me",  # Auth status check
+            "/api/v1/ws",    # WebSocket connections
+            "/docs",         # API documentation
+            "/openapi.json", # OpenAPI schema
+        ]
 
     async def dispatch(self, request: Request, call_next):
         """Apply rate limiting"""
+        
+        # Check if path is exempt from rate limiting
+        request_path = request.url.path
+        for exempt_path in self.exempt_paths:
+            if request_path.startswith(exempt_path):
+                response = await call_next(request)
+                return response
 
         # Get client identifier (IP address)
         client_ip = request.client.host if request.client else "unknown"
+        
+        # Whitelist local development IPs (no rate limiting)
+        development_ips = ["127.0.0.1", "localhost", "::1", "10.1.0.164"]
+        if client_ip in development_ips:
+            # Log for debugging (can be removed in production)
+            logger.debug(f"[Rate Limit] Bypassed for development IP: {client_ip}")
+            response = await call_next(request)
+            return response
 
         # Get current time
         current_time = time.time()
@@ -158,7 +181,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Check rate limit
         if len(self.request_times[client_ip]) >= self.requests_per_minute:
-            return JSONResponse(status_code=429, content={"error": "Rate limit exceeded"})
+            logger.warning(f"[Rate Limit] Exceeded for {client_ip}: {len(self.request_times[client_ip])} requests in last minute")
+            return JSONResponse(
+                status_code=429, 
+                content={
+                    "error": "Rate limit exceeded",
+                    "detail": f"Maximum {self.requests_per_minute} requests per minute",
+                    "retry_after": "60"
+                }
+            )
 
         # Add current request time
         self.request_times[client_ip].append(current_time)
