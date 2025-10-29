@@ -97,15 +97,18 @@ const routes = [
       showInNav: true,
     },
   },
+  $1
   {
-    path: '/projects/:id',
-    name: 'ProjectDetail',
-    component: () => import('@/views/ProjectDetailView.vue'),
+    path: '/projects/:projectId/launch',
+    name: 'ProjectLaunch',
+    component: () => import('@/views/ProjectLaunchView.vue'),
     meta: {
       layout: 'default',
-      title: 'Project Details',
+      title: 'Project Launch',
       showInNav: false,
+      requiresAuth: true,
     },
+  },
   },
   {
     path: '/agents',

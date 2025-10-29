@@ -4,7 +4,7 @@ Project management API endpoints
 
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -45,6 +45,39 @@ class ProjectResponse(BaseModel):
     context_used: int
     agent_count: int
     message_count: int
+
+
+# Handover 0062: Project Summary Response Models
+class AgentSummary(BaseModel):
+    """Summary of an agent used in the project."""
+    id: str
+    name: str
+    type: str
+    status: str
+    job_mission: Optional[str] = None
+    job_id: Optional[str] = None
+
+
+class MessageSummary(BaseModel):
+    """Summary of a message in the project."""
+    id: str
+    from_agent: str
+    to_agents: List[str]
+    content: str
+    timestamp: str
+
+
+class ProjectSummaryResponse(BaseModel):
+    """Comprehensive project summary for after-action review."""
+    project_id: str
+    project_name: str
+    description: str
+    mission: Optional[str] = None
+    status: str
+    agents: List[AgentSummary]
+    messages: List[MessageSummary]
+    created_at: str
+    completed_at: Optional[str] = None
 
 
 @router.post("/", response_model=ProjectResponse)
@@ -530,6 +563,66 @@ async def update_project(project_id: str, update: ProjectUpdate):
     except Exception as e:
         logger.error(f"Failed to update project: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{project_id}/activate", response_model=ProjectResponse)
+async def activate_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Activate a project (enables launch button).
+
+    Handover 0062: Project activation workflow.
+    Changes status from inactive to active.
+    """
+    from sqlalchemy import select
+    from src.giljo_mcp.models import Project
+    
+    # Fetch project
+    stmt = select(Project).where(
+        Project.id == project_id,
+        Project.tenant_key == current_user.tenant_key
+    )
+    result = await db.execute(stmt)
+    project = result.scalar_one_or_none()
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Validate current status
+    if project.status != "inactive":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Project cannot be activated from status '{project.status}'"
+        )
+    
+    # Update status
+    project.status = "active"
+    project.updated_at = datetime.utcnow()
+    
+    await db.commit()
+    await db.refresh(project)
+    
+    logger.info(f"Project {project_id} activated by {current_user.username}")
+    
+    # Return response
+    return ProjectResponse(
+        id=project.id,
+        tenant_key=project.tenant_key,
+        product_id=project.product_id,
+        name=project.name,
+        alias=project.alias,
+        description=getattr(project, 'description', project.mission),  # Backward compat
+        mission=project.mission,
+        status=project.status,
+        context_budget=project.context_budget,
+        context_used=project.context_used,
+        created_at=project.created_at.isoformat() if project.created_at else None,
+        updated_at=project.updated_at.isoformat() if project.updated_at else None,
+        completed_at=project.completed_at.isoformat() if project.completed_at else None,
+        meta_data=project.meta_data or {}
+    )
 
 
 @router.post("/{project_id}/deactivate", response_model=ProjectResponse)
@@ -1116,3 +1209,96 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
     except Exception as e:
         logger.error(f"[Handover 0070] Failed to purge expired deleted projects: {e}", exc_info=True)
         return {"success": False, "error": str(e), "purged_count": 0}
+
+@router.get("/{project_id}/summary", response_model=ProjectSummaryResponse)
+async def get_project_summary(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get comprehensive project summary for after-action review.
+
+    Handover 0062: Project detail page enhancement.
+    Includes project details, agents used, and message history.
+    """
+    from sqlalchemy import select
+    from src.giljo_mcp.models import Project, Agent, MCPAgentJob, Message
+    
+    # Fetch project
+    project_stmt = select(Project).where(
+        Project.id == project_id,
+        Project.tenant_key == current_user.tenant_key
+    )
+    project_result = await db.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Fetch agents
+    agents_stmt = select(Agent).where(
+        Agent.project_id == project_id,
+        Agent.tenant_key == current_user.tenant_key
+    )
+    agents_result = await db.execute(agents_stmt)
+    agents = agents_result.scalars().all()
+    
+    # Fetch agent jobs (if project_id exists)
+    jobs = []
+    try:
+        jobs_stmt = select(MCPAgentJob).where(
+            MCPAgentJob.project_id == project_id,
+            MCPAgentJob.tenant_key == current_user.tenant_key
+        )
+        jobs_result = await db.execute(jobs_stmt)
+        jobs = jobs_result.scalars().all()
+    except Exception as e:
+        logger.warning(f"Could not fetch jobs for project {project_id}: {e}")
+    
+    # Fetch messages
+    messages_stmt = select(Message).where(
+        Message.project_id == project_id,
+        Message.tenant_key == current_user.tenant_key
+    ).order_by(Message.created_at)
+    messages_result = await db.execute(messages_stmt)
+    messages = messages_result.scalars().all()
+    
+    # Build agent summaries
+    agent_summaries = []
+    job_map = {job.job_id: job for job in jobs}
+    
+    for agent in agents:
+        job = job_map.get(agent.job_id) if agent.job_id else None
+        agent_summaries.append(AgentSummary(
+            id=agent.id,
+            name=agent.name,
+            type=agent.type,
+            status=agent.status,
+            job_mission=job.mission if job else None,
+            job_id=agent.job_id
+        ))
+    
+    # Build message summaries
+    message_summaries = []
+    for msg in messages:
+        message_summaries.append(MessageSummary(
+            id=msg.id,
+            from_agent=msg.from_agent,
+            to_agents=msg.to_agents or [],
+            content=msg.content,
+            timestamp=msg.created_at.isoformat() if msg.created_at else ""
+        ))
+    
+    # Build summary response
+    return ProjectSummaryResponse(
+        project_id=project.id,
+        project_name=project.name,
+        description=getattr(project, 'description', project.mission),  # Backward compat
+        mission=project.mission,
+        status=project.status,
+        agents=agent_summaries,
+        messages=message_summaries,
+        created_at=project.created_at.isoformat() if project.created_at else "",
+        completed_at=project.completed_at.isoformat() if project.completed_at else None
+    )
