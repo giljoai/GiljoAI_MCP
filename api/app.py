@@ -492,7 +492,16 @@ def create_app() -> FastAPI:
     app.add_middleware(AuthMiddleware, auth_manager=lambda: state.auth)
 
     # Add rate limiting middleware (executes 4th - protects endpoints, 60 requests/minute for LAN security)
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+    # Rate limiting configuration
+    # Development: Higher limit or disabled via environment variable
+    # Production: Standard 60 requests per minute
+    import os
+    rate_limit = int(os.getenv("API_RATE_LIMIT", "300"))  # Default 300 for development
+    if os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true":
+        logger.info("[Rate Limit] Rate limiting disabled via environment variable")
+    else:
+        logger.info(f"[Rate Limit] Configured at {rate_limit} requests per minute")
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=rate_limit)
 
     # Add security headers middleware (executes 3rd - adds security headers to all responses)
     app.add_middleware(SecurityHeadersMiddleware)
