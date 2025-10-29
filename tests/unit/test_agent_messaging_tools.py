@@ -31,13 +31,13 @@ class TestAgentMessagingTools:
         """Setup for each test method"""
         self.setup = tools_test_setup
         self.db_manager = tools_test_setup["db_manager"]
-        self.tenant_key = "test-tenant-" + str(uuid.uuid4())
 
         # Create test project
         async with self.db_manager.get_session_async() as session:
             self.project = await ToolsTestHelper.create_test_project(
-                session, "Agent Messaging Test Project", tenant_key=self.tenant_key
+                session, "Agent Messaging Test Project"
             )
+            self.tenant_key = self.project.tenant_key
 
     async def _create_test_job(self, session, agent_name="test-agent", status="working"):
         """Helper to create test agent job"""
@@ -231,17 +231,18 @@ class TestAgentMessagingTools:
 
         # Create jobs in different tenants
         tenant_a = self.tenant_key
-        tenant_b = "other-tenant-" + str(uuid.uuid4())
 
         async with self.db_manager.get_session_async() as session:
             # Job in tenant A
             job_a = await self._create_test_job(session)
             sender_id = job_a.job_id
 
-            # Job in tenant B
+            # Job in tenant B (different project/tenant)
             project_b = await ToolsTestHelper.create_test_project(
-                session, "Project B", tenant_key=tenant_b
+                session, "Project B"
             )
+            tenant_b = project_b.tenant_key
+
             job_b = MCPAgentJob(
                 tenant_key=tenant_b,
                 project_id=project_b.id,

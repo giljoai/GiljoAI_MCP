@@ -24,6 +24,7 @@ class ToolsTestHelper:
         project = Project(
             id=str(uuid.uuid4()),
             name=name,
+            description="Test project description for tools testing",
             mission="Test mission for tools testing",
             status="active",
             tenant_key=TenantManager.generate_tenant_key(name),
