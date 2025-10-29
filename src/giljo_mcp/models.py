@@ -1943,7 +1943,7 @@ class MCPAgentJob(Base):
         Index("idx_mcp_agent_jobs_project", "project_id"),  # Handover 0062
         Index("idx_mcp_agent_jobs_tenant_project", "tenant_key", "project_id"),  # Handover 0062
         CheckConstraint(
-            "status IN ('pending', 'active', 'completed', 'failed')",
+            "status IN ('pending', 'active', 'completed', 'failed', 'blocked')",
             name="ck_mcp_agent_job_status"
         ),
     )
