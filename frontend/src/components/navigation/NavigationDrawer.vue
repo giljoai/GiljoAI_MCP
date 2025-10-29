@@ -119,7 +119,7 @@ const navigationItems = computed(() => {
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
     { name: 'Agents', path: '/agents', title: 'Agents', customIcon: agentIcon.value },
-    { name: 'Messages', path: '/messages', title: 'Messages', icon: 'mdi-message-text' },
+    { name: 'Jobs', path: '/kanban', title: 'Jobs', icon: 'mdi-view-column' },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 

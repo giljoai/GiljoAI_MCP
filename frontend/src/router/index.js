@@ -120,14 +120,15 @@ const routes = [
     },
   },
   {
-    path: '/messages',
-    name: 'Messages',
-    component: () => import('@/views/MessagesView.vue'),
+    path: '/kanban',
+    name: 'Jobs',
+    component: () => import('@/components/project-launch/KanbanJobsView.vue'),
     meta: {
       layout: 'default',
-      title: 'Message Center',
-      icon: 'mdi-message-text',
+      title: 'Agent Jobs',
+      icon: 'mdi-view-column',
       showInNav: true,
+      requiresAuth: true,
     },
   },
   {
