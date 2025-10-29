@@ -16,6 +16,11 @@ Provides REST API for comprehensive agent job operations:
 - POST /api/agent-jobs/{job_id}/spawn-children - Spawn children
 - GET /api/agent-jobs/{job_id}/hierarchy - Get hierarchy
 
+Kanban Board API endpoints for Handover 0066: Agent Kanban Dashboard:
+- GET /api/agent-jobs/kanban/{project_id} - Get Kanban board data
+- GET /api/agent-jobs/{job_id}/message-thread - Get message thread
+- POST /api/agent-jobs/{job_id}/send-message - Send developer message
+
 All endpoints enforce role-based access control and multi-tenant isolation.
 """
 
@@ -41,11 +46,19 @@ from api.schemas.agent_job import (
     JobSpawnRequest,
     JobSpawnResponse,
     JobUpdateRequest,
+    KanbanBoardResponse,
+    KanbanColumn,
+    KanbanJobCard,
+    MessageCounts,
     MessageResponse,
     MessageSendRequest,
+    MessageThreadItem,
+    MessageThreadResponse,
+    SendMessageRequest,
+    SendMessageResponse,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import MCPAgentJob, User
+from src.giljo_mcp.models import MCPAgentJob, Project, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -984,4 +997,256 @@ async def get_hierarchy(
         parent=job_to_response(parent),
         children=[job_to_response(child) for child in children],
         total_children=len(children)
+    )
+
+
+# Kanban Board Endpoints (Handover 0066)
+
+@router.get("/kanban/{project_id}", response_model=KanbanBoardResponse)
+async def get_kanban_board(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+) -> KanbanBoardResponse:
+    """
+    Get Kanban board data for Agent Kanban Dashboard.
+
+    Returns jobs grouped by status (4 columns: pending, active, completed, blocked)
+    with message counts for each job.
+
+    Args:
+        project_id: Project ID to get Kanban board for
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Kanban board data with 4 columns and message counts
+
+    Raises:
+        HTTPException: 404 if project not found (includes multi-tenant isolation)
+    """
+    logger.debug(f"User {current_user.username} getting Kanban board for project {project_id}")
+
+    # Verify project exists and user has access (multi-tenant isolation)
+    project_stmt = select(Project).where(
+        Project.id == project_id,
+        Project.tenant_key == current_user.tenant_key
+    )
+    result = await db.execute(project_stmt)
+    project = result.scalar_one_or_none()
+
+    if not project:
+        logger.warning(f"Project {project_id} not found for tenant {current_user.tenant_key}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    # Query all jobs for this project
+    jobs_stmt = select(MCPAgentJob).where(
+        MCPAgentJob.project_id == project_id,
+        MCPAgentJob.tenant_key == current_user.tenant_key
+    ).order_by(MCPAgentJob.created_at.desc())
+
+    result = await db.execute(jobs_stmt)
+    jobs = result.scalars().all()
+
+    # Helper function to calculate message counts
+    def calculate_message_counts(job: MCPAgentJob) -> MessageCounts:
+        """Calculate message counts for a job."""
+        messages = job.messages or []
+
+        unread_count = sum(1 for msg in messages if msg.get("status") == "pending")
+        acknowledged_count = sum(1 for msg in messages if msg.get("status") == "acknowledged")
+        sent_count = sum(1 for msg in messages if msg.get("from") in ["developer", "user"])
+
+        return MessageCounts(
+            unread_messages=unread_count,
+            acknowledged_messages=acknowledged_count,
+            sent_messages=sent_count
+        )
+
+    # Helper function to convert job to Kanban card
+    def job_to_kanban_card(job: MCPAgentJob) -> KanbanJobCard:
+        """Convert MCPAgentJob to KanbanJobCard."""
+        return KanbanJobCard(
+            job_id=job.job_id,
+            agent_type=job.agent_type,
+            mission=job.mission,
+            status=job.status,
+            acknowledged=job.acknowledged,
+            started_at=job.started_at,
+            completed_at=job.completed_at,
+            created_at=job.created_at,
+            message_counts=calculate_message_counts(job)
+        )
+
+    # Group jobs by status (4 columns)
+    columns_data = {
+        "pending": [],
+        "active": [],
+        "completed": [],
+        "blocked": []
+    }
+
+    for job in jobs:
+        if job.status in columns_data:
+            columns_data[job.status].append(job_to_kanban_card(job))
+
+    # Create column objects
+    columns = [
+        KanbanColumn(status="pending", jobs=columns_data["pending"]),
+        KanbanColumn(status="active", jobs=columns_data["active"]),
+        KanbanColumn(status="completed", jobs=columns_data["completed"]),
+        KanbanColumn(status="blocked", jobs=columns_data["blocked"])
+    ]
+
+    logger.info(
+        f"Retrieved Kanban board for project {project_id}: "
+        f"pending={len(columns_data['pending'])}, active={len(columns_data['active'])}, "
+        f"completed={len(columns_data['completed'])}, blocked={len(columns_data['blocked'])}"
+    )
+
+    return KanbanBoardResponse(
+        project_id=project_id,
+        columns=columns
+    )
+
+
+@router.get("/{job_id}/message-thread", response_model=MessageThreadResponse)
+async def get_message_thread(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+) -> MessageThreadResponse:
+    """
+    Get message thread for a job (Slack-style conversation view).
+
+    Returns messages in chronological order for display in the Kanban dashboard.
+
+    Args:
+        job_id: Job ID to get message thread for
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Message thread in chronological order
+
+    Raises:
+        HTTPException: 404 if job not found (includes multi-tenant isolation)
+    """
+    logger.debug(f"User {current_user.username} getting message thread for job {job_id}")
+
+    # Query job with tenant isolation
+    stmt = select(MCPAgentJob).where(
+        MCPAgentJob.job_id == job_id,
+        MCPAgentJob.tenant_key == current_user.tenant_key
+    )
+    result = await db.execute(stmt)
+    job = result.scalar_one_or_none()
+
+    if not job:
+        logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Convert messages to MessageThreadItem format
+    messages = []
+    for idx, msg in enumerate(job.messages or []):
+        messages.append(
+            MessageThreadItem(
+                message_id=str(idx),
+                from_=msg.get("from", "unknown"),
+                content=msg.get("content", ""),
+                timestamp=msg.get("timestamp", ""),
+                status=msg.get("status", "pending")
+            )
+        )
+
+    logger.info(f"Retrieved {len(messages)} messages for job {job_id}")
+
+    return MessageThreadResponse(
+        job_id=job.job_id,
+        messages=messages
+    )
+
+
+@router.post("/{job_id}/send-message", response_model=SendMessageResponse, status_code=status.HTTP_201_CREATED)
+async def send_developer_message(
+    job_id: str,
+    message_request: SendMessageRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+) -> SendMessageResponse:
+    """
+    Send a message from developer to agent.
+
+    Allows developers to communicate with agents working on jobs.
+    Messages are added to the job's messages JSONB array.
+
+    Args:
+        job_id: Job ID to send message to
+        message_request: Message content
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Sent message details
+
+    Raises:
+        HTTPException: 404 if job not found
+        HTTPException: 400 if content is empty
+    """
+    logger.debug(f"User {current_user.username} sending message to job {job_id}")
+
+    # Validate content
+    if not message_request.content or not message_request.content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content cannot be empty"
+        )
+
+    # Query job with tenant isolation
+    stmt = select(MCPAgentJob).where(
+        MCPAgentJob.job_id == job_id,
+        MCPAgentJob.tenant_key == current_user.tenant_key
+    )
+    result = await db.execute(stmt)
+    job = result.scalar_one_or_none()
+
+    if not job:
+        logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Create message
+    from datetime import datetime, timezone
+    message = {
+        "from": "developer",
+        "content": message_request.content,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "pending"
+    }
+
+    # Add message to job
+    job.messages = (job.messages or []) + [message]
+
+    await db.commit()
+    await db.refresh(job)
+
+    # Message ID is the index in the messages array
+    message_id = str(len(job.messages) - 1)
+
+    logger.info(f"Sent developer message to job {job_id} (message_id={message_id})")
+
+    return SendMessageResponse(
+        message_id=message_id,
+        from_="developer",
+        content=message["content"],
+        timestamp=message["timestamp"],
+        status=message["status"]
     )

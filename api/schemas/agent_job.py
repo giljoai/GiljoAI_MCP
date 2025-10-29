@@ -208,3 +208,98 @@ class JobFailResponse(BaseModel):
     message: str = Field(..., description="Success message")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Kanban Board Schemas (Handover 0066)
+
+class MessageCounts(BaseModel):
+    """
+    Schema for message counts in Kanban board.
+    """
+    unread_messages: int = Field(..., description="Count of unread messages (status='pending')")
+    acknowledged_messages: int = Field(..., description="Count of acknowledged messages (status='acknowledged')")
+    sent_messages: int = Field(..., description="Count of sent messages (from='developer' or from='user')")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class KanbanJobCard(BaseModel):
+    """
+    Schema for a job card in Kanban board.
+    """
+    job_id: str = Field(..., description="Unique job identifier")
+    agent_type: str = Field(..., description="Agent type")
+    mission: str = Field(..., description="Agent mission/instructions")
+    status: str = Field(..., description="Job status")
+    acknowledged: bool = Field(..., description="Has job been acknowledged by agent")
+    started_at: Optional[datetime] = Field(None, description="Job start timestamp")
+    completed_at: Optional[datetime] = Field(None, description="Job completion timestamp")
+    created_at: datetime = Field(..., description="Job creation timestamp")
+    message_counts: MessageCounts = Field(..., description="Message counts for this job")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class KanbanColumn(BaseModel):
+    """
+    Schema for a Kanban column.
+    """
+    status: str = Field(..., description="Column status: pending, active, completed, blocked")
+    jobs: list[KanbanJobCard] = Field(..., description="Jobs in this column")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class KanbanBoardResponse(BaseModel):
+    """
+    Schema for Kanban board response (GET /api/agent-jobs/kanban/{project_id}).
+    """
+    project_id: str = Field(..., description="Project ID")
+    columns: list[KanbanColumn] = Field(..., description="Kanban columns (4: pending, active, completed, blocked)")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MessageThreadItem(BaseModel):
+    """
+    Schema for a message in the thread.
+    """
+    message_id: str = Field(..., description="Message ID (index in messages array)")
+    from_: str = Field(..., alias="from", description="Message sender: developer, agent, user, system")
+    content: str = Field(..., description="Message content")
+    timestamp: str = Field(..., description="Message timestamp (ISO format)")
+    status: str = Field(..., description="Message status: pending, acknowledged")
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class MessageThreadResponse(BaseModel):
+    """
+    Schema for message thread response (GET /api/agent-jobs/{job_id}/message-thread).
+    """
+    job_id: str = Field(..., description="Job ID")
+    messages: list[MessageThreadItem] = Field(..., description="Messages in chronological order")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SendMessageRequest(BaseModel):
+    """
+    Schema for sending a message (POST /api/agent-jobs/{job_id}/send-message).
+    """
+    content: str = Field(..., min_length=1, description="Message content")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SendMessageResponse(BaseModel):
+    """
+    Schema for send message response.
+    """
+    message_id: str = Field(..., description="Created message ID")
+    from_: str = Field(..., alias="from", description="Message sender (developer)")
+    content: str = Field(..., description="Message content")
+    timestamp: str = Field(..., description="Message timestamp (ISO format)")
+    status: str = Field(..., description="Message status (pending)")
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
