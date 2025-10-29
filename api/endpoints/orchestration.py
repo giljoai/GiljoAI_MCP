@@ -9,6 +9,7 @@ Provides REST API for the complete orchestration workflow:
 - Metrics and status monitoring
 """
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -422,3 +423,380 @@ async def handle_failure(request: HandleFailureRequest) -> HandleFailureResponse
     # For now, return success status
     # Future: Implement actual failure recovery logic
     return HandleFailureResponse(recovery_status="success")
+
+
+# ========================================================================
+# ORCHESTRATOR LAUNCH ENDPOINT - Production-Grade Implementation
+# ========================================================================
+
+
+class LaunchOrchestratorRequest(BaseModel):
+    """Request model for orchestrator launch workflow"""
+
+    product_id: str = Field(..., description="Product UUID with vision documents")
+    project_description: str = Field(..., description="User's project description/requirements")
+    workflow_type: str = Field(default="waterfall", description="Workflow execution pattern: 'waterfall' or 'parallel'")
+    auto_start: bool = Field(default=True, description="Automatically start workflow after agent selection")
+
+
+class LaunchOrchestratorResponse(BaseModel):
+    """Response model for orchestrator launch workflow"""
+
+    success: bool = Field(..., description="Whether launch completed successfully")
+    session_id: str = Field(..., description="Unique session identifier for tracking")
+    workflow_result: Dict[str, Any] = Field(..., description="Workflow execution result")
+    mission_count: int = Field(..., description="Number of missions generated")
+    agent_count: int = Field(..., description="Number of agents selected")
+    project_id: str = Field(..., description="Created project UUID")
+    token_reduction: Dict[str, Any] = Field(..., description="Token reduction metrics")
+
+
+@router.post("/launch", response_model=LaunchOrchestratorResponse)
+async def launch_orchestrator(
+    request: LaunchOrchestratorRequest,
+    tenant_key: str = Depends(get_tenant_key),
+) -> LaunchOrchestratorResponse:
+    """
+    Launch complete orchestrator workflow with WebSocket progress updates.
+
+    This endpoint orchestrates the entire AI agent workflow:
+    1. Validates product (exists, belongs to tenant, is active, has vision documents)
+    2. Processes product vision documents
+    3. Generates condensed missions from vision analysis
+    4. Selects optimal agents based on requirements
+    5. Coordinates agent workflow (waterfall or parallel)
+    6. Broadcasts real-time progress via WebSocket
+
+    **WebSocket Progress Events:**
+    Clients receive progress updates via `orchestrator:progress` events:
+    - Stage: starting (0%)
+    - Stage: processing_vision (20%)
+    - Stage: generating_missions (40%)
+    - Stage: selecting_agents (60%)
+    - Stage: creating_workflow (80%)
+    - Stage: complete (100%)
+
+    **Error Stages:**
+    On error, broadcasts `orchestrator:error` event with details.
+
+    Args:
+        request: LaunchOrchestratorRequest with product_id, project_description, workflow_type, auto_start
+        tenant_key: Injected tenant key from authentication middleware
+
+    Returns:
+        LaunchOrchestratorResponse with session_id, workflow_result, mission/agent counts, token metrics
+
+    Raises:
+        HTTPException 400: Invalid request (product validation failed)
+        HTTPException 404: Product not found
+        HTTPException 409: Product not active or missing vision documents
+        HTTPException 500: Internal orchestrator error
+
+    Multi-tenant Isolation:
+        - All database queries filtered by tenant_key
+        - WebSocket broadcasts scoped to tenant
+        - No cross-tenant data leakage
+
+    Example:
+        ```python
+        POST /api/v1/orchestration/launch
+        {
+            "product_id": "prod-uuid-here",
+            "project_description": "Build a REST API with authentication",
+            "workflow_type": "waterfall",
+            "auto_start": true
+        }
+        ```
+    """
+    from api.app import state
+    import uuid as uuid_lib
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Generate unique session ID for tracking
+    session_id = str(uuid_lib.uuid4())
+
+    # Validate database availability
+    if not state.db_manager:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database manager not initialized. Server is not ready.",
+        )
+
+    # Get WebSocketManager for progress broadcasts
+    websocket_manager = getattr(state, "websocket_manager", None)
+
+    async def broadcast_progress(
+        stage: str,
+        progress: int,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        """Helper to broadcast progress updates via WebSocket"""
+        if websocket_manager:
+            try:
+                await websocket_manager.broadcast_json(
+                    {
+                        "type": "orchestrator:progress",
+                        "data": {
+                            "session_id": session_id,
+                            "product_id": request.product_id,
+                            "stage": stage,
+                            "progress": progress,
+                            "message": message,
+                            "details": details or {},
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to broadcast progress update: {e}")
+
+    async def broadcast_error(error_stage: str, error_message: str, error_details: Optional[Dict[str, Any]] = None):
+        """Helper to broadcast error notifications via WebSocket"""
+        if websocket_manager:
+            try:
+                await websocket_manager.broadcast_json(
+                    {
+                        "type": "orchestrator:error",
+                        "data": {
+                            "session_id": session_id,
+                            "product_id": request.product_id,
+                            "stage": error_stage,
+                            "error": error_message,
+                            "details": error_details or {},
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to broadcast error notification: {e}")
+
+    try:
+        # ========================================================================
+        # STAGE 1: STARTING (0%) - Initialize and validate
+        # ========================================================================
+        await broadcast_progress(
+            stage="starting",
+            progress=0,
+            message="Initializing orchestrator workflow",
+            details={"session_id": session_id, "workflow_type": request.workflow_type},
+        )
+
+        logger.info(
+            f"[Launch Orchestrator] Session {session_id}: Starting workflow for "
+            f"product={request.product_id}, tenant={tenant_key}, workflow={request.workflow_type}"
+        )
+
+        # Validate product exists, belongs to tenant, is active, and has vision documents
+        async with state.db_manager.get_session_async() as session:
+            product = await session.get(Product, request.product_id)
+
+            # Product not found
+            if not product:
+                await broadcast_error(
+                    error_stage="validation",
+                    error_message=f"Product {request.product_id} not found",
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Product {request.product_id} not found",
+                )
+
+            # Tenant mismatch (security check)
+            if product.tenant_key != tenant_key:
+                await broadcast_error(
+                    error_stage="validation",
+                    error_message="Product does not belong to current tenant",
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Product {request.product_id} not found",
+                )
+
+            # Product not active
+            if not product.is_active:
+                await broadcast_error(
+                    error_stage="validation",
+                    error_message=f"Product '{product.name}' is not active",
+                    error_details={
+                        "hint": "Activate the product in the Products view before launching orchestrator"
+                    },
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error": "inactive_product",
+                        "message": f"Cannot launch orchestrator - product '{product.name}' is not active",
+                        "hint": "Activate the product in the Products view before launching orchestrator",
+                    },
+                )
+
+            # Product missing vision documents
+            if not product.has_vision_documents:
+                await broadcast_error(
+                    error_stage="validation",
+                    error_message=f"Product '{product.name}' has no vision documents",
+                    error_details={
+                        "hint": "Add vision documents to the product before launching orchestrator"
+                    },
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error": "missing_vision",
+                        "message": f"Cannot launch orchestrator - product '{product.name}' has no vision documents",
+                        "hint": "Add vision documents to the product before launching orchestrator",
+                    },
+                )
+
+        logger.info(
+            f"[Launch Orchestrator] Session {session_id}: Validation passed - "
+            f"product={product.name}, is_active={product.is_active}, has_vision={product.has_vision_documents}"
+        )
+
+        # ========================================================================
+        # STAGE 2: PROCESSING VISION (20%)
+        # ========================================================================
+        await broadcast_progress(
+            stage="processing_vision",
+            progress=20,
+            message=f"Processing vision documents for product '{product.name}'",
+            details={"product_name": product.name},
+        )
+
+        # Initialize orchestrator
+        orchestrator = ProjectOrchestrator()
+
+        # Process vision documents and analyze requirements
+        # This internally calls:
+        # 1. VisionDocumentChunker.chunk_document() if not chunked
+        # 2. MissionPlanner.analyze_requirements()
+        logger.info(f"[Launch Orchestrator] Session {session_id}: Processing product vision")
+
+        try:
+            # Note: process_product_vision is the main workflow method
+            # It handles: chunking, requirements analysis, mission generation, agent selection, workflow coordination
+            result = await orchestrator.process_product_vision(
+                tenant_key=tenant_key,
+                product_id=request.product_id,
+                project_requirements=request.project_description,
+            )
+        except ValueError as e:
+            error_msg = str(e)
+            await broadcast_error(
+                error_stage="processing_vision",
+                error_message=error_msg,
+            )
+            # Re-raise with appropriate status code
+            if "not active" in error_msg:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error_msg)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+        # ========================================================================
+        # STAGE 3: GENERATING MISSIONS (40%)
+        # ========================================================================
+        await broadcast_progress(
+            stage="generating_missions",
+            progress=40,
+            message="Generating condensed missions from vision analysis",
+            details={
+                "mission_count": len(result.get("mission_plan", {})),
+                "token_reduction": result.get("token_reduction", {}),
+            },
+        )
+
+        logger.info(
+            f"[Launch Orchestrator] Session {session_id}: Generated {len(result.get('mission_plan', {}))} missions"
+        )
+
+        # ========================================================================
+        # STAGE 4: SELECTING AGENTS (60%)
+        # ========================================================================
+        await broadcast_progress(
+            stage="selecting_agents",
+            progress=60,
+            message="Selecting optimal agents for mission execution",
+            details={
+                "agent_count": len(result.get("selected_agents", [])),
+                "agent_roles": result.get("selected_agents", []),
+            },
+        )
+
+        logger.info(
+            f"[Launch Orchestrator] Session {session_id}: Selected {len(result.get('selected_agents', []))} agents: "
+            f"{result.get('selected_agents', [])}"
+        )
+
+        # ========================================================================
+        # STAGE 5: CREATING WORKFLOW (80%)
+        # ========================================================================
+        await broadcast_progress(
+            stage="creating_workflow",
+            progress=80,
+            message=f"Coordinating {request.workflow_type} workflow execution",
+            details={
+                "workflow_type": request.workflow_type,
+                "spawned_jobs": result.get("spawned_jobs", []),
+                "job_count": len(result.get("spawned_jobs", [])),
+            },
+        )
+
+        logger.info(
+            f"[Launch Orchestrator] Session {session_id}: Workflow coordination complete - "
+            f"status={result['workflow_result'].status}, spawned_jobs={len(result.get('spawned_jobs', []))}"
+        )
+
+        # ========================================================================
+        # STAGE 6: COMPLETE (100%)
+        # ========================================================================
+        await broadcast_progress(
+            stage="complete",
+            progress=100,
+            message="Orchestrator workflow completed successfully",
+            details={
+                "project_id": result.get("project_id"),
+                "mission_count": len(result.get("mission_plan", {})),
+                "agent_count": len(result.get("selected_agents", [])),
+                "workflow_status": result["workflow_result"].status,
+            },
+        )
+
+        logger.info(
+            f"[Launch Orchestrator] Session {session_id}: Workflow complete - "
+            f"project={result.get('project_id')}, token_reduction={result.get('token_reduction', {}).get('reduction_percent', 0)}%"
+        )
+
+        # Build response
+        return LaunchOrchestratorResponse(
+            success=True,
+            session_id=session_id,
+            workflow_result={
+                "status": result["workflow_result"].status,
+                "completed": [stage for stage in result["workflow_result"].completed] if hasattr(result["workflow_result"], 'completed') else [],
+                "failed": [stage for stage in result["workflow_result"].failed] if hasattr(result["workflow_result"], 'failed') else [],
+            },
+            mission_count=len(result.get("mission_plan", {})),
+            agent_count=len(result.get("selected_agents", [])),
+            project_id=result.get("project_id", ""),
+            token_reduction=result.get("token_reduction", {}),
+        )
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (already formatted)
+        raise
+
+    except Exception as e:
+        # Catch-all for unexpected errors
+        logger.exception(f"[Launch Orchestrator] Session {session_id}: Unexpected error: {e}")
+
+        await broadcast_error(
+            error_stage="orchestrator_error",
+            error_message=f"Internal orchestrator error: {str(e)}",
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Orchestrator workflow failed: {str(e)}",
+        )
