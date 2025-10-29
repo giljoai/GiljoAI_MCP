@@ -22,7 +22,7 @@ from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,22 +39,21 @@ from src.giljo_mcp.models import MCPAgentJob, User, Project, Product
 async def api_client() -> AsyncGenerator[AsyncClient, None]:
     """Create async HTTP client for API testing."""
     app = create_app()
+    transport = ASGITransport(app=app)
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
 
 @pytest_asyncio.fixture
 async def admin_user(db_session: AsyncSession) -> User:
     """Create admin user for testing."""
-    from src.giljo_mcp.auth.auth_manager import AuthManager
-
-    auth_manager = AuthManager(None)
+    from passlib.hash import bcrypt
 
     user = User(
         username="admin_kanban",
         email="admin_kanban@test.com",
-        password_hash=auth_manager.hash_password("test_password"),
+        password_hash=bcrypt.hash("test_password"),
         role="admin",
         tenant_key="kanban_tenant",
         is_active=True
@@ -70,14 +69,12 @@ async def admin_user(db_session: AsyncSession) -> User:
 @pytest_asyncio.fixture
 async def regular_user(db_session: AsyncSession) -> User:
     """Create regular user for testing."""
-    from src.giljo_mcp.auth.auth_manager import AuthManager
-
-    auth_manager = AuthManager(None)
+    from passlib.hash import bcrypt
 
     user = User(
         username="user_kanban",
         email="user_kanban@test.com",
-        password_hash=auth_manager.hash_password("test_password"),
+        password_hash=bcrypt.hash("test_password"),
         role="user",
         tenant_key="kanban_tenant",
         is_active=True
@@ -93,14 +90,12 @@ async def regular_user(db_session: AsyncSession) -> User:
 @pytest_asyncio.fixture
 async def other_tenant_user(db_session: AsyncSession) -> User:
     """Create user from different tenant for isolation testing."""
-    from src.giljo_mcp.auth.auth_manager import AuthManager
-
-    auth_manager = AuthManager(None)
+    from passlib.hash import bcrypt
 
     user = User(
         username="other_tenant_kanban",
         email="other_kanban@test.com",
-        password_hash=auth_manager.hash_password("test_password"),
+        password_hash=bcrypt.hash("test_password"),
         role="admin",
         tenant_key="other_tenant",
         is_active=True
@@ -138,6 +133,7 @@ async def test_project(db_session: AsyncSession, admin_user: User, test_product:
         product_id=test_product.id,
         name="Test Project",
         description="Test project for Kanban",
+        mission="Test mission for Kanban project",
         status="active"
     )
 
@@ -287,7 +283,8 @@ async def test_get_kanban_board_success(
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
     app.dependency_overrides[get_db_session] = lambda: db_session
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(f"/api/agent-jobs/kanban/{test_project.id}")
 
     assert response.status_code == 200
@@ -330,7 +327,8 @@ async def test_get_kanban_board_message_counts(
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
     app.dependency_overrides[get_db_session] = lambda: db_session
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(f"/api/agent-jobs/kanban/{test_project.id}")
 
     assert response.status_code == 200
@@ -358,7 +356,8 @@ async def test_get_kanban_board_project_not_found(
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
     app.dependency_overrides[get_db_session] = lambda: db_session
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/api/agent-jobs/kanban/nonexistent-id")
 
     assert response.status_code == 404
@@ -379,7 +378,8 @@ async def test_get_kanban_board_multi_tenant_isolation(
     app.dependency_overrides[get_current_active_user] = override_get_current_user(other_tenant_user)
     app.dependency_overrides[get_db_session] = lambda: db_session
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(f"/api/agent-jobs/kanban/{test_project.id}")
 
     assert response.status_code == 404  # Different tenant cannot see project
@@ -401,7 +401,8 @@ async def test_get_message_thread_success(
 
     job = kanban_jobs["active"][0]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(f"/api/agent-jobs/{job.job_id}/message-thread")
 
     assert response.status_code == 200
@@ -433,7 +434,8 @@ async def test_get_message_thread_chronological_order(
 
     job = kanban_jobs["active"][0]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(f"/api/agent-jobs/{job.job_id}/message-thread")
 
     assert response.status_code == 200
@@ -458,7 +460,8 @@ async def test_get_message_thread_job_not_found(
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
     app.dependency_overrides[get_db_session] = lambda: db_session
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/api/agent-jobs/nonexistent-job-id/message-thread")
 
     assert response.status_code == 404
@@ -479,7 +482,8 @@ async def test_get_message_thread_multi_tenant_isolation(
 
     job = kanban_jobs["active"][0]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(f"/api/agent-jobs/{job.job_id}/message-thread")
 
     assert response.status_code == 404  # Different tenant cannot access
@@ -501,7 +505,8 @@ async def test_send_message_success(
 
     job = kanban_jobs["active"][0]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             f"/api/agent-jobs/{job.job_id}/send-message",
             json={"content": "Test developer message"}
@@ -538,7 +543,8 @@ async def test_send_message_empty_content(
 
     job = kanban_jobs["active"][0]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             f"/api/agent-jobs/{job.job_id}/send-message",
             json={"content": ""}
@@ -558,7 +564,8 @@ async def test_send_message_job_not_found(
     app.dependency_overrides[get_current_active_user] = override_get_current_user(admin_user)
     app.dependency_overrides[get_db_session] = lambda: db_session
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             "/api/agent-jobs/nonexistent-job-id/send-message",
             json={"content": "Test message"}
@@ -581,7 +588,8 @@ async def test_send_message_multi_tenant_isolation(
 
     job = kanban_jobs["active"][0]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             f"/api/agent-jobs/{job.job_id}/send-message",
             json={"content": "Test message"}
@@ -613,7 +621,8 @@ async def test_send_message_regular_user_access(
     await db_session.commit()
     await db_session.refresh(job)
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             f"/api/agent-jobs/{job.job_id}/send-message",
             json={"content": "Regular user message"}
