@@ -1,0 +1,130 @@
+"""
+Prompt Generation API Pydantic schemas for Handover 0073: Static Agent Grid.
+
+Provides request/response models for:
+- Orchestrator prompt generation (Claude Code, Codex, Gemini)
+- Agent prompt generation (universal terminal prompts)
+"""
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+# Prompt Generation Schemas
+
+class OrchestratorPromptResponse(BaseModel):
+    """
+    Schema for orchestrator prompt generation response.
+    GET /api/prompts/orchestrator/{tool}
+    """
+    prompt: str = Field(..., description="Multi-line bash commands for orchestrator invocation")
+    tool: str = Field(..., description="Tool type: claude-code, codex, gemini")
+    instructions: str = Field(..., description="Human-readable instructions for using the prompt")
+    project_name: str = Field(..., description="Project name")
+    project_id: str = Field(..., description="Project ID")
+    agent_count: int = Field(..., description="Number of agents in project")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AgentPromptResponse(BaseModel):
+    """
+    Schema for agent prompt generation response.
+    GET /api/prompts/agent/{agent_id}
+    """
+    prompt: str = Field(..., description="Multi-line bash commands for agent execution")
+    agent_id: str = Field(..., description="Agent job ID")
+    agent_name: str = Field(..., description="Agent display name")
+    agent_type: str = Field(..., description="Agent type")
+    tool_type: str = Field(..., description="Tool assigned: claude-code, codex, gemini, universal")
+    instructions: str = Field(..., description="Human-readable instructions for using the prompt")
+    mission_preview: str = Field(..., description="First 200 chars of mission")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Broadcast Messaging Schemas
+
+class BroadcastMessageRequest(BaseModel):
+    """
+    Schema for broadcasting a message to all agents in a project.
+    POST /api/agent-jobs/broadcast
+    """
+    project_id: str = Field(..., min_length=1, description="Project ID to broadcast to")
+    content: str = Field(..., min_length=1, max_length=10000, description="Message content (max 10000 chars)")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BroadcastMessageResponse(BaseModel):
+    """
+    Schema for broadcast message response.
+    """
+    broadcast_id: str = Field(..., description="Unique broadcast identifier (UUID)")
+    message_ids: list[str] = Field(..., description="List of created message IDs")
+    agent_count: int = Field(..., description="Number of agents messaged")
+    timestamp: str = Field(..., description="Broadcast timestamp (ISO format)")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Project Closeout Schemas
+
+class AgentStatusSummary(BaseModel):
+    """
+    Schema for agent status counts in closeout check.
+    """
+    complete: int = Field(..., description="Count of completed agents")
+    failed: int = Field(..., description="Count of failed agents")
+    active: int = Field(..., description="Count of active agents (working, preparing, review)")
+    blocked: int = Field(..., description="Count of blocked agents")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectCanCloseResponse(BaseModel):
+    """
+    Schema for project closeout readiness check.
+    GET /api/projects/{project_id}/can-close
+    """
+    can_close: bool = Field(..., description="Whether project can be closed")
+    summary: str | None = Field(None, description="AI-generated summary (if can_close=True)")
+    agent_statuses: AgentStatusSummary = Field(..., description="Breakdown of agent statuses")
+    all_agents_finished: bool = Field(..., description="Whether all agents have finished")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectCloseoutPromptResponse(BaseModel):
+    """
+    Schema for project closeout prompt generation.
+    POST /api/projects/{project_id}/generate-closeout
+    """
+    prompt: str = Field(..., description="Multi-line bash script for closeout")
+    checklist: list[str] = Field(..., description="Closeout checklist items")
+    project_name: str = Field(..., description="Project name")
+    agent_summary: str = Field(..., description="Summary of agent work")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectCompleteRequest(BaseModel):
+    """
+    Schema for completing a project.
+    POST /api/projects/{project_id}/complete
+    """
+    confirm_closeout: bool = Field(..., description="Must be True to confirm closeout")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectCompleteResponse(BaseModel):
+    """
+    Schema for project completion response.
+    """
+    success: bool = Field(..., description="Whether project was successfully completed")
+    completed_at: str = Field(..., description="Completion timestamp (ISO format)")
+    retired_agents: int = Field(..., description="Number of agents retired")
+
+    model_config = ConfigDict(from_attributes=True)
