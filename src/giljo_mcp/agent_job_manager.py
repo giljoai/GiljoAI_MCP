@@ -34,18 +34,22 @@ class AgentJobManager:
     Valid status transitions:
     - pending -> active (via acknowledge_job)
     - pending -> failed (via fail_job)
+    - pending -> blocked (via fail_job, Handover 0066)
     - active -> completed (via complete_job)
     - active -> failed (via fail_job)
+    - active -> blocked (via fail_job, Handover 0066)
     - completed -> [terminal state, no transitions]
     - failed -> [terminal state, no transitions]
+    - blocked -> [terminal state, no transitions] (Handover 0066)
     """
 
     # Valid status transitions
     VALID_TRANSITIONS = {
-        "pending": {"active", "failed"},
-        "active": {"completed", "failed"},
+        "pending": {"active", "failed", "blocked"},
+        "active": {"completed", "failed", "blocked"},
         "completed": set(),  # Terminal state
         "failed": set(),  # Terminal state
+        "blocked": set(),  # Terminal state (Handover 0066)
     }
 
     def __init__(self, db_manager: DatabaseManager):

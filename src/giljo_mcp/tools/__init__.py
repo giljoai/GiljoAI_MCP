@@ -7,6 +7,7 @@ from .agent import register_agent_tools
 from .agent_communication import register_agent_communication_tools
 from .agent_coordination import register_agent_coordination_tools
 from .agent_coordination_external import register_external_agent_coordination_tools
+from .agent_job_status import register_agent_job_status_tools
 from .context import register_context_tools
 from .message import register_message_tools
 from .optimization import register_optimization_tools
@@ -19,6 +20,7 @@ __all__ = [
     "register_agent_tools",
     "register_agent_communication_tools",
     "register_agent_coordination_tools",
+    "register_agent_job_status_tools",
     "register_external_agent_coordination_tools",
     "register_context_tools",
     "register_git_tools",

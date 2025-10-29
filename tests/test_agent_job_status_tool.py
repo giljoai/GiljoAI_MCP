@@ -35,12 +35,6 @@ def db_manager():
 
 
 @pytest.fixture
-def tenant_manager(db_manager):
-    """Create a tenant manager for testing."""
-    return TenantManager(db_manager)
-
-
-@pytest.fixture
 def job_manager(db_manager):
     """Create an AgentJobManager for testing."""
     return AgentJobManager(db_manager)
@@ -53,13 +47,9 @@ def mcp_server():
 
 
 @pytest.fixture
-def test_tenant(db_manager, tenant_manager):
-    """Create a test tenant."""
-    tenant = tenant_manager.create_tenant(
-        name="Test Tenant",
-        description="Test tenant for agent job status tests"
-    )
-    return tenant.tenant_key
+def test_tenant():
+    """Create a test tenant key."""
+    return TenantManager.generate_tenant_key()
 
 
 @pytest.fixture
@@ -83,8 +73,7 @@ class TestUpdateJobStatusValidation:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Try invalid status
         result = await mcp.call_tool(
@@ -103,8 +92,7 @@ class TestUpdateJobStatusValidation:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         result = await mcp.call_tool(
             "update_job_status",
@@ -122,8 +110,7 @@ class TestUpdateJobStatusValidation:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         fake_job_id = str(uuid4())
         result = await mcp.call_tool(
@@ -146,8 +133,7 @@ class TestUpdateJobStatusTransitions:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Verify initial state
         assert test_job.status == "pending"
@@ -186,8 +172,7 @@ class TestUpdateJobStatusTransitions:
         job = job_manager.acknowledge_job(test_tenant, job.job_id)
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Update to completed
         result = await mcp.call_tool(
@@ -221,8 +206,7 @@ class TestUpdateJobStatusTransitions:
         job = job_manager.acknowledge_job(test_tenant, job.job_id)
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Update to blocked with reason
         reason = "Need database schema clarification"
@@ -251,8 +235,7 @@ class TestUpdateJobStatusTransitions:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         reason = "Insufficient context to start work"
         result = await mcp.call_tool(
@@ -273,29 +256,29 @@ class TestUpdateJobStatusMultiTenant:
     """Test multi-tenant isolation for update_job_status."""
 
     @pytest.mark.asyncio
-    async def test_cannot_update_other_tenant_job(self, db_manager, tenant_manager, job_manager):
+    async def test_cannot_update_other_tenant_job(self, db_manager, job_manager):
         """Test that a tenant cannot update another tenant's job."""
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         # Create two tenants
-        tenant1 = tenant_manager.create_tenant(name="Tenant 1", description="First tenant")
-        tenant2 = tenant_manager.create_tenant(name="Tenant 2", description="Second tenant")
+        tenant1_key = TenantManager.generate_tenant_key()
+        tenant2_key = TenantManager.generate_tenant_key()
 
         # Create job for tenant1
         job = job_manager.create_job(
-            tenant_key=tenant1.tenant_key,
+            tenant_key=tenant1_key,
             agent_type="implementer",
             mission="Tenant 1 mission"
         )
 
         mcp = FastMCP("test-server")
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Try to update with tenant2's key
         result = await mcp.call_tool(
             "update_job_status",
             job_id=job.job_id,
-            tenant_key=tenant2.tenant_key,
+            tenant_key=tenant2_key,
             new_status="active"
         )
 
@@ -303,26 +286,26 @@ class TestUpdateJobStatusMultiTenant:
         assert "not found" in result["error"].lower()
 
         # Verify job was not updated
-        original_job = job_manager.get_job(tenant1.tenant_key, job.job_id)
+        original_job = job_manager.get_job(tenant1_key, job.job_id)
         assert original_job.status == "pending"
 
     @pytest.mark.asyncio
-    async def test_tenant_isolation_in_queries(self, db_manager, tenant_manager, job_manager):
+    async def test_tenant_isolation_in_queries(self, db_manager, job_manager):
         """Test that jobs are properly isolated by tenant."""
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         # Create two tenants with same-named jobs
-        tenant1 = tenant_manager.create_tenant(name="Tenant A", description="First tenant")
-        tenant2 = tenant_manager.create_tenant(name="Tenant B", description="Second tenant")
+        tenant1_key = TenantManager.generate_tenant_key()
+        tenant2_key = TenantManager.generate_tenant_key()
 
         job1 = job_manager.create_job(
-            tenant_key=tenant1.tenant_key,
+            tenant_key=tenant1_key,
             agent_type="implementer",
             mission="Mission for Tenant A"
         )
 
         job2 = job_manager.create_job(
-            tenant_key=tenant2.tenant_key,
+            tenant_key=tenant2_key,
             agent_type="implementer",
             mission="Mission for Tenant B"
         )
@@ -334,7 +317,7 @@ class TestUpdateJobStatusMultiTenant:
         result1 = await mcp.call_tool(
             "update_job_status",
             job_id=job1.job_id,
-            tenant_key=tenant1.tenant_key,
+            tenant_key=tenant1_key,
             new_status="active"
         )
 
@@ -342,7 +325,7 @@ class TestUpdateJobStatusMultiTenant:
         result2 = await mcp.call_tool(
             "update_job_status",
             job_id=job2.job_id,
-            tenant_key=tenant2.tenant_key,
+            tenant_key=tenant2_key,
             new_status="completed"
         )
 
@@ -350,8 +333,8 @@ class TestUpdateJobStatusMultiTenant:
         assert result2["success"] is True
 
         # Verify each tenant only sees their own job status
-        updated_job1 = job_manager.get_job(tenant1.tenant_key, job1.job_id)
-        updated_job2 = job_manager.get_job(tenant2.tenant_key, job2.job_id)
+        updated_job1 = job_manager.get_job(tenant1_key, job1.job_id)
+        updated_job2 = job_manager.get_job(tenant2_key, job2.job_id)
 
         assert updated_job1.status == "active"
         assert updated_job2.status == "completed"
@@ -372,8 +355,7 @@ class TestUpdateJobStatusTimestamps:
         )
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # First transition to active
         result1 = await mcp.call_tool(
@@ -407,8 +389,7 @@ class TestUpdateJobStatusTimestamps:
         job1 = job_manager.acknowledge_job(test_tenant, job1.job_id)
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         result1 = await mcp.call_tool(
             "update_job_status",
@@ -446,8 +427,7 @@ class TestUpdateJobStatusReasonParameter:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         result = await mcp.call_tool(
             "update_job_status",
@@ -466,8 +446,7 @@ class TestUpdateJobStatusReasonParameter:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Reason provided but status is active (not blocked)
         result = await mcp.call_tool(
@@ -491,8 +470,7 @@ class TestUpdateJobStatusErrorHandling:
         from src.giljo_mcp.tools.agent_job_status import register_agent_job_status_tools
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Close database connection to simulate error
         db_manager.close()
@@ -519,8 +497,7 @@ class TestUpdateJobStatusErrorHandling:
         )
 
         mcp = FastMCP("test-server")
-        tenant_manager = TenantManager(db_manager)
-        register_agent_job_status_tools(mcp, db_manager, tenant_manager)
+        register_agent_job_status_tools(mcp, db_manager, TenantManager())
 
         # Simulate concurrent updates (in real scenario, would use asyncio.gather)
         result1 = await mcp.call_tool(
