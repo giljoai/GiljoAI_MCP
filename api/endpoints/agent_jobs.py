@@ -57,6 +57,7 @@ from api.schemas.agent_job import (
     SendMessageRequest,
     SendMessageResponse,
 )
+from api.schemas.prompt import BroadcastMessageRequest, BroadcastMessageResponse
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, Project, User
 
@@ -1249,4 +1250,140 @@ async def send_developer_message(
         content=message["content"],
         timestamp=message["timestamp"],
         status=message["status"]
+    )
+
+
+@router.post("/broadcast", response_model=BroadcastMessageResponse)
+async def broadcast_message(
+    message_request: BroadcastMessageRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Send message to ALL agents in a project (Handover 0073).
+
+    Broadcasts a message from the developer to every agent in the specified project.
+    Each agent receives the message in their messages array with a shared broadcast_id
+    for tracking purposes.
+
+    Args:
+        message_request: Broadcast request with project_id and content
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+
+    Returns:
+        BroadcastMessageResponse with broadcast_id, message_ids, and agent_count
+
+    Raises:
+        404: Project not found or not accessible
+        400: Message content invalid or empty
+        403: User not authorized to access project
+    """
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    logger.debug(f"User {current_user.username} broadcasting to project {message_request.project_id}")
+
+    # Validate content
+    if not message_request.content or not message_request.content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content cannot be empty"
+        )
+
+    if len(message_request.content) > 10000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content exceeds maximum length of 10000 characters"
+        )
+
+    # Verify project exists and user has access (multi-tenant isolation)
+    project_stmt = select(Project).where(
+        Project.id == message_request.project_id,
+        Project.tenant_key == current_user.tenant_key
+    )
+    project_result = await db.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
+
+    if not project:
+        logger.warning(f"Project {message_request.project_id} not found for tenant {current_user.tenant_key}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or not accessible"
+        )
+
+    # Get all agents in project (multi-tenant isolation)
+    agents_stmt = select(MCPAgentJob).where(
+        MCPAgentJob.project_id == message_request.project_id,
+        MCPAgentJob.tenant_key == current_user.tenant_key
+    )
+    agents_result = await db.execute(agents_stmt)
+    agents = agents_result.scalars().all()
+
+    if not agents:
+        logger.warning(f"No agents found in project {message_request.project_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No agents found in project"
+        )
+
+    # Generate broadcast ID for tracking
+    broadcast_id = str(uuid4())
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Create broadcast message template
+    broadcast_message = {
+        "id": "",  # Will be set per-agent
+        "broadcast_id": broadcast_id,
+        "from": "developer",
+        "to_agent": None,  # Broadcast to all
+        "content": message_request.content,
+        "timestamp": timestamp,
+        "status": "pending",
+        "type": "mcp_message",
+        "is_broadcast": True
+    }
+
+    # Broadcast to all agents
+    message_ids = []
+    for agent in agents:
+        # Create unique message ID for this agent
+        message_id = str(uuid4())
+        agent_message = {**broadcast_message, "id": message_id}
+
+        # Append to agent's messages array
+        agent.messages = (agent.messages or []) + [agent_message]
+        message_ids.append(message_id)
+
+    # Commit all changes
+    await db.commit()
+
+    logger.info(
+        f"Broadcast {broadcast_id} sent to {len(agents)} agents in project {message_request.project_id}"
+    )
+
+    # Broadcast WebSocket event (if available)
+    try:
+        from api.app import state
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_to_project(
+                message_request.project_id,
+                {
+                    "type": "message:broadcast",
+                    "broadcast_id": broadcast_id,
+                    "project_id": message_request.project_id,
+                    "agent_count": len(agents),
+                    "content_preview": message_request.content[:100],
+                    "timestamp": timestamp
+                }
+            )
+    except Exception as e:
+        logger.warning(f"Failed to broadcast WebSocket event: {e}")
+        # Don't fail the request if WebSocket broadcast fails
+
+    return BroadcastMessageResponse(
+        broadcast_id=broadcast_id,
+        message_ids=message_ids,
+        agent_count=len(agents),
+        timestamp=timestamp
     )
