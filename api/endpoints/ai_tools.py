@@ -163,15 +163,15 @@ async def list_supported_tools():
             id="codex",
             name="Codex CLI",
             config_format="command",
-            file_location="Terminal/PowerShell (Coming Soon)",
-            supported=False
+            file_location="Terminal/PowerShell",
+            supported=True
         ),
         AIToolInfo(
             id="gemini",
             name="Gemini CLI",
             config_format="command",
-            file_location="Terminal/PowerShell (Coming Soon)",
-            supported=False
+            file_location="Terminal/PowerShell",
+            supported=True
         )
     ]
 

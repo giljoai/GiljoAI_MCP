@@ -204,6 +204,21 @@
           <v-card-subtitle>Agent coding tools and native integrations (Admin overview)</v-card-subtitle>
 
           <v-card-text>
+            <!-- AI Tool Configuration Redirect Alert -->
+            <v-alert type="info" prominent class="mb-6" border="start">
+              <template v-slot:title>
+                <v-icon start>mdi-information</v-icon>
+                Configure AI Coding Tools
+              </template>
+              <div class="mt-2">
+                Users configure their AI coding tools (Claude Code, Codex CLI, Gemini CLI) in
+                <router-link to="/settings" class="text-primary font-weight-bold">
+                  My Settings → MCP Configuration
+                </router-link>.
+                This section provides an admin overview of available integrations.
+              </div>
+            </v-alert>
+
             <!-- Agent Coding Tools Section -->
             <h2 class="text-h5 mb-4">Agent Coding Tools</h2>
             

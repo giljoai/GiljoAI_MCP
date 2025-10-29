@@ -32,14 +32,12 @@ export function generateCodexConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
-  // Placeholder command - exact syntax pending Codex CLI documentation
-  // Expected format follows Claude Code pattern when available
-  const command = `# Codex CLI MCP Integration (Coming Soon)
-# Expected command format (pending official documentation):
+  // Native MCP integration via command-line
+  const command = `# Codex CLI MCP Integration
 codex mcp add --transport http giljo-mcp ${defaultServerUrl}/mcp --header "X-API-Key: ${apiKey}"
 
-# Note: This is a placeholder. Once Codex CLI MCP support is available,
-# the exact command syntax will be updated based on official documentation.`
+# Verify installation:
+# codex mcp list`
 
   return command
 }
@@ -54,14 +52,12 @@ export function generateGeminiConfig(apiKey, serverUrl = null) {
   // v3.0 Unified: Default to current host if no URL provided
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
-  // Placeholder command - exact syntax pending Gemini CLI documentation
-  // Expected format follows Claude Code pattern when available
-  const command = `# Gemini CLI MCP Integration (Coming Soon)
-# Expected command format (pending official documentation):
+  // Native MCP integration via command-line
+  const command = `# Gemini CLI MCP Integration
 gemini mcp add --transport http giljo-mcp ${defaultServerUrl}/mcp --header "X-API-Key: ${apiKey}"
 
-# Note: This is a placeholder. Once Gemini CLI MCP support is available,
-# the exact command syntax will be updated based on official documentation.`
+# Verify installation:
+# gemini mcp list`
 
   return command
 }
