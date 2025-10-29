@@ -304,23 +304,25 @@ async function generateConfig() {
       )
     } else if (selectedTool.value === 'codex') {
       configContent = generateCodexConfig(generatedApiKey.value, serverUrl)
-      fileLocation = 'Command Line (Terminal/PowerShell) - Coming Soon'
+      fileLocation = 'Command Line (Terminal/PowerShell)'
       downloadFilename = 'codex-setup.md'
       instructions.push(
-        'Codex CLI MCP integration is coming soon',
-        'The command syntax shown is a placeholder',
-        'Once Codex CLI supports MCP, update this configuration',
-        'Check Codex CLI documentation for the latest MCP support status'
+        'Open your terminal or command prompt',
+        'Copy the command shown above',
+        'Paste and run the command to configure Codex CLI',
+        'Verify connection with: codex mcp list',
+        'Start using GiljoAI tools in Codex sessions'
       )
     } else if (selectedTool.value === 'gemini') {
       configContent = generateGeminiConfig(generatedApiKey.value, serverUrl)
-      fileLocation = 'Command Line (Terminal/PowerShell) - Coming Soon'
+      fileLocation = 'Command Line (Terminal/PowerShell)'
       downloadFilename = 'gemini-setup.md'
       instructions.push(
-        'Gemini CLI MCP integration is coming soon',
-        'The command syntax shown is a placeholder',
-        'Once Gemini CLI supports MCP, update this configuration',
-        'Check Gemini CLI documentation for the latest MCP support status'
+        'Open your terminal or command prompt',
+        'Copy the command shown above',
+        'Paste and run the command to configure Gemini CLI',
+        'Verify connection with: gemini mcp list',
+        'Start using GiljoAI tools in Gemini sessions'
       )
     } else {
       configContent = generateGenericConfig(generatedApiKey.value, serverUrl)
