@@ -153,6 +153,13 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
 
+  // Handover 0062: Activate project
+  async function activateProject(id) {
+    const response = await api.projects.activate(id)
+    await fetchProjects() // Refresh list
+    return response.data
+  }
+
   async function deactivateProject(id) {
     loading.value = true
     error.value = null
