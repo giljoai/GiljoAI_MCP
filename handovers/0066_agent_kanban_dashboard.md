@@ -1,10 +1,17 @@
 ---
 Handover 0066: Agent Kanban Dashboard with Self-Navigation & Slack Communication
 Date: 2025-10-28
-Status: Ready for Implementation
-Priority: CRITICAL
+Status: SUPERSEDED BY PROJECT 0073
+Priority: DEPRECATED
 Complexity: HIGH
 Duration: 12-16 hours
+
+IMPORTANT: This project has been SUPERSEDED by Project 0073 (Static Agent Grid with Enhanced Messaging)
+See: handovers/0073_static_agent_grid_enhanced_messaging.md
+See: handovers/0073_SUPERSEDES_0062_0066.md
+
+The Kanban approach described below is DEPRECATED. The new vision uses a static agent grid
+with status badges instead of columns, unified MCP messaging, and proper multi-tool support.
 ---
 
 # Executive Summary

@@ -31,13 +31,13 @@ class TestAgentStatusTool:
         """Setup for each test method"""
         self.setup = tools_test_setup
         self.db_manager = tools_test_setup["db_manager"]
-        self.tenant_key = "test-tenant-" + str(uuid.uuid4())
 
         # Create test project
         async with self.db_manager.get_session_async() as session:
             self.project = await ToolsTestHelper.create_test_project(
-                session, "Agent Status Test Project", tenant_key=self.tenant_key
+                session, "Agent Status Test Project"
             )
+            self.tenant_key = self.project.tenant_key
 
     async def _create_test_job(self, session, status="waiting", progress=0):
         """Helper to create test agent job"""
