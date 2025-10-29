@@ -328,6 +328,36 @@ export const api = {
     toggle: (enabled) => apiClient.post('/api/serena/toggle', { enabled }),
   },
 
+  // Agent Jobs (Handover 0066 - Kanban Dashboard)
+  agentJobs: {
+    // Get Kanban board data for project
+    getKanbanBoard: (projectId) =>
+      apiClient.get(`/api/agent-jobs/kanban/${projectId}`),
+
+    // Get message thread for a specific job
+    getMessageThread: (jobId) =>
+      apiClient.get(`/api/agent-jobs/${jobId}/messages`),
+
+    // Send message to agent
+    sendMessage: (jobId, data) =>
+      apiClient.post(`/api/agent-jobs/${jobId}/send-message`, {
+        content: data.content,
+        to: data.to,
+      }),
+
+    // Get job details
+    getJob: (jobId) =>
+      apiClient.get(`/api/agent-jobs/${jobId}`),
+
+    // List jobs for project
+    listJobs: (projectId, params = {}) =>
+      apiClient.get(`/api/agent-jobs`, { params: { project_id: projectId, ...params } }),
+
+    // Get job status
+    getStatus: (jobId) =>
+      apiClient.get(`/api/agent-jobs/${jobId}/status`),
+  },
+
   // Orchestrator (Multi-Agent Workflow Coordination)
   orchestrator: {
     launch: (data) => apiClient.post('/api/v1/orchestration/launch', data),
