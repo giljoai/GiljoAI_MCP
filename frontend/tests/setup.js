@@ -27,10 +27,23 @@ vi.mock('**/*.css', () => ({
   default: ''
 }))
 
-// Stub out Vuetify plugin
+// Stub out Vuetify plugin and composables
 vi.mock('vuetify', () => ({
   createVuetify: () => ({
     install: () => {}
+  }),
+  useDisplay: () => ({
+    mobile: { value: false },
+    xs: { value: false },
+    sm: { value: false },
+    md: { value: false },
+    lg: { value: true },
+    xl: { value: false },
+    xxl: { value: false },
+    width: { value: 1920 },
+    height: { value: 1080 },
+    platform: { value: { android: false, ios: false, mac: false, touch: false, ssr: false } },
+    name: { value: 'lg' }
   })
 }))
 
@@ -51,12 +64,28 @@ config.global.stubs = {
   'v-row': { template: '<div><slot /></div>' },
   'v-col': { template: '<div><slot /></div>' },
   'v-card': { template: '<div><slot /></div>' },
+  'v-card-title': { template: '<div><slot /></div>' },
+  'v-card-text': { template: '<div><slot /></div>' },
+  'v-card-actions': { template: '<div><slot /></div>' },
   'v-stepper': { template: '<div><slot /></div>' },
   'v-progress-circular': { template: '<div>Progress</div>' },
-  'v-progress-linear': { template: '<div>Progress Linear</div>' },
+  'v-progress-linear': { template: '<div><slot /></div>' },
   'v-overlay': { template: '<div><slot /></div>' },
   'v-img': { template: '<div><slot /></div>' },
-  'v-card-title': { template: '<div><slot /></div>' },
+  'v-btn': { template: '<button><slot /></button>' },
+  'v-icon': { template: '<span><slot /></span>' },
+  'v-chip': { template: '<span><slot /></span>' },
+  'v-badge': { template: '<span><slot /></span>' },
+  'v-alert': { template: '<div><slot /></div>' },
+  'v-divider': { template: '<hr />' },
+  'v-dialog': { template: '<div><slot /></div>' },
+  'v-list': { template: '<div><slot /></div>' },
+  'v-list-item': { template: '<div><slot /></div>' },
+  'v-list-item-title': { template: '<div><slot /></div>' },
+  'v-checkbox': { template: '<input type="checkbox" />' },
+  'v-textarea': { template: '<textarea><slot /></textarea>' },
+  'v-spacer': { template: '<div></div>' },
+  'v-snackbar': { template: '<div><slot /></div>' },
   'v-stepper-window-item': { template: '<div><slot /></div>' }
 }
 
@@ -80,6 +109,29 @@ window.matchMedia = vi.fn().mockImplementation(query => ({
   removeListener: vi.fn(),
   addEventListener: vi.fn(),
   removeEventListener: vi.fn()
+}))
+
+// Mock document.execCommand for clipboard operations
+document.execCommand = vi.fn(() => true)
+
+// Mock API service
+vi.mock('@/services/api', () => ({
+  default: {
+    get: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock prompt text' } })),
+    post: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    put: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    delete: vi.fn(() => Promise.resolve({ data: { success: true } }))
+  }
+}))
+
+// Mock WebSocket service
+vi.mock('@/services/websocket', () => ({
+  webSocketService: {
+    on: vi.fn(),
+    off: vi.fn(),
+    send: vi.fn(),
+    isConnected: false
+  }
 }))
 
 // Reset mocks before each test
