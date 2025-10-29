@@ -157,6 +157,9 @@ export const api = {
     cancel: (id) => apiClient.post(`/api/v1/projects/${id}/cancel`),
     restore: (id) => apiClient.post(`/api/v1/projects/${id}/restore`),
     restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/restore-completed`),
+    // Handover 0062: Project launch and summary
+    summary: (id) => apiClient.get(`/api/v1/projects/${id}/summary`),
+    launch: (id) => apiClient.post(`/api/v1/projects/${id}/launch`),
   },
 
   // Agents
@@ -328,6 +331,7 @@ export const api = {
   // Orchestrator (Multi-Agent Workflow Coordination)
   orchestrator: {
     launch: (data) => apiClient.post('/api/v1/orchestration/launch', data),
+    launchProject: (data) => apiClient.post('/api/v1/orchestration/launch-project', data),
     getWorkflowStatus: (projectId) => apiClient.get(`/api/v1/orchestration/workflow-status/${projectId}`),
     getMetrics: (projectId) => apiClient.get(`/api/v1/orchestration/metrics/${projectId}`),
     createMissions: (data) => apiClient.post('/api/v1/orchestration/create-missions', data),

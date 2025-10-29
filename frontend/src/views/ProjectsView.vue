@@ -199,36 +199,65 @@
 
         <!-- Actions Column -->
         <template v-slot:item.actions="{ item }">
-          <v-menu>
-            <template v-slot:activator="{ props }">
-              <v-btn
-                icon="mdi-dots-vertical"
-                size="small"
-                variant="text"
-                v-bind="props"
-                aria-label="Project actions"
-              ></v-btn>
-            </template>
+          <div class="d-flex align-center justify-end ga-1">
+            <!-- Activate Button (only for inactive projects) -->
+            <v-btn
+              v-if="item.status === 'inactive'"
+              size="small"
+              color="success"
+              variant="tonal"
+              @click="activateProject(item.id)"
+              title="Activate project"
+            >
+              <v-icon start size="small">mdi-play</v-icon>
+              Activate
+            </v-btn>
 
-            <v-list density="compact" min-width="150">
-              <v-list-item
-                @click="viewProject(item)"
-                prepend-icon="mdi-eye"
-                title="View Details"
-              ></v-list-item>
-              <v-list-item
-                @click="editProject(item)"
-                prepend-icon="mdi-pencil"
-                title="Edit Project"
-              ></v-list-item>
-              <v-divider class="my-1" />
-              <v-list-item
-                @click="confirmDelete(item)"
-                prepend-icon="mdi-delete"
-                title="Delete Project"
-              ></v-list-item>
-            </v-list>
-          </v-menu>
+            <!-- Launch Button (only for active projects) -->
+            <v-btn
+              v-if="item.status === 'active'"
+              size="small"
+              color="primary"
+              variant="tonal"
+              @click="launchProject(item.id)"
+              title="Launch project"
+            >
+              <v-icon start size="small">mdi-rocket-launch</v-icon>
+              Launch
+            </v-btn>
+
+            <!-- Menu for other actions -->
+            <v-menu>
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  icon="mdi-dots-vertical"
+                  size="small"
+                  variant="text"
+                  v-bind="props"
+                  aria-label="Project actions"
+                ></v-btn>
+              </template>
+
+              <v-list density="compact" min-width="150">
+                <v-list-item
+                  @click="viewProject(item)"
+                  prepend-icon="mdi-eye"
+                  title="View Details"
+                ></v-list-item>
+                <v-list-item
+                  @click="editProject(item)"
+                  prepend-icon="mdi-pencil"
+                  title="Edit Project"
+                ></v-list-item>
+                <v-divider class="my-1" />
+                <v-list-item
+                  @click="confirmDelete(item)"
+                  prepend-icon="mdi-delete"
+                  title="Delete Project"
+                ></v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
         </template>
 
         <!-- No data state -->
@@ -301,12 +330,14 @@
 
             <v-textarea
               v-model="projectData.mission"
-              label="Mission Statement"
-              :rules="[(v) => !!v || 'Mission is required']"
+              label="Project Description"
+              :rules="[(v) => !!v || 'Description is required']"
+              hint="Describe what you want to build. The orchestrator will create the detailed mission."
+              persistent-hint
               rows="4"
               required
               class="mb-3"
-              aria-label="Mission statement"
+              aria-label="Project description"
             ></v-textarea>
 
             <v-text-field
@@ -318,13 +349,7 @@
               aria-label="Context budget"
             ></v-text-field>
 
-            <v-select
-              v-model="projectData.status"
-              label="Status"
-              :items="statusOptions"
-              class="mb-3"
-              aria-label="Project status"
-            ></v-select>
+            <!-- Status removed - always defaults to inactive (Handover 0062) -->
           </v-form>
         </v-card-text>
 
@@ -593,6 +618,23 @@ function formatDateShort(dateStr) {
 // Methods
 function viewProject(project) {
   router.push(`/projects/${project.id}`)
+}
+
+// Handover 0062: Activate project
+async function activateProject(projectId) {
+  try {
+    // Call the new activate endpoint
+    await projectStore.activateProject(projectId)
+    await projectStore.fetchProjects()
+  } catch (error) {
+    console.error('[PROJECTS] Error activating project:', error)
+  }
+}
+
+// Handover 0062: Launch project
+function launchProject(projectId) {
+  // Navigate to Project Launch Panel
+  router.push({ name: 'ProjectLaunch', params: { projectId } })
 }
 
 function editProject(project) {
