@@ -136,6 +136,16 @@
                     >
                       {{ product.is_active ? 'Deactivate' : 'Activate' }}
                     </v-btn>
+                    
+                    <!-- Orchestrator Launch Button -->
+                    <OrchestratorLaunchButton
+                      v-if="product.is_active"
+                      :product="product"
+                      @launched="handleOrchestratorLaunched"
+                      @error="handleOrchestratorError"
+                      class="ml-2"
+                    />
+                    
                     <v-spacer></v-spacer>
                     <v-btn
                       icon
@@ -1324,6 +1334,7 @@ import { useFieldPriority } from '@/composables/useFieldPriority'
 import { useAutoSave } from '@/composables/useAutoSave'
 import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
+import OrchestratorLaunchButton from '@/components/products/OrchestratorLaunchButton.vue'
 
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
@@ -1661,6 +1672,32 @@ function cancelActivation() {
   showActivationWarning.value = false
   pendingActivation.value = null
   currentActiveProduct.value = null
+}
+
+// Orchestrator Launch Event Handlers
+async function handleOrchestratorLaunched(data) {
+  console.log('Orchestrator launched successfully:', data)
+  
+  showToast({
+    message: 'Orchestrator launched successfully! Agents are coordinating.',
+    type: 'success',
+    duration: 5000,
+  })
+  
+  // Refresh product data to get updated metrics
+  await loadProducts()
+}
+
+function handleOrchestratorError(error) {
+  console.error('Orchestrator launch failed:', error)
+  
+  const errorMessage = error.error || error.message || 'Failed to launch orchestrator'
+  
+  showToast({
+    message: errorMessage,
+    type: 'error',
+    duration: 5000,
+  })
 }
 
 function formatDate(dateString) {
