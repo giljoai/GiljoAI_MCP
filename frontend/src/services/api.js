@@ -324,6 +324,15 @@ export const api = {
     getStatus: () => apiClient.get('/api/serena/status'),
     toggle: (enabled) => apiClient.post('/api/serena/toggle', { enabled }),
   },
+
+  // Orchestrator (Multi-Agent Workflow Coordination)
+  orchestrator: {
+    launch: (data) => apiClient.post('/api/v1/orchestration/launch', data),
+    getWorkflowStatus: (projectId) => apiClient.get(`/api/v1/orchestration/workflow-status/${projectId}`),
+    getMetrics: (projectId) => apiClient.get(`/api/v1/orchestration/metrics/${projectId}`),
+    createMissions: (data) => apiClient.post('/api/v1/orchestration/create-missions', data),
+    spawnTeam: (data) => apiClient.post('/api/v1/orchestration/spawn-team', data),
+  },
 }
 
 export default api
