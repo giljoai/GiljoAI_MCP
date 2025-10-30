@@ -313,14 +313,6 @@
           </div>
         </template>
 
-        <!-- Assigned To Column (Agent) -->
-        <template v-slot:item.assigned_to="{ item }">
-          <v-chip v-if="item.assigned_to" size="small" prepend-icon="mdi-robot">
-            {{ item.assigned_to }}
-          </v-chip>
-          <span v-else class="text-medium-emphasis">Unassigned</span>
-        </template>
-
 
         <!-- Created By User Column (Phase 4) -->
         <template v-slot:item.created_by_user_id="{ item }">
@@ -483,15 +475,6 @@
                   variant="outlined"
                 />
               </v-col>
-              <v-col cols="6">
-                <v-select
-                  v-model="currentTask.assigned_to"
-                  :items="agentOptions"
-                  label="Assign To (Agent)"
-                  variant="outlined"
-                  clearable
-                />
-              </v-col>
             </v-row>
 
             <v-text-field
@@ -574,7 +557,6 @@ const saving = ref(false)
 
 // Product task filter
 const taskFilter = ref('product_tasks')
-const tenantUsers = ref([])
 const user = computed(() => userStore.currentUser)
 
 // Bulk selection state
@@ -617,22 +599,6 @@ const statusOptions = ['pending', 'in_progress', 'completed', 'cancelled']
 const priorityOptions = ['low', 'medium', 'high', 'critical']
 const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'documentation', 'testing']
 
-// Phase 4: User management methods
-async function fetchTenantUsers() {
-  try {
-    const response = await api.users.list()
-    tenantUsers.value = response.data || []
-  } catch (error) {
-    console.error('Failed to fetch tenant users:', error)
-    tenantUsers.value = []
-  }
-}
-
-function getUserName(userId) {
-  if (!userId) return 'Unassigned'
-  const foundUser = tenantUsers.value.find((u) => u.id === userId)
-  return foundUser ? foundUser.username : `User ${userId}`
-}
 
 // Computed
 const loading = computed(() => taskStore.loading)
@@ -1019,7 +985,7 @@ onMounted(() => {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([fetchTasks(), agentStore.fetchAgents(), fetchTenantUsers()])
+  await Promise.all([fetchTasks(), agentStore.fetchAgents()])
 })
 </script>
 
@@ -1122,13 +1088,4 @@ onMounted(async () => {
   transform: translateY(-2px);
 }
 
-/* Phase 4: User assignment highlight */
-.task-row-content.assigned-to-me {
-  background-color: rgba(76, 175, 80, 0.08);
-  border-left: 3px solid #4caf50;
-}
-
-.task-row-content.assigned-to-me:hover {
-  background-color: rgba(76, 175, 80, 0.12);
-}
 </style>
