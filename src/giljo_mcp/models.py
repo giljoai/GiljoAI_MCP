@@ -570,12 +570,11 @@ class Task(Base):
     tenant_key = Column(String(36), nullable=False)
     product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)  # Product-level scope for task isolation
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)  # Handover 0072: Nullable for unassigned tasks
-    assigned_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
+    # Handover 0076: Removed assigned_agent_id field
 
-    # Phase 4: User ownership and assignment
+    # Phase 4: User ownership (Handover 0076: removed assigned_to_user_id)
     created_by_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
-    assigned_to_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
 
     # Phase 4: Task-to-project conversion tracking
     converted_to_project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
@@ -602,9 +601,8 @@ class Task(Base):
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])
 
-    # Phase 4: User relationships
+    # Phase 4: User relationships (Handover 0076: removed assigned_to_user)
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")
-    assigned_to_user = relationship("User", foreign_keys=[assigned_to_user_id], back_populates="assigned_tasks")
 
     # Handover 0072: Agent job relationship
     agent_job = relationship("MCPAgentJob", foreign_keys=[agent_job_id], backref="task")
@@ -615,11 +613,8 @@ class Task(Base):
         Index("idx_task_project", "project_id"),
         Index("idx_task_status", "status"),
         Index("idx_task_priority", "priority"),
-        Index("idx_task_assigned", "assigned_agent_id"),
-        # Phase 4: User assignment indexes for performance
+        # Phase 4: User assignment indexes (Handover 0076: removed assignment indexes)
         Index("idx_task_created_by_user", "created_by_user_id"),
-        Index("idx_task_assigned_to_user", "assigned_to_user_id"),
-        Index("idx_task_tenant_assigned_user", "tenant_key", "assigned_to_user_id"),  # Composite for "My Tasks"
         Index("idx_task_tenant_created_user", "tenant_key", "created_by_user_id"),  # Composite for "Created by Me"
         Index("idx_task_converted_to_project", "converted_to_project_id"),  # Conversion tracking
         Index("idx_task_agent_job", "agent_job_id"),  # Handover 0072: Agent job linking
@@ -1593,9 +1588,8 @@ class User(Base):
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
 
-    # Phase 4: Task relationships
+    # Phase 4: Task relationships (Handover 0076: removed assigned_tasks)
     created_tasks = relationship("Task", foreign_keys="Task.created_by_user_id", back_populates="created_by_user")
-    assigned_tasks = relationship("Task", foreign_keys="Task.assigned_to_user_id", back_populates="assigned_to_user")
 
     __table_args__ = (
         Index("idx_user_tenant", "tenant_key"),
