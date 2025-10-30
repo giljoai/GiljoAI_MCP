@@ -95,6 +95,142 @@ AgentMetrics.vue        - High-level metrics, no real-time tracking
 
 ---
 
+### 🔄 ENHANCEMENT: Dashboard Scope Selector with Per-Product/Project Views
+**Status**: Not Started
+**Impact**: HIGH - Better statistics visibility and context
+**Complexity**: MEDIUM
+**Effort**: 8-12 hours
+**Dependencies**: Dashboard Agent Monitoring UI (BLOCKER 1)
+
+#### What This Enables:
+- Dropdown to select dashboard view scope:
+  - **All Products & Projects** (aggregate top-level view)
+  - **Per Product** (product-specific statistics)
+  - **Per Project** (project-specific statistics)
+- Statistics board tailored for developers
+- Message history between agents displayed in dashboard context
+- Merger of dashboard and message windows
+
+#### Current State:
+- Dashboard shows aggregate statistics only
+- No scope filtering or context switching
+- Messages in separate view with no dashboard integration
+
+#### What This Creates:
+**Unified Dashboard with Scope Selector**:
+```
+┌─────────────────────────────────────────────┐
+│ Dashboard                    [Scope: ▼]     │
+│                              ├─ All         │
+│                              ├─ Product A   │
+│                              ├─ Product B   │
+│                              └─ Project X   │
+├─────────────────────────────────────────────┤
+│ Statistics (filtered by scope)              │
+│ - Active Jobs: 5                            │
+│ - Completed Tasks: 42                       │
+│ - Token Usage: 125k                         │
+├─────────────────────────────────────────────┤
+│ Agent Messages (in scope)                   │
+│ - [12:45] Implementer → Tester             │
+│ - [12:48] Orchestrator → All               │
+└─────────────────────────────────────────────┘
+```
+
+#### Implementation Breakdown:
+
+**Phase 1: Scope Selector Component (2-3 hours)**
+- Create `DashboardScopeSelector.vue` component
+- Dropdown with hierarchy:
+  - Top level: "All Products & Projects"
+  - Second level: List of products
+  - Third level: Projects within selected product
+- Persist selection in localStorage
+- Vuex/Pinia state management
+
+**Phase 2: Scoped Statistics API (3-4 hours)**
+- Backend endpoints:
+  - `GET /api/v1/dashboard/stats` (aggregate)
+  - `GET /api/v1/dashboard/stats/product/{id}` (product scope)
+  - `GET /api/v1/dashboard/stats/project/{id}` (project scope)
+- Statistics filtered by scope:
+  - Active jobs count
+  - Completed tasks count
+  - Token usage aggregation
+  - Agent activity metrics
+  - Project/product progress
+
+**Phase 3: Dashboard Integration (2-3 hours)**
+- Update `DashboardView.vue`:
+  - Add scope selector to header
+  - Reload statistics on scope change
+  - Show scope-specific agent jobs
+  - Display relevant messages in context
+- Merge message display into dashboard:
+  - Agent-to-agent messages
+  - Filtered by current scope
+  - Expandable message panel
+
+**Phase 4: Message Context Integration (1-2 hours)**
+- Link messages to dashboard scope
+- Filter message history by:
+  - All (when scope = all)
+  - Product ID (when product selected)
+  - Project ID (when project selected)
+- Real-time updates via WebSocket
+
+#### Files to Create:
+- `frontend/src/components/dashboard/DashboardScopeSelector.vue` (~150 lines)
+- `api/endpoints/dashboard_stats.py` (~250 lines)
+
+#### Files to Modify:
+- `frontend/src/views/DashboardView.vue` (~100 lines added)
+  - Add scope selector integration
+  - Add message history panel
+  - Update statistics display logic
+- `frontend/src/stores/useDashboardStore.js` (~50 lines)
+  - Add scope state management
+  - Add scope persistence
+- `frontend/src/services/api.js` (~30 lines)
+  - Add scoped statistics methods
+
+#### Context from User:
+> "The dashboard needs to have a drop down to select dashboard view on a per product basis, then per project basis for statistics. Should also have a top aggregate view of all products and projects."
+>
+> "Its a statistics board for the developer."
+>
+> "More integrations to be defined in future, no need to populate with data in this specific project, leave what is there already, also message history between agents should show here. its a merger of dashboard and message windows in some capacity, to be defined more"
+
+#### Design Considerations:
+1. **Leave Existing Data**: Don't remove current dashboard stats
+2. **Future Integrations**: Design for extensibility (more integrations coming)
+3. **Message Merger**: Combine dashboard + messages in unified view
+4. **To Be Defined**: Some aspects intentionally left open for future refinement
+
+#### Success Criteria:
+- ✅ Dropdown selector with 3 levels (all/product/project)
+- ✅ Statistics filtered by selected scope
+- ✅ Message history visible in dashboard context
+- ✅ Existing dashboard functionality preserved
+- ✅ Extensible for future integrations
+- ✅ Real-time updates via WebSocket
+
+#### Priority Justification:
+**Why HIGH Priority**:
+- Improves developer visibility into specific contexts
+- Reduces context switching (dashboard + messages)
+- Better UX for multi-product/project setups
+- Foundation for future integrations
+
+**Why Not CRITICAL**:
+- Dashboard currently functional (aggregate view works)
+- Can be completed after core monitoring UI (BLOCKER 1)
+- Enhancement rather than blocker
+
+**Recommended Sequence**: Implement after BLOCKER 1 (Dashboard Agent Monitoring UI) as this builds on that foundation.
+
+---
+
 ### 🚨 BLOCKER 2: MCP Agent Coordination Tool Exposure (Handover 0060)
 **Status**: Not Started
 **Impact**: CRITICAL - External agents can't coordinate
