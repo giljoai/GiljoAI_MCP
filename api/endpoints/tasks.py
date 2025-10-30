@@ -41,17 +41,16 @@ def can_modify_task(task: Task, user: User) -> bool:
     Returns:
         True if user can modify task, False otherwise
 
-    Authorization rules:
+    Authorization rules (Handover 0076: removed assignment check):
     - Admins can modify any task in their tenant
     - Users can modify tasks they created
-    - Users can modify tasks assigned to them
     """
     if user.role == "admin":
         return task.tenant_key == user.tenant_key
 
     return (
         task.tenant_key == user.tenant_key and
-        (task.created_by_user_id == user.id or task.assigned_to_user_id == user.id)
+        task.created_by_user_id == user.id
     )
 
 
@@ -84,7 +83,7 @@ def task_to_response(task: Task) -> TaskResponse:
         task: Task model instance
 
     Returns:
-        TaskResponse schema
+        TaskResponse schema (Handover 0076: removed assignment fields)
     """
     return TaskResponse(
         id=task.id,
@@ -95,9 +94,8 @@ def task_to_response(task: Task) -> TaskResponse:
         priority=task.priority,
         product_id=task.product_id,
         project_id=task.project_id,
-        assigned_agent_id=task.assigned_agent_id,
+        agent_job_id=task.agent_job_id,
         parent_task_id=task.parent_task_id,
-        assigned_to_user_id=task.assigned_to_user_id,
         created_by_user_id=task.created_by_user_id,
         converted_to_project_id=task.converted_to_project_id,
         created_at=task.created_at,
@@ -113,8 +111,7 @@ def task_to_response(task: Task) -> TaskResponse:
 
 @router.get("/", response_model=list[TaskResponse])
 async def list_tasks(
-    filter_type: Optional[str] = Query(None, description="Filter: 'my_tasks' | 'all'"),
-    assigned_to_me: Optional[bool] = Query(None, description="Only tasks assigned to me"),
+    filter_type: Optional[str] = Query(None, description="Filter: 'product_tasks' | 'all_tasks'"),
     created_by_me: Optional[bool] = Query(None, description="Only tasks I created"),
     status: Optional[str] = Query(None, description="Filter by status"),
     priority: Optional[str] = Query(None, description="Filter by priority"),
@@ -124,14 +121,14 @@ async def list_tasks(
     db: AsyncSession = Depends(get_db_session)
 ) -> list[TaskResponse]:
     """
-    List tasks with flexible filtering.
+    List tasks with product-scoped filtering (Handover 0076).
 
-    Regular users see only their tasks by default (created by or assigned to them).
-    Admins see all tasks in their tenant unless filtered.
+    Filter types:
+    - 'product_tasks': Tasks for active product only
+    - 'all_tasks': Tasks with product_id = NULL
 
     Args:
-        filter_type: Filter preset ('my_tasks' or 'all')
-        assigned_to_me: Only tasks assigned to current user
+        filter_type: Filter preset ('product_tasks' or 'all_tasks')
         created_by_me: Only tasks created by current user
         status: Filter by task status
         priority: Filter by task priority
@@ -148,19 +145,25 @@ async def list_tasks(
     # Start with tenant filter (multi-tenant isolation)
     query = select(Task).where(Task.tenant_key == current_user.tenant_key)
 
-    # Apply user filters
-    if filter_type == "my_tasks" or (current_user.role != "admin" and not filter_type):
-        # Regular users: show only their tasks by default
-        # Admins: show their tasks only if filter_type='my_tasks'
-        query = query.where(
-            or_(
-                Task.assigned_to_user_id == current_user.id,
-                Task.created_by_user_id == current_user.id
-            )
+    # Apply product-scoped filters (Handover 0076)
+    if filter_type == "product_tasks":
+        # Get active product for current tenant
+        product_query = select(Product).where(
+            Product.tenant_key == current_user.tenant_key,
+            Product.is_active == True
         )
+        product_result = await db.execute(product_query)
+        active_product = product_result.scalar_one_or_none()
 
-    if assigned_to_me:
-        query = query.where(Task.assigned_to_user_id == current_user.id)
+        if active_product:
+            query = query.where(Task.product_id == active_product.id)
+        else:
+            # No active product, return empty list
+            query = query.where(Task.id == None)  # Always false
+
+    elif filter_type == "all_tasks":
+        # Tasks with NULL product_id (created via MCP without active product)
+        query = query.where(Task.product_id.is_(None))
 
     if created_by_me:
         query = query.where(Task.created_by_user_id == current_user.id)
@@ -353,12 +356,27 @@ async def convert_task_to_project(
             detail="Only task creator or admin can convert"
         )
 
+    # Handover 0076: Get active product (required for project creation per Handover 0050)
+    product_query = select(Product).where(
+        Product.tenant_key == current_user.tenant_key,
+        Product.is_active == True
+    )
+    product_result = await db.execute(product_query)
+    active_product = product_result.scalar_one_or_none()
+
+    if not active_product:
+        logger.warning(f"No active product for tenant {current_user.tenant_key}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active product. Please activate a product before converting tasks to projects."
+        )
+
     # Create project
     project_name = conversion_request.project_name or task.title
     project = Project(
         name=project_name,
         mission=task.description or f"Project created from task: {task.title}",
-        product_id=task.product_id,
+        product_id=active_product.id,
         tenant_key=current_user.tenant_key,
         status="active"
     )
@@ -366,9 +384,9 @@ async def convert_task_to_project(
     db.add(project)
     await db.flush()  # Get project ID without committing
 
-    # Mark task as converted
+    # Mark task as completed (converted) - Handover 0076
     task.converted_to_project_id = project.id
-    task.status = "converted"
+    task.status = "completed"  # Mark as completed, not 'converted'
 
     # Handle subtasks if requested
     if conversion_request.include_subtasks:

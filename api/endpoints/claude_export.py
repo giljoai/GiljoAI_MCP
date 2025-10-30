@@ -15,6 +15,7 @@ Architecture:
 """
 
 import logging
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -66,6 +67,7 @@ class ClaudeExportResult(BaseModel):
     exported_count: int = Field(..., description="Number of templates exported")
     files: list[dict[str, str]] = Field(..., description="List of exported files with name and path")
     message: str = Field(..., description="Human-readable result message")
+    backup: Optional[dict[str, Any]] = Field(None, description="Backup information (Handover 0075)")
 
 
 # Helper Functions
@@ -167,6 +169,71 @@ def create_backup(file_path: Path) -> Optional[Path]:
         raise
     else:
         return backup_path
+
+
+def create_zip_backup(agents_dir: Path) -> Optional[Path]:
+    """
+    Create timestamped zip backup of .claude/agents/ directory (Handover 0075).
+
+    Provides safety net before overwriting agent templates during export.
+    Only backs up .md files (ignores other file types).
+
+    Process:
+    1. Check if agents_dir exists and contains .md files
+    2. Create .claude/backups/ directory if needed
+    3. Generate backup: agents_backup_YYYYMMDD_HHMMSS.zip
+    4. Zip all .md files from agents_dir
+    5. Return backup path
+
+    Args:
+        agents_dir: Path to .claude/agents/ directory
+
+    Returns:
+        Path to created zip file, or None if nothing to backup
+
+    Example:
+        >>> backup = create_zip_backup(Path.cwd() / ".claude" / "agents")
+        >>> print(backup)
+        F:/project/.claude/backups/agents_backup_20251030_153045.zip
+    """
+    # Check if directory exists
+    if not agents_dir.exists() or not agents_dir.is_dir():
+        logger.info(f"[create_zip_backup] No agents directory to backup: {agents_dir}")
+        return None
+
+    # Find .md files to backup
+    md_files = list(agents_dir.glob("*.md"))
+    if not md_files:
+        logger.info(f"[create_zip_backup] No .md files to backup in {agents_dir}")
+        return None
+
+    # Create backups directory
+    backups_dir = agents_dir.parent / "backups"
+    backups_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate timestamp
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"agents_backup_{timestamp}.zip"
+    backup_path = backups_dir / backup_filename
+
+    # Create zip archive
+    try:
+        with zipfile.ZipFile(backup_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for md_file in md_files:
+                # Add file to zip (arcname = relative path in zip)
+                zipf.write(md_file, arcname=md_file.name)
+                logger.debug(f"[create_zip_backup] Added to zip: {md_file.name}")
+
+        logger.info(
+            f"[create_zip_backup] Created backup: {backup_path} "
+            f"({len(md_files)} files, {backup_path.stat().st_size} bytes)"
+        )
+
+        return backup_path
+
+    except Exception as e:
+        logger.exception(f"[create_zip_backup] Failed to create backup: {e}")
+        return None
 
 
 async def export_template_to_claude_code(
@@ -338,6 +405,19 @@ async def export_templates_to_claude_code(
     if not export_dir.is_dir():
         raise ValueError(f"Export path is not a directory: {export_dir}")
 
+    # Create backup before export (Handover 0075)
+    backup_path = create_zip_backup(export_dir)
+    backup_info = None
+    if backup_path:
+        backup_info = {
+            "backup_created": True,
+            "backup_path": str(backup_path),
+            "backup_size_bytes": backup_path.stat().st_size,
+        }
+        logger.info(f"[export_templates] Created pre-export backup: {backup_path}")
+    else:
+        backup_info = {"backup_created": False, "reason": "No existing files to backup"}
+
     # Query active templates for user's tenant (multi-tenant isolation)
     stmt = (
         select(AgentTemplate)
@@ -426,11 +506,12 @@ async def export_templates_to_claude_code(
             # Continue with other templates rather than failing completely
             continue
 
-    # Return results
+    # Return results (including backup info)
     return {
         "success": True,
         "exported_count": len(exported_files),
         "files": exported_files,
+        "backup": backup_info,
         "message": f"Successfully exported {len(exported_files)} template(s) to {export_dir}",
     }
 
