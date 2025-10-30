@@ -47,6 +47,7 @@ class ToolAccessor:
                 project = Project(
                     name=name,
                     mission=mission,
+                    description="",  # Default empty string (required by model)
                     tenant_key=tenant_key,
                     product_id=product_id,
                     status=status,  # Use the passed status parameter
