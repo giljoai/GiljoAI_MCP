@@ -4,6 +4,7 @@ Prompt Generation API endpoints for Handover 0073: Static Agent Grid.
 Provides REST API for generating executable prompts:
 - GET /api/prompts/orchestrator/{tool} - Generate orchestrator prompt
 - GET /api/prompts/agent/{agent_id} - Generate agent prompt
+- POST /api/prompts/estimate-tokens - Estimate token usage for mission (Handover 0065)
 
 All endpoints enforce multi-tenant isolation and authentication.
 """
@@ -16,7 +17,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas.prompt import AgentPromptResponse, OrchestratorPromptResponse
+from api.schemas.prompt import (
+    AgentPromptResponse,
+    OrchestratorPromptResponse,
+    TokenEstimateRequest,
+)
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, Project, User
 
@@ -225,3 +230,73 @@ Prerequisites:
         instructions=instructions,
         mission_preview=mission_preview
     )
+
+
+@router.post("/estimate-tokens")
+async def estimate_mission_tokens(
+    request: TokenEstimateRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Estimate token usage for a mission (Handover 0065).
+
+    Calculation:
+    - Mission tokens: ~4 chars per token (standard estimate)
+    - Context tokens: project_description length / 4
+    - Per-agent overhead: 500 tokens per agent (template + tools)
+    - Total = mission + context + (agents * overhead)
+
+    Args:
+        request: Token estimation request with mission, agent count, and optional project description
+        current_user: Authenticated user (ensures multi-tenant isolation)
+
+    Returns:
+        dict: Token breakdown with:
+            - mission_tokens: Tokens in mission text
+            - context_tokens: Tokens in project context
+            - agent_overhead: Overhead per agent (templates, tools)
+            - total_estimate: Total estimated tokens
+            - budget_available: Available token budget
+            - within_budget: Boolean indicating if estimate is within budget
+            - utilization_percent: Percentage of budget used
+    """
+    # Token calculation constants
+    CHARS_PER_TOKEN = 4
+    AGENT_OVERHEAD_TOKENS = 500
+    DEFAULT_BUDGET = 10000  # Field priority budget from Handover 0048
+
+    # Calculate mission tokens
+    mission_tokens = len(request.mission) // CHARS_PER_TOKEN
+
+    # Calculate context tokens
+    context_tokens = 0
+    if request.project_description:
+        context_tokens = len(request.project_description) // CHARS_PER_TOKEN
+
+    # Calculate agent overhead
+    agent_overhead = request.agent_count * AGENT_OVERHEAD_TOKENS
+
+    # Total estimate
+    total_estimate = mission_tokens + context_tokens + agent_overhead
+
+    # Budget analysis
+    budget_available = DEFAULT_BUDGET
+    within_budget = total_estimate <= budget_available
+    utilization_percent = round((total_estimate / budget_available) * 100, 1)
+
+    logger.info(
+        f"[TOKEN ESTIMATE] User {current_user.username} - "
+        f"Mission: {mission_tokens}t, Context: {context_tokens}t, "
+        f"Agent Overhead: {agent_overhead}t ({request.agent_count} agents), "
+        f"Total: {total_estimate}t ({utilization_percent}%)"
+    )
+
+    return {
+        "mission_tokens": mission_tokens,
+        "context_tokens": context_tokens,
+        "agent_overhead": agent_overhead,
+        "total_estimate": total_estimate,
+        "budget_available": budget_available,
+        "within_budget": within_budget,
+        "utilization_percent": utilization_percent
+    }
