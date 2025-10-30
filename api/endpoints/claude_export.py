@@ -360,6 +360,15 @@ async def export_templates_to_claude_code(
             "message": "No active templates found for export",
         }
 
+    # Validate agent count (warn if exceeds recommended limit)
+    active_count = len(templates)
+    if active_count > 8:
+        logger.warning(
+            f"User exporting {active_count} agents (exceeds recommended limit of 8). "
+            f"tenant={current_user.tenant_key}. Claude Code recommends 6-8 agents for optimal "
+            f"context budget performance."
+        )
+
     # Export each template
     exported_files = []
 

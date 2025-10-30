@@ -71,8 +71,17 @@
         Agent Templates tab.
       </v-alert>
 
-      <!-- Warning Alert -->
-      <v-alert type="warning" variant="tonal" class="mb-4" icon="mdi-backup-restore">
+      <!-- Context Budget Warning -->
+      <v-alert type="warning" variant="tonal" density="compact" class="mb-4" icon="mdi-alert-circle-outline">
+        <div class="text-body-2">
+          <strong>Context Budget Recommendation:</strong> Export no more than 8 agents maximum.
+          Each agent description consumes context budget, reducing available tokens for your
+          project. Claude Code recommends 6-8 agents for optimal performance.
+        </div>
+      </v-alert>
+
+      <!-- Backup Warning Alert -->
+      <v-alert type="info" variant="tonal" class="mb-4" icon="mdi-backup-restore">
         <div class="text-body-2">
           Existing files will be backed up with extension
           <code>.old.YYYYMMDD_HHMMSS</code> before being overwritten.

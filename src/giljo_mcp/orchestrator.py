@@ -190,13 +190,12 @@ class ProjectOrchestrator:
         additional_instructions: Optional[str] = None,
     ) -> Agent:
         """
-        Spawn Claude Code agent (hybrid mode with auto-export).
+        Spawn Claude Code agent for project execution.
 
         Process:
-        1. Auto-export template to .claude/agents/<role>.md
-        2. Generate mission with MCP coordination instructions
-        3. Apply Serena optimization
-        4. Create Agent record with mode='claude'
+        1. Generate mission with MCP coordination instructions
+        2. Apply Serena optimization for token reduction
+        3. Create Agent record with mode='claude'
 
         Args:
             project: Project instance
@@ -209,55 +208,11 @@ class ProjectOrchestrator:
             Created Agent instance with mode='claude'
 
         Integration:
-            - Exports template using single-template export function
             - Includes MCP checkpoint instructions in mission
             - Applies Serena optimization for token reduction
+            - Agent templates must be manually exported via My Settings → Integrations
         """
-        # 1. Auto-export template to .claude/agents/<role>.md
-        export_dir = Path.cwd() / ".claude" / "agents"
-        export_dir.mkdir(parents=True, exist_ok=True)
-
-        filename = f"{template.name}.md"
-        file_path = export_dir / filename
-
-        # Simple template export (inline implementation)
-        try:
-            # Generate YAML frontmatter
-            frontmatter = f"""---
-name: {template.name}
-role: {template.role or template.name}
-tool: {template.tool}
-description: {template.description or 'No description'}
----
-
-"""
-
-            # Build complete file content
-            content_parts = [frontmatter]
-            content_parts.append(template.template_content.strip())
-            content_parts.append("\n")
-
-            # Add behavioral rules if present
-            if template.behavioral_rules and len(template.behavioral_rules) > 0:
-                content_parts.append("\n## Behavioral Rules\n")
-                content_parts.extend(f"- {rule}\n" for rule in template.behavioral_rules)
-
-            # Add success criteria if present
-            if template.success_criteria and len(template.success_criteria) > 0:
-                content_parts.append("\n## Success Criteria\n")
-                content_parts.extend(f"- {criterion}\n" for criterion in template.success_criteria)
-
-            # Write file
-            full_content = "".join(content_parts)
-            file_path.write_text(full_content, encoding="utf-8")
-
-            logger.info(f"[_spawn_claude_code_agent] Exported template: {template.name} to {file_path}")
-
-        except Exception as e:
-            logger.exception(f"[_spawn_claude_code_agent] Failed to export template {template.name}: {e}")
-            # Continue without export - not critical
-
-        # 2. Generate mission with MCP coordination instructions
+        # 1. Generate mission with MCP coordination instructions
         if custom_mission:
             mission = custom_mission
         else:
@@ -273,7 +228,7 @@ description: {template.description or 'No description'}
         mcp_instructions = self._generate_mcp_instructions(project.tenant_key, role.value)
         mission = f"{mission}\n\n{mcp_instructions}"
 
-        # 3. Apply Serena optimization
+        # 2. Apply Serena optimization
         try:
             optimizer = self._get_serena_optimizer(project.tenant_key)
             injector = MissionOptimizationInjector(optimizer)
@@ -296,7 +251,7 @@ description: {template.description or 'No description'}
             logger.warning(f"[_spawn_claude_code_agent] Failed to inject Serena optimization: {e}")
             # Continue with original mission
 
-        # 4. Create Agent record with mode='claude'
+        # 3. Create Agent record with mode='claude'
         agent = Agent(
             tenant_key=project.tenant_key,
             project_id=project.id,

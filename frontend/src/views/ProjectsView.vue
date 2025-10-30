@@ -5,7 +5,7 @@
       <v-col>
         <h1 class="text-h4">Project Management</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
-          Manage orchestration projects for: <strong>{{ activeProduct?.name || 'No Active Product' }}</strong>
+          Manage orchestration projects for: <strong style="color: #ffc300">{{ activeProduct?.name || 'No Active Product' }}</strong>
         </p>
       </v-col>
       <v-col cols="auto">

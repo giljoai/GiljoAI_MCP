@@ -4,8 +4,7 @@
     <v-row>
       <v-col cols="12">
         <div class="d-flex align-center mb-6">
-          <v-icon size="32" color="primary" class="mr-3">mdi-package-variant</v-icon>
-          <h1 class="text-h4 font-weight-bold">Products</h1>
+          <h1 class="text-h4">Products</h1>
           <v-spacer></v-spacer>
           <v-btn color="primary" prepend-icon="mdi-plus" @click="showDialog = true">
             New Product
@@ -21,6 +20,17 @@
           <v-card-title class="d-flex align-center">
             <span>All Products</span>
             <v-spacer></v-spacer>
+            <v-btn
+              variant="outlined"
+              :color="deletedProductsCount > 0 ? 'warning' : 'grey'"
+              prepend-icon="mdi-delete-restore"
+              @click="showDeletedProductsDialog = true"
+              :disabled="deletedProductsCount === 0"
+              class="mr-3"
+              style="height: 40px;"
+            >
+              Deleted ({{ deletedProductsCount }})
+            </v-btn>
             <v-select
               v-model="sortBy"
               :items="sortOptions"
@@ -34,17 +44,6 @@
               class="mr-3"
               style="max-width: 200px"
             ></v-select>
-            <v-btn
-              v-if="deletedProductsCount > 0"
-              variant="outlined"
-              color="warning"
-              size="small"
-              prepend-icon="mdi-delete-restore"
-              @click="showDeletedProductsDialog = true"
-              class="mr-3"
-            >
-              Deleted Products {{ deletedProductsCount }}
-            </v-btn>
             <v-text-field
               v-model="search"
               prepend-inner-icon="mdi-magnify"

@@ -1,11 +1,11 @@
 <template>
-  <div class="kanban-jobs-view">
+  <v-container fluid>
     <!-- Header Section -->
-    <v-row class="mb-6">
+    <v-row class="mb-4">
       <v-col cols="12">
         <div class="d-flex align-center justify-space-between">
           <div>
-            <h2 class="text-h5 font-weight-bold">Active Agent Jobs</h2>
+            <h1 class="text-h4">Active Agent Jobs</h1>
             <p class="text-subtitle-2 text-medium-emphasis mt-1">
               Monitor agents across 4 columns: Pending, Active, Completed, and Blocked
             </p>
@@ -230,7 +230,7 @@
       <v-icon start>mdi-alert-circle</v-icon>
       {{ error }}
     </v-alert>
-  </div>
+  </v-container>
 </template>
 
 <script setup>
@@ -561,7 +561,7 @@ onUnmounted(() => {
 }
 
 .kanban-board {
-  /* Remove gap - use Vuetify's native grid gutters */
+  padding-left: 5px;
 }
 
 .kanban-col {
