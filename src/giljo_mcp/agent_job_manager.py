@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from .database import DatabaseManager
@@ -276,6 +276,8 @@ class AgentJobManager:
         """
         Mark job as completed (active -> completed).
 
+        Handover 0072: Automatically syncs task status to 'completed'.
+
         Args:
             tenant_key: Tenant key for isolation
             job_id: Job ID to complete
@@ -307,6 +309,9 @@ class AgentJobManager:
                 })
                 job.messages = job.messages + [result_msg]
 
+            # Handover 0072: Sync task status to completed
+            self._sync_task_status(session, job, "completed")
+
             session.commit()
             session.refresh(job)
 
@@ -322,6 +327,8 @@ class AgentJobManager:
     ) -> MCPAgentJob:
         """
         Mark job as failed (pending/active -> failed).
+
+        Handover 0072: Automatically syncs task status to 'blocked'.
 
         Args:
             tenant_key: Tenant key for isolation
@@ -353,6 +360,9 @@ class AgentJobManager:
                     "content": error,
                 })
                 job.messages = job.messages + [error_msg]
+
+            # Handover 0072: Sync task status to blocked
+            self._sync_task_status(session, job, "blocked")
 
             session.commit()
             session.refresh(job)
@@ -591,3 +601,56 @@ class AgentJobManager:
             message["content"] = content
 
         return message
+
+    def _sync_task_status(
+        self,
+        session,
+        job: MCPAgentJob,
+        task_status: str,
+    ) -> None:
+        """
+        Synchronize task status when agent job status changes (Handover 0072).
+
+        This enables bidirectional status synchronization between tasks and agent jobs.
+        Called automatically when jobs complete or fail.
+
+        Args:
+            session: Database session
+            job: MCPAgentJob instance
+            task_status: Target task status (completed, blocked, etc.)
+        """
+        from giljo_mcp.models import Task
+
+        try:
+            # Find tasks linked to this agent job
+            task_query = select(Task).where(
+                and_(
+                    Task.agent_job_id == job.job_id,
+                    Task.tenant_key == job.tenant_key
+                )
+            )
+            task_result = session.execute(task_query)
+            task = task_result.scalar_one_or_none()
+
+            if task:
+                # Update task status
+                task.status = task_status
+                
+                if task_status == "completed":
+                    task.completed_at = datetime.now(timezone.utc)
+                    logger.info(
+                        f"Task {task.id} marked completed (agent job {job.job_id} finished)"
+                    )
+                elif task_status == "blocked":
+                    logger.info(
+                        f"Task {task.id} marked blocked (agent job {job.job_id} failed)"
+                    )
+                
+                # Note: We don't commit here - caller is responsible for commit
+            else:
+                # No task linked to this job - that's fine
+                logger.debug(f"No task linked to agent job {job.job_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to sync task status for job {job.job_id}: {e}")
+            # Don't raise - status sync is best-effort, don't fail the job operation
