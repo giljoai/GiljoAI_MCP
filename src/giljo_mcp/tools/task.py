@@ -1027,13 +1027,12 @@ def register_task_tools(mcp):
             from giljo_mcp.tenant import tenant_manager
             
             if not context or not context.strip():
-                return "Usage: /task <description>
+                return """Usage: /task <description>
 
-Example: /task Fix authentication bug in login flow"
+Example: /task Fix authentication bug in login flow"""
             
             # Split context into lines
-            lines = context.strip().split("
-")
+            lines = context.strip().split("\n")
             
             # First line is the title (max 255 chars)
             title = lines[0].strip()[:255] if lines else "Task from CLI"
@@ -1042,8 +1041,7 @@ Example: /task Fix authentication bug in login flow"
             title = title.replace("**", "").replace("*", "").replace("#", "").strip()
             
             # Rest is description
-            description = "
-".join(lines[1:]).strip() if len(lines) > 1 else None
+            description = "\n".join(lines[1:]).strip() if len(lines) > 1 else None
             
             # Truncate description if too long
             if description and len(description) > 2000:
@@ -1107,23 +1105,16 @@ Example: /task Fix authentication bug in login flow"
                 task_id = result.get("task_id")
                 scope_info = ""
                 if product_id:
-                    scope_info = f"
-Product: Active product"
+                    scope_info = f"\nProduct: Active product"
                 else:
-                    scope_info = "
-Scope: Unassigned (visible in all products)"
+                    scope_info = "\nScope: Unassigned (visible in all products)"
                 
                 return (
-                    f"✅ Task created: '{title}'
-"
-                    f"Priority: {priority}
-"
-                    f"Category: {category}
-"
+                    f"✅ Task created: '{title}\n"
+                    f"Priority: {priority}\n"
+                    f"Category: {category}\n"
                     f"ID: {task_id}"
-                    f"{scope_info}
-
-"
+                    f"{scope_info}\n\n"
                     f"Use 'assign_task_to_agent' to auto-spawn an agent job for this task."
                 )
             else:
@@ -1234,18 +1225,11 @@ Scope: Unassigned (visible in all products)"
                 if auto_spawn_job:
                     # Build mission from task if not provided
                     if not mission:
-                        mission = f"Task: {task.title}
-
-"
+                        mission = f"Task: {task.title}\n\n"
                         if task.description:
-                            mission += f"Description:
-{task.description}
-
-"
-                        mission += f"Priority: {task.priority}
-"
-                        mission += f"Category: {task.category}
-"
+                            mission += f"Description:\n{task.description}\n\n"
+                        mission += f"Priority: {task.priority}\n"
+                        mission += f"Category: {task.category}\n"
                     
                     # Create agent job using AgentJobManager
                     job_manager = AgentJobManager(tenant_key=tenant_key)
