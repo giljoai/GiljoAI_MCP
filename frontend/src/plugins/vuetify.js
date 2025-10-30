@@ -2,6 +2,8 @@ import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import { aliases as mdiAliases, mdi } from 'vuetify/iconsets/mdi'
+import CodexMarkIcon from '@/components/icons/CodexMarkIcon.vue'
 
 const darkTheme = {
   dark: true,
@@ -56,6 +58,14 @@ const lightTheme = {
 export default createVuetify({
   components,
   directives,
+  icons: {
+    defaultSet: 'mdi',
+    aliases: {
+      ...mdiAliases,
+      codexMark: { component: CodexMarkIcon },
+    },
+    sets: { mdi },
+  },
   theme: {
     defaultTheme: 'dark',
     themes: {

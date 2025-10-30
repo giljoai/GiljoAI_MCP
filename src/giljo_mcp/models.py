@@ -89,6 +89,8 @@ class Product(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True,
+                       comment="Timestamp when product was soft deleted (NULL for active products)")
     meta_data = Column(JSON, default=dict)
 
     # Product status (Handover 0049)
@@ -116,6 +118,7 @@ class Product(Base):
         Index("idx_product_tenant", "tenant_key"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
+        Index("idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")),  # Soft delete support
         CheckConstraint(
             "vision_type IN ('file', 'inline', 'none')",
             name="ck_product_vision_type"

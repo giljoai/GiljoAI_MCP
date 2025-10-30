@@ -119,19 +119,32 @@
           </v-col>
         </v-row>
 
-        <!-- Status Filter Chips -->
-        <div class="d-flex gap-2 flex-wrap">
-          <v-chip
-            v-for="status in filterOptions"
-            :key="status.value"
-            :color="filterStatus === status.value ? 'primary' : 'default'"
-            :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
-            @click="filterStatus = status.value"
-            :aria-label="`Filter by ${status.label}`"
-            class="cursor-pointer"
+        <!-- Status Filter Chips with Date Format Toggle -->
+        <div class="d-flex gap-2 flex-wrap align-center justify-space-between">
+          <div class="d-flex gap-2 flex-wrap align-center">
+            <v-chip
+              v-for="status in filterOptions"
+              :key="status.value"
+              :color="filterStatus === status.value ? 'primary' : 'default'"
+              :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
+              @click="filterStatus = status.value"
+              :aria-label="`Filter by ${status.label}`"
+              class="cursor-pointer"
+            >
+              {{ status.label }} ({{ status.count }})
+            </v-chip>
+          </div>
+
+          <!-- Date Format Toggle (Right Aligned) -->
+          <v-btn
+            size="small"
+            variant="outlined"
+            @click="toggleDateLocale"
+            :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} date format`"
+            prepend-icon="mdi-calendar"
           >
-            {{ status.label }} ({{ status.count }})
-          </v-chip>
+            {{ dateLocale }} Format
+          </v-btn>
         </div>
       </v-card-text>
     </v-card>
@@ -183,31 +196,13 @@
           </v-chip>
         </template>
 
-        <!-- Custom Header for Created Column with US/EU Toggle -->
-        <template v-slot:header.created_at="{ column }">
-          <div class="d-flex align-center">
-            <span class="mr-2">{{ column.title }}</span>
-            <v-btn
-              size="x-small"
-              variant="outlined"
-              density="compact"
-              @click.stop="toggleDateLocale"
-              :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} format`"
-              class="text-caption"
-              style="min-width: 40px; padding: 0 4px;"
-            >
-              {{ dateLocale }}
-            </v-btn>
-          </div>
-        </template>
-
         <!-- Created Date Column -->
-        <template v-slot:item.created="{ item }">
+        <template v-slot:item.created_at="{ item }">
           {{ formatDateShort(item.created_at) }}
         </template>
 
         <!-- Completed Date Column -->
-        <template v-slot:item.completed="{ item }">
+        <template v-slot:item.completed_at="{ item }">
           {{
             item.status === 'completed' || item.status === 'cancelled'
               ? formatDateShort(item.completed_at || item.updated_at)
@@ -257,11 +252,6 @@
               </template>
 
               <v-list density="compact" min-width="150">
-                <v-list-item
-                  @click="viewProject(item)"
-                  prepend-icon="mdi-eye"
-                  title="View Details"
-                ></v-list-item>
                 <v-list-item
                   @click="editProject(item)"
                   prepend-icon="mdi-pencil"
@@ -540,7 +530,7 @@ const headers = [
   { title: 'Product', key: 'product', sortable: false, width: '15%' },
   { title: 'Agents', key: 'agents', sortable: false, width: '10%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '15%' },
-  { title: 'Completed', key: 'completed', sortable: false, width: '15%' },
+  { title: 'Completed', key: 'completed_at', sortable: true, width: '15%' },
   { title: 'Actions', key: 'actions', sortable: false, width: '8%', align: 'end' },
 ]
 
@@ -645,10 +635,6 @@ function toggleDateLocale() {
 }
 
 // Methods
-function viewProject(project) {
-  router.push(`/projects/${project.id}`)
-}
-
 // Handover 0062: Activate project
 async function activateProject(projectId) {
   try {

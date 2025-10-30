@@ -136,6 +136,9 @@ export const api = {
     // Product activation endpoints (Handover 0049)
     activate: (id) => apiClient.post(`/api/v1/products/${id}/activate`),
     deactivate: (id) => apiClient.post(`/api/v1/products/${id}/deactivate`),
+    // Soft delete recovery endpoints
+    getDeletedProducts: () => apiClient.get('/api/v1/products/deleted'),
+    restoreProduct: (id) => apiClient.post(`/api/v1/products/${id}/restore`),
   },
 
   // Projects
@@ -366,6 +369,11 @@ export const api = {
     getMetrics: (projectId) => apiClient.get(`/api/v1/orchestration/metrics/${projectId}`),
     createMissions: (data) => apiClient.post('/api/v1/orchestration/create-missions', data),
     spawnTeam: (data) => apiClient.post('/api/v1/orchestration/spawn-team', data),
+  },
+
+  // Prompts (Handover 0065 - Token Estimation)
+  prompts: {
+    estimateTokens: (data) => apiClient.post('/api/prompts/estimate-tokens', data),
   },
 }
 

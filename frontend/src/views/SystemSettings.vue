@@ -204,12 +204,10 @@
           <v-card-subtitle>Agent coding tools and native integrations (Admin overview)</v-card-subtitle>
 
           <v-card-text>
-            <!-- AI Tool Configuration Redirect Alert -->
-            <v-alert type="info" prominent class="mb-6" border="start">
-              <template v-slot:title>
-                <v-icon start>mdi-information</v-icon>
-                Configure AI Coding Tools
-              </template>
+            <!-- AI Tool Configuration Redirect Alert (single info icon, tonal like cookie-domain alert) -->
+            <v-alert type="info" variant="tonal" class="mb-6" :icon="false">
+              <v-icon start>mdi-information</v-icon>
+              <strong>Configure AI Coding Tools</strong>
               <div class="mt-2">
                 Users configure their AI coding tools (Claude Code, Codex CLI, Gemini CLI) in
                 <router-link to="/settings" class="text-primary font-weight-bold">
@@ -227,7 +225,7 @@
               <v-card-text>
                 <div class="d-flex align-center mb-3">
                   <v-avatar size="48" class="mr-4">
-                    <v-img src="/Claude_AI_symbol.svg" alt="Claude Code CLI" />
+                    <v-img src="/claude_pix.svg" alt="Claude Code CLI" />
                   </v-avatar>
                   <div>
                     <h3 class="text-h6">Claude Code CLI</h3>
@@ -235,32 +233,18 @@
                   </div>
                 </div>
 
-                <v-alert color="warning" variant="tonal" class="mb-3">
-                  <v-icon start>mdi-alert</v-icon>
-                  <strong>FINISH THESE INSTRUCTIONS AFTER ALPHA TESTING AND AGENT CREATION IS DONE</strong>
-                </v-alert>
-
                 <p class="text-body-2 mb-3">
-                  GiljoAI Agent Orchestration MCP Server integrates seamlessly with Claude Code CLI, leveraging 
-                  MCP configuration through Claude Code marketplace tools and specialized sub-agents. Our system 
-                  creates coordinated agent teams that break through context limits with 70% token reduction.
+                  GiljoAI Agent Orchestration MCP Server integrates seamlessly with Claude Code CLI, leveraging MCP
+                  configuration via a single command‑line setup in each user’s
+                  <router-link to="/settings" class="text-primary font-weight-bold">My Settings → API and Integrations → MCP Configuration</router-link>.
                 </p>
 
                 <p class="text-body-2 mb-3">
-                  <strong>Sub-agent Architecture:</strong> Claude Code spawns specialized sub-agents for different 
-                  development tasks while GiljoAI MCP serves as the persistent orchestration brain, managing state, 
-                  memory, and coordination across agent teams.
+                  <strong>Sub-agent Architecture:</strong> Claude Code integration utilizes Claude Code native sub‑agent tools. This application
+                  will copy templated agents, or user‑customized agents, into the Claude Code agents folder (either on a per‑user or per‑project basis).
+                  The user can choose to also launch each agent in its own Claude Code terminal window. Agent integration can be found under
+                  <strong>My Settings → API and Integrations → Integrations</strong>, in the <strong>Claude Code Agent Export</strong> section.
                 </p>
-
-                <p class="text-body-2 mb-3">
-                  <strong>Configuration:</strong> Each user must generate an API key under their user profile and 
-                  configure Claude Code either through the marketplace function or manually.
-                </p>
-
-                <v-btn variant="outlined" color="warning" @click="showClaudeConfigModal = true">
-                  <v-icon start>mdi-cog</v-icon>
-                  How to Configure Claude Code
-                </v-btn>
               </v-card-text>
             </v-card>
 
@@ -269,7 +253,10 @@
               <v-card-text>
                 <div class="d-flex align-center mb-3">
                   <v-avatar size="48" class="mr-4">
-                    <v-img src="/codex_logo.svg" alt="Codex CLI" />
+                    <CodexMarkIcon
+                      class="codex-mark"
+                      :style="{ color: theme.global.current.value.dark ? '#ffffff' : '#000000', width: '53px', height: '53px' }"
+                    />
                   </v-avatar>
                   <div>
                     <h3 class="text-h6">Codex CLI</h3>
@@ -282,16 +269,14 @@
                   analysis capabilities. Sub-agents coordinate through GiljoAI MCP for complex development workflows, 
                   maintaining context and state across multiple coding sessions.
                 </p>
-
                 <p class="text-body-2 mb-3">
-                  <strong>Configuration:</strong> Generate an API key under your user profile and configure Codex 
-                  manually using our copy/paste method or downloadable instructions.
+                  <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user runs an
+                  orchestrator session in one Codex CLI terminal and starts each agent in its own terminal using our
+                  prepared activation prompts. This allows each agent to work autonomously and stay focused while
+                  coordinating through MCP messages.
                 </p>
 
-                <v-btn variant="outlined" color="warning" @click="showCodexConfigModal = true">
-                  <v-icon start>mdi-cog</v-icon>
-                  How to Configure Codex
-                </v-btn>
+                <!-- Configuration instructions removed; see user help files in the future -->
               </v-card-text>
             </v-card>
 
@@ -313,16 +298,14 @@
                   development capabilities. Sub-agents coordinate through GiljoAI MCP for advanced development
                   workflows with enhanced reasoning and multi-modal capabilities.
                 </p>
-
                 <p class="text-body-2 mb-3">
-                  <strong>Configuration:</strong> Generate an API key under your user profile and configure Gemini
-                  CLI manually using our copy/paste method or downloadable instructions.
+                  <strong>Integration model:</strong> Multiple terminal windows, one per agent. The user runs an
+                  orchestrator session in one Gemini CLI terminal and starts each agent in its own terminal using our
+                  prepared activation prompts. This allows each agent to work autonomously and stay focused while
+                  coordinating through MCP messages.
                 </p>
 
-                <v-btn variant="outlined" color="warning" @click="showGeminiConfigModal = true">
-                  <v-icon start>mdi-cog</v-icon>
-                  How to Configure Gemini CLI
-                </v-btn>
+                <!-- Configuration instructions removed; see user help files in the future -->
               </v-card-text>
             </v-card>
 
@@ -756,6 +739,8 @@ context_sharing = true</code></pre>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useTheme } from 'vuetify'
+import CodexMarkIcon from '@/components/icons/CodexMarkIcon.vue'
 import { useRouter } from 'vue-router'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
 import { API_CONFIG } from '@/config/api'
@@ -763,6 +748,7 @@ import api from '@/services/api'
 
 // Router
 const router = useRouter()
+const theme = useTheme()
 
 // State
 const activeTab = ref('network')
