@@ -3,12 +3,10 @@
     <!-- Column Header -->
     <v-card class="column-header mb-4" elevation="1">
       <v-card-title class="d-flex align-center justify-space-between pa-4">
-        <div class="d-flex align-center gap-2">
-          <v-icon :color="iconColor" size="28">{{ icon }}</v-icon>
-          <div>
-            <p class="text-h6 font-weight-bold mb-0">{{ title }}</p>
-            <p class="text-caption text-grey mb-0">{{ description }}</p>
-          </div>
+        <v-icon :color="iconColor" size="28">{{ icon }}</v-icon>
+        <div class="flex-grow-1 text-center">
+          <p class="text-h6 font-weight-bold mb-0">{{ title }}</p>
+          <p class="text-caption text-grey mb-0">{{ description }}</p>
         </div>
         <v-chip
           :color="iconColor"

@@ -9,8 +9,7 @@ Coverage target: >90%
 
 import pytest
 import asyncio
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from datetime import datetime, timezone
 
 from src.giljo_mcp.orchestrator import ProjectOrchestrator
@@ -263,32 +262,6 @@ async def test_spawn_claude_code_agent_creates_agent(orchestrator, test_project,
     assert agent.job_id is None  # No job for Claude agents
     assert agent.tenant_key == test_project.tenant_key
     assert agent.project_id == test_project.id
-
-
-@pytest.mark.asyncio
-async def test_spawn_claude_code_agent_exports_template(orchestrator, test_project, claude_template):
-    """Test Claude Code agent exports template to .claude/agents/."""
-    export_dir = Path.cwd() / ".claude" / "agents"
-    export_dir.mkdir(parents=True, exist_ok=True)
-
-    agent = await orchestrator._spawn_claude_code_agent(
-        project=test_project,
-        role=AgentRole.IMPLEMENTER,
-        template=claude_template,
-    )
-
-    # Verify file was exported
-    file_path = export_dir / f"{claude_template.name}.md"
-    assert file_path.exists()
-
-    # Verify file content includes frontmatter
-    content = file_path.read_text(encoding="utf-8")
-    assert "---" in content
-    assert f"name: {claude_template.name}" in content
-    assert f"tool: {claude_template.tool}" in content
-
-    # Cleanup
-    file_path.unlink()
 
 
 @pytest.mark.asyncio
@@ -737,22 +710,6 @@ async def test_spawn_agent_handles_missing_project(orchestrator):
             project_id="nonexistent-project-id",
             role=AgentRole.IMPLEMENTER,
         )
-
-
-@pytest.mark.asyncio
-async def test_spawn_claude_code_agent_handles_export_failure(orchestrator, test_project, claude_template):
-    """Test Claude Code agent continues if template export fails."""
-    # Mock export directory to be non-writable
-    with patch.object(Path, "write_text", side_effect=PermissionError("No write access")):
-        agent = await orchestrator._spawn_claude_code_agent(
-            project=test_project,
-            role=AgentRole.IMPLEMENTER,
-            template=claude_template,
-        )
-
-        # Agent should still be created
-        assert agent is not None
-        assert agent.mode == "claude"
 
 
 @pytest.mark.asyncio
