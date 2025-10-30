@@ -257,7 +257,7 @@ def upgrade() -> None:
 
     print("=" * 80)
     print("[Handover 0073-01] Migration completed successfully!")
-    print("[0073-01] Agent status states expanded (5 → 7 states)")
+    print("[0073-01] Agent status states expanded (5 to 7 states)")
     print("[0073-01] Progress tracking columns added (4 new columns)")
     print("=" * 80 + "\n")
 

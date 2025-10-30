@@ -554,6 +554,11 @@ class Task(Base):
     - created_by_user_id: User who created the task
     - assigned_to_user_id: User responsible for completing the task
     - Nullable fields for backward compatibility and MCP tool creation
+
+    Handover 0072: Task-to-Agent Job Integration
+    - agent_job_id: Links task to MCPAgentJob for execution tracking
+    - project_id: Now nullable to support unassigned tasks
+    - status: Added "converted" state for task-to-project conversions
     """
 
     __tablename__ = "tasks"
@@ -561,7 +566,7 @@ class Task(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)  # Product-level scope for task isolation
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)  # Handover 0072: Nullable for unassigned tasks
     assigned_agent_id = Column(String(36), ForeignKey("agents.id"), nullable=True)
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
 
@@ -572,10 +577,13 @@ class Task(Base):
     # Phase 4: Task-to-project conversion tracking
     converted_to_project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
 
+    # Handover 0072: Agent job integration
+    agent_job_id = Column(String(36), ForeignKey("mcp_agent_jobs.job_id"), nullable=True)
+
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
-    status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled
+    status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled, converted
     priority = Column(String(20), default="medium")  # low, medium, high, critical
     estimated_effort = Column(Float, nullable=True)  # Hours
     actual_effort = Column(Float, nullable=True)  # Hours
@@ -595,6 +603,9 @@ class Task(Base):
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")
     assigned_to_user = relationship("User", foreign_keys=[assigned_to_user_id], back_populates="assigned_tasks")
 
+    # Handover 0072: Agent job relationship
+    agent_job = relationship("MCPAgentJob", foreign_keys=[agent_job_id], backref="task")
+
     __table_args__ = (
         Index("idx_task_tenant", "tenant_key"),
         Index("idx_task_product", "product_id"),
@@ -608,6 +619,8 @@ class Task(Base):
         Index("idx_task_tenant_assigned_user", "tenant_key", "assigned_to_user_id"),  # Composite for "My Tasks"
         Index("idx_task_tenant_created_user", "tenant_key", "created_by_user_id"),  # Composite for "Created by Me"
         Index("idx_task_converted_to_project", "converted_to_project_id"),  # Conversion tracking
+        Index("idx_task_agent_job", "agent_job_id"),  # Handover 0072: Agent job linking
+        Index("idx_task_tenant_agent_job", "tenant_key", "agent_job_id"),  # Composite for tenant isolation
     )
 
 

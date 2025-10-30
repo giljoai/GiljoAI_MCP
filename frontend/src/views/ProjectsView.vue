@@ -217,8 +217,8 @@
             <v-btn
               v-if="item.status === 'active'"
               size="small"
-              color="primary"
-              variant="tonal"
+              color="#ffc300"
+              variant="flat"
               @click="launchProject(item.id)"
               title="Launch project"
             >
