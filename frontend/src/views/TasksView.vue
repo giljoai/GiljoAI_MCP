@@ -78,15 +78,15 @@
 
     <!-- Filters Row -->
     <v-row class="mb-4" align="center">
-      <!-- User Filter Toggle (Phase 4) -->
+      <!-- Product Task Filter -->
       <v-col cols="12" md="3">
         <v-chip-group v-model="taskFilter" mandatory active-class="primary" density="comfortable">
-          <v-chip value="my_tasks" data-test="my-tasks-chip">
-            <v-icon start>mdi-account</v-icon>
-            My Tasks
+          <v-chip value="product_tasks" data-test="product-tasks-chip">
+            <v-icon start>mdi-package-variant</v-icon>
+            Product Tasks
           </v-chip>
-          <v-chip v-if="user && user.role === 'admin'" value="all" data-test="all-tasks-chip">
-            <v-icon start>mdi-account-group</v-icon>
+          <v-chip value="all_tasks" data-test="all-tasks-chip">
+            <v-icon start>mdi-format-list-bulleted</v-icon>
             All Tasks
           </v-chip>
         </v-chip-group>
@@ -229,7 +229,6 @@
               dragging: draggedTask?.id === item.id,
               'hierarchy-item': showHierarchy && item.parent_task_id,
               'parent-item': showHierarchy && hasChildren(item.id),
-              'assigned-to-me': item.assigned_to_user_id === user?.id,
             }"
             :data-test="`task-row-${item.id}`"
             draggable="true"
@@ -278,17 +277,6 @@
                   mdi-account-circle
                 </v-icon>
 
-                <!-- Assignment indicator (Phase 4) -->
-                <v-icon
-                  v-if="item.assigned_to_user_id === user?.id"
-                  color="success"
-                  size="small"
-                  class="mr-2"
-                  data-test="assigned-icon"
-                >
-                  mdi-clipboard-account
-                </v-icon>
-
                 <span class="font-weight-medium">{{ item.title }}</span>
               </div>
               <div class="text-caption text-medium-emphasis">{{ item.description }}</div>
@@ -333,19 +321,6 @@
           <span v-else class="text-medium-emphasis">Unassigned</span>
         </template>
 
-        <!-- Assigned To User Column (Phase 4) -->
-        <template v-slot:item.assigned_to_user_id="{ item }">
-          <v-chip
-            v-if="item.assigned_to_user_id"
-            size="small"
-            :color="item.assigned_to_user_id === user?.id ? 'primary' : 'default'"
-            :data-test="`task-assignee-${item.assigned_to_user_id}`"
-          >
-            <v-icon start size="small">mdi-account</v-icon>
-            {{ getUserName(item.assigned_to_user_id) }}
-          </v-chip>
-          <span v-else class="text-medium-emphasis" data-test="task-assignee-null">Unassigned</span>
-        </template>
 
         <!-- Created By User Column (Phase 4) -->
         <template v-slot:item.created_by_user_id="{ item }">
@@ -393,30 +368,48 @@
 
         <!-- Actions Column -->
         <template v-slot:item.actions="{ item }">
-          <v-btn
-            icon="mdi-pencil"
-            size="small"
-            variant="text"
-            @click="editTask(item)"
-            aria-label="Edit task"
-          />
-          <v-btn
-            v-if="item.status !== 'completed'"
-            icon="mdi-check"
-            size="small"
-            variant="text"
-            color="success"
-            @click="completeTask(item)"
-            aria-label="Mark as complete"
-          />
-          <v-btn
-            icon="mdi-delete"
-            size="small"
-            variant="text"
-            color="error"
-            @click="deleteTask(item)"
-            aria-label="Delete task"
-          />
+          <v-menu>
+            <template v-slot:activator="{ props }">
+              <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
+            </template>
+            <v-list>
+              <v-list-item @click="editTask(item)">
+                <template v-slot:prepend>
+                  <v-icon>mdi-pencil</v-icon>
+                </template>
+                <v-list-item-title>Edit</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="item.status !== 'completed'"
+                @click="convertTaskToProject(item)"
+              >
+                <template v-slot:prepend>
+                  <v-icon>mdi-folder-arrow-up</v-icon>
+                </template>
+                <v-list-item-title>Convert to Project</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="item.status !== 'completed'"
+                @click="completeTask(item)"
+              >
+                <template v-slot:prepend>
+                  <v-icon color="success">mdi-check</v-icon>
+                </template>
+                <v-list-item-title>Mark Complete</v-list-item-title>
+              </v-list-item>
+
+              <v-divider />
+
+              <v-list-item @click="deleteTask(item)">
+                <template v-slot:prepend>
+                  <v-icon color="error">mdi-delete</v-icon>
+                </template>
+                <v-list-item-title>Delete</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </template>
 
         <!-- No Data -->
@@ -501,32 +494,6 @@
               </v-col>
             </v-row>
 
-            <!-- User Assignment (Phase 4) -->
-            <v-autocomplete
-              v-model="currentTask.assigned_to_user_id"
-              :items="tenantUsers"
-              item-title="username"
-              item-value="id"
-              label="Assign To (User)"
-              variant="outlined"
-              clearable
-              hint="Assign this task to a team member"
-              persistent-hint
-              data-test="assign-to-user-select"
-            >
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props">
-                  <template v-slot:prepend>
-                    <v-avatar color="primary" size="small">
-                      <span class="text-caption">{{ item.raw.username?.charAt(0)?.toUpperCase() }}</span>
-                    </v-avatar>
-                  </template>
-                  <v-list-item-title>{{ item.raw.username }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ item.raw.role }}</v-list-item-subtitle>
-                </v-list-item>
-              </template>
-            </v-autocomplete>
-
             <v-text-field
               v-model="currentTask.due_date"
               label="Due Date"
@@ -605,8 +572,8 @@ const editingTask = ref(null)
 const taskForm = ref(null)
 const saving = ref(false)
 
-// Phase 4: Multi-user state
-const taskFilter = ref('my_tasks')
+// Product task filter
+const taskFilter = ref('product_tasks')
 const tenantUsers = ref([])
 const user = computed(() => userStore.currentUser)
 
@@ -629,8 +596,6 @@ const currentTask = ref({
   status: 'pending',
   priority: 'medium',
   category: 'general',
-  assigned_to: null,
-  assigned_to_user_id: null, // Phase 4: User assignment
   due_date: null,
 })
 
@@ -641,8 +606,6 @@ const headers = [
   { title: 'Priority', key: 'priority', width: '100' },
   { title: 'Task', key: 'title' },
   { title: 'Category', key: 'category', width: '120' },
-  { title: 'Assigned To (Agent)', key: 'assigned_to', width: '150' },
-  { title: 'Assigned To', key: 'assigned_to_user_id', width: '150' },
   { title: 'Created By', key: 'created_by_user_id', width: '150' },
   { title: 'Due Date', key: 'due_date', width: '120' },
   { title: 'Convert Status', key: 'convert_status', width: '130' },
@@ -675,19 +638,19 @@ function getUserName(userId) {
 const loading = computed(() => taskStore.loading)
 const tasks = computed(() => taskStore.tasks)
 
-// Phase 4: User-filtered tasks
+// Product-filtered tasks
 const userFilteredTasks = computed(() => {
-  if (taskFilter.value === 'all') {
-    return tasks.value
+  if (taskFilter.value === 'product_tasks') {
+    // Show tasks for active product only
+    if (!productStore.currentProductId) {
+      return [] // No active product, return empty list
+    }
+    return tasks.value.filter((task) => task.product_id === productStore.currentProductId)
+  } else if (taskFilter.value === 'all_tasks') {
+    // Show tasks with NULL product_id
+    return tasks.value.filter((task) => task.product_id === null || task.product_id === undefined)
   }
-
-  // "My Tasks" - show tasks created by or assigned to current user
-  const userId = user.value?.id
-  if (!userId) return tasks.value
-
-  return tasks.value.filter(
-    (task) => task.created_by_user_id === userId || task.assigned_to_user_id === userId,
-  )
+  return tasks.value
 })
 
 const agentOptions = computed(() => {
@@ -810,6 +773,25 @@ async function completeTask(task) {
   }
 }
 
+async function convertTaskToProject(task) {
+  if (!productStore.currentProductId) {
+    alert('Please activate a product before converting tasks to projects.')
+    return
+  }
+
+  if (confirm(`Convert task "${task.title}" to a project?\n\nThis will create a new project with the task's title and description.`)) {
+    try {
+      const response = await api.tasks.convertToProject(task.id)
+      await taskStore.fetchTasks()
+      alert(`Task successfully converted to project: ${response.data.name}`)
+    } catch (error) {
+      console.error('Error converting task to project:', error)
+      const errorMsg = error.response?.data?.detail || 'Failed to convert task to project'
+      alert(errorMsg)
+    }
+  }
+}
+
 async function deleteTask(task) {
   if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
     try {
@@ -830,8 +812,6 @@ function cancelTask() {
     status: 'pending',
     priority: 'medium',
     category: 'general',
-    assigned_to: null,
-    assigned_to_user_id: null, // Phase 4
     due_date: null,
   }
 }

@@ -201,6 +201,7 @@ export const api = {
     summary: (productId) =>
       apiClient.get('/api/v1/tasks/summary/', { params: { product_id: productId } }),
     convert: (id, data) => apiClient.post(`/api/v1/tasks/${id}/convert/`, data),
+    convertToProject: (id) => apiClient.post(`/api/v1/tasks/${id}/convert-to-project`),
   },
 
   // Users (for tenant user listing and assignment)
