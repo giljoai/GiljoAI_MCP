@@ -22,7 +22,7 @@ class TaskUpdate(BaseModel):
     """
     title: Optional[str] = Field(None, min_length=1, max_length=255, description="Task title")
     description: Optional[str] = Field(None, description="Task description")
-    status: Optional[str] = Field(None, description="Task status: pending, in_progress, completed, blocked, cancelled")
+    status: Optional[str] = Field(None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted")
     priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
     category: Optional[str] = Field(None, max_length=100, description="Task category")
     assigned_to_user_id: Optional[str] = Field(None, description="User ID to assign task to")
@@ -88,8 +88,11 @@ class TaskResponse(BaseModel):
     status: str = Field(..., description="Task status")
     priority: str = Field(..., description="Task priority")
     product_id: Optional[str] = Field(None, description="Product ID for isolation")
-    project_id: str = Field(..., description="Associated project ID")
+    project_id: Optional[str] = Field(None, description="Associated project ID (nullable for unassigned tasks - Handover 0072)")
     assigned_agent_id: Optional[str] = Field(None, description="Assigned agent ID (for MCP tools)")
+    
+    # Handover 0072: Agent job integration
+    agent_job_id: Optional[str] = Field(None, description="Linked agent job ID for execution tracking")
     parent_task_id: Optional[str] = Field(None, description="Parent task ID for subtasks")
 
     # Phase 4: User fields

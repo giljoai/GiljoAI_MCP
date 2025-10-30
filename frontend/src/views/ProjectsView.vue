@@ -183,6 +183,24 @@
           </v-chip>
         </template>
 
+        <!-- Custom Header for Created Column with US/EU Toggle -->
+        <template v-slot:header.created_at="{ column }">
+          <div class="d-flex align-center">
+            <span class="mr-2">{{ column.title }}</span>
+            <v-btn
+              size="x-small"
+              variant="outlined"
+              density="compact"
+              @click.stop="toggleDateLocale"
+              :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} format`"
+              class="text-caption"
+              style="min-width: 40px; padding: 0 4px;"
+            >
+              {{ dateLocale }}
+            </v-btn>
+          </div>
+        </template>
+
         <!-- Created Date Column -->
         <template v-slot:item.created="{ item }">
           {{ formatDateShort(item.created_at) }}
@@ -489,6 +507,9 @@ const itemsPerPage = ref(10)
 // Sort configuration
 const sortConfig = ref([{ key: 'created_at', order: 'desc' }])
 
+// Date locale preference (US: MM-DD-YYYY, EU: DD-MM-YYYY)
+const dateLocale = ref(localStorage.getItem('dateLocale') || 'US')
+
 // Form data
 const projectData = ref({
   name: '',
@@ -597,22 +618,30 @@ const deletedProjects = computed(() => projectStore.deletedProjects)
 
 const deletedCount = computed(() => deletedProjects.value.length)
 
-// Format date short (MM/DD or MM/DD/YY)
+// Format date with locale support (US: MM-DD-YYYY HH:MM, EU: DD-MM-YYYY HH:MM)
 function formatDateShort(dateStr) {
   if (!dateStr) return '—'
   const date = new Date(dateStr)
-  const today = new Date()
-  const isCurrentYear = date.getFullYear() === today.getFullYear()
 
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
+  const year = date.getFullYear()
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
 
-  if (isCurrentYear) {
-    return `${month}/${day}`
+  const time = `${hours}:${minutes}`
+
+  if (dateLocale.value === 'EU') {
+    return `${day}-${month}-${year} ${time}`
+  } else {
+    return `${month}-${day}-${year} ${time}`
   }
+}
 
-  const year = String(date.getFullYear()).slice(-2)
-  return `${month}/${day}/${year}`
+// Toggle date locale between US and EU
+function toggleDateLocale() {
+  dateLocale.value = dateLocale.value === 'US' ? 'EU' : 'US'
+  localStorage.setItem('dateLocale', dateLocale.value)
 }
 
 // Methods
