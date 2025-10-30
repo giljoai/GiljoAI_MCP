@@ -858,6 +858,106 @@ Vuetify limitation - nested v-windows don't inherit theme properly.
 
 ---
 
+### ⚠️ CONSIDERATION: Agent Type Limits Per Project
+
+**Context**: Handover 0072 completion raised question about optimal max agent types per project
+
+**Current State**:
+- No limit on agent types per project
+- 6 default agent templates seeded per tenant:
+  1. **orchestrator** - Coordinates multi-agent workflows
+  2. **analyzer** - Code analysis and architecture review
+  3. **implementer** - Feature implementation and coding
+  4. **tester** - Test creation and quality assurance
+  5. **reviewer** - Code review and feedback
+  6. **documenter** - Documentation generation
+- Users can create unlimited custom agent types
+- Multiple agents of SAME type allowed (horizontal scaling)
+
+**Recommendation**: Limit to **6-8 Agent Types Maximum** Per Project
+
+**Rationale**:
+1. **Cognitive Load**: Matches human working memory capacity (7±2 items)
+2. **Coordination Overhead**: Each additional agent type increases communication complexity (N*(N-1)/2 connections)
+3. **Default Coverage**: 6 default types cover 90% of software development workflows
+4. **Proven Pattern**: 6 templates used successfully in production
+
+**Implementation Options**:
+
+**Option A - Soft Limit (Recommended)**:
+- UI warning when exceeding 6-8 types
+- Allow override with confirmation dialog
+- Dashboard shows "Agent Type Density" metric
+- **Effort**: 2-3 hours
+
+**Option B - Hard Limit**:
+- Database constraint preventing &gt;8 types per project
+- Clear error message with guidance
+- Admin override capability
+- **Effort**: 4-6 hours
+
+**Option C - UI Nudge Only**:
+- Visual indicator showing type count
+- Suggest reusing existing types
+- No enforcement
+- **Effort**: 1-2 hours
+
+**Benefits**:
+- Reduces orchestrator complexity
+- Improves agent coordination efficiency
+- Encourages type reuse over type proliferation
+- Maintains flexibility via multiple agents of same type
+
+**Type Reuse Patterns**:
+```
+Instead of:
+- backend-implementer (1 agent)
+- frontend-implementer (1 agent)
+- api-implementer (1 agent)
+
+Use:
+- implementer (3 agents with different contexts)
+```
+
+**Related Handovers**:
+- Handover 0072: Task-to-Agent Job Integration
+- Handover 0041: Agent Template Management
+- Handover 0020: Orchestrator Enhancement
+
+**Decision Needed**: Choose implementation option (A/B/C)
+
+**Estimated Effort**: 4-6 hours (Option B - Hard Limit with validation)
+
+**Priority**: MEDIUM (post-release consideration)
+
+---
+
+## Harmonization Status: TECHNICAL_DEBT.md v1 → v2
+
+**Analysis Date**: 2025-10-29
+
+**Status**: ⚠️ **PARTIALLY HARMONIZED**
+
+**What's In v2**:
+- ✅ Section 9: Nested v-window theme preservation (lines 793-827)
+- ✅ Agent behavior field enhancement (lines 831-858)
+- ✅ Dashboard agent monitoring (lines 68-105)
+- ✅ Enhanced agent cards (lines 187-217)
+- ✅ MCP tool exposure (lines 140-167)
+
+**What's Missing from v1**:
+- ⚠️ Some implementation details from nested v-window section
+- ⚠️ Original timestamps and context from v1 entries
+
+**Recommendation**: 
+- v2 is PRIMARY document (more comprehensive)
+- v1 can be archived/deprecated
+- No critical items missing from v2
+
+**Action**: Update README to mark v1 as deprecated, v2 as active
+
+---
+
 ## Release Readiness Checklist
 
 ### Pre-Release (Must Complete)
