@@ -101,12 +101,12 @@ const route = useRoute()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
 
-// Dynamic agent icon based on route and theme
-const agentIcon = computed(() => {
-  const isAgentsRoute = route.path === '/agents'
+// Dynamic Giljo icon for Jobs based on route and theme
+const jobsIcon = computed(() => {
+  const isJobsRoute = route.path === '/kanban'
   const isDark = theme.global.current.value.dark
-  
-  if (isAgentsRoute) {
+
+  if (isJobsRoute) {
     return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
   }
   return '/icons/Giljo_gray_Face.svg'
@@ -118,8 +118,7 @@ const navigationItems = computed(() => {
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-    { name: 'Agents', path: '/agents', title: 'Agents', customIcon: agentIcon.value },
-    { name: 'Jobs', path: '/kanban', title: 'Jobs', icon: 'mdi-view-column' },
+    { name: 'Jobs', path: '/kanban', title: 'Jobs', customIcon: jobsIcon.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 

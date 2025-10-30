@@ -9,7 +9,7 @@ export function useKeyboardShortcuts() {
     { key: 'Ctrl+K, Cmd+K', description: 'Quick search/command palette', action: 'search' },
     { key: 'Alt+1', description: 'Navigate to Dashboard', action: () => router.push('/Dashboard') },
     { key: 'Alt+2', description: 'Navigate to Projects', action: () => router.push('/projects') },
-    { key: 'Alt+3', description: 'Navigate to Agents', action: () => router.push('/agents') },
+    { key: 'Alt+3', description: 'Navigate to Jobs', action: () => router.push('/kanban') },
     { key: 'Alt+4', description: 'Navigate to Messages', action: () => router.push('/messages') },
     { key: 'Alt+5', description: 'Navigate to Tasks', action: () => router.push('/tasks') },
     { key: 'Alt+6', description: 'Navigate to Settings', action: () => router.push('/settings') },
@@ -26,9 +26,7 @@ export function useKeyboardShortcuts() {
     { key: 'E', description: 'Edit selected project', action: 'edit-project', context: 'projects' },
     { key: 'Delete', description: 'Delete selected item', action: 'delete-item' },
 
-    // Agent Control
-    { key: 'Space', description: 'Pause/Resume agent', action: 'toggle-agent', context: 'agents' },
-    { key: 'R', description: 'Refresh agent status', action: 'refresh-agents', context: 'agents' },
+    // Message Composer
     { key: 'M', description: 'Open message composer', action: 'compose-message' },
 
     // Data Tables
@@ -148,7 +146,7 @@ export function useKeyboardShortcuts() {
     // Check for Alt+Number navigation
     if (event.altKey && event.key >= '1' && event.key <= '6') {
       event.preventDefault()
-      const routes = ['/Dashboard', '/projects', '/agents', '/messages', '/tasks', '/settings']
+      const routes = ['/Dashboard', '/projects', '/kanban', '/messages', '/tasks', '/settings']
       const index = parseInt(event.key) - 1
       if (routes[index]) {
         router.push(routes[index])

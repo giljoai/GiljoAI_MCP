@@ -634,7 +634,7 @@ const toolOptions = [
   {
     title: 'Codex',
     value: 'codex',
-    logo: '/codex_logo.svg',
+    logo: '/icons/codex_mark.svg',
     color: '#4CAF50',
   },
   {
@@ -861,7 +861,7 @@ const getCategoryColor = (category) => {
 const getToolLogo = (tool) => {
   const logos = {
     claude: '/claude_pix.svg',
-    codex: '/codex_logo.svg',
+    codex: '/icons/codex_mark.svg',
     gemini: '/gemini-icon.svg',
   }
   return logos[tool] || logos.claude

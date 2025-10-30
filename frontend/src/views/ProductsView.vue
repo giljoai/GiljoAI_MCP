@@ -34,6 +34,17 @@
               class="mr-3"
               style="max-width: 200px"
             ></v-select>
+            <v-btn
+              v-if="deletedProductsCount > 0"
+              variant="outlined"
+              color="warning"
+              size="small"
+              prepend-icon="mdi-delete-restore"
+              @click="showDeletedProductsDialog = true"
+              class="mr-3"
+            >
+              Deleted Products {{ deletedProductsCount }}
+            </v-btn>
             <v-text-field
               v-model="search"
               prepend-inner-icon="mdi-magnify"
@@ -113,16 +124,22 @@
                     <!-- Statistics -->
                     <v-divider class="my-3"></v-divider>
                     <v-row dense>
-                      <v-col cols="6" class="text-center">
+                      <v-col cols="4" class="text-center">
                         <div class="text-caption text-medium-emphasis">Tasks</div>
                         <div class="text-h6" style="color: #ffc300">
-                          {{ product.unresolved_tasks || 0 }}/{{ product.task_count || 0 }}
+                          {{ product.task_count || 0 }}
                         </div>
                       </v-col>
-                      <v-col cols="6" class="text-center">
+                      <v-col cols="4" class="text-center">
                         <div class="text-caption text-medium-emphasis">Projects</div>
                         <div class="text-h6" style="color: #ffc300">
-                          {{ product.unfinished_projects || 0 }}/{{ product.project_count || 0 }}
+                          {{ product.project_count || 0 }}
+                        </div>
+                      </v-col>
+                      <v-col cols="4" class="text-center">
+                        <div class="text-caption text-medium-emphasis">Completed</div>
+                        <div class="text-h6" style="color: #ffc300">
+                          {{ getCompletedProjectsCount(product) }}
                         </div>
                       </v-col>
                     </v-row>
@@ -1187,9 +1204,9 @@
     <!-- Delete Confirmation Dialog with Cascade Impact -->
     <v-dialog v-model="showDeleteDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title class="d-flex align-center text-error">
-          <v-icon start color="error">mdi-alert-circle</v-icon>
-          Delete Product?
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="warning">mdi-delete</v-icon>
+          Move Product to Trash?
         </v-card-title>
 
         <v-divider></v-divider>
@@ -1203,10 +1220,11 @@
 
           <!-- Warning Content -->
           <div v-else>
-            <v-alert type="error" variant="tonal" density="compact" class="mb-4">
-              <div class="text-h6 mb-2">THIS ACTION CANNOT BE UNDONE</div>
+            <v-alert type="warning" variant="tonal" density="compact" class="mb-4">
+              <div class="text-subtitle-1 font-weight-bold mb-2">Move to Trash?</div>
               <div>
-                You are about to permanently delete <strong>{{ deletingProduct.name }}</strong>
+                <strong>{{ deletingProduct.name }}</strong> will be moved to trash and can be recovered for 10 days.
+                After 10 days, it will be permanently deleted.
               </div>
             </v-alert>
 
@@ -1259,29 +1277,18 @@
               </v-list>
             </div>
 
-            <!-- Confirmation Input -->
+            <!-- Simplified Confirmation -->
             <v-divider class="my-4"></v-divider>
-
-            <div class="mb-3">
-              <div class="text-subtitle-2 mb-2">Type the product name to confirm:</div>
-              <v-text-field
-                v-model="deleteConfirmationName"
-                :placeholder="deletingProduct.name"
-                variant="outlined"
-                density="comfortable"
-                :error="deleteConfirmationError"
-                :error-messages="
-                  deleteConfirmationError ? 'Product name does not match' : ''
-                "
-              ></v-text-field>
-            </div>
 
             <v-checkbox
               v-model="deleteConfirmationCheck"
-              label="I understand this action is permanent and cannot be undone"
               density="compact"
               hide-details
-            ></v-checkbox>
+            >
+              <template #label>
+                <span>I understand this product will be recoverable for 10 days</span>
+              </template>
+            </v-checkbox>
           </div>
         </v-card-text>
 
@@ -1291,13 +1298,13 @@
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="cancelDelete" :disabled="deleting"> Cancel </v-btn>
           <v-btn
-            color="error"
+            color="warning"
             variant="flat"
             @click="confirmDeleteProduct"
-            :disabled="!isDeleteConfirmed || deleting"
+            :disabled="!deleteConfirmationCheck || deleting"
             :loading="deleting"
           >
-            Delete Forever
+            Move to Trash
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1311,6 +1318,95 @@
       @confirm="confirmActivation"
       @cancel="cancelActivation"
     />
+
+    <!-- Deleted Products Recovery Dialog -->
+    <v-dialog v-model="showDeletedProductsDialog" max-width="800" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="warning">mdi-delete-restore</v-icon>
+          Deleted Products
+          <v-spacer></v-spacer>
+          <v-btn icon variant="text" @click="showDeletedProductsDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-divider></v-divider>
+
+        <v-card-text style="max-height: 500px; overflow-y: auto">
+          <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+            Products are recoverable for 10 days after deletion. After that, they will be permanently purged.
+          </v-alert>
+
+          <div v-if="loadingDeletedProducts" class="text-center py-8">
+            <v-progress-circular indeterminate color="warning"></v-progress-circular>
+            <div class="text-caption mt-2">Loading deleted products...</div>
+          </div>
+
+          <div v-else-if="deletedProducts.length === 0" class="text-center py-8">
+            <v-icon size="64" color="grey-lighten-2">mdi-delete-empty</v-icon>
+            <div class="text-h6 text-medium-emphasis mt-4">No deleted products</div>
+          </div>
+
+          <v-list v-else density="compact">
+            <v-list-item
+              v-for="product in deletedProducts"
+              :key="product.id"
+              class="border rounded mb-3 pa-3"
+            >
+              <div class="d-flex flex-column">
+                <div class="d-flex align-center justify-space-between mb-2">
+                  <div>
+                    <div class="text-h6">{{ product.name }}</div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ product.description || 'No description' }}
+                    </div>
+                  </div>
+                  <v-chip
+                    :color="product.days_until_purge <= 2 ? 'error' : 'warning'"
+                    size="small"
+                    variant="flat"
+                  >
+                    {{ product.days_until_purge }} days left
+                  </v-chip>
+                </div>
+
+                <v-divider class="my-2"></v-divider>
+
+                <div class="d-flex align-center justify-space-between">
+                  <div class="text-caption">
+                    <v-icon size="16" class="mr-1">mdi-folder-multiple</v-icon>
+                    {{ product.project_count }} projects •
+                    <v-icon size="16" class="ml-2 mr-1">mdi-file-document</v-icon>
+                    {{ product.vision_documents_count }} vision docs •
+                    <v-icon size="16" class="ml-2 mr-1">mdi-clock-outline</v-icon>
+                    Deleted {{ formatDate(product.deleted_at) }}
+                  </div>
+                  <v-btn
+                    color="success"
+                    variant="flat"
+                    size="small"
+                    prepend-icon="mdi-restore"
+                    @click="restoreProduct(product)"
+                    :loading="restoringProductId === product.id"
+                    :disabled="restoringProductId !== null"
+                  >
+                    Restore
+                  </v-btn>
+                </div>
+              </div>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="showDeletedProductsDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -1351,9 +1447,7 @@ const existingVisionDocuments = ref([])
 const detailsVisionDocuments = ref([])
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
-const deleteConfirmationName = ref('')
 const deleteConfirmationCheck = ref(false)
-const deleteConfirmationError = ref(false)
 const dialogTab = ref('basic')  // Handover 0042: Tab for product dialog (basic, tech, arch, features)
 const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
 
@@ -1361,6 +1455,12 @@ const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
 const showActivationWarning = ref(false)
 const pendingActivation = ref(null)
 const currentActiveProduct = ref(null)
+
+// Soft delete recovery state
+const showDeletedProductsDialog = ref(false)
+const deletedProducts = ref([])
+const loadingDeletedProducts = ref(false)
+const restoringProductId = ref(null)
 
 // Wizard tab order and navigation helpers
 const tabOrder = ['basic', 'vision', 'tech', 'arch', 'features']
@@ -1458,14 +1558,6 @@ const testingStrategies = [
   },
 ]
 
-// Computed
-const isDeleteConfirmed = computed(() => {
-  return (
-    deleteConfirmationName.value === deletingProduct.value?.name &&
-    deleteConfirmationCheck.value
-  )
-})
-
 // Handover 0051: Unsaved changes computed
 const hasUnsavedChanges = computed(() => {
   return autoSave.value?.hasUnsavedChanges.value || false
@@ -1515,19 +1607,27 @@ const filteredProducts = computed(() => {
     )
   }
 
-  // Sort products
+  // Sort products - ACTIVE PRODUCTS FIRST (leftmost/top)
   const sorted = [...products]
-  switch (sortBy.value) {
-    case 'name':
-      sorted.sort((a, b) => a.name.localeCompare(b.name))
-      break
-    case 'date-newest':
-      sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      break
-    case 'date-oldest':
-      sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-      break
-  }
+
+  // Primary sort: Active products first
+  sorted.sort((a, b) => {
+    // If one is active and the other isn't, active comes first
+    if (a.is_active && !b.is_active) return -1
+    if (!a.is_active && b.is_active) return 1
+
+    // Both active or both inactive - apply secondary sort
+    switch (sortBy.value) {
+      case 'name':
+        return a.name.localeCompare(b.name)
+      case 'date-newest':
+        return new Date(b.created_at) - new Date(a.created_at)
+      case 'date-oldest':
+        return new Date(a.created_at) - new Date(b.created_at)
+      default:
+        return 0
+    }
+  })
 
   return sorted
 })
@@ -1561,9 +1661,20 @@ const totalFileSize = computed(() => {
   return formatFileSize(bytes)
 })
 
+const deletedProductsCount = computed(() => {
+  return deletedProducts.value.length
+})
+
 // Methods
 function getProductInitial(product) {
   return product.name?.charAt(0).toUpperCase() || '?'
+}
+
+function getCompletedProjectsCount(product) {
+  // Calculate completed projects: total - unfinished
+  const totalProjects = product.project_count || 0
+  const unfinishedProjects = product.unfinished_projects || 0
+  return Math.max(0, totalProjects - unfinishedProjects)
 }
 
 function getProductMetric(productId, metric) {
@@ -1774,9 +1885,7 @@ async function deleteVisionDocument(doc) {
 
 async function confirmDelete(product) {
   deletingProduct.value = product
-  deleteConfirmationName.value = ''
   deleteConfirmationCheck.value = false
-  deleteConfirmationError.value = false
   showDeleteDialog.value = true
 
   // Fetch cascade impact
@@ -1873,12 +1982,6 @@ async function saveProduct() {
 }
 
 async function confirmDeleteProduct() {
-  // Validate name match
-  if (deleteConfirmationName.value !== deletingProduct.value.name) {
-    deleteConfirmationError.value = true
-    return
-  }
-
   deleting.value = true
   try {
     await productStore.deleteProduct(deletingProduct.value.id)
@@ -1895,19 +1998,19 @@ async function confirmDeleteProduct() {
     const productName = deletingProduct.value.name
     deletingProduct.value = null
 
-    // Refresh products
+    // Refresh products (includes deleted products list)
     await loadProducts()
 
     // Show success message
     showToast({
-      message: `${productName} deleted successfully`,
-      type: 'success',
-      duration: 3000,
+      message: `${productName} moved to trash. Recoverable for 10 days.`,
+      type: 'info',
+      duration: 4000,
     })
   } catch (error) {
     console.error('Failed to delete product:', error)
     showToast({
-      message: 'Failed to delete product',
+      message: 'Failed to move product to trash',
       type: 'error',
       duration: 5000,
     })
@@ -1920,9 +2023,7 @@ function cancelDelete() {
   showDeleteDialog.value = false
   deletingProduct.value = null
   cascadeImpact.value = null
-  deleteConfirmationName.value = ''
   deleteConfirmationCheck.value = false
-  deleteConfirmationError.value = false
 }
 
 function closeDialog() {
@@ -1983,8 +2084,53 @@ async function loadProducts() {
     for (const product of productStore.products) {
       await productStore.fetchProductMetrics(product.id)
     }
+    // Also load deleted products count
+    await loadDeletedProducts()
   } finally {
     loading.value = false
+  }
+}
+
+async function loadDeletedProducts() {
+  try {
+    const response = await api.products.getDeletedProducts()
+    deletedProducts.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load deleted products:', error)
+    deletedProducts.value = []
+  }
+}
+
+async function restoreProduct(product) {
+  if (restoringProductId.value) return // Prevent double-click
+
+  restoringProductId.value = product.id
+  try {
+    await api.products.restoreProduct(product.id)
+
+    showToast({
+      message: `${product.name} restored successfully`,
+      type: 'success',
+      duration: 3000,
+    })
+
+    // Reload both lists
+    await loadProducts()
+    await loadDeletedProducts()
+
+    // Close dialog if no more deleted products
+    if (deletedProducts.value.length === 0) {
+      showDeletedProductsDialog.value = false
+    }
+  } catch (error) {
+    console.error('Failed to restore product:', error)
+    showToast({
+      message: 'Failed to restore product',
+      type: 'error',
+      duration: 5000,
+    })
+  } finally {
+    restoringProductId.value = null
   }
 }
 

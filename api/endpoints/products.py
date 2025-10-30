@@ -392,7 +392,7 @@ async def list_products(
     is_active: bool | None = Query(None, description="Filter by activation status"),
     tenant_key: str = Depends(get_tenant_key),
 ):
-    """List all products for the tenant"""
+    """List all non-deleted products for the tenant (soft delete support)"""
     from api.app import state
 
     if not state.db_manager:
@@ -402,8 +402,11 @@ async def list_products(
     try:
         async with state.db_manager.get_session_async() as db:
             # Handover 0046 Issue #2: Query products with related counts including vision_documents
-            # Apply optional is_active filter
-            where_clauses = [Product.tenant_key == tenant_key]
+            # Apply optional is_active filter + EXCLUDE deleted products
+            where_clauses = [
+                Product.tenant_key == tenant_key,
+                Product.deleted_at.is_(None)  # Exclude soft-deleted products
+            ]
             if is_active is not None:
                 where_clauses.append(Product.is_active == is_active)
 
@@ -425,14 +428,15 @@ async def list_products(
             response = []
             for product in products:
                 # Handover 0046 Issue #2: Calculate unfinished/unresolved counts
-                projects = product.projects or []
+                # Filter out deleted projects when counting
+                projects = [p for p in (product.projects or []) if p.deleted_at is None]
                 tasks = product.tasks or []
 
-                # Count projects where status != 'completed'
-                unfinished_projects = sum(1 for p in projects if p.status != "completed")
+                # Count completed projects (excluding deleted)
+                completed_projects = sum(1 for p in projects if p.status == "completed")
 
-                # Count tasks where status != 'completed'
-                unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
+                # Count tasks (all states)
+                total_tasks = len(tasks)
 
                 # Count vision documents
                 vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
@@ -445,12 +449,12 @@ async def list_products(
                         vision_path=product.vision_path,
                         created_at=product.created_at,
                         updated_at=product.updated_at,
-                        project_count=len(projects),
-                        task_count=len(tasks),
+                        project_count=len(projects),  # Total projects (excluding deleted)
+                        task_count=total_tasks,  # All tasks (any state)
                         has_vision=bool(product.vision_path),
-                        # NEW: Add computed metrics
-                        unfinished_projects=unfinished_projects,
-                        unresolved_tasks=unresolved_tasks,
+                        # Updated metrics for new UI
+                        unfinished_projects=len(projects) - completed_projects,  # For backwards compatibility
+                        unresolved_tasks=sum(1 for t in tasks if t.status != "completed"),  # For backwards compatibility
                         vision_documents_count=vision_doc_count,
                         # Handover 0042: Include config_data in response
                         config_data=product.config_data,
@@ -868,57 +872,65 @@ async def refresh_active_product(
 @router.delete("/{product_id}", response_model=ProductDeleteResponse)
 async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """
-    Delete a product and all related data (Handover 0050)
+    Soft delete a product with 10-day recovery window (similar to Handover 0070 for projects).
 
-    If the deleted product was active and other products exist, automatically
-    activates the oldest product (by created_at) to maintain system consistency.
+    Sets deleted_at timestamp and deactivates the product.
+    If the product was active and other non-deleted products exist, automatically
+    activates the oldest non-deleted product (by created_at).
+    
+    Physical deletion occurs after 10 days via purge_expired_deleted_products().
     """
     from api.app import state
     from sqlalchemy import func
+    import logging
+
+    logger = logging.getLogger(__name__)
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         async with state.db_manager.get_session_async() as db:
-            # PHASE 1: Get product and check active status
+            # PHASE 1: Get product and check status
             stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             result = await db.execute(stmt)
             product = result.scalar_one_or_none()
 
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
+            
+            # Check if already deleted
+            if product.deleted_at is not None:
+                raise HTTPException(status_code=400, detail="Product is already deleted")
 
             was_active = product.is_active
             product_name = product.name
 
-            # PHASE 2: Delete vision document files if they exist
-            if product.vision_path and os.path.exists(product.vision_path):
-                try:
-                    os.remove(product.vision_path)
-                    # Try to remove the vision directory if empty
-                    vision_dir = Path(product.vision_path).parent
-                    if vision_dir.exists() and not any(vision_dir.iterdir()):
-                        vision_dir.rmdir()
-                except Exception:
-                    pass  # Don't fail deletion if file cleanup fails
-
-            # PHASE 3: Delete product (cascade will handle related records)
-            await db.delete(product)
+            # PHASE 2: Soft delete product (set deleted_at and deactivate)
+            product.deleted_at = datetime.now(timezone.utc)
+            product.is_active = False
             await db.commit()
 
-            # PHASE 4: Count remaining products
+            logger.info(f"Product '{product_name}' (id: {product_id}) soft deleted. Recovery available for 10 days.")
+
+            # PHASE 3: Count remaining non-deleted products
             remaining_count_result = await db.execute(
-                select(func.count(Product.id)).where(Product.tenant_key == tenant_key)
+                select(func.count(Product.id)).where(
+                    Product.tenant_key == tenant_key,
+                    Product.deleted_at.is_(None)
+                )
             )
             remaining_count = remaining_count_result.scalar() or 0
 
-            # PHASE 5: Auto-activate oldest product if deleted product was active
+            # PHASE 4: Auto-activate oldest product if deleted product was active
             new_active = None
             if was_active and remaining_count > 0:
-                # Get oldest product (by created_at)
+                # Get oldest non-deleted product (by created_at)
                 oldest_result = await db.execute(
-                    select(Product).where(Product.tenant_key == tenant_key).order_by(Product.created_at.asc()).limit(1)
+                    select(Product).where(
+                        Product.tenant_key == tenant_key,
+                        Product.deleted_at.is_(None)
+                    ).order_by(Product.created_at.asc()).limit(1)
                 )
                 oldest_product = oldest_result.scalar_one_or_none()
 
@@ -926,6 +938,8 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
                     # Activate it
                     oldest_product.is_active = True
                     await db.commit()
+
+                    logger.info(f"Auto-activated product '{oldest_product.name}' after deleting active product")
 
                     # Get info for response
                     new_active = {
@@ -936,7 +950,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
                     }
 
             return ProductDeleteResponse(
-                message=f"Product '{product_name}' deleted successfully",
+                message=f"Product '{product_name}' moved to trash. Recoverable for 10 days.",
                 deleted_product_id=str(product_id),
                 was_active=was_active,
                 remaining_products_count=remaining_count,
@@ -946,6 +960,201 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to delete product {product_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class DeletedProductResponse(BaseModel):
+    """Response model for deleted products list"""
+    id: str
+    name: str
+    description: Optional[str]
+    deleted_at: datetime
+    days_until_purge: int
+    purge_date: datetime
+    project_count: int = Field(description="Total projects under this product")
+    vision_documents_count: int = Field(description="Total vision documents")
+
+
+@router.get("/deleted", response_model=list[DeletedProductResponse])
+async def list_deleted_products(
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    List deleted products with recovery window (10 days).
+    
+    Returns all soft-deleted products for the tenant with:
+    - Days until permanent purge
+    - Purge date
+    - Related entity counts
+    """
+    from api.app import state
+    from sqlalchemy import func
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Query deleted products (deleted_at IS NOT NULL)
+            stmt = select(Product).where(
+                Product.tenant_key == tenant_key,
+                Product.deleted_at.isnot(None)
+            ).order_by(Product.deleted_at.desc())
+
+            result = await db.execute(stmt)
+            deleted_products_raw = result.scalars().all()
+
+            deleted_products = []
+            now = datetime.now(timezone.utc)
+
+            for product in deleted_products_raw:
+                # Calculate days until purge (10 days from deletion)
+                deleted_at_utc = (
+                    product.deleted_at.replace(tzinfo=timezone.utc)
+                    if product.deleted_at.tzinfo is None
+                    else product.deleted_at
+                )
+                purge_date = deleted_at_utc + timedelta(days=10)
+                days_until_purge = max(0, (purge_date - now).days)
+
+                # Count projects
+                projects_count_result = await db.execute(
+                    select(func.count(Project.id)).where(Project.product_id == product.id)
+                )
+                project_count = projects_count_result.scalar() or 0
+
+                # Count vision documents
+                vision_docs_count_result = await db.execute(
+                    select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product.id)
+                )
+                vision_documents_count = vision_docs_count_result.scalar() or 0
+
+                deleted_products.append(
+                    DeletedProductResponse(
+                        id=product.id,
+                        name=product.name,
+                        description=product.description,
+                        deleted_at=deleted_at_utc,
+                        days_until_purge=days_until_purge,
+                        purge_date=purge_date,
+                        project_count=project_count,
+                        vision_documents_count=vision_documents_count,
+                    )
+                )
+
+            logger.info(f"Retrieved {len(deleted_products)} deleted products for tenant (user: {current_user.username})")
+
+            return deleted_products
+
+    except Exception as e:
+        logger.error(f"Failed to list deleted products: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{product_id}/restore", response_model=ProductResponse)
+async def restore_product(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Restore a soft-deleted product.
+    
+    Clears deleted_at timestamp and reactivates the product as inactive (safe default).
+    User must manually activate the product after restoration.
+    """
+    from api.app import state
+    from sqlalchemy import select, func
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Fetch product and verify tenant ownership
+            stmt = select(Product).where(
+                Product.id == product_id,
+                Product.tenant_key == tenant_key
+            )
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found or already purged")
+
+            # Verify product is deleted
+            if product.deleted_at is None:
+                raise HTTPException(status_code=400, detail="Product is not deleted")
+
+            # Restore product: Clear deleted_at, keep is_active as False (safe default)
+            product.deleted_at = None
+            product.is_active = False  # User must manually activate
+            product.updated_at = datetime.now(timezone.utc)
+
+            await db.commit()
+            await db.refresh(product)
+
+            # Get counts for response
+            project_count_result = await db.execute(
+                select(func.count(Project.id)).where(Project.product_id == product.id)
+            )
+            project_count = project_count_result.scalar() or 0
+
+            task_count_result = await db.execute(
+                select(func.count(Task.id)).where(Task.product_id == product.id)
+            )
+            task_count = task_count_result.scalar() or 0
+
+            vision_docs_result = await db.execute(
+                select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product.id)
+            )
+            vision_documents_count = vision_docs_result.scalar() or 0
+
+            # Calculate unfinished/unresolved counts (optional for response)
+            projects_result = await db.execute(
+                select(Project).where(Project.product_id == product.id)
+            )
+            projects = projects_result.scalars().all()
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
+
+            tasks_result = await db.execute(
+                select(Task).where(Task.product_id == product.id)
+            )
+            tasks = tasks_result.scalars().all()
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
+
+            logger.info(f"Product '{product.name}' (id: {product_id}) restored by {current_user.username}")
+
+            return ProductResponse(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                vision_path=product.vision_path,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+                project_count=project_count,
+                task_count=task_count,
+                has_vision=bool(product.vision_path),
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=vision_documents_count,
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
+                is_active=product.is_active,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to restore product {product_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

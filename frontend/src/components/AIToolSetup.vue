@@ -419,8 +419,8 @@ function getToolIcon(toolId) {
 
 function getToolLogo(toolId) {
   const logos = {
-    claude: '/Claude_AI_symbol.svg',
-    codex: '/codex_logo.svg',
+    claude: '/claude_pix.svg',
+    codex: '/icons/codex_mark.svg',
     gemini: '/gemini-icon.svg',
     serena: '/Serena.png'
   }

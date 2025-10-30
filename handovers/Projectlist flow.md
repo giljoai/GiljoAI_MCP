@@ -50,6 +50,8 @@ Claude stands out in this because with Claude we can end one prompt launch the o
 
 The tool an agent export template function for Claude Code specifically that allows the user to export agents into Claude code.
 
+Agents should have strict prompting to regularly check in and communicate via MCP and that should be in their agent profiles today.
+
 * [Developer note] I don't think we have created an integration where the application reads the currently deployed agents that Claude has nor have we implemented how the user can modify agents we only have one time all agent integration function so we need to explore this.
 
 # Products
@@ -101,12 +103,81 @@ We do have a token counting function in the application and the main purpose is 
 
 Once the mission is created in the Jobs pane it will also show an aggregate token count of the mission there I don't know that this is a deal breaker but it shows that we concerned and Committ to be effective but this will require a lot of tuning over time and will likely help a lot once we learn much more how we can integrate this application into terminal windows or if we end up building terminal windows right into this application.
 
+# MCP integration
 
-# Dashboard x.x.x.x/dashboard 
+I believe we have created a smooth way to integrate MCP servers for all three products and I believe they are command lines that you run at root of the project before you start the agenda CLI tool I know we did this for Claude but we need to verify for the others I am 75% sure we did this because this is going to be a huge necessity because we are tenant based and need the API key function for it we are also documenting for the user the manual way of doing it if they want.
 
-Implement:
-The dashboard needs to have a drop down to select dashboard view on a per product basis, then per project basis for statistics.  Should also have a top aggregate view of all products and projects.
+# API key
 
-context: Its a statistics board for the developer.
+We have an API key function in the application for future integrations but it's primarily used today for integrating the MCP communications over HTTP and assuring that the communications go to the right tenant.
 
-- More integrations to be defined in future, no need to populate with data in this specific project, leave what is there allready.
+# Installation
+
+Because this is a intended shared and downloadable products To flow from the install.py File is critical and must work in a multi OS environment between windows Linux and Mac OS this application should be ground up built for all three Oses with paths and functions.
+
+# database
+
+The database uses PostgresSQL With intended operation on the same machine as the application.  This is how it's been built over local host communications but there is technically no limitations to have the database elsewhere but that's not for MVP.
+
+# Dependancies
+
+At some point we need to harmonize dependencies and make sure we're not installing and wasting time with dependencies that we do not need anymore.
+
+# LAN/WAN/HOSTED
+
+The application as such should work on the same machine as a developer with local host if they want and over land and Wan with IP address out the gate I'm not quite sure how it works with DNS and host name but we should investigate this in the future.  We will also begin building it as a SaaS Service in the next quarter or so.
+
+# Mini LLM
+
+It would be wonderful to expand the orchestration portion to be ran as CPU or GPU micro LLM to trigger agents or activate agents on the user's workstation but we may have to end up in an Electron app or something similar in the future instead.
+
+# Integrations
+
+Today we have a Serena MCP integration and is a wonderful tool and we must make sure we promote it properly in settings It really helps this application do its work and the agents do their work.  Another potential is to allow for local LLM potentially through climb or even through Ollama LMStudo Or other tools.
+
+* [Developer note] 
+We need to ensure that the Serena integration is built into the prompting of all the agents
+
+# Automations
+
+We have discussed and explored the possibility to run background bash jobs with clawed code to regularly have orchestrator paying for new messages and check and nudge agents along and to "go to sleep" Forcing the user to remind Claude that has messages waiting but I'm not quite 100 percent sure how this would be executed practically yet.
+
+# Dev Control Panel
+
+The dev control panel has been a lifesaver and I'm not sure yet how to build that in to the application as administrator tool in some capacity that is something to be considered.
+
+# How a user would work with the product
+
+let's go through an entire user journey with the product.
+The user creates an account and logs in
+Agent templates are populated in their user settings
+User finds their way to MCP integrations and copies the command for their agentic CLI tool of choice and that links and attaches itself to the MCP server
+The user then pushes the agent's templates to their folder of choice either under the user or project if they're using clawed code
+The user creates a product and defines it and uploads division slash product description
+The user now creates the first project perhaps Asking the tool to prepare the foundational layout for the overall product
+Perhaps in their agentic CLI tool discussing options with the AI tool and using the task function to add tasks because they don't know quite yet what decisions they want to make or how they want to use the things discussed
+ what decisions they want to make or how they want to use the things discussed what decisions they want to make or how they want to use the things discussed The user decides to activate the first project and gets a launch button
+ This takes them to project launch dashboard or panel where they get a prompt for the orchestrator sees their handwritten project description and copy the prompt
+ They paste the prompt in the CLI tool which has been started in the project folder and the orchestrator being the first agent begins building the mission by compiling the context and the project description
+ The Mission field in the Project launch window populates with the mission and Agent cards start showing up which the orchestrator has started selecting
+ The user reviews everything and can choose to cancel or to proceed
+ When they proceed they get to the jobs pain and in the jobs pain they will see a prompt for orchestrator for Claude code which they will copy and paste into cloud code For clawed code this will spawn subagents and they will match they already displayed agent cards on the screen which show various status and information If the orchestrator is now communicating with these agents that will start showing up in the message center
+ If he's using other agentic coding tools like Codex or CLI not only does the orchestrator have a copy prompt but all the agent cards also have copy prompts and the user copies all of them individually to CLI windows to activate the agents and as the agents start working and if they are communicating that shows up in the message pane
+ The user can view the progress either in the terminal CLI windows or glance at the dashboard as it keeps updating while the agents are communicating and progressing with their work
+ Should the user see something he wants to address or get a notification from the orchestrator the user can either broadcast a message to all agents using the message center or queue a message for the orchestrator but naturally the user can also just chat with the orchestrator in the terminal window the benefit of doing it through the message center of MCP means that they'll be an audit and history log if the user wants it
+ At some point everybody will be finished and report in that they're finished and a user can choose to closeout the project which will follow a closeout protocol such as git commits git push documentation decommissioning agents etc
+ Now the user can move on to the next project that they wish
+ At anytime they can go to the dashboard and sort historically by product by projects or by everything Things have been happening and if they zoom in to a project they can even see the communications that occurred between the agents and have a link to the summary document and what happened during this session They get commit references etcetera
+
+# Welcome and Tutorial
+
+We need to create some sort of workflow tutorial with screenshots that takes the US through how to use the product in the welcome screen.
+
+# Notificatoins
+
+We need to determine what type of notifications we need in the notifications bar we might even explore some sort of gamification if the user uses the product a lot that could be fun but that's just an extremely nice to have at some point messages could for when agents such as the orchestrator or other specifically wants the user's attention or if there is a in the product I'm not quite sure yet
+
+# Password recovery
+
+At some point we have to improve the capability of password recovery to work via email to make the authentication more secure instead of the recovery PIN
+
