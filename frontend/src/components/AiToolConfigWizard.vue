@@ -172,7 +172,7 @@ const detectedServer = computed(() => `${serverIp.value}:${serverPort.value}`)
 const toolLogo = computed(() => {
   const logos = {
     claude: '/claude_pix.svg',
-    codex: '/openai-logo.svg',
+    codex: '/icons/codex_mark.svg',
     gemini: '/gemini-icon.svg',
     cursor: '/claude_pix.svg' // Using Claude pix for Cursor too
   }

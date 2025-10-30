@@ -235,9 +235,110 @@ Respond with:
     </v-col>
   </v-row>
 
+  <!-- Token Counter Card Row (Handover 0065) -->
+  <v-row v-if="tokenEstimate" class="mt-4">
+    <v-col cols="12" md="4" offset-md="4">
+      <v-card elevation="2">
+        <!-- Card Header -->
+        <v-card-title class="d-flex align-center bg-gradient-orange text-white">
+          <v-icon class="mr-2" size="28">mdi-counter</v-icon>
+          <span>Token Budget</span>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="pa-4">
+          <!-- Token Breakdown -->
+          <div class="mb-4">
+            <v-row dense>
+              <v-col cols="6">
+                <p class="text-caption text-grey mb-1">Mission Tokens</p>
+                <p class="text-h6 font-weight-bold">{{ tokenEstimate.mission_tokens }}</p>
+              </v-col>
+              <v-col cols="6">
+                <p class="text-caption text-grey mb-1">Agent Overhead</p>
+                <p class="text-h6 font-weight-bold">{{ tokenEstimate.agent_overhead }}</p>
+              </v-col>
+            </v-row>
+
+            <v-row dense class="mt-2">
+              <v-col cols="6">
+                <p class="text-caption text-grey mb-1">Context Tokens</p>
+                <p class="text-h6 font-weight-bold">{{ tokenEstimate.context_tokens }}</p>
+              </v-col>
+              <v-col cols="6">
+                <p class="text-caption text-grey mb-1">Total Estimate</p>
+                <p class="text-h5 font-weight-bold text-primary">{{ tokenEstimate.total_estimate }}</p>
+              </v-col>
+            </v-row>
+          </div>
+
+          <v-divider class="my-3" />
+
+          <!-- Budget Progress Bar -->
+          <div class="mb-4">
+            <div class="d-flex justify-space-between align-center mb-2">
+              <p class="text-caption text-grey mb-0">Budget Utilization</p>
+              <p class="text-caption font-weight-bold mb-0">
+                {{ tokenEstimate.total_estimate }} / {{ tokenEstimate.budget_available }}
+              </p>
+            </div>
+
+            <v-progress-linear
+              :model-value="tokenEstimate.utilization_percent"
+              :color="getBudgetColor(tokenEstimate.utilization_percent)"
+              height="20"
+              rounded
+              aria-label="Token budget utilization progress"
+            >
+              <template v-slot:default>
+                <strong class="text-white">{{ tokenEstimate.utilization_percent }}%</strong>
+              </template>
+            </v-progress-linear>
+          </div>
+
+          <!-- Budget Status Alert -->
+          <v-alert
+            v-if="!tokenEstimate.within_budget"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-0"
+          >
+            <v-icon start size="small">mdi-alert</v-icon>
+            Mission may exceed token budget. Consider simplifying requirements.
+          </v-alert>
+
+          <v-alert
+            v-else-if="tokenEstimate.utilization_percent > 80"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-0"
+          >
+            <v-icon start size="small">mdi-information</v-icon>
+            High token usage. Mission is within budget but approaching limit.
+          </v-alert>
+
+          <v-alert
+            v-else
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mb-0"
+          >
+            <v-icon start size="small">mdi-check-circle</v-icon>
+            Mission is well within token budget.
+          </v-alert>
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-row>
+
   <!-- Accept Mission Button Row -->
   <v-row class="mt-6 mb-4">
     <v-col cols="12" class="text-center">
+      <!-- Accept Button -->
       <v-btn
         size="x-large"
         color="success"
@@ -245,20 +346,89 @@ Respond with:
         :disabled="!canAccept"
         @click="$emit('accept-mission')"
         :loading="launching"
-        min-width="300"
-        class="text-h6"
+        min-width="250"
+        class="text-h6 mr-4"
         aria-label="Accept mission and create agent jobs"
       >
         <v-icon start size="28">mdi-check-circle</v-icon>
-        ACCEPT MISSION &amp; LAUNCH AGENTS
+        ACCEPT MISSION
       </v-btn>
 
-      <p v-if="!canAccept" class="text-caption text-grey mt-2">
+      <!-- Cancel/Reset Button -->
+      <v-btn
+        size="x-large"
+        color="error"
+        variant="outlined"
+        elevation="2"
+        :disabled="!canReset"
+        @click="handleReset"
+        min-width="200"
+        class="text-h6"
+        aria-label="Cancel and reset mission staging"
+      >
+        <v-icon start size="28">mdi-close-circle</v-icon>
+        CANCEL &amp; RESET
+      </v-btn>
+
+      <p v-if="!canAccept && !canReset" class="text-caption text-grey mt-2">
         <v-icon size="small">mdi-information</v-icon>
         Waiting for mission and agents to be selected
       </p>
     </v-col>
   </v-row>
+
+  <!-- Reset Confirmation Dialog -->
+  <v-dialog v-model="showResetDialog" max-width="500" persistent>
+    <v-card>
+      <v-card-title class="text-h5 bg-error text-white">
+        <v-icon class="mr-2">mdi-alert</v-icon>
+        Cancel &amp; Reset Mission?
+      </v-card-title>
+
+      <v-divider />
+
+      <v-card-text class="pa-6">
+        <p class="text-body-1 mb-3">
+          This will completely reset the mission staging area:
+        </p>
+
+        <v-list density="compact" class="mb-0">
+          <v-list-item prepend-icon="mdi-file-document-remove">
+            <v-list-item-title>Clear generated mission text</v-list-item-title>
+          </v-list-item>
+          <v-list-item prepend-icon="mdi-account-group-outline">
+            <v-list-item-title>Remove all selected agents</v-list-item-title>
+          </v-list-item>
+          <v-list-item prepend-icon="mdi-counter">
+            <v-list-item-title>Reset token counter</v-list-item-title>
+          </v-list-item>
+        </v-list>
+
+        <v-alert type="warning" variant="tonal" density="compact" class="mt-4 mb-0">
+          <v-icon start size="small">mdi-information</v-icon>
+          You will need to re-run the orchestrator to generate a new mission.
+        </v-alert>
+      </v-card-text>
+
+      <v-card-actions class="pa-4">
+        <v-btn
+          @click="showResetDialog = false"
+          variant="text"
+        >
+          Keep Mission
+        </v-btn>
+        <v-spacer />
+        <v-btn
+          @click="confirmReset"
+          color="error"
+          variant="elevated"
+        >
+          <v-icon start>mdi-delete</v-icon>
+          Yes, Reset Everything
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 
   <!-- Info Row -->
   <v-row>
@@ -279,20 +449,22 @@ Respond with:
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import AgentMiniCard from './AgentMiniCard.vue'
+import api from '@/services/api'
 
 /**
- * LaunchPanelView Component
+ * LaunchPanelView Component (Enhanced with Token Counter - Handover 0065)
  *
- * Displays the project launch interface with three sections:
+ * Displays the project launch interface with four sections:
  * - Left: Orchestrator with editable description and copyable prompt
  * - Center: AI-generated mission display
  * - Right: Selected agents (up to 6) in a 2x3 grid
- * - Bottom: ACCEPT MISSION button
+ * - Token Counter: Budget analysis (appears when mission exists)
+ * - Bottom: ACCEPT MISSION and CANCEL/RESET buttons
  */
 
-defineProps({
+const props = defineProps({
   project: {
     type: Object,
     required: true,
@@ -319,10 +491,81 @@ defineProps({
   },
 })
 
-defineEmits(['save-description', 'copy-prompt', 'accept-mission'])
+const emit = defineEmits(['save-description', 'copy-prompt', 'accept-mission', 'reset-mission'])
 
+// Component state
 const showOrchestratorInfo = ref(false)
 const copying = ref(false)
+const tokenEstimate = ref(null)
+const loadingTokens = ref(false)
+const showResetDialog = ref(false)
+
+// Computed property for reset button state
+const canReset = computed(() => {
+  return props.mission || props.agents.length > 0 || tokenEstimate.value !== null
+})
+
+// Watch for mission changes and estimate tokens
+watch(() => [props.mission, props.agents], async ([newMission, newAgents]) => {
+  if (newMission && newMission.length > 0 && newAgents.length > 0) {
+    await estimateTokens()
+  } else if (!newMission) {
+    tokenEstimate.value = null
+  }
+}, { deep: true })
+
+/**
+ * Estimate token usage for current mission
+ */
+async function estimateTokens() {
+  if (!props.mission) return
+
+  loadingTokens.value = true
+  try {
+    const response = await api.prompts.estimateTokens({
+      mission: props.mission,
+      agent_count: props.agents.length,
+      project_description: props.project?.description || props.project?.mission
+    })
+
+    tokenEstimate.value = response.data
+    console.log('[LAUNCH PANEL] Token estimate:', tokenEstimate.value)
+  } catch (error) {
+    console.error('[LAUNCH PANEL] Error estimating tokens:', error)
+    tokenEstimate.value = null
+  } finally {
+    loadingTokens.value = false
+  }
+}
+
+/**
+ * Get budget progress bar color based on utilization percentage
+ */
+function getBudgetColor(utilization) {
+  if (utilization > 100) return 'error'
+  if (utilization > 80) return 'warning'
+  if (utilization > 50) return 'info'
+  return 'success'
+}
+
+/**
+ * Handle reset button click - show confirmation dialog
+ */
+function handleReset() {
+  showResetDialog.value = true
+}
+
+/**
+ * Confirm reset - clear all staging data and emit reset event
+ */
+function confirmReset() {
+  // Clear token estimate locally
+  tokenEstimate.value = null
+  showResetDialog.value = false
+
+  // Emit reset event to parent (ProjectLaunchView)
+  emit('reset-mission')
+}
 </script>
 
 <style scoped>
@@ -337,6 +580,10 @@ const copying = ref(false)
 
 .bg-gradient-green {
   background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+}
+
+.bg-gradient-orange {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
 }
 
 /* Card container */

@@ -109,17 +109,6 @@ const routes = [
     },
   },
   {
-    path: '/agents',
-    name: 'Agents',
-    component: () => import('@/views/AgentsView.vue'),
-    meta: {
-      layout: 'default',
-      title: 'Agent Monitoring',
-      icon: 'mdi-robot',
-      showInNav: true,
-    },
-  },
-  {
     path: '/kanban',
     name: 'Jobs',
     component: () => import('@/components/project-launch/KanbanJobsView.vue'),

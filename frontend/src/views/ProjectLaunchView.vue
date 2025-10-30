@@ -104,6 +104,7 @@
               @save-description="handleSaveDescription"
               @copy-prompt="handleCopyPrompt"
               @accept-mission="handleAcceptMission"
+              @reset-mission="handleResetMission"
             />
           </v-window-item>
 
@@ -384,6 +385,21 @@ function handleOrchestratorProgress(data) {
     error.value = data.error
     showNotification(`Orchestrator error: ${data.error}`, 'error', 'mdi-alert-circle')
   }
+}
+
+/**
+ * Handle mission reset from LaunchPanelView
+ */
+function handleResetMission() {
+  // Clear mission data
+  mission.value = ''
+  selectedAgents.value = []
+  loadingMission.value = false
+
+  // Show reset notification
+  showNotification('Mission staging has been reset. Run orchestrator again to generate new mission.', 'info', 'mdi-refresh')
+
+  console.log('[ProjectLaunchView] Mission reset by user')
 }
 
 /**
