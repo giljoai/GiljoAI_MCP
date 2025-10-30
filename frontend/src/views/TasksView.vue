@@ -14,7 +14,7 @@
         >
           History
         </v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true">
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTaskDialog = true">
           New Task
         </v-btn>
       </v-col>
@@ -189,7 +189,10 @@
       >
         <!-- Loading State -->
         <template v-slot:loading>
-          <MascotLoader variant="working" :size="60" text="Loading tasks..." />
+          <div class="text-center pa-4">
+            <v-progress-circular indeterminate color="primary" size="48" />
+            <p class="text-body-2 text-medium-emphasis mt-2">Loading tasks...</p>
+          </div>
         </template>
 
         <!-- Selection Column -->
@@ -419,7 +422,7 @@
         <!-- No Data -->
         <template v-slot:no-data>
           <div class="text-center py-8">
-            <MascotLoader type="image" variant="thinker" :size="80" :show-text="false" />
+            <v-icon size="64" color="grey-lighten-2">mdi-clipboard-text-outline</v-icon>
             <p class="text-h6 mt-4">No tasks found</p>
             <p class="text-body-2 text-medium-emphasis">
               {{
@@ -582,7 +585,6 @@ import { useAgentStore } from '@/stores/agents'
 import { useUserStore } from '@/stores/user'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
-import MascotLoader from '@/components/MascotLoader.vue'
 import TaskConverter from '@/components/TaskConverter.vue'
 import ConversionHistory from '@/components/ConversionHistory.vue'
 
