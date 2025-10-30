@@ -16,7 +16,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
@@ -154,6 +154,61 @@ def get_tenant_and_product_from_user(user: User) -> dict:
     return {"tenant_key": user.tenant_key, "product_id": None}  # Product-level scoping handled separately
 
 
+async def validate_active_agent_limit(
+    db: AsyncSession,
+    tenant_key: str,
+    template_id: str,
+    new_is_active: bool,
+) -> tuple[bool, str]:
+    """
+    Validate 8-agent active limit before toggling (Handover 0075).
+
+    Claude Code context budget constraint: Maximum 8 active agent templates
+    to ensure optimal performance and sufficient tokens for code analysis.
+
+    Args:
+        db: Database session
+        tenant_key: Tenant key for isolation
+        template_id: Template being toggled
+        new_is_active: Desired active state
+
+    Returns:
+        (is_valid, error_message) tuple
+        - (True, "") if validation passes
+        - (False, error_msg) if validation fails
+
+    Example:
+        >>> valid, msg = await validate_active_agent_limit(db, "tenant-1", "tpl-123", True)
+        >>> if not valid:
+        ...     raise HTTPException(400, msg)
+    """
+    from src.giljo_mcp.models import AgentTemplate
+
+    # If deactivating, always allow
+    if not new_is_active:
+        return True, ""
+
+    # Count currently active templates (excluding the one being toggled)
+    stmt = select(func.count(AgentTemplate.id)).where(
+        AgentTemplate.tenant_key == tenant_key,
+        AgentTemplate.is_active == True,  # noqa: E712
+        AgentTemplate.id != template_id,
+    )
+
+    result = await db.execute(stmt)
+    active_count = result.scalar_one()
+
+    # Check limit (8 max)
+    if active_count >= 8:
+        return False, (
+            f"Maximum 8 active agents allowed (currently {active_count} active). "
+            f"Deactivate another agent before enabling this one. "
+            f"Reason: Claude Code context budget limit (6-8 agents recommended)."
+        )
+
+    return True, ""
+
+
 @router.get("/", response_model=list[TemplateResponse])
 async def get_templates(
     category: Optional[str] = Query(None, description="Filter by category"),
@@ -237,6 +292,52 @@ async def get_templates(
             pass
 
         return responses  # noqa: TRY300
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stats/active-count", response_model=dict)
+async def get_active_count(
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get count of active templates for current tenant (Handover 0075).
+
+    Returns active agent count, maximum allowed (8), and remaining slots.
+    Used by frontend to display "Active: 6/8" counter and validate limits.
+
+    Security:
+    - Multi-tenant isolation: Only counts templates for user's tenant_key
+    - Authentication required via JWT
+
+    Returns:
+        {
+            "active_count": 6,
+            "max_allowed": 8,
+            "remaining_slots": 2
+        }
+    """
+    try:
+        from src.giljo_mcp.models import AgentTemplate
+
+        context = get_tenant_and_product_from_user(current_user)
+
+        # Count active templates for tenant
+        stmt = select(func.count(AgentTemplate.id)).where(
+            AgentTemplate.tenant_key == context["tenant_key"],
+            AgentTemplate.is_active == True,  # noqa: E712
+        )
+
+        result = await session.execute(stmt)
+        active_count = result.scalar_one()
+
+        return {
+            "active_count": active_count,
+            "max_allowed": 8,
+            "remaining_slots": max(0, 8 - active_count),
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -388,6 +489,18 @@ async def update_template(
         # Prevent system template editing
         if template.tenant_key == "system":
             raise HTTPException(status_code=403, detail="System templates are read-only")  # noqa: TRY301
+
+        # Validate 8-agent active limit if toggling active status (Handover 0075)
+        if update.is_active is not None and update.is_active != template.is_active:
+            valid, error_msg = await validate_active_agent_limit(
+                db=session,
+                tenant_key=context["tenant_key"],
+                template_id=template_id,
+                new_is_active=update.is_active,
+            )
+
+            if not valid:
+                raise HTTPException(status_code=400, detail=error_msg)  # noqa: TRY301
 
         # Archive current version before updating
         archive = TemplateArchive(

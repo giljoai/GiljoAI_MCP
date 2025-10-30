@@ -25,7 +25,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = Field(None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted")
     priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
     category: Optional[str] = Field(None, max_length=100, description="Task category")
-    assigned_to_user_id: Optional[str] = Field(None, description="User ID to assign task to")
+    # Handover 0076: Removed assigned_to_user_id field
     estimated_effort: Optional[float] = Field(None, ge=0, description="Estimated effort in hours")
     actual_effort: Optional[float] = Field(None, ge=0, description="Actual effort in hours")
 
@@ -89,14 +89,12 @@ class TaskResponse(BaseModel):
     priority: str = Field(..., description="Task priority")
     product_id: Optional[str] = Field(None, description="Product ID for isolation")
     project_id: Optional[str] = Field(None, description="Associated project ID (nullable for unassigned tasks - Handover 0072)")
-    assigned_agent_id: Optional[str] = Field(None, description="Assigned agent ID (for MCP tools)")
-    
+
     # Handover 0072: Agent job integration
     agent_job_id: Optional[str] = Field(None, description="Linked agent job ID for execution tracking")
     parent_task_id: Optional[str] = Field(None, description="Parent task ID for subtasks")
 
-    # Phase 4: User fields
-    assigned_to_user_id: Optional[str] = Field(None, description="User assigned to task")
+    # Phase 4: User fields (Handover 0076: removed assigned_to_user_id)
     created_by_user_id: Optional[str] = Field(None, description="User who created task")
     converted_to_project_id: Optional[str] = Field(None, description="Project ID if task was converted")
 

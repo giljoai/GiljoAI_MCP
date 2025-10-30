@@ -17,6 +17,39 @@
     </v-card-title>
 
     <v-card-text>
+      <!-- Active Agent Counter (Handover 0075) -->
+      <v-alert
+        v-if="activeCount !== null"
+        :type="activeCount >= 8 ? 'warning' : 'info'"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
+        <div class="d-flex align-center justify-space-between">
+          <div>
+            <strong>Active Agents:</strong>
+            <span :class="activeCount >= 8 ? 'text-warning' : ''">
+              {{ activeCount }} / 8
+            </span>
+            <span class="text-medium-emphasis ml-2">
+              ({{ 8 - activeCount }} slots remaining)
+            </span>
+          </div>
+          <v-chip
+            v-if="activeCount >= 8"
+            size="small"
+            color="warning"
+            prepend-icon="mdi-alert"
+          >
+            Limit Reached
+          </v-chip>
+        </div>
+        <div v-if="activeCount >= 8" class="text-body-2 mt-2">
+          Maximum active agents reached. Deactivate an agent to enable another.
+          <strong>Reason:</strong> Claude Code context budget limit (6-8 agents recommended).
+        </div>
+      </v-alert>
+
       <!-- Search and Filters -->
       <v-row class="mb-4">
         <v-col cols="12" md="6">
@@ -104,6 +137,34 @@
 
         <template v-slot:item.updated_at="{ item }">
           <span class="text-caption">{{ formatDate(item.updated_at) }}</span>
+        </template>
+
+        <template v-slot:item.is_active="{ item }">
+          <div class="d-flex align-center justify-center">
+            <v-switch
+              :model-value="item.is_active"
+              :disabled="!item.is_active && activeCount >= 8"
+              color="primary"
+              hide-details
+              density="compact"
+              @update:model-value="handleToggleActive(item, $event)"
+              :aria-label="item.is_active ? 'Deactivate agent' : 'Activate agent'"
+            />
+            <v-tooltip
+              v-if="!item.is_active && activeCount >= 8"
+              location="top"
+            >
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" color="warning" size="small" class="ml-1">
+                  mdi-information-outline
+                </v-icon>
+              </template>
+              <span>
+                Maximum 8 active agents allowed (context budget limit).
+                Deactivate another agent first.
+              </span>
+            </v-tooltip>
+          </div>
         </template>
 
         <template v-slot:item.actions="{ item }">
@@ -548,6 +609,7 @@ const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const generating = ref(false)
+const activeCount = ref(null) // Handover 0075: Track active agent count
 
 // Search and filters
 const search = ref('')
@@ -600,6 +662,7 @@ const headers = [
   { title: 'Type', key: 'category', align: 'start' },
   { title: 'Tool', key: 'preferred_tool', align: 'start' },
   { title: 'Variables', key: 'variables', align: 'center' },
+  { title: 'Active', key: 'is_active', align: 'center' },
   { title: 'Updated', key: 'updated_at', align: 'start' },
   { title: 'Actions', key: 'actions', align: 'center', sortable: false },
 ]
@@ -688,6 +751,58 @@ const loadTemplates = async () => {
     console.error('Failed to load templates:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// Handover 0075: Load active agent count
+const loadActiveCount = async () => {
+  try {
+    const response = await api.get('/api/templates/stats/active-count')
+    activeCount.value = response.data.active_count
+  } catch (error) {
+    console.error('[TEMPLATE MANAGER] Failed to load active count:', error)
+  }
+}
+
+// Handover 0075: Handle active toggle with validation
+const handleToggleActive = async (template, newValue) => {
+  try {
+    // Attempt to update
+    await api.templates.update(template.id, {
+      is_active: newValue
+    })
+
+    // Update local template state
+    template.is_active = newValue
+
+    // Reload active count
+    await loadActiveCount()
+
+    // Show toast notification
+    if (newValue) {
+      // Activation succeeded - warn about re-export
+      console.warn('[TEMPLATE MANAGER] Agent activated - re-export required')
+      // TODO: Add toast notification when toast composable is available
+      // Mark export as stale (for Option C badge)
+      localStorage.setItem('agent_export_stale', 'true')
+    } else {
+      // Deactivation succeeded
+      console.info('[TEMPLATE MANAGER] Agent deactivated')
+      localStorage.setItem('agent_export_stale', 'true')
+    }
+
+  } catch (error) {
+    // Validation failed (8-agent limit)
+    const errorMsg = error.response?.data?.detail || 'Failed to update agent'
+
+    console.error('[TEMPLATE MANAGER] Cannot activate agent:', errorMsg)
+    // TODO: Add error toast when composable is available
+
+    // Revert toggle (template state not changed on error)
+    // No need to revert as we only update on success
+
+    // Reload templates to ensure sync
+    await loadTemplates()
   }
 }
 
@@ -920,6 +1035,7 @@ const viewDiff = async (template) => {
 // Lifecycle
 onMounted(() => {
   loadTemplates()
+  loadActiveCount() // Handover 0075: Load active agent count
 })
 
 // Watch for variable changes

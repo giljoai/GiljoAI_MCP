@@ -30,10 +30,9 @@ def register_task_tools(mcp):
         tenant_key: Optional[str] = None,
         product_id: Optional[str] = None,
         project_id: Optional[str] = None,
-        assigned_to_user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Create a new task with product isolation and user assignment (Phase 4)
+        Create a new task with product isolation (Handover 0076: removed user assignment)
 
         Args:
             title: Task title
@@ -43,7 +42,6 @@ def register_task_tools(mcp):
             tenant_key: Tenant key for multi-tenancy
             product_id: Product ID for product isolation
             project_id: Project ID if associating with a project
-            assigned_to_user_id: Optional user ID to assign task to (Phase 4)
 
         Returns:
             Created task details
@@ -80,21 +78,7 @@ def register_task_tools(mcp):
                     if not product_id and hasattr(project, "product_id"):
                         product_id = project.product_id
 
-                # Phase 4: Validate user assignment (if provided)
-                if assigned_to_user_id:
-                    from giljo_mcp.models import User
-
-                    user_query = select(User).where(and_(User.id == assigned_to_user_id, User.tenant_key == tenant_key))
-                    user_result = await session.execute(user_query)
-                    assignee = user_result.scalar_one_or_none()
-
-                    if not assignee:
-                        return {
-                            "success": False,
-                            "error": f"User {assigned_to_user_id} not found in tenant {tenant_key}",
-                        }
-
-                # Create task with product isolation and user assignment
+                # Create task with product isolation (Handover 0076: removed user assignment)
                 task = Task(
                     tenant_key=tenant_key,
                     product_id=product_id,
@@ -104,7 +88,6 @@ def register_task_tools(mcp):
                     category=category,
                     priority=priority,
                     status="pending",
-                    assigned_to_user_id=assigned_to_user_id,
                 )
 
                 session.add(task)
@@ -120,7 +103,6 @@ def register_task_tools(mcp):
                     "project_id": task.project_id,
                     "status": task.status,
                     "priority": task.priority,
-                    "assigned_to_user_id": task.assigned_to_user_id,
                     "created_at": task.created_at.isoformat(),
                 }
 
@@ -913,19 +895,18 @@ def register_task_tools(mcp):
 
     @mcp.tool()
     async def list_my_tasks(
-        filter_type: str = "assigned",
+        filter_type: str = "created",
         status: Optional[str] = None,
         tenant_key: Optional[str] = None,
         current_user_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        List tasks assigned to or created by current user (Phase 4)
+        List tasks created by current user (Handover 0076: removed assignment filter)
 
         Args:
             filter_type: Type of tasks to list
-                - "assigned": Tasks assigned to me
                 - "created": Tasks I created
-                - "all": All my tasks (assigned OR created)
+                - "all": All tasks in tenant
             status: Optional status filter (pending, in_progress, completed, etc.)
             tenant_key: Tenant key for multi-tenancy
             current_user_id: Current user ID (usually from context)
@@ -934,8 +915,6 @@ def register_task_tools(mcp):
             List of tasks with count
         """
         try:
-            from sqlalchemy import or_
-
             from giljo_mcp.tenant import tenant_manager
 
             # Use current tenant if not provided
@@ -957,17 +936,9 @@ def register_task_tools(mcp):
             async with db_manager.get_session_async() as session:
                 query = select(Task).where(Task.tenant_key == tenant_key)
 
-                if filter_type == "assigned":
-                    query = query.where(Task.assigned_to_user_id == current_user_id)
-                elif filter_type == "created":
+                if filter_type == "created":
                     query = query.where(Task.created_by_user_id == current_user_id)
-                elif filter_type == "all":
-                    query = query.where(
-                        or_(
-                            Task.assigned_to_user_id == current_user_id,
-                            Task.created_by_user_id == current_user_id,
-                        )
-                    )
+                # "all" filter type shows all tasks in tenant (no filter)
 
                 if status:
                     query = query.where(Task.status == status)
@@ -986,7 +957,6 @@ def register_task_tools(mcp):
                             "description": task.description,
                             "status": task.status,
                             "priority": task.priority,
-                            "assigned_to_user_id": task.assigned_to_user_id,
                             "created_by_user_id": task.created_by_user_id,
                             "project_id": task.project_id,
                             "product_id": task.product_id,
