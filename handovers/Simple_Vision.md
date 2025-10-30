@@ -97,7 +97,7 @@ At this stage the agents are communicating over the MCP message hub as needed an
 
 Once the user is satisfied there is a closeout function at the bottom of the jobs pane to decommission all the agents to wrap up the project to handle git commits documentation etc.
 
-# Tokens
+# Tokens (NEEDS EHNANCMENT)
 
 We do have a token counting function in the application and the main purpose is to try to keep the product context reasonable as we know Claude Codes specifically has a limit of 25,000 tokens for input so we need to when we create the templated prom to launch the first orchestrator for to create the mission to try and limit the mission prompt sub 25,000 tokens That's why we put a limit of 2000 tokens for overall product context which we might have to modify overtime.
 
@@ -113,7 +113,7 @@ We have an API key function in the application for future integrations but it's 
 
 # Installation
 
-Because this is a intended shared and downloadable products To flow from the install.py File is critical and must work in a multi OS environment between windows Linux and Mac OS this application should be ground up built for all three Oses with paths and functions.
+Because this is a intended shared and downloadable products To flow from the install.py File is critical and must work in a multi OS environment between windows Linux and Mac OS this application should be ground up built for all three OS's with paths and functions.
 
 # database
 
@@ -127,7 +127,7 @@ At some point we need to harmonize dependencies and make sure we're not installi
 
 The application as such should work on the same machine as a developer with local host if they want and over land and Wan with IP address out the gate I'm not quite sure how it works with DNS and host name but we should investigate this in the future.  We will also begin building it as a SaaS Service in the next quarter or so.
 
-# Mini LLM
+# Mini LLM (FUTURE NOT HERE YET)
 
 It would be wonderful to expand the orchestration portion to be ran as CPU or GPU micro LLM to trigger agents or activate agents on the user's workstation but we may have to end up in an Electron app or something similar in the future instead.
 
@@ -138,11 +138,11 @@ Today we have a Serena MCP integration and is a wonderful tool and we must make 
 * [Developer note] 
 We need to ensure that the Serena integration is built into the prompting of all the agents
 
-# Automations
+# Automations (CONSIDERATION)
 
 We have discussed and explored the possibility to run background bash jobs with clawed code to regularly have orchestrator paying for new messages and check and nudge agents along and to "go to sleep" Forcing the user to remind Claude that has messages waiting but I'm not quite 100 percent sure how this would be executed practically yet.
 
-# Dev Control Panel
+# Dev Control Panel (LOW PRIORITY)
 
 The dev control panel has been a lifesaver and I'm not sure yet how to build that in to the application as administrator tool in some capacity that is something to be considered.
 
@@ -169,15 +169,15 @@ Perhaps in their agentic CLI tool discussing options with the AI tool and using 
  Now the user can move on to the next project that they wish
  At anytime they can go to the dashboard and sort historically by product by projects or by everything Things have been happening and if they zoom in to a project they can even see the communications that occurred between the agents and have a link to the summary document and what happened during this session They get commit references etcetera
 
-# Welcome and Tutorial
+# Welcome and Tutorial (ONCE WE GET PAST BETA)
 
 We need to create some sort of workflow tutorial with screenshots that takes the US through how to use the product in the welcome screen.
 
-# Notificatoins
+# Notificatoins (FUTURE, NOT SURE HOW TO USE)
 
 We need to determine what type of notifications we need in the notifications bar we might even explore some sort of gamification if the user uses the product a lot that could be fun but that's just an extremely nice to have at some point messages could for when agents such as the orchestrator or other specifically wants the user's attention or if there is a in the product I'm not quite sure yet
 
-# Password recovery
+# Password recovery (FUTURE)
 
 At some point we have to improve the capability of password recovery to work via email to make the authentication more secure instead of the recovery PIN
 

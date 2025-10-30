@@ -24,30 +24,38 @@
       </v-col>
     </v-row>
 
-    <!-- Kanban Board -->
-    <v-row>
+    <!-- Loading State -->
+    <v-row v-if="loading">
       <v-col cols="12">
-        <!-- Loading State -->
-        <div v-if="loading" class="d-flex align-center justify-center" style="height: 400px">
+        <div class="d-flex align-center justify-center" style="height: 400px">
           <div class="text-center">
             <v-progress-circular indeterminate color="primary" size="48" class="mb-4" />
             <p class="text-subtitle-2">Loading jobs...</p>
           </div>
         </div>
+      </v-col>
+    </v-row>
 
-        <!-- Kanban Board Grid -->
-        <v-row v-else class="kanban-board">
-          <v-col v-for="column in kanbanColumns" :key="column.status" cols="12" sm="6" md="3" class="kanban-col">
-            <kanban-column
-              :status="column.status"
-              :jobs="column.jobs"
-              :title="column.title"
-              :description="column.description"
-              @view-job-details="openJobDetails"
-              @open-messages="openMessagePanel"
-            />
-          </v-col>
-        </v-row>
+    <!-- Kanban Board Grid (All 4 columns) -->
+    <v-row v-else class="kanban-board">
+      <v-col
+        v-for="column in kanbanColumns"
+        :key="column.status"
+        cols="12"
+        sm="6"
+        md="3"
+        lg="3"
+        xl="3"
+        class="kanban-col"
+      >
+        <kanban-column
+          :status="column.status"
+          :jobs="column.jobs"
+          :title="column.title"
+          :description="column.description"
+          @view-job-details="openJobDetails"
+          @open-messages="openMessagePanel"
+        />
       </v-col>
     </v-row>
 
@@ -553,19 +561,12 @@ onUnmounted(() => {
 }
 
 .kanban-board {
-  gap: 1.5rem;
+  /* Remove gap - use Vuetify's native grid gutters */
 }
 
 .kanban-col {
   display: flex;
   flex-direction: column;
-}
-
-/* Responsive adjustments */
-@media (max-width: 960px) {
-  .kanban-board {
-    gap: 1rem;
-  }
 }
 
 @media (max-width: 600px) {
