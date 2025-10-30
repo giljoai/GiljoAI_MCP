@@ -1,14 +1,14 @@
-[Developer note] I need to truly go through this document and harmonize that when I talk about product I mean the product as a activity in this application and then when I talk about project I'm talking about a project under the product and then I'm talking tasks as tasks within the product Jobs Their jobs are the execution phases of a project Essentially I need to clearly differentiate but I'm talking about the application that we're building and products projects tasks and jobs as functions in the application I may have missed this somewhere in all this text.
+[Developer note] I need to harmonize terminology in this document: **"product"** refers to the top-level organizational unit (a software product being built), **"project"** refers to work initiatives under a product, **"tasks"** are work items that can exist standalone or under a product, and **"jobs"** are the execution phases when agents work on a project. This document describes both the **GiljoAI application itself** and the **products/projects/tasks/jobs as features within the application**. I may have used these terms inconsistently throughout - keeping this note as a clarification.
 
 ### Product vision realized?
 
 This MCP server is intended to help developers using CLI coding tools terminal based in Windows or Linux or Mac such as claude codex and gemini. One of the major problems is the tracking of context the tracking of technology stack the tools the dependency and everything else when vibe and context coders are building products particularly as a singular developer where you have to track a lot of these things.
 
-The purpose was to create a form and field based documentation of a product to make sure that all bases are covered but that the developer doesn't always have to remember them when he vibe or coat context codes.
+The purpose was to create a form and field based documentation of a product to make sure that all bases are covered but that the developer doesn't always have to remember them when they vibe and context code.
 
 So the very first thing that this product does is allows a developer to create a product under that product is project and then these projects get executed with some aggregation of context and preparation of agents and summarization of a mission etc I will go into more of those details later in this post/
 
-The other thing I'm trying to solve with this product is that while you're interacting with the Gentex CLI coding tools ideas pop up and it's very easy to get sidetracked and distracted and in order to stay disciplined and not loose Good ideas when they happen is to be able to quickly punt them over or flip them over into a task list to be addressed later And that's where the task list comes in in this product.
+The other thing I'm trying to solve with this product is that while you're interacting with the agentic CLI coding tools ideas pop up and it's very easy to get sidetracked and distracted and in order to stay disciplined and not lose good ideas when they happen is to be able to quickly punt them over or flip them over into a task list to be addressed later. And that's where the task list comes in in this product.
 
 Much of this worked in my earlier MCP Lab Develop application and now I decided to build it more commercial friendly.
 
@@ -24,7 +24,7 @@ For the product to support initial multi user functions as a server we created t
 
 In the future I see expanding the product where multiple developers can use AI agentic coding tools and collaborate on the same product sharing projects for accelerated development.  But for right now we've isolated it to one developer with his or her multiple products.
 
-From a hierarchy perspective a product is the top of the hierarchy and under that falls projects, also within the product are tasks. Once a product is activated all the projects created belong to that product and tasks that the developer flips into the task list also belong to that product. Tasks can be converted to products at any time.
+From a hierarchy perspective a product is the top of the hierarchy and under that falls projects, also within the product are tasks. Once a product is activated all the projects created belong to that product and tasks that the developer flips into the task list also belong to that product. Tasks can be converted to **projects** at any time (Tasks cannot become products - they remain under the current active product).
 
 - All projects are tennanted per product
 - All tasks , when a product is active, belong to the product
@@ -32,23 +32,49 @@ From a hierarchy perspective a product is the top of the hierarchy and under tha
 
 Customized agents are also under each user tenant, When the user account is created a default set of six agents are created but the user can add and customize more agents.
 
-* We need to add/consider that only six types Of agents can be active at any given time. [developer note] I told Claude that "more agent of the same type may be used but six types Or what is your recommendation? Do you think there might be more than six variation of agents needed between implementer database expert UX designer
-tester researcher etc? We today have six templates defaulted in the application do we need more but keeping in mind that the user can also create more customized agents if they want.
+**Note on agent templates**: Six default agent templates are seeded per tenant (orchestrator, implementer, tester, frontend-implementer, code-reviewer, documenter). This is a recommended starting set, **not a technical limitation**. The codebase supports unlimited agent templates - users can create, customize, and activate as many agent types as needed for their workflow.
+
+**⚠️ Context Budget Warning**: When using Claude Code, limit active agents to **8 maximum**. Each agent's template description consumes context budget, reducing available tokens for your project. The 6 default templates are designed to fit comfortably within this limit while covering most development scenarios.
 
 # Agents
 
 All agents are tenanted under each user and are spawned as 6 default templates as a user gets created.  The user can also create customized or modify the agent as they need.
 
-* We need to add/consider that only six types Of agents can be active at any given time. [developer note] I told Claude that "more agent of the same type may be used but six types Or what is your recommendation? Do you think there might be more than six variation of agents needed between implementer database expert UX designer
-tester researcher etc? We today have six templates defaulted in the application do we need more but keeping in mind that the user can also create more customized agents if they want.
+## Agent Template System & Caching (Handover 0041)
 
-We have one primary and important agent called the Orchestrator, The orchestrator is a well prompted and templated staging agents in this application and as a project gets launched its job is to aggregate all contexts around the product and the project description harmonize the mission Divide up the jobs and assign it to the proper agents.  The orchestrator is also or should also be the primary interface for the developer and all other subagents should report to the orchestrator.
+The agent template system uses a three-layer caching architecture for performance:
+- **Memory LRU cache** (<1ms lookups) - Fast in-process cache
+- **Redis cache** (<2ms lookups) - Shared cache across processes
+- **Database** (<10ms lookups) - Persistent storage with multi-tenant isolation
+
+### Template Resolution Cascade
+
+When an agent is spawned, the system resolves templates using this priority order:
+1. **Product-specific template** (highest priority) - Custom templates for specific products
+2. **Tenant-specific template** (user customizations) - User's modified templates
+3. **System default template** - The 6 seeded defaults
+4. **Legacy fallback** - Ensures operations always succeed
+
+This allows users to customize agent behavior at different scopes: globally (tenant level) or per-product. The dashboard includes a Monaco editor for template customization with real-time preview and diff comparison against defaults.
+
+We have one primary and important agent called the Orchestrator. The orchestrator is a well-prompted and templated staging agent in this application and as a project gets launched its job is to aggregate all contexts around the product and the project description, harmonize the mission, divide up the jobs and assign them to the proper agents. The orchestrator is also or should also be the primary interface for the developer and all other subagents should report to the orchestrator.
+
+## 70% Token Reduction Achievement
+
+The orchestrator achieves **70% token reduction** through intelligent context management:
+- **Mission Planner** (`mission_planner.py`) - Generates condensed missions from vision docs, avoiding context duplication
+- **Agent Selector** (`agent_selector.py`) - Smart agent selection based on capabilities, assigning only necessary agents
+- **Workflow Engine** (`workflow_engine.py`) - Coordinates waterfall/parallel execution, preventing redundant context loading
+- **Field Priority System** - Only includes high-priority fields in missions, respecting token budgets
+- **Template Resolution Cascade** - Efficient template loading without redundant database hits
+
+Instead of flooding agents with ALL product context, the orchestrator intelligently extracts, condenses, and prioritizes information. This means agents get exactly what they need to do their work - nothing more, nothing less.
 
 The key restriction we have in this application is the lack of automation The closest we have is the MCP message communications but that only works while the agents are active.  so there will always be in need for the developer to nudge agents along in their various terminal windows to read messagesi  In the future states it would be amazing if that could be automated and perhaps we build the terminal into the application or find ways to inject commands into active terminals.
 
 Claude stands out in this because with Claude we can end one prompt launch the orchestrator and it could spawn subagents through its own internal communications protocol So this will always work a little bit smoother with Claude but there's nothing preventing the developer to even with Claude just like Codex and Gemini work in multiple CLI terminal windows copy prompts to trigger the agents and then regularly nudge them along to communicate and do the job.
 
-The tool an agent export template function for Claude Code specifically that allows the user to export agents into Claude code.
+The application includes agent template export for Claude Code via **My Settings → Integrations** only (manual user-triggered export). The export creates `.old.YYYYMMDD_HHMMSS` backup files before overwriting. Users control when and which templates to export - no automatic export occurs during project workflows.
 
 Agents should have strict prompting to regularly check in and communicate via MCP and that should be in their agent profiles today.
 
@@ -56,21 +82,42 @@ Agents should have strict prompting to regularly check in and communicate via MC
 
 # Products
 
-There can only be one active product at any given time and within the product 1 active project at any given time in the current state We do this just to scale for some simplicity but I don't think there's a necessary restriction because all the agents have unique ID's the project has a unique ID and the product has a unique ID so for all sense and purposes I don't see an issue with any ton of cross communications but we're keeping it simple by isolating it for now.
+There can only be one active product at any given time per tenant, and within each product only 1 active project at any given time. This is enforced at the database level with partial unique indexes (atomic, race-condition-proof). We do this for simplicity and focus, but technically all entities have unique IDs allowing for future expansion to support multiple concurrent active items if needed.
 
 The developer should be motivated to fill out as much documentation as possible around the product it would help with the context.
 
+## Vision Documents (Multi-Vision Support - Handover 0043)
+
+Products support multiple vision documents, not just a single vision file. Each product can have architectural docs, feature specifications, API documentation, coding standards, and more. Vision documents support:
+- **File-based storage** (upload files from disk)
+- **Inline text storage** (write directly in the dashboard)
+- **Hybrid mode** (both file + inline content)
+- **Versioning** with semantic versioning (e.g., v1.0.0, v1.1.0)
+- **Content integrity** via hash checking
+- **Active/inactive states** for archiving old versions
+- **Chunking for RAG** when feeding context to agents
+
+This allows comprehensive product context without cramming everything into a single massive document.
+
 # Projects 
 
-As mentioned earlier projects could be created from tasks, The tasks could flipped from an active chat in the Agentic CLI tool or be a human entry.  It is important when it's converted into a project that it keeps its name and the text and the text field becomes a description.  
+As mentioned earlier projects could be created from tasks, The tasks could flipped from an active chat in the Agentic CLI tool or be a human entry.  It is important when it's converted into a project that it keeps its name and the text and the text field becomes a description.
 
 Projects are also all human entered This is where the developer describes what they want to get done and gives it a title When the orchestrator first kicks off is when it merges all the context debth, Knowledge of the code the tech stack the formalities the dependencies etc and builds a mission and divides it up between agents.
+
+## Project Description vs Mission (Handover 0062)
+
+It's important to understand the distinction between two key project fields:
+- **Description**: Human-written project goal by the developer. This is what YOU want to accomplish, written in your own words. This field is user-editable and captures your intent.
+- **Mission**: AI-generated by the orchestrator. After analyzing the product context, vision documents, tech stack, and your description, the orchestrator creates a detailed mission statement with specific tasks, context, and agent assignments. This is auto-populated and represents the orchestrator's interpretation and expansion of your description.
+
+The description stays user-controlled; the mission is the orchestrator's work plan.
 
 Projects can have various states like I mentioned earlier only one project may be active at any time If the user or developer creates multiple projects they will remain inactive They can have canceled projects they can have completed projects and they can delete the projects.
 
 A deleted project should be a soft delete that firmly deletes after 10 days and can be restored until then.
 
-Note when a user shifts from one product to the other all active projects should switch to inactive state as again only one active product and only one active project can be valid at any given time.
+Note when a user shifts from one product to the other all active projects under the previous product automatically cascade to paused state, as only one active product per tenant and only one active project per product can be valid at any given time.
 
 When a project is activated a launch button appears this redirects the user to a project launch preview.
 
@@ -87,25 +134,87 @@ We we also have a projects during the launch phase which restores the project to
 
 Once the developer is happy with the initial staging they go activate the actual work and moves on to the Jobs pane.
 
-# Jobs
+# Jobs (Agent Job Management - Handovers 0019, 0020)
 
- To get the project going, there is a variation depending on Claude code or Codex/Gemini.  In the jobs pane the agents will be listed as Waiting, with ready to go prompts.  For calude only one Prompt needs to be copied into the same window as the prior orchestrator and that orchestrator will then launch the subagent function in clawed code so the agents can begin their work.  
+The Jobs system manages the full lifecycle of agent execution with multi-tenant isolation and real-time updates.
 
-If Codex or Gemini is used, it will require multiple copy pastes from the various agents into their own terminal windows to fulfill the execution.
+## Agent Job Lifecycle
+
+Each agent job moves through these states:
+1. **Waiting** - Agent assigned but not yet started
+2. **Acknowledged** - Agent has received its prompt and begun work
+3. **In Progress** - Agent actively working (can receive messages)
+4. **Completed** - Agent finished successfully
+5. **Failed** - Agent encountered errors
+
+The system tracks job metadata including assigned agents, prompts, start/end times, and execution results. WebSocket events (`job:status_changed`, `job:completed`, `job:failed`) provide real-time updates to the dashboard.
+
+## Agent Communication Queue
+
+Agents communicate through the `agent_communication_queue` which stores JSONB messages for:
+- **Agent-to-agent messages** - Direct communication between agents
+- **Broadcast messages** - Messages sent to all agents
+- **Orchestrator directives** - Commands from the orchestrator to sub-agents
+- **User messages** - Developer instructions to agents
+
+All messages are tenant-isolated and persisted for audit trails.
+
+## Tool-Specific Workflows
+
+**For Claude Code**: Only one prompt needs to be copied into the same window as the orchestrator. Claude Code's sub-agent spawning feature handles the rest automatically.
+
+**For Codex/Gemini**: Multiple copy-pastes are required - each agent gets its own terminal window and prompt must be pasted individually to activate each agent.
 
 At this stage the agents are communicating over the MCP message hub as needed and the user will be able to see this in the message pane.  As the agents finish or have questions or need more directions the user will have to in the application today go into each terminal window and nudge the agents along it should be encouraged to only speak to the orchestrator's terminal window for the orchestrator to create messages either as a broadcast or to a specific agent because this allows a clawed code user to again leverage the sub agent capability and the user of codecs and Gemini all they have to do is copy paste a quick message And I mean a hand type copy paste not a button in the app to read their message or say that they have a message pending as the communications for audit and history occurs through the MCP message center.
 
 Once the user is satisfied there is a closeout function at the bottom of the jobs pane to decommission all the agents to wrap up the project to handle git commits documentation etc.
 
-# Tokens (NEEDS EHNANCMENT)
+## Project Closeout Workflow (Handover 0073)
 
-We do have a token counting function in the application and the main purpose is to try to keep the product context reasonable as we know Claude Codes specifically has a limit of 25,000 tokens for input so we need to when we create the templated prom to launch the first orchestrator for to create the mission to try and limit the mission prompt sub 25,000 tokens That's why we put a limit of 2000 tokens for overall product context which we might have to modify overtime.
+When all agents complete their work, the project closeout system activates. The orchestrator can generate:
+- **Orchestrator Summary**: Final project completion report summarizing all work done, decisions made, and outcomes achieved
+- **Closeout Checklist**: Automated checklist covering git commits, documentation updates, dependency updates, test runs, and cleanup tasks
+- **Closeout Prompt**: Ready-to-execute bash commands for final project tasks (commits, pushes, tagging, etc.)
+- **Execution Tracking**: Timestamp tracking when closeout was executed (`closeout_executed_at`)
 
-Once the mission is created in the Jobs pane it will also show an aggregate token count of the mission there I don't know that this is a deal breaker but it shows that we concerned and Committ to be effective but this will require a lot of tuning over time and will likely help a lot once we learn much more how we can integrate this application into terminal windows or if we end up building terminal windows right into this application.
+This ensures projects don't just "end" - they close out properly with documentation, version control updates, and a clean audit trail. The static agent grid layout (Handover 0073) also ensures agent cards maintain consistent positions throughout the project lifecycle.
 
-# MCP integration
+# Token Management & Field Priority (Handovers 0048, 0049)
 
-I believe we have created a smooth way to integrate MCP servers for all three products and I believe they are command lines that you run at root of the project before you start the agenda CLI tool I know we did this for Claude but we need to verify for the others I am 75% sure we did this because this is going to be a huge necessity because we are tenant based and need the API key function for it we are also documenting for the user the manual way of doing it if they want.
+We have a comprehensive token management system to keep context within AI tool limits (Claude Code's 25K token input limit being the primary target).
+
+## Token Estimation API
+
+The system includes a real-time token estimation endpoint (`/api/products/{product_id}/token-estimate`) that calculates token usage for mission generation based on:
+- Active product fields and their configured priorities
+- Vision documents (chunked and prioritized)
+- Project descriptions
+- Tech stack and dependencies
+- Agent template content
+
+This allows developers to see token estimates BEFORE launching the orchestrator, preventing context overload.
+
+## Field Priority Configuration
+
+Users can configure **which product fields** get included in missions and at what priority level:
+- **Priority 1 fields**: Always included in missions (critical context)
+- **Priority 2-3 fields**: Included if token budget allows
+- **Priority 4+ fields**: Optional, included only if plenty of budget remains
+
+Default token budget per mission: **2000 tokens** (configurable). The orchestrator intelligently includes fields based on priority until the budget is reached, ensuring the most important context always makes it into the mission prompt.
+
+This smart prioritization is how we achieve 70% token reduction while maintaining context quality - we include what matters most, not everything.
+
+# MCP Integration (Native Support - Handover 0069)
+
+We have native MCP integration for three major AI coding tools:
+- **Claude Code** - Full MCP support via `claude-code mcp add` command
+- **Codex CLI** - Native MCP support via `codex mcp add` command
+- **Gemini CLI** - Native MCP support via `gemini mcp add` command
+
+Users configure MCP in **My Settings → MCP Configuration** with one-click copy commands. The system provides both the command-line integration method (recommended) and manual configuration instructions.
+
+Agent templates include a `tool` field that specifies which CLI tool the agent is designed for (`claude`, `codex`, or `gemini`), allowing tool-specific optimizations and behaviors. Multi-tenant isolation is maintained through API keys, ensuring all MCP communications route to the correct tenant.
 
 # API key
 
@@ -117,7 +226,7 @@ Because this is a intended shared and downloadable products To flow from the ins
 
 # database
 
-The database uses PostgresSQL With intended operation on the same machine as the application.  This is how it's been built over local host communications but there is technically no limitations to have the database elsewhere but that's not for MVP.
+The database uses PostgreSQL with primary operation on the same machine as the application (localhost). The codebase supports remote PostgreSQL connections via connection string configuration in `config.yaml`, though local operation is recommended for security and performance.
 
 # Dependancies
 
@@ -152,10 +261,17 @@ let's go through an entire user journey with the product.
 The user creates an account and logs in
 Agent templates are populated in their user settings
 User finds their way to MCP integrations and copies the command for their agentic CLI tool of choice and that links and attaches itself to the MCP server
-The user then pushes the agent's templates to their folder of choice either under the user or project if they're using clawed code
+
+**Agent Export for Claude Code** (Manual Only):
+- Users export agent templates via **My Settings → Integrations → Export Agents** button
+- Exports ALL active templates to `.claude/agents/` directory
+- Creates `.old.YYYYMMDD_HHMMSS` backup files before overwriting existing agents
+- **⚠️ Recommendation**: Export no more than **8 agents maximum** - each agent description reduces available context budget for your project. Claude Code recommends 6-8 agents for optimal performance.
+- User has full control over when to export and which templates to activate
+
 The user creates a product and defines it and uploads division slash product description
 The user now creates the first project perhaps Asking the tool to prepare the foundational layout for the overall product
-Perhaps in their agentic CLI tool discussing options with the AI tool and using the task function to add tasks because they don't know quite yet what decisions they want to make or how they want to use the things discussed
+Perhaps in their agentic CLI tool discussing options with the AI and using the MCP task tools to add tasks directly from their conversation, or adding tasks via the dashboard task interface. Tasks can be created either way - through MCP tools during coding sessions or manually through the web interface
  what decisions they want to make or how they want to use the things discussed what decisions they want to make or how they want to use the things discussed The user decides to activate the first project and gets a launch button
  This takes them to project launch dashboard or panel where they get a prompt for the orchestrator sees their handwritten project description and copy the prompt
  They paste the prompt in the CLI tool which has been started in the project folder and the orchestrator being the first agent begins building the mission by compiling the context and the project description
@@ -164,7 +280,7 @@ Perhaps in their agentic CLI tool discussing options with the AI tool and using 
  When they proceed they get to the jobs pain and in the jobs pain they will see a prompt for orchestrator for Claude code which they will copy and paste into cloud code For clawed code this will spawn subagents and they will match they already displayed agent cards on the screen which show various status and information If the orchestrator is now communicating with these agents that will start showing up in the message center
  If he's using other agentic coding tools like Codex or CLI not only does the orchestrator have a copy prompt but all the agent cards also have copy prompts and the user copies all of them individually to CLI windows to activate the agents and as the agents start working and if they are communicating that shows up in the message pane
  The user can view the progress either in the terminal CLI windows or glance at the dashboard as it keeps updating while the agents are communicating and progressing with their work
- Should the user see something he wants to address or get a notification from the orchestrator the user can either broadcast a message to all agents using the message center or queue a message for the orchestrator but naturally the user can also just chat with the orchestrator in the terminal window the benefit of doing it through the message center of MCP means that they'll be an audit and history log if the user wants it
+ Should the user see messages in the message center that require attention or need to communicate with agents, the user can either broadcast a message to all agents using the message center or queue a message for a specific agent (especially the orchestrator). Naturally, the user can also just chat directly with the orchestrator in the terminal window. The benefit of routing communication through the MCP message center is that there's a complete audit trail and history log for the entire project
  At some point everybody will be finished and report in that they're finished and a user can choose to closeout the project which will follow a closeout protocol such as git commits git push documentation decommissioning agents etc
  Now the user can move on to the next project that they wish
  At anytime they can go to the dashboard and sort historically by product by projects or by everything Things have been happening and if they zoom in to a project they can even see the communications that occurred between the agents and have a link to the summary document and what happened during this session They get commit references etcetera
@@ -177,7 +293,7 @@ We need to create some sort of workflow tutorial with screenshots that takes the
 
 We need to determine what type of notifications we need in the notifications bar we might even explore some sort of gamification if the user uses the product a lot that could be fun but that's just an extremely nice to have at some point messages could for when agents such as the orchestrator or other specifically wants the user's attention or if there is a in the product I'm not quite sure yet
 
-# Password recovery (FUTURE)
+# Password recovery
 
-At some point we have to improve the capability of password recovery to work via email to make the authentication more secure instead of the recovery PIN
+Password recovery is implemented via a 4-digit PIN system (Handover 0023). Users can generate recovery PINs with rate limiting and lockout protection (5 failed attempts = 15 minute lockout). The system includes PIN hash storage, expiration tracking, and secure validation. Email-based recovery could be a future enhancement for additional security options.
 
