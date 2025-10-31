@@ -1,0 +1,810 @@
+<template>
+  <div class="jobs-tab" role="main" :aria-label="`Jobs view for project ${project.name}`">
+    <!-- All Agents Complete Banner -->
+    <v-alert
+      v-if="allAgentsComplete"
+      type="success"
+      variant="tonal"
+      class="jobs-tab__complete-banner mb-4"
+      prominent
+    >
+      <v-icon start size="large">mdi-check-circle</v-icon>
+      <div class="text-h6 font-weight-bold">
+        All agents report complete
+      </div>
+      <p class="text-body-2 mb-0 mt-1">
+        All agent tasks have been completed successfully. Review the results and proceed with closeout.
+      </p>
+    </v-alert>
+
+    <!-- Main 2-Column Layout -->
+    <v-row class="jobs-tab__row" no-gutters>
+      <!-- Left Column: Project Header + Agent Cards (60%) -->
+      <v-col cols="12" lg="7" xl="8" class="jobs-tab__left-column">
+        <!-- Project Header -->
+        <div class="jobs-tab__project-header mb-4">
+          <div class="text-overline text-grey">Project</div>
+          <h2 class="text-h5 font-weight-bold mb-1">{{ project.name }}</h2>
+          <div class="text-caption text-grey-darken-1">
+            <v-icon size="small" class="mr-1">mdi-identifier</v-icon>
+            Project ID: <code class="project-id-code">{{ project.project_id }}</code>
+          </div>
+        </div>
+
+        <!-- Agent Cards Container -->
+        <div class="jobs-tab__agents-container">
+          <div class="jobs-tab__agents-header mb-3">
+            <h3 class="text-subtitle-1 font-weight-bold">
+              Active Agents
+              <v-chip size="small" color="primary" class="ml-2">
+                {{ sortedAgents.length }}
+              </v-chip>
+            </h3>
+          </div>
+
+          <!-- Horizontal Scrollable Agent Cards -->
+          <div
+            ref="agentsScrollContainer"
+            class="jobs-tab__agents-scroll"
+            role="list"
+            aria-label="Agent cards"
+            tabindex="0"
+            @keydown="handleAgentsKeydown"
+          >
+            <div class="jobs-tab__agents-grid">
+              <AgentCardEnhanced
+                v-for="agent in sortedAgents"
+                :key="agent.job_id || agent.agent_id"
+                :agent="agent"
+                mode="jobs"
+                :instance-number="getInstanceNumber(agent)"
+                :is-orchestrator="isOrchestratorAgent(agent)"
+                :show-closeout-button="allAgentsComplete && isOrchestratorAgent(agent)"
+                @launch-agent="handleLaunchAgent"
+                @view-details="handleViewDetails"
+                @view-error="handleViewError"
+                @closeout-project="handleCloseoutProject"
+                class="jobs-tab__agent-card"
+                role="listitem"
+              />
+            </div>
+          </div>
+
+          <!-- Scroll Hint Indicators -->
+          <div class="jobs-tab__scroll-indicators">
+            <v-btn
+              v-if="showLeftScroll"
+              icon
+              size="small"
+              color="primary"
+              variant="tonal"
+              class="jobs-tab__scroll-left"
+              @click="scrollAgentsLeft"
+              aria-label="Scroll agents left"
+            >
+              <v-icon>mdi-chevron-left</v-icon>
+            </v-btn>
+            <v-btn
+              v-if="showRightScroll"
+              icon
+              size="small"
+              color="primary"
+              variant="tonal"
+              class="jobs-tab__scroll-right"
+              @click="scrollAgentsRight"
+              aria-label="Scroll agents right"
+            >
+              <v-icon>mdi-chevron-right</v-icon>
+            </v-btn>
+          </div>
+        </div>
+      </v-col>
+
+      <!-- Right Column: Messages (40%) -->
+      <v-col cols="12" lg="5" xl="4" class="jobs-tab__right-column">
+        <div class="jobs-tab__messages-panel">
+          <!-- Message Stream -->
+          <MessageStream
+            :messages="messages"
+            :project-id="project.project_id"
+            :auto-scroll="true"
+            :loading="false"
+            class="jobs-tab__message-stream"
+          />
+
+          <!-- Message Input (Sticky at bottom) -->
+          <MessageInput
+            :disabled="false"
+            @send="handleSendMessage"
+            class="jobs-tab__message-input"
+          />
+        </div>
+      </v-col>
+    </v-row>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import AgentCardEnhanced from './AgentCardEnhanced.vue'
+import MessageStream from './MessageStream.vue'
+import MessageInput from './MessageInput.vue'
+
+/**
+ * JobsTab Component
+ *
+ * Production-grade implementation view for Handover 0077 showing active agent
+ * work with real-time messaging and coordination.
+ *
+ * Features:
+ * - 2-column layout: Agents (60%) | Messages (40%)
+ * - Project header with ID display
+ * - Green completion banner when all agents complete
+ * - Horizontal scrollable agent cards with priority sorting
+ * - Real-time message stream
+ * - Sticky message input at bottom
+ * - Keyboard navigation support
+ * - Responsive design (stacks on mobile)
+ * - ARIA labels for accessibility
+ *
+ * Agent Sorting Priority:
+ * 1. Failed/Blocked (highest priority - float to top)
+ * 2. Waiting (ready to launch)
+ * 3. Working (actively running)
+ * 4. Complete (lowest priority)
+ *
+ * @see handovers/0077_launch_jobs_dual_tab_interface.md
+ */
+
+const props = defineProps({
+  /**
+   * Project object
+   * Fields: project_id, name, description
+   */
+  project: {
+    type: Object,
+    required: true,
+    validator: (value) => {
+      return (
+        value &&
+        typeof value === 'object' &&
+        'project_id' in value &&
+        'name' in value
+      )
+    }
+  },
+
+  /**
+   * Array of agent job objects
+   * Each agent should have:
+   * - job_id or agent_id: unique identifier
+   * - agent_type: type (orchestrator, analyzer, implementor, etc.)
+   * - status: waiting | working | complete | failed | blocked
+   * - mission: mission text
+   * - progress: 0-100 (for working agents)
+   * - current_task: current task description (for working agents)
+   * - block_reason: error message (for failed/blocked agents)
+   * - messages: array of messages (optional)
+   */
+  agents: {
+    type: Array,
+    required: true,
+    default: () => []
+  },
+
+  /**
+   * Array of message objects
+   * Each message should have:
+   * - id: unique identifier
+   * - from: 'agent' | 'developer'
+   * - from_agent: sender agent type
+   * - to_agent: recipient agent type (or null for broadcast)
+   * - type: 'agent' | 'broadcast' | 'user'
+   * - content: message text
+   * - timestamp: ISO timestamp
+   * - agent_type: agent type for chat head
+   * - instance_number: instance number (optional)
+   */
+  messages: {
+    type: Array,
+    default: () => []
+  },
+
+  /**
+   * Whether all agents have completed
+   */
+  allAgentsComplete: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits([
+  'launch-agent',
+  'view-details',
+  'view-error',
+  'closeout-project',
+  'send-message'
+])
+
+/**
+ * Component refs
+ */
+const agentsScrollContainer = ref(null)
+const showLeftScroll = ref(false)
+const showRightScroll = ref(false)
+
+/**
+ * Agent sorting priority map
+ * Lower number = higher priority (appears first)
+ */
+const AGENT_PRIORITY = {
+  failed: 1,
+  blocked: 2,
+  waiting: 3,
+  working: 4,
+  complete: 5
+}
+
+/**
+ * Sort agents by priority (failed/blocked first, complete last)
+ */
+const sortedAgents = computed(() => {
+  if (!props.agents || props.agents.length === 0) return []
+
+  return [...props.agents].sort((a, b) => {
+    const priorityA = AGENT_PRIORITY[a.status] || 999
+    const priorityB = AGENT_PRIORITY[b.status] || 999
+
+    // Primary sort: by priority
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB
+    }
+
+    // Secondary sort: by agent type (orchestrator first)
+    const isOrchestratorA = a.agent_type === 'orchestrator' ? 0 : 1
+    const isOrchestratorB = b.agent_type === 'orchestrator' ? 0 : 1
+
+    if (isOrchestratorA !== isOrchestratorB) {
+      return isOrchestratorA - isOrchestratorB
+    }
+
+    // Tertiary sort: by agent_type alphabetically
+    return (a.agent_type || '').localeCompare(b.agent_type || '')
+  })
+})
+
+/**
+ * Get instance number for agent
+ * Counts how many agents of same type appear before this one
+ */
+function getInstanceNumber(agent) {
+  if (!agent.agent_type) return 1
+
+  const agentsOfSameType = props.agents.filter(a => a.agent_type === agent.agent_type)
+  if (agentsOfSameType.length === 1) return 1
+
+  const index = agentsOfSameType.findIndex(a => {
+    return (a.job_id || a.agent_id) === (agent.job_id || agent.agent_id)
+  })
+
+  return index + 1
+}
+
+/**
+ * Check if agent is orchestrator
+ */
+function isOrchestratorAgent(agent) {
+  return agent.agent_type === 'orchestrator'
+}
+
+/**
+ * Event handlers for agent actions
+ */
+function handleLaunchAgent(agent) {
+  console.log('[JobsTab] Launch agent:', agent.agent_type)
+  emit('launch-agent', agent)
+}
+
+function handleViewDetails(agent) {
+  console.log('[JobsTab] View details:', agent.agent_type)
+  emit('view-details', agent)
+}
+
+function handleViewError(agent) {
+  console.log('[JobsTab] View error:', agent.agent_type)
+  emit('view-error', agent)
+}
+
+function handleCloseoutProject() {
+  console.log('[JobsTab] Closeout project')
+  emit('closeout-project')
+}
+
+/**
+ * Handle message sending
+ */
+function handleSendMessage(message, recipient) {
+  console.log('[JobsTab] Send message:', { message, recipient })
+  emit('send-message', message, recipient)
+}
+
+/**
+ * Horizontal scroll handlers for agent cards
+ */
+function scrollAgentsLeft() {
+  if (!agentsScrollContainer.value) return
+  agentsScrollContainer.value.scrollBy({
+    left: -300,
+    behavior: 'smooth'
+  })
+}
+
+function scrollAgentsRight() {
+  if (!agentsScrollContainer.value) return
+  agentsScrollContainer.value.scrollBy({
+    left: 300,
+    behavior: 'smooth'
+  })
+}
+
+/**
+ * Update scroll indicator visibility
+ */
+function updateScrollIndicators() {
+  if (!agentsScrollContainer.value) return
+
+  const container = agentsScrollContainer.value
+  const { scrollLeft, scrollWidth, clientWidth } = container
+
+  showLeftScroll.value = scrollLeft > 10
+  showRightScroll.value = scrollLeft < scrollWidth - clientWidth - 10
+}
+
+/**
+ * Keyboard navigation for agent cards scroll
+ */
+function handleAgentsKeydown(event) {
+  if (!agentsScrollContainer.value) return
+
+  const container = agentsScrollContainer.value
+
+  switch (event.key) {
+    case 'ArrowLeft':
+      event.preventDefault()
+      scrollAgentsLeft()
+      break
+    case 'ArrowRight':
+      event.preventDefault()
+      scrollAgentsRight()
+      break
+    case 'Home':
+      event.preventDefault()
+      container.scrollTo({ left: 0, behavior: 'smooth' })
+      break
+    case 'End':
+      event.preventDefault()
+      container.scrollTo({ left: container.scrollWidth, behavior: 'smooth' })
+      break
+  }
+}
+
+/**
+ * Lifecycle - Mount
+ */
+onMounted(() => {
+  // Set up scroll listener for indicators
+  if (agentsScrollContainer.value) {
+    agentsScrollContainer.value.addEventListener('scroll', updateScrollIndicators)
+
+    // Initial check
+    nextTick(() => {
+      updateScrollIndicators()
+    })
+  }
+
+  // Update indicators on window resize
+  window.addEventListener('resize', updateScrollIndicators)
+
+  console.log('[JobsTab] Component mounted')
+})
+
+/**
+ * Lifecycle - Unmount
+ */
+onBeforeUnmount(() => {
+  // Clean up scroll listener
+  if (agentsScrollContainer.value) {
+    agentsScrollContainer.value.removeEventListener('scroll', updateScrollIndicators)
+  }
+
+  window.removeEventListener('resize', updateScrollIndicators)
+
+  console.log('[JobsTab] Component unmounting')
+})
+</script>
+
+<style scoped lang="scss">
+@import '@/styles/agent-colors.scss';
+
+.jobs-tab {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  background: var(--color-bg-secondary, #fafafa);
+
+  &__complete-banner {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(56, 142, 60, 0.1) 100%) !important;
+    border: 2px solid #4caf50 !important;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+
+    :deep(.v-alert__prepend) {
+      color: #4caf50;
+    }
+
+    :deep(.v-alert__content) {
+      color: rgba(0, 0, 0, 0.87);
+    }
+  }
+
+  &__row {
+    gap: 24px;
+  }
+
+  &__left-column {
+    display: flex;
+    flex-direction: column;
+    padding-right: 12px;
+  }
+
+  &__right-column {
+    display: flex;
+    flex-direction: column;
+    padding-left: 12px;
+    border-left: 2px solid rgba(0, 0, 0, 0.06);
+  }
+
+  &__project-header {
+    padding: 16px;
+    background: var(--color-bg-primary, #ffffff);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+
+    .project-id-code {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: rgba(0, 0, 0, 0.05);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  }
+
+  &__agents-container {
+    position: relative;
+    flex: 1;
+    min-height: 300px;
+  }
+
+  &__agents-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__agents-scroll {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 4px;
+    margin: -8px -4px;
+    scroll-behavior: smooth;
+
+    /* Custom scrollbar */
+    &::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    /* Firefox */
+    scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
+    scrollbar-width: thin;
+
+    /* Keyboard focus */
+    &:focus {
+      outline: 2px solid var(--color-accent-primary, #ffc300);
+      outline-offset: 2px;
+    }
+  }
+
+  &__agents-grid {
+    display: flex;
+    gap: 16px;
+    min-width: min-content;
+    padding: 4px;
+  }
+
+  &__agent-card {
+    flex-shrink: 0;
+    animation: cardFadeIn 0.3s ease-out;
+  }
+
+  &__scroll-indicators {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  &__scroll-left {
+    position: absolute;
+    left: 8px;
+    pointer-events: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  &__scroll-right {
+    position: absolute;
+    right: 8px;
+    pointer-events: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  &__messages-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--color-bg-primary, #ffffff);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  &__message-stream {
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__message-input {
+    flex-shrink: 0;
+  }
+}
+
+/* Animations */
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1280px) {
+  .jobs-tab {
+    &__left-column {
+      padding-right: 8px;
+    }
+
+    &__right-column {
+      padding-left: 8px;
+    }
+
+    &__agents-grid {
+      gap: 12px;
+    }
+  }
+}
+
+/* Tablet: Stack columns vertically */
+@media (max-width: 1024px) {
+  .jobs-tab {
+    &__row {
+      flex-direction: column;
+    }
+
+    &__left-column {
+      padding-right: 0;
+      margin-bottom: 24px;
+    }
+
+    &__right-column {
+      padding-left: 0;
+      border-left: none;
+      border-top: 2px solid rgba(0, 0, 0, 0.06);
+      padding-top: 24px;
+    }
+
+    &__messages-panel {
+      min-height: 500px;
+    }
+  }
+}
+
+/* Mobile: Compact spacing */
+@media (max-width: 768px) {
+  .jobs-tab {
+    padding: 12px;
+
+    &__row {
+      gap: 16px;
+    }
+
+    &__complete-banner {
+      padding: 12px !important;
+
+      :deep(.text-h6) {
+        font-size: 1rem;
+      }
+
+      :deep(.text-body-2) {
+        font-size: 0.875rem;
+      }
+    }
+
+    &__project-header {
+      padding: 12px;
+
+      .text-h5 {
+        font-size: 1.25rem;
+      }
+    }
+
+    &__agents-grid {
+      gap: 8px;
+    }
+
+    &__messages-panel {
+      min-height: 400px;
+    }
+  }
+}
+
+/* Small mobile: Further compact */
+@media (max-width: 600px) {
+  .jobs-tab {
+    padding: 8px;
+
+    &__agents-scroll {
+      padding: 4px 2px;
+      margin: -4px -2px;
+    }
+
+    &__agent-card {
+      width: 260px !important;
+    }
+
+    &__scroll-left {
+      left: 4px;
+    }
+
+    &__scroll-right {
+      right: 4px;
+    }
+  }
+}
+
+/* Accessibility: High Contrast Mode */
+@media (prefers-contrast: high) {
+  .jobs-tab {
+    &__project-header,
+    &__messages-panel {
+      border: 2px solid currentColor;
+    }
+
+    &__complete-banner {
+      border-width: 3px !important;
+    }
+
+    &__right-column {
+      border-left-width: 3px;
+    }
+  }
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .jobs-tab__agents-scroll {
+    scroll-behavior: auto;
+  }
+
+  .jobs-tab__agent-card {
+    animation: none;
+  }
+
+  @keyframes cardFadeIn {
+    from,
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Dark Theme Optimization */
+.v-theme--dark {
+  .jobs-tab {
+    background: var(--color-bg-elevated, #1e1e1e);
+
+    &__project-header,
+    &__messages-panel {
+      background: var(--color-bg-primary, #121212);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    &__complete-banner {
+      background: linear-gradient(135deg, rgba(76, 175, 80, 0.25) 0%, rgba(56, 142, 60, 0.2) 100%) !important;
+      border-color: #66bb6a !important;
+    }
+
+    &__right-column {
+      border-left-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .project-id-code {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+/* Light Theme Optimization */
+.v-theme--light {
+  .jobs-tab {
+    background: #fafafa;
+
+    &__project-header,
+    &__messages-panel {
+      background: #ffffff;
+    }
+
+    &__right-column {
+      border-left-color: rgba(0, 0, 0, 0.06);
+    }
+  }
+}
+
+/* Print Styles */
+@media print {
+  .jobs-tab {
+    &__complete-banner {
+      border: 2px solid #4caf50 !important;
+      background: #e8f5e9 !important;
+      color: #000 !important;
+    }
+
+    &__scroll-indicators {
+      display: none;
+    }
+
+    &__agents-scroll {
+      overflow: visible;
+    }
+
+    &__messages-panel {
+      border: 1px solid #ccc;
+      page-break-inside: avoid;
+    }
+  }
+}
+</style>
