@@ -15,7 +15,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from .database import DatabaseManager
-from .models import MCPAgentJob
+from .models import Job
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class AgentJobManager:
         mission: str,
         spawned_by: Optional[str] = None,
         context_chunks: Optional[list[str]] = None,
-    ) -> MCPAgentJob:
+    ) -> Job:
         """
         Create a new agent job.
 
@@ -80,7 +80,7 @@ class AgentJobManager:
             context_chunks: Optional list of chunk_ids for context loading
 
         Returns:
-            Created MCPAgentJob instance
+            Created Job instance
 
         Raises:
             ValueError: If required parameters are invalid
@@ -94,7 +94,7 @@ class AgentJobManager:
             raise ValueError("mission cannot be empty")
 
         # Create job
-        job = MCPAgentJob(
+        job = Job(
             tenant_key=tenant_key,
             agent_type=agent_type,
             mission=mission,
@@ -121,7 +121,7 @@ class AgentJobManager:
         self,
         tenant_key: str,
         job_specs: list[dict[str, Any]],
-    ) -> list[MCPAgentJob]:
+    ) -> list[Job]:
         """
         Create multiple jobs in batch.
 
@@ -134,7 +134,7 @@ class AgentJobManager:
                 - context_chunks (optional)
 
         Returns:
-            List of created MCPAgentJob instances
+            List of created Job instances
 
         Raises:
             ValueError: If tenant_key or job specs are invalid
@@ -155,7 +155,7 @@ class AgentJobManager:
                     raise ValueError("mission is required in job spec")
 
                 # Create job
-                job = MCPAgentJob(
+                job = Job(
                     tenant_key=tenant_key,
                     agent_type=spec["agent_type"],
                     mission=spec["mission"],
@@ -182,7 +182,7 @@ class AgentJobManager:
         self,
         tenant_key: str,
         job_id: str,
-    ) -> MCPAgentJob:
+    ) -> Job:
         """
         Acknowledge a job (pending -> active).
 
@@ -193,7 +193,7 @@ class AgentJobManager:
             job_id: Job ID to acknowledge
 
         Returns:
-            Updated MCPAgentJob instance
+            Updated Job instance
 
         Raises:
             ValueError: If job not found or status transition invalid
@@ -229,7 +229,7 @@ class AgentJobManager:
         job_id: str,
         status: str,
         metadata: Optional[dict[str, Any]] = None,
-    ) -> MCPAgentJob:
+    ) -> Job:
         """
         Update job status with optional metadata.
 
@@ -241,7 +241,7 @@ class AgentJobManager:
                      will be added to job.messages array
 
         Returns:
-            Updated MCPAgentJob instance
+            Updated Job instance
 
         Raises:
             ValueError: If job not found or status transition invalid
@@ -272,7 +272,7 @@ class AgentJobManager:
         tenant_key: str,
         job_id: str,
         result: Optional[dict[str, Any]] = None,
-    ) -> MCPAgentJob:
+    ) -> Job:
         """
         Mark job as completed (active -> completed).
 
@@ -284,7 +284,7 @@ class AgentJobManager:
             result: Optional result data to store in messages
 
         Returns:
-            Updated MCPAgentJob instance
+            Updated Job instance
 
         Raises:
             ValueError: If job not found or status transition invalid
@@ -324,7 +324,7 @@ class AgentJobManager:
         tenant_key: str,
         job_id: str,
         error: Optional[dict[str, Any]] = None,
-    ) -> MCPAgentJob:
+    ) -> Job:
         """
         Mark job as failed (pending/active -> failed).
 
@@ -336,7 +336,7 @@ class AgentJobManager:
             error: Optional error data to store in messages
 
         Returns:
-            Updated MCPAgentJob instance
+            Updated Job instance
 
         Raises:
             ValueError: If job not found or status transition invalid
@@ -375,7 +375,7 @@ class AgentJobManager:
         self,
         tenant_key: str,
         job_id: str,
-    ) -> Optional[MCPAgentJob]:
+    ) -> Optional[Job]:
         """
         Get a job by job_id with tenant isolation.
 
@@ -384,12 +384,12 @@ class AgentJobManager:
             job_id: Job ID to retrieve
 
         Returns:
-            MCPAgentJob instance or None if not found
+            Job instance or None if not found
         """
         with self.db_manager.get_session() as session:
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.job_id == job_id,
+            stmt = select(Job).where(
+                Job.tenant_key == tenant_key,
+                Job.job_id == job_id,
             )
             job = session.execute(stmt).scalar_one_or_none()
 
@@ -404,7 +404,7 @@ class AgentJobManager:
         tenant_key: str,
         agent_type: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> list[MCPAgentJob]:
+    ) -> list[Job]:
         """
         Get pending jobs with optional filters.
 
@@ -414,19 +414,19 @@ class AgentJobManager:
             limit: Optional limit on number of jobs returned
 
         Returns:
-            List of pending MCPAgentJob instances
+            List of pending Job instances
         """
         with self.db_manager.get_session() as session:
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.status == "pending",
+            stmt = select(Job).where(
+                Job.tenant_key == tenant_key,
+                Job.status == "pending",
             )
 
             if agent_type:
-                stmt = stmt.where(MCPAgentJob.agent_type == agent_type)
+                stmt = stmt.where(Job.agent_type == agent_type)
 
             # Order by created_at to get oldest first
-            stmt = stmt.order_by(MCPAgentJob.created_at)
+            stmt = stmt.order_by(Job.created_at)
 
             if limit:
                 stmt = stmt.limit(limit)
@@ -444,7 +444,7 @@ class AgentJobManager:
         tenant_key: str,
         agent_type: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> list[MCPAgentJob]:
+    ) -> list[Job]:
         """
         Get active jobs with optional filters.
 
@@ -454,19 +454,19 @@ class AgentJobManager:
             limit: Optional limit on number of jobs returned
 
         Returns:
-            List of active MCPAgentJob instances
+            List of active Job instances
         """
         with self.db_manager.get_session() as session:
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.status == "active",
+            stmt = select(Job).where(
+                Job.tenant_key == tenant_key,
+                Job.status == "active",
             )
 
             if agent_type:
-                stmt = stmt.where(MCPAgentJob.agent_type == agent_type)
+                stmt = stmt.where(Job.agent_type == agent_type)
 
             # Order by started_at to get oldest first
-            stmt = stmt.order_by(MCPAgentJob.started_at)
+            stmt = stmt.order_by(Job.started_at)
 
             if limit:
                 stmt = stmt.limit(limit)
@@ -496,9 +496,9 @@ class AgentJobManager:
         """
         with self.db_manager.get_session() as session:
             # Get parent job
-            parent_stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.job_id == job_id,
+            parent_stmt = select(Job).where(
+                Job.tenant_key == tenant_key,
+                Job.job_id == job_id,
             )
             parent = session.execute(parent_stmt).scalar_one_or_none()
 
@@ -506,10 +506,10 @@ class AgentJobManager:
                 return None
 
             # Get child jobs spawned by this parent
-            children_stmt = select(MCPAgentJob).where(
-                MCPAgentJob.tenant_key == tenant_key,
-                MCPAgentJob.spawned_by == job_id,
-            ).order_by(MCPAgentJob.created_at)
+            children_stmt = select(Job).where(
+                Job.tenant_key == tenant_key,
+                Job.spawned_by == job_id,
+            ).order_by(Job.created_at)
 
             children = session.execute(children_stmt).scalars().all()
 
@@ -528,7 +528,7 @@ class AgentJobManager:
         session: Session,
         tenant_key: str,
         job_id: str,
-    ) -> MCPAgentJob:
+    ) -> Job:
         """
         Get job or raise ValueError if not found.
 
@@ -538,14 +538,14 @@ class AgentJobManager:
             job_id: Job ID to retrieve
 
         Returns:
-            MCPAgentJob instance
+            Job instance
 
         Raises:
             ValueError: If job not found for this tenant
         """
-        stmt = select(MCPAgentJob).where(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.job_id == job_id,
+        stmt = select(Job).where(
+            Job.tenant_key == tenant_key,
+            Job.job_id == job_id,
         )
         job = session.execute(stmt).scalar_one_or_none()
 
@@ -605,7 +605,7 @@ class AgentJobManager:
     def _sync_task_status(
         self,
         session,
-        job: MCPAgentJob,
+        job: Job,
         task_status: str,
     ) -> None:
         """
@@ -616,7 +616,7 @@ class AgentJobManager:
 
         Args:
             session: Database session
-            job: MCPAgentJob instance
+            job: Job instance
             task_status: Target task status (completed, blocked, etc.)
         """
         from giljo_mcp.models import Task

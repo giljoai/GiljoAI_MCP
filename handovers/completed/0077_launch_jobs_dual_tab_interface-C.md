@@ -1,6 +1,6 @@
 # Handover 0077: Launch/Jobs Dual-Tab Interface with Agent Visual Branding
 
-**Status**: Specification
+**Status**: Specification (ARCHIVED)
 **Date**: 2025-10-30
 **Author**: System Architecture
 **Priority**: High

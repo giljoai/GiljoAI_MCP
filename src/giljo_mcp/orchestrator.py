@@ -19,7 +19,7 @@ from .context_management.chunker import VisionDocumentChunker
 from .database import get_db_manager
 from .enums import AgentRole, ContextStatus, ProjectStatus, ProjectType
 from .mission_planner import MissionPlanner
-from .models import Agent, AgentTemplate, MCPAgentJob, Message, Product, Project
+from .models import Agent, AgentTemplate, Job, Message, Product, Project
 from .optimization import MissionOptimizationInjector, SerenaOptimizer
 from .template_adapter import MissionTemplateGeneratorV2
 from .workflow_engine import WorkflowEngine
@@ -306,7 +306,7 @@ class ProjectOrchestrator:
 
         Integration:
             - Uses AgentJobManager for job creation
-            - Links Agent to MCPAgentJob via job_id
+            - Links Agent to Job via job_id
             - Generates copy-paste ready CLI prompt
         """
         # 1. Generate mission
@@ -464,7 +464,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
     def _generate_cli_prompt(
         self,
-        job: MCPAgentJob,
+        job: Job,
         template: AgentTemplate,
         project: Project,
         tenant_key: str,
@@ -480,7 +480,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         - MCP tool call examples (tenant-specific)
 
         Args:
-            job: MCPAgentJob instance
+            job: Job instance
             template: AgentTemplate instance
             project: Project instance
             tenant_key: Tenant key for multi-tenant isolation

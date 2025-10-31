@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "./variables.scss" as *;
 
 // CSS Variables for theme switching with smooth transitions
@@ -121,7 +122,7 @@ body {
 
 // Custom button styles
 .primary-action-btn {
-  background: linear-gradient(135deg, $yellow 0%, darken($yellow, 10%) 100%);
+  background: linear-gradient(135deg, $yellow 0%, color.adjust($yellow, $lightness: -10%) 100%);
   color: $darkest-blue;
   font-weight: 600;
   text-transform: uppercase;

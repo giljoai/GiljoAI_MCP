@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from sqlalchemy import select
 
-from ..models import MCPAgentJob
+from ..models import Job
 
 logger = logging.getLogger(__name__)
 
@@ -108,9 +108,9 @@ async def send_mcp_message(
 
         async with db_manager.get_session_async() as session:
             # Verify sender job exists
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == job_id,
-                MCPAgentJob.tenant_key == tenant_key
+            stmt = select(Job).where(
+                Job.job_id == job_id,
+                Job.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
             sender_job = result.scalar_one_or_none()
@@ -150,8 +150,8 @@ async def send_mcp_message(
                 message["is_broadcast"] = True
 
                 # Get all jobs in tenant
-                stmt = select(MCPAgentJob).where(
-                    MCPAgentJob.tenant_key == tenant_key
+                stmt = select(Job).where(
+                    Job.tenant_key == tenant_key
                 )
                 result = await session.execute(stmt)
                 all_jobs = result.scalars().all()
@@ -166,9 +166,9 @@ async def send_mcp_message(
             elif target == "agent":
                 # Send to specific agent
                 # Verify target agent exists in same tenant
-                stmt = select(MCPAgentJob).where(
-                    MCPAgentJob.job_id == agent_id,
-                    MCPAgentJob.tenant_key == tenant_key
+                stmt = select(Job).where(
+                    Job.job_id == agent_id,
+                    Job.tenant_key == tenant_key
                 )
                 result = await session.execute(stmt)
                 target_job = result.scalar_one_or_none()
@@ -286,9 +286,9 @@ async def read_mcp_messages(
 
         async with db_manager.get_session_async() as session:
             # Get job with tenant isolation
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == job_id,
-                MCPAgentJob.tenant_key == tenant_key
+            stmt = select(Job).where(
+                Job.job_id == job_id,
+                Job.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
             job = result.scalar_one_or_none()

@@ -19,9 +19,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas.task import TaskUpdate, TaskConversionRequest, ProjectConversionResponse, TaskResponse
+from api.schemas.task import (
+    TaskUpdate,
+    TaskConversionRequest,
+    ProjectConversionResponse,
+    TaskResponse,
+    TaskCreate,
+    StatusUpdate,
+)
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Task, Project, User
+from src.giljo_mcp.models import Task, Project, User, Product
 
 
 logger = logging.getLogger(__name__)
@@ -147,19 +154,23 @@ async def list_tasks(
 
     # Apply product-scoped filters (Handover 0076)
     if filter_type == "product_tasks":
-        # Get active product for current tenant
-        product_query = select(Product).where(
-            Product.tenant_key == current_user.tenant_key,
-            Product.is_active == True
-        )
-        product_result = await db.execute(product_query)
-        active_product = product_result.scalar_one_or_none()
-
-        if active_product:
-            query = query.where(Task.product_id == active_product.id)
+        # Prefer explicit product_id from query params if provided
+        if product_id:
+            query = query.where(Task.product_id == product_id)
         else:
-            # No active product, return empty list
-            query = query.where(Task.id == None)  # Always false
+            # Get active product for current tenant
+            product_query = select(Product).where(
+                Product.tenant_key == current_user.tenant_key,
+                Product.is_active == True
+            )
+            product_result = await db.execute(product_query)
+            active_product = product_result.scalar_one_or_none()
+
+            if active_product:
+                query = query.where(Task.product_id == active_product.id)
+            else:
+                # No active product, return empty list
+                query = query.where(Task.id == None)  # Always false
 
     elif filter_type == "all_tasks":
         # Tasks with NULL product_id (created via MCP without active product)
@@ -190,7 +201,65 @@ async def list_tasks(
     return [task_to_response(task) for task in tasks]
 
 
+@router.post("/", response_model=TaskResponse)
+async def create_task(
+    task_create: TaskCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> TaskResponse:
+    """
+    Create a new task.
+
+    The creator becomes the task owner. Product scoping is optional; when provided,
+    the task is isolated to that product for list filters.
+    """
+    logger.debug(f"User {getattr(current_user, 'username', 'unknown')} creating task '{task_create.title}'")
+
+    task = Task(
+        tenant_key=current_user.tenant_key,
+        product_id=task_create.product_id,
+        project_id=task_create.project_id,
+        parent_task_id=task_create.parent_task_id,
+        title=task_create.title,
+        description=task_create.description,
+        category=task_create.category,
+        status=task_create.status or "pending",
+        priority=task_create.priority or "medium",
+        estimated_effort=task_create.estimated_effort,
+        actual_effort=task_create.actual_effort,
+        due_date=task_create.due_date,
+        created_by_user_id=current_user.id,
+    )
+
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+
+    logger.info(f"Created task {task.id} by user {current_user.username}")
+    return task_to_response(task)
+
+
+@router.get("/{task_id}/", response_model=TaskResponse)
+async def get_task(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> TaskResponse:
+    """
+    Get a single task by ID within the current tenant.
+    """
+    stmt = select(Task).where(Task.id == task_id, Task.tenant_key == current_user.tenant_key)
+    result = await db.execute(stmt)
+    task = result.scalar_one_or_none()
+
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    return task_to_response(task)
+
+
 @router.patch("/{task_id}", response_model=TaskResponse)
+@router.put("/{task_id}/", response_model=TaskResponse)
 async def update_task(
     task_id: str,
     task_update: TaskUpdate,
@@ -257,6 +326,7 @@ async def update_task(
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{task_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -303,6 +373,7 @@ async def delete_task(
 
 
 @router.post("/{task_id}/convert", response_model=ProjectConversionResponse)
+@router.post("/{task_id}/convert/", response_model=ProjectConversionResponse)
 async def convert_task_to_project(
     task_id: str,
     conversion_request: TaskConversionRequest,
@@ -409,3 +480,78 @@ async def convert_task_to_project(
         conversion_strategy=conversion_request.strategy,
         created_at=project.created_at
     )
+
+
+@router.patch("/{task_id}/status/", response_model=TaskResponse)
+async def change_task_status(
+    task_id: str,
+    status_update: StatusUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> TaskResponse:
+    """
+    Change only the status field of a task. Convenience endpoint for UI.
+    """
+    stmt = select(Task).where(Task.id == task_id, Task.tenant_key == current_user.tenant_key)
+    result = await db.execute(stmt)
+    task = result.scalar_one_or_none()
+
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    if not can_modify_task(task, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this task")
+
+    task.status = status_update.status
+    if task.status == "in_progress" and not task.started_at:
+        task.started_at = datetime.now(timezone.utc)
+    elif task.status == "completed" and not task.completed_at:
+        task.completed_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(task)
+
+    return task_to_response(task)
+
+
+@router.get("/summary/")
+async def get_task_summary(
+    product_id: Optional[str] = Query(None, description="Filter by product ID"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Return simple task summary metrics grouped by product for the current tenant.
+    Structure is compatible with UI store expectations.
+    """
+    base_query = select(Task).where(Task.tenant_key == current_user.tenant_key)
+    if product_id:
+        base_query = base_query.where(Task.product_id == product_id)
+
+    result = await db.execute(base_query)
+    tasks = result.scalars().all()
+
+    summary: dict[str, dict] = {}
+    for t in tasks:
+        pid = t.product_id or "no-product"
+        if pid not in summary:
+            summary[pid] = {
+                "total": 0,
+                "pending": 0,
+                "in_progress": 0,
+                "completed": 0,
+                "blocked": 0,
+                "cancelled": 0,
+                "by_priority": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+            }
+
+        s = summary[pid]
+        s["total"] += 1
+        s.get(t.status or "pending", 0)
+        if t.status in s:
+            s[t.status] += 1
+        pr = t.priority or "medium"
+        if pr in s["by_priority"]:
+            s["by_priority"][pr] += 1
+
+    return {"success": True, "summary": summary, "total_products": len(summary), "total_tasks": len(tasks)}

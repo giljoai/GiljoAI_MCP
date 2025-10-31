@@ -41,7 +41,7 @@ export const AGENT_COLORS = {
     description: 'Code review and quality assurance'
   },
   tester: {
-    hex: '#E67E22',
+    hex: '#FFC300',
     name: 'Tester',
     badge: 'Te',
     description: 'Testing and validation tasks'

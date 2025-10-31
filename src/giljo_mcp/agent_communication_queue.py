@@ -2,7 +2,7 @@
 Agent Communication Queue for GiljoAI MCP.
 
 Handover 0019: JSONB-based message queue for agent-to-agent communication.
-Messages are stored in MCPAgentJob.messages JSONB array for atomic operations.
+Messages are stored in Job.messages JSONB array for atomic operations.
 """
 
 import uuid
@@ -13,12 +13,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from .database import DatabaseManager
-from .models import MCPAgentJob
+from .models import Job
 
 
 class AgentCommunicationQueue:
     """
-    Agent Communication Queue - manages messages in MCPAgentJob.messages JSONB field.
+    Agent Communication Queue - manages messages in Job.messages JSONB field.
 
     Features:
     - JSONB-based message storage for PostgreSQL performance
@@ -92,7 +92,7 @@ class AgentCommunicationQueue:
                 return {"status": "error", "error": "Message content cannot be empty"}
 
             # Retrieve job
-            job = session.query(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -151,7 +151,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -214,7 +214,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -260,7 +260,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -303,7 +303,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -366,7 +366,7 @@ class AgentCommunicationQueue:
         """
         try:
             # Retrieve job
-            job = session.query(MCPAgentJob).filter_by(job_id=job_id, tenant_key=tenant_key).first()
+            job = session.query(Job).filter_by(job_id=job_id, tenant_key=tenant_key).first()
 
             if not job:
                 return {"status": "error", "error": f"Job {job_id} not found"}
@@ -443,12 +443,12 @@ class AgentCommunicationQueue:
             "metadata": metadata or {},
         }
 
-    def _update_job_messages(self, job: MCPAgentJob, message: Dict[str, Any]) -> None:
+    def _update_job_messages(self, job: Job, message: Dict[str, Any]) -> None:
         """
         Append message to job's messages JSONB array.
 
         Args:
-            job: MCPAgentJob instance
+            job: Job instance
             message: Message dict to append
         """
         if job.messages is None:

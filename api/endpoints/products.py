@@ -6,7 +6,7 @@ import os
 import uuid
 import aiofiles
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import json
@@ -98,8 +98,19 @@ class ActiveProductRefreshResponse(BaseModel):
     """Response for /refresh-active endpoint"""
 
     active_product: Optional[ActiveProductInfo]
-    total_products_count: int
-    last_refreshed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class DeletedProductResponse(BaseModel):
+    """Response model for deleted products list (Handover 0070)"""
+
+    id: str
+    name: str
+    description: Optional[str]
+    deleted_at: datetime
+    days_until_purge: int = Field(ge=0, description="Days remaining before permanent deletion")
+    purge_date: datetime = Field(description="Date when product will be permanently deleted")
+    project_count: int = Field(ge=0, description="Total projects under this product")
+    vision_documents_count: int = Field(ge=0, description="Total vision documents")
 
 
 class VisionChunk(BaseModel):
@@ -470,6 +481,245 @@ async def list_products(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# IMPORTANT: Specific string routes MUST come before generic /{product_id} route
+# to prevent FastAPI from treating strings as UUID parameters
+
+@router.get("/deleted", response_model=list[DeletedProductResponse])
+async def list_deleted_products(
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    List deleted products with recovery window (10 days).
+    
+    Returns all soft-deleted products for the tenant with:
+    - Days until permanent purge
+    - Purge date
+    - Related entity counts
+    """
+    from api.app import state
+    from sqlalchemy import func
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Query deleted products (deleted_at IS NOT NULL)
+            stmt = select(Product).where(
+                Product.tenant_key == tenant_key,
+                Product.deleted_at.isnot(None)
+            ).order_by(Product.deleted_at.desc())
+
+            result = await db.execute(stmt)
+            deleted_products_raw = result.scalars().all()
+
+            deleted_products = []
+            now = datetime.now(timezone.utc)
+
+            for product in deleted_products_raw:
+                # Calculate days until purge (10 days from deletion)
+                deleted_at_utc = (
+                    product.deleted_at.replace(tzinfo=timezone.utc)
+                    if product.deleted_at.tzinfo is None
+                    else product.deleted_at
+                )
+                purge_date = deleted_at_utc + timedelta(days=10)
+                days_until_purge = max(0, (purge_date - now).days)
+
+                # Count projects
+                projects_count_result = await db.execute(
+                    select(func.count(Project.id)).where(Project.product_id == product.id)
+                )
+                project_count = projects_count_result.scalar() or 0
+
+                # Count vision documents
+                vision_docs_count_result = await db.execute(
+                    select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product.id)
+                )
+                vision_documents_count = vision_docs_count_result.scalar() or 0
+
+                deleted_products.append(
+                    DeletedProductResponse(
+                        id=product.id,
+                        name=product.name,
+                        description=product.description,
+                        deleted_at=deleted_at_utc,
+                        days_until_purge=days_until_purge,
+                        purge_date=purge_date,
+                        project_count=project_count,
+                        vision_documents_count=vision_documents_count,
+                    )
+                )
+
+            logger.info(f"Retrieved {len(deleted_products)} deleted products for tenant (user: {current_user.username})")
+
+            return deleted_products
+
+    except Exception as e:
+        logger.error(f"Failed to list deleted products: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/refresh-active", response_model=ActiveProductRefreshResponse)
+async def refresh_active_product(
+    tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get current active product state (Handover 0050)
+
+    Returns the currently active product for the tenant, or None if no active product.
+    Used for frontend state synchronization, especially after product deletions or
+    when recovering from stale state.
+
+    Use Cases:
+    - Frontend initialization/boot-up
+    - After deleting active product
+    - Manual refresh after detecting stale state
+    - Cross-browser-tab synchronization
+
+    Performance: <10ms (database query)
+    """
+    from api.app import state
+    from sqlalchemy import func
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Get active product info
+            active_info = await get_active_product_info(db, tenant_key)
+
+            # Get total product count for UI state
+            total_count_result = await db.execute(
+                select(func.count(Product.id)).where(Product.tenant_key == tenant_key)
+            )
+            total_count = total_count_result.scalar() or 0
+
+            return ActiveProductRefreshResponse(
+                active_product=ActiveProductInfo(**active_info) if active_info else None,
+                total_products_count=total_count,
+                last_refreshed_at=datetime.now(timezone.utc),
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/active/token-estimate", response_model=TokenEstimateResponse)
+async def get_active_product_token_estimate(current_user: User = Depends(get_current_active_user)):
+    """
+    Calculate token estimate for active product's config_data fields (Handover 0049).
+
+    This endpoint:
+    1. Fetches the active product (is_active=True) for current user's tenant
+    2. Gets user's field_priority_config (or uses default from defaults.py)
+    3. Extracts values from product.config_data using dot notation
+    4. Calculates tokens per field using character/4 formula
+    5. Adds 500 token overhead for mission structure
+    6. Returns detailed breakdown with budget percentage
+
+    Token Calculation:
+        - Per field: len(field_value) / 4 (rounded up)
+        - Overhead: 500 tokens (fixed)
+        - Total: sum(field_tokens) + overhead
+
+    Multi-Tenant Isolation:
+        Only returns active product for current_user's tenant_key.
+
+    Returns:
+        TokenEstimateResponse with detailed token breakdown
+
+    Raises:
+        404: No active product found for user's tenant
+        401: User not authenticated
+
+    Example Response:
+        {
+            "product_id": "prod-123",
+            "product_name": "My Product",
+            "field_tokens": {
+                "tech_stack.languages": 15,
+                "tech_stack.backend": 12,
+                ...
+            },
+            "total_field_tokens": 285,
+            "overhead_tokens": 500,
+            "total_tokens": 785,
+            "token_budget": 2000,
+            "percentage_used": 39.25
+        }
+    """
+    from api.app import state
+    from math import ceil
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Fetch active product for user's tenant (CRITICAL: Multi-tenant isolation)
+            stmt = select(Product).where(Product.tenant_key == current_user.tenant_key, Product.is_active == True)
+            result = await db.execute(stmt)
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(
+                    status_code=404, detail=f"No active product found for tenant. Please activate a product first."
+                )
+
+            # Get user's field priority config (or use default)
+            field_config = current_user.field_priority_config or DEFAULT_FIELD_PRIORITY
+
+            # Extract token budget and field priorities
+            token_budget = field_config.get("token_budget", DEFAULT_FIELD_PRIORITY["token_budget"])
+            field_priorities = field_config.get("fields", DEFAULT_FIELD_PRIORITY["fields"])
+
+            # Calculate token count for each prioritized field
+            field_tokens: Dict[str, int] = {}
+            product_config = product.config_data or {}
+
+            for field_path in field_priorities.keys():
+                # Extract field value using dot notation
+                value = extract_field_value(product_config, field_path)
+                if value is not None and value != "":
+                    # Calculate tokens (character count / 4)
+                    token_count = ceil(len(str(value)) / 4)
+                    field_tokens[field_path] = token_count
+
+            # Sum field tokens
+            total_field_tokens = sum(field_tokens.values())
+
+            # Add overhead
+            overhead_tokens = 500
+            total_tokens = total_field_tokens + overhead_tokens
+
+            # Calculate percentage used
+            percentage_used = round((total_tokens / token_budget) * 100, 2) if token_budget > 0 else 0.0
+
+            return TokenEstimateResponse(
+                product_id=product.id,
+                product_name=product.name,
+                field_tokens=field_tokens,
+                total_field_tokens=total_field_tokens,
+                overhead_tokens=overhead_tokens,
+                total_tokens=total_tokens,
+                token_budget=token_budget,
+                percentage_used=percentage_used,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Get a specific product by ID"""
@@ -545,9 +795,11 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
     - Projects (total and unfinished)
     - Tasks (total and unresolved)
     - Vision documents
-    - Context chunks
+
+    This allows the frontend to show a confirmation dialog with full impact details.
     """
     from api.app import state
+    from sqlalchemy import func
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -555,312 +807,51 @@ async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tena
     try:
         async with state.db_manager.get_session_async() as db:
             # Verify product exists and belongs to tenant
-            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-            result = await db.execute(stmt)
-            product = result.scalar_one_or_none()
+            product_stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+            product_result = await db.execute(product_stmt)
+            product = product_result.scalar_one_or_none()
 
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
 
             # Count projects
-            projects_stmt = select(Project).where(Project.product_id == product_id, Project.tenant_key == tenant_key)
-            projects_result = await db.execute(projects_stmt)
-            projects = projects_result.scalars().all()
-            projects_count = len(projects)
+            projects_count_stmt = select(func.count(Project.id)).where(Project.product_id == product_id)
+            projects_result = await db.execute(projects_count_stmt)
+            total_projects = projects_result.scalar() or 0
 
             # Count unfinished projects (status != 'completed')
-            unfinished_projects = sum(1 for p in projects if p.status != "completed")
+            unfinished_projects_stmt = select(func.count(Project.id)).where(
+                Project.product_id == product_id, Project.status != "completed"
+            )
+            unfinished_result = await db.execute(unfinished_projects_stmt)
+            unfinished_projects = unfinished_result.scalar() or 0
 
             # Count tasks
-            tasks_stmt = select(Task).where(Task.product_id == product_id, Task.tenant_key == tenant_key)
-            tasks_result = await db.execute(tasks_stmt)
-            tasks = tasks_result.scalars().all()
-            tasks_count = len(tasks)
+            tasks_count_stmt = select(func.count(Task.id)).where(Task.product_id == product_id)
+            tasks_result = await db.execute(tasks_count_stmt)
+            total_tasks = tasks_result.scalar() or 0
 
             # Count unresolved tasks (status != 'completed')
-            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
+            unresolved_tasks_stmt = select(func.count(Task.id)).where(
+                Task.product_id == product_id, Task.status != "completed"
+            )
+            unresolved_result = await db.execute(unresolved_tasks_stmt)
+            unresolved_tasks = unresolved_result.scalar() or 0
 
             # Count vision documents
-            vision_docs_stmt = select(VisionDocument).where(
-                VisionDocument.product_id == product_id, VisionDocument.tenant_key == tenant_key
-            )
+            vision_docs_stmt = select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product_id)
             vision_docs_result = await db.execute(vision_docs_stmt)
-            vision_documents_count = len(vision_docs_result.scalars().all())
-
-            # Count total chunks
-            chunks_stmt = select(MCPContextIndex).where(
-                MCPContextIndex.product_id == product_id, MCPContextIndex.tenant_key == tenant_key
-            )
-            chunks_result = await db.execute(chunks_stmt)
-            total_chunks = len(chunks_result.scalars().all())
+            vision_documents = vision_docs_result.scalar() or 0
 
             return CascadeImpact(
                 product_id=product_id,
-                projects_count=projects_count,
+                product_name=product.name,
+                total_projects=total_projects,
                 unfinished_projects=unfinished_projects,
-                tasks_count=tasks_count,
+                total_tasks=total_tasks,
                 unresolved_tasks=unresolved_tasks,
-                vision_documents_count=vision_documents_count,
-                total_chunks=total_chunks,
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# Handover 0050: Helper function for active product info
-async def get_active_product_info(db, tenant_key: str) -> Optional[Dict[str, Any]]:
-    """
-    Get active product summary info for tenant.
-
-    Returns minimal product info for API responses and frontend state sync.
-    Used by activation/deletion endpoints to provide context.
-
-    Args:
-        db: AsyncSession
-        tenant_key: Tenant identifier
-
-    Returns:
-        {id, name, description, activated_at, active_projects_count} or None if no active product
-
-    Performance: <10ms (database query)
-    Note: Future enhancement - add Redis caching for <1ms response
-    """
-    from sqlalchemy import func
-    from src.giljo_mcp.models import Project  # Handover 0050b
-
-    # Find currently active product for tenant
-    result = await db.execute(select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True))
-    active_product = result.scalar_one_or_none()
-
-    if not active_product:
-        return None
-
-    # Handover 0050b: Count active projects (status='active' not is_active field)
-    count_result = await db.execute(
-        select(func.count(Project.id)).where(
-            Project.product_id == active_product.id, Project.status == "active"  # Status field, not is_active
-        )
-    )
-    active_projects_count = count_result.scalar() or 0
-
-    return {
-        "id": str(active_product.id),
-        "name": active_product.name,
-        "description": active_product.description,
-        "activated_at": active_product.updated_at or active_product.created_at,
-        "active_projects_count": active_projects_count,  # Handover 0050b
-    }
-
-
-@router.post("/{product_id}/activate", response_model=ProductActivationResponse)
-async def activate_product(
-    product_id: str, tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
-):
-    """
-    Activate a product (Handover 0050)
-
-    Sets this product as the active product for the tenant. Only one product
-    can be active per tenant - activating this product will deactivate all others.
-
-    Returns enhanced response with previous active product info for frontend
-    warning dialog context.
-    """
-    from api.app import state
-
-    logger = logging.getLogger(__name__)
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as db:
-            # PHASE 1: Get current active product (for response context)
-            previous_active = await get_active_product_info(db, tenant_key)
-
-            # PHASE 2: Verify product exists and belongs to tenant
-            result = await db.execute(
-                select(Product)
-                .where(Product.id == product_id, Product.tenant_key == tenant_key)
-                .options(
-                    selectinload(Product.projects), selectinload(Product.tasks), selectinload(Product.vision_documents)
-                )
-            )
-            product = result.scalar_one_or_none()
-
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
-
-            # PHASE 3: Atomic activation (deactivate others + activate this)
-            await db.execute(
-                update(Product)
-                .where(Product.tenant_key == tenant_key, Product.id != product_id)
-                .values(is_active=False)
-            )
-
-            # Handover 0050b: Deactivate all projects under previous active product(s)
-            if previous_active:
-                from src.giljo_mcp.models import Project
-
-                # Get all active projects under previous product
-                prev_projects_query = select(Project).where(
-                    Project.product_id == previous_active["id"], Project.status == "active"
-                )
-                prev_projects_result = await db.execute(prev_projects_query)
-                prev_active_projects = prev_projects_result.scalars().all()
-
-                # Deactivate them (set to inactive - Handover 0071)
-                for proj in prev_active_projects:
-                    proj.status = "inactive"
-                    logger.info(f"[Handover 0071] Deactivating project '{proj.name}' (parent product deactivated)")
-
-            # Activate this product
-            product.is_active = True
-            await db.commit()
-            await db.refresh(product)
-
-            # PHASE 4: Calculate metrics for response
-            projects = product.projects or []
-            tasks = product.tasks or []
-            unfinished_projects = sum(1 for p in projects if p.status != "completed")
-            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
-            vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
-
-            # PHASE 5: Build enhanced response with previous active product context
-            return ProductActivationResponse(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                vision_path=product.vision_path,
-                created_at=product.created_at,
-                updated_at=product.updated_at,
-                project_count=len(projects),
-                task_count=len(tasks),
-                has_vision=bool(product.vision_path),
-                unfinished_projects=unfinished_projects,
-                unresolved_tasks=unresolved_tasks,
-                vision_documents_count=vision_doc_count,
-                config_data=product.config_data,
-                has_config_data=product.has_config_data,
-                is_active=product.is_active,
-                # Handover 0050: Enhanced fields
-                previous_active_product=ActiveProductInfo(**previous_active) if previous_active else None,
-                activation_timestamp=datetime.now(timezone.utc),
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/{product_id}/deactivate", response_model=ProductResponse)
-async def deactivate_product(
-    product_id: str, tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
-):
-    """
-    Deactivate a product (Handover 0049)
-
-    Removes the active status from this product.
-    """
-    from api.app import state
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as db:
-            # Verify product exists and belongs to tenant
-            result = await db.execute(
-                select(Product)
-                .where(Product.id == product_id, Product.tenant_key == tenant_key)
-                .options(
-                    selectinload(Product.projects), selectinload(Product.tasks), selectinload(Product.vision_documents)
-                )
-            )
-            product = result.scalar_one_or_none()
-
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
-
-            # Deactivate this product
-            product.is_active = False
-            await db.commit()
-            await db.refresh(product)
-
-            # Calculate metrics for response
-            projects = product.projects or []
-            tasks = product.tasks or []
-            unfinished_projects = sum(1 for p in projects if p.status != "completed")
-            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
-            vision_doc_count = len(product.vision_documents) if product.vision_documents else 0
-
-            return ProductResponse(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                vision_path=product.vision_path,
-                created_at=product.created_at,
-                updated_at=product.updated_at,
-                project_count=len(projects),
-                task_count=len(tasks),
-                has_vision=bool(product.vision_path),
-                unfinished_projects=unfinished_projects,
-                unresolved_tasks=unresolved_tasks,
-                vision_documents_count=vision_doc_count,
-                config_data=product.config_data,
-                has_config_data=product.has_config_data,
-                is_active=product.is_active,
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/refresh-active", response_model=ActiveProductRefreshResponse)
-async def refresh_active_product(
-    tenant_key: str = Depends(get_tenant_key), current_user: User = Depends(get_current_active_user)
-):
-    """
-    Get current active product state (Handover 0050)
-
-    Returns the currently active product for the tenant, or None if no active product.
-    Used for frontend state synchronization, especially after product deletions or
-    when recovering from stale state.
-
-    Use Cases:
-    - Frontend initialization/boot-up
-    - After deleting active product
-    - Manual refresh after detecting stale state
-    - Cross-browser-tab synchronization
-
-    Performance: <10ms (database query)
-    """
-    from api.app import state
-    from sqlalchemy import func
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as db:
-            # Get active product info
-            active_info = await get_active_product_info(db, tenant_key)
-
-            # Get total product count for UI state
-            total_count_result = await db.execute(
-                select(func.count(Product.id)).where(Product.tenant_key == tenant_key)
-            )
-            total_count = total_count_result.scalar() or 0
-
-            return ActiveProductRefreshResponse(
-                active_product=ActiveProductInfo(**active_info) if active_info else None,
-                total_products_count=total_count,
-                last_refreshed_at=datetime.now(timezone.utc),
+                vision_documents=vision_documents,
+                will_cascade_delete=total_projects > 0 or total_tasks > 0 or vision_documents > 0,
             )
 
     except HTTPException:
@@ -961,98 +952,6 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
         raise
     except Exception as e:
         logger.error(f"Failed to delete product {product_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-class DeletedProductResponse(BaseModel):
-    """Response model for deleted products list"""
-    id: str
-    name: str
-    description: Optional[str]
-    deleted_at: datetime
-    days_until_purge: int
-    purge_date: datetime
-    project_count: int = Field(description="Total projects under this product")
-    vision_documents_count: int = Field(description="Total vision documents")
-
-
-@router.get("/deleted", response_model=list[DeletedProductResponse])
-async def list_deleted_products(
-    tenant_key: str = Depends(get_tenant_key),
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    List deleted products with recovery window (10 days).
-    
-    Returns all soft-deleted products for the tenant with:
-    - Days until permanent purge
-    - Purge date
-    - Related entity counts
-    """
-    from api.app import state
-    from sqlalchemy import func
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as db:
-            # Query deleted products (deleted_at IS NOT NULL)
-            stmt = select(Product).where(
-                Product.tenant_key == tenant_key,
-                Product.deleted_at.isnot(None)
-            ).order_by(Product.deleted_at.desc())
-
-            result = await db.execute(stmt)
-            deleted_products_raw = result.scalars().all()
-
-            deleted_products = []
-            now = datetime.now(timezone.utc)
-
-            for product in deleted_products_raw:
-                # Calculate days until purge (10 days from deletion)
-                deleted_at_utc = (
-                    product.deleted_at.replace(tzinfo=timezone.utc)
-                    if product.deleted_at.tzinfo is None
-                    else product.deleted_at
-                )
-                purge_date = deleted_at_utc + timedelta(days=10)
-                days_until_purge = max(0, (purge_date - now).days)
-
-                # Count projects
-                projects_count_result = await db.execute(
-                    select(func.count(Project.id)).where(Project.product_id == product.id)
-                )
-                project_count = projects_count_result.scalar() or 0
-
-                # Count vision documents
-                vision_docs_count_result = await db.execute(
-                    select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product.id)
-                )
-                vision_documents_count = vision_docs_count_result.scalar() or 0
-
-                deleted_products.append(
-                    DeletedProductResponse(
-                        id=product.id,
-                        name=product.name,
-                        description=product.description,
-                        deleted_at=deleted_at_utc,
-                        days_until_purge=days_until_purge,
-                        purge_date=purge_date,
-                        project_count=project_count,
-                        vision_documents_count=vision_documents_count,
-                    )
-                )
-
-            logger.info(f"Retrieved {len(deleted_products)} deleted products for tenant (user: {current_user.username})")
-
-            return deleted_products
-
-    except Exception as e:
-        logger.error(f"Failed to list deleted products: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1324,119 +1223,3 @@ def _get_nested_value(data: dict, path: str) -> Any:
 
     return value
 
-
-@router.get("/active/token-estimate", response_model=TokenEstimateResponse)
-async def get_active_product_token_estimate(current_user: User = Depends(get_current_active_user)):
-    """
-    Calculate token estimate for active product's config_data fields (Handover 0049).
-
-    This endpoint:
-    1. Fetches the active product (is_active=True) for current user's tenant
-    2. Gets user's field_priority_config (or uses default from defaults.py)
-    3. Extracts values from product.config_data using dot notation
-    4. Calculates tokens per field using character/4 formula
-    5. Adds 500 token overhead for mission structure
-    6. Returns detailed breakdown with budget percentage
-
-    Token Calculation:
-        - Per field: len(field_value) / 4 (rounded up)
-        - Overhead: 500 tokens (fixed)
-        - Total: sum(field_tokens) + overhead
-
-    Multi-Tenant Isolation:
-        Only returns active product for current_user's tenant_key.
-
-    Returns:
-        TokenEstimateResponse with detailed token breakdown
-
-    Raises:
-        404: No active product found for user's tenant
-        401: User not authenticated
-
-    Example Response:
-        {
-            "product_id": "prod-123",
-            "product_name": "My Product",
-            "field_tokens": {
-                "tech_stack.languages": 15,
-                "tech_stack.backend": 12,
-                ...
-            },
-            "total_field_tokens": 285,
-            "overhead_tokens": 500,
-            "total_tokens": 785,
-            "token_budget": 2000,
-            "percentage_used": 39.25
-        }
-    """
-    from api.app import state
-    from math import ceil
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as db:
-            # Fetch active product for user's tenant (CRITICAL: Multi-tenant isolation)
-            stmt = select(Product).where(Product.tenant_key == current_user.tenant_key, Product.is_active == True)
-            result = await db.execute(stmt)
-            product = result.scalar_one_or_none()
-
-            if not product:
-                raise HTTPException(
-                    status_code=404, detail=f"No active product found for tenant. Please activate a product first."
-                )
-
-            # Get user's field priority config (or use default)
-            field_config = current_user.field_priority_config or DEFAULT_FIELD_PRIORITY
-
-            # Extract token budget and field priorities
-            token_budget = field_config.get("token_budget", DEFAULT_FIELD_PRIORITY["token_budget"])
-            field_priorities = field_config.get("fields", DEFAULT_FIELD_PRIORITY["fields"])
-
-            # Calculate token count for each prioritized field
-            field_tokens: Dict[str, int] = {}
-            product_config = product.config_data or {}
-
-            for field_path in field_priorities.keys():
-                # Extract field value using dot notation
-                field_value = _get_nested_value(product_config, field_path)
-
-                if field_value is None:
-                    # Field not present in config_data
-                    field_tokens[field_path] = 0
-                elif isinstance(field_value, str):
-                    # Calculate tokens: character count / 4 (rounded up)
-                    char_count = len(field_value)
-                    tokens = ceil(char_count / 4.0)
-                    field_tokens[field_path] = tokens
-                else:
-                    # Non-string value (dict, list, etc.) - convert to JSON string
-                    json_str = json.dumps(field_value)
-                    char_count = len(json_str)
-                    tokens = ceil(char_count / 4.0)
-                    field_tokens[field_path] = tokens
-
-            # Calculate totals
-            total_field_tokens = sum(field_tokens.values())
-            overhead_tokens = 500  # Fixed overhead for mission structure
-            total_tokens = total_field_tokens + overhead_tokens
-
-            # Calculate percentage used
-            percentage_used = round((total_tokens / token_budget) * 100, 2) if token_budget > 0 else 0.0
-
-            return TokenEstimateResponse(
-                product_id=product.id,
-                product_name=product.name,
-                field_tokens=field_tokens,
-                total_field_tokens=total_field_tokens,
-                overhead_tokens=overhead_tokens,
-                total_tokens=total_tokens,
-                token_budget=token_budget,
-                percentage_used=percentage_used,
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

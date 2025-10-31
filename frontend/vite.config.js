@@ -29,6 +29,26 @@ try {
 // Firewall controls actual network access (defense in depth)
 const HOST = dashboardHost
 
+// Derive API proxy target from config.yaml (prefer external_host if present)
+let apiHost = '127.0.0.1'
+let apiPort = 7272
+try {
+  const configPath = resolve(__dirname, '../config.yaml')
+  if (fs.existsSync(configPath)) {
+    const configData = yaml.load(fs.readFileSync(configPath, 'utf8'))
+    const externalHost = configData?.services?.external_host
+    const serverApiHost = configData?.server?.api_host
+    apiPort = parseInt(configData?.server?.api_port || 7272, 10)
+    // 0.0.0.0 is not a routable host; use externalHost if provided, else localhost
+    apiHost = (externalHost && externalHost !== '0.0.0.0')
+      ? externalHost
+      : ((serverApiHost && serverApiHost !== '0.0.0.0') ? serverApiHost : '127.0.0.1')
+  }
+} catch (err) {
+  console.warn('[Vite] Could not determine API proxy target, defaulting to 127.0.0.1:7272:', err.message)
+}
+const API_TARGET = `http://${apiHost}:${apiPort}`
+
 export default defineConfig({
   plugins: [vue()],
   build: {
@@ -43,6 +63,21 @@ export default defineConfig({
     host: HOST,
     strictPort: false, // Allow fallback to alternative port if occupied
     cors: true,
+    proxy: {
+      // Proxy API to backend to avoid CORS in development
+      '/api': {
+        target: API_TARGET,
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
+      // MCP endpoints if used
+      '/mcp': {
+        target: API_TARGET,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
     fs: {
       // Allow serving files outside root - needed for symlinked development setup
       // NOTE: This only affects dev server, NOT production builds

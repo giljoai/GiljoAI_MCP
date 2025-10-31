@@ -141,7 +141,10 @@ class RegisterUserRequest(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     role: str = Field(default="developer", description="User role: admin, developer, viewer")
-    tenant_key: str = Field(default="default", description="Tenant key for multi-tenant isolation")
+    tenant_key: str = Field(
+        default="tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd",
+        description="Tenant key for multi-tenant isolation (must start with 'tk_')"
+    )
 
     @field_validator("role")
     @classmethod
@@ -370,20 +373,15 @@ async def login(
             # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
             host_only = host_header.split(":")[0].lower()
 
-            # SECURITY CHECK #1: Localhost gets strictest security (domain=None)
-            # This ensures cookies are never shared beyond exact localhost:port
-            if host_only in ("localhost", "127.0.0.1"):
-                cookie_domain = None
-                logger.debug(f"Cookie domain set to None for localhost security (host: {host_only})")
-
-            # SECURITY CHECK #2: IP addresses are auto-allowed (no subdomain risk)
+            # SECURITY CHECK #1: IP addresses (including localhost) share cookies across ports
+            # Localhost (127.0.0.1) treated same as network IPs for production parity
             # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
             # IP addresses have no subdomain hierarchy, so domain=IP is safe
-            elif re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
+            if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
                 cookie_domain = host_only
                 logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
 
-            # SECURITY CHECK #3: Domain names MUST be whitelisted (prevent header injection)
+            # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
             # Without whitelist, attacker could send "Host: evil.com" and steal cookies
             else:
                 # Load whitelist from config (defaults to empty list if not configured)
@@ -980,20 +978,15 @@ async def create_first_admin_user(
                 # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
                 host_only = host_header.split(":")[0].lower()
 
-                # SECURITY CHECK #1: Localhost gets strictest security (domain=None)
-                # This ensures cookies are never shared beyond exact localhost:port
-                if host_only in ("localhost", "127.0.0.1"):
-                    cookie_domain = None
-                    logger.debug(f"Cookie domain set to None for localhost security (host: {host_only})")
-
-                # SECURITY CHECK #2: IP addresses are auto-allowed (no subdomain risk)
+                # SECURITY CHECK #1: IP addresses (including localhost) share cookies across ports
+                # Localhost (127.0.0.1) treated same as network IPs for production parity
                 # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
                 # IP addresses have no subdomain hierarchy, so domain=IP is safe
-                elif re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
+                if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host_only):
                     cookie_domain = host_only
                     logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
 
-                # SECURITY CHECK #3: Domain names MUST be whitelisted (prevent header injection)
+                # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
                 # Without whitelist, attacker could send "Host: evil.com" and steal cookies
                 else:
                     # Load whitelist from config (defaults to empty list if not configured)

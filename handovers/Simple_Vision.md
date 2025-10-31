@@ -121,6 +121,67 @@ Note when a user shifts from one product to the other all active projects under 
 
 When a project is activated a launch button appears this redirects the user to a project launch preview.
 
+# Tasks
+
+Tasks are the flexible work item management system within GiljoAI, designed to capture ideas and action items during active development sessions without losing focus or momentum.
+
+## Task Hierarchy & Scope
+
+Tasks exist within the product hierarchy but have unique flexibility:
+- **Product-scoped tasks**: When a product is active, all newly created tasks belong to that product
+- **Unassigned tasks**: Tasks can be created with no active product, receiving a NULL value and appearing under all products until converted to a project.
+- **Cross-product visibility**: Unassigned tasks remain visible across all products until explicitly converted to a project under a product and then subsequently attached to a product of which that project now belongs.
+
+## Task Creation Methods
+
+### MCP Integration for Real-Time Capture
+The primary strength of the task system is **real-time capture during coding sessions**:
+- **MCP task tools**: Add tasks directly from conversations with Claude Code, Codex CLI, or Gemini CLI
+- **Instant capture**: When ideas pop up during active development, quickly punt them to the task list without losing focus
+- **Context preservation**: Tasks capture the moment and context when the idea occurred
+
+### Dashboard Interface
+- **Manual entry**: Create tasks directly through the web interface
+- **Structured input**: Add detailed descriptions, priorities, and categorization
+
+## Task-to-Project Conversion
+
+One of the most powerful features is the ability to **convert tasks into projects**:
+- **Name preservation**: When converted, the task name becomes the project title
+- **Description migration**: The task text field becomes the project description
+- **Seamless workflow**: Ideas captured as tasks can mature into full projects without data loss
+- **Constraint**: Tasks cannot become products - they remain under the current active product
+
+## Task States & Management
+
+Tasks support various lifecycle states:
+- **Active**: Current work items requiring attention  
+- **Completed**: Finished tasks for reference and history
+- **Converted**: Tasks that have been promoted to projects
+- **Archived**: Old or no longer relevant tasks
+
+## Developer Workflow Integration
+
+The task system addresses a common developer problem: **idea management during flow state**. Instead of:
+- Losing good ideas when they occur
+- Getting sidetracked from current work
+- Forgetting important action items
+
+Developers can:
+- Quickly capture ideas via MCP during active coding
+- Stay disciplined and focused on current project
+- Review and prioritize tasks during planning sessions
+- Convert promising tasks into full projects when ready
+
+## MCP Function Details
+
+The task MCP functions provide:
+- **Multi-tenant isolation**: All task operations respect user tenancy
+- **Real-time sync**: Tasks created via MCP immediately appear in dashboard
+- **API key authentication**: Secure communication ensuring tasks route to correct tenant
+- **Cross-tool compatibility**: Works with Claude Code, Codex CLI, and Gemini CLI
+
+This system ensures that the creative and iterative nature of AI-assisted development doesn't result in lost ideas or broken focus, while providing a clear path for task maturation into full development projects.
 
 # Project Launch Preview
 

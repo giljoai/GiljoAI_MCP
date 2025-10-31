@@ -72,34 +72,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card elevation="2">
-          <v-card-text class="text-center">
-            <v-img
-              :src="
-                theme.global.current.value.dark
-                  ? '/icons/Giljo_YW_Face.svg'
-                  : '/icons/Giljo_BY_Face.svg'
-              "
-              alt="Active Agents"
-              width="48"
-              height="48"
-              class="mx-auto"
-            ></v-img>
-            <div class="text-h6 mt-2">Active Agents</div>
-            <div class="text-h4">{{ stats.activeAgents }}</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card elevation="2">
-          <v-card-text class="text-center">
-            <v-icon size="48" color="warning">mdi-message-text</v-icon>
-            <div class="text-h6 mt-2">Messages</div>
-            <div class="text-h4">{{ stats.messages }}</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
+
       <v-col cols="12" sm="6" md="3">
         <v-card elevation="2">
           <v-card-text class="text-center">
@@ -111,102 +84,230 @@
       </v-col>
     </v-row>
 
-    <!-- Agent Visualizations -->
+
+
+
+
+    <!-- Historical Projects Section (Handover 0077 - Dashboard Integration) -->
     <v-row class="mt-4">
       <v-col cols="12">
-        <v-tabs v-model="activeTab" color="primary">
-          <v-tab value="timeline">
-            <v-icon left>mdi-timeline-text</v-icon>
-            Timeline View
-          </v-tab>
-          <v-tab value="tree">
-            <v-icon left>mdi-file-tree</v-icon>
-            Hierarchy View
-          </v-tab>
-          <v-tab value="metrics">
-            <v-icon left>mdi-chart-line</v-icon>
-            Metrics
-          </v-tab>
-        </v-tabs>
-
-        <v-window v-model="activeTab">
-          <!-- Timeline Tab -->
-          <v-window-item value="timeline">
-            <SubAgentTimelineHorizontal
-              :project-id="selectedProject"
-              :auto-refresh="true"
-              @agent-selected="handleAgentSelected"
-              @export-requested="handleExport"
-            />
-          </v-window-item>
-
-          <!-- Tree Tab -->
-          <v-window-item value="tree">
-            <SubAgentTree
-              :project-id="selectedProject"
-              :expand-level="2"
-              @node-selected="handleNodeSelected"
-              @context-menu="handleContextMenu"
-            />
-          </v-window-item>
-
-          <!-- Metrics Tab -->
-          <v-window-item value="metrics">
-            <AgentMetrics :project-id="selectedProject" :metrics="agentMetrics" />
-          </v-window-item>
-        </v-window>
-      </v-col>
-    </v-row>
-
-    <!-- Recent Activity -->
-    <v-row class="mt-4">
-      <v-col cols="12" md="6">
         <v-card elevation="2">
-          <v-card-title>
-            <v-icon left color="primary">mdi-history</v-icon>
-            Recent Activity
+          <v-card-title class="d-flex align-center justify-space-between">
+            <div>
+              <v-icon left color="primary">mdi-history</v-icon>
+              Historical Projects
+            </div>
+            <v-chip color="info" size="small" variant="outlined">
+              Coming Soon
+            </v-chip>
           </v-card-title>
-          <v-card-text>
-            <v-list density="compact">
-              <v-list-item v-for="activity in recentActivities" :key="activity.id">
-                <template v-slot:prepend>
-                  <v-icon :color="getActivityColor(activity.type)" size="small">
-                    {{ getActivityIcon(activity.type) }}
-                  </v-icon>
-                </template>
-                <v-list-item-title>{{ activity.title }}</v-list-item-title>
-                <v-list-item-subtitle>{{ formatTime(activity.timestamp) }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-          </v-card-text>
-        </v-card>
-      </v-col>
 
-      <v-col cols="12" md="6">
-        <v-card elevation="2">
-          <v-card-title>
-            <v-icon left color="primary">mdi-speedometer</v-icon>
-            Performance
-          </v-card-title>
+          <v-card-subtitle class="text-medium-emphasis mt-2">
+            View completed, cancelled, and archived projects with full job history and agent interactions
+          </v-card-subtitle>
+
+          <v-divider class="my-4" />
+
+          <!-- Placeholder: Filters & Search -->
           <v-card-text>
-            <v-row dense>
-              <v-col cols="6">
-                <div class="text-caption">Avg Response Time</div>
-                <div class="text-h6">{{ performance.avgResponseTime }}ms</div>
+            <v-row dense class="mb-4">
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="historicalProjectsSearch"
+                  prepend-inner-icon="mdi-magnify"
+                  label="Search projects..."
+                  variant="outlined"
+                  density="compact"
+                  disabled
+                  hint="Search by name, description, or ID"
+                  persistent-hint
+                />
               </v-col>
-              <v-col cols="6">
-                <div class="text-caption">Success Rate</div>
-                <div class="text-h6">{{ performance.successRate }}%</div>
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="historicalProjectsStatus"
+                  :items="projectStatusOptions"
+                  label="Filter by status"
+                  variant="outlined"
+                  density="compact"
+                  disabled
+                  hint="Filter completed, cancelled, etc."
+                  persistent-hint
+                />
               </v-col>
-              <v-col cols="6">
-                <div class="text-caption">Token Usage</div>
-                <div class="text-h6">{{ formatTokens(performance.tokenUsage) }}</div>
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="historicalProjectsDateRange"
+                  :items="dateRangeOptions"
+                  label="Date range"
+                  variant="outlined"
+                  density="compact"
+                  disabled
+                  hint="Last 7 days, 30 days, etc."
+                  persistent-hint
+                />
               </v-col>
-              <v-col cols="6">
-                <div class="text-caption">Active Sessions</div>
-                <div class="text-h6">{{ performance.activeSessions }}</div>
+              <v-col cols="12" md="2" class="d-flex align-center">
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  block
+                  disabled
+                >
+                  <v-icon left>mdi-filter</v-icon>
+                  Apply Filters
+                </v-btn>
               </v-col>
             </v-row>
+
+            <!-- Placeholder: Historical Project Cards -->
+            <v-row v-if="historicalProjects.length === 0">
+              <v-col cols="12">
+                <v-alert
+                  type="info"
+                  variant="tonal"
+                  prominent
+                  class="text-center"
+                >
+                  <v-icon size="64" class="mb-4">mdi-folder-open-outline</v-icon>
+                  <div class="text-h6 mb-2">No Historical Projects Yet</div>
+                  <div class="text-body-2">
+                    Complete your first project to see historical data here. You'll be able to:
+                  </div>
+                  <v-list density="compact" class="bg-transparent mt-4">
+                    <v-list-item>
+                      <template v-slot:prepend>
+                        <v-icon color="primary">mdi-chart-timeline-variant</v-icon>
+                      </template>
+                      <v-list-item-title>View full project timeline and agent activity</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template v-slot:prepend>
+                        <v-icon color="primary">mdi-message-text</v-icon>
+                      </template>
+                      <v-list-item-title>Review all agent messages and communications</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template v-slot:prepend>
+                        <v-icon color="primary">mdi-chart-bar</v-icon>
+                      </template>
+                      <v-list-item-title>Analyze token usage and performance metrics</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template v-slot:prepend>
+                        <v-icon color="primary">mdi-file-document-multiple</v-icon>
+                      </template>
+                      <v-list-item-title>Export project summaries and reports</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-alert>
+              </v-col>
+            </v-row>
+
+            <!-- Placeholder: Project Cards Grid (commented out - for future implementation) -->
+            <!--
+            <v-row v-else>
+              <v-col
+                v-for="project in historicalProjects"
+                :key="project.id"
+                cols="12"
+                md="6"
+                lg="4"
+              >
+                <v-card elevation="1" hover>
+                  <v-card-title class="d-flex align-center justify-space-between">
+                    <span class="text-truncate">{{ project.name }}</span>
+                    <v-chip
+                      :color="getProjectStatusColor(project.status)"
+                      size="small"
+                      label
+                    >
+                      {{ project.status }}
+                    </v-chip>
+                  </v-card-title>
+
+                  <v-card-subtitle class="text-caption">
+                    {{ formatProjectDate(project) }}
+                  </v-card-subtitle>
+
+                  <v-divider />
+
+                  <v-card-text>
+                    <v-row dense>
+                      <v-col cols="6">
+                        <div class="text-caption text-medium-emphasis">Agents</div>
+                        <div class="text-body-2 font-weight-bold">
+                          <v-icon size="small" color="primary">mdi-account-multiple</v-icon>
+                          {{ project.agent_count }}
+                        </div>
+                      </v-col>
+                      <v-col cols="6">
+                        <div class="text-caption text-medium-emphasis">Messages</div>
+                        <div class="text-body-2 font-weight-bold">
+                          <v-icon size="small" color="warning">mdi-message-text</v-icon>
+                          {{ project.message_count }}
+                        </div>
+                      </v-col>
+                      <v-col cols="6">
+                        <div class="text-caption text-medium-emphasis">Duration</div>
+                        <div class="text-body-2 font-weight-bold">
+                          <v-icon size="small" color="info">mdi-clock-outline</v-icon>
+                          {{ formatDuration(project) }}
+                        </div>
+                      </v-col>
+                      <v-col cols="6">
+                        <div class="text-caption text-medium-emphasis">Tokens</div>
+                        <div class="text-body-2 font-weight-bold">
+                          <v-icon size="small" color="success">mdi-alpha-t-circle</v-icon>
+                          {{ formatTokens(project.context_used) }}
+                        </div>
+                      </v-col>
+                    </v-row>
+
+                    <v-divider class="my-3" />
+
+                    <div class="text-caption text-medium-emphasis mb-2">Quick Stats:</div>
+                    <v-chip-group>
+                      <v-chip size="x-small" variant="outlined">
+                        <v-icon left size="x-small">mdi-check-circle</v-icon>
+                        {{ project.completed_tasks }} tasks
+                      </v-chip>
+                      <v-chip size="x-small" variant="outlined">
+                        <v-icon left size="x-small">mdi-clock</v-icon>
+                        {{ project.avg_response_time }}ms avg
+                      </v-chip>
+                    </v-chip-group>
+                  </v-card-text>
+
+                  <v-card-actions>
+                    <v-btn
+                      color="primary"
+                      variant="outlined"
+                      block
+                      :to="`/projects/${project.id}/launch?readonly=true`"
+                    >
+                      <v-icon left>mdi-eye</v-icon>
+                      View Full Details
+                    </v-btn>
+                  </v-card-actions>
+                </v-card>
+              </v-col>
+            </v-row>
+            -->
+
+            <!-- Pagination (placeholder for future) -->
+            <!--
+            <v-row v-if="historicalProjects.length > 0" class="mt-4">
+              <v-col cols="12" class="d-flex justify-center">
+                <v-pagination
+                  v-model="historicalProjectsPage"
+                  :length="historicalProjectsTotalPages"
+                  :total-visible="7"
+                  disabled
+                />
+              </v-col>
+            </v-row>
+            -->
           </v-card-text>
         </v-card>
       </v-col>
@@ -219,13 +320,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
-import { useAgentStore } from '@/stores/agents'
 import { useProjectStore } from '@/stores/projects'
-import { useMessageStore } from '@/stores/messages'
 import { useTaskStore } from '@/stores/tasks'
-import SubAgentTimelineHorizontal from '@/components/SubAgentTimelineHorizontal.vue'
-import SubAgentTree from '@/components/SubAgentTree.vue'
-import AgentMetrics from '@/components/AgentMetrics.vue'
+
 import { formatDistanceToNow } from 'date-fns'
 import websocketService from '@/services/websocket'
 import api from '@/services/api'
@@ -235,15 +332,10 @@ const theme = useTheme()
 const router = useRouter()
 
 // Stores
-const agentStore = useAgentStore()
 const projectStore = useProjectStore()
-const messageStore = useMessageStore()
 const taskStore = useTaskStore()
 
 // Reactive data
-const activeTab = ref('timeline')
-const selectedProject = ref(null)
-const agentMetrics = ref(null)
 const setupStatus = ref({
   setup_mode: false,
   setup_complete: true,
@@ -258,76 +350,123 @@ const serverPort = ref(7272)
 // Stats
 const stats = computed(() => ({
   projects: projectStore.projects?.length || 0,
-  activeAgents: agentStore.activeAgents?.length || 0,
-  messages: messageStore.messages?.length || 0,
   tasks: taskStore.tasks?.length || 0,
 }))
 
-// Recent activities
-const recentActivities = computed(() => {
-  const activities = []
 
-  // Add agent activities
-  agentStore.agentTimeline.slice(0, 5).forEach((event) => {
-    activities.push({
-      id: event.id,
-      type: event.type,
-      title: `${event.agent_name} ${event.type}`,
-      timestamp: event.timestamp,
+
+// Historical Projects (Handover 0077 - Dashboard Integration)
+// Placeholder state - will be populated when project completion workflow is fully tested
+const historicalProjects = ref([])
+const historicalProjectsSearch = ref('')
+const historicalProjectsStatus = ref('all')
+const historicalProjectsDateRange = ref('all')
+const historicalProjectsPage = ref(1)
+const historicalProjectsTotalPages = ref(1)
+
+// Filter options for historical projects
+const projectStatusOptions = [
+  { title: 'All Statuses', value: 'all' },
+  { title: 'Completed', value: 'completed' },
+  { title: 'Cancelled', value: 'cancelled' },
+  { title: 'Archived', value: 'archived' },
+]
+
+const dateRangeOptions = [
+  { title: 'All Time', value: 'all' },
+  { title: 'Last 7 Days', value: '7d' },
+  { title: 'Last 30 Days', value: '30d' },
+  { title: 'Last 3 Months', value: '3m' },
+  { title: 'Last Year', value: '1y' },
+]
+
+/**
+ * Fetch historical projects from the backend
+ *
+ * FUTURE IMPLEMENTATION NOTES:
+ * ============================
+ *
+ * 1. API Endpoint to create (or enhance existing):
+ *    GET /api/v1/projects/historical
+ *    Query params: status, search, date_range, page, limit
+ *
+ * 2. Response should include:
+ *    - id, name, description, status
+ *    - created_at, completed_at, cancelled_at
+ *    - agent_count, message_count, context_used
+ *    - duration (calculated from created_at to completed_at)
+ *    - project_summary (from closeout process)
+ *    - performance_metrics (avg_response_time, success_rate, etc.)
+ *
+ * 3. Frontend filtering:
+ *    - Search by project name, description, or ID
+ *    - Filter by status (completed, cancelled, archived)
+ *    - Filter by date range (last 7 days, 30 days, etc.)
+ *    - Pagination (10-20 projects per page)
+ *
+ * 4. Each project card should show:
+ *    - Project name + status badge
+ *    - Completion/cancellation date
+ *    - Agent count, message count
+ *    - Token usage (context_used)
+ *    - Duration (time from start to completion)
+ *    - Quick stats (tasks completed, avg response time)
+ *    - "View Full Details" button → /projects/{id}/launch?readonly=true
+ *
+ * 5. The readonly project view should display:
+ *    - Full Launch Tab (mission, agent cards) - view only
+ *    - Full Jobs Tab (agent cards, message stream) - view only
+ *    - All data preserved as it was during the project
+ *    - Timeline of agent activity
+ *    - Exportable project summary
+ *
+ * 6. Additional features to consider:
+ *    - Export project data (JSON, PDF summary)
+ *    - Compare multiple projects (side-by-side analysis)
+ *    - Agent performance analytics across projects
+ *    - Token usage trends and optimization suggestions
+ *    - Search within project messages
+ *
+ * 7. Database considerations:
+ *    - Projects with status='completed' or 'cancelled' are historical
+ *    - Preserve all agent records, messages, and metadata
+ *    - Optional: Archive old projects to separate table after 6-12 months
+ *    - Implement soft delete (deleted_at) for user cleanup
+ *
+ * 8. Performance optimization:
+ *    - Lazy load project details (summary on card, full data on click)
+ *    - Paginate results (don't load all historical projects at once)
+ *    - Cache frequently accessed projects
+ *    - Consider separate historical_projects view in database
+ */
+async function fetchHistoricalProjects() {
+  // PLACEHOLDER: Uncomment when ready to implement
+  /*
+  try {
+    const response = await api.projects.list({
+      status: historicalProjectsStatus.value === 'all' ? undefined : historicalProjectsStatus.value,
+      search: historicalProjectsSearch.value || undefined,
+      date_range: historicalProjectsDateRange.value === 'all' ? undefined : historicalProjectsDateRange.value,
+      page: historicalProjectsPage.value,
+      limit: 12,
+      // Only fetch completed/cancelled projects
+      historical: true,
     })
-  })
 
-  return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10)
-})
+    historicalProjects.value = response.data.projects || []
+    historicalProjectsTotalPages.value = Math.ceil(response.data.total / 12)
+  } catch (error) {
+    console.error('[Dashboard] Failed to fetch historical projects:', error)
+    historicalProjects.value = []
+  }
+  */
 
-// Performance metrics
-const performance = ref({
-  avgResponseTime: 45,
-  successRate: 98.5,
-  tokenUsage: 125000,
-  activeSessions: 3,
-})
+  // For now, keep empty array until project completion workflow is tested
+  historicalProjects.value = []
+  console.log('[Dashboard] Historical Projects placeholder - awaiting implementation after job testing')
+}
 
 // Methods
-const handleAgentSelected = (agent) => {
-  console.log('Agent selected:', agent)
-}
-
-const handleNodeSelected = (node) => {
-  console.log('Node selected:', node)
-}
-
-const handleContextMenu = ({ node, event }) => {
-  console.log('Context menu for node:', node)
-}
-
-const handleExport = (format) => {
-  console.log('Export requested:', format)
-}
-
-const getActivityColor = (type) => {
-  const colors = {
-    spawn: 'success',
-    complete: 'grey',
-    error: 'error',
-    warning: 'warning',
-  }
-  return colors[type] || 'info'
-}
-
-const getActivityIcon = (type) => {
-  const icons = {
-    spawn: 'mdi-rocket-launch',
-    complete: 'mdi-check-circle',
-    error: 'mdi-alert-circle',
-    warning: 'mdi-alert',
-  }
-  return icons[type] || 'mdi-information'
-}
-
-const formatTime = (timestamp) => {
-  return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
-}
 
 const formatTokens = (tokens) => {
   if (tokens > 1000000) {
@@ -339,11 +478,52 @@ const formatTokens = (tokens) => {
   return tokens.toString()
 }
 
-const loadMetrics = async () => {
-  if (selectedProject.value) {
-    agentMetrics.value = await agentStore.fetchAgentMetrics(selectedProject.value)
+// Helper functions for Historical Projects (for future use)
+const getProjectStatusColor = (status) => {
+  const colors = {
+    completed: 'success',
+    cancelled: 'warning',
+    archived: 'grey',
+    failed: 'error',
   }
+  return colors[status] || 'info'
 }
+
+const formatProjectDate = (project) => {
+  if (project.completed_at) {
+    return `Completed ${formatDistanceToNow(new Date(project.completed_at), { addSuffix: true })}`
+  }
+  if (project.cancelled_at) {
+    return `Cancelled ${formatDistanceToNow(new Date(project.cancelled_at), { addSuffix: true })}`
+  }
+  return `Created ${formatDistanceToNow(new Date(project.created_at), { addSuffix: true })}`
+}
+
+const formatDuration = (project) => {
+  if (!project.completed_at && !project.cancelled_at) {
+    return 'In progress'
+  }
+
+  const endDate = new Date(project.completed_at || project.cancelled_at)
+  const startDate = new Date(project.created_at)
+  const durationMs = endDate - startDate
+
+  const hours = Math.floor(durationMs / (1000 * 60 * 60))
+  const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (hours > 24) {
+    const days = Math.floor(hours / 24)
+    return `${days}d ${hours % 24}h`
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+
+  return `${minutes}m`
+}
+
+
 
 const checkSetupStatus = async () => {
   try {
@@ -373,22 +553,15 @@ const refreshData = async () => {
   if (!setupStatus.value.requires_setup) {
     await Promise.all([
       projectStore.fetchProjects(),
-      agentStore.fetchAgents(),
-      messageStore.fetchMessages(),
       taskStore.fetchTasks(),
     ])
-
-    if (selectedProject.value) {
-      await agentStore.fetchAgentTree(selectedProject.value)
-      await loadMetrics()
-    }
   }
 }
 
 // WebSocket handlers
 const handleRealtimeUpdate = (data) => {
-  // Update stats in real-time
-  performance.value.activeSessions = data.activeSessions || performance.value.activeSessions
+  // Update stats in real-time if needed
+  console.log('WebSocket update:', data)
 }
 
 // LAN Welcome Banner
@@ -498,11 +671,7 @@ onMounted(async () => {
   // Set up WebSocket listeners for real-time updates
   const unsubscribe = websocketService.onMessage('stats:update', handleRealtimeUpdate)
 
-  // Select first project if available
-  if (projectStore.projects.length > 0) {
-    selectedProject.value = projectStore.projects[0].id
-    await loadMetrics()
-  }
+
 
   onUnmounted(() => {
     unsubscribe()
