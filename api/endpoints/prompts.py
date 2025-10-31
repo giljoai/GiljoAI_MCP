@@ -5,6 +5,7 @@ Provides REST API for generating executable prompts:
 - GET /api/prompts/orchestrator/{tool} - Generate orchestrator prompt
 - GET /api/prompts/agent/{agent_id} - Generate agent prompt
 - POST /api/prompts/estimate-tokens - Estimate token usage for mission (Handover 0065)
+- GET /api/prompts/staging/{project_id} - Generate comprehensive orchestrator staging prompt (Handover 0079)
 
 All endpoints enforce multi-tenant isolation and authentication.
 """
@@ -24,6 +25,7 @@ from api.schemas.prompt import (
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, Project, User
+from src.giljo_mcp.prompt_generator import OrchestratorPromptGenerator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -300,3 +302,103 @@ async def estimate_mission_tokens(
         "within_budget": within_budget,
         "utilization_percent": utilization_percent
     }
+
+
+@router.get("/staging/{project_id}")
+async def generate_staging_prompt(
+    project_id: str,
+    tool: str = Query("claude-code", regex="^(claude-code|codex|gemini)$"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Generate comprehensive orchestrator staging prompt (Handover 0079).
+
+    THE HEART OF GILJOAI - Generates intelligent, token-efficient orchestrator
+    prompts that enable AI agents to discover context via MCP, create condensed
+    missions, and coordinate multi-agent workflows.
+
+    Process:
+    1. Validates project exists and belongs to tenant
+    2. Gathers context via MCP-simulated queries (product, vision, priorities, templates)
+    3. Applies field priorities and token budget management
+    4. Generates eloquent 5-phase orchestrator instructions
+    5. Returns ready-to-paste comprehensive prompt
+
+    Features:
+    - MCP-only data access (remote-safe, no local file reads)
+    - Dynamic field priority integration (user-configured)
+    - 20K token budget management (Claude 25K limit - 5K safety buffer)
+    - 70% token reduction architecture
+    - Multi-tool support (Claude Code, Codex, Gemini)
+    - Max 8 agent types enforced
+
+    Args:
+        project_id: Project UUID to generate prompt for
+        tool: Target AI tool (claude-code, codex, or gemini)
+        current_user: Authenticated user (ensures tenant isolation)
+        db: Database session
+
+    Returns:
+        dict: Comprehensive prompt response with:
+            - prompt: Full orchestrator staging prompt (2000-3000 lines)
+            - token_estimate: Estimated total token usage
+            - budget_utilization: Percentage of 20K budget used
+            - context_included: Summary of included context
+            - warnings: Budget/priority warnings
+            - tool: Target tool identifier
+            - estimate_details: Detailed token breakdown
+
+    Raises:
+        HTTPException 404: Project not found or not accessible
+        HTTPException 400: Invalid tool parameter
+        HTTPException 500: Prompt generation error
+
+    Example Response:
+        {
+            "prompt": "ORCHESTRATOR STAGING PROMPT\\n...\\n(comprehensive instructions)",
+            "token_estimate": 8500,
+            "budget_utilization": "42.5%",
+            "context_included": {
+                "product_name": "My Product",
+                "project_name": "Feature Implementation",
+                "vision_chunk_count": 3,
+                "field_count": 4,
+                "template_count": 6
+            },
+            "warnings": [],
+            "tool": "claude-code"
+        }
+    """
+    try:
+        # Initialize prompt generator
+        generator = OrchestratorPromptGenerator(db, current_user.tenant_key)
+
+        # Generate comprehensive prompt
+        result = await generator.generate(project_id, tool)
+
+        # Log successful generation
+        logger.info(
+            f"[STAGING PROMPT] Generated for project={project_id}, "
+            f"tool={tool}, tokens={result['token_estimate']}, "
+            f"utilization={result['budget_utilization']}, "
+            f"user={current_user.username}"
+        )
+
+        return result
+
+    except ValueError as e:
+        # Project not found or invalid tool
+        logger.warning(f"[STAGING PROMPT] Validation error for project={project_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+    except Exception as e:
+        # Unexpected error during generation
+        logger.exception(f"[STAGING PROMPT] Generation failed for project={project_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate staging prompt: {str(e)}"
+        )
