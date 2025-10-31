@@ -42,6 +42,8 @@ Handovers enable seamless task delegation between development agents/sessions by
 - None
 
 **Recently Completed:**
+- `0075 Eight-Agent Active Limit Enforcement` - **RETIRED 2025-10-31** (Specification consolidated and archived. Provides validation flow to cap active agent templates to 8 and user export safeguards. See: `completed/0075_COMPLETION_SUMMARY.md`)
+- `0076 Task Field Cleanup & Product Scoping` - **COMPLETE 2025-10-31** (Assignment fields removed, product‑scoped filters added, task→project conversion with active product requirement. See: `completed/0076_COMPLETION_SUMMARY.md`)
 - `0077 Launch/Jobs Dual-Tab Interface` - **COMPLETE 2025-10-30** (Consolidated into a single closeout record covering specification, implementation deliverables, and bug fixes. See: `completed/0077_COMPLETION_SUMMARY.md`. Additional reference assets archived under `completed/reference/0077/`.)
 - **0060-SERIES MASS RETIREMENT** 2025-10-30 - All 0060-0069 handovers retired (8 complete, 2 superseded, 5 reference docs). Series culminated in Project 0073. See: `completed/0060_SERIES_RETIREMENT_SUMMARY.md`
 - `0063_per_agent_tool_selection_ui-C.md` - **SUPERSEDED 2025-10-30** (Per-Agent Tool Selection: SUPERSEDED by Project 0073 Migration 0073_03. Database-backed tool assignment superior to UI-driven metadata approach. Never implemented. Completion Report: handovers/completed/0063_COMPLETION_SUMMARY.md)

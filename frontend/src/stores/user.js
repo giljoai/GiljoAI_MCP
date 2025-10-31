@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import api from '@/services/api'
+import api, { setTenantKey } from '@/services/api'
 
 export const useUserStore = defineStore('user', () => {
   // State
@@ -30,6 +30,12 @@ export const useUserStore = defineStore('user', () => {
       console.log('[UserStore] API response from /auth/me:', response.data)
       currentUser.value = response.data
       console.log('[UserStore] Current user set to:', currentUser.value)
+
+      // Update API client tenant key after successful auth
+      if (currentUser.value?.tenant_key) {
+        setTenantKey(currentUser.value.tenant_key)
+      }
+
       return true
     } catch (error) {
       console.error('[UserStore] Failed to fetch current user:', error)
@@ -66,7 +72,10 @@ export const useUserStore = defineStore('user', () => {
       // Always clear local state
       currentUser.value = null
       isLoading.value = false
-      
+
+      // Clear tenant key from API client
+      setTenantKey(null)
+
       // Clear remember me data
       localStorage.removeItem('remembered_username')
     }
@@ -77,6 +86,12 @@ export const useUserStore = defineStore('user', () => {
     try {
       const response = await api.auth.me()
       currentUser.value = response.data
+
+      // Update API client tenant key after successful auth
+      if (currentUser.value?.tenant_key) {
+        setTenantKey(currentUser.value.tenant_key)
+      }
+
       return true
     } catch (error) {
       console.error('[UserStore] Auth check failed:', error)

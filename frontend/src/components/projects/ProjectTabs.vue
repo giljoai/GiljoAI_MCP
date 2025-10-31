@@ -308,6 +308,7 @@ async function handleSendMessage(message, recipient) {
 .tabs-content {
   flex: 1;
   overflow: hidden;
+  padding-top: 10px;
 
   :deep(.v-window-item) {
     height: 100%;
