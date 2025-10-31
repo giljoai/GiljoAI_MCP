@@ -155,9 +155,28 @@ export const useProjectStore = defineStore('projects', () => {
 
   // Handover 0062: Activate project
   async function activateProject(id) {
-    const response = await api.projects.activate(id)
-    await fetchProjects() // Refresh list
-    return response.data
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.projects.activate(id)
+
+      // Immediately update local state for instant UI feedback
+      const index = projects.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = { ...projects.value[index], status: 'active', updated_at: new Date().toISOString() }
+      }
+
+      // Refresh full list to get server state (includes deactivated projects)
+      await fetchProjects()
+
+      return response.data
+    } catch (err) {
+      error.value = err.message || 'Failed to activate project'
+      console.error('Failed to activate project:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   async function deactivateProject(id) {
@@ -165,10 +184,18 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       await api.projects.deactivate(id)
+
+      // Immediately update local state for instant UI feedback
+      const index = projects.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = { ...projects.value[index], status: 'inactive', updated_at: new Date().toISOString() }
+      }
+
+      // Refresh full list to get server state
       await fetchProjects()
-      // Success handled by fetchProjects refresh
     } catch (err) {
       error.value = err.message || 'Failed to deactivate project'
+      console.error('Failed to deactivate project:', err)
       throw err
     } finally {
       loading.value = false
@@ -301,8 +328,15 @@ export const useProjectStore = defineStore('projects', () => {
 
       if (update_type === 'closed') {
         project.status = 'closed'
-      } else if (update_type === 'status_changed') {
-        project.status = status
+      } else if (update_type === 'status_changed' || update_type === 'activated' || update_type === 'deactivated') {
+        // Handle status changes including activation/deactivation
+        if (status) {
+          project.status = status
+        } else if (update_type === 'activated') {
+          project.status = 'active'
+        } else if (update_type === 'deactivated') {
+          project.status = 'inactive'
+        }
       }
 
       // Update other fields if provided

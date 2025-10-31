@@ -1,0 +1,395 @@
+/**
+ * Agent Color Variables (SCSS)
+ *
+ * CSS variables for agent branding across the application.
+ * Synced with frontend/src/config/agentColors.js
+ *
+ * @see handovers/0077_launch_jobs_dual_tab_interface.md
+ */
+
+:root {
+  /* Orchestrator - Tan/Beige */
+  --agent-orchestrator-primary: #D4A574;
+  --agent-orchestrator-dark: #B8905E;
+  --agent-orchestrator-light: #E5C9A3;
+
+  /* Analyzer - Red */
+  --agent-analyzer-primary: #E74C3C;
+  --agent-analyzer-dark: #C0392B;
+  --agent-analyzer-light: #F1948A;
+
+  /* Implementor - Blue */
+  --agent-implementor-primary: #3498DB;
+  --agent-implementor-dark: #2980B9;
+  --agent-implementor-light: #85C1E9;
+
+  /* Researcher - Green */
+  --agent-researcher-primary: #27AE60;
+  --agent-researcher-dark: #229954;
+  --agent-researcher-light: #7DCEA0;
+
+  /* Reviewer - Purple */
+  --agent-reviewer-primary: #9B59B6;
+  --agent-reviewer-dark: #8E44AD;
+  --agent-reviewer-light: #C39BD3;
+
+  /* Tester - Orange */
+  --agent-tester-primary: #E67E22;
+  --agent-tester-dark: #D35400;
+  --agent-tester-light: #F0B27A;
+
+  /* Agent Card Base Colors */
+  --agent-card-bg: #2C5F77;
+  --agent-card-border: rgba(255, 255, 255, 0.1);
+  --agent-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* Status Badge Colors */
+  --status-waiting: #90A4AE;
+  --status-working: #3498DB;
+  --status-complete: #FFC300;
+  --status-failure: #C6298C;
+  --status-blocked: #E67E22;
+
+  /* Launch Prompt Tool Colors */
+  --tool-claude-code: #E67E22;
+  --tool-codex: #9B59B6;
+  --tool-gemini: #3498DB;
+}
+
+/* Agent Card Styling Mixins */
+@mixin agent-card-header($color) {
+  background: $color;
+  background: linear-gradient(135deg, $color 0%, darken($color, 10%) 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@mixin agent-card-body {
+  background: var(--agent-card-bg);
+  padding: 16px;
+  border-radius: 0 0 8px 8px;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+@mixin agent-card-border($color) {
+  border: 2px solid lighten($color, 20%);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba($color, 0.3);
+    transform: translateY(-2px);
+  }
+}
+
+/* Chat Head Badge Styling */
+@mixin chat-head-badge($color, $size: 32px) {
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  background-color: $color;
+  color: white;
+  font-weight: bold;
+  font-size: #{$size * 0.4};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  flex-shrink: 0;
+}
+
+/* Status Badge Styling */
+@mixin status-badge($color) {
+  background-color: rgba($color, 0.2);
+  color: $color;
+  border: 1px solid $color;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+/* Launch Prompt Icon Styling */
+@mixin launch-prompt-icon($color) {
+  background-color: $color;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: darken($color, 10%);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Utility Classes */
+.agent-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--agent-card-shadow);
+  transition: all 0.3s ease;
+
+  &__header {
+    padding: 12px 16px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    &--orchestrator {
+      @include agent-card-header(var(--agent-orchestrator-primary));
+    }
+
+    &--analyzer {
+      @include agent-card-header(var(--agent-analyzer-primary));
+    }
+
+    &--implementor {
+      @include agent-card-header(var(--agent-implementor-primary));
+    }
+
+    &--researcher {
+      @include agent-card-header(var(--agent-researcher-primary));
+    }
+
+    &--reviewer {
+      @include agent-card-header(var(--agent-reviewer-primary));
+    }
+
+    &--tester {
+      @include agent-card-header(var(--agent-tester-primary));
+    }
+  }
+
+  &__body {
+    @include agent-card-body;
+  }
+
+  &--orchestrator {
+    @include agent-card-border(var(--agent-orchestrator-primary));
+  }
+
+  &--analyzer {
+    @include agent-card-border(var(--agent-analyzer-primary));
+  }
+
+  &--implementor {
+    @include agent-card-border(var(--agent-implementor-primary));
+  }
+
+  &--researcher {
+    @include agent-card-border(var(--agent-researcher-primary));
+  }
+
+  &--reviewer {
+    @include agent-card-border(var(--agent-reviewer-primary));
+  }
+
+  &--tester {
+    @include agent-card-border(var(--agent-tester-primary));
+  }
+}
+
+.chat-head {
+  &--orchestrator {
+    @include chat-head-badge(var(--agent-orchestrator-primary));
+  }
+
+  &--analyzer {
+    @include chat-head-badge(var(--agent-analyzer-primary));
+  }
+
+  &--implementor {
+    @include chat-head-badge(var(--agent-implementor-primary));
+  }
+
+  &--researcher {
+    @include chat-head-badge(var(--agent-researcher-primary));
+  }
+
+  &--reviewer {
+    @include chat-head-badge(var(--agent-reviewer-primary));
+  }
+
+  &--tester {
+    @include chat-head-badge(var(--agent-tester-primary));
+  }
+
+  &--compact {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+}
+
+.status-badge {
+  &--waiting {
+    @include status-badge(var(--status-waiting));
+  }
+
+  &--working {
+    @include status-badge(var(--status-working));
+  }
+
+  &--complete {
+    @include status-badge(var(--status-complete));
+  }
+
+  &--failure {
+    @include status-badge(var(--status-failure));
+  }
+
+  &--blocked {
+    @include status-badge(var(--status-blocked));
+  }
+}
+
+.launch-prompt-icon {
+  &--claude-code {
+    @include launch-prompt-icon(var(--tool-claude-code));
+  }
+
+  &--codex {
+    @include launch-prompt-icon(var(--tool-codex));
+  }
+
+  &--gemini {
+    @include launch-prompt-icon(var(--tool-gemini));
+  }
+}
+
+/* Horizontal Scroll Container for Agent Cards */
+.agent-cards-container {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 16px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent-primary) transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary);
+    border-radius: 4px;
+
+    &:hover {
+      background: lighten(#ffc300, 10%);
+    }
+  }
+
+  .agent-card {
+    min-width: 280px;
+    max-width: 280px;
+    flex-shrink: 0;
+  }
+}
+
+/* Message Stream Styling */
+.message-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 600px;
+  background: var(--color-bg-secondary);
+  border-radius: 8px;
+
+  &__message {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+
+    &-content {
+      flex: 1;
+      background: var(--color-bg-primary);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    &-routing {
+      font-weight: 600;
+      color: var(--color-accent-primary);
+      margin-bottom: 4px;
+    }
+
+    &-text {
+      color: var(--color-text-primary);
+    }
+
+    &-time {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-top: 4px;
+    }
+  }
+
+  &__user-message {
+    .message-stream__message-content {
+      background: rgba(52, 152, 219, 0.1);
+      border-left: 3px solid var(--agent-implementor-primary);
+    }
+  }
+}
+
+/* Green Banner for Closeout */
+.closeout-banner {
+  background: linear-gradient(135deg, var(--agent-researcher-primary) 0%, darken(#27AE60, 10%) 100%);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+  .agent-cards-container .agent-card {
+    min-width: 240px;
+    max-width: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .agent-cards-container .agent-card {
+    min-width: 200px;
+    max-width: 200px;
+  }
+
+  .message-stream {
+    max-height: 400px;
+  }
+}
