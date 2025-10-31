@@ -15,15 +15,26 @@ export function updateApiBaseURL(newBaseURL) {
   console.log('[API] Updated axios baseURL to:', newBaseURL)
 }
 
+// Store current tenant key (set by user store after login)
+let currentTenantKey = null
+
+export function setTenantKey(tenantKey) {
+  currentTenantKey = tenantKey
+  console.log('[API] Tenant key updated to:', tenantKey)
+}
+
 // Request interceptor for tenant key
 // NOTE: Authentication token is sent automatically via httpOnly cookie (access_token)
 // No need to manually add Authorization header - the browser handles this
 apiClient.interceptors.request.use(
   (config) => {
-    // Ensure tenant key is always present
+    // Use current tenant key if set (from user store after login)
+    // Otherwise fallback to default for pre-auth requests
     if (!config.headers['X-Tenant-Key']) {
       config.headers['X-Tenant-Key'] =
-        import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'
+        currentTenantKey ||
+        import.meta.env.VITE_DEFAULT_TENANT_KEY ||
+        'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'
     }
 
     return config

@@ -1,6 +1,6 @@
 # Handover 0075: Eight-Agent Active Limit Enforcement
 
-**Status**: Specification
+**Status**: Specification (ARCHIVED)
 **Priority**: High
 **Estimated Effort**: 8-12 hours
 **Dependencies**: Handover 0041 (Agent Template Management), Handover 0069 (MCP Integration)
