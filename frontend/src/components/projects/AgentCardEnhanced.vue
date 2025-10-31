@@ -12,14 +12,7 @@
   >
     <!-- Colored Header with Agent Type -->
     <div class="agent-card__header" :style="headerStyles">
-      <div class="d-flex align-center justify-space-between">
-        <span class="agent-header-text">{{ agentTypeLabel }}</span>
-        <ChatHeadBadge
-          :agent-type="agent.agent_type"
-          :instance-number="instanceNumber"
-          size="small"
-        />
-      </div>
+      <span class="agent-header-text">{{ agentTypeLabel }}</span>
     </div>
 
     <!-- Card Body -->
@@ -30,16 +23,10 @@
         <span class="text-body-2 font-weight-medium ml-1">{{ truncatedAgentId }}</span>
       </div>
 
-      <!-- Status Badge (Jobs Tab only) -->
-      <div v-if="mode === 'jobs'" class="mb-3">
-        <v-chip
-          :color="statusConfig.color"
-          :prepend-icon="statusConfig.icon"
-          size="small"
-          class="status-badge"
-        >
-          {{ statusConfig.label }}
-        </v-chip>
+      <!-- Status Display (Jobs Tab only) -->
+      <div v-if="mode === 'jobs'" class="agent-status mb-3">
+        <span class="text-caption text-grey">Status:</span>
+        <span class="text-body-2 font-weight-bold ml-1">{{ statusConfig.label }}</span>
       </div>
 
       <!-- Message Badges (Jobs Tab only) -->
@@ -152,7 +139,10 @@
 
     <!-- Action Button -->
     <v-card-actions class="pa-4 pt-0">
-      <!-- Launch Tab: Edit Mission -->
+      <!-- Custom Actions Slot (for orchestrator special buttons) -->
+      <slot name="actions">
+        <!-- Default Action Buttons -->
+        <!-- Launch Tab: Edit Mission -->
       <v-btn
         v-if="mode === 'launch'"
         variant="outlined"
@@ -211,6 +201,7 @@
         <v-icon start>mdi-check-circle</v-icon>
         Closeout Project
       </v-btn>
+      </slot>
     </v-card-actions>
   </v-card>
 </template>
@@ -218,7 +209,6 @@
 <script setup>
 import { computed } from 'vue'
 import { getAgentColor, darkenColor, lightenColor } from '@/config/agentColors'
-import ChatHeadBadge from './ChatHeadBadge.vue'
 import LaunchPromptIcons from './LaunchPromptIcons.vue'
 
 /**
@@ -292,15 +282,17 @@ const cardStyles = computed(() => ({
   minHeight: '200px',
   maxHeight: '400px',
   border: `2px solid ${lightenColor(agentColor.value.hex, 20)}`,
-  borderRadius: '8px',
+  borderRadius: '20px',
   overflow: 'hidden',
   transition: 'all 0.3s ease'
 }))
 
 const headerStyles = computed(() => ({
-  background: `linear-gradient(135deg, ${agentColor.value.hex} 0%, ${darkenColor(agentColor.value.hex, 10)} 100%)`,
+  background: `${agentColor.value.hex} !important`,
   color: 'white',
-  padding: '12px 16px'
+  padding: '16px 20px',
+  textAlign: 'center',
+  borderRadius: '18px 18px 0 0'
 }))
 
 /**
@@ -412,10 +404,12 @@ const cardAriaLabel = computed(() => {
 
 .agent-card__header {
   font-weight: 600;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 16px 20px;
+  text-align: center;
+  border-radius: 18px 18px 0 0;
 }
 
 .agent-header-text {
@@ -435,11 +429,13 @@ const cardAriaLabel = computed(() => {
   border-radius: 4px;
 }
 
-.status-badge {
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.agent-status {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
 }
+
+
 
 .message-badges {
   min-height: 32px;

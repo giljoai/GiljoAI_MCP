@@ -98,6 +98,18 @@ const routes = [
     },
   },
   {
+    path: '/jobs',
+    name: 'Jobs',
+    component: () => import('@/views/JobsView.vue'),
+    meta: {
+      layout: 'default',
+      title: 'Jobs',
+      icon: 'mdi-briefcase',
+      showInNav: true,
+      requiresAuth: true,
+    },
+  },
+  {
     path: '/projects/:projectId/launch',
     name: 'ProjectLaunch',
     component: () => import('@/views/ProjectLaunchView.vue'),
@@ -105,18 +117,6 @@ const routes = [
       layout: 'default',
       title: 'Project Launch',
       showInNav: false,
-      requiresAuth: true,
-    },
-  },
-  {
-    path: '/kanban',
-    name: 'Jobs',
-    component: () => import('@/components/project-launch/KanbanJobsView.vue'),
-    meta: {
-      layout: 'default',
-      title: 'Agent Jobs',
-      icon: 'mdi-view-column',
-      showInNav: true,
       requiresAuth: true,
     },
   },

@@ -4,67 +4,12 @@
     <v-row class="launch-columns mb-6">
       <!-- Left Column: Orchestrator Card -->
       <v-col cols="12" md="3" class="mb-4 mb-md-0">
-        <v-card class="orchestrator-card h-100" elevation="2">
-          <!-- Header -->
-          <div class="agent-card-header orchestrator-header">
-            <div class="d-flex align-center justify-space-between">
-              <span class="agent-header-text">ORCHESTRATOR</span>
-              <ChatHeadBadge
-                agent-type="orchestrator"
-                :instance-number="1"
-                size="small"
-              />
-            </div>
-          </div>
-
-          <!-- Card Body -->
-          <v-card-text class="pa-4">
-            <!-- Agent ID -->
-            <div class="info-row mb-2">
-              <span class="text-caption text-grey">Agent ID:</span>
-              <span class="text-body-2 font-weight-medium ml-1">
-                {{ truncatedOrchestratorId }}
-              </span>
-            </div>
-
-            <!-- Project Title -->
-            <div class="info-row mb-2">
-              <span class="text-caption text-grey">Project:</span>
-              <span class="text-body-2 font-weight-medium ml-1">
-                {{ project.name || 'Unnamed Project' }}
-              </span>
-            </div>
-
-            <!-- Project ID -->
-            <div class="info-row mb-3">
-              <span class="text-caption text-grey">Project ID:</span>
-              <span class="text-body-2 font-weight-medium ml-1">
-                {{ truncatedProjectId }}
-              </span>
-            </div>
-
-            <v-divider class="my-3" />
-
-            <!-- Project Info -->
-            <div class="project-info">
-              <div class="text-caption text-grey mb-1">Status:</div>
-              <v-chip
-                :color="getStatusColor(project.status)"
-                size="small"
-                class="mb-3"
-              >
-                {{ project.status || 'unknown' }}
-              </v-chip>
-
-              <div class="text-caption text-grey mb-1">Product:</div>
-              <div class="text-body-2 mb-2">
-                {{ project.product_name || 'N/A' }}
-              </div>
-            </div>
-          </v-card-text>
-
-          <!-- Action Buttons -->
-          <v-card-actions class="pa-4 pt-0 flex-column">
+        <AgentCardEnhanced
+          :agent="orchestratorAgent"
+          mode="launch"
+          :is-orchestrator="true"
+        >
+          <template #actions>
             <!-- Stage Project Button (Initial State) -->
             <v-btn
               v-if="!isStaging && !readyToLaunch"
@@ -106,12 +51,12 @@
               <v-icon start>mdi-close-circle</v-icon>
               Cancel
             </v-btn>
-          </v-card-actions>
-        </v-card>
+          </template>
+        </AgentCardEnhanced>
       </v-col>
 
       <!-- Middle Column: Project Description Panel -->
-      <v-col cols="12" md="4" class="mb-4 mb-md-0">
+      <v-col cols="12" md="3" class="mb-4 mb-md-0">
         <v-card class="description-panel h-100" elevation="2">
           <!-- Header -->
           <v-card-title class="panel-header bg-primary text-white">
@@ -145,7 +90,7 @@
       </v-col>
 
       <!-- Right Column: Orchestrator Mission Panel -->
-      <v-col cols="12" md="5">
+      <v-col cols="12" md="3" class="mb-4 mb-md-0">
         <v-card class="mission-panel h-100" elevation="2">
           <!-- Header -->
           <v-card-title class="panel-header bg-info text-white">
@@ -306,13 +251,28 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Toast Notification -->
+    <v-snackbar
+      v-model="showToast"
+      :timeout="3000"
+      color="success"
+      location="top"
+    >
+      <v-icon start>mdi-check-circle</v-icon>
+      {{ toastMessage }}
+      <template #actions>
+        <v-btn variant="text" @click="showToast = false">
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import AgentCardEnhanced from './AgentCardEnhanced.vue'
-import ChatHeadBadge from './ChatHeadBadge.vue'
 
 /**
  * LaunchTab Component
@@ -336,7 +296,7 @@ const props = defineProps({
     type: Object,
     required: true,
     validator: (value) => {
-      return value && typeof value === 'object' && 'project_id' in value
+      return value && typeof value === 'object' && ('id' in value || 'project_id' in value)
     }
   },
   isStaging: {
@@ -357,19 +317,39 @@ const emit = defineEmits([
 /**
  * Component State
  */
+// Component State
 const missionText = ref('')
+
+// Orchestrator agent (special static card on Launch tab)
+const orchestratorAgent = ref({
+  agent_id: 'orch-00000000',
+  agent_type: 'orchestrator',
+  job_id: 'orch-job-000',
+  mission: 'I am ready to create the project mission based on product context and project description. I will write the mission in the mission window and select the proper agents below.',
+  status: 'waiting'
+})
+
 const agents = ref([])
 const stagingInProgress = ref(false)
-const readyToLaunch = ref(false)
+const readyToLaunch = ref(false) // Set to false to show "Stage Project" button
 const showCancelDialog = ref(false)
+const showToast = ref(false)
+const toastMessage = ref('')
 
 /**
  * Computed Properties
  */
+// Update orchestrator agent ID based on project
+watch(() => props.project.id, (newId) => {
+  if (newId) {
+    orchestratorAgent.value.agent_id = `orch-${newId.substring(0, 8)}`
+  }
+}, { immediate: true })
+
 const truncatedOrchestratorId = computed(() => {
-  const id = props.project.orchestrator_id || 'orchestrator-001'
-  if (id.length <= 12) return id
-  return `${id.substring(0, 12)}...`
+  const id = orchestratorAgent.value.agent_id
+  if (id.length <= 15) return id
+  return `${id.substring(0, 15)}...`
 })
 
 const truncatedProjectId = computed(() => {
@@ -412,13 +392,34 @@ function getInstanceNumber(agent) {
 /**
  * Handle Stage Project button click
  */
-function handleStageProject() {
-  stagingInProgress.value = true
-  emit('stage-project')
+async function handleStageProject() {
+  // Generate launch prompt for orchestrator
+  const launchPrompt = `You are the Orchestrator agent for project "${props.project.name}".
 
-  // Simulate orchestrator work (in real implementation, this would be WebSocket driven)
-  // For demo: auto-set mission and agents after delay
-  // In production, these would be set via WebSocket events from backend
+Project Description:
+${props.project.description || 'No description provided'}
+
+Your task:
+1. Analyze the project description and product context
+2. Create a detailed project mission that breaks down the work
+3. Select the appropriate agent types needed for this project
+4. Write the mission in a clear, actionable format
+
+Once complete, the mission will appear in the mission window and agents will be selected automatically.`
+
+  // Copy to clipboard
+  try {
+    await navigator.clipboard.writeText(launchPrompt)
+    toastMessage.value = 'Prompt has been copied, paste in your CLI agent\'s terminal'
+    showToast.value = true
+    
+    stagingInProgress.value = true
+    emit('stage-project')
+  } catch (err) {
+    console.error('Failed to copy to clipboard:', err)
+    toastMessage.value = 'Failed to copy prompt to clipboard'
+    showToast.value = true
+  }
 }
 
 /**
@@ -467,7 +468,7 @@ function handleEditAgentMission(agent) {
 }
 
 /**
- * Watch for prop changes to update internal state
+ * Watchers - Sync with backend data
  */
 watch(() => props.project.mission, (newMission) => {
   if (newMission) {
@@ -475,11 +476,8 @@ watch(() => props.project.mission, (newMission) => {
     stagingInProgress.value = false
     readyToLaunch.value = true
   }
-}, { immediate: true })
+})
 
-/**
- * Update agents when project changes
- */
 watch(() => props.project.agents, (newAgents) => {
   if (newAgents && Array.isArray(newAgents)) {
     agents.value = newAgents
@@ -531,15 +529,24 @@ defineExpose({
   padding: 12px 16px;
 }
 
+/* Orchestrator Card */
+.orchestrator-card {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
 /* Orchestrator Card Header */
 .orchestrator-header {
-  background: linear-gradient(135deg, var(--agent-orchestrator-primary) 0%, var(--agent-orchestrator-dark) 100%);
+  background: #D4A574 !important;
+  background: var(--agent-orchestrator-primary) !important;
   color: white;
-  padding: 12px 16px;
+  padding: 16px 20px;
   font-weight: 600;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  border-radius: 16px 16px 0 0;
+  text-align: center;
 }
 
 .agent-header-text {

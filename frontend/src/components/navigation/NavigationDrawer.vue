@@ -103,7 +103,7 @@ const settingsStore = useSettingsStore()
 
 // Dynamic Giljo icon for Jobs based on route and theme
 const jobsIcon = computed(() => {
-  const isJobsRoute = route.path === '/kanban'
+  const isJobsRoute = route.path === '/jobs'
   const isDark = theme.global.current.value.dark
 
   if (isJobsRoute) {
@@ -118,11 +118,13 @@ const navigationItems = computed(() => {
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-    { name: 'Jobs', path: '/kanban', title: 'Jobs', customIcon: jobsIcon.value },
+    { name: 'Jobs', path: '/jobs', title: 'Jobs', customIcon: jobsIcon.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 
   // Note: Admin-only items like Users are now in the avatar dropdown
+  // Note: Jobs navigate to /jobs route (Handover 0077 Hybrid Architecture)
+  //       /jobs automatically loads active project → Shows dual-tab interface
   return baseItems
 })
 

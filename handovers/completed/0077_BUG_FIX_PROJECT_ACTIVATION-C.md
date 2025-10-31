@@ -1,5 +1,7 @@
 # Bug Fix: Project Activation/Deactivation Not Refreshing Instantly
 
+_Status: Fixed (Archived under Project 0077 closeout)_
+
 **Issue**: When activating or deactivating projects in the Projects view, the UI did not update instantly and required a manual page refresh to show the new status.
 
 **Root Cause**: The `activateProject()` and `deactivateProject()` functions in the Pinia store were calling `fetchProjects()` but not immediately updating the local state, causing a delay between the API call completing and the UI reflecting the change.

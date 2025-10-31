@@ -1105,7 +1105,7 @@ Example: /task Fix authentication bug in login flow"""
         tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Assign task to agent and optionally auto-spawn MCPAgentJob (Handover 0072)
+        Assign task to agent and optionally auto-spawn Job (Handover 0072)
         
         This tool links a task to an agent and creates an agent job for execution.
         Enables task-driven agent orchestration with automatic status synchronization.
@@ -1114,7 +1114,7 @@ Example: /task Fix authentication bug in login flow"""
             task_id: Task ID to assign
             agent_type: Agent type (analyzer, implementer, tester, etc.)
             mission: Optional custom mission (defaults to task title + description)
-            auto_spawn_job: Whether to auto-spawn MCPAgentJob (default: True)
+            auto_spawn_job: Whether to auto-spawn Job (default: True)
             tenant_key: Tenant key for multi-tenancy
         
         Returns:
@@ -1122,7 +1122,7 @@ Example: /task Fix authentication bug in login flow"""
         """
         try:
             from giljo_mcp.agent_job_manager import AgentJobManager
-            from giljo_mcp.models import Agent, MCPAgentJob
+            from giljo_mcp.models import Agent, Job
             from giljo_mcp.tenant import tenant_manager
             
             # Use current tenant if not provided

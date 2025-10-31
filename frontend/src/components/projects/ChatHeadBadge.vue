@@ -56,12 +56,12 @@ const props = defineProps({
   },
 
   /**
-   * Badge size: 'default' (32px) or 'compact' (24px)
+   * Badge size: 'default' (32px), 'small' (28px), or 'compact' (24px)
    */
   size: {
     type: String,
     default: 'default',
-    validator: (value) => ['default', 'compact'].includes(value)
+    validator: (value) => ['default', 'small', 'compact'].includes(value)
   }
 })
 
@@ -97,7 +97,9 @@ const badgeId = computed(() => {
  * Size class for styling
  */
 const sizeClass = computed(() => {
-  return props.size === 'compact' ? 'chat-head-badge--compact' : 'chat-head-badge--default'
+  if (props.size === 'compact') return 'chat-head-badge--compact'
+  if (props.size === 'small') return 'chat-head-badge--small'
+  return 'chat-head-badge--default'
 })
 
 /**
@@ -149,6 +151,13 @@ const ariaLabel = computed(() => {
     width: 32px;
     height: 32px;
     font-size: 13px;
+  }
+
+  /* Small size: 28px */
+  &--small {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
   }
 
   /* Compact size: 24px */

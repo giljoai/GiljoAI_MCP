@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """
-    Authentication middleware - ALWAYS ACTIVE.
+    Authentication middleware - ALWAYS ACTIVE (unified auth).
 
-    - Localhost (127.0.0.1, ::1): Auto-login
-    - Network clients: Require JWT or API key
+    All clients (localhost and network) require JWT or API key.
+    No special treatment for localhost - ensures production parity.
 
-    This middleware replaces the mode-based authentication logic
-    with a unified approach that always authenticates requests.
+    This middleware provides consistent authentication regardless
+    of client location (localhost or network).
     """
 
     def __init__(self, app, auth_manager: Optional[Callable] = None):
@@ -161,14 +161,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Get client identifier (IP address)
         client_ip = request.client.host if request.client else "unknown"
-        
-        # Whitelist local development IPs (no rate limiting)
-        development_ips = ["127.0.0.1", "localhost", "::1", "10.1.0.164"]
-        if client_ip in development_ips:
-            # Log for debugging (can be removed in production)
-            logger.debug(f"[Rate Limit] Bypassed for development IP: {client_ip}")
-            response = await call_next(request)
-            return response
+
+        # All clients are rate limited (production parity)
+        # No special treatment for localhost
 
         # Get current time
         current_time = time.time()

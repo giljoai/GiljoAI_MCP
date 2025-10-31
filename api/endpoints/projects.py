@@ -2,6 +2,7 @@
 Project management API endpoints
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
@@ -12,6 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
+
+# Logger
+logger = logging.getLogger(__name__)
 from api.schemas.prompt import (
     AgentStatusSummary,
     ProjectCanCloseResponse,
@@ -42,6 +46,7 @@ class ProjectResponse(BaseModel):
     id: str
     alias: str
     name: str
+    description: Optional[str] = None
     mission: str
     status: str
     product_id: Optional[str] = None
@@ -107,7 +112,8 @@ async def create_project(
         # Use the tool accessor, passing the tenant_key from the authenticated user
         result = await state.tool_accessor.create_project(
             name=project.name,
-            mission=project.mission,
+                description=project.description,
+                mission=project.mission,
             product_id=project.product_id,
             tenant_key=current_user.tenant_key,
             status=project.status,  # Pass status from request (Handover 0050b)
@@ -130,7 +136,8 @@ async def create_project(
             id=result["project_id"],
             alias=created_project.alias if created_project else "UNKNWN",
             name=project.name,
-            mission=project.mission,
+                description=project.description,
+                mission=project.mission,
             status="inactive",
             product_id=project.product_id,
             created_at=datetime.now(timezone.utc),
@@ -248,6 +255,77 @@ async def list_projects(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/active", response_model=Optional[ProjectResponse])
+async def get_active_project(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Get the currently active project for the user's tenant.
+
+    Returns the active project (status='active') or None if no project is active.
+
+    Leverages Single Active Project architecture (Handover 0050b):
+    - Only ONE project can be active per product at any time
+    - Database enforces this via partial unique index
+    """
+    from api.app import state
+    from src.giljo_mcp.models import Project, Agent, Message
+    from sqlalchemy import select
+
+    logger.info(f"[GET ACTIVE PROJECT] User: {current_user.username}, Tenant: {current_user.tenant_key}")
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as session:
+            # Query for active project (tenant-isolated)
+            stmt = select(Project).where(
+                Project.tenant_key == current_user.tenant_key,
+                Project.status == "active"
+            ).limit(1)
+
+            result = await session.execute(stmt)
+            project = result.scalar_one_or_none()
+
+            if not project:
+                logger.info(f"[GET ACTIVE PROJECT] No active project found for tenant {current_user.tenant_key}")
+                return None
+
+            # Get agent and message counts
+            agent_stmt = select(Agent).where(Agent.project_id == project.id)
+            agent_result = await session.execute(agent_stmt)
+            agent_count = len(agent_result.scalars().all())
+
+            message_stmt = select(Message).where(Message.project_id == project.id)
+            message_result = await session.execute(message_stmt)
+            message_count = len(message_result.scalars().all())
+
+            logger.info(f"[GET ACTIVE PROJECT] Found active project: {project.name} (ID: {project.id})")
+
+            return ProjectResponse(
+                id=project.id,
+                alias=project.alias,
+                name=project.name,
+                description=project.description,
+                mission=project.mission,
+                status=project.status,
+                product_id=project.product_id,
+                created_at=project.created_at,
+                updated_at=project.updated_at or project.created_at,
+                completed_at=project.completed_at,
+                context_budget=project.context_budget,
+                context_used=project.context_used,
+                agent_count=agent_count,
+                message_count=message_count,
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to get active project: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/by-alias/{alias}", response_model=ProjectResponse)
 async def get_project_by_alias(alias: str):
     """
@@ -291,6 +369,7 @@ async def get_project_by_alias(alias: str):
                 id=project.id,
                 alias=project.alias,
                 name=project.name,
+                description=project.description,
                 mission=project.mission,
                 status=project.status,
                 product_id=project.product_id,
@@ -433,6 +512,7 @@ async def get_project(project_id: str):
             id=proj["id"],
             alias=proj.get("alias", "UNKNWN"),
             name=proj["name"],
+            description=proj.get("description"),
             mission=proj["mission"],
             status=proj["status"],
             product_id=proj.get("product_id"),
@@ -584,7 +664,7 @@ async def activate_project(
     Changes status from inactive to active.
     """
     from sqlalchemy import select
-    from src.giljo_mcp.models import Project
+    from src.giljo_mcp.models import Project, Product
     
     # Fetch project
     stmt = select(Project).where(
@@ -603,33 +683,62 @@ async def activate_project(
             status_code=400,
             detail=f"Project cannot be activated from status '{project.status}'"
         )
-    
+
+    # Validate parent product exists and is active
+    if project.product_id:
+        product_result = await db.execute(select(Product).where(Product.id == project.product_id))
+        parent_product = product_result.scalar_one_or_none()
+        if not parent_product:
+            raise HTTPException(status_code=400, detail="Cannot activate project - parent product not found")
+        if not getattr(parent_product, 'is_active', False):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot activate project - parent product '{parent_product.name}' is not active. Please activate the product first.",
+            )
+
+        # Enforce single active project per product
+        existing_active_result = await db.execute(
+            select(Project).where(
+                Project.product_id == project.product_id,
+                Project.status == "active",
+                Project.id != project_id,
+            )
+        )
+        existing_active = existing_active_result.scalar_one_or_none()
+        if existing_active:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Another project ('{existing_active.name}') is already active for this product. "
+                    f"Please deactivate it first."
+                ),
+            )
+
     # Update status
     project.status = "active"
     project.updated_at = datetime.utcnow()
     
     await db.commit()
     await db.refresh(project)
-    
+
     logger.info(f"Project {project_id} activated by {current_user.username}")
-    
-    # Return response
-    return ProjectResponse(
-        id=project.id,
-        tenant_key=project.tenant_key,
-        product_id=project.product_id,
-        name=project.name,
-        alias=project.alias,
-        description=getattr(project, 'description', project.mission),  # Backward compat
-        mission=project.mission,
-        status=project.status,
-        context_budget=project.context_budget,
-        context_used=project.context_used,
-        created_at=project.created_at.isoformat() if project.created_at else None,
-        updated_at=project.updated_at.isoformat() if project.updated_at else None,
-        completed_at=project.completed_at.isoformat() if project.completed_at else None,
-        meta_data=project.meta_data or {}
-    )
+
+    # Broadcast activation to subscribers (standard schema)
+    try:
+      from api.app import state
+      if state.websocket_manager:
+          await state.websocket_manager.broadcast_project_update(
+              project_id=project.id,
+              update_type="activated",
+              project_data={"status": "active"},
+          )
+    except Exception:
+      # Non-fatal: log and continue
+      import logging as _logging
+      _logging.getLogger(__name__).warning("Failed to broadcast project activation", exc_info=True)
+
+    # Return unified response via helper to include counts
+    return await get_project(project_id)
 
 
 @router.post("/{project_id}/deactivate", response_model=ProjectResponse)
@@ -694,11 +803,12 @@ async def deactivate_project(project_id: str, current_user: User = Depends(get_c
                 f"[Handover 0071] Project '{project.name}' (ID: {project_id}) deactivated by user {current_user.username}"
             )
 
-            # Broadcast WebSocket event
+            # Broadcast WebSocket event (standard project update schema)
             if state.websocket_manager:
-                await state.websocket_manager.broadcast(
-                    "project:deactivated",
-                    {"project_id": project.id, "status": "inactive", "tenant_key": current_user.tenant_key},
+                await state.websocket_manager.broadcast_project_update(
+                    project_id=project.id,
+                    update_type="deactivated",
+                    project_data={"status": "inactive"},
                 )
 
             # Build response using helper function
@@ -776,7 +886,8 @@ async def complete_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-            mission=project.mission,
+                description=project.description,
+                mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,
@@ -860,7 +971,8 @@ async def cancel_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-            mission=project.mission,
+                description=project.description,
+                mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,
@@ -948,7 +1060,8 @@ async def restore_completed_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-            mission=project.mission,
+                description=project.description,
+                mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,
@@ -1104,7 +1217,8 @@ async def restore_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-            mission=project.mission,
+                description=project.description,
+                mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,

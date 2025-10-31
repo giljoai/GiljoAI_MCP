@@ -50,10 +50,16 @@ class ConfigService {
   async _doFetch() {
     try {
       // Determine backend URL for config endpoint
-      // Use current page's host to reach the API (works for both localhost and LAN access)
-      const currentHost = window.location.hostname
-      const apiPort = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
-      const configUrl = `http://${currentHost}:${apiPort}/api/v1/config/frontend`
+      // Dev: use relative URL so Vite proxy handles CORS
+      // Prod: direct to configured API host:port
+      let configUrl
+      if (import.meta.env.DEV) {
+        configUrl = '/api/v1/config/frontend'
+      } else {
+        const currentHost = window.location.hostname
+        const apiPort = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
+        configUrl = `http://${currentHost}:${apiPort}/api/v1/config/frontend`
+      }
 
       this.log(`Fetching config from ${configUrl}`)
 

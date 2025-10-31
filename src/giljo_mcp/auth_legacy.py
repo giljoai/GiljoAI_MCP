@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 
 class AuthManager:
     """
-    Manages authentication with mode-independent logic.
+    Manages authentication with unified logic (production parity).
 
-    - Localhost clients (127.0.0.1, ::1): Auto-login as "localhost" user
-    - Network clients: Require JWT Bearer token or API key
+    All clients (localhost and network) require JWT Bearer token or API key.
+    No special treatment for localhost - ensures consistent auth testing.
     """
 
     def __init__(self, config=None, db: Optional[AsyncSession] = None):
@@ -327,9 +327,9 @@ class AuthManager:
         """
         Authenticate incoming request.
 
-        Uses mode-independent authentication:
-        - Localhost clients (127.0.0.1, ::1): Auto-login as "localhost" user
-        - Network clients: Require JWT Bearer token or API key
+        Unified authentication for all clients (localhost and network):
+        - Requires JWT Bearer token or API key for ALL connections
+        - No special treatment for localhost (production parity)
 
         Args:
             request: FastAPI Request object
@@ -339,7 +339,6 @@ class AuthManager:
                 - authenticated: bool
                 - user: str (username)
                 - user_id: str (username for consistency)
-                - is_auto_login: bool (if localhost auto-login)
                 - tenant_key: str (tenant key)
                 - error: str (if authentication failed)
                 - user_obj: User (if authenticated via database)
@@ -349,49 +348,7 @@ class AuthManager:
             >>> if result["authenticated"]:
             ...     print(f"User: {result['user']}")
         """
-        from .auth.auto_login import LOCALHOST_IPS
-
-        # Get client IP using helper method
-        client_ip = self._get_client_ip(request)
-
-        # Check for auto-login (localhost clients)
-        if client_ip in LOCALHOST_IPS:
-            logger.debug(f"Localhost client detected: {client_ip}")
-
-            # Get db_manager from app state (per-request session)
-            db_manager = getattr(request.app.state, "db_manager", None)
-            if not db_manager:
-                logger.error("db_manager not available in app state")
-                return {"authenticated": False, "error": "Database not configured"}
-
-            # Use async context manager for request-scoped session
-            from .auth.localhost_user import ensure_localhost_user
-
-            try:
-                async with db_manager.get_session_async() as session:
-                    # Create/retrieve localhost user
-                    localhost_user = await ensure_localhost_user(session)
-
-                    # Set request state
-                    request.state.user = localhost_user
-                    request.state.user_id = localhost_user.username
-                    request.state.authenticated = True
-                    request.state.is_auto_login = True
-                    request.state.tenant_key = localhost_user.tenant_key
-
-                    return {
-                        "authenticated": True,
-                        "user": localhost_user.username,
-                        "user_id": localhost_user.username,
-                        "user_obj": localhost_user,
-                        "is_auto_login": True,
-                        "tenant_key": localhost_user.tenant_key,
-                    }
-            except Exception as e:
-                logger.error(f"Failed to authenticate localhost user: {e}", exc_info=True)
-                return {"authenticated": False, "error": f"Localhost authentication failed: {str(e)}"}
-
-        # Network clients require credentials
+        # All clients require credentials (unified auth)
         return await self._validate_network_credentials(request)
 
     def _get_client_ip(self, request: Request) -> str:
@@ -473,8 +430,8 @@ class AuthManager:
             if token_info:
                 jwt_result = {
                     "authenticated": True,
-                    "user": token_info.get("user_id"),
-                    "user_id": token_info.get("user_id"),
+                    "user": token_info.get("username"),
+                    "user_id": token_info.get("username"),
                     "tenant_key": token_info.get("tenant_key", "default"),
                     "is_auto_login": False,
                     "permissions": ["*"],
@@ -486,7 +443,7 @@ class AuthManager:
                     try:
                         async with db_manager.get_session_async() as session:
                             result = await session.execute(
-                                select(User).where(User.username == token_info.get("user_id"))
+                                select(User).where(User.username == token_info.get("username"))
                             )
                             user_obj = result.scalar_one_or_none()
 

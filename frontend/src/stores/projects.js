@@ -157,20 +157,26 @@ export const useProjectStore = defineStore('projects', () => {
   async function activateProject(id) {
     loading.value = true
     error.value = null
+    // Optimistic update with rollback on failure
+    const index = projects.value.findIndex((p) => p.id === id)
+    const previous = index !== -1 ? { ...projects.value[index] } : null
+    if (index !== -1) {
+      projects.value[index] = {
+        ...projects.value[index],
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      }
+    }
     try {
       const response = await api.projects.activate(id)
-
-      // Immediately update local state for instant UI feedback
-      const index = projects.value.findIndex((p) => p.id === id)
-      if (index !== -1) {
-        projects.value[index] = { ...projects.value[index], status: 'active', updated_at: new Date().toISOString() }
-      }
-
-      // Refresh full list to get server state (includes deactivated projects)
+      // Sync with server state
       await fetchProjects()
-
       return response.data
     } catch (err) {
+      // Roll back optimistic update
+      if (index !== -1 && previous) {
+        projects.value[index] = previous
+      }
       error.value = err.message || 'Failed to activate project'
       console.error('Failed to activate project:', err)
       throw err
@@ -182,18 +188,25 @@ export const useProjectStore = defineStore('projects', () => {
   async function deactivateProject(id) {
     loading.value = true
     error.value = null
+    // Optimistic update with rollback on failure
+    const index = projects.value.findIndex((p) => p.id === id)
+    const previous = index !== -1 ? { ...projects.value[index] } : null
+    if (index !== -1) {
+      projects.value[index] = {
+        ...projects.value[index],
+        status: 'inactive',
+        updated_at: new Date().toISOString(),
+      }
+    }
     try {
       await api.projects.deactivate(id)
-
-      // Immediately update local state for instant UI feedback
-      const index = projects.value.findIndex((p) => p.id === id)
-      if (index !== -1) {
-        projects.value[index] = { ...projects.value[index], status: 'inactive', updated_at: new Date().toISOString() }
-      }
-
-      // Refresh full list to get server state
+      // Sync with server state
       await fetchProjects()
     } catch (err) {
+      // Roll back optimistic update
+      if (index !== -1 && previous) {
+        projects.value[index] = previous
+      }
       error.value = err.message || 'Failed to deactivate project'
       console.error('Failed to deactivate project:', err)
       throw err

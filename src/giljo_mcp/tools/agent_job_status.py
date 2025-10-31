@@ -173,12 +173,12 @@ def register_agent_job_status_tools(
                     # Handover 0066: 'blocked' is a terminal state like 'completed'
                     def update_to_blocked(sync_session):
                         from sqlalchemy import select
-                        from giljo_mcp.models import MCPAgentJob
+                        from giljo_mcp.models import Job
 
                         # Get job
-                        stmt = select(MCPAgentJob).where(
-                            MCPAgentJob.tenant_key == tenant_key,
-                            MCPAgentJob.job_id == job_id
+                        stmt = select(Job).where(
+                            Job.tenant_key == tenant_key,
+                            Job.job_id == job_id
                         )
                         db_job = sync_session.execute(stmt).scalar_one_or_none()
 

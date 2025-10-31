@@ -1,5 +1,5 @@
 """
-Agent job repository for MCPAgentJob operations.
+Agent job repository for Job operations.
 
 Handover 0017: Provides agent job coordination and lifecycle management.
 Separate from user tasks - handles agent-to-agent job coordination for agentic orchestration.
@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from ..models import MCPAgentJob
+from ..models import Job
 from .base import BaseRepository
 
 
@@ -29,12 +29,12 @@ class AgentJobRepository:
             db_manager: Database manager instance
         """
         self.db = db_manager
-        self.base_repo = BaseRepository(MCPAgentJob, db_manager)
+        self.base_repo = BaseRepository(Job, db_manager)
 
     def create_job(self, session: Session, tenant_key: str,
                    agent_type: str, mission: str,
                    spawned_by: Optional[str] = None,
-                   context_chunks: Optional[List[str]] = None) -> MCPAgentJob:
+                   context_chunks: Optional[List[str]] = None) -> Job:
         """
         Create a new agent job.
 
@@ -47,7 +47,7 @@ class AgentJobRepository:
             context_chunks: Optional list of chunk IDs for context loading
 
         Returns:
-            Created MCPAgentJob instance
+            Created Job instance
         """
         return self.base_repo.create(
             session, tenant_key,
@@ -59,7 +59,7 @@ class AgentJobRepository:
         )
 
     def get_job_by_job_id(self, session: Session, tenant_key: str,
-                          job_id: str) -> Optional[MCPAgentJob]:
+                          job_id: str) -> Optional[Job]:
         """
         Get a job by its job_id.
 
@@ -69,11 +69,11 @@ class AgentJobRepository:
             job_id: Job ID to retrieve
 
         Returns:
-            MCPAgentJob instance or None if not found
+            Job instance or None if not found
         """
-        return session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.job_id == job_id
+        return session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.job_id == job_id
         ).first()
 
     def update_status(self, session: Session, tenant_key: str,
@@ -94,9 +94,9 @@ class AgentJobRepository:
         Returns:
             True if job was updated, False if not found
         """
-        job = session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.job_id == job_id
+        job = session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.job_id == job_id
         ).first()
 
         if job:
@@ -116,7 +116,7 @@ class AgentJobRepository:
         return False
 
     def get_active_jobs(self, session: Session, tenant_key: str,
-                        agent_type: Optional[str] = None) -> List[MCPAgentJob]:
+                        agent_type: Optional[str] = None) -> List[Job]:
         """
         Get all active jobs (pending or active status).
 
@@ -126,20 +126,20 @@ class AgentJobRepository:
             agent_type: Optional filter by agent type
 
         Returns:
-            List of active MCPAgentJob instances
+            List of active Job instances
         """
-        query = session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.status.in_(["pending", "active"])
+        query = session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.status.in_(["pending", "active"])
         )
 
         if agent_type:
-            query = query.filter(MCPAgentJob.agent_type == agent_type)
+            query = query.filter(Job.agent_type == agent_type)
 
-        return query.order_by(MCPAgentJob.created_at).all()
+        return query.order_by(Job.created_at).all()
 
     def get_jobs_by_status(self, session: Session, tenant_key: str,
-                           status: str) -> List[MCPAgentJob]:
+                           status: str) -> List[Job]:
         """
         Get all jobs with a specific status.
 
@@ -149,15 +149,15 @@ class AgentJobRepository:
             status: Status to filter by
 
         Returns:
-            List of MCPAgentJob instances with the specified status
+            List of Job instances with the specified status
         """
-        return session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.status == status
-        ).order_by(MCPAgentJob.created_at.desc()).all()
+        return session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.status == status
+        ).order_by(Job.created_at.desc()).all()
 
     def get_jobs_by_spawner(self, session: Session, tenant_key: str,
-                            spawned_by: str) -> List[MCPAgentJob]:
+                            spawned_by: str) -> List[Job]:
         """
         Get all jobs spawned by a specific agent.
 
@@ -167,12 +167,12 @@ class AgentJobRepository:
             spawned_by: Agent ID that spawned jobs
 
         Returns:
-            List of MCPAgentJob instances spawned by the agent
+            List of Job instances spawned by the agent
         """
-        return session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.spawned_by == spawned_by
-        ).order_by(MCPAgentJob.created_at.desc()).all()
+        return session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.spawned_by == spawned_by
+        ).order_by(Job.created_at.desc()).all()
 
     def add_message(self, session: Session, tenant_key: str,
                     job_id: str, message: Dict[str, Any]) -> bool:
@@ -188,9 +188,9 @@ class AgentJobRepository:
         Returns:
             True if message was added, False if job not found
         """
-        job = session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.job_id == job_id
+        job = session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.job_id == job_id
         ).first()
 
         if job:
@@ -220,9 +220,9 @@ class AgentJobRepository:
         Returns:
             True if job was acknowledged, False if not found
         """
-        job = session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.job_id == job_id
+        job = session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.job_id == job_id
         ).first()
 
         if job:
@@ -245,9 +245,9 @@ class AgentJobRepository:
         Returns:
             True if chunk was added, False if job not found
         """
-        job = session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key,
-            MCPAgentJob.job_id == job_id
+        job = session.query(Job).filter(
+            Job.tenant_key == tenant_key,
+            Job.job_id == job_id
         ).first()
 
         if job:
@@ -272,33 +272,33 @@ class AgentJobRepository:
         Returns:
             Dictionary with job statistics
         """
-        query = session.query(MCPAgentJob).filter(
-            MCPAgentJob.tenant_key == tenant_key
+        query = session.query(Job).filter(
+            Job.tenant_key == tenant_key
         )
 
         if agent_type:
-            query = query.filter(MCPAgentJob.agent_type == agent_type)
+            query = query.filter(Job.agent_type == agent_type)
 
         # Count by status
         status_counts = session.query(
-            MCPAgentJob.status,
-            func.count(MCPAgentJob.id)
+            Job.status,
+            func.count(Job.id)
         ).filter(
-            MCPAgentJob.tenant_key == tenant_key
+            Job.tenant_key == tenant_key
         )
 
         if agent_type:
-            status_counts = status_counts.filter(MCPAgentJob.agent_type == agent_type)
+            status_counts = status_counts.filter(Job.agent_type == agent_type)
 
-        status_counts = status_counts.group_by(MCPAgentJob.status).all()
+        status_counts = status_counts.group_by(Job.status).all()
 
         # Count by agent type
         type_counts = session.query(
-            MCPAgentJob.agent_type,
-            func.count(MCPAgentJob.id)
+            Job.agent_type,
+            func.count(Job.id)
         ).filter(
-            MCPAgentJob.tenant_key == tenant_key
-        ).group_by(MCPAgentJob.agent_type).all()
+            Job.tenant_key == tenant_key
+        ).group_by(Job.agent_type).all()
 
         total_jobs = query.count()
 

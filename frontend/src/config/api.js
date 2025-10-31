@@ -5,6 +5,7 @@ import configService from '@/services/configService'
 // Initial fallback configuration (used before backend config is fetched)
 const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
 const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
+const DEFAULT_BASE_URL = import.meta.env.DEV ? '' : `http://${API_HOST}:${API_PORT}`
 
 // Configuration object that will be updated after fetching from backend
 let runtimeConfig = null
@@ -26,12 +27,17 @@ export async function initializeApiConfig() {
       security: backendConfig.security,
     }
 
-    // Update API_CONFIG with correct values
-    const newBaseURL = `http://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+    // Choose baseURL strategy
+    // - Dev: use same-origin + Vite proxy to avoid CORS
+    // - Prod: use explicit host:port from backend
+    const devMode = import.meta.env.DEV === true
+    const newBaseURL = devMode ? '' : `http://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+
+    // Update API and WebSocket config
     API_CONFIG.REST_API.baseURL = newBaseURL
     API_CONFIG.WEBSOCKET.url = runtimeConfig.websocket.url
 
-    // CRITICAL: Update axios instance baseURL (created before config was fetched)
+    // Update axios instance baseURL (created before config was fetched)
     // Import dynamically to avoid circular dependency
     const { updateApiBaseURL } = await import('@/services/api')
     updateApiBaseURL(newBaseURL)
@@ -54,7 +60,7 @@ export function getRuntimeConfig() {
 
 export const API_CONFIG = {
   REST_API: {
-    baseURL: import.meta.env.VITE_API_URL || `http://${API_HOST}:${API_PORT}`,
+    baseURL: import.meta.env.VITE_API_URL || DEFAULT_BASE_URL,
     timeout: 30000,
     headers: {
       'Content-Type': 'application/json',
