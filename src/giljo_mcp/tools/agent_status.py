@@ -18,7 +18,7 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy import select
 
-from ..models import MCPAgentJob
+from ..models import Job
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +106,9 @@ async def set_agent_status(
 
         async with db_manager.get_session_async() as session:
             # Get job with tenant isolation
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == job_id,
-                MCPAgentJob.tenant_key == tenant_key
+            stmt = select(Job).where(
+                Job.job_id == job_id,
+                Job.tenant_key == tenant_key
             )
             result = await session.execute(stmt)
             job = result.scalar_one_or_none()

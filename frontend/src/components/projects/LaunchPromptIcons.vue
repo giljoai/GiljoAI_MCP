@@ -155,26 +155,17 @@ function fallbackCopyCommand(text) {
   /* Tool-specific colors */
   &--claudeCode {
     background-color: var(--tool-claude-code);
-
-    &:hover {
-      background-color: darken(#E67E22, 10%);
-    }
+    &:hover { filter: brightness(0.9); }
   }
 
   &--codex {
     background-color: var(--tool-codex);
-
-    &:hover {
-      background-color: darken(#9B59B6, 10%);
-    }
+    &:hover { filter: brightness(0.9); }
   }
 
   &--gemini {
     background-color: var(--tool-gemini);
-
-    &:hover {
-      background-color: darken(#3498DB, 10%);
-    }
+    &:hover { filter: brightness(0.9); }
   }
 }
 

@@ -10,7 +10,31 @@ Provides request/response models for:
 from datetime import datetime
 from typing import Optional
 
+from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class TaskCreate(BaseModel):
+    """
+    Schema for creating a task (POST /tasks/).
+
+    Product and project are optional to allow unscoped tasks.
+    """
+    title: str = Field(..., min_length=1, max_length=255, description="Task title")
+    description: Optional[str] = Field(None, description="Task description")
+    status: Optional[str] = Field(None, description="Task status: pending, in_progress, completed, blocked, cancelled, converted")
+    priority: Optional[str] = Field(None, description="Task priority: low, medium, high, critical")
+    category: Optional[str] = Field(None, max_length=100, description="Task category")
+    product_id: Optional[str] = Field(None, description="Product ID for isolation")
+    project_id: Optional[str] = Field(None, description="Associated project ID")
+    parent_task_id: Optional[str] = Field(None, description="Parent task ID for hierarchy")
+    due_date: Optional[datetime] = Field(None, description="Task due date")
+    estimated_effort: Optional[float] = Field(None, ge=0, description="Estimated effort in hours")
+    actual_effort: Optional[float] = Field(None, ge=0, description="Actual effort in hours")
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskUpdate(BaseModel):
@@ -28,6 +52,10 @@ class TaskUpdate(BaseModel):
     # Handover 0076: Removed assigned_to_user_id field
     estimated_effort: Optional[float] = Field(None, ge=0, description="Estimated effort in hours")
     actual_effort: Optional[float] = Field(None, ge=0, description="Actual effort in hours")
+    due_date: Optional[datetime] = Field(None, description="Task due date")
+    parent_task_id: Optional[str] = Field(None, description="Parent task ID for hierarchy changes")
+    product_id: Optional[str] = Field(None, description="Update product scope")
+    project_id: Optional[str] = Field(None, description="Update associated project")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -109,3 +137,8 @@ class TaskResponse(BaseModel):
     actual_effort: Optional[float] = Field(None, description="Actual effort in hours")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StatusUpdate(BaseModel):
+    """Schema for status-only updates."""
+    status: str = Field(..., description="New task status")

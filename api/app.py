@@ -226,7 +226,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             f"Loaded API key from environment (key ending in: ...{api_key[-4:] if len(api_key) > 4 else 'XXXX'})"
         )
     else:
-        logger.info("No API key configured - localhost auto-login available, network clients require JWT")
+        logger.info("No API key configured - all clients require JWT authentication (unified auth)")
 
     # Initialize WebSocket manager
     try:

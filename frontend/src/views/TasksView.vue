@@ -958,6 +958,17 @@ async function saveTask() {
   }
 }
 
+// Helper function to get user name
+function getUserName(userId) {
+  if (!userId) return 'Unknown'
+  // If it's the current user, return their username
+  if (userStore.currentUser?.id === userId) {
+    return userStore.currentUser.username
+  }
+  // Otherwise return a placeholder (could be enhanced with user lookup API later)
+  return 'User'
+}
+
 // Phase 4: Fetch tasks with user filter
 async function fetchTasks() {
   const params = {
@@ -985,7 +996,11 @@ onMounted(() => {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([fetchTasks(), agentStore.fetchAgents()])
+  try {
+    await Promise.all([fetchTasks(), agentStore.fetchAgents()])
+  } catch (error) {
+    console.error('Failed to initialize TasksView:', error)
+  }
 })
 </script>
 

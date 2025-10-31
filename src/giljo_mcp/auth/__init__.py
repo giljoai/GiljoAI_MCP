@@ -1,18 +1,18 @@
 """
 Authentication module for GiljoAI MCP.
 
-This module provides authentication components for LAN/WAN deployment modes:
+This module provides unified authentication for all deployment contexts:
 - JWT token management for web dashboard sessions
 - Auth dependencies for FastAPI endpoints
-- Auto-login for localhost clients (127.0.0.1, ::1)
-- Legacy AuthManager for file-based auth (backwards compatibility)
+- Production parity: localhost and network clients treated identically
+- Legacy AuthManager for backwards compatibility
 
 Components:
     - JWTManager: Create and verify JWT tokens
-    - AutoLoginMiddleware: Auto-authenticate localhost clients
+    - AutoLoginMiddleware: Deprecated (kept for backwards compatibility)
     - get_current_user: FastAPI dependency for authentication
     - require_admin: FastAPI dependency for admin-only endpoints
-    - AuthManager: Legacy file-based auth (imported from sibling module)
+    - AuthManager: Main auth manager with unified logic
 """
 
 # Import from the auth/ subdirectory modules

@@ -8,7 +8,7 @@
  */
 
 import { defineStore } from 'pinia'
-import { useWebsocketStore } from './websocket'
+import { useWebSocketStore } from './websocket'
 import api from '@/services/api'
 
 export const useProjectTabsStore = defineStore('projectTabs', {
@@ -205,7 +205,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
         this.loading = false
 
         // Subscribe to WebSocket updates
-        const wsStore = useWebsocketStore()
+        const wsStore = useWebSocketStore()
         wsStore.subscribeToProject(this.currentProject.project_id)
       } catch (error) {
         console.error('Failed to launch jobs:', error)

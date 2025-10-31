@@ -21,7 +21,7 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, AgentTemplate, MCPAgentJob, Project, Product
+from giljo_mcp.models import Agent, AgentTemplate, Job, Project, Product
 from giljo_mcp.orchestrator import ProjectOrchestrator
 from giljo_mcp.template_manager import get_template_manager
 
@@ -263,11 +263,11 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
                 if not project:
                     return {'error': f"Project '{project_id}' not found"}
 
-                # Get all MCPAgentJobs for this project/tenant
-                # Note: MCPAgentJob doesn't have project_id, so we filter by tenant_key
+                # Get all Jobs for this project/tenant
+                # Note: Job doesn't have project_id, so we filter by tenant_key
                 jobs_result = await session.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.tenant_key == tenant_key
+                    select(Job).where(
+                        Job.tenant_key == tenant_key
                     )
                 )
                 jobs = jobs_result.scalars().all()

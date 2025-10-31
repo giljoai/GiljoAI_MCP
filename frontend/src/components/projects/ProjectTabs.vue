@@ -4,12 +4,11 @@
     <v-tabs
       v-model="activeTabIndex"
       bg-color="transparent"
-      color="accent-primary"
+      color="white"
       class="tabs-header"
-      grow
+      align-tabs="start"
     >
       <v-tab value="launch">
-        <v-icon start>mdi-rocket-launch-outline</v-icon>
         Launch
       </v-tab>
 
@@ -17,8 +16,7 @@
         value="jobs"
         :disabled="!store.isLaunched"
       >
-        <v-icon start>mdi-briefcase-outline</v-icon>
-        Jobs
+        Implementation
         <v-badge
           v-if="store.unreadCount > 0"
           :content="store.unreadCount"
@@ -35,6 +33,7 @@
         <LaunchTab
           :project="project"
           :is-staging="store.isStaging"
+          :readonly="readonly"
           @stage-project="handleStageProject"
           @launch-jobs="handleLaunchJobs"
           @cancel-staging="handleCancelStaging"
@@ -52,6 +51,7 @@
           :agents="store.sortedAgents"
           :messages="store.messages"
           :all-agents-complete="store.allAgentsComplete"
+          :readonly="readonly"
           @launch-agent="handleLaunchAgent"
           @view-details="emit('view-details', $event)"
           @view-error="emit('view-error', $event)"
@@ -85,7 +85,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useProjectTabsStore } from '@/stores/projectTabs'
-import { useWebsocketStore } from '@/stores/websocket'
+import { useWebSocketStore } from '@/stores/websocket'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
 
@@ -96,6 +96,10 @@ const props = defineProps({
   project: {
     type: Object,
     required: true
+  },
+  readonly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -120,7 +124,7 @@ const emit = defineEmits([
  * Store
  */
 const store = useProjectTabsStore()
-const wsStore = useWebsocketStore()
+const wsStore = useWebSocketStore()
 
 /**
  * Local state
@@ -269,33 +273,35 @@ async function handleSendMessage(message, recipient) {
 }
 
 .tabs-header {
-  background: var(--color-bg-primary);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border-bottom: 1px solid rgba(158, 158, 158, 0.5);
 
   :deep(.v-tab) {
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    font-size: 14px;
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0;
+    font-size: 16px;
     transition: all 0.3s ease;
+    min-width: auto;
+    padding: 0 16px;
+  }
 
-    &--selected {
-      color: var(--color-accent-primary);
-    }
+  :deep(.v-tab--selected) {
+    color: white;
+  }
 
-    &:hover:not(.v-tab--disabled) {
-      background: rgba(255, 255, 255, 0.05);
-    }
+  :deep(.v-tab:hover:not(.v-tab--disabled)) {
+    background: transparent;
+  }
 
-    &--disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
+  :deep(.v-tab--disabled) {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   :deep(.v-tab__slider) {
-    background: var(--color-accent-primary);
-    height: 3px;
+    background: white;
+    height: 2px;
   }
 }
 
