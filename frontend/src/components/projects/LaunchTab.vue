@@ -60,7 +60,6 @@
         <v-card class="description-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header -->
           <v-card-title class="panel-header bg-primary text-white">
-            <v-icon class="mr-2">mdi-file-document-outline</v-icon>
             <span>Project Description</span>
           </v-card-title>
 
@@ -77,7 +76,7 @@
             <!-- Edit Button -->
             <v-btn
               variant="outlined"
-              color="primary"
+              color="white"
               size="small"
               @click="handleEditDescription"
               class="align-self-end"
@@ -93,9 +92,8 @@
       <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
         <v-card class="mission-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header -->
-          <v-card-title class="panel-header bg-info text-white">
-            <v-icon class="mr-2">mdi-target</v-icon>
-            <span>Orchestrator Mission</span>
+          <v-card-title class="panel-header bg-primary text-white">
+            <span>Orchestrator Created Mission</span>
           </v-card-title>
 
           <v-divider />
@@ -390,34 +388,55 @@ function getInstanceNumber(agent) {
 }
 
 /**
- * Handle Stage Project button click
+ * Handle Stage Project button click - Handover 0079
  */
 async function handleStageProject() {
-  // Generate launch prompt for orchestrator
-  const launchPrompt = `You are the Orchestrator agent for project "${props.project.name}".
+  stagingInProgress.value = true
 
-Project Description:
-${props.project.description || 'No description provided'}
-
-Your task:
-1. Analyze the project description and product context
-2. Create a detailed project mission that breaks down the work
-3. Select the appropriate agent types needed for this project
-4. Write the mission in a clear, actionable format
-
-Once complete, the mission will appear in the mission window and agents will be selected automatically.`
-
-  // Copy to clipboard
   try {
-    await navigator.clipboard.writeText(launchPrompt)
-    toastMessage.value = 'Prompt has been copied, paste in your CLI agent\'s terminal'
+    // Show loading toast
+    toastMessage.value = 'Generating comprehensive orchestrator prompt...'
     showToast.value = true
-    
-    stagingInProgress.value = true
+
+    // Call API to generate comprehensive staging prompt
+    const response = await window.api.get(`/api/prompts/staging/${props.project.id}`, {
+      params: { tool: 'claude-code' }  // TODO: Make tool selectable in UI
+    })
+
+    const { prompt, token_estimate, budget_utilization, warnings, context_included } = response.data
+
+    // Log generation details
+    console.log('[STAGING] Prompt generated:', {
+      tokens: token_estimate,
+      utilization: budget_utilization,
+      context: context_included,
+      warnings
+    })
+
+    // Show warnings if any
+    if (warnings && warnings.length > 0) {
+      console.warn('[STAGING] Token budget warnings:', warnings)
+      toastMessage.value = `Prompt generated (${token_estimate} tokens, ${budget_utilization})`
+      showToast.value = true
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+
+    // Copy comprehensive prompt to clipboard
+    await navigator.clipboard.writeText(prompt)
+
+    // Success feedback
+    toastMessage.value = `Orchestrator prompt copied! (${token_estimate} tokens, ${budget_utilization} budget used)`
+    showToast.value = true
+
     emit('stage-project')
+
   } catch (err) {
-    console.error('Failed to copy to clipboard:', err)
-    toastMessage.value = 'Failed to copy prompt to clipboard'
+    console.error('[STAGING] Failed to generate prompt:', err)
+    stagingInProgress.value = false
+
+    // Show error with details
+    const errorMsg = err.response?.data?.detail || err.message || 'Failed to generate orchestrator prompt'
+    toastMessage.value = `Error: ${errorMsg}`
     showToast.value = true
   }
 }
@@ -603,7 +622,7 @@ n/* Description and Mission Panels */
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
-  color: rgba(0, 0, 0, 0.87);
+  color: #BDBDBD !important;
 }
 
 .mission-text {
