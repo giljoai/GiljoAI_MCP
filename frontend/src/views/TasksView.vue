@@ -607,11 +607,12 @@ const tasks = computed(() => taskStore.tasks)
 // Product-filtered tasks
 const userFilteredTasks = computed(() => {
   if (taskFilter.value === 'product_tasks') {
-    // Show tasks for active product only
-    if (!productStore.currentProductId) {
+    // Show tasks for active product only (use activeProduct if currentProductId not set)
+    const productId = productStore.currentProductId || productStore.activeProduct?.id
+    if (!productId) {
       return [] // No active product, return empty list
     }
-    return tasks.value.filter((task) => task.product_id === productStore.currentProductId)
+    return tasks.value.filter((task) => task.product_id === productId)
   } else if (taskFilter.value === 'all_tasks') {
     // Show tasks with NULL product_id
     return tasks.value.filter((task) => task.product_id === null || task.product_id === undefined)
@@ -627,9 +628,10 @@ const filteredTasks = computed(() => {
   // Start with user-filtered tasks (Phase 4)
   let filteredList = userFilteredTasks.value
 
-  // Then filter by product if one is selected
-  if (productStore.currentProductId) {
-    filteredList = filteredList.filter((t) => t.product_id === productStore.currentProductId)
+  // Then filter by product if one is selected (use activeProduct if currentProductId not set)
+  const productId = productStore.currentProductId || productStore.activeProduct?.id
+  if (productId) {
+    filteredList = filteredList.filter((t) => t.product_id === productId)
   }
 
   if (statusFilter.value) {
@@ -942,9 +944,10 @@ async function saveTask() {
     if (editingTask.value) {
       await taskStore.updateTask(editingTask.value.id, currentTask.value)
     } else {
-      // Add current product_id to new task
-      if (productStore.currentProductId) {
-        currentTask.value.product_id = productStore.currentProductId
+      // Add current product_id to new task (use activeProduct if currentProductId not set)
+      const productId = productStore.currentProductId || productStore.activeProduct?.id
+      if (productId) {
+        currentTask.value.product_id = productId
       }
       await taskStore.createTask(currentTask.value)
     }

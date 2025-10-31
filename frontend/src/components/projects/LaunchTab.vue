@@ -56,8 +56,8 @@
       </v-col>
 
       <!-- Middle Column: Project Description Panel -->
-      <v-col cols="12" md="3" class="mb-4 mb-md-0">
-        <v-card class="description-panel h-100" elevation="2">
+      <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
+        <v-card class="description-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header -->
           <v-card-title class="panel-header bg-primary text-white">
             <v-icon class="mr-2">mdi-file-document-outline</v-icon>
@@ -67,7 +67,7 @@
           <v-divider />
 
           <!-- Content -->
-          <v-card-text class="pa-4 d-flex flex-column" style="min-height: 400px">
+          <v-card-text class="pa-4 d-flex flex-column flex-grow-1">
             <div class="scrollable-content flex-grow-1 mb-3">
               <div class="text-body-2 description-text">
                 {{ project.description || 'No description available' }}
@@ -90,8 +90,8 @@
       </v-col>
 
       <!-- Right Column: Orchestrator Mission Panel -->
-      <v-col cols="12" md="3" class="mb-4 mb-md-0">
-        <v-card class="mission-panel h-100" elevation="2">
+      <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
+        <v-card class="mission-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header -->
           <v-card-title class="panel-header bg-info text-white">
             <v-icon class="mr-2">mdi-target</v-icon>
@@ -101,7 +101,7 @@
           <v-divider />
 
           <!-- Content -->
-          <v-card-text class="pa-4 d-flex flex-column" style="min-height: 400px">
+          <v-card-text class="pa-4 d-flex flex-column flex-grow-1">
             <!-- Loading State -->
             <div
               v-if="stagingInProgress"
@@ -528,6 +528,13 @@ defineExpose({
   letter-spacing: 0.5px;
   padding: 12px 16px;
 }
+n/* Description and Mission Panels */
+.description-panel,
+.mission-panel {
+  min-height: 200px;
+  max-height: 400px;
+}
+
 
 /* Orchestrator Card */
 .orchestrator-card {
