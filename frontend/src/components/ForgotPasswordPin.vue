@@ -3,6 +3,8 @@
     v-model="internalShow"
     max-width="600"
     persistent
+    scrollable
+    attach
     @keydown.esc="handleClose"
   >
     <v-card>
