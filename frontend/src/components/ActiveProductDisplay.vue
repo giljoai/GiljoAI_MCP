@@ -7,9 +7,9 @@
       :to="{ name: 'Products' }"
       prepend-icon="mdi-package-variant-closed"
       color="primary"
-      variant="outlined"
+      variant="flat"
       size="small"
-      class="active-product-chip"
+      class="active-product-chip text-white"
       aria-label="Click to view active product"
     >
       <span class="font-weight-medium">Active: {{ productsStore.activeProduct.name }}</span>
@@ -108,6 +108,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  color: #fff !important; /* Ensure white indicator text when active */
 }
 
 .active-product-chip:hover {

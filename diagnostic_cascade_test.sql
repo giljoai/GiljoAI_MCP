@@ -30,8 +30,8 @@ BEGIN
     VALUES (test_product_id, test_tenant, 'Test Cascade Product', 'For testing CASCADE', 'none', false);
 
     -- Insert related project
-    INSERT INTO projects (id, tenant_key, product_id, name, alias, mission, status)
-    VALUES ('test-proj-123', test_tenant, test_product_id, 'Test Project', 'TST001', 'Test', 'active');
+    INSERT INTO projects (id, tenant_key, product_id, name, alias, description, mission, status)
+    VALUES ('test-proj-123', test_tenant, test_product_id, 'Test Project', 'TST001', 'Test description', 'Test', 'active');
 
     -- Insert related task
     INSERT INTO tasks (id, tenant_key, product_id, project_id, title, status)
