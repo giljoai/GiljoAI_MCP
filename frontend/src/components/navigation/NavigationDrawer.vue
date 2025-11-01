@@ -74,14 +74,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSettingsStore } from '@/stores/settings'
-import { useProductStore } from '@/stores/products'
-import { useProjectStore } from '@/stores/projects'
-import { api } from '@/services/api'
 
 const props = defineProps({
   modelValue: {
@@ -104,57 +101,6 @@ const theme = useTheme()
 const route = useRoute()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
-const productStore = useProductStore()
-const projectStore = useProjectStore()
-
-// Active project tracking for Jobs button
-const activeProjectId = ref(null)
-
-// Fetch active project
-async function fetchActiveProject() {
-  try {
-    const response = await api.projects.getActive()
-    if (response.data) {
-      activeProjectId.value = response.data.id
-      console.log('[NavigationDrawer] Active project loaded:', response.data.name)
-    } else {
-      activeProjectId.value = null
-      console.log('[NavigationDrawer] No active project')
-    }
-  } catch (err) {
-    activeProjectId.value = null
-    console.warn('[NavigationDrawer] No active project:', err.message)
-  }
-}
-
-// Fetch active project on mount
-onMounted(async () => {
-  await fetchActiveProject()
-})
-
-// Watch for product changes - clear active project when product switches
-watch(
-  () => productStore.activeProduct,
-  async (newProduct, oldProduct) => {
-    // Product changed (including activation/deactivation)
-    if (newProduct?.id !== oldProduct?.id) {
-      console.log('[NavigationDrawer] Product changed, refreshing active project')
-      await fetchActiveProject()
-    }
-  },
-  { deep: true }
-)
-
-// Watch for project changes within the same product
-watch(
-  () => projectStore.projects.find(p => p.status === 'active')?.id,
-  async (newActiveProjectId, oldActiveProjectId) => {
-    if (newActiveProjectId !== oldActiveProjectId) {
-      console.log('[NavigationDrawer] Active project changed, updating Jobs button')
-      await fetchActiveProject()
-    }
-  }
-)
 
 // Dynamic Giljo icon for Jobs based on route and theme
 const jobsIcon = computed(() => {
@@ -167,22 +113,13 @@ const jobsIcon = computed(() => {
   return '/icons/Giljo_gray_Face.svg'
 })
 
-// Jobs button path - routes to active project
-const jobsPath = computed(() => {
-  return activeProjectId.value ? `/projects/${activeProjectId.value}` : null
-})
-
-const jobsTitle = computed(() => {
-  return activeProjectId.value ? 'Jobs' : 'No active project'
-})
-
 // Navigation items
 const navigationItems = computed(() => {
   const baseItems = [
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-    { name: 'Jobs', path: jobsPath.value, title: jobsTitle.value, customIcon: jobsIcon.value, disabled: !activeProjectId.value },
+    { name: 'Jobs', path: '/launch', title: 'Jobs', customIcon: jobsIcon.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 

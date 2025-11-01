@@ -98,6 +98,17 @@ const routes = [
     },
   },
   {
+    path: '/launch',
+    name: 'Launch',
+    component: () => import('@/views/LaunchRedirectView.vue'),
+    meta: {
+      layout: 'default',
+      title: 'Launch',
+      showInNav: false,
+      requiresAuth: true,
+    },
+  },
+  {
     path: '/projects/:projectId',
     name: 'ProjectLaunch',
     component: () => import('@/views/ProjectLaunchView.vue'),
