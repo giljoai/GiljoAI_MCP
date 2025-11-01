@@ -898,6 +898,46 @@ class UnifiedInstaller:
                 'errors': [str(e)]
             }
 
+    def _install_npm_dependencies_with_retry(self, frontend_dir: Path, max_retries: int = 3) -> bool:
+        """
+        Install npm dependencies with retry logic for network resilience.
+
+        Args:
+            frontend_dir: Path to frontend directory
+            max_retries: Maximum number of retry attempts (default: 3)
+
+        Returns:
+            True if installation succeeded, False otherwise
+        """
+        for attempt in range(max_retries):
+            if attempt > 0:
+                self._print_info(f"Retrying npm install (attempt {attempt + 1}/{max_retries})...")
+            else:
+                self._print_info("Installing frontend dependencies...")
+
+            npm_result = self.platform.run_npm_command(
+                cmd=['npm', 'install'],
+                cwd=frontend_dir,
+                timeout=300
+            )
+
+            if npm_result['success']:
+                self._print_success("Frontend dependencies installed successfully")
+                return True
+
+            # Failed - show error details
+            error_msg = npm_result.get('stderr', npm_result.get('error', 'Unknown error'))
+            self._print_warning(f"Attempt {attempt + 1} failed: {error_msg}")
+
+            # Wait before retry (exponential backoff: 2s, 4s, 8s)
+            if attempt < max_retries - 1:
+                wait_time = 2 ** (attempt + 1)
+                self._print_info(f"Waiting {wait_time} seconds before retry...")
+                time.sleep(wait_time)
+
+        # All retries exhausted
+        return False
+
     def launch_services(self) -> Dict[str, Any]:
         """
         Launch API and Frontend services
@@ -962,16 +1002,33 @@ class UnifiedInstaller:
                 if frontend_dir.exists():
                     # Check if node_modules exists
                     if not (frontend_dir / 'node_modules').exists():
-                        self._print_info("Installing frontend dependencies...")
-
-                        # Delegate to platform handler for npm command execution
-                        npm_result = self.platform.run_npm_command(
-                            cmd=['npm', 'install'],
-                            cwd=frontend_dir,
-                            timeout=300
-                        )
-                        if not npm_result['success']:
-                            self._print_warning(f"npm install failed: {npm_result.get('stderr', 'Unknown error')}")
+                        # Install dependencies with retry logic (3 attempts)
+                        if not self._install_npm_dependencies_with_retry(frontend_dir):
+                            # CRITICAL: Frontend dependencies failed after retries - FAIL HARD
+                            self._print_error("=" * 70)
+                            self._print_error("INSTALLATION FAILED: Frontend dependencies could not be installed")
+                            self._print_error("=" * 70)
+                            self._print_error("")
+                            self._print_error("Troubleshooting steps:")
+                            self._print_error("  1. Check network connectivity to npm registry:")
+                            self._print_error("     curl https://registry.npmjs.org/")
+                            self._print_error("")
+                            self._print_error("  2. Verify disk space (need ~500MB):")
+                            self._print_error("     df -h  (Linux/macOS)  or  dir  (Windows)")
+                            self._print_error("")
+                            self._print_error("  3. Clear npm cache and retry:")
+                            self._print_error(f"     cd {frontend_dir}")
+                            self._print_error("     npm cache verify")
+                            self._print_error("     npm install --verbose")
+                            self._print_error("")
+                            self._print_error("  4. Check for proxy/firewall blocking npm registry")
+                            self._print_error("     npm config get proxy")
+                            self._print_error("     npm config get https-proxy")
+                            self._print_error("")
+                            self._print_error("=" * 70)
+                            result['error'] = 'npm install failed after 3 retry attempts'
+                            result['success'] = False
+                            return result
 
                     self._print_info("Starting frontend server...")
 
