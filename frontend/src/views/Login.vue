@@ -104,7 +104,7 @@
                 <v-btn
                   variant="text"
                   color="primary"
-                  @click="showForgotPassword = true"
+                  @click="handleForgotPasswordClick"
                   :disabled="loading"
                   aria-label="Open forgot password dialog"
                 >
@@ -277,6 +277,13 @@ async function handleLogin() {
   }
 }
 
+// Handle forgot password click
+function handleForgotPasswordClick() {
+  console.log('[Login] Forgot password clicked, opening modal')
+  showForgotPassword.value = true
+  console.log('[Login] showForgotPassword is now:', showForgotPassword.value)
+}
+
 // Handle password reset success
 function handlePasswordResetSuccess(message) {
   successMessage.value = message
@@ -293,7 +300,7 @@ onMounted(async () => {
   // Restore remembered username if available
   const rememberedUsername = localStorage.getItem('remembered_username')
   const rememberMeFlag = localStorage.getItem('remember_me')
-  
+
   if (rememberedUsername && rememberMeFlag === 'true') {
     username.value = rememberedUsername
     rememberMe.value = true
