@@ -183,7 +183,7 @@
         :search="search"
         :loading="loading"
         :items-per-page="10"
-        class="elevation-0 draggable-table"
+        class="elevation-0"
         data-table
         item-value="id"
       >
@@ -225,19 +225,10 @@
           <div
             class="task-row-content"
             :class="{
-              'drag-over': dropTarget === item.id,
-              dragging: draggedTask?.id === item.id,
               'hierarchy-item': showHierarchy && item.parent_task_id,
               'parent-item': showHierarchy && hasChildren(item.id),
             }"
             :data-test="`task-row-${item.id}`"
-            draggable="true"
-            @dragstart="handleDragStart(item, $event)"
-            @dragend="handleDragEnd"
-            @dragover="handleDragOver($event)"
-            @dragenter="handleDragEnter(item)"
-            @dragleave="handleDragLeave"
-            @drop="handleDrop(item, $event)"
           >
             <!-- Hierarchy Indicators -->
             <div v-if="showHierarchy" class="hierarchy-indicators">
@@ -258,25 +249,9 @@
               </v-icon>
             </div>
 
-            <!-- Drag Handle -->
-            <v-icon class="drag-handle mr-2" size="small" color="grey">
-              mdi-drag-horizontal
-            </v-icon>
-
             <!-- Task Content -->
-            <div class="task-content flex-grow-1">
+            <div class="task-content flex-grow-1" @click="editTask(item)" style="cursor: pointer;">
               <div class="d-flex align-center">
-                <!-- Owner indicator (Phase 4) -->
-                <v-icon
-                  v-if="item.created_by_user_id === user?.id"
-                  color="primary"
-                  size="small"
-                  class="mr-2"
-                  data-test="owner-icon"
-                >
-                  mdi-account-circle
-                </v-icon>
-
                 <span class="font-weight-medium">{{ item.title }}</span>
               </div>
               <div class="text-caption text-medium-emphasis description-truncate">{{ item.description }}</div>
@@ -303,12 +278,6 @@
                   {{ getChildCount(item.id) }} child{{ getChildCount(item.id) > 1 ? 'ren' : '' }}
                 </v-chip>
               </div>
-            </div>
-
-            <!-- Drop Zone Indicator -->
-            <div v-if="isDragging && dropTarget === item.id" class="drop-indicator">
-              <v-icon color="primary">mdi-arrow-down-drop-circle</v-icon>
-              <span class="text-caption">Drop here to make child task</span>
             </div>
           </div>
         </template>
@@ -360,16 +329,6 @@
 
         <!-- Actions Column -->
         <template v-slot:item.actions="{ item }">
-          <!-- View Button -->
-          <v-btn
-            icon="mdi-eye"
-            size="small"
-            variant="text"
-            @click="viewTask(item)"
-            title="View Task"
-            class="mr-1"
-          />
-
           <v-menu>
             <template v-slot:activator="{ props }">
               <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
@@ -574,10 +533,7 @@ const selectedTasks = ref([])
 const selectAll = ref(false)
 const showConversionDialog = ref(false)
 
-// Drag and drop state
-const draggedTask = ref(null)
-const dropTarget = ref(null)
-const isDragging = ref(false)
+// Hierarchy state
 const showHierarchy = ref(false)
 const showConversionHistory = ref(false)
 
@@ -743,11 +699,6 @@ function editTask(task) {
   showTaskDialog.value = true
 }
 
-function viewTask(task) {
-  // Open the same edit dialog (reuse existing functionality)
-  editTask(task)
-}
-
 async function completeTask(task) {
   try {
     await taskStore.updateTask(task.id, { status: 'completed' })
@@ -856,79 +807,7 @@ function getTaskTitle(taskId) {
   return task ? task.title : 'Unknown Task'
 }
 
-// Drag and drop methods
-function handleDragStart(task, event) {
-  draggedTask.value = task
-  isDragging.value = true
-  event.dataTransfer.effectAllowed = 'move'
-  event.dataTransfer.setData('text/plain', task.id)
-
-  // Add visual feedback
-  event.target.style.opacity = '0.5'
-}
-
-function handleDragEnd(event) {
-  draggedTask.value = null
-  isDragging.value = false
-  dropTarget.value = null
-
-  // Reset visual feedback
-  event.target.style.opacity = '1'
-}
-
-function handleDragOver(event) {
-  event.preventDefault()
-  event.dataTransfer.dropEffect = 'move'
-}
-
-function handleDragEnter(item) {
-  if (draggedTask.value && draggedTask.value.id !== item.id) {
-    // Prevent dropping on descendants
-    if (!isDescendant(draggedTask.value.id, item.id)) {
-      dropTarget.value = item.id
-    }
-  }
-}
-
-function handleDragLeave() {
-  // Add small delay to prevent flickering
-  setTimeout(() => {
-    if (!document.querySelector(':hover')?.closest('.task-row-content')) {
-      dropTarget.value = null
-    }
-  }, 50)
-}
-
-async function handleDrop(targetTask, event) {
-  event.preventDefault()
-
-  if (!draggedTask.value || draggedTask.value.id === targetTask.id) {
-    return
-  }
-
-  // Prevent creating circular dependencies
-  if (isDescendant(draggedTask.value.id, targetTask.id)) {
-    console.warn('Cannot create circular dependency')
-    return
-  }
-
-  try {
-    // Update the dragged task to have the target as parent
-    await taskStore.updateTask(draggedTask.value.id, {
-      parent_task_id: targetTask.id,
-    })
-
-    // Refresh tasks to show updated hierarchy
-    await taskStore.fetchTasks()
-  } catch (error) {
-    console.error('Failed to update task hierarchy:', error)
-  } finally {
-    draggedTask.value = null
-    isDragging.value = false
-    dropTarget.value = null
-  }
-}
-
+// Hierarchy helper methods
 function isDescendant(ancestorId, descendantId) {
   const descendant = filteredTasks.value.find((t) => t.id === descendantId)
   if (!descendant || !descendant.parent_task_id) return false
@@ -1030,37 +909,10 @@ onMounted(async () => {
   border-radius: 4px;
   transition: all 0.2s ease;
   min-height: 48px;
-  cursor: grab;
 }
 
 .task-row-content:hover {
   background-color: rgba(0, 0, 0, 0.04);
-}
-
-.task-row-content.dragging {
-  opacity: 0.5;
-  transform: rotate(5deg);
-  cursor: grabbing;
-}
-
-.task-row-content.drag-over {
-  background-color: rgba(25, 118, 210, 0.1);
-  border: 2px dashed #1976d2;
-  transform: scale(1.02);
-}
-
-.drag-handle {
-  cursor: grab;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
-}
-
-.drag-handle:hover {
-  opacity: 1;
-}
-
-.task-row-content.dragging .drag-handle {
-  cursor: grabbing;
 }
 
 .hierarchy-indicators {
@@ -1093,24 +945,6 @@ onMounted(async () => {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
-}
-
-.drop-indicator {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(25, 118, 210, 0.1);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #1976d2;
-}
-
-.draggable-table {
-  user-select: none;
 }
 
 .stats-card {

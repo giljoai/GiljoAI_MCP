@@ -454,6 +454,14 @@ class Project(Base):
         Index("idx_projects_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")),
         # Handover 0073: Closeout support
         Index("idx_projects_closeout_executed", "closeout_executed_at", postgresql_where=text("closeout_executed_at IS NOT NULL")),
+        # Single active project per product constraint (Handover 0050b)
+        # Ensures only ONE project can be active per product at any time
+        Index(
+            "idx_project_single_active_per_product",
+            "product_id",
+            unique=True,
+            postgresql_where=text("status = 'active'")
+        ),
     )
 
 

@@ -166,6 +166,7 @@ async def test_project_id(db_session):
     project = Project(
         id=str(uuid.uuid4()),
         name="Test Project",
+        description="Test project description for integration testing",
         mission="Test mission for integration testing",
         status="active",
         tenant_key=str(uuid.uuid4()),

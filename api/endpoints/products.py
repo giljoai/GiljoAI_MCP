@@ -98,6 +98,9 @@ class ActiveProductRefreshResponse(BaseModel):
     """Response for /refresh-active endpoint"""
 
     active_product: Optional[ActiveProductInfo]
+    # Helpful context fields used by the UI (added by refresh endpoint)
+    total_products_count: Optional[int] = None
+    last_refreshed_at: Optional[datetime] = None
 
 
 class DeletedProductResponse(BaseModel):
@@ -147,6 +150,41 @@ class CascadeImpact(BaseModel):
     unresolved_tasks: int = Field(..., description="Number of unresolved tasks")
     vision_documents_count: int = Field(..., description="Number of vision documents")
     total_chunks: int = Field(..., description="Total number of context chunks")
+
+
+async def get_active_product_info(db, tenant_key: str) -> Optional[Dict[str, Any]]:
+    """Return a compact summary of the active product for a tenant.
+
+    Used by the refresh-active endpoint and activation responses.
+    """
+    from sqlalchemy import select, func
+
+    active_result = await db.execute(
+        select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True)  # noqa: E712
+    )
+    active_product = active_result.scalar_one_or_none()
+    if not active_product:
+        return None
+
+    # Optionally count active projects; default to 0 on any error
+    try:
+        projects_count_result = await db.execute(
+            select(func.count(Project.id)).where(
+                Project.product_id == active_product.id,
+                Project.status == "active",
+            )
+        )
+        active_projects_count = projects_count_result.scalar() or 0
+    except Exception:
+        active_projects_count = 0
+
+    return {
+        "id": str(active_product.id),
+        "name": active_product.name,
+        "description": active_product.description,
+        "activated_at": active_product.updated_at or active_product.created_at,
+        "active_projects_count": active_projects_count,
+    }
 
 
 def get_vision_storage_path(tenant_key: str, product_id: str) -> Path:
@@ -305,95 +343,6 @@ async def create_product(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.put("/{product_id}", response_model=ProductResponse)
-async def update_product(
-    product_id: str,
-    name: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    config_data: Optional[str] = Form(None),  # Handover 0042: Rich configuration as JSON string
-    tenant_key: str = Depends(get_tenant_key),
-):
-    """Update an existing product (Handover 0042)"""
-    from api.app import state
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    try:
-        async with state.db_manager.get_session_async() as db:
-            # Fetch existing product
-            result = await db.execute(
-                select(Product)
-                .where(Product.id == product_id, Product.tenant_key == tenant_key)
-                .options(selectinload(Product.projects), selectinload(Product.tasks))
-            )
-            product = result.scalar_one_or_none()
-
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
-
-            # Update fields if provided
-            if name is not None:
-                product.name = name
-            if description is not None:
-                product.description = description
-
-            # Handover 0042: Parse and update config_data
-            if config_data is not None:
-                try:
-                    config_dict = json.loads(config_data)
-                    if not isinstance(config_dict, dict):
-                        raise HTTPException(status_code=400, detail="config_data must be a JSON object")
-                    product.config_data = config_dict
-                except json.JSONDecodeError as e:
-                    raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {str(e)}")
-
-            await db.commit()
-            await db.refresh(product)
-
-            # Get counts for response
-            project_count_result = await db.execute(
-                select(Project).where(Project.tenant_key == tenant_key, Project.product_id == product.id)
-            )
-            projects = project_count_result.scalars().all()
-
-            task_count_result = await db.execute(
-                select(Task).where(Task.tenant_key == tenant_key, Task.product_id == product.id)
-            )
-            tasks = task_count_result.scalars().all()
-
-            vision_docs_result = await db.execute(
-                select(VisionDocument).where(
-                    VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id
-                )
-            )
-            vision_docs = vision_docs_result.scalars().all()
-
-            unfinished_projects = sum(1 for p in projects if p.status != "completed")
-            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
-
-            return ProductResponse(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                vision_path=product.vision_path,
-                created_at=product.created_at,
-                updated_at=product.updated_at,
-                project_count=len(projects),
-                task_count=len(tasks),
-                has_vision=bool(product.vision_path),
-                unfinished_projects=unfinished_projects,
-                unresolved_tasks=unresolved_tasks,
-                vision_documents_count=len(vision_docs),
-                config_data=product.config_data,
-                has_config_data=product.has_config_data,
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/", response_model=List[ProductResponse])
@@ -786,6 +735,184 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/{product_id}/activate", response_model=ProductActivationResponse)
+async def activate_product(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Activate a product for the current tenant and ensure single-active invariant.
+
+    - Deactivates any currently active product in the same tenant.
+    - Activates the requested product (if not soft-deleted).
+    - Returns the activated product with optional info about the previously active product.
+    """
+    from api.app import state
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Fetch target product and validate ownership
+            result = await db.execute(
+                select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+            )
+            product = result.scalar_one_or_none()
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+            if product.deleted_at is not None:
+                raise HTTPException(status_code=400, detail="Cannot activate a deleted product. Restore it first.")
+
+            # Fetch currently active product
+            current_active_info = await get_active_product_info(db, tenant_key)
+
+            # If different product is active, deactivate it first
+            if current_active_info and current_active_info["id"] != product.id:
+                current_active_result = await db.execute(
+                    select(Product).where(Product.id == current_active_info["id"])
+                )
+                current_active = current_active_result.scalar_one_or_none()
+                if current_active:
+                    current_active.is_active = False
+
+                    # CASCADE: Auto-pause all active projects from the old product
+                    # This maintains single source of truth when switching products
+                    old_projects_stmt = select(Project).where(
+                        Project.product_id == current_active.id,
+                        Project.status == "active"
+                    )
+                    old_projects_result = await db.execute(old_projects_stmt)
+                    old_active_projects = old_projects_result.scalars().all()
+
+                    for proj in old_active_projects:
+                        proj.status = "paused"
+                        logger.info(
+                            f"Auto-paused project '{proj.name}' from product '{current_active.name}' "
+                            f"(switching to product '{product.name}')"
+                        )
+
+                    # CRITICAL: Flush deactivation before activation to avoid unique constraint violation
+                    # This ensures old product is fully deactivated before new product becomes active
+                    await db.flush()
+
+            # Activate requested product
+            product.is_active = True
+            product.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(product)
+
+            logger.info(
+                f"Product '{product.name}' activated by {current_user.username} (tenant={tenant_key})"
+            )
+
+            return ProductActivationResponse(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                vision_path=product.vision_path,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+                project_count=0,
+                task_count=0,
+                has_vision=bool(product.vision_path),
+                unresolved_tasks=0,
+                unfinished_projects=0,
+                vision_documents_count=0,
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
+                is_active=product.is_active,
+                previous_active_product=ActiveProductInfo(**current_active_info)
+                if current_active_info and current_active_info["id"] != product.id
+                else None,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{product_id}/deactivate", response_model=ProductResponse)
+async def deactivate_product(
+    product_id: str,
+    tenant_key: str = Depends(get_tenant_key),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Deactivate a product for the current tenant (resulting in no active product)."""
+    from api.app import state
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Fetch product and validate ownership
+            result = await db.execute(
+                select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+            )
+            product = result.scalar_one_or_none()
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Deactivate product
+            product.is_active = False
+            product.updated_at = datetime.now(timezone.utc)
+
+            # CASCADE: Auto-deactivate all active projects under this product
+            # This maintains single source of truth - inactive product cannot have active projects
+            projects_stmt = select(Project).where(
+                Project.product_id == product_id,
+                Project.status == "active"
+            )
+            projects_result = await db.execute(projects_stmt)
+            active_projects = projects_result.scalars().all()
+
+            paused_project_names = []
+            for proj in active_projects:
+                proj.status = "paused"
+                paused_project_names.append(proj.name)
+                logger.info(
+                    f"Auto-paused project '{proj.name}' (parent product '{product.name}' deactivated)"
+                )
+
+            await db.commit()
+            await db.refresh(product)
+
+            logger.info(
+                f"Product '{product.name}' deactivated by {current_user.username} (tenant={tenant_key})"
+                + (f" - {len(paused_project_names)} project(s) auto-paused" if paused_project_names else "")
+            )
+
+            return ProductResponse(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                vision_path=product.vision_path,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+                project_count=0,
+                task_count=0,
+                has_vision=bool(product.vision_path),
+                unresolved_tasks=0,
+                unfinished_projects=0,
+                vision_documents_count=0,
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
+                is_active=product.is_active,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{product_id}/cascade-impact", response_model=CascadeImpact)
 async def get_cascade_impact(product_id: str, tenant_key: str = Depends(get_tenant_key)):
@@ -1189,6 +1316,106 @@ async def get_vision_chunks(product_id: str, tenant_key: str = Depends(get_tenan
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# ============================================================================
+# GENERIC ROUTES - MUST BE LAST
+# ============================================================================
+# FastAPI matches routes in definition order. Generic routes like
+# PUT /{product_id} and GET /{product_id} must come AFTER all specific
+# sub-routes like POST /{product_id}/activate to prevent route conflicts.
+# ============================================================================
+
+@router.put("/{product_id}", response_model=ProductResponse)
+async def update_product(
+    product_id: str,
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    config_data: Optional[str] = Form(None),  # Handover 0042: Rich configuration as JSON string
+    tenant_key: str = Depends(get_tenant_key),
+):
+    """Update an existing product (Handover 0042)"""
+    from api.app import state
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        async with state.db_manager.get_session_async() as db:
+            # Fetch existing product
+            result = await db.execute(
+                select(Product)
+                .where(Product.id == product_id, Product.tenant_key == tenant_key)
+                .options(selectinload(Product.projects), selectinload(Product.tasks))
+            )
+            product = result.scalar_one_or_none()
+
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Update fields if provided
+            if name is not None:
+                product.name = name
+            if description is not None:
+                product.description = description
+
+            # Handover 0042: Parse and update config_data
+            if config_data is not None:
+                try:
+                    config_dict = json.loads(config_data)
+                    if not isinstance(config_dict, dict):
+                        raise HTTPException(status_code=400, detail="config_data must be a JSON object")
+                    product.config_data = config_dict
+                except json.JSONDecodeError as e:
+                    raise HTTPException(status_code=400, detail=f"Invalid config_data JSON: {str(e)}")
+
+            await db.commit()
+            await db.refresh(product)
+
+            # Get counts for response
+            project_count_result = await db.execute(
+                select(Project).where(Project.tenant_key == tenant_key, Project.product_id == product.id)
+            )
+            projects = project_count_result.scalars().all()
+
+            task_count_result = await db.execute(
+                select(Task).where(Task.tenant_key == tenant_key, Task.product_id == product.id)
+            )
+            tasks = task_count_result.scalars().all()
+
+            vision_docs_result = await db.execute(
+                select(VisionDocument).where(
+                    VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product.id
+                )
+            )
+            vision_docs = vision_docs_result.scalars().all()
+
+            unfinished_projects = sum(1 for p in projects if p.status != "completed")
+            unresolved_tasks = sum(1 for t in tasks if t.status != "completed")
+
+            return ProductResponse(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                vision_path=product.vision_path,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+                project_count=len(projects),
+                task_count=len(tasks),
+                has_vision=bool(product.vision_path),
+                unfinished_projects=unfinished_projects,
+                unresolved_tasks=unresolved_tasks,
+                vision_documents_count=len(vision_docs),
+                config_data=product.config_data,
+                has_config_data=product.has_config_data,
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 def _get_nested_value(data: dict, path: str) -> Any:

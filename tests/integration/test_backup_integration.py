@@ -81,6 +81,7 @@ async def test_project(db_session: AsyncSession, test_user: User) -> Project:
     project = Project(
         id=str(uuid4()),
         name=f"Backup Test Project {uuid4().hex[:8]}",
+        description="Test project description for backup testing",
         mission="Test project for database backup testing",
         status="active",
         tenant_key=test_user.tenant_key,
@@ -215,6 +216,7 @@ class TestBackupDatabaseMCPTool:
         other_project = Project(
             id=str(uuid4()),
             name="Other Tenant Project",
+            description="Other tenant project description",
             mission="Should not be in backup",
             status="active",
             tenant_key=other_tenant,
@@ -408,6 +410,7 @@ class TestBackupDatabaseAPIEndpoint:
         other_project = Project(
             id=str(uuid4()),
             name="Other Tenant Project",
+            description="Other tenant project description",
             mission="Should not appear in backup",
             status="active",
             tenant_key=other_tenant,
@@ -659,6 +662,7 @@ class TestBackupPerformance:
             project = Project(
                 id=str(uuid4()),
                 name=f"Performance Test Project {i}",
+                description=f"Test description {i}",
                 mission=f"Test mission {i}",
                 status="active",
                 tenant_key=test_user.tenant_key,
@@ -721,6 +725,7 @@ class TestBackupPerformance:
         new_project = Project(
             id=str(uuid4()),
             name="Concurrent Test Project",
+            description="Concurrent test project description",
             mission="Should not be blocked",
             status="active",
             tenant_key=test_user.tenant_key,

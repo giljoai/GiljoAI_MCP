@@ -15,6 +15,7 @@ class TestDataFactory:
     @staticmethod
     def create_project_data(
         name: str = "Test Project",
+        description: str = "Test project description for testing purposes",
         mission: str = "Test mission for integration testing",
         status: str = "active",
         tenant_key: Optional[str] = None,
@@ -23,6 +24,7 @@ class TestDataFactory:
         return {
             "id": str(uuid.uuid4()),
             "name": name,
+            "description": description,
             "mission": mission,
             "status": status,
             "tenant_key": tenant_key or str(uuid.uuid4()),
