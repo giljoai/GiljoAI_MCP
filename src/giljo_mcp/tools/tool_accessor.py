@@ -31,6 +31,7 @@ class ToolAccessor:
         self,
         name: str,
         mission: str,
+        description: str = "",  # Optional description parameter
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
         status: str = "inactive",  # Handover 0050b: projects default to inactive
@@ -47,7 +48,7 @@ class ToolAccessor:
                 project = Project(
                     name=name,
                     mission=mission,
-                    description="",  # Default empty string (required by model)
+                    description=description,  # Use provided description
                     tenant_key=tenant_key,
                     product_id=product_id,
                     status=status,  # Use the passed status parameter
