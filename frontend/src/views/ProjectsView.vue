@@ -728,8 +728,14 @@ async function handleStatusAction({ action, projectId }) {
         }
         break
     }
+
+    // Refresh project list to show updated status
+    await projectStore.fetchProjects()
+
   } catch (error) {
     console.error('Failed to perform action:', error)
+    // Refresh even on error to show true server state
+    await projectStore.fetchProjects()
   }
 }
 

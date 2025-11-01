@@ -114,8 +114,8 @@ async def create_project(
         # Use the tool accessor, passing the tenant_key from the authenticated user
         result = await state.tool_accessor.create_project(
             name=project.name,
-                description=project.description,
-                mission=project.mission,
+            mission=project.mission,
+            description=project.description or "",  # Pass description (optional)
             product_id=project.product_id,
             tenant_key=current_user.tenant_key,
             status=project.status,  # Pass status from request (Handover 0050b)
@@ -801,7 +801,7 @@ async def activate_project(
       _logging.getLogger(__name__).warning("Failed to broadcast project activation", exc_info=True)
 
     # Return unified response via helper to include counts
-    return await get_project(project_id)
+    return await get_project(project_id, current_user, db)
 
 
 @router.get("/{project_id}/orchestrator")

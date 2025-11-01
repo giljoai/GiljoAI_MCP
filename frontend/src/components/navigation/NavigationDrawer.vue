@@ -74,11 +74,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSettingsStore } from '@/stores/settings'
+import { useProductStore } from '@/stores/products'
+import { useProjectStore } from '@/stores/projects'
 import { api } from '@/services/api'
 
 const props = defineProps({
@@ -102,22 +104,57 @@ const theme = useTheme()
 const route = useRoute()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
+const productStore = useProductStore()
+const projectStore = useProjectStore()
 
 // Active project tracking for Jobs button
 const activeProjectId = ref(null)
 
-// Fetch active project on mount
-onMounted(async () => {
+// Fetch active project
+async function fetchActiveProject() {
   try {
     const response = await api.projects.getActive()
     if (response.data) {
       activeProjectId.value = response.data.id
       console.log('[NavigationDrawer] Active project loaded:', response.data.name)
+    } else {
+      activeProjectId.value = null
+      console.log('[NavigationDrawer] No active project')
     }
   } catch (err) {
+    activeProjectId.value = null
     console.warn('[NavigationDrawer] No active project:', err.message)
   }
+}
+
+// Fetch active project on mount
+onMounted(async () => {
+  await fetchActiveProject()
 })
+
+// Watch for product changes - clear active project when product switches
+watch(
+  () => productStore.activeProduct,
+  async (newProduct, oldProduct) => {
+    // Product changed (including activation/deactivation)
+    if (newProduct?.id !== oldProduct?.id) {
+      console.log('[NavigationDrawer] Product changed, refreshing active project')
+      await fetchActiveProject()
+    }
+  },
+  { deep: true }
+)
+
+// Watch for project changes within the same product
+watch(
+  () => projectStore.projects.find(p => p.status === 'active')?.id,
+  async (newActiveProjectId, oldActiveProjectId) => {
+    if (newActiveProjectId !== oldActiveProjectId) {
+      console.log('[NavigationDrawer] Active project changed, updating Jobs button')
+      await fetchActiveProject()
+    }
+  }
+)
 
 // Dynamic Giljo icon for Jobs based on route and theme
 const jobsIcon = computed(() => {

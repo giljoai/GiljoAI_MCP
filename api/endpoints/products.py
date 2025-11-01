@@ -790,9 +790,9 @@ async def activate_product(
                     old_active_projects = old_projects_result.scalars().all()
 
                     for proj in old_active_projects:
-                        proj.status = "paused"
+                        proj.status = "inactive"
                         logger.info(
-                            f"Auto-paused project '{proj.name}' from product '{current_active.name}' "
+                            f"Auto-deactivated project '{proj.name}' from product '{current_active.name}' "
                             f"(switching to product '{product.name}')"
                         )
 
@@ -875,12 +875,12 @@ async def deactivate_product(
             projects_result = await db.execute(projects_stmt)
             active_projects = projects_result.scalars().all()
 
-            paused_project_names = []
+            deactivated_project_names = []
             for proj in active_projects:
-                proj.status = "paused"
-                paused_project_names.append(proj.name)
+                proj.status = "inactive"
+                deactivated_project_names.append(proj.name)
                 logger.info(
-                    f"Auto-paused project '{proj.name}' (parent product '{product.name}' deactivated)"
+                    f"Auto-deactivated project '{proj.name}' (parent product '{product.name}' deactivated)"
                 )
 
             await db.commit()
@@ -888,7 +888,7 @@ async def deactivate_product(
 
             logger.info(
                 f"Product '{product.name}' deactivated by {current_user.username} (tenant={tenant_key})"
-                + (f" - {len(paused_project_names)} project(s) auto-paused" if paused_project_names else "")
+                + (f" - {len(deactivated_project_names)} project(s) auto-deactivated" if deactivated_project_names else "")
             )
 
             return ProductResponse(
