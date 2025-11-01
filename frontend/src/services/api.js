@@ -156,6 +156,7 @@ export const api = {
   projects: {
     list: (params) => apiClient.get('/api/v1/projects/', { params }),
     get: (id) => apiClient.get(`/api/v1/projects/${id}/`),
+    getOrchestrator: (id) => apiClient.get(`/api/v1/projects/${id}/orchestrator`),
     getActive: () => apiClient.get('/api/v1/projects/active'),
     create: (data) => apiClient.post('/api/v1/projects/', data),
     update: (id, data) => apiClient.put(`/api/v1/projects/${id}/`, data),

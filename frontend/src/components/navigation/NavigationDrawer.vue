@@ -43,6 +43,7 @@
         :to="item.path"
         :title="item.title"
         :value="item.name"
+        :disabled="item.disabled"
         color="primary"
         role="listitem"
       >
@@ -73,11 +74,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSettingsStore } from '@/stores/settings'
+import { api } from '@/services/api'
 
 const props = defineProps({
   modelValue: {
@@ -101,50 +103,61 @@ const route = useRoute()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
 
+// Active project tracking for Jobs button
+const activeProjectId = ref(null)
+
+// Fetch active project on mount
+onMounted(async () => {
+  try {
+    const response = await api.projects.getActive()
+    if (response.data) {
+      activeProjectId.value = response.data.id
+      console.log('[NavigationDrawer] Active project loaded:', response.data.name)
+    }
+  } catch (err) {
+    console.warn('[NavigationDrawer] No active project:', err.message)
+  }
+})
+
 // Dynamic Giljo icon for Jobs based on route and theme
 const jobsIcon = computed(() => {
-  const isJobsRoute = route.path === '/jobs'
+  const isJobsRoute = route.path.includes('/projects/')
   const isDark = theme.global.current.value.dark
-
+  
   if (isJobsRoute) {
     return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
   }
   return '/icons/Giljo_gray_Face.svg'
 })
 
-// Navigation items - filter based on user role
+// Jobs button path - routes to active project
+const jobsPath = computed(() => {
+  return activeProjectId.value ? `/projects/${activeProjectId.value}` : null
+})
+
+const jobsTitle = computed(() => {
+  return activeProjectId.value ? 'Jobs' : 'No active project'
+})
+
+// Navigation items
 const navigationItems = computed(() => {
   const baseItems = [
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-    { name: 'Jobs', path: '/jobs', title: 'Jobs', customIcon: jobsIcon.value },
+    { name: 'Jobs', path: jobsPath.value, title: jobsTitle.value, customIcon: jobsIcon.value, disabled: !activeProjectId.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 
-  // Note: Admin-only items like Users are now in the avatar dropdown
-  // Note: Jobs navigate to /jobs route (Handover 0077 Hybrid Architecture)
-  //       /jobs automatically loads active project → Shows dual-tab interface
   return baseItems
 })
 
 const toggleTheme = () => {
-  // Add transition class for smooth theme switching
   document.documentElement.classList.remove('no-transition')
-
-  // Toggle the theme
-  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'  // TODO: Upgrade to theme.change() after Vuetify 3.7+
-
-  // Update data-theme attribute for CSS variables
+  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
   document.documentElement.setAttribute('data-theme', theme.global.name.value)
-
-  // CRITICAL: Synchronize BOTH localStorage stores
-  // 1. Update theme-preference (source of truth)
   localStorage.setItem('theme-preference', theme.global.name.value)
-
-  // 2. Update settingsStore to keep giljo_settings synchronized
   settingsStore.settings.theme = theme.global.name.value
-  // Manually save to localStorage to update giljo_settings
   localStorage.setItem('giljo_settings', JSON.stringify(settingsStore.settings))
 }
 </script>

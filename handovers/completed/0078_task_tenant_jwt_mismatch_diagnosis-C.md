@@ -1,6 +1,6 @@
 # Handover 0078: Task Tenant & JWT Mismatch Diagnosis
 
-**Status**: 🔴 In Progress
+**Status**: 🔴 In Progress (ARCHIVED)
 **Priority**: Critical
 **Affected Systems**: Authentication, Task Management, Multi-Tenant Isolation
 **Date Created**: 2025-10-31

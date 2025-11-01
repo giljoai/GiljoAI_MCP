@@ -297,6 +297,10 @@ const props = defineProps({
       return value && typeof value === 'object' && ('id' in value || 'project_id' in value)
     }
   },
+  orchestrator: {
+    type: Object,
+    default: null
+  },
   isStaging: {
     type: Boolean,
     default: false
@@ -315,16 +319,31 @@ const emit = defineEmits([
 /**
  * Component State
  */
-// Component State
 const missionText = ref('')
 
-// Orchestrator agent (special static card on Launch tab)
-const orchestratorAgent = ref({
-  agent_id: 'orch-00000000',
-  agent_type: 'orchestrator',
-  job_id: 'orch-job-000',
-  mission: 'I am ready to create the project mission based on product context and project description. I will write the mission in the mission window and select the proper agents below.',
-  status: 'waiting'
+// Orchestrator agent from props (real data from API)
+const orchestratorAgent = computed(() => {
+  if (!props.orchestrator) {
+    // Fallback if no orchestrator provided
+    return {
+      agent_id: 'loading',
+      agent_type: 'orchestrator',
+      job_id: 'loading',
+      mission: 'Loading orchestrator...',
+      status: 'waiting'
+    }
+  }
+  
+  // Use real orchestrator data from API
+  return {
+    agent_id: props.orchestrator.job_id,  // Full 36-digit UUID
+    agent_type: props.orchestrator.agent_type,
+    job_id: props.orchestrator.job_id,  // Full 36-digit UUID
+    mission: props.orchestrator.mission,
+    status: props.orchestrator.status,
+    progress: props.orchestrator.progress,
+    agent_name: props.orchestrator.agent_name
+  }
 })
 
 const agents = ref([])
@@ -337,24 +356,8 @@ const toastMessage = ref('')
 /**
  * Computed Properties
  */
-// Update orchestrator agent ID based on project
-watch(() => props.project.id, (newId) => {
-  if (newId) {
-    orchestratorAgent.value.agent_id = `orch-${newId.substring(0, 8)}`
-  }
-}, { immediate: true })
+// (Orchestrator agent is now a computed property above - no watch needed)
 
-const truncatedOrchestratorId = computed(() => {
-  const id = orchestratorAgent.value.agent_id
-  if (id.length <= 15) return id
-  return `${id.substring(0, 15)}...`
-})
-
-const truncatedProjectId = computed(() => {
-  const id = props.project.project_id || props.project.id || 'Unknown'
-  if (id.length <= 12) return id
-  return `${id.substring(0, 12)}...`
-})
 
 /**
  * Get status color for chip

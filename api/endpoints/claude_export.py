@@ -506,13 +506,18 @@ async def export_templates_to_claude_code(
             # Continue with other templates rather than failing completely
             continue
 
+    # Compose message with optional warning about recommended limit
+    base_message = f"Successfully exported {len(exported_files)} template(s) to {export_dir}"
+    if active_count > 8:
+        base_message += " (Warning: exporting more than 8 agents may reduce available context in Claude Code)"
+
     # Return results (including backup info)
     return {
         "success": True,
         "exported_count": len(exported_files),
         "files": exported_files,
         "backup": backup_info,
-        "message": f"Successfully exported {len(exported_files)} template(s) to {export_dir}",
+        "message": base_message,
     }
 
 
