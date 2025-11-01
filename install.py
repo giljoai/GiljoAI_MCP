@@ -898,6 +898,44 @@ class UnifiedInstaller:
                 'errors': [str(e)]
             }
 
+    def _verify_npm_dependencies(self, frontend_dir: Path) -> bool:
+        """
+        Verify that critical npm dependencies are installed.
+
+        Checks for presence of key packages that are imported by the frontend.
+        This prevents false positives where node_modules exists but is incomplete.
+
+        Args:
+            frontend_dir: Path to frontend directory
+
+        Returns:
+            True if all critical dependencies are present, False otherwise
+        """
+        node_modules = frontend_dir / 'node_modules'
+        
+        if not node_modules.exists():
+            return False
+        
+        # Critical dependencies that must be present
+        critical_deps = [
+            'vue',
+            'vuetify',
+            'vue-router',
+            'pinia',
+            'axios',
+            'lodash-es',  # Imported by useAutoSave.js
+            'vuedraggable',  # Imported by UserSettings.vue
+            'socket.io-client',
+        ]
+        
+        for dep in critical_deps:
+            dep_path = node_modules / dep
+            if not dep_path.exists():
+                self._print_warning(f"Missing dependency: {dep}")
+                return False
+        
+        return True
+
     def _install_npm_dependencies_with_retry(self, frontend_dir: Path, max_retries: int = 3) -> bool:
         """
         Install npm dependencies with retry logic for network resilience.
@@ -922,8 +960,13 @@ class UnifiedInstaller:
             )
 
             if npm_result['success']:
-                self._print_success("Frontend dependencies installed successfully")
-                return True
+                # Verify installation actually completed (not just exit code 0)
+                if self._verify_npm_dependencies(frontend_dir):
+                    self._print_success("Frontend dependencies installed successfully")
+                    return True
+                else:
+                    self._print_warning("npm install succeeded but dependencies are incomplete")
+                    # Continue to next retry attempt
 
             # Failed - show error details
             error_msg = npm_result.get('stderr', npm_result.get('error', 'Unknown error'))
@@ -1000,8 +1043,9 @@ class UnifiedInstaller:
                 frontend_dir = self.install_dir / 'frontend'
 
                 if frontend_dir.exists():
-                    # Check if node_modules exists
-                    if not (frontend_dir / 'node_modules').exists():
+                    # Check if dependencies are installed and complete
+                    # (not just if node_modules folder exists, but verify critical packages)
+                    if not self._verify_npm_dependencies(frontend_dir):
                         # Install dependencies with retry logic (3 attempts)
                         if not self._install_npm_dependencies_with_retry(frontend_dir):
                             # CRITICAL: Frontend dependencies failed after retries - FAIL HARD
