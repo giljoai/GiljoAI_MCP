@@ -1061,6 +1061,40 @@ psql --version
 psql -U postgres -d giljo_mcp -c "SELECT * FROM pg_extension WHERE extname = 'pg_trgm';"
 ```
 
+**Issue: npm install failed / Frontend dependencies missing**
+```bash
+# Symptom: Vite error "Failed to resolve import 'lodash-es'" or similar
+# Cause: npm install failed during installation (network timeout, disk space, firewall)
+
+# The installer now retries npm install 3 times with exponential backoff
+# If all retries fail, installation stops with troubleshooting steps
+
+# Manual fix after failed installation:
+cd frontend/
+rm -rf node_modules package-lock.json
+npm cache verify
+npm install --verbose
+
+# Common causes:
+# 1. Network connectivity - test with:
+curl https://registry.npmjs.org/
+
+# 2. Disk space - need ~500MB for node_modules:
+df -h  # Linux/macOS
+dir    # Windows
+
+# 3. Proxy/firewall blocking npm registry:
+npm config get proxy
+npm config get https-proxy
+# If behind corporate proxy, configure:
+npm config set proxy http://proxy.company.com:8080
+npm config set https-proxy http://proxy.company.com:8080
+
+# 4. npm cache corruption:
+npm cache clean --force
+npm install
+```
+
 **Issue: Port already in use**
 ```bash
 # Check what's using the port
