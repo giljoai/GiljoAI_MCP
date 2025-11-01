@@ -266,7 +266,6 @@ class ProjectOrchestrator:
                 "template_id": template.id,
                 "template_name": template.name,
                 "tool": template.tool,
-                "exported_path": str(file_path),
             },
         )
 

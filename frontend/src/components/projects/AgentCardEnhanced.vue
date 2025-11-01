@@ -19,8 +19,8 @@
     <v-card-text class="agent-card__body pa-4">
       <!-- Agent ID -->
       <div class="agent-id mb-2">
-        <span class="text-caption text-grey">Agent ID:</span>
-        <span class="text-body-2 font-weight-medium ml-1">{{ truncatedAgentId }}</span>
+        <div class="text-caption text-grey mb-1">Agent ID</div>
+        <div class="text-caption font-weight-medium agent-id-value">{{ fullAgentId }}</div>
       </div>
 
       <!-- Status Display (Jobs Tab only) -->
@@ -281,7 +281,6 @@ const cardStyles = computed(() => ({
   width: '280px',
   minHeight: '200px',
   maxHeight: '400px',
-  border: `2px solid ${lightenColor(agentColor.value.hex, 20)}`,
   borderRadius: '20px',
   overflow: 'hidden',
   transition: 'all 0.3s ease'
@@ -362,10 +361,9 @@ const sentCount = computed(() => {
 /**
  * Text truncation helpers
  */
-const truncatedAgentId = computed(() => {
+const fullAgentId = computed(() => {
   const id = props.agent.job_id || props.agent.agent_id || 'Unknown'
-  if (id.length <= 12) return id
-  return `${id.substring(0, 12)}...`
+  return id
 })
 
 const truncatedMission = computed(() => {
@@ -428,6 +426,12 @@ const cardAriaLabel = computed(() => {
   background: rgba(0, 0, 0, 0.03);
   border-radius: 4px;
 }
+  
+  .agent-id-value {
+    font-size: 9px !important;
+    word-break: break-all;
+    line-height: 1.3;
+  }
 
 .agent-status {
   padding: 8px;

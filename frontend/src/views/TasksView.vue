@@ -279,7 +279,7 @@
 
                 <span class="font-weight-medium">{{ item.title }}</span>
               </div>
-              <div class="text-caption text-medium-emphasis">{{ item.description }}</div>
+              <div class="text-caption text-medium-emphasis description-truncate">{{ item.description }}</div>
 
               <!-- Parent/Child Indicators -->
               <div v-if="showHierarchy" class="hierarchy-info mt-1">
@@ -360,6 +360,16 @@
 
         <!-- Actions Column -->
         <template v-slot:item.actions="{ item }">
+          <!-- View Button -->
+          <v-btn
+            icon="mdi-eye"
+            size="small"
+            variant="text"
+            @click="viewTask(item)"
+            title="View Task"
+            class="mr-1"
+          />
+
           <v-menu>
             <template v-slot:activator="{ props }">
               <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
@@ -607,8 +617,8 @@ const tasks = computed(() => taskStore.tasks)
 // Product-filtered tasks
 const userFilteredTasks = computed(() => {
   if (taskFilter.value === 'product_tasks') {
-    // Show tasks for active product only (use activeProduct if currentProductId not set)
-    const productId = productStore.currentProductId || productStore.activeProduct?.id
+    // Show tasks for active product only
+    const productId = productStore.effectiveProductId
     if (!productId) {
       return [] // No active product, return empty list
     }
@@ -628,8 +638,8 @@ const filteredTasks = computed(() => {
   // Start with user-filtered tasks (Phase 4)
   let filteredList = userFilteredTasks.value
 
-  // Then filter by product if one is selected (use activeProduct if currentProductId not set)
-  const productId = productStore.currentProductId || productStore.activeProduct?.id
+  // Then filter by product if one is selected
+  const productId = productStore.effectiveProductId
   if (productId) {
     filteredList = filteredList.filter((t) => t.product_id === productId)
   }
@@ -731,6 +741,11 @@ function editTask(task) {
   editingTask.value = task
   currentTask.value = { ...task }
   showTaskDialog.value = true
+}
+
+function viewTask(task) {
+  // Open the same edit dialog (reuse existing functionality)
+  editTask(task)
 }
 
 async function completeTask(task) {
@@ -944,8 +959,8 @@ async function saveTask() {
     if (editingTask.value) {
       await taskStore.updateTask(editingTask.value.id, currentTask.value)
     } else {
-      // Add current product_id to new task (use activeProduct if currentProductId not set)
-      const productId = productStore.currentProductId || productStore.activeProduct?.id
+      // Add current product_id to new task
+      const productId = productStore.effectiveProductId
       if (productId) {
         currentTask.value.product_id = productId
       }
@@ -1104,6 +1119,17 @@ onMounted(async () => {
 
 .stats-card:hover {
   transform: translateY(-2px);
+}
+
+/* Truncate description to 2 lines */
+.description-truncate {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+  max-height: 2.8em; /* 2 lines × 1.4 line-height */
 }
 
 </style>

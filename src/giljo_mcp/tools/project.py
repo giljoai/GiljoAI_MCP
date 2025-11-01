@@ -416,6 +416,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
                     "project": {
                         "id": str(project.id),
                         "name": project.name,
+                        "description": project.description,
                         "mission": project.mission,
                         "status": project.status,
                         "tenant_key": project.tenant_key,

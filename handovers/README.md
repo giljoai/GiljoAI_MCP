@@ -42,6 +42,7 @@ Handovers enable seamless task delegation between development agents/sessions by
 - None
 
 **Recently Completed:**
+- `0078 Task Tenant & JWT Mismatch Diagnosis` - **RETIRED 2025-10-31** (Diagnosis consolidated; clarifies root cause and remediation plan for tenant_key mismatch in JWT leading to invisible tasks. See: `completed/0078_COMPLETION_SUMMARY.md`)
 - `0075 Eight-Agent Active Limit Enforcement` - **RETIRED 2025-10-31** (Specification consolidated and archived. Provides validation flow to cap active agent templates to 8 and user export safeguards. See: `completed/0075_COMPLETION_SUMMARY.md`)
 - `0076 Task Field Cleanup & Product Scoping` - **COMPLETE 2025-10-31** (Assignment fields removed, product‑scoped filters added, task→project conversion with active product requirement. See: `completed/0076_COMPLETION_SUMMARY.md`)
 - `0077 Launch/Jobs Dual-Tab Interface` - **COMPLETE 2025-10-30** (Consolidated into a single closeout record covering specification, implementation deliverables, and bug fixes. See: `completed/0077_COMPLETION_SUMMARY.md`. Additional reference assets archived under `completed/reference/0077/`.)

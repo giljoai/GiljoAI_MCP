@@ -98,19 +98,7 @@ const routes = [
     },
   },
   {
-    path: '/jobs',
-    name: 'Jobs',
-    component: () => import('@/views/JobsView.vue'),
-    meta: {
-      layout: 'default',
-      title: 'Jobs',
-      icon: 'mdi-briefcase',
-      showInNav: true,
-      requiresAuth: true,
-    },
-  },
-  {
-    path: '/projects/:projectId/launch',
+    path: '/projects/:projectId',
     name: 'ProjectLaunch',
     component: () => import('@/views/ProjectLaunchView.vue'),
     meta: {

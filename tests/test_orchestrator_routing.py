@@ -293,7 +293,11 @@ async def test_spawn_claude_code_agent_stores_metadata(orchestrator, test_projec
     assert agent.meta_data["template_id"] == claude_template.id
     assert agent.meta_data["template_name"] == claude_template.name
     assert agent.meta_data["tool"] == "claude"
-    assert "exported_path" in agent.meta_data
+    # Auto-export removed (Handover 0074): orchestrator no longer writes files.
+    # Ensure core template metadata preserved without exported_path.
+    assert "template_id" in agent.meta_data
+    assert "template_name" in agent.meta_data
+    assert "tool" in agent.meta_data
 
 
 # ========================================================================
