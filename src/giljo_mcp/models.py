@@ -108,9 +108,9 @@ class Product(Base):
     # Relationships
     projects = relationship("Project", back_populates="product", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
-    
+
     # Handover 0043: Multi-Vision Document Support
-    vision_documents = relationship("VisionDocument", back_populates="product", 
+    vision_documents = relationship("VisionDocument", back_populates="product",
                                    cascade="all, delete-orphan",
                                    order_by="VisionDocument.display_order")
 
@@ -161,7 +161,7 @@ class Product(Base):
                 return default
 
         return value
-    
+
     # Handover 0043: Vision Documents properties
     @property
     def has_vision_documents(self) -> bool:
@@ -169,7 +169,7 @@ class Product(Base):
         if not hasattr(self, 'vision_documents') or not self.vision_documents:
             return False
         return any(doc.is_active for doc in self.vision_documents)
-    
+
     @property
     def all_documents_chunked(self) -> bool:
         """Check if all active vision documents have been chunked"""
@@ -184,16 +184,16 @@ class Product(Base):
 class VisionDocument(Base):
     """
     Vision Document model - stores multiple vision documents per product.
-    
+
     Handover 0043: Multi-Vision Document Support - Phase 1
     Enables products to have multiple vision documents (architecture, features, setup, etc.)
     with chunking, versioning, and flexible storage (file-based or inline).
-    
+
     Storage Types:
     - 'file': vision_path points to file, vision_document is NULL
     - 'inline': vision_document contains text, vision_path is NULL
     - 'hybrid': Both vision_path and vision_document populated (file + inline)
-    
+
     Document Types:
     - 'vision': Primary vision document
     - 'architecture': Architecture/design documents
@@ -203,23 +203,23 @@ class VisionDocument(Base):
     - 'testing': Test plans and strategies
     - 'deployment': Deployment guides
     - 'custom': User-defined document types
-    
+
     Multi-tenant isolation: All queries filter by tenant_key.
     CASCADE deletes: Deleting VisionDocument deletes all chunks (via MCPContextIndex).
     """
-    
+
     __tablename__ = "vision_documents"
-    
+
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
     product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
-    
+
     # Document identification
     document_name = Column(String(255), nullable=False,
         comment="User-friendly document name (e.g., 'Product Architecture', 'API Design')")
     document_type = Column(String(50), nullable=False, default="vision",
         comment="Document category: vision, architecture, features, setup, api, testing, deployment, custom")
-    
+
     # Storage configuration (flexible: file, inline, or hybrid)
     vision_path = Column(String(500), nullable=True,
         comment="File path to vision document (file-based or hybrid storage)")
@@ -227,7 +227,7 @@ class VisionDocument(Base):
         comment="Inline vision text (inline or hybrid storage)")
     storage_type = Column(String(20), nullable=False, default="file",
         comment="Storage mode: 'file', 'inline', or 'hybrid'")
-    
+
     # Chunking state
     chunked = Column(Boolean, default=False, nullable=False,
         comment="Has document been chunked into mcp_context_index for RAG")
@@ -237,63 +237,63 @@ class VisionDocument(Base):
         comment="Estimated total tokens in document")
     file_size = Column(BigInteger, nullable=True,
         comment="Original file size in bytes (NULL for inline content without file)")
-    
+
     # Versioning and integrity
     version = Column(String(50), default="1.0.0", nullable=False,
         comment="Document version using semantic versioning")
     content_hash = Column(String(64), nullable=True,
         comment="SHA-256 hash of document content for change detection")
-    
+
     # Status and display
     is_active = Column(Boolean, default=True, nullable=False,
         comment="Active documents are used for context; inactive are archived")
     display_order = Column(Integer, default=0, nullable=False,
         comment="Display order in UI (lower numbers first)")
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     # Additional metadata
     meta_data = Column(JSON, default=dict,
         comment="Additional metadata: author, tags, source_url, etc.")
-    
+
     # Relationships
     product = relationship("Product", back_populates="vision_documents")
-    chunks = relationship("MCPContextIndex", back_populates="vision_document", 
+    chunks = relationship("MCPContextIndex", back_populates="vision_document",
                          cascade="all, delete-orphan",
                          foreign_keys="MCPContextIndex.vision_document_id")
-    
+
     __table_args__ = (
         # Unique constraint: one document name per product
         UniqueConstraint("product_id", "document_name", name="uq_vision_doc_product_name"),
-        
+
         # Multi-tenant isolation index (PRIMARY)
         Index("idx_vision_doc_tenant", "tenant_key"),
         Index("idx_vision_doc_product", "product_id"),
-        
+
         # Query optimization indexes
         Index("idx_vision_doc_type", "document_type"),
         Index("idx_vision_doc_active", "is_active"),
         Index("idx_vision_doc_chunked", "chunked"),
-        
+
         # Composite indexes for common queries
         Index("idx_vision_doc_tenant_product", "tenant_key", "product_id"),
         Index("idx_vision_doc_product_type", "product_id", "document_type"),
         Index("idx_vision_doc_product_active", "product_id", "is_active", "display_order"),
-        
+
         # Storage type constraint
         CheckConstraint(
             "storage_type IN ('file', 'inline', 'hybrid')",
             name="ck_vision_doc_storage_type"
         ),
-        
+
         # Document type constraint
         CheckConstraint(
             "document_type IN ('vision', 'architecture', 'features', 'setup', 'api', 'testing', 'deployment', 'custom')",
             name="ck_vision_doc_document_type"
         ),
-        
+
         # Storage consistency constraints
         CheckConstraint(
             "(storage_type = 'file' AND vision_path IS NOT NULL) OR "
@@ -301,7 +301,7 @@ class VisionDocument(Base):
             "(storage_type = 'hybrid' AND vision_path IS NOT NULL AND vision_document IS NOT NULL)",
             name="ck_vision_doc_storage_consistency"
         ),
-        
+
         # Chunk count consistency
         CheckConstraint("chunk_count >= 0", name="ck_vision_doc_chunk_count"),
         CheckConstraint(
@@ -309,25 +309,25 @@ class VisionDocument(Base):
             name="ck_vision_doc_chunked_consistency"
         ),
     )
-    
+
     @property
     def needs_rechunking(self) -> bool:
         """
         Check if document needs rechunking based on content changes.
-        
+
         Returns:
             True if content_hash is None or content has changed since last chunking
         """
         if not self.chunked:
             return True
-        
+
         if self.content_hash is None:
             return True
-        
+
         # Calculate current content hash
         import hashlib
         content = ""
-        
+
         if self.storage_type == "file" and self.vision_path:
             try:
                 from pathlib import Path
@@ -350,20 +350,20 @@ class VisionDocument(Base):
                     pass
             if self.vision_document:
                 content += self.vision_document
-        
+
         current_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
         return current_hash != self.content_hash
-    
+
     def update_content_hash(self) -> str:
         """
         Update content_hash based on current content.
-        
+
         Returns:
             The new content hash (SHA-256)
         """
         import hashlib
         content = ""
-        
+
         if self.storage_type == "file" and self.vision_path:
             try:
                 from pathlib import Path
@@ -386,10 +386,10 @@ class VisionDocument(Base):
                     pass
             if self.vision_document:
                 content += self.vision_document
-        
+
         self.content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
         return self.content_hash
-    
+
     def __repr__(self):
         return f"<VisionDocument(id={self.id}, name={self.document_name}, type={self.document_type}, chunked={self.chunked})>"
 
@@ -433,7 +433,7 @@ class Project(Base):
         comment="Prompt template used by orchestrator for closeout generation")
     closeout_executed_at = Column(DateTime(timezone=True), nullable=True,
         comment="Timestamp when closeout workflow was executed")
-    closeout_checklist = Column(JSONB, default=list, nullable=False, server_default="'[]'::jsonb",
+    closeout_checklist = Column(JSONB, default=list, nullable=False, server_default=text("'[]'::jsonb"),
         comment="Structured checklist of closeout tasks (JSONB array)")
 
     # Relationships
@@ -1681,26 +1681,26 @@ class APIKey(Base):
 class MCPSession(Base):
     """
     MCP Session model - tracks HTTP MCP sessions for stateful context preservation.
-    
+
     Handover 0032: Enables pure MCP JSON-RPC 2.0 over HTTP with multi-tenant isolation.
     Sessions preserve tenant_key and project_id context across tool calls.
-    
+
     Multi-tenant isolation: Sessions inherit tenant_key from API key's user.
     Session cleanup: Inactive sessions auto-expire after 24 hours.
     """
-    
+
     __tablename__ = "mcp_sessions"
-    
+
     id = Column(String(36), primary_key=True, default=generate_uuid)
     session_id = Column(String(36), unique=True, nullable=False, default=generate_uuid, index=True)
-    
+
     # Foreign keys
     api_key_id = Column(String(36), ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=False)
     tenant_key = Column(String(36), nullable=False, index=True)
-    
+
     # Context preservation
     project_id = Column(String(36), ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
-    
+
     # Session data (JSONB for performance)
     session_data = Column(
         JSONB,
@@ -1708,16 +1708,16 @@ class MCPSession(Base):
         default=dict,
         comment="MCP protocol state: client_info, capabilities, tool_call_history"
     )
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_accessed = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Relationships
     api_key = relationship("APIKey", backref="mcp_sessions")
     project = relationship("Project", backref="mcp_sessions")
-    
+
     __table_args__ = (
         Index("idx_mcp_session_api_key", "api_key_id"),
         Index("idx_mcp_session_tenant", "tenant_key"),
@@ -1728,17 +1728,17 @@ class MCPSession(Base):
         # GIN index for session_data (enables efficient JSON queries)
         Index("idx_mcp_session_data_gin", "session_data", postgresql_using="gin"),
     )
-    
+
     def __repr__(self):
         return f"<MCPSession(id={self.id}, session_id={self.session_id}, tenant_key={self.tenant_key})>"
-    
+
     @property
     def is_expired(self) -> bool:
         """Check if session has expired"""
         if not self.expires_at:
             return False
         return datetime.now(timezone.utc) > self.expires_at
-    
+
     def extend_expiration(self, hours: int = 24) -> None:
         """Extend session expiration by specified hours"""
         self.expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
@@ -1748,31 +1748,31 @@ class MCPSession(Base):
 class OptimizationRule(Base):
     """
     Optimization Rule model - stores custom optimization rules per tenant.
-    
+
     Rules define how Serena MCP operations should be optimized for specific contexts.
     Overrides default SerenaOptimizer rules when present.
     """
-    
+
     __tablename__ = "optimization_rules"
-    
+
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
-    
+
     # Rule definition
     operation_type = Column(String(50), nullable=False)  # OperationType enum value
     max_answer_chars = Column(Integer, nullable=False)
     prefer_symbolic = Column(Boolean, nullable=False, default=True)
     guidance = Column(Text, nullable=False)
     context_filter = Column(String(100), nullable=True)  # When to apply this rule
-    
+
     # Rule metadata
     is_active = Column(Boolean, default=True, nullable=False)
     priority = Column(Integer, default=100)  # Higher numbers = higher priority
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     __table_args__ = (
         Index("idx_optimization_rule_tenant", "tenant_key"),
         Index("idx_optimization_rule_type", "operation_type"),
@@ -1784,7 +1784,7 @@ class OptimizationRule(Base):
         CheckConstraint("max_answer_chars > 0", name="ck_optimization_rule_max_chars"),
         CheckConstraint("priority >= 0", name="ck_optimization_rule_priority"),
     )
-    
+
     def __repr__(self):
         return f"<OptimizationRule(id={self.id}, operation_type={self.operation_type}, tenant_key={self.tenant_key})>"
 
@@ -1792,37 +1792,37 @@ class OptimizationRule(Base):
 class OptimizationMetric(Base):
     """
     Optimization Metric model - tracks token savings from Serena MCP optimizations.
-    
+
     Records every optimization operation to measure effectiveness and calculate savings.
     Enables performance analytics and optimization rule refinement.
     """
-    
+
     __tablename__ = "optimization_metrics"
-    
+
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, index=True)
-    
+
     # Foreign keys
     agent_id = Column(String(36), ForeignKey("agents.id"), nullable=False)
-    
+
     # Operation details
     operation_type = Column(String(50), nullable=False)  # OperationType enum value
     params_size = Column(Integer, nullable=False, default=0)
     result_size = Column(Integer, nullable=False)
     optimized = Column(Boolean, nullable=False, default=True)
-    
+
     # Token calculations
     tokens_saved = Column(Integer, nullable=False, default=0)
-    
+
     # Metadata
     meta_data = Column(JSON, default=dict)
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    
+
     # Relationships
     agent = relationship("Agent", backref="optimization_metrics")
-    
+
     __table_args__ = (
         Index("idx_optimization_metric_tenant", "tenant_key"),
         Index("idx_optimization_metric_agent", "agent_id"),
@@ -1837,7 +1837,7 @@ class OptimizationMetric(Base):
         CheckConstraint("result_size >= 0", name="ck_optimization_metric_result_size"),
         CheckConstraint("tokens_saved >= 0", name="ck_optimization_metric_tokens_saved"),
     )
-    
+
     def __repr__(self):
         return f"<OptimizationMetric(id={self.id}, operation_type={self.operation_type}, tokens_saved={self.tokens_saved})>"
 
@@ -1845,15 +1845,15 @@ class OptimizationMetric(Base):
 class MCPContextIndex(Base):
     """
     MCP Context Index model - stores chunked vision documents for agentic RAG.
-    
+
     Handover 0017: Enables full-text search on vision document chunks for token reduction.
     Chunks are created by EnhancedChunker from vision_document or vision_path content.
-    
+
     Multi-tenant isolation: All queries filter by tenant_key.
     """
-    
+
     __tablename__ = 'mcp_context_index'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)
     chunk_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
@@ -1871,16 +1871,16 @@ class MCPContextIndex(Base):
     chunk_order = Column(Integer, nullable=True,
         comment="Sequential chunk number for maintaining document order")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # PostgreSQL full-text search (requires pg_trgm extension)
     searchable_vector = Column(TSVECTOR, nullable=True,
         comment="Full-text search vector for fast keyword lookup")
-    
+
     # Relationships
     product = relationship("Product", backref="context_chunks")
-    vision_document = relationship("VisionDocument", back_populates="chunks", 
+    vision_document = relationship("VisionDocument", back_populates="chunks",
                                    foreign_keys=[vision_document_id])
-    
+
     __table_args__ = (
         Index("idx_mcp_context_tenant_product", "tenant_key", "product_id"),
         Index("idx_mcp_context_searchable", "searchable_vector", postgresql_using="gin"),
@@ -1889,7 +1889,7 @@ class MCPContextIndex(Base):
         Index("idx_mcp_context_vision_doc", "vision_document_id"),
         Index("idx_mcp_context_product_vision_doc", "product_id", "vision_document_id"),
     )
-    
+
     def __repr__(self):
         return f"<MCPContextIndex(id={self.id}, chunk_id={self.chunk_id}, product_id={self.product_id})>"
 
@@ -1897,15 +1897,15 @@ class MCPContextIndex(Base):
 class MCPContextSummary(Base):
     """
     MCP Context Summary model - tracks orchestrator-created condensed missions.
-    
+
     Handover 0017: Enables 70% token reduction by condensing full context into missions.
     Orchestrator creates condensed versions of vision chunks for agent spawning.
-    
+
     Multi-tenant isolation: All queries filter by tenant_key.
     """
-    
+
     __tablename__ = 'mcp_context_summary'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)
     context_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
@@ -1919,15 +1919,15 @@ class MCPContextSummary(Base):
     reduction_percent = Column(Float, nullable=True,
         comment="Token reduction percentage achieved")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     product = relationship("Product", backref="context_summaries")
-    
+
     __table_args__ = (
         Index("idx_mcp_summary_tenant_product", "tenant_key", "product_id"),
         Index("idx_mcp_summary_context_id", "context_id"),
     )
-    
+
     def __repr__(self):
         return f"<MCPContextSummary(id={self.id}, context_id={self.context_id}, reduction={self.reduction_percent}%)>"
 
