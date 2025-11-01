@@ -337,15 +337,26 @@
             ></v-text-field>
 
             <v-textarea
-              v-model="projectData.mission"
+              v-model="projectData.description"
               label="Project Description"
               :rules="[(v) => !!v || 'Description is required']"
-              hint="Describe what you want to build. The orchestrator will create the detailed mission."
+              hint="Human-written description of what you want to accomplish. This will be shown to the orchestrator."
               persistent-hint
               rows="4"
               required
               class="mb-3"
               aria-label="Project description"
+            ></v-textarea>
+
+            <v-textarea
+              v-model="projectData.mission"
+              label="Orchestrator Mission (Optional)"
+              hint="AI-generated mission will be created by the orchestrator after project activation. Leave empty for new projects."
+              persistent-hint
+              rows="3"
+              class="mb-3"
+              aria-label="Orchestrator mission"
+              :disabled="!editingProject"
             ></v-textarea>
 
             <v-text-field
@@ -503,6 +514,7 @@ const dateLocale = ref(localStorage.getItem('dateLocale') || 'US')
 // Form data
 const projectData = ref({
   name: '',
+  description: '',
   mission: '',
   context_budget: 150000,
   status: 'inactive',
@@ -657,6 +669,7 @@ function editProject(project) {
   createdProjectId.value = null
   projectData.value = {
     name: project.name,
+    description: project.description || '',
     mission: project.mission,
     context_budget: project.context_budget || 150000,
     status: project.status,

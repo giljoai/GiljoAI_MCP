@@ -30,7 +30,8 @@ router = APIRouter()
 # Pydantic models for request/response
 class ProjectCreate(BaseModel):
     name: str = Field(..., description="Project name")
-    mission: str = Field(..., description="Project mission statement")
+    description: str = Field(..., description="Human-written project description (what you want to accomplish)")
+    mission: str = Field(default="", description="AI-generated mission statement (initially empty, filled by orchestrator)")
     product_id: Optional[str] = Field(None, description="Product ID to associate with")
     status: str = Field(default="inactive", description="Project status (Handover 0050b: defaults to inactive)")
     context_budget: int = Field(default=150000, description="Token budget for the project")
@@ -38,6 +39,7 @@ class ProjectCreate(BaseModel):
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
     mission: Optional[str] = None
     status: Optional[str] = None
 
@@ -235,6 +237,7 @@ async def list_projects(
                         id=proj.id,
                         alias=proj.alias,
                         name=proj.name,
+                        description=proj.description,
                         mission=proj.mission,
                         status=proj.status,
                         product_id=proj.product_id,
@@ -494,37 +497,57 @@ async def list_deleted_projects(
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-async def get_project(project_id: str):
-    """Get project details"""
-    from api.app import state
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
+async def get_project(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get project details by ID"""
+    from sqlalchemy import select, or_
+    from src.giljo_mcp.models import Project, Agent, Message
 
     try:
-        result = await state.tool_accessor.project_status(project_id=project_id)
+        # Query project directly from database (like get_project_by_alias)
+        stmt = select(Project).where(
+            Project.id == project_id,
+            Project.tenant_key == current_user.tenant_key,
+            # Exclude deleted projects
+            or_(Project.status != "deleted", Project.deleted_at.is_(None)),
+        )
+        result = await db.execute(stmt)
+        project = result.scalar_one_or_none()
 
-        if not result.get("success"):
-            raise HTTPException(status_code=404, detail="Project not found")  # noqa: TRY301
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
 
-        proj = result["project"]
+        # Get agent and message counts
+        agent_stmt = select(Agent).where(Agent.project_id == project.id)
+        agent_result = await db.execute(agent_stmt)
+        agent_count = len(agent_result.scalars().all())
+
+        message_stmt = select(Message).where(Message.project_id == project.id)
+        message_result = await db.execute(message_stmt)
+        message_count = len(message_result.scalars().all())
+
         return ProjectResponse(
-            id=proj["id"],
-            alias=proj.get("alias", "UNKNWN"),
-            name=proj["name"],
-            description=proj.get("description"),
-            mission=proj["mission"],
-            status=proj["status"],
-            product_id=proj.get("product_id"),
-            created_at=datetime.fromisoformat(proj["created_at"]),
-            updated_at=datetime.fromisoformat(proj.get("updated_at", proj["created_at"])),
-            completed_at=datetime.fromisoformat(proj["completed_at"]) if proj.get("completed_at") else None,
-            context_budget=proj.get("context_budget", 150000),
-            context_used=proj.get("context_used", 0),
-            agent_count=len(result.get("agents", [])),
-            message_count=result.get("pending_messages", 0),
+            id=project.id,
+            alias=project.alias,
+            name=project.name,
+            description=project.description,  # Direct database access - should work!
+            mission=project.mission,
+            status=project.status,
+            product_id=project.product_id,
+            created_at=project.created_at,
+            updated_at=project.updated_at or project.created_at,
+            completed_at=project.completed_at,
+            context_budget=project.context_budget,
+            context_used=project.context_used,
+            agent_count=agent_count,
+            message_count=message_count,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -721,6 +744,46 @@ async def activate_project(
     await db.commit()
     await db.refresh(project)
 
+    # Create orchestrator job for this project (Handover 0080)
+    from src.giljo_mcp.models import MCPAgentJob
+    
+    # Check if orchestrator already exists
+    existing_orch_stmt = select(MCPAgentJob).where(
+        MCPAgentJob.project_id == project_id,
+        MCPAgentJob.agent_type == "orchestrator",
+        MCPAgentJob.tenant_key == current_user.tenant_key
+    )
+    existing_orch_result = await db.execute(existing_orch_stmt)
+    existing_orchestrator = existing_orch_result.scalar_one_or_none()
+    
+    if not existing_orchestrator:
+        # Create orchestrator job
+        orchestrator_job = MCPAgentJob(
+            tenant_key=current_user.tenant_key,
+            project_id=project_id,
+            agent_type="orchestrator",
+            agent_name="Orchestrator",
+            mission=(
+                "I am ready to create the project mission based on product context and project description. "
+                "I will write the mission in the mission window and select the proper agents below."
+            ),
+            status="waiting",
+            tool_type="universal",
+            progress=0,
+            acknowledged=False,
+            context_chunks=[],
+            messages=[]
+        )
+        
+        db.add(orchestrator_job)
+        await db.commit()
+        await db.refresh(orchestrator_job)
+        
+        logger.info(
+            f"Created orchestrator job {orchestrator_job.job_id} for project {project_id} "
+            f"(user: {current_user.username})"
+        )
+
     logger.info(f"Project {project_id} activated by {current_user.username}")
 
     # Broadcast activation to subscribers (standard schema)
@@ -739,6 +802,105 @@ async def activate_project(
 
     # Return unified response via helper to include counts
     return await get_project(project_id)
+
+
+@router.get("/{project_id}/orchestrator")
+async def get_project_orchestrator(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get the orchestrator job for a project.
+    
+    Returns the orchestrator MCPAgentJob assigned to this project.
+    If no orchestrator exists, creates one automatically.
+    
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user
+        db: Database session
+        
+    Returns:
+        Orchestrator job data with full job_id/agent_id
+        
+    Raises:
+        404: Project not found
+        403: User not authorized
+    """
+    from sqlalchemy import select
+    from src.giljo_mcp.models import Project, MCPAgentJob
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    # Verify project exists and user has access
+    project_stmt = select(Project).where(
+        Project.id == project_id,
+        Project.tenant_key == current_user.tenant_key
+    )
+    project_result = await db.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Find or create orchestrator job
+    orch_stmt = select(MCPAgentJob).where(
+        MCPAgentJob.project_id == project_id,
+        MCPAgentJob.agent_type == "orchestrator",
+        MCPAgentJob.tenant_key == current_user.tenant_key
+    )
+    orch_result = await db.execute(orch_stmt)
+    orchestrator = orch_result.scalar_one_or_none()
+    
+    if not orchestrator:
+        # Create orchestrator if it doesn't exist
+        orchestrator = MCPAgentJob(
+            tenant_key=current_user.tenant_key,
+            project_id=project_id,
+            agent_type="orchestrator",
+            agent_name="Orchestrator",
+            mission=(
+                "I am ready to create the project mission based on product context and project description. "
+                "I will write the mission in the mission window and select the proper agents below."
+            ),
+            status="waiting",
+            tool_type="universal",
+            progress=0,
+            acknowledged=False,
+            context_chunks=[],
+            messages=[]
+        )
+        
+        db.add(orchestrator)
+        await db.commit()
+        await db.refresh(orchestrator)
+        
+        logger.info(
+            f"Auto-created orchestrator job {orchestrator.job_id} for project {project_id} "
+            f"(user: {current_user.username})"
+        )
+    
+    # Return orchestrator data
+    return {
+        "success": True,
+        "orchestrator": {
+            "id": orchestrator.id,
+            "job_id": orchestrator.job_id,  # Full 36-digit UUID
+            "agent_id": orchestrator.job_id,  # Alias for compatibility
+            "agent_type": orchestrator.agent_type,
+            "agent_name": orchestrator.agent_name,
+            "mission": orchestrator.mission,
+            "status": orchestrator.status,
+            "progress": orchestrator.progress,
+            "tool_type": orchestrator.tool_type,
+            "acknowledged": orchestrator.acknowledged,
+            "created_at": orchestrator.created_at.isoformat() if orchestrator.created_at else None,
+            "started_at": orchestrator.started_at.isoformat() if orchestrator.started_at else None,
+            "completed_at": orchestrator.completed_at.isoformat() if orchestrator.completed_at else None
+        }
+    }
 
 
 @router.post("/{project_id}/deactivate", response_model=ProjectResponse)

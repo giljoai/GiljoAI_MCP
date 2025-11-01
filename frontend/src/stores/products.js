@@ -36,6 +36,12 @@ export const useProductStore = defineStore('products', () => {
     )
   })
 
+  // Computed: Returns effective product ID for task operations
+  // Prefers user-selected product (currentProductId) over active product
+  const effectiveProductId = computed(() => {
+    return currentProductId.value || activeProduct.value?.id || null
+  })
+
   // Actions
   async function fetchProducts() {
     loading.value = true
@@ -279,6 +285,7 @@ export const useProductStore = defineStore('products', () => {
     isProductSelected,
     currentProductName,
     currentProductMetrics,
+    effectiveProductId,
 
     // Actions
     fetchProducts,

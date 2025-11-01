@@ -92,6 +92,16 @@
       <div role="status">Copied to clipboard!</div>
     </v-snackbar>
 
+    <!-- Copy error snackbar -->
+    <v-snackbar
+      v-model="showCopyError"
+      :timeout="4000"
+      location="top"
+      color="error"
+    >
+      <div role="alert">{{ copyErrorMessage }}</div>
+    </v-snackbar>
+
     <!-- Close confirmation dialog -->
     <v-dialog
       v-model="showCloseConfirmation"
@@ -151,8 +161,9 @@ const { copy, copied } = useClipboard()
 
 // Reactive state
 const showCopySuccess = ref(false)
+const showCopyError = ref(false)
+const copyErrorMessage = ref('')
 const showCloseConfirmation = ref(false)
-const copyError = ref(null)
 
 // Computed properties
 const truncatedMission = computed(() => {
@@ -182,20 +193,38 @@ const handleCopyPrompt = async (tool) => {
 
     if (success) {
       showCopySuccess.value = true
-      copyError.value = null
+      showCopyError.value = false
+      copyErrorMessage.value = ''
     } else {
       throw new Error('Clipboard copy failed')
     }
   } catch (err) {
     console.error('[OrchestratorCard] Failed to copy prompt:', err)
-    copyError.value = err.message
+
+    // Determine error message
+    let errorMsg = 'Failed to copy prompt to clipboard'
+    if (err.response?.status === 404) {
+      errorMsg = 'Project not found or not accessible'
+    } else if (err.response?.status === 403) {
+      errorMsg = 'Not authorized to access this project'
+    } else if (err.response?.data?.detail) {
+      errorMsg = err.response.data.detail
+    } else if (err.message) {
+      errorMsg = err.message
+    }
 
     // Still try textarea fallback method
     try {
-      await fallbackCopy(err.response?.data?.prompt || 'Error fetching prompt')
+      const fallbackText = err.response?.data?.prompt || promptText || 'Error fetching prompt'
+      await fallbackCopy(fallbackText)
       showCopySuccess.value = true
+      showCopyError.value = false
     } catch (fallbackErr) {
       console.error('[OrchestratorCard] Fallback copy also failed:', fallbackErr)
+      // Show error to user
+      copyErrorMessage.value = errorMsg
+      showCopyError.value = true
+      showCopySuccess.value = false
     }
   }
 }

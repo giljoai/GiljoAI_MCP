@@ -32,6 +32,7 @@
       <v-window-item value="launch">
         <LaunchTab
           :project="project"
+          :orchestrator="orchestrator"
           :is-staging="store.isStaging"
           :readonly="readonly"
           @stage-project="handleStageProject"
@@ -96,6 +97,10 @@ const props = defineProps({
   project: {
     type: Object,
     required: true
+  },
+  orchestrator: {
+    type: Object,
+    default: null
   },
   readonly: {
     type: Boolean,
