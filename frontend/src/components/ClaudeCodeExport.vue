@@ -58,35 +58,6 @@
         </v-card>
       </div>
 
-      <!-- Product Selection (if multiple products) -->
-      <div v-if="availableProducts.length > 1" class="mb-4">
-        <h4 class="text-subtitle-1 font-weight-medium mb-2">Select Product</h4>
-        <v-select
-          v-model="selectedProduct"
-          :items="availableProducts"
-          item-title="name"
-          item-value="id"
-          label="Product"
-          return-object
-          variant="outlined"
-          :disabled="loading"
-        >
-          <template #item="{ props, item }">
-            <v-list-item v-bind="props">
-              <template #append>
-                <v-icon
-                  v-if="!item.raw.project_path"
-                  color="warning"
-                  size="small"
-                >
-                  mdi-alert-circle-outline
-                </v-icon>
-              </template>
-            </v-list-item>
-          </template>
-        </v-select>
-      </div>
-
       <!-- Template Summary -->
       <div v-if="activeTemplates.length > 0" class="mb-4">
         <h4 class="text-subtitle-1 font-weight-medium mb-2">
@@ -146,8 +117,6 @@ import { ref, onMounted, computed } from 'vue'
 import api from '@/services/api'
 
 // State
-const selectedProduct = ref(null)
-const availableProducts = ref([])
 const activeTemplates = ref([])
 const loading = ref(false)
 const showCopyFeedback = ref(false)
@@ -281,31 +250,9 @@ async function loadActiveTemplates() {
   }
 }
 
-async function loadProducts() {
-  try {
-    loading.value = true
-    const response = await api.products.list()
-    availableProducts.value = response.data || []
-
-    // Auto-select first product or active product
-    if (availableProducts.value.length > 0) {
-      const activeProduct = availableProducts.value.find(p => p.is_active)
-      selectedProduct.value = activeProduct || availableProducts.value[0]
-    }
-
-    console.log('[CLAUDE EXPORT] Loaded products:', availableProducts.value.length)
-  } catch (error) {
-    console.error('[CLAUDE EXPORT] Failed to load products:', error)
-    availableProducts.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
 // Lifecycle
 onMounted(() => {
   loadActiveTemplates()
-  loadProducts()
 })
 </script>
 
