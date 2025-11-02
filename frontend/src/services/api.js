@@ -394,6 +394,7 @@ export const api = {
   // Prompts (Handover 0065 - Token Estimation)
   prompts: {
     estimateTokens: (data) => apiClient.post('/api/prompts/estimate-tokens', data),
+    staging: (projectId, params) => apiClient.get(`/api/prompts/staging/${projectId}`, { params }),
   },
 }
 

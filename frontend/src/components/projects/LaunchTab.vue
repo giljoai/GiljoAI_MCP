@@ -425,14 +425,45 @@ async function handleStageProject() {
       await new Promise(resolve => setTimeout(resolve, 2000))
     }
 
-    // Copy comprehensive prompt to clipboard
-    await navigator.clipboard.writeText(prompt)
+    // Copy comprehensive prompt to clipboard (cross-platform with fallback)
+    let clipboardSuccess = false
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        // Modern Clipboard API (HTTPS/localhost)
+        await navigator.clipboard.writeText(prompt)
+        clipboardSuccess = true
+      } else {
+        // Legacy fallback for non-HTTPS (HTTP over LAN/WAN)
+        const textArea = document.createElement('textarea')
+        textArea.value = prompt
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        const success = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        clipboardSuccess = success
+      }
+    } catch (clipErr) {
+      console.error('[STAGING] Clipboard failed:', clipErr)
+      clipboardSuccess = false
+    }
 
-    // Success feedback
-    toastMessage.value = `Orchestrator prompt copied! (${token_estimate} tokens, ${budget_utilization} budget used)`
-    showToast.value = true
-
-    emit('stage-project')
+    if (clipboardSuccess) {
+      // Success feedback
+      toastMessage.value = `Orchestrator prompt copied! (${token_estimate} tokens, ${budget_utilization} budget used)`
+      showToast.value = true
+      emit('stage-project')
+    } else {
+      // Clipboard failed - show console fallback
+      toastMessage.value = `Prompt generated (${token_estimate} tokens) - copied to console (clipboard unavailable on non-HTTPS)`
+      showToast.value = true
+      console.log('[STAGING] === ORCHESTRATOR PROMPT (COPY FROM HERE) ===')
+      console.log(prompt)
+      console.log('[STAGING] === END PROMPT ===')
+    }
 
   } catch (err) {
     console.error('[STAGING] Failed to generate prompt:', err)
