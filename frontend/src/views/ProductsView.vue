@@ -2189,12 +2189,22 @@ watch(showDialog, (isOpen) => {
         if (differs && ageMinutes <= TTL_MINUTES) {
           // Handover 0084: Preserve current productForm values, only restore cached changes
           // This ensures new fields like projectPath don't get lost from old caches
-          productForm.value = {
-            ...productForm.value,
-            ...cached,
-            // Preserve projectPath from current product if not in cache
-            projectPath: cached.projectPath !== undefined ? cached.projectPath : productForm.value.projectPath
+          // Merge strategy: Only restore cached values if they are defined and not empty
+          const mergedForm = { ...productForm.value }
+
+          // Restore cached values, but preserve current values if cached is undefined/empty
+          Object.keys(cached).forEach(key => {
+            if (cached[key] !== undefined && cached[key] !== '') {
+              mergedForm[key] = cached[key]
+            }
+          })
+
+          // Explicitly preserve projectPath if not in cache or empty in cache
+          if (!cached.projectPath && productForm.value.projectPath) {
+            mergedForm.projectPath = productForm.value.projectPath
           }
+
+          productForm.value = mergedForm
           showToast({ message: 'Draft restored', type: 'info', duration: 2000 })
         } else {
           autoSave.value.clearCache()
