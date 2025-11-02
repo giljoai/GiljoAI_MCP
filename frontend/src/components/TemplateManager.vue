@@ -97,6 +97,7 @@
         class="elevation-1 templates-table"
         item-key="id"
         :items-per-page="10"
+        :item-class="(item) => item.is_active ? '' : 'inactive-template'"
       >
         <template v-slot:item.name="{ item }">
           <div class="font-weight-medium">{{ item.name }}</div>
@@ -105,7 +106,11 @@
         <template v-slot:item.role="{ item }">
           <v-chip 
             size="small" 
-            :style="{ backgroundColor: getCategoryColor(item.role), color: 'white' }"
+            :style="{ 
+              backgroundColor: getCategoryColor(item.role), 
+              color: '#1e3a5f',
+              opacity: item.is_active ? 1 : 0.4 
+            }"
           >
             {{ item.role }}
           </v-chip>
@@ -746,7 +751,8 @@ const detectedVariables = computed(() => {
 const loadTemplates = async () => {
   loading.value = true
   try {
-    const response = await api.templates.list()
+    // Load ALL templates (active and inactive)
+    const response = await api.templates.list({ is_active: false })
     // Map backend fields to frontend fields
     templates.value = (response.data || []).map((t) => ({
       ...t,
@@ -1169,6 +1175,15 @@ watch(
   
   .v-switch__track {
     background-color: rgba(76, 175, 80, 0.3) !important; // Green track when ON
+  }
+}
+
+// Inactive template row styling
+:deep(.inactive-template) {
+  opacity: 0.5;
+  
+  td {
+    color: var(--v-theme-on-surface) !important;
   }
 }
 </style>
