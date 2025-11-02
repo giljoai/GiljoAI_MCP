@@ -56,6 +56,7 @@
           @launch-agent="handleLaunchAgent"
           @view-details="emit('view-details', $event)"
           @view-error="emit('view-error', $event)"
+          @hand-over="handleHandOver"
           @closeout-project="handleCloseoutProject"
           @send-message="handleSendMessage"
         />
@@ -248,6 +249,45 @@ async function handleCloseoutProject() {
     emit('closeout-project')
   } catch (error) {
     console.error('Closeout project failed:', error)
+  }
+}
+
+/**
+ * Handle orchestrator handover (Handover 0080a)
+ */
+async function handleHandOver(agent) {
+  try {
+    console.log('[ProjectTabs] Triggering succession for orchestrator:', agent.job_id)
+
+    // Call trigger_succession API endpoint
+    const response = await fetch(`/api/agent-jobs/${agent.job_id}/trigger_succession`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to trigger succession')
+    }
+
+    const result = await response.json()
+
+    // Show success notification with launch prompt
+    console.log('[ProjectTabs] Succession triggered successfully:', result)
+
+    // TODO: Show LaunchSuccessorDialog with result.launch_prompt
+    // For now, show simple confirmation
+    alert(`✅ ${result.message}\n\n📋 Launch Prompt (copy to clipboard):\n\n${result.launch_prompt}`)
+
+    // Refresh agents to show new successor
+    await store.loadAgents(project.value.id)
+
+  } catch (error) {
+    console.error('Hand over failed:', error)
+    alert(`❌ Failed to trigger succession: ${error.message}`)
   }
 }
 
