@@ -443,124 +443,87 @@
           <v-card-title>Integrations</v-card-title>
           <v-card-subtitle>Configure MCP tools and integrations</v-card-subtitle>
           <v-card-text>
-            <v-tabs
-              v-model="integrationsSubTab"
-              class="integrations-subtabs"
-              selected-class="bg-primary"
-              show-arrows
-              hide-slider
-            >
-              <v-tab value="mcp-config">
-                <template #prepend>
-                  <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
-                </template>
-                MCP Configuration
-              </v-tab>
-              <v-tab value="integrations-list"><v-icon start>mdi-puzzle</v-icon>Integrations</v-tab>
-            </v-tabs>
-            <v-divider class="mb-4 integrations-divider" thickness="3"></v-divider>
-
-            <v-window v-model="integrationsSubTab" :theme="theme.global.name.value" :touch="false" :reverse="false">
-              <!-- MCP Configuration Tab -->
-              <v-window-item value="mcp-config">
-                <div class="mb-2">
-                  <div class="d-flex align-center" style="padding-left: 10px;">
-                    <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="28" height="28" class="mr-2" cover style="flex: 0 0 28px;" />
-                    <h3 class="text-h6 mb-0">AI Tool Self-Configuration</h3>
-                  </div>
+            <!-- GiljoAI MCP Integration -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-avatar size="40" rounded="0" class="mr-2">
+                    <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" alt="GiljoAI MCP" />
+                  </v-avatar>
+                  <h3 class="text-h6 mb-0">GiljoAI MCP Integration</h3>
                 </div>
-                <p class="text-body-2 text-medium-emphasis mb-4" style="padding-left: 10px;">
-                  Use the wizard to generate a tool-specific prompt that configures your AI tool automatically.
-                  For tools without wizard support, use manual configuration.
+                <p class="text-body-2 text-medium-emphasis mb-4">
+                  Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI.
                 </p>
 
-                <v-card variant="outlined" class="mb-4 pa-4">
-                  <AiToolConfigWizard />
-                </v-card>
-
-                <!-- Manual Configuration (fallback) -->
-                <v-card variant="outlined" class="mb-6">
-                  <v-card-text>
-                    <div class="d-flex align-center mb-2">
-                      <v-icon color="secondary" size="large" class="mr-2">mdi-cog</v-icon>
-                      <h4 class="text-h6 mb-0">Manual AI Tool Configuration</h4>
+                <!-- MCP Configuration Tool -->
+                <v-card variant="tonal" class="mb-0">
+                  <v-card-text class="pa-3">
+                    <div class="d-flex align-center justify-between">
+                      <div class="flex-grow-1">
+                        <div class="text-subtitle-2 font-weight-medium">MCP Configuration Tool</div>
+                        <div class="text-body-2 text-medium-emphasis">
+                          Creates MCP integration CLI command for your coding agent of choice
+                        </div>
+                      </div>
+                      <AiToolConfigWizard />
                     </div>
-                    <p class="text-body-2 text-medium-emphasis mb-0">
-                      Manual configuration for AI tools that don't support automatic setup.
-                      Generate and copy configuration snippets.
-                    </p>
-                    <v-btn
-                      color="primary"
-                      size="large"
-                      block
-                      @click="openManualConfig"
-                      aria-label="Open manual AI tool configuration dialog"
-                      class="mt-3"
-                    >
-                      Open Manual Configuration
-                    </v-btn>
                   </v-card-text>
                 </v-card>
-              </v-window-item>
+              </v-card-text>
+            </v-card>
 
-              <!-- Integrations List Tab -->
-              <v-window-item value="integrations-list">
-                <h3 class="text-h6 mb-4">MCP Integrations</h3>
-                <v-card variant="outlined" class="mb-4">
-                  <v-list>
-                    <v-list-item>
-                      <template #prepend>
-                        <v-avatar size="40" rounded="0">
-                          <v-img src="/Serena.png" alt="Serena MCP" />
-                        </v-avatar>
-                      </template>
+            <!-- Serena MCP Integration -->
+            <v-card variant="outlined" class="mb-4">
+              <v-list>
+                <v-list-item>
+                  <template #prepend>
+                    <v-avatar size="40" rounded="0">
+                      <v-img src="/Serena.png" alt="Serena MCP" />
+                    </v-avatar>
+                  </template>
 
-                      <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
-                      <v-list-item-subtitle>
-                        Enabling adds Serena tool instructions to agent prompts. Disabling removes them
-                        from agent tool startup. (Currently only Claude Code)
-                      </v-list-item-subtitle>
+                  <v-list-item-title class="text-h6 mb-1">Serena MCP</v-list-item-title>
+                  <v-list-item-subtitle>
+                    Enabling adds Serena tool instructions to agent prompts. Disabling removes them
+                    from agent tool startup. (Currently only Claude Code)
+                  </v-list-item-subtitle>
 
-                      <template #append>
-                        <div class="d-flex align-center">
-                          <v-btn
-                            variant="text"
-                            size="small"
-                            class="mr-2"
-                            @click="openSerenaAdvanced"
-                            :disabled="toggling"
-                            title="Open advanced Serena settings"
-                          >
-                            Advanced
-                          </v-btn>
-                          <v-switch
-                            v-model="serenaEnabled"
-                            @update:model-value="toggleSerena"
-                            color="primary"
-                            :loading="toggling"
-                            hide-details
-                            inset
-                            class="serena-toggle"
-                          />
-                        </div>
-                      </template>
-                    </v-list-item>
-                  </v-list>
-                </v-card>
+                  <template #append>
+                    <div class="d-flex align-center">
+                      <v-btn
+                        variant="text"
+                        size="small"
+                        class="mr-2"
+                        @click="openSerenaAdvanced"
+                        :disabled="toggling"
+                        title="Open advanced Serena settings"
+                      >
+                        Advanced
+                      </v-btn>
+                      <v-switch
+                        v-model="serenaEnabled"
+                        @update:model-value="toggleSerena"
+                        color="primary"
+                        :loading="toggling"
+                        hide-details
+                        inset
+                        class="serena-toggle"
+                      />
+                    </div>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card>
 
-                <!-- Claude Code Agent Export -->
-                <ClaudeCodeExport />
-              </v-window-item>
-            </v-window>
+            <!-- Claude Code Agent Export -->
+            <ClaudeCodeExport />
           </v-card-text>
         </v-card>
       </v-window-item>
     </v-window>
 
-    <!-- Manual Configuration Dialog -->
-    <v-dialog v-model="showManualConfigDialog" max-width="900" scrollable>
-      <McpConfigComponent @close="showManualConfigDialog = false" />
-    </v-dialog>
+    
 
     <!-- Serena Advanced Settings Dialog -->
     <SerenaAdvancedSettingsDialog
@@ -578,7 +541,6 @@ import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
-import McpConfigComponent from '@/components/McpConfigComponent.vue'
 import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDialog.vue'
@@ -597,7 +559,7 @@ const integrationsSubTab = ref('mcp-config')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
-const showManualConfigDialog = ref(false)
+
 const showSerenaAdvanced = ref(false)
 const serenaConfig = ref({
   use_in_prompts: true,
@@ -744,14 +706,6 @@ function resetNotificationSettings() {
     position: 'bottom-right',
     duration: 5,
   }
-}
-
-// AI Tool Configuration Methods
-
-function openManualConfig() {
-  // Show the manual config dialog
-  showManualConfigDialog.value = true
-  console.log('[USER SETTINGS] Opening manual configuration dialog')
 }
 
 // Serena MCP Methods
