@@ -172,25 +172,31 @@ class TestNpmInstallationStrategy:
                 'warnings': []
             }
 
-            # Mock npm ci success
+            # Track npm commands
+            npm_commands_called = []
+
+            def npm_side_effect(*args, **kwargs):
+                cmd = args[0] if args else kwargs.get('cmd', [])
+                npm_commands_called.append(cmd)
+
+                # All commands succeed
+                if 'list' in cmd:
+                    return {'success': True, 'stdout': 'deps ok', 'stderr': ''}
+                return {'success': True, 'stdout': 'installed', 'stderr': ''}
+
+            # Mock npm commands
             with patch.object(installer.platform, 'run_npm_command') as mock_npm:
-                mock_npm.return_value = {'success': True}
+                mock_npm.side_effect = npm_side_effect
 
                 # Mock verification
                 with patch.object(installer, '_verify_npm_dependencies') as mock_verify:
                     mock_verify.return_value = True
 
-                    # Mock npm list for two-tier verification
-                    with patch.object(installer.platform, 'run_npm_command') as mock_list:
-                        mock_list.return_value = {'success': True}
+                    result = installer._install_npm_dependencies_with_retry(frontend_dir)
 
-                        result = installer._install_npm_dependencies_with_retry(frontend_dir)
-
-                        # Should have called npm ci
-                        npm_calls = [call for call in mock_npm.call_args_list
-                                   if 'npm' in str(call)]
-                        assert any('ci' in str(call) for call in npm_calls)
-                        assert result is True
+                    # Should have called npm ci
+                    assert any('ci' in cmd for cmd in npm_commands_called)
+                    assert result is True
 
     def test_fallback_to_npm_install_when_lockfile_missing(self, installer, tmp_path):
         """Test fallback to npm install when lockfile is missing"""
@@ -205,21 +211,30 @@ class TestNpmInstallationStrategy:
                 'warnings': ['package-lock.json not found']
             }
 
+            # Track npm commands
+            npm_commands_called = []
+
+            def npm_side_effect(*args, **kwargs):
+                cmd = args[0] if args else kwargs.get('cmd', [])
+                npm_commands_called.append(cmd)
+
+                # All commands succeed
+                if 'list' in cmd:
+                    return {'success': True, 'stdout': 'deps ok', 'stderr': ''}
+                return {'success': True, 'stdout': 'installed', 'stderr': ''}
+
             with patch.object(installer.platform, 'run_npm_command') as mock_npm:
-                mock_npm.return_value = {'success': True}
+                mock_npm.side_effect = npm_side_effect
 
                 with patch.object(installer, '_verify_npm_dependencies') as mock_verify:
                     mock_verify.return_value = True
 
-                    with patch.object(installer.platform, 'run_npm_command') as mock_list:
-                        mock_list.return_value = {'success': True}
+                    result = installer._install_npm_dependencies_with_retry(frontend_dir)
 
-                        result = installer._install_npm_dependencies_with_retry(frontend_dir)
-
-                        # Should have called npm install, not npm ci
-                        npm_calls = [call for call in mock_npm.call_args_list]
-                        assert any('install' in str(call) for call in npm_calls)
-                        assert result is True
+                    # Should have called npm install, not npm ci
+                    assert any('install' in cmd for cmd in npm_commands_called)
+                    assert not any('ci' in cmd for cmd in npm_commands_called)
+                    assert result is True
 
     def test_fallback_to_npm_install_when_npm_ci_fails(self, installer, tmp_path):
         """Test fallback to npm install when npm ci fails"""
@@ -619,19 +634,39 @@ class TestEnhancedErrorReporting:
         frontend_dir = tmp_path / 'frontend'
         frontend_dir.mkdir()
 
+        # Create API script to avoid early return
+        api_dir = tmp_path / 'api'
+        api_dir.mkdir()
+        api_script = api_dir / 'run_api.py'
+        api_script.write_text('# API script')
+
+        installer.install_dir = tmp_path
+
         with patch('shutil.which', return_value='/usr/bin/npm'):
             with patch.object(installer, '_verify_npm_dependencies') as mock_verify:
                 mock_verify.return_value = False
 
                 with patch.object(installer, '_install_npm_dependencies_with_retry') as mock_install:
                     mock_install.return_value = False
+                    # Store pre-flight results to trigger error output
+                    installer._npm_preflight_results = {
+                        'healthy': False,
+                        'issues': ['npm registry unreachable'],
+                        'warnings': []
+                    }
 
-                    result = installer.launch_services()
+                    # Mock subprocess.Popen to avoid Python executable issues
+                    with patch('subprocess.Popen') as mock_popen:
+                        mock_process = Mock()
+                        mock_process.pid = 12345
+                        mock_popen.return_value = mock_process
 
-                    captured = capsys.readouterr()
+                        result = installer.launch_services()
 
-                    # Should show troubleshooting steps
-                    assert 'npm registry' in captured.out.lower() or 'troubleshooting' in captured.out.lower()
+                        captured = capsys.readouterr()
+
+                        # Should show troubleshooting steps
+                        assert 'troubleshooting' in captured.out.lower() or 'disk space' in captured.out.lower()
 
 
 class TestCrossPlatformPathHandling:
