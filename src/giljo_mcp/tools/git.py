@@ -149,10 +149,8 @@ def _generate_commit_message(project_name: str, project_mission: str, changes_su
             summary += "..."
         message = f"{commit_type}: {summary}"
 
-    # Add project context
-    message += "\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n"
-    message += f"Project: {project_name}\n"
-    message += "Co-Authored-By: Claude <noreply@anthropic.com>"
+    # Add project context (branding removed)
+    message += f"\n\nProject: {project_name}\n"
 
     return message
 
@@ -320,7 +318,7 @@ def register_git_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_manager
                     # Add and commit
                     await _run_git_command(["git", "add", ".gitignore"], str(repo_path_obj))
 
-                    commit_msg = "feat: initialize repository with GiljoAI MCP\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\nCo-Authored-By: Claude <noreply@anthropic.com>"
+                    commit_msg = "feat: initialize repository with GiljoAI MCP"
                     _stdout, stderr, code = await _run_git_command(
                         ["git", "commit", "-m", commit_msg], str(repo_path_obj)
                     )

@@ -726,9 +726,6 @@ Completes handover: handovers/0004_HANDOVER_20251012_FRONTEND_V3_UNIFIED_AUTHENT
 
 Closes #<issue_number_if_applicable>
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

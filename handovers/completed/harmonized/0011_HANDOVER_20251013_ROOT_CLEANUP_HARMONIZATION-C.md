@@ -311,9 +311,6 @@ Results:
 
 Completes handover: handovers/completed/0011_HANDOVER_20251013_ROOT_CLEANUP_HARMONIZATION-C.md
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

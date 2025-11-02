@@ -915,9 +915,6 @@ Completes handover: handovers/0002_HANDOVER_20251012_REMOVE_LOCALHOST_BYPASS_COM
 
 Closes #<issue_number_if_applicable>
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---
