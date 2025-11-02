@@ -102,9 +102,9 @@
           <div class="font-weight-medium">{{ item.name }}</div>
         </template>
 
-        <template v-slot:item.category="{ item }">
-          <v-chip size="small" :color="getCategoryColor(item.category)">
-            {{ item.category }}
+        <template v-slot:item.role="{ item }">
+          <v-chip size="small" :color="getCategoryColor(item.role)">
+            {{ item.role }}
           </v-chip>
         </template>
 
@@ -661,7 +661,7 @@ const diffViewTab = ref('unified')
 // Table configuration
 const headers = [
   { title: 'Agent Name', key: 'name', align: 'start' },
-  { title: 'Type', key: 'category', align: 'start' },
+  { title: 'Role', key: 'role', align: 'start' },
   { title: 'Tool', key: 'preferred_tool', align: 'start' },
   { title: 'Variables', key: 'variables', align: 'center' },
   { title: 'Active', key: 'is_active', align: 'center' },
