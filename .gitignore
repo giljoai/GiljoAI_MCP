@@ -154,3 +154,7 @@ external/serena-venv/bin/python3.12
 external/serena-venv/lib64
 external/serena-venv/pyvenv.cfg
 external/serena/
+installer/credentials/db_credentials_20251101_185129.txt
+installer/credentials/db_credentials_20251101_185835.txt
+installer/credentials/db_credentials_20251101_191524.txt
+installer/credentials/db_credentials_20251101_232218.txt
