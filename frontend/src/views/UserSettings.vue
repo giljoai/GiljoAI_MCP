@@ -1111,4 +1111,25 @@ async function saveSerenaConfig(payload, done) {
 .unassigned-card .v-card-title {
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
+
+/* Disable sliding transitions, use simple fade instead */
+:deep(.v-window__container) {
+  overflow: visible !important;
+}
+:deep(.v-window-item) {
+  transition: none !important;
+  transform: none !important;
+}
+:deep(.v-window-item--active) {
+  animation: fade-in 0.2s ease-in !important;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 </style>
