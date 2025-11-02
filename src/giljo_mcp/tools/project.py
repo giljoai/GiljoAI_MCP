@@ -272,10 +272,7 @@ def register_project_tools(mcp: FastMCP, db_manager: DatabaseManager, tenant_man
 
 {summary}
 
-🤖 Generated with [Claude Code](https://claude.ai/code)
-Project: {project.name}
-
-Co-Authored-By: Claude <noreply@anthropic.com>"""
+Project: {project.name}"""
 
                         # Use the current tenant context for git operations
                         current_tenant.set(project.tenant_key)
