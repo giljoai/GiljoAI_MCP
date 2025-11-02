@@ -213,7 +213,7 @@ async def validate_active_agent_limit(
 async def get_templates(
     category: Optional[str] = Query(None, description="Filter by category"),
     role: Optional[str] = Query(None, description="Filter by role"),
-    is_active: bool = Query(True, description="Filter by active status"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status (None=all, True=active only, False=inactive only)"),
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -235,8 +235,11 @@ async def get_templates(
         # Build query with tenant isolation
         filters = [
             AgentTemplate.tenant_key == context["tenant_key"],
-            AgentTemplate.is_active == is_active,
         ]
+        
+        # Optional is_active filter (None = all templates)
+        if is_active is not None:
+            filters.append(AgentTemplate.is_active == is_active)
 
         # Optional product_id filter
         if context.get("product_id"):

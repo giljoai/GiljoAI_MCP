@@ -751,8 +751,8 @@ const detectedVariables = computed(() => {
 const loadTemplates = async () => {
   loading.value = true
   try {
-    // Load ALL templates (active and inactive)
-    const response = await api.templates.list({ is_active: false })
+    // Load ALL templates (active and inactive) - no filter to get both
+    const response = await api.templates.list()
     // Map backend fields to frontend fields
     templates.value = (response.data || []).map((t) => ({
       ...t,
@@ -768,10 +768,12 @@ const loadTemplates = async () => {
 // Handover 0075: Load active agent count
 const loadActiveCount = async () => {
   try {
-    const response = await api.get('/api/templates/stats/active-count')
-    activeCount.value = response.data.active_count
+    const response = await api.templates.list({ is_active: true })
+    // Count active templates from the response
+    activeCount.value = (response.data || []).filter(t => t.is_active).length
   } catch (error) {
     console.error('[TEMPLATE MANAGER] Failed to load active count:', error)
+    activeCount.value = 0
   }
 }
 
