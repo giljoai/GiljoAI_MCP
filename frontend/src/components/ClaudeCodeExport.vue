@@ -64,30 +64,6 @@
         </v-card>
       </div>
 
-      <!-- Template Summary -->
-      <div v-if="activeTemplates.length > 0" class="mb-4">
-        <h4 class="text-subtitle-1 font-weight-medium mb-2">
-          Active Templates ({{ activeTemplates.length }})
-        </h4>
-        <v-chip-group column>
-          <v-chip
-            v-for="template in activeTemplates"
-            :key="template.id"
-            size="small"
-            label
-            :prepend-icon="getTemplateIcon(template.role)"
-          >
-            {{ template.name }}
-          </v-chip>
-        </v-chip-group>
-      </div>
-
-      <!-- No Templates Message -->
-      <v-alert v-else type="warning" variant="tonal" class="mb-4">
-        No active templates available for export. Please activate at least one template in the
-        Agent Templates tab.
-      </v-alert>
-
       <!-- Context Budget Warning -->
       <v-alert type="warning" variant="tonal" density="compact" class="mb-4" icon="mdi-alert-circle-outline">
         <div class="text-body-2">
