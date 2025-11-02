@@ -39,7 +39,7 @@
     </v-tabs>
 
     <!-- Tab Content -->
-    <v-window v-model="activeTab" :touch="false" :reverse="false">
+    <v-window v-model="activeTabIndex" :touch="false" :show-arrows="false">
       <!-- Context Settings -->
       <v-window-item value="context">
         <v-card data-test="context-settings">
@@ -460,7 +460,7 @@
             </v-tabs>
             <v-divider class="mb-4 integrations-divider" thickness="3"></v-divider>
 
-            <v-window v-model="integrationsSubTab" :theme="theme.global.name.value" :touch="false" :reverse="false">
+            <v-window v-model="integrationsSubTabIndex" :theme="theme.global.name.value" :touch="false" :show-arrows="false">
               <!-- MCP Configuration Tab -->
               <v-window-item value="mcp-config">
                 <div class="mb-2">
@@ -594,6 +594,33 @@ const router = useRouter()
 // State
 const activeTab = ref('general')
 const integrationsSubTab = ref('mcp-config')
+
+// Tab order mapping for consistent transitions (right-to-left)
+const tabOrder = ['general', 'appearance', 'notifications', 'agents', 'context', 'api-keys', 'integrations']
+const activeTabIndex = computed({
+  get() {
+    return tabOrder.indexOf(activeTab.value)
+  },
+  set(index) {
+    if (index >= 0 && index < tabOrder.length) {
+      activeTab.value = tabOrder[index]
+    }
+  }
+})
+
+// Integrations sub-tab order mapping
+const integrationsTabOrder = ['mcp-config', 'integrations-list']
+const integrationsSubTabIndex = computed({
+  get() {
+    return integrationsTabOrder.indexOf(integrationsSubTab.value)
+  },
+  set(index) {
+    if (index >= 0 && index < integrationsTabOrder.length) {
+      integrationsSubTab.value = integrationsTabOrder[index]
+    }
+  }
+})
+
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
