@@ -293,30 +293,12 @@
               label="Project Path (optional)"
               variant="outlined"
               density="comfortable"
-              hint="File system path to your product folder (e.g., F:/Projects/MyProduct). Required for exporting agents to this product."
+              placeholder="F:/Projects/MyProduct"
+              prepend-inner-icon="mdi-folder-outline"
+              hint="File system path to your product folder. Copy from File Explorer/Finder address bar. Required for exporting agents."
               persistent-hint
               class="mb-4"
-            >
-              <template #append-inner>
-                <v-btn
-                  icon="mdi-folder-open"
-                  size="small"
-                  variant="text"
-                  @click="browseProjectPath"
-                  title="Browse for folder"
-                ></v-btn>
-              </template>
-            </v-text-field>
-
-            <!-- Hidden file input for directory selection -->
-            <input
-              ref="projectPathInput"
-              type="file"
-              webkitdirectory
-              directory
-              style="display: none"
-              @change="handleProjectPathSelected"
-            />
+            ></v-text-field>
 
             <!-- Description -->
             <v-textarea
@@ -1480,7 +1462,6 @@ const loadingCascadeImpact = ref(false)
 const deleteConfirmationCheck = ref(false)
 const dialogTab = ref('basic')  // Handover 0042: Tab for product dialog (basic, tech, arch, features)
 const autoSave = ref(null)  // Handover 0051: Auto-save composable instance
-const projectPathInput = ref(null)  // Handover 0084: File input ref for project path browsing
 
 // Handover 0050: Activation warning dialog state
 const showActivationWarning = ref(false)
@@ -1913,41 +1894,6 @@ async function deleteVisionDocument(doc) {
       type: 'error',
       duration: 5000,
     })
-  }
-}
-
-// Handover 0084: Project path browser functions
-function browseProjectPath() {
-  if (projectPathInput.value) {
-    projectPathInput.value.click()
-  }
-}
-
-function handleProjectPathSelected(event) {
-  const files = event.target.files
-  if (files && files.length > 0) {
-    // Get the path from the first file (webkitRelativePath includes folder name)
-    const firstFile = files[0]
-    // Extract directory path by removing the filename
-    const fullPath = firstFile.webkitRelativePath || firstFile.name
-    const pathParts = fullPath.split('/')
-
-    // For webkitdirectory, we need to construct the full path
-    // The browser gives us relative paths, so we ask user to verify/edit
-    if (pathParts.length > 0) {
-      // Get folder name (first part of webkitRelativePath)
-      const folderName = pathParts[0]
-      productForm.value.projectPath = folderName
-
-      showToast({
-        message: `Selected: ${folderName}. Please verify the full path is correct.`,
-        type: 'info',
-        duration: 5000,
-      })
-    }
-
-    // Reset input for next selection
-    event.target.value = ''
   }
 }
 
