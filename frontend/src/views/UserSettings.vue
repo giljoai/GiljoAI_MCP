@@ -1019,16 +1019,8 @@ watch(
   },
   { deep: true }
 )
-</script>
 
-<style scoped>
-/* API section divider should follow theme */
-.api-divider {
-  --v-theme-overlay-multiplier: 1; /* ensure visibility */
-  border-color: var(--v-theme-on-surface) !important;
-  opacity: 0.3 !important;
-}
-
+// Serena Advanced dialog handlers
 async function openSerenaAdvanced() {
   try {
     const cfg = await setupService.getSerenaConfig()
@@ -1052,6 +1044,15 @@ async function saveSerenaConfig(payload, done) {
   } finally {
     if (typeof done === 'function') done()
   }
+}
+</script>
+
+<style scoped>
+/* API section divider should follow theme */
+.api-divider {
+  --v-theme-overlay-multiplier: 1; /* ensure visibility */
+  border-color: var(--v-theme-on-surface) !important;
+  opacity: 0.3 !important;
 }
 /* Make Serena toggle more visible */
 .serena-toggle :deep(.v-switch__track) {
