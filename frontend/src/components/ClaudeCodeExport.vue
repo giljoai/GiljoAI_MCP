@@ -24,42 +24,46 @@
         </p>
 
         <!-- Product Agents Command -->
-        <v-card variant="outlined" class="mb-3">
-          <v-card-text class="d-flex align-center justify-between">
-            <div class="flex-grow-1">
-              <div class="text-subtitle-2 font-weight-medium">Product Agents</div>
-              <div class="text-body-2 text-medium-emphasis">
-                Install agents in your product's .claude/agents folder
+        <v-card variant="tonal" class="mb-3">
+          <v-card-text class="pa-3">
+            <div class="d-flex align-center justify-between">
+              <div class="flex-grow-1">
+                <div class="text-subtitle-2 font-weight-medium">Product Agents</div>
+                <div class="text-body-2 text-medium-emphasis">
+                  Install agents in your product's .claude/agents folder
+                </div>
               </div>
+              <v-btn
+                color="primary"
+                variant="flat"
+                size="small"
+                @click="copyProductCommand"
+              >
+                Copy Command
+              </v-btn>
             </div>
-            <v-btn
-              color="primary"
-              variant="outlined"
-              @click="copyProductCommand"
-              prepend-icon="mdi-content-copy"
-            >
-              Copy Command
-            </v-btn>
           </v-card-text>
         </v-card>
 
         <!-- Personal Agents Command -->
-        <v-card variant="outlined" class="mb-3">
-          <v-card-text class="d-flex align-center justify-between">
-            <div class="flex-grow-1">
-              <div class="text-subtitle-2 font-weight-medium">Personal Agents</div>
-              <div class="text-body-2 text-medium-emphasis">
-                Install agents in your user profile (~/.claude/agents)
+        <v-card variant="tonal" class="mb-3">
+          <v-card-text class="pa-3">
+            <div class="d-flex align-center justify-between">
+              <div class="flex-grow-1">
+                <div class="text-subtitle-2 font-weight-medium">Personal Agents</div>
+                <div class="text-body-2 text-medium-emphasis">
+                  Install agents in your user profile (~/.claude/agents)
+                </div>
               </div>
+              <v-btn
+                color="primary"
+                variant="flat"
+                size="small"
+                @click="copyPersonalCommand"
+              >
+                Copy Command
+              </v-btn>
             </div>
-            <v-btn
-              color="primary"
-              variant="outlined"
-              @click="copyPersonalCommand"
-              prepend-icon="mdi-content-copy"
-            >
-              Copy Command
-            </v-btn>
           </v-card-text>
         </v-card>
       </div>
