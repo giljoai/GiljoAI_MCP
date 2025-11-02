@@ -15,7 +15,18 @@
 
       <!-- Export Commands Section -->
       <div class="export-commands mb-4">
-        <h4 class="text-subtitle-1 font-weight-medium mb-3">Export Commands</h4>
+        <div class="d-flex align-center mb-3">
+          <h4 class="text-subtitle-1 font-weight-medium mb-0 mr-2">Export Commands</h4>
+          <v-tooltip location="top" max-width="400">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+            </template>
+            <span>Old agents will be backed up in the .claude/agents folder and replaced with the active agents from the Agent Template Manager.</span>
+          </v-tooltip>
+        </div>
+        <p class="text-body-2 text-medium-emphasis mb-3">
+          Copy and paste agent import command into your AI coding tool (Claude Code, Codex CLI, or Gemini).
+        </p>
 
         <!-- Product Agents Command -->
         <v-card variant="outlined" class="mb-3">
@@ -88,18 +99,6 @@
           <strong>Context Budget Recommendation:</strong> Export no more than 8 agents maximum.
           Each agent description consumes context budget, reducing available tokens for your
           project. Claude Code recommends 6-8 agents for optimal performance.
-        </div>
-      </v-alert>
-
-      <!-- Usage Instructions -->
-      <v-alert type="info" variant="tonal" class="mb-4" icon="mdi-information-outline">
-        <div class="text-body-2">
-          <strong>How to use:</strong>
-          <ol class="ml-4 mt-2">
-            <li>Click "Copy Command" above</li>
-            <li>Paste the slash command in your AI coding tool (Claude Code, Codex CLI, or Gemini)</li>
-            <li>Agents will be installed to the appropriate directory</li>
-          </ol>
         </div>
       </v-alert>
 
