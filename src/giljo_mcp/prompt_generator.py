@@ -304,10 +304,10 @@ class OrchestratorPromptGenerator:
         for doc in vision_docs:
             chunks.append({
                 "id": doc.id,
-                "title": doc.title,
+                "title": doc.document_name,
                 "version": doc.version,
-                "content_preview": doc.content[:500] if doc.content else doc.file_path,
-                "is_chunked": doc.is_chunked
+                "content_preview": doc.vision_document[:500] if doc.vision_document else doc.vision_path,
+                "is_chunked": doc.chunked
             })
 
         return chunks
@@ -354,7 +354,7 @@ class OrchestratorPromptGenerator:
         for template in templates:
             template_list.append({
                 "name": template.name,
-                "agent_type": template.agent_type,
+                "agent_type": template.role,
                 "tool": template.tool or "claude",
                 "description": template.description[:200] if template.description else "No description"
             })
