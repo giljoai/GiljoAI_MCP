@@ -819,7 +819,43 @@ def install_requirements() -> bool:
         return False
 
 
-def run_startup(check_only: bool = False, verbose: bool = False, no_browser: bool = False) -> int:
+def run_database_migrations() -> bool:
+    """
+    Run database migrations using Alembic.
+
+    Returns:
+        True if migrations are successful, False otherwise
+    """
+    print_header("Running Database Migrations")
+    try:
+        alembic_path = shutil.which("alembic")
+        if not alembic_path:
+            print_error("Alembic not found in system PATH")
+            return False
+
+        result = subprocess.run(
+            [alembic_path, "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300,  # 5 minute timeout
+        )
+        print_success("Database migrations successful")
+        return True
+    except subprocess.TimeoutExpired:
+        print_error("Database migrations timed out (exceeded 5 minutes)")
+        return False
+    except subprocess.CalledProcessError as e:
+        print_error(f"Database migrations failed with return code {e.returncode}")
+        if e.stderr:
+            print_error(f"Error details: {e.stderr}")
+        return False
+    except Exception as e:
+        print_error(f"Unexpected error during database migrations: {e}")
+        return False
+
+
+def run_startup(check_only: bool = False, verbose: bool = False, no_browser: bool = False, no_migrations: bool = False) -> int:
     """
     Main startup function.
 
@@ -827,6 +863,7 @@ def run_startup(check_only: bool = False, verbose: bool = False, no_browser: boo
         check_only: If True, only check dependencies without starting services
         verbose: If True, show console windows for API/frontend (Windows only)
         no_browser: If True, skip automatic browser launch
+        no_migrations: If True, skip automatic database migrations
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -848,6 +885,14 @@ def run_startup(check_only: bool = False, verbose: bool = False, no_browser: boo
         print_error("Failed to install requirements")
         print_info("Please install manually: pip install -r requirements.txt")
         return 1
+
+    # Step 2.5: Run database migrations
+    if not no_migrations:
+        if not run_database_migrations():
+            print_error("Database migrations failed")
+            return 1
+    else:
+        print_info("Skipping database migrations as requested")
 
     # Step 3: Check database connectivity
     print_header("Database Connectivity")
@@ -979,7 +1024,8 @@ def run_startup(check_only: bool = False, verbose: bool = False, no_browser: boo
 @click.option("--check-only", is_flag=True, help="Only check dependencies without starting services")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output (show console windows on Windows)")
 @click.option("--no-browser", is_flag=True, help="Skip automatic browser launch (show URLs instead)")
-def main(check_only: bool, verbose: bool, no_browser: bool) -> None:
+@click.option("--no-migrations", is_flag=True, help="Skip automatic database migrations")
+def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool) -> None:
     """
     GiljoAI MCP - Unified Startup Script
 
@@ -987,7 +1033,7 @@ def main(check_only: bool, verbose: bool, no_browser: bool) -> None:
     including dependency checking, database verification, and service launching.
     """
     try:
-        exit_code = run_startup(check_only=check_only, verbose=verbose, no_browser=no_browser)
+        exit_code = run_startup(check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations)
         sys.exit(exit_code)
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")
