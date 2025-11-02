@@ -188,9 +188,16 @@ class UnifiedInstaller:
             result['steps'].append('database_created')
             result['steps'].append('tables_created')  # Added by inline table creation
 
-            # REMOVED: Service launching - services will not auto-start after installation
+            # Step 7: Install frontend dependencies (NEW - using production-grade npm system)
+            self._print_header("Installing Frontend Dependencies")
+            frontend_result = self.install_frontend_dependencies()
+            if not frontend_result['success'] and not frontend_result.get('skipped', False):
+                self._print_error("Frontend dependency installation failed")
+                result['error'] = frontend_result.get('error', 'Frontend dependencies failed')
+                return result
+            result['steps'].append('frontend_dependencies_installed')
 
-            # Step 7: Create desktop shortcuts (if requested - Windows only)
+            # Step 8: Create desktop shortcuts (if requested - Windows only)
             if self.settings.get('create_shortcuts', False):
                 self._print_header("Creating Desktop Shortcuts")
                 self.create_desktop_shortcuts()
@@ -398,7 +405,7 @@ class UnifiedInstaller:
             result['psql_path'] = psql_path
             self.psql_path = Path(psql_path)
             self.postgresql_found = True
-            
+
             # Store PostgreSQL paths in settings for config.yaml persistence
             psql_path_obj = Path(psql_path)
             self.settings['postgresql_psql_path'] = str(psql_path_obj)
@@ -407,7 +414,7 @@ class UnifiedInstaller:
             self.settings['postgresql_discovered_at'] = datetime.now().isoformat()
             self.settings['postgresql_custom_path'] = False
             self.settings['postgresql_discovery_method'] = 'PATH'
-            
+
             return result
 
         # Method 2: Scan platform-specific locations
@@ -994,10 +1001,10 @@ class UnifiedInstaller:
             True if all critical dependencies are present, False otherwise
         """
         node_modules = frontend_dir / 'node_modules'
-        
+
         if not node_modules.exists():
             return False
-        
+
         # Critical dependencies that must be present
         critical_deps = [
             'vue',
@@ -1009,13 +1016,13 @@ class UnifiedInstaller:
             'vuedraggable',  # Imported by UserSettings.vue
             'socket.io-client',
         ]
-        
+
         for dep in critical_deps:
             dep_path = node_modules / dep
             if not dep_path.exists():
                 self._print_warning(f"Missing dependency: {dep}")
                 return False
-        
+
         return True
 
     def _install_npm_dependencies_with_retry(self, frontend_dir: Path, max_retries: int = NPM_MAX_RETRIES) -> bool:
@@ -1160,6 +1167,110 @@ class UnifiedInstaller:
             f.write(f"\nFAILURE: All {max_retries} attempts exhausted\n")
         return False
 
+    def install_frontend_dependencies(self) -> Dict[str, Any]:
+        """
+        Install frontend dependencies during the main installation process.
+
+        This method handles npm dependency installation with production-grade
+        retry logic, pre-flight checks, and comprehensive error handling.
+
+        Returns:
+            Result dictionary with success status and details
+        """
+        result = {'success': False}
+
+        try:
+            # Check if npm is available
+            if not shutil.which('npm'):
+                self._print_warning("npm not found - skipping frontend dependencies")
+                self._print_info("Install Node.js from: https://nodejs.org/")
+                result['success'] = True  # Not a failure - just skipped
+                result['skipped'] = True
+                result['reason'] = 'npm not available'
+                return result
+
+            # Check if frontend directory exists
+            frontend_dir = self.install_dir / 'frontend'
+            if not frontend_dir.exists():
+                self._print_warning("Frontend directory not found - skipping frontend dependencies")
+                result['success'] = True  # Not a failure - just skipped
+                result['skipped'] = True
+                result['reason'] = 'frontend directory not found'
+                return result
+
+            self._print_info("Installing frontend dependencies...")
+
+            # Check if dependencies are already installed and verified
+            if self._verify_npm_dependencies(frontend_dir):
+                self._print_success("Frontend dependencies already installed and verified")
+                result['success'] = True
+                result['already_installed'] = True
+                return result
+
+            # Install dependencies with retry logic
+            if self._install_npm_dependencies_with_retry(frontend_dir):
+                self._print_success("Frontend dependencies installed successfully")
+                result['success'] = True
+                return result
+            else:
+                # CRITICAL: Frontend dependencies failed after retries - FAIL HARD
+                self._print_error("=" * 70)
+                self._print_error("INSTALLATION FAILED: Frontend dependencies could not be installed")
+                self._print_error("=" * 70)
+                self._print_error("")
+
+                # Show pre-flight check results if available
+                if hasattr(self, '_npm_preflight_results'):
+                    preflight = self._npm_preflight_results
+                    if preflight.get('issues'):
+                        self._print_error("Pre-flight check issues detected:")
+                        for issue in preflight['issues']:
+                            self._print_error(f"  • {issue}")
+                        self._print_error("")
+
+                # Show log file location
+                log_file = self.install_dir / 'logs' / 'install_npm.log'
+                if log_file.exists():
+                    self._print_error(f"Detailed logs: {log_file}")
+                    self._print_error("")
+
+                self._print_error("Troubleshooting steps:")
+                self._print_error("  1. Check network connectivity to npm registry:")
+                self._print_error("     npm ping")
+                self._print_error("     curl https://registry.npmjs.org/")
+                self._print_error("")
+                self._print_error(f"  2. Verify disk space (need ~{MIN_DISK_SPACE_MB}MB):")
+                if self.platform.platform_name == 'Windows':
+                    self._print_error("     dir")
+                else:
+                    self._print_error("     df -h")
+                self._print_error("")
+                self._print_error("  3. Clear npm cache and retry manually:")
+                self._print_error(f"     cd {frontend_dir}")
+                self._print_error("     npm cache clean --force")
+                self._print_error("     npm cache verify")
+                self._print_error("     npm install --verbose")
+                self._print_error("")
+                self._print_error("  4. Check for proxy/firewall blocking npm registry:")
+                self._print_error("     npm config get proxy")
+                self._print_error("     npm config get https-proxy")
+                self._print_error("")
+                self._print_error("  5. If behind corporate proxy, configure npm:")
+                self._print_error("     npm config set proxy http://proxy.company.com:8080")
+                self._print_error("     npm config set https-proxy http://proxy.company.com:8080")
+                self._print_error("")
+                self._print_error("=" * 70)
+
+                result['error'] = f'npm install failed after {NPM_MAX_RETRIES} retry attempts'
+                result['success'] = False
+                return result
+
+        except Exception as e:
+            self._print_error(f"Frontend dependency installation failed: {e}")
+            result['error'] = str(e)
+            result['success'] = False
+            return result
+
     def launch_services(self) -> Dict[str, Any]:
         """
         Launch API and Frontend services
@@ -1195,7 +1306,7 @@ class UnifiedInstaller:
             # Get ports from settings
             api_port = self.settings.get('api_port', DEFAULT_API_PORT)
             frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
-            
+
             # Launch API server
             api_script = self.install_dir / 'api' / 'run_api.py'
 
@@ -1222,61 +1333,15 @@ class UnifiedInstaller:
                 frontend_dir = self.install_dir / 'frontend'
 
                 if frontend_dir.exists():
-                    # Check if dependencies are installed and complete
-                    # (not just if node_modules folder exists, but verify critical packages)
+                    # Verify dependencies were installed during installation phase
                     if not self._verify_npm_dependencies(frontend_dir):
-                        # Install dependencies with retry logic
-                        if not self._install_npm_dependencies_with_retry(frontend_dir):
-                            # CRITICAL: Frontend dependencies failed after retries - FAIL HARD
-                            self._print_error("=" * 70)
-                            self._print_error("INSTALLATION FAILED: Frontend dependencies could not be installed")
-                            self._print_error("=" * 70)
-                            self._print_error("")
-
-                            # Show pre-flight check results if available
-                            if hasattr(self, '_npm_preflight_results'):
-                                preflight = self._npm_preflight_results
-                                if preflight.get('issues'):
-                                    self._print_error("Pre-flight check issues detected:")
-                                    for issue in preflight['issues']:
-                                        self._print_error(f"  • {issue}")
-                                    self._print_error("")
-
-                            # Show log file location
-                            log_file = self.install_dir / 'logs' / 'install_npm.log'
-                            if log_file.exists():
-                                self._print_error(f"Detailed logs: {log_file}")
-                                self._print_error("")
-
-                            self._print_error("Troubleshooting steps:")
-                            self._print_error("  1. Check network connectivity to npm registry:")
-                            self._print_error("     npm ping")
-                            self._print_error("     curl https://registry.npmjs.org/")
-                            self._print_error("")
-                            self._print_error(f"  2. Verify disk space (need ~{MIN_DISK_SPACE_MB}MB):")
-                            if self.platform.platform_name == 'Windows':
-                                self._print_error("     dir")
-                            else:
-                                self._print_error("     df -h")
-                            self._print_error("")
-                            self._print_error("  3. Clear npm cache and retry manually:")
-                            self._print_error(f"     cd {frontend_dir}")
-                            self._print_error("     npm cache clean --force")
-                            self._print_error("     npm cache verify")
-                            self._print_error("     npm install --verbose")
-                            self._print_error("")
-                            self._print_error("  4. Check for proxy/firewall blocking npm registry:")
-                            self._print_error("     npm config get proxy")
-                            self._print_error("     npm config get https-proxy")
-                            self._print_error("")
-                            self._print_error("  5. If behind corporate proxy, configure npm:")
-                            self._print_error("     npm config set proxy http://proxy.company.com:8080")
-                            self._print_error("     npm config set https-proxy http://proxy.company.com:8080")
-                            self._print_error("")
-                            self._print_error("=" * 70)
-                            result['error'] = f'npm install failed after {NPM_MAX_RETRIES} retry attempts'
-                            result['success'] = False
-                            return result
+                        self._print_error("Frontend dependencies not found!")
+                        self._print_error("Dependencies should have been installed during 'python install.py'")
+                        self._print_error("Please run installation again:")
+                        self._print_error("  python install.py")
+                        result['error'] = 'Frontend dependencies missing - run python install.py first'
+                        result['success'] = False
+                        return result
 
                     self._print_info("Starting frontend server...")
 
@@ -1284,17 +1349,15 @@ class UnifiedInstaller:
                     # Note: For background processes, we still use subprocess.Popen directly
                     # but use platform handler to determine shell setting
                     npm_cmd = ['npm', 'run', 'dev', '--', '--port', str(frontend_port), '--strictPort']
-                    
-                    # Platform handler provides correct shell setting
-                    # (Windows: True, Linux/macOS: False)
-                    use_shell = self.platform.platform_name == 'Windows'
+
+                    # No shell needed - using array of predefined args (secure)
 
                     frontend_process = subprocess.Popen(
                         npm_cmd,
                         cwd=str(frontend_dir),
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        shell=use_shell
+                        shell=False  # nosec B602 - Safe: using array of predefined args
                     )
                     self._print_success(f"Frontend server started (PID: {frontend_process.pid})")
 
@@ -1377,7 +1440,7 @@ class UnifiedInstaller:
 
         # Manual start instructions
         print(f"{Fore.CYAN}{Style.BRIGHT}Manual control (separate terminals):{Style.RESET_ALL}\n")
-        
+
         print(f"{Fore.WHITE}1. Start the API server:{Style.RESET_ALL}")
         if platform.system() == "Windows":
             print(f"   {Fore.GREEN}venv\\Scripts\\python.exe api\\run_api.py{Style.RESET_ALL}")
@@ -1391,7 +1454,7 @@ class UnifiedInstaller:
         print()
 
         print(f"{Fore.WHITE}3. Open your browser:{Style.RESET_ALL}")
-        
+
         # Detect network IPs
         network_ips = self._get_all_network_ips()
         frontend_port = self.settings.get('dashboard_port', DEFAULT_FRONTEND_PORT)
@@ -1399,13 +1462,13 @@ class UnifiedInstaller:
 
         # Show localhost first (most common)
         print(f"   {Fore.CYAN}http://localhost:{frontend_port}{Style.RESET_ALL}")
-        
+
         # Show network IPs if detected
         if network_ips:
             print(f"\n   {Fore.WHITE}Or from other devices on your network:{Style.RESET_ALL}")
             for ip in network_ips:
                 print(f"   {Fore.CYAN}http://{ip}:{frontend_port}{Style.RESET_ALL}")
-        
+
         print()
 
         # API documentation
