@@ -5,6 +5,7 @@ Provides direct access to MCP tool functions for API endpoints
 
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -299,11 +300,11 @@ class ToolAccessor:
                     "completed_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
                 }
-                
+
                 # Add summary to meta_data if provided
                 if summary:
                     update_values["meta_data"] = {"summary": summary}
-                
+
                 result = await session.execute(
                     update(Project)
                     .where(Project.id == project_id)
@@ -336,11 +337,11 @@ class ToolAccessor:
                     "completed_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
                 }
-                
+
                 # Add reason to meta_data if provided
                 if reason:
                     update_values["meta_data"] = {"cancellation_reason": reason}
-                
+
                 result = await session.execute(
                     update(Project)
                     .where(Project.id == project_id)
@@ -1079,3 +1080,138 @@ class ToolAccessor:
     async def update_template(self, template_id: str, **kwargs) -> dict[str, Any]:
         """Update a template"""
         return {"success": True, "template_id": template_id, "updated": True}
+
+    # Agent Export Tools (Handover 0084)
+
+    async def export_agents(
+        self,
+        product_path: Optional[str] = None,
+        personal: bool = False,
+        product_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Export agent templates to Claude Code format via MCP command.
+
+        Args:
+            product_path: Path to product's .claude/agents directory
+            personal: Export to user's personal ~/.claude/agents
+            product_id: Optional specific product ID (uses active product if not specified)
+
+        Returns:
+            Export result dictionary
+        """
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            from .claude_export import export_agents_command, get_product_for_tenant
+
+            # If product_path not provided and not personal, try to get from product
+            if not product_path and not personal:
+                product = await get_product_for_tenant(
+                    self.db_manager, tenant_key, product_id
+                )
+                if product and product.project_path:
+                    product_path = str(Path(product.project_path) / ".claude" / "agents")
+                else:
+                    return {
+                        "success": False,
+                        "error": "No product path configured. Set product project_path or use --personal"
+                    }
+
+            # Call export command
+            result = await export_agents_command(
+                db_manager=self.db_manager,
+                tenant_key=tenant_key,
+                product_path=product_path,
+                personal=personal,
+            )
+
+            return result
+
+        except Exception as e:
+            logger.exception(f"Failed to export agents: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def set_product_path(
+        self,
+        project_path: str,
+        product_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Set or update product's project path for agent export.
+
+        Args:
+            project_path: File system path to product folder
+            product_id: Optional specific product ID (uses active product if not specified)
+
+        Returns:
+            Update result dictionary
+        """
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            from .claude_export import get_product_for_tenant, validate_product_path
+
+            # Get product
+            product = await get_product_for_tenant(
+                self.db_manager, tenant_key, product_id
+            )
+            if not product:
+                return {"success": False, "error": "Product not found"}
+
+            # Validate and update path
+            result = await validate_product_path(
+                db_manager=self.db_manager,
+                tenant_key=tenant_key,
+                product_id=str(product.id),
+                project_path=project_path,
+            )
+
+            return result
+
+        except Exception as e:
+            logger.exception(f"Failed to set product path: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def get_product_path(
+        self,
+        product_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Get product's current project path.
+
+        Args:
+            product_id: Optional specific product ID (uses active product if not specified)
+
+        Returns:
+            Product path information
+        """
+        try:
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No tenant context available"}
+
+            from .claude_export import get_product_for_tenant
+
+            # Get product
+            product = await get_product_for_tenant(
+                self.db_manager, tenant_key, product_id
+            )
+            if not product:
+                return {"success": False, "error": "Product not found"}
+
+            return {
+                "success": True,
+                "product_id": str(product.id),
+                "product_name": product.name,
+                "project_path": product.project_path,
+                "has_path": bool(product.project_path),
+            }
+
+        except Exception as e:
+            logger.exception(f"Failed to get product path: {e}")
+            return {"success": False, "error": str(e)}
