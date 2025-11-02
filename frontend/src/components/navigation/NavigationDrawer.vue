@@ -36,7 +36,12 @@
     <v-divider></v-divider>
 
     <!-- Navigation Items -->
-    <v-list density="compact" nav>
+    <v-list
+      density="compact"
+      nav
+      v-model:selected="selected"
+      select-strategy="single"
+    >
       <v-list-item
         v-for="item in navigationItems"
         :key="item.name"
@@ -46,6 +51,7 @@
         :disabled="item.disabled"
         color="primary"
         role="listitem"
+        :exact="true"
       >
         <template v-slot:prepend>
           <v-img
@@ -74,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
@@ -102,6 +108,9 @@ const route = useRoute()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
 
+// Track which nav item is selected (ensure single active item)
+const selected = ref([])
+
 // Dynamic Giljo icon for Jobs based on route and theme
 const jobsIcon = computed(() => {
   const isJobsRoute = route.path.includes('/projects/')
@@ -125,6 +134,29 @@ const navigationItems = computed(() => {
 
   return baseItems
 })
+
+// Derive the active sidebar item from current route; prefer the longest matching path
+const updateSelectedFromRoute = () => {
+  const items = navigationItems.value
+  const currentPath = route.path
+
+  // Find best match by longest path prefix match or exact match
+  let best = null
+  for (const item of items) {
+    if (!item.path) continue
+    if (currentPath === item.path || currentPath.startsWith(item.path + '/')) {
+      if (!best || item.path.length > best.path.length) {
+        best = item
+      }
+    }
+  }
+
+  // Fallback: highlight nothing if no match
+  selected.value = best ? [best.name] : []
+}
+
+onMounted(updateSelectedFromRoute)
+watch(() => route.path, () => updateSelectedFromRoute())
 
 const toggleTheme = () => {
   document.documentElement.classList.remove('no-transition')
