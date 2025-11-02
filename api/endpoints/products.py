@@ -30,11 +30,13 @@ router = APIRouter(prefix="/v1/products", tags=["Products"])
 class ProductCreate(BaseModel):
     name: str = Field(..., description="Product name")
     description: Optional[str] = Field(None, description="Product description")
+    project_path: Optional[str] = Field(None, description="File system path to product folder (required for agent export)")
 
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    project_path: Optional[str] = None
 
 
 class ProductResponse(BaseModel):
@@ -58,6 +60,9 @@ class ProductResponse(BaseModel):
 
     # Handover 0049: Active product indicator
     is_active: bool = Field(False, description="Whether this product is currently active")
+
+    # Handover 0084: Project path for agent export
+    project_path: Optional[str] = Field(None, description="File system path to product folder (required for agent export)")
 
 
 # Handover 0050: Enhanced response models for single active product architecture
@@ -206,10 +211,64 @@ def get_vision_storage_path(tenant_key: str, product_id: str) -> Path:
     return base_path
 
 
+def validate_project_path(project_path: str) -> bool:
+    """
+    Validate project path for agent export functionality.
+
+    Args:
+        project_path: File system path to validate
+
+    Returns:
+        True if valid, raises HTTPException if invalid
+    """
+    if not project_path:
+        return True  # Optional field
+
+    try:
+        from pathlib import Path
+
+        # Expand user home directory if present
+        path = Path(project_path).expanduser()
+
+        # Check if path exists and is a directory
+        if not path.exists():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Project path does not exist: {path}"
+            )
+
+        if not path.is_dir():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Project path is not a directory: {path}"
+            )
+
+        # Check if path is writable (for .claude/agents creation)
+        try:
+            test_dir = path / ".claude_test_write"
+            test_dir.mkdir(exist_ok=True)
+            test_dir.rmdir()
+        except (PermissionError, OSError):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Project path is not writable: {path}"
+            )
+
+        return True
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid project path: {e}"
+        )
+
 @router.post("/", response_model=ProductResponse)
 async def create_product(
     name: str = Form(...),
     description: Optional[str] = Form(None),
+    project_path: Optional[str] = Form(None),  # Handover 0084: Project path for agent export
     vision_file: Optional[UploadFile] = File(None),
     config_data: Optional[str] = Form(None),  # Handover 0042: Rich configuration as JSON string
     tenant_key: str = Depends(get_tenant_key),
@@ -221,6 +280,10 @@ async def create_product(
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
+        # Handover 0084: Validate project path if provided
+        if project_path:
+            validate_project_path(project_path)
+
         # Handover 0042: Parse and validate config_data JSON
         config_dict: Dict[str, Any] = {}
         if config_data:
@@ -237,6 +300,7 @@ async def create_product(
             tenant_key=tenant_key,
             name=name,
             description=description,
+            project_path=project_path,  # Handover 0084: Set project path for agent export
             config_data=config_dict if config_dict else None,
         )
 
@@ -336,6 +400,8 @@ async def create_product(
                 has_config_data=product.has_config_data,
                 # Handover 0049: Include is_active status
                 is_active=product.is_active,
+                # Handover 0084: Include project_path for agent export
+                project_path=product.project_path,
             )
 
     except HTTPException:
@@ -421,6 +487,8 @@ async def list_products(
                         has_config_data=product.has_config_data,
                         # Handover 0049: Include is_active status (BUG FIX)
                         is_active=product.is_active,
+                        # Handover 0084: Include project_path for agent export
+                        project_path=product.project_path,
                     )
                 )
 
@@ -440,7 +508,7 @@ async def list_deleted_products(
 ):
     """
     List deleted products with recovery window (10 days).
-    
+
     Returns all soft-deleted products for the tenant with:
     - Days until permanent purge
     - Purge date
@@ -728,6 +796,8 @@ async def get_product(product_id: str, tenant_key: str = Depends(get_tenant_key)
                 has_config_data=product.has_config_data,
                 # Handover 0049: Include is_active status
                 is_active=product.is_active,
+                # Handover 0084: Include project_path for agent export
+                project_path=product.project_path,
             )
 
     except HTTPException:
@@ -907,6 +977,8 @@ async def deactivate_product(
                 config_data=product.config_data,
                 has_config_data=product.has_config_data,
                 is_active=product.is_active,
+                # Handover 0084: Include project_path for agent export
+                project_path=product.project_path,
             )
 
     except HTTPException:
@@ -995,7 +1067,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
     Sets deleted_at timestamp and deactivates the product.
     If the product was active and other non-deleted products exist, automatically
     activates the oldest non-deleted product (by created_at).
-    
+
     Physical deletion occurs after 10 days via purge_expired_deleted_products().
     """
     from api.app import state
@@ -1016,7 +1088,7 @@ async def delete_product(product_id: str, tenant_key: str = Depends(get_tenant_k
 
             if not product:
                 raise HTTPException(status_code=404, detail="Product not found")
-            
+
             # Check if already deleted
             if product.deleted_at is not None:
                 raise HTTPException(status_code=400, detail="Product is already deleted")
@@ -1090,7 +1162,7 @@ async def restore_product(
 ):
     """
     Restore a soft-deleted product.
-    
+
     Clears deleted_at timestamp and reactivates the product as inactive (safe default).
     User must manually activate the product after restoration.
     """
@@ -1175,6 +1247,8 @@ async def restore_product(
                 config_data=product.config_data,
                 has_config_data=product.has_config_data,
                 is_active=product.is_active,
+                # Handover 0084: Include project_path for agent export
+                project_path=product.project_path,
             )
 
     except HTTPException:
@@ -1332,6 +1406,7 @@ async def update_product(
     product_id: str,
     name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
+    project_path: Optional[str] = Form(None),  # Handover 0084: Project path for agent export
     config_data: Optional[str] = Form(None),  # Handover 0042: Rich configuration as JSON string
     tenant_key: str = Depends(get_tenant_key),
 ):
@@ -1359,6 +1434,9 @@ async def update_product(
                 product.name = name
             if description is not None:
                 product.description = description
+            if project_path is not None:  # Handover 0084: Update project path
+                validate_project_path(project_path)  # Validate before setting
+                product.project_path = project_path
 
             # Handover 0042: Parse and update config_data
             if config_data is not None:
@@ -1409,6 +1487,8 @@ async def update_product(
                 vision_documents_count=len(vision_docs),
                 config_data=product.config_data,
                 has_config_data=product.has_config_data,
+                # Handover 0084: Include project_path for agent export
+                project_path=product.project_path,
             )
 
     except HTTPException:
@@ -1449,4 +1529,3 @@ def _get_nested_value(data: dict, path: str) -> Any:
             return None
 
     return value
-

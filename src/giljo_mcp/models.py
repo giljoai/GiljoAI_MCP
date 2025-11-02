@@ -76,6 +76,13 @@ class Product(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
+    # Handover 0084: Project path for agent export (required for copy-command interface)
+    project_path = Column(
+        String(500),
+        nullable=True,
+        comment="File system path to product folder (required for agent export)"
+    )
+
     # DEPRECATED (Handover 0043): Legacy single-vision fields - Use vision_documents relationship instead
     # These fields remain for backward compatibility but new code should use VisionDocument model
     vision_path = Column(String(500), nullable=True,
