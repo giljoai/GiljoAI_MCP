@@ -390,6 +390,8 @@ SLASH_COMMANDS = {
 - ✅ `/gil_launch` (launch project)
 - ✅ `/gil_update` (update agents)
 - ✅ `/gil_handover` (trigger succession)
+- ✅ `/gil_import_productagents` (import agents to product) [NEW - 0084b]
+- ✅ `/gil_import_personalagents` (import agents to personal) [NEW - 0084b]
 - ✅ `/gil_status` (future - project status)
 
 **Internal MCP Tools** (NOT slash commands):
@@ -585,6 +587,10 @@ async def test_redirect_hint_suggests_new_command():
 # Project Workflow
 /gil_activate <ALIAS>         # Prepare project
 /gil_launch <ALIAS>           # Start orchestration
+
+# Agent Management
+/gil_import_productagents     # Import templates to product's .claude/agents/
+/gil_import_personalagents    # Import templates to ~/.claude/agents/
 
 # Maintenance
 /gil_update                   # Update agent templates
