@@ -119,7 +119,7 @@ const jobsIcon = computed(() => {
   if (isJobsRoute) {
     return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
   }
-  return '/icons/Giljo_gray_Face.svg'
+  return '/icons/Giljo_Inactive_Face.svg'
 })
 
 // Navigation items
