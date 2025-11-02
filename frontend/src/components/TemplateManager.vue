@@ -103,7 +103,10 @@
         </template>
 
         <template v-slot:item.role="{ item }">
-          <v-chip size="small" :color="getCategoryColor(item.role)">
+          <v-chip 
+            size="small" 
+            :style="{ backgroundColor: getCategoryColor(item.role), color: 'white' }"
+          >
             {{ item.role }}
           </v-chip>
         </template>
@@ -959,20 +962,20 @@ const handleRestore = async (version) => {
   }
 }
 
-const getCategoryColor = (category) => {
+const getCategoryColor = (role) => {
+  // Colors synced with frontend/src/styles/agent-colors.scss
   const colors = {
-    orchestrator: 'primary',
-    analyzer: 'info',
-    designer: 'purple',
-    frontend: 'success',
-    backend: 'orange',
-    implementer: 'cyan',
-    tester: 'pink',
-    reviewer: 'indigo',
-    documenter: 'brown',
-    custom: 'grey',
+    orchestrator: '#D4A574',  // Tan/Beige
+    analyzer: '#E74C3C',      // Red
+    implementer: '#3498DB',   // Blue
+    implementor: '#3498DB',   // Blue (alias)
+    tester: '#FFC300',        // Yellow
+    reviewer: '#9B59B6',      // Purple
+    documenter: '#27AE60',    // Green
+    researcher: '#27AE60',    // Green (alias)
+    custom: '#90A4AE',        // Gray
   }
-  return colors[category] || 'grey'
+  return colors[role] || '#90A4AE'
 }
 
 const getToolLogo = (tool) => {
