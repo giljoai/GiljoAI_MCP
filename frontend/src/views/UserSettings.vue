@@ -6,19 +6,9 @@
 
     <!-- Settings Tabs -->
     <v-tabs v-model="activeTab" class="mb-6">
-      <v-tab value="context">
-        <v-icon start>mdi-priority-high</v-icon>
-        Context
-      </v-tab>
-      <v-tab value="agents">
-        <template #prepend>
-          <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
-        </template>
-        Agents
-      </v-tab>
       <v-tab value="general">
         <v-icon start>mdi-cog</v-icon>
-        General
+        Setup
       </v-tab>
       <v-tab value="appearance">
         <v-icon start>mdi-palette</v-icon>
@@ -28,14 +18,28 @@
         <v-icon start>mdi-bell</v-icon>
         Notifications
       </v-tab>
-      <v-tab value="api">
-        <v-icon start>mdi-api</v-icon>
-        API and Integrations
+      <v-tab value="agents">
+        <template #prepend>
+          <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
+        </template>
+        Agents
+      </v-tab>
+      <v-tab value="context">
+        <v-icon start>mdi-priority-high</v-icon>
+        Context
+      </v-tab>
+      <v-tab value="api-keys">
+        <v-icon start>mdi-key-variant</v-icon>
+        API Keys
+      </v-tab>
+      <v-tab value="integrations">
+        <v-icon start>mdi-puzzle</v-icon>
+        Integrations
       </v-tab>
     </v-tabs>
 
     <!-- Tab Content -->
-    <v-window v-model="activeTab">
+    <v-window v-model="activeTab" :touch="false" :reverse="false">
       <!-- Context Settings -->
       <v-window-item value="context">
         <v-card data-test="context-settings">
@@ -250,13 +254,13 @@
         <TemplateManager />
       </v-window-item>
 
-      <!-- General Settings -->
+      <!-- Setup Settings -->
       <v-window-item value="general">
         <v-card data-test="general-settings">
-          <v-card-title>General Settings</v-card-title>
+          <v-card-title>Setup</v-card-title>
           <v-card-text>
             <v-alert type="info" variant="tonal" density="compact">
-              This section is reserved for future general settings.
+              This section is reserved for future setup settings.
             </v-alert>
           </v-card-text>
           <v-card-actions>
@@ -422,36 +426,41 @@
         </v-card>
       </v-window-item>
 
-      <!-- API Configuration -->
-      <v-window-item value="api">
+      <!-- API Keys -->
+      <v-window-item value="api-keys">
         <v-card>
-          <v-card-title>API and Integrations</v-card-title>
-          <v-card-subtitle>Configure API settings and MCP tool integrations</v-card-subtitle>
+          <v-card-title>API Keys</v-card-title>
+          <v-card-subtitle>Manage your API keys for external services</v-card-subtitle>
+          <v-card-text>
+            <ApiKeyManager />
+          </v-card-text>
+        </v-card>
+      </v-window-item>
+
+      <!-- Integrations -->
+      <v-window-item value="integrations">
+        <v-card>
+          <v-card-title>Integrations</v-card-title>
+          <v-card-subtitle>Configure MCP tools and integrations</v-card-subtitle>
           <v-card-text>
             <v-tabs
-              v-model="apiSubTab"
-              class="api-subtabs"
+              v-model="integrationsSubTab"
+              class="integrations-subtabs"
               selected-class="bg-primary"
               show-arrows
               hide-slider
             >
-              <v-tab value="api-keys"><v-icon start>mdi-key-variant</v-icon>API Keys</v-tab>
               <v-tab value="mcp-config">
                 <template #prepend>
                   <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
                 </template>
                 MCP Configuration
               </v-tab>
-              <v-tab value="integrations"><v-icon start>mdi-puzzle</v-icon>Integrations</v-tab>
+              <v-tab value="integrations-list"><v-icon start>mdi-puzzle</v-icon>Integrations</v-tab>
             </v-tabs>
-            <v-divider class="mb-4 api-divider" thickness="3"></v-divider>
+            <v-divider class="mb-4 integrations-divider" thickness="3"></v-divider>
 
-            <v-window v-model="apiSubTab" :theme="theme.global.name.value">
-              <!-- API Keys Tab -->
-              <v-window-item value="api-keys">
-                <ApiKeyManager />
-              </v-window-item>
-
+            <v-window v-model="integrationsSubTab" :theme="theme.global.name.value" :touch="false" :reverse="false">
               <!-- MCP Configuration Tab -->
               <v-window-item value="mcp-config">
                 <div class="mb-2">
@@ -494,8 +503,8 @@
                 </v-card>
               </v-window-item>
 
-              <!-- Integrations Tab -->
-              <v-window-item value="integrations">
+              <!-- Integrations List Tab -->
+              <v-window-item value="integrations-list">
                 <h3 class="text-h6 mb-4">MCP Integrations</h3>
                 <v-card variant="outlined" class="mb-4">
                   <v-list>
@@ -583,8 +592,8 @@ const theme = useTheme()
 const router = useRouter()
 
 // State
-const activeTab = ref('context')
-const apiSubTab = ref('api-keys')
+const activeTab = ref('general')
+const integrationsSubTab = ref('mcp-config')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
@@ -1052,8 +1061,8 @@ async function saveSerenaConfig(payload, done) {
 </script>
 
 <style scoped>
-/* API section divider should follow theme */
-.api-divider {
+/* Integrations section divider should follow theme */
+.integrations-divider {
   --v-theme-overlay-multiplier: 1; /* ensure visibility */
   border-color: var(--v-theme-on-surface) !important;
   opacity: 0.3 !important;
