@@ -156,7 +156,12 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     // ==================== Staging Workflow ====================
 
     /**
-     * Stage project - Generate mission and create agents
+     * Stage project - Generate orchestrator prompt
+     *
+     * Handover 0086: Fixed bug where code expected mission/agents from endpoint.
+     * These fields don't exist in the response - the endpoint only returns the prompt.
+     * Mission and agents populate later via WebSocket events when the orchestrator
+     * calls MCP tools externally (update_project_mission, create_agent_job_external).
      */
     async stageProject() {
       if (!this.currentProject) {
@@ -173,10 +178,16 @@ export const useProjectTabsStore = defineStore('projectTabs', {
           { tool: 'claude-code' }
         )
 
-        // Extract prompt data from the response
-        this.orchestratorMission = response.data.prompt
-        this.agents = response.data.agents || []
+        if (!response.data?.prompt) {
+          throw new Error('Invalid response from staging endpoint - no prompt returned')
+        }
+
+        // Copy orchestrator prompt to clipboard (handled by component)
+        // Mission and agents will populate via WebSocket events when
+        // orchestrator calls MCP tools externally
         this.isStaging = false
+
+        return { success: true, prompt: response.data.prompt }
       } catch (error) {
         console.error('Failed to stage project:', error)
         this.error = error.message || 'Failed to stage project'

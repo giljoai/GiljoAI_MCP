@@ -25,7 +25,7 @@
         Agents
       </v-tab>
       <v-tab value="context">
-        <v-icon start>mdi-priority-high</v-icon>
+        <v-icon start>mdi-layers-triple</v-icon>
         Context
       </v-tab>
       <v-tab value="api-keys">
@@ -219,7 +219,6 @@
 
             <!-- No Active Product Message -->
             <v-alert v-else type="info" variant="tonal" class="mb-4">
-              <v-icon start>mdi-information</v-icon>
               No active product / Token estimation unavailable
             </v-alert>
 
