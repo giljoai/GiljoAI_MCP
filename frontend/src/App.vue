@@ -55,4 +55,22 @@ html.no-transition * {
 .fade-leave-to {
   opacity: 0;
 }
+
+/* Global toggle switch styling - green when ON, faded blue when OFF */
+/* Applied throughout the entire application for consistency */
+.v-switch .v-switch__thumb {
+  background-color: rgba(33, 150, 243, 0.4) !important; /* Faded blue when OFF */
+}
+
+.v-switch .v-switch__track {
+  background-color: rgba(33, 150, 243, 0.2) !important; /* Faded blue track when OFF */
+}
+
+.v-switch .v-selection-control--dirty .v-switch__thumb {
+  background-color: #4caf50 !important; /* Green when ON */
+}
+
+.v-switch .v-selection-control--dirty .v-switch__track {
+  background-color: rgba(76, 175, 80, 0.3) !important; /* Green track when ON */
+}
 </style>
