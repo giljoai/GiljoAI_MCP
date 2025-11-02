@@ -2,6 +2,12 @@
   <v-card class="template-manager" elevation="2">
     <v-card-title class="d-flex align-center">
       <span>Agent Template Manager</span>
+      <v-tooltip location="top" max-width="400">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" color="warning" size="small" class="ml-2">mdi-alert</v-icon>
+        </template>
+        <span><strong>Context Budget Recommendation:</strong> Template manager is limiting to 8 agents types maximum. Each agent description consumes context budget, reducing available tokens for your project during implementation.</span>
+      </v-tooltip>
       <v-spacer />
       <v-btn
         color="primary"
