@@ -347,6 +347,8 @@ export const api = {
   serena: {
     getStatus: () => apiClient.get('/api/serena/status'),
     toggle: (enabled) => apiClient.post('/api/serena/toggle', { enabled }),
+    getConfig: () => apiClient.get('/api/serena/config'),
+    updateConfig: (data) => apiClient.post('/api/serena/config', data),
   },
 
   // Agent Jobs (Handover 0066 - Kanban Dashboard)
