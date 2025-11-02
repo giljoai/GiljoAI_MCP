@@ -1974,7 +1974,7 @@ pg_restore -l {backup_file.name} | head -20
         - Database (giljo_mcp) with all tables and roles
         - Logs directory (logs/)
         - Data directory (data/)
-        - Frontend build artifacts (dist/, node_modules/.vite)
+        - Frontend build artifacts and dependencies (dist/, node_modules/)
 
         This provides the most complete reset, simulating a truly fresh
         installation experience.
@@ -1997,7 +1997,7 @@ pg_restore -l {backup_file.name} | head -20
             "- Session memories (docs/sessions/)\n\n"
             "Frontend Artifacts:\n"
             "- Build output (frontend/dist/)\n"
-            "- Vite cache (frontend/node_modules/.vite)\n\n"
+            "- All npm dependencies (frontend/node_modules/)\n\n"
             "⚠ This action CANNOT be undone!\n\n"
             "Continue?",
             icon="warning"
@@ -2102,13 +2102,13 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Session cleanup: {e}")
 
-        # Step 6: Delete frontend build artifacts
+        # Step 6: Delete frontend build artifacts and dependencies
         try:
-            self.update_status_message("Step 6/6: Cleaning frontend artifacts...")
+            self.update_status_message("Step 6/6: Cleaning frontend artifacts and dependencies...")
 
             frontend_targets = [
                 (self.project_root / "frontend" / "dist", "Frontend build output"),
-                (self.project_root / "frontend" / "node_modules" / ".vite", "Vite cache"),
+                (self.project_root / "frontend" / "node_modules", "Node.js dependencies (complete)"),
             ]
 
             for target, desc in frontend_targets:
