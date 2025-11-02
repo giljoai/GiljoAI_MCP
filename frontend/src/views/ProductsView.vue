@@ -2187,7 +2187,14 @@ watch(showDialog, (isOpen) => {
       // - New product: do not auto-restore; clear any existing cached draft
       if (editingProduct.value) {
         if (differs && ageMinutes <= TTL_MINUTES) {
-          productForm.value = { ...productForm.value, ...cached }
+          // Handover 0084: Preserve current productForm values, only restore cached changes
+          // This ensures new fields like projectPath don't get lost from old caches
+          productForm.value = {
+            ...productForm.value,
+            ...cached,
+            // Preserve projectPath from current product if not in cache
+            projectPath: cached.projectPath !== undefined ? cached.projectPath : productForm.value.projectPath
+          }
           showToast({ message: 'Draft restored', type: 'info', duration: 2000 })
         } else {
           autoSave.value.clearCache()
