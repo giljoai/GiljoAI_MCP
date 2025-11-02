@@ -215,7 +215,6 @@
             icon="mdi-refresh"
             size="small"
             variant="text"
-            color="warning"
             @click="confirmReset(item)"
             title="Reset to Default"
             aria-label="Reset template to system default"
@@ -1146,6 +1145,27 @@ watch(
         }
       }
     }
+  }
+}
+
+// Custom toggle colors: green when ON, faded blue when OFF
+.v-switch {
+  :deep(.v-switch__thumb) {
+    background-color: rgba(33, 150, 243, 0.4) !important; // Faded blue when OFF
+  }
+  
+  :deep(.v-switch__track) {
+    background-color: rgba(33, 150, 243, 0.2) !important; // Faded blue track when OFF
+  }
+}
+
+.v-switch :deep(.v-selection-control--dirty) {
+  .v-switch__thumb {
+    background-color: #4caf50 !important; // Green when ON
+  }
+  
+  .v-switch__track {
+    background-color: rgba(76, 175, 80, 0.3) !important; // Green track when ON
   }
 }
 </style>
