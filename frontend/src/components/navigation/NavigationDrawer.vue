@@ -128,7 +128,8 @@ const navigationItems = computed(() => {
     { name: 'Dashboard', path: '/Dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard' },
     { name: 'Products', path: '/Products', title: 'Products', icon: 'mdi-package-variant' },
     { name: 'Projects', path: '/projects', title: 'Projects', icon: 'mdi-folder-multiple' },
-    { name: 'Jobs', path: '/launch', title: 'Jobs', customIcon: jobsIcon.value },
+    // Carry via=jobs so downstream routes can honor sidebar intent
+    { name: 'Jobs', path: '/launch?via=jobs', title: 'Jobs', customIcon: jobsIcon.value },
     { name: 'Tasks', path: '/tasks', title: 'Tasks', icon: 'mdi-clipboard-check' },
   ]
 
@@ -139,6 +140,19 @@ const navigationItems = computed(() => {
 const updateSelectedFromRoute = () => {
   const items = navigationItems.value
   const currentPath = route.path
+
+  // If navigation explicitly came via Jobs, force Jobs active
+  if (route?.query?.via === 'jobs') {
+    selected.value = ['Jobs']
+    return
+  }
+
+  // Treat dynamic project routes as Jobs workspace (clean separation)
+  // Example: /projects/:projectId -> highlight Jobs
+  if (currentPath.startsWith('/projects/')) {
+    selected.value = ['Jobs']
+    return
+  }
 
   // Find best match by longest path prefix match or exact match
   let best = null

@@ -229,27 +229,28 @@ class ProjectOrchestrator:
         mission = f"{mission}\n\n{mcp_instructions}"
 
         # 2. Apply Serena optimization
-        try:
-            optimizer = self._get_serena_optimizer(project.tenant_key)
-            injector = MissionOptimizationInjector(optimizer)
+        optimizer = self._get_serena_optimizer(project.tenant_key)
+        if optimizer:
+            try:
+                injector = MissionOptimizationInjector(optimizer)
 
-            context_data = {
-                "project_id": project.id,
-                "project_type": "general",
-                "codebase_size": "medium",
-                "primary_language": "python",
-            }
+                context_data = {
+                    "project_id": project.id,
+                    "project_type": "general",
+                    "codebase_size": "medium",
+                    "primary_language": "python",
+                }
 
-            optimized_mission = await injector.inject_optimization_rules(
-                agent_role=role.value, mission=mission, context_data=context_data
-            )
+                optimized_mission = await injector.inject_optimization_rules(
+                    agent_role=role.value, mission=mission, context_data=context_data
+                )
 
-            logger.info(f"[_spawn_claude_code_agent] Enhanced {role.value} agent mission with Serena optimization")
-            mission = optimized_mission
+                logger.info(f"[_spawn_claude_code_agent] Enhanced {role.value} agent mission with Serena optimization")
+                mission = optimized_mission
 
-        except Exception as e:
-            logger.warning(f"[_spawn_claude_code_agent] Failed to inject Serena optimization: {e}")
-            # Continue with original mission
+            except Exception as e:
+                logger.warning(f"[_spawn_claude_code_agent] Failed to inject Serena optimization: {e}")
+                # Continue with original mission
 
         # 3. Create Agent record with mode='claude'
         agent = Agent(
@@ -388,7 +389,7 @@ class ProjectOrchestrator:
         Returns:
             Formatted MCP instructions text
         """
-        return f"""
+        base = f"""
 ## MCP Coordination Protocol
 
 **IMPORTANT**: Use MCP tools for coordination and progress tracking.
@@ -460,6 +461,84 @@ get_next_instruction(
 ### Tenant Isolation
 All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant isolation.
 """
+
+        # Optionally append Serena MCP usage guidance when enabled
+        try:
+            config = self._read_config()
+            serena_enabled = (
+                config.get("features", {})
+                .get("serena_mcp", {})
+                .get("use_in_prompts", False)
+            )
+        except Exception:
+            serena_enabled = False
+
+        if serena_enabled:
+            base = base + "\n\n" + self._generate_serena_instructions(agent_role)
+
+        return base
+
+    def _generate_serena_instructions(self, agent_role: str) -> str:
+        """Generate Serena MCP usage guidance tailored by agent role.
+
+        Keeps instructions concise and role-relevant, while preserving autonomy.
+        """
+        # Recommended tool sets by role (names align with Serena MCP conventions)
+        recommended = {
+            "orchestrator": [
+                "find_files", "get_symbols_overview", "search_for_pattern", "read_file",
+            ],
+            "analyzer": [
+                "find_files", "get_symbols_overview", "search_for_pattern", "read_file",
+            ],
+            "implementer": [
+                "find_files", "search_for_pattern", "read_file",
+            ],
+            "tester": [
+                "find_files", "search_for_pattern", "read_file",
+            ],
+            "reviewer": [
+                "get_symbols_overview", "search_for_pattern", "read_file",
+            ],
+        }
+
+        tools_for_role = recommended.get(agent_role.lower(), [
+            "find_files", "search_for_pattern", "read_file",
+        ])
+
+        # Compact examples to avoid inflating token usage
+        examples = f"""
+## Serena MCP (Code Discovery)
+
+Serena MCP is available for codebase discovery and navigation. Use it to:
+- quickly locate relevant files and symbols
+- inspect code safely before proposing changes
+- keep context small by reading only what you need
+
+Recommended tools for your role ({agent_role}): {', '.join(tools_for_role)}
+
+Example calls:
+```
+# discover candidate files
+find_files(query="router|orchestrator|auth")
+
+# inspect symbols in a file
+get_symbols_overview(path="src/app.py")
+
+# search for patterns
+search_for_pattern(pattern="def create_router", path="src/")
+
+# read file (when necessary)
+read_file(path="src/app.py")
+```
+
+Guidelines:
+- Prefer Serena MCP to discover BEFORE editing.
+- Read minimally; cite exact paths/lines in your updates.
+- You may choose other Serena tools if helpful; the list above is guidance, not a constraint.
+"""
+
+        return examples
 
     def _generate_cli_prompt(
         self,
@@ -565,11 +644,30 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 **Copy this entire prompt and paste into your Codex/Gemini CLI to begin work.**
 """
 
-    def _get_serena_optimizer(self, tenant_key: str) -> SerenaOptimizer:
+    def _get_serena_optimizer(self, tenant_key: str) -> Optional[SerenaOptimizer]:
         """Get or create SerenaOptimizer for tenant (lazy initialization)"""
+        config = self._read_config()
+        if not config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False):
+            return None
+
         if not self.serena_optimizer:
             self.serena_optimizer = SerenaOptimizer(self.db_manager, tenant_key)
         return self.serena_optimizer
+
+    def _read_config(self) -> dict:
+        """Read config.yaml."""
+        config_path = Path.cwd() / "config.yaml"
+        if not config_path.exists():
+            return {}
+
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                import yaml
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            logger.error(f"Failed to read config: {e}")
+            return {}
+
 
     async def create_project(
         self,
