@@ -6,13 +6,6 @@
         <h3 class="text-h6 mb-0">Claude Code Agent Export</h3>
       </div>
 
-      <!-- Info Alert -->
-      <v-alert type="info" variant="tonal" class="mb-4">
-        <div class="text-body-2">
-          Export your agent templates as agent definition files. Use the slash commands below in your AI coding tool (Claude Code, Codex CLI, or Gemini) for seamless installation.
-        </div>
-      </v-alert>
-
       <!-- Export Commands Section -->
       <div class="export-commands mb-4">
         <div class="d-flex align-center mb-3">
