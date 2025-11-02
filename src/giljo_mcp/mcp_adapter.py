@@ -114,6 +114,18 @@ class MCPAdapter:
         """
         logger.debug(f"Handling tool call: {tool_name} with args: {arguments}")
 
+        # Check if this is a slash command (gil_* commands)
+        if tool_name.startswith("gil_"):
+            return await self.call_api(
+                "/slash/execute",
+                json={
+                    "command": tool_name,
+                    "tenant_key": self.tenant_key,
+                    "project_id": self.project_id,
+                    "arguments": arguments,
+                },
+            )
+
         # Special handling for certain tools
         if tool_name == "create_project":
             # After creating a project, store the tenant key

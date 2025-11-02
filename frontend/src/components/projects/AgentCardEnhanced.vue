@@ -166,6 +166,18 @@
         Launch Agent
       </v-btn>
 
+      <!-- Orchestrator: Hand Over (Handover 0080a) -->
+      <v-btn
+        v-else-if="isOrchestrator && agent.status === 'working'"
+        variant="outlined"
+        color="warning"
+        block
+        @click="$emit('hand-over', agent)"
+      >
+        <v-icon start>mdi-hand-wave</v-icon>
+        Hand Over
+      </v-btn>
+
       <!-- Jobs Tab: Working State - Details -->
       <v-btn
         v-else-if="agent.status === 'working'"

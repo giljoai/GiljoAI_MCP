@@ -155,6 +155,67 @@ Back in the dashboard, the successor card status should change:
 
 The successor is now actively orchestrating your project.
 
+### Alternative: Triggering Succession via Slash Command
+
+**New in Handover 0080a**: You can manually trigger orchestrator succession from within Claude Code or Codex CLI using the `/gil_handover` slash command.
+
+#### When to Use This
+
+Use the slash command when you want to hand over from within your AI coding tool:
+- After 40-50 messages in a long conversation
+- Before major phase transitions in your project
+- When the conversation feels "long" or context-heavy
+- To proactively manage context before approaching limits
+
+#### How to Use
+
+**Step 1: Type the Command**
+
+In your Claude Code or Codex CLI conversation with the orchestrator:
+
+```
+/gil_handover
+```
+
+**Step 2: Review the Output**
+
+The command will display:
+- ✅ Success message confirming successor creation (Instance 2)
+- 📋 Handover summary showing:
+  - Project status and completion percentage
+  - Active agents and their current work
+  - Pending decisions
+  - Next steps
+- 🚀 Launch prompt ready to copy
+
+**Step 3: Copy the Launch Prompt**
+
+The output includes an auto-generated launch prompt:
+
+```bash
+export GILJO_MCP_SERVER_URL=http://10.1.0.164:7272
+export GILJO_AGENT_JOB_ID=orch-a1b2c3d4-5e6f-7890-1234-567890abcdef
+export GILJO_PROJECT_ID=6adbec5c-9e11-46b4-ad8b-060c69a8d124
+
+codex mcp add giljo-orchestrator
+```
+
+**Step 4: Launch in New Terminal**
+
+Open a new terminal window and paste the command to start Instance 2.
+
+#### UI Alternative: "Hand Over" Button
+
+You can also trigger succession from the web dashboard:
+
+1. Navigate to your project's **Jobs** tab
+2. Find the orchestrator card (showing instance number)
+3. Click the **"Hand Over"** button (only visible for working orchestrators)
+4. Copy the generated launch prompt from the dialog
+5. Paste and run in a new terminal
+
+Both methods produce the same result - a clean handover to a successor orchestrator with fresh context.
+
 ## Viewing Succession History
 
 ### Timeline View
