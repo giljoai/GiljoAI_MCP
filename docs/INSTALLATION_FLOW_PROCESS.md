@@ -1095,6 +1095,158 @@ npm cache clean --force
 npm install
 ```
 
+---
+
+## npm Installation Architecture (v3.1)
+
+**Overview**: The installer uses a production-grade npm installation system with intelligent fallback strategy, pre-flight health checks, and comprehensive retry logic.
+
+### Smart Installation Strategy
+
+The installer automatically chooses the optimal npm command:
+
+1. **npm ci** (first attempt) - Reproducible builds using package-lock.json
+2. **npm install** (fallback) - If lockfile missing or npm ci fails
+3. **Automatic retry** - 3 attempts with exponential backoff (2s, 4s, 8s)
+4. **Cache clearing** - On final retry to resolve corruption issues
+
+```bash
+# Installation flow
+npm ci                    # Attempt 1 (if package-lock.json exists)
+  -> fails
+npm install               # Attempt 2 (automatic fallback)
+  -> fails
+npm cache clean --force   # Clear cache
+npm install               # Attempt 3 (final attempt)
+```
+
+### Pre-Flight Health Checks
+
+Before attempting installation, the system validates:
+
+1. **npm registry accessibility** - Tests connection to registry.npmjs.org
+2. **Disk space** - Ensures minimum 500MB available for node_modules
+3. **package-lock.json presence** - Warns if missing (affects reproducibility)
+
+```bash
+# Pre-flight checks automatically run during installation
+# Checks logged to: logs/install_npm.log
+```
+
+### Two-Tier Verification
+
+Installation success is verified using two independent checks:
+
+1. **Folder check** - Ensures node_modules directory exists
+2. **Dependency check** - Validates critical packages are present (vue, vuetify, lodash-es, etc.)
+
+This prevents false positives from incomplete installations.
+
+### Retry and Recovery Logic
+
+**Retry Strategy**:
+- 3 maximum attempts per installation
+- Exponential backoff: 2s, 4s, 8s between attempts
+- Automatic fallback from npm ci to npm install
+- Cache clearing on final retry
+
+**Recovery Actions**:
+- Automatic: Switches to npm install if npm ci fails
+- Automatic: Clears npm cache before final attempt
+- Manual: User intervention required if all retries fail
+
+### Diagnostic Logging
+
+All npm operations are logged to: `logs/install_npm.log`
+
+**Log contents**:
+- Timestamp for each attempt
+- Command executed (npm ci vs npm install)
+- Full stdout and stderr output
+- Pre-flight check results
+- Verification results
+
+```bash
+# View npm installation logs
+cat logs/install_npm.log           # Linux/macOS
+type logs\install_npm.log          # Windows
+
+# Logs include:
+# - Pre-flight health check results
+# - Each retry attempt with timestamps
+# - Full npm command output
+# - Verification status
+```
+
+### Troubleshooting npm ci Specific Issues
+
+**npm ci fails with "lockfile mismatch"**:
+```bash
+# The installer automatically falls back to npm install
+# No manual action needed - fallback is automatic
+
+# If you want to fix lockfile manually:
+cd frontend/
+rm package-lock.json
+npm install                  # Regenerates lockfile
+```
+
+**npm ci fails with "registry error"**:
+```bash
+# Pre-flight checks will detect this before attempting npm ci
+# Check logs/install_npm.log for detailed error message
+
+# Manual verification:
+npm ping                     # Test npm registry connection
+curl https://registry.npmjs.org/  # Test network connectivity
+```
+
+**All retries fail**:
+```bash
+# Installer stops with troubleshooting instructions
+# Check logs/install_npm.log for detailed diagnostics
+
+# Common issues and fixes:
+# 1. Corporate proxy/firewall
+npm config set proxy http://proxy.company.com:8080
+npm config set https-proxy http://proxy.company.com:8080
+
+# 2. Corrupted npm cache
+npm cache clean --force
+npm cache verify
+
+# 3. Insufficient disk space
+df -h                        # Linux/macOS - check available space
+dir                          # Windows - check available space
+# Need minimum 500MB for node_modules
+
+# 4. Network connectivity
+ping registry.npmjs.org      # Test basic connectivity
+npm ping                     # Test npm registry access
+```
+
+### Architecture Benefits
+
+**Reliability**:
+- Pre-flight checks catch issues before installation
+- Automatic retry with exponential backoff
+- Smart fallback from npm ci to npm install
+- Two-tier verification prevents false positives
+
+**Observability**:
+- Comprehensive logging to logs/install_npm.log
+- Detailed error messages with troubleshooting steps
+- Pre-flight check results visible during installation
+
+**Cross-Platform**:
+- Works on Windows, Linux, macOS
+- Platform-specific command execution handled automatically
+- Consistent behavior across all platforms
+
+**Related Documentation**: See Handover 0082 for implementation details
+
+---
+
 **Issue: Port already in use**
 ```bash
 # Check what's using the port
