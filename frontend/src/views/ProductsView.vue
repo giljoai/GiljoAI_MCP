@@ -287,6 +287,18 @@
               class="mb-4 mt-2"
             ></v-text-field>
 
+            <!-- Handover 0084: Project Path for Agent Export -->
+            <v-text-field
+              v-model="productForm.projectPath"
+              label="Project Path (optional)"
+              variant="outlined"
+              density="comfortable"
+              prepend-inner-icon="mdi-folder-open"
+              hint="File system path to your product folder (e.g., F:/Projects/MyProduct). Required for exporting agents to this product."
+              persistent-hint
+              class="mb-4"
+            ></v-text-field>
+
             <!-- Description -->
             <v-textarea
               v-model="productForm.description"
@@ -1484,6 +1496,7 @@ const productForm = ref({
   name: '',
   description: '',
   visionPath: '',
+  projectPath: '', // Handover 0084: Project path for agent export
   // Handover 0042: Rich configuration data
   configData: {
     tech_stack: {
@@ -1840,6 +1853,7 @@ async function editProduct(product) {
     name: product.name,
     description: product.description || '',
     visionPath: product.vision_path || '',
+    projectPath: product.project_path || '', // Handover 0084: Project path for agent export
     // Handover 0042: Merge with existing config_data
     configData: product.config_data ? { ...defaultConfig, ...product.config_data } : defaultConfig,
   }
@@ -1915,12 +1929,14 @@ async function saveProduct() {
       product = await productStore.updateProduct(editingProduct.value.id, {
         name: productForm.value.name,
         description: productForm.value.description,
+        projectPath: productForm.value.projectPath,  // Handover 0084: Project path for agent export
         configData: productForm.value.configData,  // Handover 0042
       })
     } else {
       product = await productStore.createProduct({
         name: productForm.value.name,
         description: productForm.value.description,
+        projectPath: productForm.value.projectPath,  // Handover 0084: Project path for agent export
         configData: productForm.value.configData,  // Handover 0042
       })
     }
@@ -2048,6 +2064,7 @@ function closeDialog() {
     name: '',
     description: '',
     visionPath: '',
+    projectPath: '', // Handover 0084: Project path for agent export
     // Handover 0042: Reset config_data
     configData: {
       tech_stack: {
