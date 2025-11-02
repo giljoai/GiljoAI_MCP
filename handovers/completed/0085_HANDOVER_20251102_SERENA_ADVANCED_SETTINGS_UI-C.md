@@ -5,7 +5,7 @@
 **To Agent:** Next Session (frontend + backend)
 **Priority:** High
 **Estimated Complexity:** 6–9 hours
-**Status:** In Progress
+**Status:** Completed
 
 ## 1) Task Summary
 - Add an “Advanced” button next to the existing Serena MCP toggle that opens a dialog to tune advanced options with tooltips.
@@ -194,3 +194,18 @@ Success Summary
 Final Results (Phase 1)
 – Feature is functional; Phase 2 orchestrator integration complete.
 – Optional: surface `available_tools` in config or add a live catalog endpoint to populate it.
+
+---
+
+### 2025-11-02 – Codex CLI (Completion)
+**Status:** Completed
+**Work Done:**
+- Built Advanced settings dialog with tooltips and validation
+- Added GET/POST config endpoints with defaults, validation, and safe YAML writes
+- Wired frontend services and User Settings integration (Advanced button + dialog)
+- Orchestrator now honors tailor_by_mission, dynamic_catalog, and range read guidance
+
+**Final Notes:**
+- Dynamic catalog currently consumes optional configured tool list; can add live discovery endpoint later
+- No migrations required; config.yaml only
+

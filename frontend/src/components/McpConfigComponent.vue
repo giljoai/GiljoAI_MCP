@@ -1,7 +1,6 @@
 <template>
   <v-card>
     <v-card-title class="d-flex align-center bg-primary">
-      <v-icon start>mdi-robot-outline</v-icon>
       Manual AI Tool Configuration
       <v-spacer />
       <v-btn icon="mdi-close" variant="text" @click="$emit('close')" aria-label="Close dialog" />

@@ -1,8 +1,8 @@
 <template>
   <v-dialog v-model="showWizard" max-width="720">
     <template #activator="{ props }">
-      <v-btn v-bind="props" color="primary" size="large" block>
-        Setup AI Tool Connection
+      <v-btn v-bind="props" color="primary" variant="flat" size="small">
+        Configurator
       </v-btn>
     </template>
 
@@ -293,6 +293,13 @@ async function copyPrompt() {
     }
   }
 }
+
+// Expose method to programmatically open the wizard
+defineExpose({
+  open: () => {
+    showWizard.value = true
+  }
+})
 
 </script>
 
