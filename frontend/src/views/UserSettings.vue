@@ -535,7 +535,6 @@
                 </v-alert>
 
                 <!-- Claude Code Agent Export -->
-                <h3 class="text-h6 mb-4 mt-6">Claude Code Agent Export</h3>
                 <ClaudeCodeExport />
               </v-window-item>
             </v-window>
