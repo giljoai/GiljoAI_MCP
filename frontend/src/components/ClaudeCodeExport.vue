@@ -2,7 +2,9 @@
   <v-card variant="outlined" class="mb-4">
     <v-card-text>
       <div class="d-flex align-center mb-3">
-        <v-icon color="primary" size="large" class="mr-2">mdi-download</v-icon>
+        <v-avatar size="40" rounded="0" class="mr-2">
+          <v-img src="/claude_pix.svg" alt="Claude Code" />
+        </v-avatar>
         <h3 class="text-h6 mb-0">Claude Code Agent Export</h3>
       </div>
 
