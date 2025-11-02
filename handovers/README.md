@@ -42,6 +42,8 @@ Handovers enable seamless task delegation between development agents/sessions by
 - None
 
 **Recently Completed:**
+- `0084b Agent Import Slash Commands` - **COMPLETE 2025-11-02** (Fix to Handover 0084: Implemented /gil_import_productagents and /gil_import_personalagents slash commands. Replaced flawed copy-command approach with proper slash commands following /gil_* pattern. 2 new slash command handlers, comprehensive documentation (1,089 lines), cross-platform clipboard fix, all backend logic preserved (backups, 8-agent limit, multi-tenant isolation). See: `completed/0084b_agent_import_slash_commands-C.md`)
+- `0080a Orchestrator Succession Slash Command` - **COMPLETE 2025-11-02** (Manual orchestrator succession: Implemented /gil_handover slash command for triggering orchestrator succession manually. Complements automatic 90% context succession. Launch prompt generation, HTTP endpoints, comprehensive documentation. See: `completed/0080a_orchestrator_succession_slash_command-C.md`)
 - `0078 Task Tenant & JWT Mismatch Diagnosis` - **RETIRED 2025-10-31** (Diagnosis consolidated; clarifies root cause and remediation plan for tenant_key mismatch in JWT leading to invisible tasks. See: `completed/0078_COMPLETION_SUMMARY.md`)
 - `0075 Eight-Agent Active Limit Enforcement` - **RETIRED 2025-10-31** (Specification consolidated and archived. Provides validation flow to cap active agent templates to 8 and user export safeguards. See: `completed/0075_COMPLETION_SUMMARY.md`)
 - `0076 Task Field Cleanup & Product Scoping` - **COMPLETE 2025-10-31** (Assignment fields removed, product‑scoped filters added, task→project conversion with active product requirement. See: `completed/0076_COMPLETION_SUMMARY.md`)
