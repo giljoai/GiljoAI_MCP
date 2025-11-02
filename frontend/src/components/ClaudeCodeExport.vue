@@ -64,15 +64,6 @@
         </v-card>
       </div>
 
-      <!-- Context Budget Warning -->
-      <v-alert type="warning" variant="tonal" density="compact" class="mb-4" icon="mdi-alert-circle-outline">
-        <div class="text-body-2">
-          <strong>Context Budget Recommendation:</strong> Export no more than 8 agents maximum.
-          Each agent description consumes context budget, reducing available tokens for your
-          project. Claude Code recommends 6-8 agents for optimal performance.
-        </div>
-      </v-alert>
-
       <!-- Copy Feedback -->
       <v-snackbar v-model="showCopyFeedback" timeout="3000" color="success">
         <v-icon class="mr-2">mdi-check-circle</v-icon>
