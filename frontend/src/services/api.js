@@ -116,6 +116,8 @@ export const api = {
       const formData = new FormData()
       formData.append('name', data.name)
       if (data.description) formData.append('description', data.description)
+      // Handover 0084: Add project_path for agent export
+      if (data.projectPath) formData.append('project_path', data.projectPath)
       // Handover 0042: Add config_data as JSON string
       if (data.configData) formData.append('config_data', JSON.stringify(data.configData))
       return apiClient.post('/api/v1/products/', formData, {
@@ -127,6 +129,8 @@ export const api = {
       const formData = new FormData()
       if (data.name) formData.append('name', data.name)
       if (data.description) formData.append('description', data.description)
+      // Handover 0084: Add project_path for agent export
+      if (data.projectPath) formData.append('project_path', data.projectPath)
       if (data.configData) formData.append('config_data', JSON.stringify(data.configData))
       return apiClient.put(`/api/v1/products/${id}/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
