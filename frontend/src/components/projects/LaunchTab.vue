@@ -271,6 +271,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import AgentCardEnhanced from './AgentCardEnhanced.vue'
+import api from '@/services/api'
 
 /**
  * LaunchTab Component
@@ -402,8 +403,8 @@ async function handleStageProject() {
     showToast.value = true
 
     // Call API to generate comprehensive staging prompt
-    const response = await window.api.get(`/api/prompts/staging/${props.project.id}`, {
-      params: { tool: 'claude-code' }  // TODO: Make tool selectable in UI
+    const response = await api.prompts.staging(props.project.id, {
+      tool: 'claude-code'  // TODO: Make tool selectable in UI
     })
 
     const { prompt, token_estimate, budget_utilization, warnings, context_included } = response.data

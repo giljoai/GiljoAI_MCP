@@ -6,6 +6,16 @@
 
     <!-- Settings Tabs -->
     <v-tabs v-model="activeTab" class="mb-6">
+      <v-tab value="context">
+        <v-icon start>mdi-priority-high</v-icon>
+        Context
+      </v-tab>
+      <v-tab value="agents">
+        <template #prepend>
+          <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
+        </template>
+        Agents
+      </v-tab>
       <v-tab value="general">
         <v-icon start>mdi-cog</v-icon>
         General
@@ -18,12 +28,6 @@
         <v-icon start>mdi-bell</v-icon>
         Notifications
       </v-tab>
-      <v-tab value="templates">
-        <template #prepend>
-          <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
-        </template>
-        Agent Templates
-      </v-tab>
       <v-tab value="api">
         <v-icon start>mdi-api</v-icon>
         API and Integrations
@@ -32,16 +36,11 @@
 
     <!-- Tab Content -->
     <v-window v-model="activeTab">
-      <!-- General Settings -->
-      <v-window-item value="general">
-        <v-card data-test="general-settings">
-          <v-card-title>General Settings</v-card-title>
+      <!-- Context Settings -->
+      <v-window-item value="context">
+        <v-card data-test="context-settings">
+          <v-card-title>Context Priority Management</v-card-title>
           <v-card-text>
-
-            <div class="text-h6 mb-4">
-              <v-icon start>mdi-priority-high</v-icon>
-              Context Priority Management
-            </div>
 
             <v-alert type="info" variant="tonal" density="compact" class="mb-4">
               Controls which product configuration fields are prioritized when generating
@@ -243,6 +242,23 @@
               </v-btn>
             </div>
           </v-card-text>
+        </v-card>
+      </v-window-item>
+
+      <!-- Agents -->
+      <v-window-item value="agents">
+        <TemplateManager />
+      </v-window-item>
+
+      <!-- General Settings -->
+      <v-window-item value="general">
+        <v-card data-test="general-settings">
+          <v-card-title>General Settings</v-card-title>
+          <v-card-text>
+            <v-alert type="info" variant="tonal" density="compact">
+              This section is reserved for future general settings.
+            </v-alert>
+          </v-card-text>
           <v-card-actions>
             <v-spacer />
             <v-btn variant="text" @click="resetGeneralSettings" data-test="reset-general-btn">Reset</v-btn>
@@ -406,11 +422,6 @@
         </v-card>
       </v-window-item>
 
-      <!-- Templates -->
-      <v-window-item value="templates">
-        <TemplateManager />
-      </v-window-item>
-
       <!-- API Configuration -->
       <v-window-item value="api">
         <v-card>
@@ -572,7 +583,7 @@ const theme = useTheme()
 const router = useRouter()
 
 // State
-const activeTab = ref('general')
+const activeTab = ref('context')
 const apiSubTab = ref('api-keys')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
