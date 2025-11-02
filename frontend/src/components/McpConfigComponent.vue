@@ -357,45 +357,80 @@ async function copyToClipboard() {
   const text = String(configData.value.config_content || '')
   if (!text) return
 
+  // Production-grade cross-platform clipboard handler
+  // Tries modern Clipboard API first, falls back gracefully to execCommand
   const fallbackCopy = () => {
     try {
       const ta = document.createElement('textarea')
       ta.value = text
       ta.setAttribute('readonly', '')
-      ta.style.position = 'fixed'
-      ta.style.top = '-1000px'
-      ta.style.left = '-1000px'
+      ta.style.position = 'absolute'
+      ta.style.left = '-9999px'
+      ta.style.top = '0'
       document.body.appendChild(ta)
+
+      // Select and copy
+      ta.focus()
       ta.select()
-      const ok = document.execCommand('copy')
+
+      // For iOS compatibility
+      if (navigator.userAgent.match(/ipad|iphone/i)) {
+        const range = document.createRange()
+        range.selectNodeContents(ta)
+        const selection = window.getSelection()
+        selection.removeAllRanges()
+        selection.addRange(range)
+        ta.setSelectionRange(0, text.length)
+      }
+
+      const success = document.execCommand('copy')
       document.body.removeChild(ta)
-      return ok
+      return success
     } catch (err) {
       console.error('[McpConfig] Fallback copy failed:', err)
       return false
     }
   }
 
-  try {
-    if (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  // Try Clipboard API first (works in secure contexts and localhost)
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    try {
       await navigator.clipboard.writeText(text)
       copied.value = true
-    } else {
-      copied.value = fallbackCopy()
+      console.log('[McpConfig] Configuration copied via Clipboard API')
+      showSnackbar('Configuration copied to clipboard!', 'success')
+    } catch (err) {
+      // Clipboard API failed (permissions/browser restrictions), try fallback
+      console.warn('[McpConfig] Clipboard API failed, using fallback:', err)
+      const success = fallbackCopy()
+      copied.value = success
+
+      if (success) {
+        console.log('[McpConfig] Configuration copied via fallback method')
+        showSnackbar('Configuration copied to clipboard!', 'success')
+      } else {
+        console.error('[McpConfig] All copy methods failed')
+        showSnackbar('Failed to copy. Please select and copy the text manually.', 'error')
+      }
     }
-    console.log('[McpConfig] Configuration copied to clipboard')
-    showSnackbar('Configuration copied to clipboard!', 'success')
-  } catch (err) {
-    console.warn('[McpConfig] Clipboard API failed, using fallback:', err)
-    const ok = fallbackCopy()
-    copied.value = ok
-    showSnackbar(ok ? 'Configuration copied to clipboard!' : 'Failed to copy to clipboard. Please copy manually.', ok ? 'success' : 'error')
-  } finally {
-    // Reset copied state after 2 seconds
-    setTimeout(() => {
-      copied.value = false
-    }, 2000)
+  } else {
+    // Clipboard API not available, use fallback directly
+    const success = fallbackCopy()
+    copied.value = success
+
+    if (success) {
+      console.log('[McpConfig] Configuration copied via fallback method')
+      showSnackbar('Configuration copied to clipboard!', 'success')
+    } else {
+      console.error('[McpConfig] Fallback copy method failed')
+      showSnackbar('Failed to copy. Please select and copy the text manually.', 'error')
+    }
   }
+
+  // Reset copied state after 2 seconds
+  setTimeout(() => {
+    copied.value = false
+  }, 2000)
 }
 
 async function downloadMarkdownGuide() {
