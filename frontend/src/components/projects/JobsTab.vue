@@ -63,6 +63,7 @@
                 @launch-agent="handleLaunchAgent"
                 @view-details="handleViewDetails"
                 @view-error="handleViewError"
+                @hand-over="handleHandOver"
                 @closeout-project="handleCloseoutProject"
                 class="jobs-tab__agent-card"
                 role="listitem"
@@ -319,6 +320,14 @@ function handleViewError(agent) {
 function handleCloseoutProject() {
   console.log('[JobsTab] Closeout project')
   emit('closeout-project')
+}
+
+/**
+ * Handle orchestrator handover (Handover 0080a)
+ */
+function handleHandOver(agent) {
+  console.log('[JobsTab] Hand over orchestrator:', agent.job_id)
+  emit('hand-over', agent)
 }
 
 /**

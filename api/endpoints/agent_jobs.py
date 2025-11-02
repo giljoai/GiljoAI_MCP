@@ -1387,3 +1387,72 @@ async def broadcast_message(
         agent_count=len(agents),
         timestamp=timestamp
     )
+
+
+# ============================================================================
+# Orchestrator Succession Endpoints (Handover 0080a)
+# ============================================================================
+
+
+class SuccessionTriggerResponse(BaseModel):
+    """Response model for succession trigger"""
+
+    success: bool
+    message: str
+    successor_id: Optional[str] = None
+    launch_prompt: Optional[str] = None
+    handover_summary: Optional[dict] = None
+    error: Optional[str] = None
+
+
+@router.post("/{job_id}/trigger_succession", response_model=SuccessionTriggerResponse)
+async def trigger_succession(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Trigger orchestrator succession (Handover 0080a).
+
+    Creates a successor orchestrator instance and marks the current
+    orchestrator as complete with handover. Only available for
+    orchestrator agents.
+
+    Args:
+        job_id: Orchestrator job ID
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+
+    Returns:
+        SuccessionTriggerResponse with successor details and launch prompt
+
+    Raises:
+        404: Orchestrator job not found
+        400: Job is not an orchestrator or already handed over
+        403: User not authorized to access job
+    """
+    from src.giljo_mcp.slash_commands.handover import handle_gil_handover
+
+    logger.debug(f"User {current_user.username} triggering succession for job {job_id}")
+
+    # Execute succession handler (reuse slash command logic)
+    result = await handle_gil_handover(
+        db_session=db,
+        tenant_key=current_user.tenant_key,
+        orchestrator_job_id=job_id,
+    )
+
+    # Map result to response
+    if not result.get("success"):
+        # Determine appropriate HTTP status code based on error type
+        error = result.get("error", "UNKNOWN")
+        if error == "NO_ORCHESTRATOR" or error == "INVALID_ORCHESTRATOR":
+            status_code = status.HTTP_404_NOT_FOUND
+        elif error in ("ALREADY_HANDED_OVER", "SUCCESSOR_EXISTS"):
+            status_code = status.HTTP_409_CONFLICT
+        else:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+        raise HTTPException(status_code=status_code, detail=result.get("message"))
+
+    return SuccessionTriggerResponse(**result)
