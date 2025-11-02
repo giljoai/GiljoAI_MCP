@@ -743,6 +743,10 @@ class UnifiedInstaller:
                 # Create all tables (SAME AS api/app.py:186)
                 await db_manager.create_tables_async()
 
+                # HANDOVER 0080: Run migration for orchestrator succession columns
+                # This handles existing installations with mcp_agent_jobs table
+                await self._run_handover_0080_migration_async(db_manager)
+
                 # Create setup_state ONLY (no admin user - Handover 0034)
                 async with db_manager.get_session_async() as session:
                     from sqlalchemy import select
@@ -1439,6 +1443,150 @@ class UnifiedInstaller:
         )
         print(guide)
         print()
+
+    async def _run_handover_0080_migration_async(self, db_manager) -> None:
+        """
+        Run Handover 0080 migration for orchestrator succession columns.
+
+        Adds new columns to mcp_agent_jobs table:
+        - instance_number (default 1)
+        - handover_to (nullable UUID)
+        - handover_summary (nullable JSONB)
+        - handover_context_refs (nullable JSON array)
+        - succession_reason (nullable VARCHAR)
+        - context_used (default 0)
+        - context_budget (default 150000)
+
+        Idempotent: Safe to run multiple times (skips if columns exist)
+        """
+        try:
+            async with db_manager.get_session_async() as session:
+                from sqlalchemy import text
+
+                # Check if migration needed (check for instance_number column)
+                check_query = text("""
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'mcp_agent_jobs'
+                    AND column_name = 'instance_number'
+                """)
+
+                result = await session.execute(check_query)
+                column_exists = result.fetchone() is not None
+
+                if column_exists:
+                    self._print_info("Handover 0080 migration already applied (skipping)")
+                    return
+
+                self._print_info("Applying Handover 0080 migration (orchestrator succession)...")
+
+                # Add new columns with defaults
+                migration_queries = [
+                    # Add instance_number column
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD COLUMN IF NOT EXISTS instance_number INTEGER DEFAULT 1 NOT NULL
+                    """),
+
+                    # Add handover_to column
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD COLUMN IF NOT EXISTS handover_to VARCHAR(36) NULL
+                    """),
+
+                    # Add handover_summary column
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD COLUMN IF NOT EXISTS handover_summary JSONB NULL
+                    """),
+
+                    # Add handover_context_refs column
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD COLUMN IF NOT EXISTS handover_context_refs TEXT[] NULL
+                    """),
+
+                    # Add succession_reason column
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD COLUMN IF NOT EXISTS succession_reason VARCHAR(100) NULL
+                    """),
+
+                    # Add context_used column
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD COLUMN IF NOT EXISTS context_used INTEGER DEFAULT 0 NOT NULL
+                    """),
+
+                    # Add context_budget column
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD COLUMN IF NOT EXISTS context_budget INTEGER DEFAULT 150000 NOT NULL
+                    """),
+                ]
+
+                # Execute all migration queries
+                for query in migration_queries:
+                    await session.execute(query)
+
+                # Create indexes
+                index_queries = [
+                    # Composite index for instance queries
+                    text("""
+                        CREATE INDEX IF NOT EXISTS idx_agent_jobs_instance
+                        ON mcp_agent_jobs(project_id, agent_type, instance_number)
+                    """),
+
+                    # Index for handover lookups
+                    text("""
+                        CREATE INDEX IF NOT EXISTS idx_agent_jobs_handover
+                        ON mcp_agent_jobs(handover_to)
+                    """),
+                ]
+
+                for query in index_queries:
+                    await session.execute(query)
+
+                # Add constraints
+                constraint_queries = [
+                    # Instance number must be positive
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_instance_positive
+                        CHECK (instance_number >= 1)
+                    """),
+
+                    # Succession reason constraint
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_succession_reason
+                        CHECK (succession_reason IS NULL OR
+                               succession_reason IN ('context_limit', 'manual', 'phase_transition'))
+                    """),
+
+                    # Context usage constraint
+                    text("""
+                        ALTER TABLE mcp_agent_jobs
+                        ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_context_usage
+                        CHECK (context_used >= 0 AND context_used <= context_budget)
+                    """),
+                ]
+
+                for query in constraint_queries:
+                    await session.execute(query)
+
+                await session.commit()
+
+                self._print_success("Handover 0080 migration completed successfully")
+                self._print_info("  Added 7 columns for orchestrator succession")
+                self._print_info("  Created 2 indexes for succession queries")
+                self._print_info("  Added 3 check constraints for data integrity")
+
+        except Exception as e:
+            self._print_error(f"Handover 0080 migration failed: {e}")
+            # Don't fail installation - just log error
+            import traceback
+            traceback.print_exc()
 
     def _is_port_available(self, port: int, host: str = '127.0.0.1') -> bool:
         """Check if port is available"""
