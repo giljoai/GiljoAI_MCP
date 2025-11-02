@@ -338,6 +338,37 @@ class SetupService {
     }
   }
 
+  /**
+   * Get full Serena MCP configuration
+   * @returns {Promise<{use_in_prompts:boolean, tailor_by_mission:boolean, dynamic_catalog:boolean, prefer_ranges:boolean, max_range_lines:number, context_halo:number}>}
+   */
+  async getSerenaConfig() {
+    const { default: api } = await import('@/services/api')
+    try {
+      const response = await api.serena.getConfig()
+      return response.data
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena config fetch failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update Serena MCP configuration
+   * @param {object} data - Partial config update
+   * @returns {Promise<object>} - Updated config
+   */
+  async updateSerenaConfig(data) {
+    const { default: api } = await import('@/services/api')
+    try {
+      const response = await api.serena.updateConfig(data)
+      return response.data
+    } catch (error) {
+      console.error('[SETUP_SERVICE] Serena config update failed:', error)
+      throw error
+    }
+  }
+
   // Admin user creation removed for v3.0 unified architecture
 }
 

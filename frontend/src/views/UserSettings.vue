@@ -502,15 +502,27 @@
                       </v-list-item-subtitle>
 
                       <template #append>
-                        <v-switch
-                          v-model="serenaEnabled"
-                          @update:model-value="toggleSerena"
-                          color="primary"
-                          :loading="toggling"
-                          hide-details
-                          inset
-                          class="serena-toggle"
-                        />
+                        <div class="d-flex align-center">
+                          <v-btn
+                            variant="text"
+                            size="small"
+                            class="mr-2"
+                            @click="openSerenaAdvanced"
+                            :disabled="toggling"
+                            title="Open advanced Serena settings"
+                          >
+                            Advanced
+                          </v-btn>
+                          <v-switch
+                            v-model="serenaEnabled"
+                            @update:model-value="toggleSerena"
+                            color="primary"
+                            :loading="toggling"
+                            hide-details
+                            inset
+                            class="serena-toggle"
+                          />
+                        </div>
                       </template>
                     </v-list-item>
                   </v-list>
@@ -536,6 +548,13 @@
     <v-dialog v-model="showManualConfigDialog" max-width="900" scrollable>
       <McpConfigComponent @close="showManualConfigDialog = false" />
     </v-dialog>
+
+    <!-- Serena Advanced Settings Dialog -->
+    <SerenaAdvancedSettingsDialog
+      v-model="showSerenaAdvanced"
+      :value="serenaConfig"
+      @save="saveSerenaConfig"
+    />
   </v-container>
 </template>
 
@@ -549,6 +568,7 @@ import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import McpConfigComponent from '@/components/McpConfigComponent.vue'
 import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
+import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDialog.vue'
 import draggable from 'vuedraggable'
 import setupService from '@/services/setupService'
 import api from '@/services/api'
@@ -565,6 +585,15 @@ const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
 const showManualConfigDialog = ref(false)
+const showSerenaAdvanced = ref(false)
+const serenaConfig = ref({
+  use_in_prompts: true,
+  tailor_by_mission: true,
+  dynamic_catalog: true,
+  prefer_ranges: true,
+  max_range_lines: 180,
+  context_halo: 12,
+})
 
 // Field Priority Configuration state (Handover 0048, 0052)
 const priority1Fields = ref([])
@@ -998,6 +1027,31 @@ watch(
   --v-theme-overlay-multiplier: 1; /* ensure visibility */
   border-color: var(--v-theme-on-surface) !important;
   opacity: 0.3 !important;
+}
+
+async function openSerenaAdvanced() {
+  try {
+    const cfg = await setupService.getSerenaConfig()
+    serenaConfig.value = cfg
+    // keep main toggle in sync
+    serenaEnabled.value = !!cfg.use_in_prompts
+    showSerenaAdvanced.value = true
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to load Serena config:', error)
+  }
+}
+
+async function saveSerenaConfig(payload, done) {
+  try {
+    const updated = await setupService.updateSerenaConfig(payload)
+    serenaConfig.value = updated
+    serenaEnabled.value = !!updated.use_in_prompts
+    showSerenaAdvanced.value = false
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to save Serena config:', error)
+  } finally {
+    if (typeof done === 'function') done()
+  }
 }
 /* Make Serena toggle more visible */
 .serena-toggle :deep(.v-switch__track) {
