@@ -26,8 +26,12 @@ onMounted(async () => {
   try {
     const response = await api.projects.getActive()
     if (response.data) {
-      // Redirect to the dynamic project route
-      router.replace(`/projects/${response.data.id}`)
+      // Redirect to the dynamic project route and tag source for sidebar highlighting
+      router.replace({
+        name: 'ProjectLaunch',
+        params: { projectId: response.data.id },
+        query: { via: 'jobs' },
+      })
     } else {
       // No active project - show the "no active project" page
       activeProject.value = null

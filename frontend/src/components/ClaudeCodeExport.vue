@@ -9,7 +9,7 @@
       <!-- Info Alert -->
       <v-alert type="info" variant="tonal" class="mb-4">
         <div class="text-body-2">
-          Export your agent templates as Claude Code agent definition files. Use the copy commands below to export directly from your Claude Code terminal for seamless path resolution.
+          Export your agent templates as agent definition files. Use the slash commands below in your AI coding tool (Claude Code, Codex CLI, or Gemini) for seamless installation.
         </div>
       </v-alert>
 
@@ -22,18 +22,13 @@
           <v-card-text class="d-flex align-center justify-between">
             <div class="flex-grow-1">
               <div class="text-subtitle-2 font-weight-medium">Product Agents</div>
-              <div class="text-body-2 text-medium-emphasis mb-2">
+              <div class="text-body-2 text-medium-emphasis">
                 Install agents in your product's .claude/agents folder
-              </div>
-              <div v-if="!selectedProduct?.project_path" class="text-caption text-error">
-                <v-icon size="small" class="mr-1">mdi-alert-circle-outline</v-icon>
-                Product path not configured. Set up your product path first.
               </div>
             </div>
             <v-btn
               color="primary"
               variant="outlined"
-              :disabled="!selectedProduct?.project_path"
               @click="copyProductCommand"
               prepend-icon="mdi-content-copy"
             >
@@ -131,8 +126,8 @@
           <strong>How to use:</strong>
           <ol class="ml-4 mt-2">
             <li>Click "Copy Command" above</li>
-            <li>Paste the command in your Claude Code terminal</li>
-            <li>Agents will be exported to the appropriate directory</li>
+            <li>Paste the slash command in your AI coding tool (Claude Code, Codex CLI, or Gemini)</li>
+            <li>Agents will be installed to the appropriate directory</li>
           </ol>
         </div>
       </v-alert>
@@ -175,39 +170,100 @@ function getTemplateIcon(role) {
 }
 
 function generateProductCommand() {
-  if (!selectedProduct.value?.project_path) {
-    return 'export_agents # Error: No product path configured'
-  }
-  return `export_agents --product-path "${selectedProduct.value.project_path}/.claude/agents"`
+  return '/gil_import_productagents'
 }
 
 function generatePersonalCommand() {
-  return 'export_agents --personal'
+  return '/gil_import_personalagents'
+}
+
+// Production-grade cross-platform clipboard copy
+function fallbackCopyToClipboard(text) {
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'absolute'
+    ta.style.left = '-9999px'
+    ta.style.top = '0'
+    document.body.appendChild(ta)
+
+    // Select and copy
+    ta.focus()
+    ta.select()
+
+    // For iOS compatibility
+    if (navigator.userAgent.match(/ipad|iphone/i)) {
+      const range = document.createRange()
+      range.selectNodeContents(ta)
+      const selection = window.getSelection()
+      selection.removeAllRanges()
+      selection.addRange(range)
+      ta.setSelectionRange(0, text.length)
+    }
+
+    const success = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return success
+  } catch (err) {
+    console.error('[CLAUDE EXPORT] Fallback copy failed:', err)
+    return false
+  }
 }
 
 async function copyProductCommand() {
   const command = generateProductCommand()
-  try {
-    await navigator.clipboard.writeText(command)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Product command copied to clipboard!'
-  } catch (error) {
-    console.error('Failed to copy command:', error)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Failed to copy command'
+
+  // Try Clipboard API first, fallback to execCommand
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    try {
+      await navigator.clipboard.writeText(command)
+      showCopyFeedback.value = true
+      copyFeedbackMessage.value = 'Product slash command copied to clipboard!'
+      console.log('[CLAUDE EXPORT] Product slash command copied via Clipboard API')
+      return
+    } catch (error) {
+      console.warn('[CLAUDE EXPORT] Clipboard API failed, using fallback:', error)
+    }
+  }
+
+  // Fallback method
+  const success = fallbackCopyToClipboard(command)
+  showCopyFeedback.value = true
+  if (success) {
+    copyFeedbackMessage.value = 'Product slash command copied to clipboard!'
+    console.log('[CLAUDE EXPORT] Product slash command copied via fallback')
+  } else {
+    copyFeedbackMessage.value = 'Failed to copy. Please copy manually.'
+    console.error('[CLAUDE EXPORT] All copy methods failed')
   }
 }
 
 async function copyPersonalCommand() {
   const command = generatePersonalCommand()
-  try {
-    await navigator.clipboard.writeText(command)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Personal command copied to clipboard!'
-  } catch (error) {
-    console.error('Failed to copy command:', error)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Failed to copy command'
+
+  // Try Clipboard API first, fallback to execCommand
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    try {
+      await navigator.clipboard.writeText(command)
+      showCopyFeedback.value = true
+      copyFeedbackMessage.value = 'Personal slash command copied to clipboard!'
+      console.log('[CLAUDE EXPORT] Personal slash command copied via Clipboard API')
+      return
+    } catch (error) {
+      console.warn('[CLAUDE EXPORT] Clipboard API failed, using fallback:', error)
+    }
+  }
+
+  // Fallback method
+  const success = fallbackCopyToClipboard(command)
+  showCopyFeedback.value = true
+  if (success) {
+    copyFeedbackMessage.value = 'Personal slash command copied to clipboard!'
+    console.log('[CLAUDE EXPORT] Personal slash command copied via fallback')
+  } else {
+    copyFeedbackMessage.value = 'Failed to copy. Please copy manually.'
+    console.error('[CLAUDE EXPORT] All copy methods failed')
   }
 }
 

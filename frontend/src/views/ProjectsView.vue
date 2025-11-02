@@ -233,10 +233,10 @@
               color="#ffc300"
               variant="flat"
               @click="launchProject(item.id)"
-              title="Launch project"
+              :title="isWorking(item) ? 'View running jobs' : 'Launch project'"
             >
               <v-icon start size="small">mdi-rocket-launch</v-icon>
-              Launch
+              {{ isWorking(item) ? 'Working' : 'Launch' }}
             </v-btn>
 
             <!-- Menu for other actions -->
@@ -481,6 +481,7 @@ import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
+import { useProjectTabsStore } from '@/stores/projectTabs'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { formatStatus } from '@/utils/formatters'
 
@@ -491,6 +492,7 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const productStore = useProductStore()
 const agentStore = useAgentStore()
+const tabsStore = useProjectTabsStore()
 
 // Reactive state
 const searchQuery = ref('')
@@ -661,7 +663,20 @@ async function activateProject(projectId) {
 // Handover 0062: Launch project
 function launchProject(projectId) {
   // Navigate to Project Launch Panel
-  router.push({ name: 'ProjectLaunch', params: { projectId } })
+  router.push({ name: 'ProjectLaunch', params: { projectId }, query: { via: 'jobs' } })
+}
+
+// Show "Working" label when the currently launched project is executing
+function isWorking(project) {
+  try {
+    if (!tabsStore || !tabsStore.currentProject) return false
+    const current = tabsStore.currentProject
+    const launched = tabsStore.isLaunched === true
+    const sameId = current?.id === project.id || current?.project_id === project.id
+    return launched && sameId
+  } catch (e) {
+    return false
+  }
 }
 
 function editProject(project) {
