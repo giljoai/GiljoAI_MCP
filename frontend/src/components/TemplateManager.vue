@@ -1,9 +1,6 @@
 <template>
   <v-card class="template-manager" elevation="2">
     <v-card-title class="d-flex align-center">
-      <v-icon class="mr-2" color="primary">
-        <img src="/icons/document.svg" width="24" height="24" alt="Templates" />
-      </v-icon>
       <span>Agent Template Manager</span>
       <v-spacer />
       <v-btn
