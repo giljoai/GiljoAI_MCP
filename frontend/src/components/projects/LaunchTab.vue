@@ -269,14 +269,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AgentCardEnhanced from './AgentCardEnhanced.vue'
+import { useWebSocket } from '@/composables/useWebSocket'
+import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 
 /**
  * LaunchTab Component
  *
- * Production-grade staging area for Handover 0077.
+ * Production-grade staging area for Handover 0077 + Handover 0086.
  * Orchestrator builds mission, creates agents, user reviews before launch.
  *
  * Layout:
@@ -288,6 +290,11 @@ import api from '@/services/api'
  * 1. Initial: Empty mission, no agents, "Stage Project" button
  * 2. Staging: Orchestrator building mission, agents appearing dynamically
  * 3. Ready to Launch: Mission complete, all agents created, "Launch jobs" button
+ *
+ * WebSocket Integration (Handover 0086):
+ * - Listens for 'project:mission_updated' events (mission panel populates)
+ * - Listens for 'agent:created' events (agent cards appear in real-time)
+ * - Multi-tenant isolation: checks project_id and tenant_key
  */
 
 const props = defineProps({
@@ -316,6 +323,13 @@ const emit = defineEmits([
   'edit-mission',
   'edit-agent-mission'
 ])
+
+/**
+ * WebSocket and Auth Setup (Handover 0086)
+ */
+const { on, off } = useWebSocket()
+const userStore = useUserStore()
+const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 
 /**
  * Component State
@@ -392,6 +406,81 @@ function getInstanceNumber(agent) {
 }
 
 /**
+ * WebSocket Event Handlers (Handover 0086)
+ */
+
+/**
+ * Handle mission update from external orchestrator execution
+ * Called when orchestrator calls update_project_mission() via MCP
+ */
+const handleMissionUpdate = (data) => {
+  console.log('[LaunchTab] Received project:mission_updated event:', data)
+
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    console.warn('[LaunchTab] Mission update rejected: tenant mismatch')
+    return
+  }
+
+  // Project isolation check
+  if (data.project_id !== props.project.id) {
+    console.log('[LaunchTab] Mission update ignored: different project')
+    return
+  }
+
+  // Update mission text reactively
+  missionText.value = data.mission
+
+  // Update UI state
+  stagingInProgress.value = false
+  readyToLaunch.value = true
+
+  // Show success notification
+  toastMessage.value = 'Mission Generated - Orchestrator has created the project mission'
+  showToast.value = true
+
+  console.log('[LaunchTab] Mission panel updated successfully')
+}
+
+/**
+ * Handle agent creation from external orchestrator execution
+ * Called when orchestrator calls create_agent_job_external() via MCP
+ */
+const handleAgentCreated = (data) => {
+  console.log('[LaunchTab] Received agent:created event:', data)
+
+  // Multi-tenant isolation check
+  if (!currentTenantKey.value || data.tenant_key !== currentTenantKey.value) {
+    console.warn('[LaunchTab] Agent creation rejected: tenant mismatch')
+    return
+  }
+
+  // Project isolation check
+  if (data.project_id !== props.project.id) {
+    console.log('[LaunchTab] Agent creation ignored: different project')
+    return
+  }
+
+  // Check if agent already exists (prevent duplicates)
+  const agentId = data.agent?.id || data.agent?.job_id
+  const exists = agents.value.some(a => (a.id || a.job_id) === agentId)
+  if (exists) {
+    console.log('[LaunchTab] Agent already exists, skipping duplicate')
+    return
+  }
+
+  // Add agent to list reactively
+  agents.value.push(data.agent)
+
+  // Show notification
+  const agentType = data.agent?.agent_type || 'Unknown'
+  toastMessage.value = `Agent Selected - ${agentType} agent assigned to project`
+  showToast.value = true
+
+  console.log('[LaunchTab] Agent card added to UI. Total agents:', agents.value.length)
+}
+
+/**
  * Handle Stage Project button click - Handover 0079
  */
 async function handleStageProject() {
@@ -456,6 +545,9 @@ async function handleStageProject() {
       toastMessage.value = `Orchestrator prompt copied! (${token_estimate} tokens, ${budget_utilization} budget used)`
       showToast.value = true
       emit('stage-project')
+
+      // Now WebSocket listeners will handle real-time updates as orchestrator runs externally
+      console.log('[STAGING] Paste prompt into Claude Code terminal. WebSocket listeners active.')
     } else {
       // Clipboard failed - show console fallback
       toastMessage.value = `Prompt generated (${token_estimate} tokens) - copied to console (clipboard unavailable on non-HTTPS)`
@@ -520,6 +612,26 @@ function handleEditAgentMission(agent) {
   const missionContent = agent.mission || ''
   emit('edit-agent-mission', agentId, missionContent)
 }
+
+/**
+ * Lifecycle Hooks - WebSocket Listener Registration (Handover 0086)
+ */
+onMounted(() => {
+  // Register WebSocket event listeners
+  on('project:mission_updated', handleMissionUpdate)
+  on('agent:created', handleAgentCreated)
+
+  console.log('[LaunchTab] WebSocket listeners registered for project:', props.project.id)
+  console.log('[LaunchTab] Current tenant key:', currentTenantKey.value)
+})
+
+onUnmounted(() => {
+  // Clean up WebSocket listeners (prevent memory leaks)
+  off('project:mission_updated', handleMissionUpdate)
+  off('agent:created', handleAgentCreated)
+
+  console.log('[LaunchTab] WebSocket listeners removed')
+})
 
 /**
  * Watchers - Sync with backend data

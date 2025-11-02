@@ -554,7 +554,8 @@ const headers = [
   { title: 'Priority', key: 'priority', width: '100' },
   { title: 'Task', key: 'title' },
   { title: 'Category', key: 'category', width: '120' },
-  { title: 'Created By', key: 'created_by_user_id', width: '150' },
+  // Hidden for now - may be relevant in future
+  // { title: 'Created By', key: 'created_by_user_id', width: '150' },
   { title: 'Due Date', key: 'due_date', width: '120' },
   { title: 'Convert Status', key: 'convert_status', width: '130' },
   { title: 'Actions', key: 'actions', sortable: false, width: '120' },

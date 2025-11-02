@@ -704,7 +704,7 @@ async def get_active_product_token_estimate(current_user: User = Depends(get_cur
 
             for field_path in field_priorities.keys():
                 # Extract field value using dot notation
-                value = extract_field_value(product_config, field_path)
+                value = _get_nested_value(product_config, field_path)
                 if value is not None and value != "":
                     # Calculate tokens (character count / 4)
                     token_count = ceil(len(str(value)) / 4)
