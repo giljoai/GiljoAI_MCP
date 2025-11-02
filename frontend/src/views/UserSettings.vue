@@ -528,12 +528,6 @@
                   </v-list>
                 </v-card>
 
-                <v-alert type="info" variant="tonal" class="mb-4">
-                  Serena MCP must be installed separately and configured in your coding tool (e.g.,
-                  Claude Code). This toggle only controls whether Serena instructions are included in
-                  agent prompts.
-                </v-alert>
-
                 <!-- Claude Code Agent Export -->
                 <ClaudeCodeExport />
               </v-window-item>
