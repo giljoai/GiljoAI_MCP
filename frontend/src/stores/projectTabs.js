@@ -168,12 +168,14 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       this.error = null
 
       try {
-        const response = await api.orchestrator.stageProject(
-          this.currentProject.project_id
+        const response = await api.prompts.staging(
+          this.currentProject.project_id,
+          { tool: 'claude-code' }
         )
 
-        this.orchestratorMission = response.mission
-        this.agents = response.agents || []
+        // Extract prompt data from the response
+        this.orchestratorMission = response.data.prompt
+        this.agents = response.data.agents || []
         this.isStaging = false
       } catch (error) {
         console.error('Failed to stage project:', error)
