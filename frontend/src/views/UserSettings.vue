@@ -20,7 +20,7 @@
       </v-tab>
       <v-tab value="agents">
         <template #prepend>
-          <v-img :src="theme.global.current.value.dark ? '/giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
+          <v-img :src="theme.global.current.value.dark ? '/icons/Giljo_White_Face.svg' : '/icons/Giljo_Dark_Face.svg'" width="20" height="20" style="margin-right: 3px;" />
         </template>
         Agents
       </v-tab>
