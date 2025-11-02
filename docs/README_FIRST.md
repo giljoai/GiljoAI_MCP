@@ -584,6 +584,18 @@ database:
 - **`docs/devlog/`** - Development logs and completion reports
 - **`docs/sessions/`** - Agent session memories
 
+### User Guides
+
+- **[Orchestrator Succession Guide](user_guides/orchestrator_succession_guide.md)** - End-user guide for orchestrator succession (Handover 0080)
+
+### Developer Guides
+
+- **[Orchestrator Succession Developer Guide](developer_guides/orchestrator_succession_developer_guide.md)** - Technical implementation details for orchestrator succession (Handover 0080)
+
+### Quick Reference
+
+- **[Orchestrator Succession Quick Reference](quick_reference/succession_quick_ref.md)** - One-page cheat sheet for succession features
+
 ### UI/UX Technical Documentation (October 2025)
 
 **Handover 0009 - Advanced UI/UX Verification** (✅ COMPLETE - HARMONIZED - 90% Implementation):
@@ -672,6 +684,26 @@ database:
   - `AgentSelector` - Intelligent agent type selection
   - `WorkflowCoordinator` - Multi-agent coordination
 - **Impact**: Breakthrough efficiency enabling complex projects within token limits
+
+### Orchestrator Succession Architecture (November 2025)
+
+**Handover 0080 - Orchestrator Succession for Unlimited Project Duration** (✅ COMPLETE):
+- **[Complete Documentation](../handovers/0080_orchestrator_succession_architecture.md)**
+- **[User Guide](user_guides/orchestrator_succession_guide.md)** | **[Developer Guide](developer_guides/orchestrator_succession_developer_guide.md)** | **[Quick Reference](quick_reference/succession_quick_ref.md)**
+- **Purpose**: Enable unlimited project duration through automatic orchestrator succession when context windows approach capacity
+- **Key Features**:
+  - Automatic succession at 90% context usage
+  - Compressed handover summaries (<10K tokens)
+  - Full lineage tracking via spawned_by chain
+  - UI timeline visualization
+  - Manual launch control for successors
+- **Core Components**:
+  - `OrchestratorSuccessionManager` - Succession lifecycle management
+  - MCP Tools: `create_successor_orchestrator()`, `check_succession_status()`
+  - Database schema: 7 new columns (instance_number, handover_to, handover_summary, etc.)
+  - Vue Components: SuccessionTimeline, LaunchSuccessorDialog, AgentCardEnhanced
+- **Testing**: 45 integration tests (80.5% coverage), multi-tenant isolation verified, performance benchmarks validated
+- **Impact**: Projects can continue indefinitely without context limitations, 70% token reduction, graceful context management
 
 ### Password Reset via Recovery PIN (October 2025)
 

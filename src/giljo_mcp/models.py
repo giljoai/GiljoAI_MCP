@@ -1938,6 +1938,7 @@ class MCPAgentJob(Base):
 
     Handover 0017: Enables agent-to-agent job coordination for agentic orchestration.
     Handover 0073: Enhanced with progress tracking, tool assignment, and expanded status states.
+    Handover 0080: Orchestrator succession architecture for unlimited project duration.
     Separate from Task model which tracks user-facing work items.
 
     Multi-tenant isolation: All queries filter by tenant_key.
@@ -1985,6 +1986,22 @@ class MCPAgentJob(Base):
     agent_name = Column(String(255), nullable=True,
         comment="Human-readable agent display name (e.g., Backend Agent, Database Agent)")
 
+    # Handover 0080: Orchestrator succession architecture
+    instance_number = Column(Integer, default=1, nullable=False,
+        comment="Sequential instance number for orchestrator succession (1, 2, 3, ...)")
+    handover_to = Column(String(36), nullable=True,
+        comment="UUID of successor orchestrator job (NULL if no handover)")
+    handover_summary = Column(JSONB, nullable=True,
+        comment="Compressed state transfer for successor orchestrator")
+    handover_context_refs = Column(JSON, default=list,
+        comment="Array of context chunk IDs referenced in handover summary")
+    succession_reason = Column(String(100), nullable=True,
+        comment="Reason for succession: 'context_limit', 'manual', 'phase_transition'")
+    context_used = Column(Integer, default=0, nullable=False,
+        comment="Current context window usage in tokens")
+    context_budget = Column(Integer, default=150000, nullable=False,
+        comment="Maximum context window budget in tokens")
+
     # Relationships (Handover 0062)
     project = relationship("Project", back_populates="agent_jobs")
 
@@ -1995,6 +2012,9 @@ class MCPAgentJob(Base):
         Index("idx_mcp_agent_jobs_project", "project_id"),  # Handover 0062
         Index("idx_mcp_agent_jobs_tenant_project", "tenant_key", "project_id"),  # Handover 0062
         Index("idx_mcp_agent_jobs_tenant_tool", "tenant_key", "tool_type"),  # Handover 0073
+        # Handover 0080: Succession indexes
+        Index("idx_agent_jobs_instance", "project_id", "agent_type", "instance_number"),
+        Index("idx_agent_jobs_handover", "handover_to"),
         CheckConstraint(
             "status IN ('waiting', 'preparing', 'working', 'review', 'complete', 'failed', 'blocked')",
             name="ck_mcp_agent_job_status"
@@ -2007,7 +2027,20 @@ class MCPAgentJob(Base):
             "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')",
             name="ck_mcp_agent_job_tool_type"
         ),
+        # Handover 0080: Succession constraints
+        CheckConstraint(
+            "instance_number >= 1",
+            name="ck_mcp_agent_job_instance_positive"
+        ),
+        CheckConstraint(
+            "succession_reason IS NULL OR succession_reason IN ('context_limit', 'manual', 'phase_transition')",
+            name="ck_mcp_agent_job_succession_reason"
+        ),
+        CheckConstraint(
+            "context_used >= 0 AND context_used <= context_budget",
+            name="ck_mcp_agent_job_context_usage"
+        ),
     )
 
     def __repr__(self):
-        return f"<MCPAgentJob(id={self.id}, job_id={self.job_id}, agent_type={self.agent_type}, status={self.status}, progress={self.progress}%)>"
+        return f"<MCPAgentJob(id={self.id}, job_id={self.job_id}, agent_type={self.agent_type}, status={self.status}, progress={self.progress}%, instance={self.instance_number})>"

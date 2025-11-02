@@ -5,6 +5,80 @@ This document provides standardized instructions for creating effective handover
 
 ---
 
+## 🎯 Quick Reference: The Golden Rules
+
+**Before you start ANY handover implementation:**
+
+1. **Quality**: Chef's kiss production-grade code ONLY - no shortcuts, no bandaids
+2. **Freedom**: Dev mode - modify code freely, no production concerns
+3. **Installation**: Changes affecting setup? Update `install.py` + related scripts
+4. **Clean Code**: DELETE old code, don't comment out. Remove bloat.
+5. **Subagents**: Use specialized agents for complex work (database-expert, tdd-implementor, etc.)
+6. **Serena MCP**: Use Serena tools for codebase navigation
+7. **Docs**: Update ORIGINAL handover (max 1000 words). User summaries max 400 words, 10 bullets.
+8. **No Bloat**: Don't create 4000-line documentation! Keep it concise.
+
+---
+
+## Code Quality Standards
+
+### Production-Grade Requirements
+All code must meet these non-negotiable standards:
+
+- ✅ **Chef's Kiss Quality**: Production-grade code only - no shortcuts, no bandaids, no quick fixes
+- ✅ **Dev Mode Freedom**: We are in development mode - modify any code freely without production concerns
+- ✅ **Installation Flow Awareness**: If changes impact setup/installation, MUST update `install.py` and related scripts
+- ✅ **Clean Refactoring**: When changing existing code, REMOVE it - do not comment out. Remove bloat when amending/replacing
+- ✅ **Use Subagents**: Leverage specialized subagents (database-expert, tdd-implementor, ux-designer, etc.) for complex work
+- ✅ **Serena MCP Available**: Use Serena MCP tools for advanced codebase navigation and symbol manipulation
+
+### Documentation Standards
+
+**Summary Documentation:**
+- ✅ **Write back to scope document**: Update the ORIGINAL handover document with completion summary
+- ✅ **Max 1000 words**: Keep summaries concise and scannable
+- ✅ **Separate docs for complexity**: Only create `###_[projectname]_summary.md` for extremely complex implementations
+- ✅ **Avoid documentation bloat**: Recent project had 4000+ lines of docs - too much!
+- ✅ **User summaries**: Max 400 words when complete
+- ✅ **Lists**: Max 10 bullets if lists are required
+- ✅ **Expect follow-up**: User will ask questions if they need more detail
+
+**Example of Good Documentation:**
+```markdown
+## Implementation Summary (Added to Original Handover)
+
+### What Was Built
+- Database schema: 7 new columns in mcp_agent_jobs table
+- Backend: OrchestratorSuccessionManager class (561 lines)
+- Frontend: 3 UI components (SuccessionTimeline, LaunchDialog, AgentCard updates)
+- Tests: 45 integration tests (80% coverage)
+
+### Key Files Modified
+- `install.py` (migration logic, lines 1447-1589)
+- `src/giljo_mcp/models.py` (schema additions)
+- `frontend/src/components/projects/AgentCardEnhanced.vue`
+
+### Installation Impact
+Migration runs automatically in install.py. Idempotent - safe for fresh installs and upgrades.
+
+### Status
+✅ Production ready. All tests passing. Documentation complete.
+```
+
+**Example of Too Much Documentation:**
+```markdown
+❌ Creating separate files:
+   - 0080_DATABASE_IMPLEMENTATION_SUMMARY.md (12 sections, 500+ lines)
+   - 0080_QUICK_START.md (250 lines)
+   - 0080_completion_summary.md (500 lines)
+   - 0080_implementation_checklist.md (400 lines)
+   - 0080_integration_tests_summary.md (600+ lines)
+
+   Total: 2,250+ lines across 5 files ❌ TOO MUCH!
+```
+
+---
+
 ## Pre-Handover Checklist
 
 ### 1. Git Status Check

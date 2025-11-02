@@ -15,6 +15,7 @@ from .message import register_message_tools
 from .optimization import register_optimization_tools
 from .orchestration import register_orchestration_tools
 from .project import register_project_tools
+from .succession_tools import register_succession_tools
 from .task import register_task_tools
 
 
@@ -32,6 +33,7 @@ __all__ = [
     "register_optimization_tools",
     "register_orchestration_tools",
     "register_project_tools",
+    "register_succession_tools",
     "register_task_tools",
     "register_template_tools",
 ]
