@@ -335,7 +335,7 @@
                 </p>
 
                 <div class="d-flex align-center mb-3">
-                  <v-btn variant="text" size="small" color="primary" href="https://github.com/oraios/serena" target="_blank">
+                  <v-btn variant="text" size="small" color="light-blue" href="https://github.com/oraios/serena" target="_blank">
                     <v-icon start>mdi-github</v-icon>
                     GitHub Repository
                   </v-btn>
