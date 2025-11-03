@@ -1582,7 +1582,12 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
 
     #  ====================  Phase 2: Orchestration Enhancement Methods (Handover 0020) ====================
 
-    async def generate_mission_plan(self, product: "Product", project_description: str) -> dict[str, Any]:
+    async def generate_mission_plan(
+        self,
+        product: "Product",
+        project_description: str,
+        user_id: Optional[str] = None
+    ) -> dict[str, Any]:
         """
         Generate missions from vision analysis.
 
@@ -1595,15 +1600,31 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         Args:
             product: Product with vision document
             project_description: Project requirements description
+            user_id: Optional user ID for field priority configuration (Handover 0086A Task 2.1)
 
         Returns:
             Dict mapping agent roles to Mission objects
         """
+        # Log user_id propagation for debugging (Handover 0086A Task 2.1)
+        logger.info(
+            "Generating mission plan",
+            extra={
+                "product_id": str(product.id),
+                "user_id": user_id,
+                "has_user_id": user_id is not None,
+            }
+        )
+
         # 1. Analyze requirements
         requirements = await self.mission_planner.analyze_requirements(product, project_description)
 
-        # 2. Generate missions based on requirements
-        missions = await self.mission_planner.generate_missions(requirements=requirements, product=product)
+        # 2. Generate missions based on requirements (Handover 0086A Task 2.1)
+        # Call the simplified generate_mission method with user_id for field priorities
+        missions = await self.mission_planner.generate_mission(
+            product=product,
+            project_description=project_description,
+            user_id=user_id  # Handover 0086A Task 2.1: pass user_id for field priorities
+        )
 
         logger.info(f"Generated mission plan for product {product.id}: " f"{len(missions)} missions created")
 
@@ -1664,7 +1685,11 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         return workflow_result
 
     async def process_product_vision(
-        self, tenant_key: str, product_id: str, project_requirements: str
+        self,
+        tenant_key: str,
+        product_id: str,
+        project_requirements: str,
+        user_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
         MAIN ORCHESTRATION WORKFLOW.
@@ -1681,6 +1706,7 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             tenant_key: Tenant key for isolation
             product_id: Product UUID
             project_requirements: Project requirements description
+            user_id: Optional user ID for field priority configuration (Handover 0086A Task 2.1)
 
         Returns:
             Dict with:
@@ -1694,6 +1720,16 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
         Raises:
             ValueError: If product not found or not active (Handover 0050)
         """
+        # Log user_id propagation for debugging (Handover 0086A Task 2.1)
+        logger.info(
+            "Processing product vision",
+            extra={
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "user_id": user_id,
+                "has_user_id": user_id is not None,
+            }
+        )
         # 1. Load product and validate vision
         async with self.db_manager.get_session_async() as session:
             product = await session.get(Product, product_id)
@@ -1738,8 +1774,8 @@ All MCP tool calls MUST include `tenant_key="{tenant_key}"` for multi-tenant iso
             context_budget=150000,
         )
 
-        # 4. Generate mission plan
-        missions = await self.generate_mission_plan(product, project_requirements)
+        # 4. Generate mission plan (Handover 0086A Task 2.1: pass user_id for field priorities)
+        missions = await self.generate_mission_plan(product, project_requirements, user_id=user_id)
 
         # 5. Select agents
         analysis = await self.mission_planner.analyze_requirements(product, project_requirements)

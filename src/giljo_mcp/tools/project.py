@@ -313,18 +313,33 @@ Project: {project.name}"""
             return {"success": False, "error": str(e)}
 
     @mcp.tool()
-    async def update_project_mission(project_id: str, mission: str) -> dict[str, Any]:
+    async def update_project_mission(
+        project_id: str,
+        mission: str,
+        user_id: Optional[str] = None
+    ) -> dict[str, Any]:
         """
         Update the mission field after orchestrator analysis
 
         Args:
             project_id: UUID of the project
             mission: Updated mission statement
+            user_id: Optional user ID for field priority configuration (Handover 0086A Task 2.1)
 
         Returns:
             Update confirmation
         """
         try:
+            # Log user_id propagation for debugging (Handover 0086A Task 2.1)
+            logger.info(
+                "update_project_mission called",
+                extra={
+                    "project_id": project_id,
+                    "user_id": user_id,
+                    "has_user_id": user_id is not None,
+                }
+            )
+
             async with db_manager.get_session_async() as session:
                 # Find project
                 query = select(Project).where(Project.id == project_id)
@@ -355,13 +370,14 @@ Project: {project.name}"""
                         ws_dep = WebSocketDependency(ws_manager)
 
                         # Create standardized event using EventFactory
+                        # Task 2.3: Include user_config_applied flag based on user_id presence
                         event_data = EventFactory.project_mission_updated(
                             project_id=project.id,
                             tenant_key=project.tenant_key,
                             mission=mission,
                             token_estimate=len(mission) // 4,  # Rough estimate: 1 token ≈ 4 chars
                             generated_by="orchestrator",
-                            user_config_applied=False,  # TODO: Will be True in Task 2.3
+                            user_config_applied=bool(user_id),  # True when user_id provided (Task 2.3 COMPLETE)
                         )
 
                         # Broadcast using production-grade method with multi-tenant isolation
