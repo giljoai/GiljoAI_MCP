@@ -135,6 +135,121 @@ class WebSocketManager:
         message = json.dumps(data)
         await self.broadcast(message)
 
+    async def broadcast_to_tenant(
+        self,
+        tenant_key: str,
+        event_type: str,
+        data: dict[str, Any],
+        schema_version: str = "1.0",
+        exclude_client: Optional[str] = None
+    ) -> int:
+        """
+        Broadcast event to all connected clients in a specific tenant.
+
+        Ensures multi-tenant isolation by only sending to clients authenticated
+        with the specified tenant_key.
+
+        Args:
+            tenant_key: Tenant identifier (required, cannot be empty)
+            event_type: Event type (e.g., "project:mission_updated")
+            data: Event payload dictionary
+            schema_version: Event schema version (default: "1.0")
+            exclude_client: Optional client ID to exclude from broadcast
+
+        Returns:
+            Number of clients that successfully received the message
+
+        Raises:
+            ValueError: If tenant_key is None or empty
+
+        Example:
+            >>> sent_count = await ws_manager.broadcast_to_tenant(
+            ...     tenant_key="tenant_123",
+            ...     event_type="project:mission_updated",
+            ...     data={"project_id": "...", "mission": "..."}
+            ... )
+            >>> print(f"Broadcasted to {sent_count} clients")
+
+        Note:
+            Failed sends to individual clients are logged but don't stop
+            the broadcast to other clients (partial success allowed).
+
+        Handover 0086A: Production-Grade Stage Project
+        Added: 2025-11-02
+        """
+        # Validate required parameters
+        if not tenant_key:
+            raise ValueError("tenant_key cannot be empty")
+
+        if not event_type:
+            raise ValueError("event_type cannot be empty")
+
+        # Build standardized message structure
+        message = {
+            "type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "schema_version": schema_version,
+            "data": data
+        }
+
+        # Track successful sends and failures
+        sent_count = 0
+        failed_count = 0
+        disconnected_clients = []
+
+        # Iterate through all active connections
+        for client_id, websocket in self.active_connections.items():
+            # Skip excluded client if specified
+            if exclude_client and client_id == exclude_client:
+                continue
+
+            # Check tenant isolation - CRITICAL for multi-tenant security
+            auth_context = self.auth_contexts.get(client_id, {})
+            client_tenant = auth_context.get("tenant_key")
+
+            # Skip if client is not in the target tenant
+            if client_tenant != tenant_key:
+                continue
+
+            # Try to send to this client
+            try:
+                await websocket.send_json(message)
+                sent_count += 1
+
+            except Exception as e:
+                # Log but don't fail the entire broadcast
+                failed_count += 1
+                logger.warning(
+                    f"Failed to send WebSocket message to client {client_id}: {e}",
+                    extra={
+                        "tenant_key": tenant_key,
+                        "event_type": event_type,
+                        "client_id": client_id,
+                        "error": str(e)
+                    }
+                )
+                # Mark for disconnection
+                disconnected_clients.append(client_id)
+
+        # Clean up disconnected clients
+        for client_id in disconnected_clients:
+            self.disconnect(client_id)
+
+        # Log broadcast summary
+        logger.info(
+            f"WebSocket broadcast to tenant completed: {sent_count} sent, {failed_count} failed",
+            extra={
+                "tenant_key": tenant_key,
+                "event_type": event_type,
+                "sent_count": sent_count,
+                "failed_count": failed_count,
+                "total_clients": len(self.active_connections),
+                "exclude_client": exclude_client
+            }
+        )
+
+        return sent_count
+
     async def notify_entity_update(self, entity_type: str, entity_id: str, update_data: dict):
         """Notify all subscribers of an entity update"""
         entity_key = f"{entity_type}:{entity_id}"
