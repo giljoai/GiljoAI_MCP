@@ -170,11 +170,15 @@ class ThinClientPromptGenerator:
             tool=tool
         )
 
+        # Estimate prompt tokens (rough: 1 token ≈ 4 characters)
+        estimated_tokens = len(thin_prompt) // 4
+
         return {
             'orchestrator_id': orchestrator_id,
             'thin_prompt': thin_prompt,
             'instance_number': instance_number,
-            'context_budget': project.context_budget
+            'context_budget': project.context_budget,
+            'estimated_prompt_tokens': estimated_tokens
         }
 
     def _build_thin_prompt(
