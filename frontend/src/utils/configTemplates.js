@@ -33,8 +33,9 @@ export function generateCodexConfig(apiKey, serverUrl = null) {
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
   // Native MCP integration via command-line
-  const command = `# Codex CLI MCP Integration
-codex mcp add --transport http giljo-mcp ${defaultServerUrl}/mcp --header "X-API-Key: ${apiKey}"
+  const command = `# Codex CLI MCP Integration (Bearer token)
+export GILJO_API_KEY="${apiKey}"
+codex mcp add --url ${defaultServerUrl}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp
 
 # Verify installation:
 # codex mcp list`
@@ -53,8 +54,9 @@ export function generateGeminiConfig(apiKey, serverUrl = null) {
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
   // Native MCP integration via command-line
-  const command = `# Gemini CLI MCP Integration
-gemini mcp add --transport http giljo-mcp ${defaultServerUrl}/mcp --header "X-API-Key: ${apiKey}"
+  const command = `# Gemini CLI MCP Integration (Bearer token)
+export GILJO_API_KEY="${apiKey}"
+gemini mcp add --url ${defaultServerUrl}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp
 
 # Verify installation:
 # gemini mcp list`

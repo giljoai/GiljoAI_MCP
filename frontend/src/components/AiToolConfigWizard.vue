@@ -211,13 +211,15 @@ function claudePrompt(serverUrl, apiKey) {
 }
 
 function codexPrompt(serverUrl, apiKey) {
-  // Return ONLY the command
-  return `codex mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
+  // Bearer token via env var (Codex URL mode doesn't support arbitrary headers)
+  return `export GILJO_API_KEY="${apiKey}"
+codex mcp add --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp`
 }
 
 function geminiPrompt(serverUrl, apiKey) {
-  // Return ONLY the command
-  return `gemini mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
+  // Bearer token via env var
+  return `export GILJO_API_KEY="${apiKey}"
+gemini mcp add --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp`
 }
 
 function cursorPrompt(serverUrl, apiKey) {

@@ -15,11 +15,13 @@ GiljoAI MCP v3.0 implements **AI-agnostic integration** that supports multiple A
 Use native CLI commands to register the Giljo MCP server over HTTP:
 
 ```bash
-# Codex CLI
-codex mcp add --transport http giljoai http://localhost:7272/mcp --header "X-API-Key: <your_api_key>"
+# Codex CLI (Bearer token)
+export GILJO_API_KEY="<your_api_key>"
+codex mcp add --url http://localhost:7272/mcp --bearer-token-env-var GILJO_API_KEY giljoai
 
-# Gemini CLI
-gemini mcp add --transport http giljoai http://localhost:7272/mcp --header "X-API-Key: <your_api_key>"
+# Gemini CLI (Bearer token)
+export GILJO_API_KEY="<your_api_key>"
+gemini mcp add --url http://localhost:7272/mcp --bearer-token-env-var GILJO_API_KEY giljoai
 
 # Verify
 codex mcp list
