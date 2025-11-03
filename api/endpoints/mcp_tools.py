@@ -267,6 +267,97 @@ async def list_mcp_tools():
                     "template_name": "Name of the template"
                 }
             }
+        ],
+        "orchestration": [
+            {
+                "name": "health_check",
+                "description": "Check MCP server health status",
+                "arguments": {}
+            },
+            {
+                "name": "get_orchestrator_instructions",
+                "description": "Fetch orchestrator mission with 70% token reduction (thin client)",
+                "arguments": {
+                    "orchestrator_id": "Orchestrator job UUID",
+                    "tenant_key": "Tenant isolation key"
+                }
+            },
+            {
+                "name": "spawn_agent_job",
+                "description": "Create an agent job for orchestrator coordination",
+                "arguments": {
+                    "agent_type": "Type of agent to spawn",
+                    "mission": "Agent's mission",
+                    "context": "Additional context",
+                    "tenant_key": "Tenant isolation key"
+                }
+            },
+            {
+                "name": "get_agent_mission",
+                "description": "Get agent-specific mission from storage",
+                "arguments": {
+                    "agent_id": "Agent UUID",
+                    "tenant_key": "Tenant isolation key"
+                }
+            },
+            {
+                "name": "orchestrate_project",
+                "description": "Full project orchestration workflow",
+                "arguments": {
+                    "project_id": "Project UUID",
+                    "tenant_key": "Tenant isolation key"
+                }
+            },
+            {
+                "name": "get_workflow_status",
+                "description": "Get project workflow status",
+                "arguments": {
+                    "workflow_id": "Workflow UUID",
+                    "tenant_key": "Tenant isolation key"
+                }
+            }
+        ],
+        "agent_coordination": [
+            {
+                "name": "get_pending_jobs",
+                "description": "Get pending jobs for agent type",
+                "arguments": {
+                    "agent_type": "Type of agent",
+                    "tenant_key": "Tenant isolation key"
+                }
+            },
+            {
+                "name": "acknowledge_job",
+                "description": "Acknowledge job assignment",
+                "arguments": {
+                    "job_id": "Job UUID",
+                    "agent_id": "Agent UUID"
+                }
+            },
+            {
+                "name": "report_progress",
+                "description": "Report job progress",
+                "arguments": {
+                    "job_id": "Job UUID",
+                    "progress": "Progress details (dict)"
+                }
+            },
+            {
+                "name": "complete_job",
+                "description": "Mark job as complete",
+                "arguments": {
+                    "job_id": "Job UUID",
+                    "result": "Job result (dict)"
+                }
+            },
+            {
+                "name": "report_error",
+                "description": "Report job error",
+                "arguments": {
+                    "job_id": "Job UUID",
+                    "error": "Error message"
+                }
+            }
         ]
     }
 
