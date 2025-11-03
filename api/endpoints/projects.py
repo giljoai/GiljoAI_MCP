@@ -846,13 +846,14 @@ async def get_project_orchestrator(
         raise HTTPException(status_code=404, detail="Project not found")
     
     # Find or create orchestrator job
+    # Support orchestrator succession (Handover 0080) - get latest by instance_number
     orch_stmt = select(MCPAgentJob).where(
         MCPAgentJob.project_id == project_id,
         MCPAgentJob.agent_type == "orchestrator",
         MCPAgentJob.tenant_key == current_user.tenant_key
-    )
+    ).order_by(MCPAgentJob.instance_number.desc())
     orch_result = await db.execute(orch_stmt)
-    orchestrator = orch_result.scalar_one_or_none()
+    orchestrator = orch_result.scalars().first()
     
     if not orchestrator:
         # Create orchestrator if it doesn't exist
