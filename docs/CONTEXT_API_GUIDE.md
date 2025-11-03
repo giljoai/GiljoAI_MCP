@@ -481,6 +481,39 @@ if data['reduction_percentage'] > 0:
 
 ---
 
+### Related (Products API): Active Product Token Estimate
+
+This endpoint lives under the Products API and complements context token stats by applying user Field Priority configuration to the currently active product.
+
+**Endpoint**: `GET /api/v1/products/active/token-estimate`
+
+**Purpose**: Return a real-time token estimate for the active product based on the user’s field priorities (P1/P2/P3) and product `config_data`, including a token budget.
+
+**Success Response (200)**:
+```json
+{
+  "product_id": "uuid",
+  "product_name": "TinyContacts",
+  "field_tokens": {
+    "tech_stack.languages": 12,
+    "tech_stack.backend": 8,
+    "features.core": 45
+  },
+  "total_field_tokens": 81,
+  "structure_tokens": 500,
+  "total_tokens": 581,
+  "token_budget": 2000,
+  "percentage": 29.05
+}
+```
+
+**Notes**:
+- Tied to the active product and user’s Field Priority config (Handover 0049).
+- Budget default set to 2000 (configurable); updates in real time when priorities or product config change.
+- Pairs with WebSocket UI updates to refresh the estimator in User Settings.
+
+---
+
 ### Health Check
 
 **Endpoint**: `GET /api/v1/context/health`

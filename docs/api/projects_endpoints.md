@@ -17,6 +17,16 @@ This document provides complete API reference for project management endpoints, 
 
 ---
 
+## Activation Rules and Constraints (Handovers 0050b/0071)
+
+- Single Active Project per Product (0050b): Only ONE project may be `active` for a given product at any time.
+- Enforcement:
+  - Database: partial unique index on `projects(product_id) WHERE status = 'active'`.
+  - API: activation endpoints validate and return clear errors if another project is active.
+- Product Switch Cascade: when the active product changes, previously active projects under the old product are set to Inactive (see features/project_state_management.md).
+
+See also: features/project_state_management.md and SERVER_ARCHITECTURE_TECH_STACK.md for full rationale and schema details.
+
 ## Table of Contents
 
 1. [POST /projects/{project_id}/deactivate](#post-projectsproject_iddeactivate)

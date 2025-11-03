@@ -198,7 +198,25 @@ class ThinClientPromptGenerator:
         """
         # Get MCP server configuration
         config = get_config()
-        mcp_host = config.server.api_host
+
+        # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
+        # External host is configured during installation for network access
+        # Need to read config.yaml directly as ConfigManager doesn't load services section
+        import yaml
+        from pathlib import Path
+
+        try:
+            config_path = Path("config.yaml")
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config_data = yaml.safe_load(f) or {}
+                mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
+            else:
+                mcp_host = config.server.api_host
+        except Exception:
+            # Fallback to api_host if YAML loading fails
+            mcp_host = config.server.api_host
+
         mcp_port = config.server.api_port
         mcp_url = f"http://{mcp_host}:{mcp_port}"
 
