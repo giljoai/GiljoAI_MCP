@@ -2,6 +2,7 @@
 Comprehensive tests for thin client MCP tools (Handover 0088 - Phase 1).
 
 Tests the critical MCP tools that enable thin client architecture:
+- health_check() - Verifies MCP server connectivity
 - get_orchestrator_instructions() - Fetches condensed mission for orchestrators
 - get_agent_mission() - Fetches mission for agents
 - spawn_agent_job() - Spawns agents with thin prompts
@@ -121,6 +122,53 @@ async def test_orchestrator_job(db_session, tenant_key, test_project_with_produc
     await db_session.commit()
     await db_session.refresh(orchestrator)
     return orchestrator
+
+
+# ========================================================================
+# Test 0: health_check() - MCP Server Health
+# ========================================================================
+
+@pytest.mark.asyncio
+async def test_health_check_success():
+    """
+    Test MCP server health check.
+
+    Expected behavior:
+    - Returns 'healthy' status
+    - Includes server name and version
+    - Includes timestamp
+    - Returns database connection status
+    - No errors
+    """
+    from src.giljo_mcp.tools.orchestration import health_check
+
+    # Call health_check (no parameters needed)
+    result = await health_check()
+
+    # Verify success
+    assert 'status' in result
+    assert result['status'] == 'healthy'
+
+    # Verify server metadata
+    assert 'server' in result
+    assert result['server'] == 'giljo-mcp'
+
+    assert 'version' in result
+    assert result['version'] == '3.1.0'
+
+    # Verify timestamp
+    assert 'timestamp' in result
+    # Verify it's a valid ISO timestamp
+    timestamp = datetime.fromisoformat(result['timestamp'].replace('Z', '+00:00'))
+    assert timestamp.tzinfo is not None
+
+    # Verify database status
+    assert 'database' in result
+    assert result['database'] == 'connected'
+
+    # Verify message
+    assert 'message' in result
+    assert 'operational' in result['message'].lower()
 
 
 # ========================================================================
