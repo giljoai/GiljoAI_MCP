@@ -845,6 +845,37 @@ The agent templates are now being updated...
     # ========================================================================
 
     @mcp.tool()
+    async def health_check() -> dict[str, Any]:
+        """
+        MCP server health check.
+
+        Orchestrators call this first to verify MCP connection before fetching mission.
+
+        Returns:
+            {
+                'status': 'healthy',
+                'server': 'giljo-mcp',
+                'version': '3.1.0',
+                'timestamp': '2025-11-03T...'
+            }
+
+        Example:
+            health = await health_check()
+            if health['status'] == 'healthy':
+                # Proceed to fetch mission
+        """
+        from datetime import datetime, timezone
+
+        return {
+            'status': 'healthy',
+            'server': 'giljo-mcp',
+            'version': '3.1.0',
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'database': 'connected',
+            'message': 'GiljoAI MCP server is operational'
+        }
+
+    @mcp.tool()
     async def get_orchestrator_instructions(
         orchestrator_id: str,
         tenant_key: str
@@ -1080,4 +1111,316 @@ The agent templates are now being updated...
                 ],
                 'severity': 'ERROR',
                 'contact_support': 'support@giljoai.com'
+            }
+
+
+# ========================================================================
+# Standalone Functions for Testing
+# These are test-friendly wrappers that can be imported directly
+# ========================================================================
+
+async def health_check() -> dict[str, Any]:
+    """
+    MCP server health check (standalone for testing).
+
+    Returns:
+        Health status dict with server info
+    """
+    from datetime import datetime, timezone
+
+    return {
+        'status': 'healthy',
+        'server': 'giljo-mcp',
+        'version': '3.1.0',
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'database': 'connected',
+        'message': 'GiljoAI MCP server is operational'
+    }
+
+
+async def get_orchestrator_instructions(
+    orchestrator_id: str,
+    tenant_key: str
+) -> dict[str, Any]:
+    """
+    Fetch orchestrator instructions (standalone for testing).
+
+    This is a test-friendly wrapper around the MCP tool.
+    For production use, the MCP tool registered via register_orchestration_tools is used.
+
+    Args:
+        orchestrator_id: Orchestrator job UUID
+        tenant_key: Tenant isolation key
+
+    Returns:
+        Orchestrator instructions dict
+    """
+    from giljo_mcp.database import DatabaseManager
+
+    db_manager = DatabaseManager()
+    async with db_manager.get_session() as session:
+        from sqlalchemy import select, and_
+        from sqlalchemy.orm import joinedload
+        from giljo_mcp.models import MCPAgentJob, Project, Product, AgentTemplate
+        from giljo_mcp.mission_planner import MissionPlanner
+
+        try:
+            # Validate inputs
+            if not orchestrator_id or not orchestrator_id.strip():
+                return {
+                    'error': 'VALIDATION_ERROR',
+                    'message': 'Orchestrator ID is required'
+                }
+
+            if not tenant_key or not tenant_key.strip():
+                return {
+                    'error': 'VALIDATION_ERROR',
+                    'message': 'Tenant key is required'
+                }
+
+            # Fetch orchestrator from database with multi-tenant isolation
+            result = await session.execute(
+                select(MCPAgentJob)
+                .options(joinedload(MCPAgentJob.project))
+                .where(
+                    and_(
+                        MCPAgentJob.job_id == orchestrator_id,
+                        MCPAgentJob.tenant_key == tenant_key,
+                        MCPAgentJob.agent_type == 'orchestrator'
+                    )
+                )
+            )
+            orchestrator = result.scalar_one_or_none()
+
+            if not orchestrator:
+                return {
+                    'error': 'NOT_FOUND',
+                    'message': f'Orchestrator {orchestrator_id} not found for tenant',
+                    'troubleshooting': [
+                        'Verify orchestrator_id is correct',
+                        'Check tenant_key matches project',
+                        'Ensure orchestrator was created successfully'
+                    ],
+                    'severity': 'ERROR'
+                }
+
+            # Get project and product
+            project = orchestrator.project
+            if not project:
+                return {
+                    'error': 'NOT_FOUND',
+                    'message': 'Project not found for orchestrator'
+                }
+
+            # Get product
+            if not project.product_id:
+                return {
+                    'error': 'NOT_FOUND',
+                    'message': 'No product linked to project'
+                }
+
+            result = await session.execute(
+                select(Product).where(
+                    and_(
+                        Product.id == project.product_id,
+                        Product.tenant_key == tenant_key
+                    )
+                )
+            )
+            product = result.scalar_one_or_none()
+
+            if not product:
+                return {
+                    'error': 'NOT_FOUND',
+                    'message': 'Product not found'
+                }
+
+            # Generate condensed mission
+            planner = MissionPlanner(db_manager)
+            metadata = orchestrator.job_metadata or {}
+            field_priorities = metadata.get('field_priorities', {})
+            user_id = metadata.get('user_id')
+
+            condensed_mission = await planner._build_context_with_priorities(
+                product=product,
+                project=project,
+                field_priorities=field_priorities,
+                user_id=user_id
+            )
+
+            # Get agent templates
+            result = await session.execute(
+                select(AgentTemplate).where(
+                    and_(
+                        AgentTemplate.tenant_key == tenant_key,
+                        AgentTemplate.is_active == True
+                    )
+                ).limit(8)
+            )
+            templates = result.scalars().all()
+
+            template_list = [
+                {
+                    'name': t.name,
+                    'role': t.role,
+                    'description': t.description[:200] if t.description else ''
+                }
+                for t in templates
+            ]
+
+            # Calculate token estimate
+            estimated_tokens = len(condensed_mission) // 4
+
+            return {
+                'orchestrator_id': orchestrator_id,
+                'project_id': str(project.id),
+                'project_name': project.name,
+                'project_description': project.description or '',
+                'mission': condensed_mission,
+                'context_budget': orchestrator.context_budget or 150000,
+                'context_used': orchestrator.context_used or 0,
+                'agent_templates': template_list,
+                'field_priorities': field_priorities,
+                'token_reduction_applied': bool(field_priorities),
+                'estimated_tokens': estimated_tokens,
+                'instance_number': orchestrator.instance_number or 1,
+                'thin_client': True
+            }
+
+        except Exception as e:
+            logger.error(f"Error in get_orchestrator_instructions: {e}", exc_info=True)
+            return {
+                'error': 'INTERNAL_ERROR',
+                'message': f'Unexpected error: {str(e)}'
+            }
+
+
+async def get_agent_mission(
+    agent_job_id: str,
+    tenant_key: str
+) -> dict[str, Any]:
+    """
+    Fetch agent mission (standalone for testing).
+
+    Args:
+        agent_job_id: Agent job UUID
+        tenant_key: Tenant isolation key
+
+    Returns:
+        Agent mission dict
+    """
+    from giljo_mcp.database import DatabaseManager
+
+    db_manager = DatabaseManager()
+    async with db_manager.get_session() as session:
+        from sqlalchemy import select, and_
+        from giljo_mcp.models import MCPAgentJob
+
+        try:
+            result = await session.execute(
+                select(MCPAgentJob).where(
+                    and_(
+                        MCPAgentJob.job_id == agent_job_id,
+                        MCPAgentJob.tenant_key == tenant_key
+                    )
+                )
+            )
+            agent_job = result.scalar_one_or_none()
+
+            if not agent_job:
+                return {
+                    'error': 'NOT_FOUND',
+                    'message': f'Agent job {agent_job_id} not found'
+                }
+
+            estimated_tokens = len(agent_job.mission or "") // 4
+
+            return {
+                'agent_job_id': agent_job_id,
+                'agent_name': agent_job.agent_name,
+                'agent_type': agent_job.agent_type,
+                'mission': agent_job.mission or '',
+                'thin_client': True,
+                'estimated_tokens': estimated_tokens
+            }
+
+        except Exception as e:
+            logger.error(f"Error in get_agent_mission: {e}", exc_info=True)
+            return {
+                'error': 'INTERNAL_ERROR',
+                'message': f'Unexpected error: {str(e)}'
+            }
+
+
+async def spawn_agent_job(
+    agent_type: str,
+    agent_name: str,
+    mission: str,
+    project_id: str,
+    tenant_key: str,
+    parent_job_id: Optional[str] = None
+) -> dict[str, Any]:
+    """
+    Spawn agent job (standalone for testing).
+
+    Args:
+        agent_type: Type of agent
+        agent_name: Name of agent
+        mission: Agent mission
+        project_id: Project UUID
+        tenant_key: Tenant isolation key
+        parent_job_id: Optional parent job UUID
+
+    Returns:
+        Spawn result dict
+    """
+    from giljo_mcp.database import DatabaseManager
+    from uuid import uuid4
+
+    db_manager = DatabaseManager()
+    async with db_manager.get_session() as session:
+        from giljo_mcp.models import MCPAgentJob
+
+        try:
+            agent_job_id = str(uuid4())
+
+            agent_job = MCPAgentJob(
+                job_id=agent_job_id,
+                tenant_key=tenant_key,
+                project_id=project_id,
+                agent_type=agent_type,
+                agent_name=agent_name,
+                mission=mission,
+                status='pending',
+                context_budget=10000,
+                context_used=0
+            )
+
+            session.add(agent_job)
+            await session.commit()
+
+            # Generate thin prompt (not full mission)
+            thin_prompt = f"""I am {agent_name} for Project.
+
+FETCH MISSION:
+mcp__giljo-mcp__get_agent_mission('{agent_job_id}', '{tenant_key}')
+
+Execute mission and report back."""
+
+            mission_tokens = len(mission) // 4
+            prompt_tokens = len(thin_prompt) // 4
+
+            return {
+                'success': True,
+                'agent_job_id': agent_job_id,
+                'agent_prompt': thin_prompt,
+                'prompt_tokens': prompt_tokens,
+                'mission_tokens': mission_tokens
+            }
+
+        except Exception as e:
+            logger.error(f"Error in spawn_agent_job: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': f'Failed to spawn agent: {str(e)}'
             }

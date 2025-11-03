@@ -996,6 +996,21 @@ The dashboard displays the currently active product for quick reference througho
 
 **Note**: The active product indicator also serves as the foundation for token visualization features, showing where agent context is coming from.
 
+#### Single Active Product Rule (Handover 0050)
+
+- Only ONE product can be active per tenant at any time (database-enforced).
+- Activating a product automatically deactivates the previously active product.
+- UI and API are tenant-scoped; switching active product updates filters across views.
+
+#### Product Switch Effects (Handover 0050b)
+
+- Projects are single-active per product. When you switch the active product:
+  - Any previously active project under the former product is set to Inactive (cascade deactivation).
+  - Projects for the newly active product can be activated as needed.
+- This preserves clear context and prevents cross-product confusion.
+
+See also: features/project_state_management.md and SERVER_ARCHITECTURE_TECH_STACK.md for enforcement details.
+
 ### Priority Badges in Product Edit Form
 
 When editing product configuration, you'll see visual priority indicators on each field showing how it's prioritized for AI agent missions.

@@ -509,8 +509,8 @@ For complete API documentation, see:
 
 - [Project API Endpoints](../api/projects_endpoints.md) - Complete API reference
 - [Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK.md) - Database schema and constraints
-- [Handover 0070](../../handovers/0070_project_soft_delete_recovery.md) - Soft delete implementation
-- [Handover 0050b](../../handovers/0050b_single_active_project_extension.md) - Single active project architecture
+- [Handover 0070](../../handovers/completed/0070_project_soft_delete_recovery-C.md) - Soft delete implementation
+- [Handover 0050b](../../handovers/completed/0050b_single_active_project_per_product-C.md) - Single active project architecture
 
 ---
 

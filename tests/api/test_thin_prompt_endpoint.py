@@ -25,12 +25,10 @@ async def test_user(db_session: AsyncSession) -> User:
         email="test@example.com",
         tenant_key="test_tenant",
         is_active=True,
-        hashed_password="$2b$12$test_hash",
-        config_data={
-            'field_priorities': {
-                'product_vision': 10,
-                'architecture': 7
-            }
+        password_hash="$2b$12$test_hash",
+        field_priority_config={
+            'product_vision': 10,
+            'architecture': 7
         }
     )
     db_session.add(user)

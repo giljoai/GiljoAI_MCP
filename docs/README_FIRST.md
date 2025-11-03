@@ -21,7 +21,7 @@
 **Recent Production Features** (See [Recent Handovers](#recent-production-handovers-v30) for details):
 
 - **Project Soft Delete with Recovery (Handover 0070)** - 10-day recovery window with UI in Settings → Database
-- Single Active Product Architecture (Handover 0050) - One active product per tenant with database enforcement. **Extension (0050b)**: Projects also follow single-active pattern - one active project per product with cascade deactivation.
+- Single Active Product Architecture (Handover 0050) - One active product per tenant with database enforcement. **Extension (0050b)**: Projects also follow single-active pattern - one active project per product with cascade deactivation. See features/project_state_management.md and SERVER_ARCHITECTURE_TECH_STACK.md for details.
 - Context Priority Management (Handover 0052) - User-customizable token budgets per field
 - Multi-Tool Agent Orchestration (Handover 0045) - 40-60% cost optimization via tool mixing
 - Products View Unified Management (Handover 0046) - Complete product lifecycle management
@@ -981,9 +981,18 @@ database:
 - **Status**: Foundation complete
 - **Problem Solved**: No visibility into active product context or token consumption
 - **Key Features**:
-  - Active product display in dashboard header
-  - Foundation for real-time token visualization
-  - ActiveProductDisplay component integration
+  - Active product display in dashboard header (click to open Products)
+  - Real-time token estimator in User Settings tied to the active product
+  - Priority badges surfaced alongside Product fields (indicate P1/P2/P3 impact)
+  - ActiveProductDisplay component integration (WebSocket-updated)
+  - New Products API for real token estimate: `GET /api/v1/products/active/token-estimate`
+    - Response includes `product_name`, per-field token counts, `total_tokens`, and `token_budget`
+    - Updates when field priorities change, the active product changes, or product config updates
+  - Default estimator budget raised to 2000 tokens (configurable via field priority config)
+
+See also:
+- Context API “Get Token Statistics” for chunk-level metrics
+- Products API “Active Product Token Estimate” for priority-aware, real-time estimates
 - **Core Components**:
   - Frontend: `frontend/src/components/ActiveProductDisplay.vue`
 - **Impact**: Foundation for real-time context budget monitoring and active product awareness
