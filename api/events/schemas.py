@@ -1,0 +1,498 @@
+"""
+WebSocket Event Schema Registry
+
+Standardized event schemas for all WebSocket communications in GiljoAI MCP.
+Provides type-safe, validated event structures with Pydantic models.
+
+Handover 0086A: Production-Grade Stage Project Architecture
+Task 1.4: Create Standardized Event Schemas
+Created: 2025-11-02
+
+Architecture:
+- All events have: type, timestamp, schema_version, data
+- Pydantic validation ensures strict type safety
+- EventFactory provides consistent event creation
+- Schema versioning enables backwards compatibility
+- TypeScript generation support for frontend
+
+Example Usage:
+    >>> from api.events.schemas import EventFactory
+    >>> event = EventFactory.project_mission_updated(
+    ...     project_id=UUID("..."),
+    ...     tenant_key="tenant_123",
+    ...     mission="Implement feature X",
+    ...     token_estimate=5000
+    ... )
+    >>> await ws_manager.broadcast_to_tenant(
+    ...     tenant_key="tenant_123",
+    ...     event_type="project:mission_updated",
+    ...     data=event["data"]
+    ... )
+"""
+
+from datetime import datetime, timezone
+from typing import Any, Dict, Literal, Optional, Union
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_validator
+
+
+# ============================================================================
+# Base Event Structures
+# ============================================================================
+
+
+class EventMetadata(BaseModel):
+    """
+    Standard metadata for all WebSocket events.
+
+    Ensures consistent structure across all event types with:
+    - Event type identification
+    - ISO 8601 timestamp with timezone
+    - Schema version for backwards compatibility
+    """
+
+    type: str = Field(..., description="Event type (e.g., 'project:mission_updated')")
+    timestamp: str = Field(..., description="ISO 8601 timestamp with timezone")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+
+    @field_validator("timestamp")
+    @classmethod
+    def validate_timestamp(cls, v: str) -> str:
+        """
+        Validate timestamp is valid ISO 8601 format.
+
+        Accepts both 'Z' suffix and '+00:00' timezone formats.
+
+        Args:
+            v: Timestamp string to validate
+
+        Returns:
+            Validated timestamp string
+
+        Raises:
+            ValueError: If timestamp is not valid ISO 8601
+        """
+        try:
+            # Handle both 'Z' suffix and '+00:00' format
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return v
+        except ValueError as e:
+            raise ValueError(f"Invalid ISO 8601 timestamp: {v}") from e
+
+
+# ============================================================================
+# Project Events
+# ============================================================================
+
+
+class ProjectMissionUpdatedData(BaseModel):
+    """
+    Data payload for project:mission_updated event.
+
+    Emitted when a project's mission is updated by the orchestrator
+    or user configuration. Includes token estimation and metadata
+    about the generation process.
+    """
+
+    project_id: str = Field(..., description="Project UUID as string")
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    mission: str = Field(..., min_length=1, description="Generated mission text")
+    token_estimate: int = Field(..., ge=0, description="Estimated token count")
+    generated_by: Literal["orchestrator", "user"] = Field(
+        default="orchestrator", description="Source of mission generation"
+    )
+    user_config_applied: bool = Field(
+        default=False, description="Whether user configuration was applied"
+    )
+    field_priorities: Optional[Dict[str, int]] = Field(
+        None, description="Field priorities used in generation (1-5 scale)"
+    )
+
+
+class ProjectMissionUpdatedEvent(BaseModel):
+    """
+    Complete event structure for project:mission_updated.
+
+    Broadcast to all tenant clients when a project's mission is updated.
+    Frontend uses this to update UI and show "Optimized for you" badge.
+    """
+
+    type: Literal["project:mission_updated"] = "project:mission_updated"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: ProjectMissionUpdatedData
+
+    model_config = {"json_schema_extra": {"example": {
+        "type": "project:mission_updated",
+        "timestamp": "2025-11-02T10:30:00Z",
+        "schema_version": "1.0",
+        "data": {
+            "project_id": "550e8400-e29b-41d4-a716-446655440000",
+            "tenant_key": "tenant_123",
+            "mission": "Implement user authentication with OAuth2",
+            "token_estimate": 5000,
+            "generated_by": "orchestrator",
+            "user_config_applied": True,
+            "field_priorities": {"security": 5, "performance": 4, "ux": 3},
+        },
+    }}}
+
+
+# ============================================================================
+# Agent Events
+# ============================================================================
+
+
+class AgentCreatedData(BaseModel):
+    """
+    Data payload for agent:created event.
+
+    Emitted when a new agent job is created and staged for execution.
+    Contains complete agent configuration for UI visualization.
+    """
+
+    project_id: str = Field(..., description="Project UUID as string")
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    agent: Dict[str, Any] = Field(..., description="Complete agent job data")
+
+    @field_validator("agent")
+    @classmethod
+    def validate_agent_data(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate agent data contains minimum required fields.
+
+        Args:
+            v: Agent data dictionary
+
+        Returns:
+            Validated agent data
+
+        Raises:
+            ValueError: If required fields are missing
+        """
+        required_fields = ["id", "agent_type", "status"]
+        missing = [f for f in required_fields if f not in v]
+        if missing:
+            raise ValueError(f"Agent data missing required fields: {missing}")
+        return v
+
+
+class AgentCreatedEvent(BaseModel):
+    """
+    Complete event structure for agent:created.
+
+    Broadcast to all tenant clients when a new agent is created.
+    Frontend uses this to add the agent to the visualization grid.
+    """
+
+    type: Literal["agent:created"] = "agent:created"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: AgentCreatedData
+
+    model_config = {"json_schema_extra": {"example": {
+        "type": "agent:created",
+        "timestamp": "2025-11-02T10:31:00Z",
+        "schema_version": "1.0",
+        "data": {
+            "project_id": "550e8400-e29b-41d4-a716-446655440000",
+            "tenant_key": "tenant_123",
+            "agent": {
+                "id": "660e8400-e29b-41d4-a716-446655440000",
+                "agent_type": "orchestrator",
+                "status": "pending",
+                "mission": "Coordinate project implementation",
+                "mode": "claude",
+            },
+        },
+    }}}
+
+
+class AgentStatusChangedData(BaseModel):
+    """
+    Data payload for agent:status_changed event.
+
+    Emitted when an agent's status changes (e.g., pending → active → completed).
+    Enables real-time status tracking in the frontend.
+    """
+
+    job_id: str = Field(..., description="Agent job UUID as string")
+    project_id: Optional[str] = Field(None, description="Project UUID if applicable")
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    old_status: str = Field(..., min_length=1, description="Previous status")
+    new_status: str = Field(..., min_length=1, description="New status")
+    agent_type: str = Field(..., min_length=1, description="Type of agent")
+    duration_seconds: Optional[float] = Field(
+        None, ge=0, description="Job duration for completed/failed status"
+    )
+
+    @field_validator("new_status")
+    @classmethod
+    def validate_status_transition(cls, v: str, info) -> str:
+        """
+        Validate status is a known agent status value.
+
+        Args:
+            v: New status value
+            info: Validation context
+
+        Returns:
+            Validated status value
+
+        Raises:
+            ValueError: If status is not recognized
+        """
+        valid_statuses = {"pending", "active", "completed", "failed", "cancelled"}
+        if v not in valid_statuses:
+            raise ValueError(f"Invalid agent status: {v}. Must be one of {valid_statuses}")
+        return v
+
+
+class AgentStatusChangedEvent(BaseModel):
+    """
+    Complete event structure for agent:status_changed.
+
+    Broadcast to all tenant clients when an agent's status changes.
+    Frontend uses this to update agent card status and visual indicators.
+    """
+
+    type: Literal["agent:status_changed"] = "agent:status_changed"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: AgentStatusChangedData
+
+    model_config = {"json_schema_extra": {"example": {
+        "type": "agent:status_changed",
+        "timestamp": "2025-11-02T10:32:00Z",
+        "schema_version": "1.0",
+        "data": {
+            "job_id": "660e8400-e29b-41d4-a716-446655440000",
+            "project_id": "550e8400-e29b-41d4-a716-446655440000",
+            "tenant_key": "tenant_123",
+            "old_status": "pending",
+            "new_status": "active",
+            "agent_type": "orchestrator",
+            "duration_seconds": None,
+        },
+    }}}
+
+
+# ============================================================================
+# Event Type Union
+# ============================================================================
+
+
+WebSocketEvent = Union[
+    ProjectMissionUpdatedEvent,
+    AgentCreatedEvent,
+    AgentStatusChangedEvent,
+]
+"""
+Union type of all WebSocket events for validation.
+
+Use this for type hints when accepting any WebSocket event:
+    >>> def handle_event(event: WebSocketEvent) -> None:
+    ...     if event.type == "project:mission_updated":
+    ...         # Handle project mission update
+    ...         pass
+"""
+
+
+# ============================================================================
+# Event Factory
+# ============================================================================
+
+
+class EventFactory:
+    """
+    Factory for creating standardized WebSocket events.
+
+    Provides static methods for consistent event creation with:
+    - Automatic timestamp generation
+    - Pydantic validation
+    - Type-safe event construction
+    - JSON serialization ready output
+
+    All factory methods return dict ready for JSON serialization,
+    compatible with WebSocket.send_json() and FastAPI response models.
+    """
+
+    @staticmethod
+    def project_mission_updated(
+        project_id: Union[str, UUID],
+        tenant_key: str,
+        mission: str,
+        token_estimate: int,
+        generated_by: Literal["orchestrator", "user"] = "orchestrator",
+        user_config_applied: bool = False,
+        field_priorities: Optional[Dict[str, int]] = None,
+    ) -> dict:
+        """
+        Create project:mission_updated event.
+
+        Args:
+            project_id: Project UUID (str or UUID object)
+            tenant_key: Tenant identifier
+            mission: Generated mission text
+            token_estimate: Estimated token count (>= 0)
+            generated_by: Source of generation ("orchestrator" or "user")
+            user_config_applied: Whether user configuration was applied
+            field_priorities: Field priorities used (1-5 scale)
+
+        Returns:
+            Event dict ready for JSON serialization
+
+        Example:
+            >>> event = EventFactory.project_mission_updated(
+            ...     project_id="550e8400-e29b-41d4-a716-446655440000",
+            ...     tenant_key="tenant_123",
+            ...     mission="Build feature X",
+            ...     token_estimate=5000,
+            ...     user_config_applied=True
+            ... )
+            >>> await ws.send_json(event)
+        """
+        # Convert UUID to string if needed
+        project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
+
+        event = ProjectMissionUpdatedEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=ProjectMissionUpdatedData(
+                project_id=project_id_str,
+                tenant_key=tenant_key,
+                mission=mission,
+                token_estimate=token_estimate,
+                generated_by=generated_by,
+                user_config_applied=user_config_applied,
+                field_priorities=field_priorities,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
+    def agent_created(
+        project_id: Union[str, UUID],
+        tenant_key: str,
+        agent: Dict[str, Any],
+    ) -> dict:
+        """
+        Create agent:created event.
+
+        Args:
+            project_id: Project UUID (str or UUID object)
+            tenant_key: Tenant identifier
+            agent: Complete agent job data (must include: id, agent_type, status)
+
+        Returns:
+            Event dict ready for JSON serialization
+
+        Raises:
+            ValidationError: If agent data is missing required fields
+
+        Example:
+            >>> event = EventFactory.agent_created(
+            ...     project_id="550e8400-e29b-41d4-a716-446655440000",
+            ...     tenant_key="tenant_123",
+            ...     agent={
+            ...         "id": "660e8400-e29b-41d4-a716-446655440000",
+            ...         "agent_type": "orchestrator",
+            ...         "status": "pending",
+            ...         "mission": "Coordinate implementation"
+            ...     }
+            ... )
+            >>> await ws.send_json(event)
+        """
+        # Convert UUID to string if needed
+        project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
+
+        event = AgentCreatedEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=AgentCreatedData(
+                project_id=project_id_str,
+                tenant_key=tenant_key,
+                agent=agent,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
+    def agent_status_changed(
+        job_id: Union[str, UUID],
+        tenant_key: str,
+        old_status: str,
+        new_status: str,
+        agent_type: str,
+        project_id: Optional[Union[str, UUID]] = None,
+        duration_seconds: Optional[float] = None,
+    ) -> dict:
+        """
+        Create agent:status_changed event.
+
+        Args:
+            job_id: Agent job UUID (str or UUID object)
+            tenant_key: Tenant identifier
+            old_status: Previous status
+            new_status: New status (pending, active, completed, failed, cancelled)
+            agent_type: Type of agent
+            project_id: Optional project UUID
+            duration_seconds: Optional job duration (for completed/failed)
+
+        Returns:
+            Event dict ready for JSON serialization
+
+        Raises:
+            ValidationError: If status values are invalid
+
+        Example:
+            >>> event = EventFactory.agent_status_changed(
+            ...     job_id="660e8400-e29b-41d4-a716-446655440000",
+            ...     tenant_key="tenant_123",
+            ...     old_status="pending",
+            ...     new_status="active",
+            ...     agent_type="orchestrator",
+            ...     project_id="550e8400-e29b-41d4-a716-446655440000"
+            ... )
+            >>> await ws.send_json(event)
+        """
+        # Convert UUIDs to strings if needed
+        job_id_str = str(job_id) if isinstance(job_id, UUID) else job_id
+        project_id_str = (
+            str(project_id) if project_id and isinstance(project_id, UUID) else project_id
+        )
+
+        event = AgentStatusChangedEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=AgentStatusChangedData(
+                job_id=job_id_str,
+                project_id=project_id_str,
+                tenant_key=tenant_key,
+                old_status=old_status,
+                new_status=new_status,
+                agent_type=agent_type,
+                duration_seconds=duration_seconds,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+
+# ============================================================================
+# Public API
+# ============================================================================
+
+
+__all__ = [
+    # Event Models
+    "ProjectMissionUpdatedEvent",
+    "ProjectMissionUpdatedData",
+    "AgentCreatedEvent",
+    "AgentCreatedData",
+    "AgentStatusChangedEvent",
+    "AgentStatusChangedData",
+    # Factory
+    "EventFactory",
+    # Type Unions
+    "WebSocketEvent",
+    # Metadata
+    "EventMetadata",
+]
