@@ -25,6 +25,7 @@ from api.schemas.prompt import (
     ThinPromptResponse,
     TokenEstimateRequest,
 )
+from api.dependencies.websocket import get_websocket_dependency, WebSocketDependency
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import MCPAgentJob, Project, User
 from src.giljo_mcp.prompt_generator import OrchestratorPromptGenerator
@@ -414,6 +415,7 @@ async def generate_staging_prompt(
     instance_number: int = Query(1, ge=1, description="Orchestrator instance number"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ):
     """
     Generate thin client orchestrator staging prompt (Handover 0088).
@@ -465,7 +467,6 @@ async def generate_staging_prompt(
         HTTPException 500: Prompt generation error
     """
     from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-    from api.dependencies.websocket import get_websocket_dependency
 
     try:
         # Initialize thin client generator
@@ -480,34 +481,38 @@ async def generate_staging_prompt(
         )
 
         # Broadcast WebSocket event for real-time UI update
-        ws_manager = await get_websocket_dependency()
-
-        if ws_manager.is_available():
-            await ws_manager.broadcast_to_tenant(
+        if ws_dep.is_available():
+            await ws_dep.broadcast_to_tenant(
                 tenant_key=current_user.tenant_key,
                 event_type="orchestrator:prompt_generated",
                 data={
-                    'orchestrator_id': result.orchestrator_id,
-                    'project_id': result.project_id,
-                    'estimated_prompt_tokens': result.estimated_prompt_tokens,
+                    'orchestrator_id': result['orchestrator_id'],
+                    'project_id': project_id,
                     'thin_client': True,
                     'tool': tool,
-                    'instance_number': instance_number
+                    'instance_number': result['instance_number']
                 }
             )
             logger.info(
-                f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result.orchestrator_id}"
+                f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result['orchestrator_id']}"
             )
 
         # Log successful generation
         logger.info(
             f"[STAGING PROMPT THIN] Generated for project={project_id}, "
-            f"tool={tool}, tokens={result.estimated_prompt_tokens}, "
-            f"instance={instance_number}, "
+            f"tool={tool}, tokens={result['estimated_prompt_tokens']}, "
+            f"instance={result['instance_number']}, "
             f"user={current_user.username}"
         )
 
-        return result
+        # Return response with 'prompt' key for frontend compatibility
+        return {
+            'orchestrator_id': result['orchestrator_id'],
+            'prompt': result['thin_prompt'],  # Rename thin_prompt → prompt for frontend
+            'instance_number': result['instance_number'],
+            'context_budget': result['context_budget'],
+            'estimated_prompt_tokens': result['estimated_prompt_tokens']
+        }
 
     except ValueError as e:
         # Project not found or invalid tool
