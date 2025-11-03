@@ -354,7 +354,20 @@
             class="prompt-display mb-4"
             role="region"
             aria-label="Orchestrator prompt code"
+            style="position: relative;"
           >
+            <!-- SIMPLE COPY BUTTON -->
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              @click="simpleTextareaCopy"
+              style="position: absolute; top: 8px; right: 8px; z-index: 10;"
+              title="Copy to clipboard"
+            >
+              <v-icon>mdi-content-copy</v-icon>
+            </v-btn>
+
             <pre
               class="prompt-text pa-4"
               tabindex="0"
@@ -407,17 +420,10 @@
             color="primary"
             variant="elevated"
             prepend-icon="mdi-content-copy"
-            @click="copyPromptToClipboard"
+            @click="simpleTextareaCopy"
             aria-label="Copy thin client prompt to clipboard"
           >
-            Copy Thin Prompt ({{ promptLineCount }} lines)
-            <v-tooltip activator="parent" location="top">
-              <div>
-                <strong>Professional thin client prompt</strong><br>
-                Orchestrator fetches mission via MCP<br>
-                70% token reduction applied
-              </div>
-            </v-tooltip>
+            Copy Prompt
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -869,6 +875,44 @@ function handleCancelStaging() {
  */
 function closePromptDialog() {
   showPromptDialog.value = false
+}
+
+/**
+ * SIMPLE textarea copy - no fancy API detection
+ */
+function simpleTextareaCopy() {
+  const textArea = document.createElement('textarea')
+  textArea.value = generatedPrompt.value
+  textArea.style.position = 'fixed'
+  textArea.style.top = '0'
+  textArea.style.left = '0'
+  textArea.style.width = '2em'
+  textArea.style.height = '2em'
+  textArea.style.padding = '0'
+  textArea.style.border = 'none'
+  textArea.style.outline = 'none'
+  textArea.style.boxShadow = 'none'
+  textArea.style.background = 'transparent'
+
+  document.body.appendChild(textArea)
+  textArea.select()
+
+  let success = false
+  try {
+    success = document.execCommand('copy')
+  } catch (err) {
+    console.error('Copy failed:', err)
+  }
+
+  document.body.removeChild(textArea)
+
+  if (success) {
+    toastMessage.value = 'Prompt copied!'
+    showToast.value = true
+  } else {
+    toastMessage.value = 'Copy failed - use Ctrl+A then Ctrl+C'
+    showToast.value = true
+  }
 }
 
 /**
