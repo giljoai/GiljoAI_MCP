@@ -21,6 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.schemas.prompt import (
     AgentPromptResponse,
     OrchestratorPromptResponse,
+    OrchestratorPromptRequest,
+    ThinPromptResponse,
     TokenEstimateRequest,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
@@ -126,6 +128,107 @@ Prerequisites:
         project_id=project.id,
         agent_count=agent_count
     )
+
+
+@router.post("/orchestrator", response_model=ThinPromptResponse)
+async def generate_orchestrator_prompt_thin(
+    request: OrchestratorPromptRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Generate thin client orchestrator prompt (~10 lines).
+
+    CRITICAL CHANGE (Handover 0088):
+    - OLD: Returns 2000-3000 line prompt with embedded mission
+    - NEW: Returns 10-line prompt with MCP tool reference
+    - BENEFIT: 70% token reduction ACTIVE + professional UX
+
+    Process:
+    1. Create orchestrator job in database
+    2. Store condensed mission with user's field priorities
+    3. Return thin prompt with orchestrator_id
+    4. User pastes prompt into CLI
+    5. Orchestrator calls get_orchestrator_instructions() via MCP
+    6. Token reduction achieved
+
+    Args:
+        request: Contains project_id, tool, and optional instance_number
+        current_user: Authenticated user (for field priorities)
+        db: Database session
+
+    Returns:
+        ThinPromptResponse with ~10 line prompt and metadata
+
+    Raises:
+        404: Project not found
+        400: Invalid tool parameter
+        500: Generation error
+    """
+    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+    from api.dependencies.websocket import get_websocket_dependency
+
+    try:
+        # Initialize thin client generator
+        generator = ThinClientPromptGenerator(db, current_user.tenant_key)
+
+        # Generate thin prompt with user field priorities
+        result = await generator.generate(
+            project_id=request.project_id,
+            user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
+            tool=request.tool,
+            instance_number=request.instance_number or 1
+        )
+
+        # Broadcast WebSocket event for real-time UI update
+        # Get WebSocket dependency
+        ws_manager = await get_websocket_dependency()
+
+        if ws_manager.is_available():
+            await ws_manager.broadcast_to_tenant(
+                tenant_key=current_user.tenant_key,
+                event_type="orchestrator:prompt_generated",
+                data={
+                    'orchestrator_id': result.orchestrator_id,
+                    'project_id': result.project_id,
+                    'estimated_prompt_tokens': result.estimated_prompt_tokens,
+                    'thin_client': True,
+                    'tool': request.tool,
+                    'instance_number': request.instance_number or 1
+                }
+            )
+            logger.info(
+                f"[THIN PROMPT] WebSocket broadcast sent for orchestrator {result.orchestrator_id}"
+            )
+
+        logger.info(
+            f"[THIN PROMPT] Generated successfully - "
+            f"orchestrator={result.orchestrator_id}, "
+            f"project={request.project_id}, "
+            f"tokens={result.estimated_prompt_tokens}, "
+            f"user={current_user.username}"
+        )
+
+        return result
+
+    except ValueError as e:
+        # Project not found or invalid tool
+        logger.warning(
+            f"[THIN PROMPT] Validation error for project={request.project_id}: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Unexpected error
+        logger.exception(
+            f"[THIN PROMPT] Generation failed for project={request.project_id}: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate thin prompt: {str(e)}"
+        )
 
 
 @router.get("/agent/{agent_id}", response_model=AgentPromptResponse)
@@ -308,11 +411,16 @@ async def estimate_mission_tokens(
 async def generate_staging_prompt(
     project_id: str,
     tool: str = Query("claude-code", regex="^(claude-code|codex|gemini)$"),
+    instance_number: int = Query(1, ge=1, description="Orchestrator instance number"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
-    Generate comprehensive orchestrator staging prompt (Handover 0079).
+    Generate thin client orchestrator staging prompt (Handover 0088).
+
+    UPDATED FOR THIN CLIENT ARCHITECTURE:
+    - OLD (Handover 0079): Returns 2000-3000 line fat prompt with embedded mission
+    - NEW (Handover 0088): Returns ~10 line thin prompt with MCP tool reference
 
     THE HEART OF GILJOAI - Generates intelligent, token-efficient orchestrator
     prompts that enable AI agents to discover context via MCP, create condensed
@@ -320,68 +428,82 @@ async def generate_staging_prompt(
 
     Process:
     1. Validates project exists and belongs to tenant
-    2. Gathers context via MCP-simulated queries (product, vision, priorities, templates)
-    3. Applies field priorities and token budget management
-    4. Generates eloquent 5-phase orchestrator instructions
-    5. Returns ready-to-paste comprehensive prompt
+    2. Creates orchestrator job in database
+    3. Stores condensed mission with user's field priorities
+    4. Generates thin prompt with orchestrator_id
+    5. Returns ready-to-paste thin prompt (~10 lines)
 
     Features:
+    - Thin client architecture (70% token reduction ACTIVE)
     - MCP-only data access (remote-safe, no local file reads)
     - Dynamic field priority integration (user-configured)
-    - 20K token budget management (Claude 25K limit - 5K safety buffer)
-    - 70% token reduction architecture
+    - Professional UX (copy 10 lines, not 3000)
     - Multi-tool support (Claude Code, Codex, Gemini)
-    - Max 8 agent types enforced
+    - Orchestrator succession support (instance_number)
 
     Args:
         project_id: Project UUID to generate prompt for
         tool: Target AI tool (claude-code, codex, or gemini)
+        instance_number: Orchestrator instance number (for succession)
         current_user: Authenticated user (ensures tenant isolation)
         db: Database session
 
     Returns:
-        dict: Comprehensive prompt response with:
-            - prompt: Full orchestrator staging prompt (2000-3000 lines)
-            - token_estimate: Estimated total token usage
-            - budget_utilization: Percentage of 20K budget used
-            - context_included: Summary of included context
-            - warnings: Budget/priority warnings
-            - tool: Target tool identifier
-            - estimate_details: Detailed token breakdown
+        ThinPromptResponse: Thin client prompt response with:
+            - prompt: Thin orchestrator prompt (~10 lines)
+            - orchestrator_id: Created orchestrator job ID
+            - project_id: Project UUID
+            - project_name: Project name
+            - estimated_prompt_tokens: ~50 tokens
+            - mcp_tool_name: MCP tool to fetch mission
+            - instructions_stored: True (mission in database)
+            - thin_client: True
 
     Raises:
         HTTPException 404: Project not found or not accessible
         HTTPException 400: Invalid tool parameter
         HTTPException 500: Prompt generation error
-
-    Example Response:
-        {
-            "prompt": "ORCHESTRATOR STAGING PROMPT\\n...\\n(comprehensive instructions)",
-            "token_estimate": 8500,
-            "budget_utilization": "42.5%",
-            "context_included": {
-                "product_name": "My Product",
-                "project_name": "Feature Implementation",
-                "vision_chunk_count": 3,
-                "field_count": 4,
-                "template_count": 6
-            },
-            "warnings": [],
-            "tool": "claude-code"
-        }
     """
-    try:
-        # Initialize prompt generator
-        generator = OrchestratorPromptGenerator(db, current_user.tenant_key)
+    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+    from api.dependencies.websocket import get_websocket_dependency
 
-        # Generate comprehensive prompt
-        result = await generator.generate(project_id, tool)
+    try:
+        # Initialize thin client generator
+        generator = ThinClientPromptGenerator(db, current_user.tenant_key)
+
+        # Generate thin prompt with user field priorities
+        result = await generator.generate(
+            project_id=project_id,
+            user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
+            tool=tool,
+            instance_number=instance_number
+        )
+
+        # Broadcast WebSocket event for real-time UI update
+        ws_manager = await get_websocket_dependency()
+
+        if ws_manager.is_available():
+            await ws_manager.broadcast_to_tenant(
+                tenant_key=current_user.tenant_key,
+                event_type="orchestrator:prompt_generated",
+                data={
+                    'orchestrator_id': result.orchestrator_id,
+                    'project_id': result.project_id,
+                    'estimated_prompt_tokens': result.estimated_prompt_tokens,
+                    'thin_client': True,
+                    'tool': tool,
+                    'instance_number': instance_number
+                }
+            )
+            logger.info(
+                f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result.orchestrator_id}"
+            )
 
         # Log successful generation
         logger.info(
-            f"[STAGING PROMPT] Generated for project={project_id}, "
-            f"tool={tool}, tokens={result['token_estimate']}, "
-            f"utilization={result['budget_utilization']}, "
+            f"[STAGING PROMPT THIN] Generated for project={project_id}, "
+            f"tool={tool}, tokens={result.estimated_prompt_tokens}, "
+            f"instance={instance_number}, "
             f"user={current_user.username}"
         )
 
@@ -389,7 +511,7 @@ async def generate_staging_prompt(
 
     except ValueError as e:
         # Project not found or invalid tool
-        logger.warning(f"[STAGING PROMPT] Validation error for project={project_id}: {e}")
+        logger.warning(f"[STAGING PROMPT THIN] Validation error for project={project_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
@@ -397,8 +519,8 @@ async def generate_staging_prompt(
 
     except Exception as e:
         # Unexpected error during generation
-        logger.exception(f"[STAGING PROMPT] Generation failed for project={project_id}: {e}")
+        logger.exception(f"[STAGING PROMPT THIN] Generation failed for project={project_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate staging prompt: {str(e)}"
+            detail=f"Failed to generate thin staging prompt: {str(e)}"
         )

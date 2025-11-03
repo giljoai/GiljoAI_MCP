@@ -1,5 +1,23 @@
 """
-Orchestrator Staging Prompt Generator (Handover 0079)
+Orchestrator Staging Prompt Generator (DEPRECATED - Handover 0088)
+
+⚠️ DEPRECATED: This module generates "fat prompts" (2000-3000 lines)
+that defeat the 70% token reduction feature.
+
+REPLACEMENT: Use ThinClientPromptGenerator (thin_prompt_generator.py)
+
+MIGRATION PATH:
+- Phase 1 (v3.1): Both generators available (backwards compatibility)
+- Phase 2 (v3.2): ThinClientPromptGenerator becomes default
+- Phase 3 (v4.0): OrchestratorPromptGenerator removed
+
+DO NOT USE THIS MODULE FOR NEW DEVELOPMENT.
+
+See: handovers/0088_thin_client_stage_project_fix.md
+
+---
+
+ORIGINAL DOCUMENTATION (Handover 0079):
 
 THE HEART OF GILJOAI - Generates comprehensive, intelligent orchestrator prompts
 that enable AI agents to discover context via MCP, create condensed missions,
@@ -15,10 +33,20 @@ Key Features:
 
 Author: GiljoAI Development Team
 Date: 2025-10-31
-Priority: MISSION CRITICAL
+Priority: MISSION CRITICAL (DEPRECATED 2025-11-02)
 """
 
+import warnings
 import logging
+
+# Emit deprecation warning on import
+warnings.warn(
+    "OrchestratorPromptGenerator is deprecated. "
+    "Use ThinClientPromptGenerator instead. "
+    "See Handover 0088.",
+    DeprecationWarning,
+    stacklevel=2
+)
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
