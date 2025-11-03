@@ -9,7 +9,7 @@ Phase 1 Implementation: Template-based analysis (no LLM calls)
 
 import logging
 import re
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 import tiktoken
 
@@ -18,6 +18,7 @@ from .database import DatabaseManager
 from .models import Product, Project, User
 from .orchestration_types import AgentConfig, Mission, RequirementAnalysis
 from .repositories.context_repository import ContextRepository
+
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,6 @@ class MissionPlanner:
             "documenter": ["documentation", "docs", "readme", "guide", "tutorial"],
             "orchestrator": ["architecture", "coordination", "workflow", "planning", "overview"],
         }
-
 
     # Field labels mapping for human-readable display
     FIELD_LABELS: ClassVar[dict[str, str]] = {
@@ -146,9 +146,7 @@ class MissionPlanner:
 
         return work_types
 
-    def _assess_complexity(
-        self, description_length: int, feature_count: int, tech_stack_size: int
-    ) -> str:
+    def _assess_complexity(self, description_length: int, feature_count: int, tech_stack_size: int) -> str:
         """
         Assess project complexity based on multiple factors.
 
@@ -183,10 +181,9 @@ class MissionPlanner:
         # Determine complexity
         if complexity_score >= 4:
             return "complex"
-        elif complexity_score >= 2:
+        if complexity_score >= 2:
             return "moderate"
-        else:
-            return "simple"
+        return "simple"
 
     def _estimate_agent_count(self, work_types: dict[str, str], complexity: str) -> int:
         """
@@ -204,10 +201,9 @@ class MissionPlanner:
         # Adjust based on complexity
         if complexity == "complex":
             return min(base_count + 2, 8)
-        elif complexity == "moderate":
+        if complexity == "moderate":
             return min(base_count + 1, 6)
-        else:
-            return min(base_count, 4)
+        return min(base_count, 4)
 
     def _count_tokens(self, text: str) -> int:
         """
@@ -231,9 +227,7 @@ class MissionPlanner:
         # Fallback: rough estimate (1 token ≈ 4 characters)
         return len(text) // 4
 
-    def _filter_vision_for_role(
-        self, vision_chunks: list[str], agent_role: str
-    ) -> list[str]:
+    def _filter_vision_for_role(self, vision_chunks: list[str], agent_role: str) -> list[str]:
         """
         Filter vision chunks to find most relevant content for agent role.
 
@@ -331,9 +325,7 @@ You are the Documenter agent responsible for:
             f"You are the {agent_role} agent responsible for completing assigned tasks within your domain of expertise.",
         )
 
-    def _get_success_criteria(
-        self, agent_role: str, analysis: RequirementAnalysis
-    ) -> str:
+    def _get_success_criteria(self, agent_role: str, analysis: RequirementAnalysis) -> str:
         """
         Get success criteria for agent based on role and analysis.
 
@@ -354,7 +346,7 @@ Success Criteria:
 
         role_criteria = {
             "implementer": "- All code has appropriate test coverage\n- Code passes linting and static analysis\n- Features work as specified in requirements\n",
-            "tester": f"- Test coverage meets or exceeds project standards\n- All tests pass consistently\n- Edge cases and error conditions are tested\n",
+            "tester": "- Test coverage meets or exceeds project standards\n- All tests pass consistently\n- Edge cases and error conditions are tested\n",
             "frontend-implementer": "- UI is responsive across all target devices\n- Components are reusable and well-documented\n- Accessibility standards are met\n",
             "code-reviewer": "- All code reviewed for quality and standards\n- Feedback provided constructively\n- No critical issues remain unresolved\n",
             "documenter": "- Documentation is clear and comprehensive\n- All public APIs are documented\n- Examples and tutorials are included\n",
@@ -393,7 +385,7 @@ Success Criteria:
                 "product_id": str(product.id),
                 "user_id": user_id,
                 "has_user_id": user_id is not None,
-            }
+            },
         )
 
         # For now, return analysis results as this method seems to be called
@@ -409,17 +401,18 @@ Success Criteria:
         """Fetch user configuration including field priorities."""
         if not user_id:
             return {"field_priority_config": None, "token_budget": 2000}
-        
+
         try:
             if self.db_manager.is_async:
                 async with self.db_manager.get_session_async() as session:
                     from sqlalchemy import select
+
                     result = await session.execute(select(User).filter_by(id=user_id))
                     user = result.scalar_one_or_none()
             else:
                 with self.db_manager.get_session() as session:
                     user = session.query(User).filter_by(id=user_id).first()
-            
+
             if user and user.field_priority_config:
                 return {
                     "field_priority_config": user.field_priority_config,
@@ -427,99 +420,348 @@ Success Criteria:
                 }
         except Exception as e:
             logger.warning(f"Failed to fetch user configuration: {e}")
-        
+
         return {"field_priority_config": None, "token_budget": 2000}
 
     def _get_detail_level(self, priority: int) -> str:
         """Map priority (1-10) to detail level."""
         if priority >= 10:
             return "full"
-        elif priority >= 7:
+        if priority >= 7:
             return "moderate"
-        elif priority >= 4:
+        if priority >= 4:
             return "abbreviated"
-        elif priority >= 1:
+        if priority >= 1:
             return "minimal"
-        else:
-            return "exclude"
+        return "exclude"
 
     def _abbreviate_codebase_summary(self, codebase_text: Optional[str]) -> str:
         """Reduce codebase summary to 50% tokens."""
         if not codebase_text:
             return ""
-        
-        lines = codebase_text.split("
-")
+
+        lines = codebase_text.split("\n")
         abbreviated = []
         in_section = False
         section_line_count = 0
-        
+
         for line in lines:
             stripped = line.strip()
-            
+
             if stripped.startswith("#"):
                 abbreviated.append(line)
                 in_section = True
                 section_line_count = 0
                 continue
-            
+
             if in_section and section_line_count < 2:
                 abbreviated.append(line)
                 section_line_count += 1
                 continue
-            
+
             if stripped.startswith(("-", "*", "•")):
                 abbreviated.append(line)
                 continue
-        
-        result = "
-".join(abbreviated)
+
+        result = "\n".join(abbreviated)
         if codebase_text:
             reduction = ((len(codebase_text) - len(result)) / len(codebase_text)) * 100
-            logger.debug(f"Abbreviated codebase: {self._count_tokens(codebase_text)} → {self._count_tokens(result)} tokens ({reduction:.1f}% reduction)")
+            logger.debug(
+                f"Abbreviated codebase: {self._count_tokens(codebase_text)} → {self._count_tokens(result)} tokens ({reduction:.1f}% reduction)"
+            )
         return result
 
     def _minimal_codebase_summary(self, codebase_text: Optional[str]) -> str:
         """Reduce codebase summary to 20% tokens."""
         if not codebase_text:
             return ""
-        
-        lines = codebase_text.split("
-")
+
+        lines = codebase_text.split("\n")
         minimal = []
         last_was_header = False
-        
+
         for line in lines:
             stripped = line.strip()
-            
+
             if stripped.startswith("##") and not stripped.startswith("###"):
                 minimal.append(line)
                 last_was_header = True
                 continue
-            
+
             if last_was_header and stripped:
                 minimal.append(line)
                 last_was_header = False
                 continue
-            
+
             last_was_header = False
-        
-        result = "
-".join(minimal)
+
+        result = "\n".join(minimal)
         if codebase_text:
             reduction = ((len(codebase_text) - len(result)) / len(codebase_text)) * 100
-            logger.debug(f"Minimal codebase: {self._count_tokens(codebase_text)} → {self._count_tokens(result)} tokens ({reduction:.1f}% reduction)")
+            logger.debug(
+                f"Minimal codebase: {self._count_tokens(codebase_text)} → {self._count_tokens(result)} tokens ({reduction:.1f}% reduction)"
+            )
         return result
 
+    async def _build_context_with_priorities(
+        self, product: Product, project: Project, field_priorities: dict = None, user_id: Optional[str] = None
+    ) -> str:
+        """
+        Build context respecting user's field priorities for 70% token reduction.
 
+        This method orchestrates the field priority system to generate condensed context
+        that includes only the most relevant information based on user preferences.
+        Achieves significant token reduction while maintaining quality.
 
-    async def _build_context_with_priorities(self, product, project, field_priorities=None, user_id=None):
-        """CORE METHOD for 70% token reduction - implementation below."""
-        pass  # TODO: Full implementation
+        Args:
+            product: Product model with vision document and config_data
+            project: Project model with description and codebase_summary
+            field_priorities: Dict mapping field names to priority (1-10)
+                             Higher values = more important. 0 = exclude.
+                             Example: {"product_vision": 10, "codebase_summary": 4}
+            user_id: User ID for logging and audit trail (optional)
 
-    async def analyze_requirements(
-        self, product: Product, project_description: str
-    ) -> RequirementAnalysis:
+        Returns:
+            Formatted context string with priority-based detail levels.
+            Sections are intelligently abbreviated or excluded based on priorities.
+
+        Detail Level Mapping (via _get_detail_level):
+            Priority 10: "full" - Complete content
+            Priority 7-9: "moderate" - Slightly condensed
+            Priority 4-6: "abbreviated" - 50% token reduction
+            Priority 1-3: "minimal" - 80% token reduction (key points only)
+            Priority 0: "exclude" - Omitted entirely
+
+        Multi-Tenant Isolation:
+            All data access uses product/project models which are already tenant-filtered
+            by upstream code. No additional tenant filtering needed here.
+
+        Example Usage:
+            context = await planner._build_context_with_priorities(
+                product=product,
+                project=project,
+                field_priorities={
+                    "product_vision": 10,      # Full detail
+                    "project_description": 8,  # Full detail
+                    "codebase_summary": 4,     # Abbreviated (50% tokens)
+                    "architecture": 2,         # Minimal (20% tokens)
+                },
+                user_id=str(user.id)
+            )
+        """
+        # Default to empty dict if not provided
+        if field_priorities is None:
+            field_priorities = {}
+
+        # Structured logging for debugging and analytics
+        logger.info(
+            "Building context with field priorities",
+            extra={
+                "product_id": str(product.id),
+                "project_id": str(project.id),
+                "tenant_key": product.tenant_key,
+                "priorities": field_priorities,
+                "user_id": user_id,
+                "operation": "build_context_with_priorities",
+            },
+        )
+
+        context_sections = []
+        total_tokens = 0
+        tokens_before_reduction = 0  # Track original size for metrics
+
+        # === Product Vision Section ===
+        # Vision document is typically the largest field, so abbreviation has huge impact
+        vision_priority = field_priorities.get("product_vision", 0)
+        if vision_priority > 0:
+            vision_detail = self._get_detail_level(vision_priority)
+            vision_text = product.vision_document or ""
+
+            if vision_detail == "full":
+                # Use complete vision document
+                formatted_vision = f"## Product Vision\n{vision_text}"
+            elif vision_detail == "moderate":
+                # Take first 75% of vision document
+                lines = vision_text.split("\n")
+                cutoff = int(len(lines) * 0.75)
+                abbreviated = "\n".join(lines[:cutoff])
+                formatted_vision = f"## Product Vision\n{abbreviated}"
+            elif vision_detail == "abbreviated":
+                # Take first 50% of vision document
+                lines = vision_text.split("\n")
+                cutoff = int(len(lines) * 0.50)
+                abbreviated = "\n".join(lines[:cutoff])
+                formatted_vision = f"## Product Vision\n{abbreviated}"
+            else:  # minimal
+                # Extract only first paragraph (key overview)
+                paragraphs = vision_text.split("\n\n")
+                minimal = paragraphs[0] if paragraphs else vision_text[:500]
+                formatted_vision = f"## Product Vision\n{minimal}"
+
+            if formatted_vision:
+                context_sections.append(formatted_vision)
+                vision_tokens = self._count_tokens(formatted_vision)
+                total_tokens += vision_tokens
+                tokens_before_reduction += self._count_tokens(f"## Product Vision\n{vision_text}")
+
+                logger.debug(
+                    f"Product vision: {vision_tokens} tokens (priority={vision_priority}, detail={vision_detail})",
+                    extra={
+                        "field": "product_vision",
+                        "priority": vision_priority,
+                        "detail_level": vision_detail,
+                        "tokens": vision_tokens,
+                    },
+                )
+
+        # === Project Description Section ===
+        desc_priority = field_priorities.get("project_description", 0)
+        if desc_priority > 0:
+            desc_detail = self._get_detail_level(desc_priority)
+            desc_text = project.description or ""
+
+            if desc_detail == "full" or desc_detail == "moderate":
+                # Project descriptions are typically short, so full/moderate are the same
+                formatted_desc = f"## Project Description\n{desc_text}"
+            elif desc_detail == "abbreviated":
+                # Take first half of description
+                sentences = desc_text.split(". ")
+                cutoff = max(1, len(sentences) // 2)
+                abbreviated = ". ".join(sentences[:cutoff]) + "."
+                formatted_desc = f"## Project Description\n{abbreviated}"
+            else:  # minimal
+                # Take only first sentence
+                first_sentence = desc_text.split(". ")[0] + "." if desc_text else ""
+                formatted_desc = f"## Project Description\n{first_sentence}"
+
+            if formatted_desc:
+                context_sections.append(formatted_desc)
+                desc_tokens = self._count_tokens(formatted_desc)
+                total_tokens += desc_tokens
+                tokens_before_reduction += self._count_tokens(f"## Project Description\n{desc_text}")
+
+                logger.debug(
+                    f"Project description: {desc_tokens} tokens (priority={desc_priority}, detail={desc_detail})",
+                    extra={
+                        "field": "project_description",
+                        "priority": desc_priority,
+                        "detail_level": desc_detail,
+                        "tokens": desc_tokens,
+                    },
+                )
+
+        # === Codebase Summary Section ===
+        # Use specialized abbreviation methods that preserve structure
+        codebase_priority = field_priorities.get("codebase_summary", 0)
+        if codebase_priority > 0:
+            codebase_detail = self._get_detail_level(codebase_priority)
+            codebase_original = project.codebase_summary or ""
+
+            if codebase_detail == "full" or codebase_detail == "moderate":
+                # Full codebase summary
+                codebase_text = codebase_original
+            elif codebase_detail == "abbreviated":
+                # 50% reduction using smart abbreviation (preserves headers, key bullets)
+                codebase_text = self._abbreviate_codebase_summary(codebase_original)
+            else:  # minimal
+                # 80% reduction - headers + first line only
+                codebase_text = self._minimal_codebase_summary(codebase_original)
+
+            if codebase_text:
+                formatted_codebase = f"## Codebase\n{codebase_text}"
+                context_sections.append(formatted_codebase)
+                codebase_tokens = self._count_tokens(formatted_codebase)
+                total_tokens += codebase_tokens
+                tokens_before_reduction += self._count_tokens(f"## Codebase\n{codebase_original}")
+
+                logger.debug(
+                    f"Codebase summary: {codebase_tokens} tokens (priority={codebase_priority}, detail={codebase_detail})",
+                    extra={
+                        "field": "codebase_summary",
+                        "priority": codebase_priority,
+                        "detail_level": codebase_detail,
+                        "tokens": codebase_tokens,
+                    },
+                )
+
+        # === Architecture Section ===
+        # Extract from product.config_data (JSONB field)
+        arch_priority = field_priorities.get("architecture", 0)
+        if arch_priority > 0 and product.config_data:
+            arch_detail = self._get_detail_level(arch_priority)
+
+            # Architecture can be in multiple places in config_data
+            arch_text = ""
+            if isinstance(product.config_data, dict):
+                # Try "architecture" key first (freeform text)
+                arch_value = product.config_data.get("architecture", "")
+
+                # Check if architecture is a string or dict
+                if isinstance(arch_value, str):
+                    arch_text = arch_value
+                elif isinstance(arch_value, dict):
+                    # Structured architecture fields - combine them
+                    pattern = arch_value.get("pattern", "")
+                    api_style = arch_value.get("api_style", "")
+                    design_patterns = arch_value.get("design_patterns", "")
+                    notes = arch_value.get("notes", "")
+                    parts = [p for p in [pattern, api_style, design_patterns, notes] if p]
+                    arch_text = "\n".join(parts)
+
+            if arch_text and isinstance(arch_text, str):
+                if arch_detail == "full" or arch_detail == "moderate":
+                    formatted_arch = arch_text
+                elif arch_detail == "abbreviated":
+                    # Extract first paragraph only
+                    paragraphs = arch_text.split("\n\n")
+                    formatted_arch = paragraphs[0] if paragraphs else arch_text
+                else:  # minimal
+                    # Extract first sentence only
+                    sentences = arch_text.split(". ")
+                    formatted_arch = sentences[0] + "." if sentences else arch_text
+
+                if formatted_arch:
+                    formatted_section = f"## Architecture\n{formatted_arch}"
+                    context_sections.append(formatted_section)
+                    arch_tokens = self._count_tokens(formatted_section)
+                    total_tokens += arch_tokens
+                    tokens_before_reduction += self._count_tokens(f"## Architecture\n{arch_text}")
+
+                    logger.debug(
+                        f"Architecture: {arch_tokens} tokens (priority={arch_priority}, detail={arch_detail})",
+                        extra={
+                            "field": "architecture",
+                            "priority": arch_priority,
+                            "detail_level": arch_detail,
+                            "tokens": arch_tokens,
+                        },
+                    )
+
+        # === Token Reduction Metrics ===
+        # Calculate and log token reduction percentage for analytics
+        reduction_pct = 0.0
+        if tokens_before_reduction > 0:
+            reduction_pct = ((tokens_before_reduction - total_tokens) / tokens_before_reduction) * 100
+
+        logger.info(
+            f"Context built: {total_tokens} tokens ({reduction_pct:.1f}% reduction)",
+            extra={
+                "product_id": str(product.id),
+                "project_id": str(project.id),
+                "total_tokens": total_tokens,
+                "tokens_before_reduction": tokens_before_reduction,
+                "reduction_percentage": reduction_pct,
+                "priorities": field_priorities,
+                "user_id": user_id,
+                "sections_included": len(context_sections),
+                "operation": "build_context_with_priorities",
+            },
+        )
+
+        # Join all sections with double newlines for readability
+        return "\n\n".join(context_sections)
+
+    async def analyze_requirements(self, product: Product, project_description: str) -> RequirementAnalysis:
         """
         Analyze product requirements to determine needed agents and complexity.
 
@@ -549,9 +791,7 @@ Success Criteria:
 
         # Assess complexity
         description_length = len(combined_text)
-        complexity = self._assess_complexity(
-            description_length, len(features), len(tech_stack)
-        )
+        complexity = self._assess_complexity(description_length, len(features), len(tech_stack))
 
         # Estimate agent count
         estimated_agents = self._estimate_agent_count(work_types, complexity)
@@ -627,14 +867,11 @@ Success Criteria:
         if isinstance(value, list):
             items = "\n".join(f"- {item}" for item in value)
             return f"\n### {label}\n{items}\n"
-        elif isinstance(value, (int, float)):
+        if isinstance(value, (int, float)):
             return f"\n### {label}\n{value}%\n"
-        else:
-            return f"\n### {label}\n{value}\n"
+        return f"\n### {label}\n{value}\n"
 
-    def _build_config_data_section(
-        self, product: Product, priority_config: dict, token_budget: int
-    ) -> tuple[str, int]:
+    def _build_config_data_section(self, product: Product, priority_config: dict, token_budget: int) -> tuple[str, int]:
         """
         Build config_data section respecting priority and token budget.
 
@@ -654,10 +891,10 @@ Success Criteria:
 
         # Get fields by priority using the config/defaults.py structure
         fields_dict = priority_config.get("fields", {})
-        
+
         # Sort fields by priority value
         sorted_fields = sorted(fields_dict.items(), key=lambda x: x[1])
-        
+
         # Process fields in priority order
         for field_path, priority in sorted_fields:
             field_content = self._get_field_value(product.config_data, field_path)
@@ -669,10 +906,9 @@ Success Criteria:
                 if priority == 1 or (tokens_used + section_tokens <= token_budget):
                     content += section
                     tokens_used += section_tokens
-                else:
-                    # Stop adding fields if budget exceeded (unless P1)
-                    if priority > 1:
-                        logger.debug(f"Skipping field {field_path} (priority {priority}) due to token budget")
+                # Stop adding fields if budget exceeded (unless P1)
+                elif priority > 1:
+                    logger.debug(f"Skipping field {field_path} (priority {priority}) due to token budget")
 
         return content, tokens_used
 
@@ -727,23 +963,23 @@ Complexity: {analysis.complexity}
 
         # Calculate base token usage
         base_tokens = self._count_tokens(mission_content)
-        
+
         # Get user's field priority configuration
         priority_config = self._get_field_priority_config(user_id)
         token_budget = priority_config.get("token_budget", 1500)
-        
+
         # Reserve tokens for footer sections (success criteria, scope, protocol)
         reserved_tokens = 200
         remaining_budget = token_budget - base_tokens - reserved_tokens
-        
+
         # Add config_data section with priority (Handover 0048)
         if remaining_budget > 0:
-            config_section, config_tokens = self._build_config_data_section(
-                product, priority_config, remaining_budget
-            )
+            config_section, config_tokens = self._build_config_data_section(product, priority_config, remaining_budget)
             mission_content += config_section
         else:
-            logger.warning(f"No token budget remaining for config_data section (base={base_tokens}, budget={token_budget})")
+            logger.warning(
+                f"No token budget remaining for config_data section (base={base_tokens}, budget={token_budget})"
+            )
 
         # Add success criteria
         mission_content += f"\n## Success Criteria\n{success_criteria}"
@@ -772,9 +1008,7 @@ Complexity: {analysis.complexity}
         # Extract chunk IDs if available
         context_chunk_ids = []
         if hasattr(product, "context_chunks"):
-            context_chunk_ids = [
-                chunk.chunk_id for chunk in product.context_chunks[:3]
-            ]
+            context_chunk_ids = [chunk.chunk_id for chunk in product.context_chunks[:3]]
 
         return Mission(
             agent_role=agent_config.role,
@@ -844,7 +1078,7 @@ Complexity: {analysis.complexity}
             # Split vision document into rough chunks
             vision_text = product.vision_document
             # Split by double newline (paragraphs) or sections
-            chunks = re.split(r'\n\n+|(?=^#{1,3} )', vision_text, flags=re.MULTILINE)
+            chunks = re.split(r"\n\n+|(?=^#{1,3} )", vision_text, flags=re.MULTILINE)
             vision_chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
 
         # Calculate original token count
@@ -864,16 +1098,12 @@ Complexity: {analysis.complexity}
         # We compare original tokens to average per-agent mission tokens
         if original_tokens > 0 and missions:
             avg_mission_tokens = total_mission_tokens / len(missions)
-            reduction_percent = (
-                (original_tokens - avg_mission_tokens) / original_tokens
-            ) * 100
+            reduction_percent = ((original_tokens - avg_mission_tokens) / original_tokens) * 100
         else:
             reduction_percent = 0.0
 
         # Store token metrics
-        await self._store_token_metrics(
-            project.id, original_tokens, total_mission_tokens, reduction_percent
-        )
+        await self._store_token_metrics(project.id, original_tokens, total_mission_tokens, reduction_percent)
 
         logger.info(
             f"Generated {len(missions)} missions. "
