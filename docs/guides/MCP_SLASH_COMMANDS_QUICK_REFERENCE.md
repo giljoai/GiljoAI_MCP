@@ -7,7 +7,9 @@
 ## The 3-Command Workflow
 
 ```bash
-1. /mcp__gil__fetch_agents           # Install agents (one-time)
+1. /gil_import_personalagents        # Install agents to ~/.claude (recommended)
+   or /gil_import_productagents      # Install to product's .claude
+   or /mcp__gil__fetch_agents        # Legacy alias (older setups)
    → Restart Claude Code
 
 2. /mcp__gil__activate_project ABC123 # Prepare mission
@@ -30,19 +32,22 @@
 
 ## Command Details
 
-### 1️⃣ Install Agents
+### 1️⃣ Install Agents / Import Templates
 
 ```bash
-/mcp__gil__fetch_agents
+/gil_import_personalagents      # Personal (~/.claude/agents)
+/gil_import_productagents       # Product (<project>/.claude/agents)
+# Legacy: /mcp__gil__fetch_agents
 ```
 
-**Downloads:** orchestrator, implementer, code-reviewer, tester, analyzer, documenter
+**Installs:** orchestrator, implementer, code-reviewer, tester, analyzer, documenter
 
 **Location:**
 - Windows: `%USERPROFILE%\.claude\agents\`
 - Mac/Linux: `~/.claude/agents/`
 
 **⚠️ Must restart Claude Code after installation**
+**Note:** Auto-export from orchestrator has been removed (0074). Use import commands or Settings → Integrations.
 
 ---
 
