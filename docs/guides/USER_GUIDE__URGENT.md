@@ -239,6 +239,23 @@ client.close_project(
 )
 ```
 
+### Projects View (V2)
+
+Use the Projects view to manage projects with real-time search, status filters, sorting, and status transitions.
+
+- Search: filter by project name, mission keywords, or ID (updates instantly)
+- Status tabs: Active, Inactive, Completed, Cancelled, Deleted (with counts)
+- Sorting: sort by name, status, dates (ascending/descending)
+- StatusBadge actions:
+  - Activate (enforces one active project per product)
+  - Deactivate (replaces older “Pause” terminology)
+  - Complete / Cancel
+  - Delete (soft delete, recoverable for 10 days)
+  - Restore (Deleted/Completed → Inactive)
+- Product isolation: lists only projects for the active product
+
+See also: features/project_state_management.md for state rules and constraints.
+
 ### Project Templates
 
 ```python
@@ -250,6 +267,17 @@ project = client.create_project(**template)
 ```
 
 ## Agent Management
+
+### Agent Orchestration UI (Static Agent Grid)
+
+The orchestration UI uses a static agent grid for clarity and throughput. It shows agents by role with live status and messaging summaries.
+
+- Fixed grid layout for agent roles and statuses
+- Live updates via WebSocket events (tenant- and project-scoped)
+- Controls for spawning agents, sending messages, and tracking progress
+- Supersedes older Launch/Jobs dual-tab and Kanban concepts
+
+See: features/agent_grid_static_0073.md for details.
 
 ### Agent Lifecycle
 

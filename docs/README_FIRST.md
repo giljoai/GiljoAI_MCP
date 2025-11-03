@@ -1053,6 +1053,41 @@ See also:
 
 ---
 
+### Projects View v2 Redesign (October 2025)
+
+**Handover 0053 - ProjectsView v2.0 Complete Redesign** (✅ PRODUCTION-READY):
+- **[Overview](features/projects_view_v2.md)**
+- **Completion Date**: October 2025
+- **Status**: Production-ready
+- **Problem Solved**: Outdated projects UI lacking search, filters, and accessible status management
+- **Key Features**:
+  - Real-time search (name, mission, ID)
+  - Status tabs with counts; multi-column sorting
+  - Interactive StatusBadge: Activate, Deactivate, Complete, Cancel, Restore, Delete
+  - Deleted projects modal with restore
+  - Product isolation and multi-tenant safety
+  - WCAG 2.1 AA accessibility and keyboard navigation
+- **Interplay**:
+  - Honors Single Active constraints (0050b)
+  - Aligns with state simplification (0071) — Deactivate replaces Pause
+  - Integrates with soft delete + recovery (0070)
+
+### Static Agent Grid with Enhanced Messaging (October 2025)
+
+**Handover 0073 - Static Agent Grid (Canonical)** (✅ COMPLETE):
+- **[Overview](features/agent_grid_static_0073.md)**
+- **Completion Date**: October 2025
+- **Status**: Canonical orchestration UI
+- **Problem Solved**: Replaces the two-tab Launch/Jobs pattern and Kanban concepts with a stable, low-latency grid optimized for multi-terminal workflows
+- **Key Features**:
+  - Fixed grid of agent roles with live status and counters
+  - Enhanced messaging area with event-driven updates
+  - WebSocket DI and standardized EventFactory schemas
+  - Multi-tenant filtering and project-scoped broadcasts
+- **Supersession**:
+  - Supersedes 0062 (Active Jobs tab) and 0066 (Kanban dashboard)
+  - See handovers/completed/0073_SUPERSEDES_0062_0066-C.md for ADR context
+
 ### Installation Experience Validation (October 2025)
 
 **Handover 0014 - Installation Experience Validation** (✅ COMPLETE - ARCHIVED):

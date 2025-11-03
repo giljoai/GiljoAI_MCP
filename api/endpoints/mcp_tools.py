@@ -95,6 +95,21 @@ async def execute_mcp_tool(request: MCPToolRequest):
             "get_file_context": state.tool_accessor.get_file_context,
             "search_context": state.tool_accessor.search_context,
             "get_context_summary": state.tool_accessor.get_context_summary,
+
+            # Orchestration tools
+            "health_check": state.tool_accessor.health_check,
+            "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
+            "spawn_agent_job": state.tool_accessor.spawn_agent_job,
+            "get_agent_mission": state.tool_accessor.get_agent_mission,
+            "orchestrate_project": state.tool_accessor.orchestrate_project,
+            "get_workflow_status": state.tool_accessor.get_workflow_status,
+
+            # Agent coordination tools
+            "get_pending_jobs": state.tool_accessor.get_pending_jobs,
+            "acknowledge_job": state.tool_accessor.acknowledge_job,
+            "report_progress": state.tool_accessor.report_progress,
+            "complete_job": state.tool_accessor.complete_job,
+            "report_error": state.tool_accessor.report_error,
         }
 
         if tool_name not in tool_map:
