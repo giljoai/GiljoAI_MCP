@@ -343,38 +343,62 @@ Project: {project.name}"""
 
                 await session.commit()
 
-                # Emit WebSocket event for real-time UI update (Handover 0086)
+                # Broadcast WebSocket event for real-time UI update (Handover 0086A Task 1.5)
                 try:
                     from api.app import state
+                    from api.dependencies.websocket import WebSocketDependency
+                    from api.events.schemas import EventFactory
 
-                    websocket_manager = getattr(state, "websocket_manager", None)
-                    if websocket_manager:
-                        # Broadcast to tenant-specific clients only (multi-tenant isolation)
-                        for client_id, ws in websocket_manager.active_connections.items():
-                            auth_context = websocket_manager.auth_contexts.get(client_id, {})
-                            if auth_context.get("tenant_key") == project.tenant_key:
-                                try:
-                                    await ws.send_json(
-                                        {
-                                            "type": "project:mission_updated",
-                                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                                            "schema_version": "1.0",
-                                            "data": {
-                                                "project_id": str(project.id),
-                                                "tenant_key": project.tenant_key,
-                                                "mission": mission,
-                                                "token_estimate": len(mission) // 4,  # Rough estimate: 1 token ≈ 4 chars
-                                                "generated_by": "orchestrator",
-                                                "timestamp": datetime.now(timezone.utc).isoformat(),
-                                            },
-                                        }
-                                    )
-                                except Exception:
-                                    # Client disconnected or error sending - continue
-                                    pass
-                except Exception as ws_error:
-                    logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
-                    # Non-critical - continue without WebSocket broadcast
+                    # Get WebSocket manager via dependency injection
+                    ws_manager = getattr(state, "websocket_manager", None)
+                    if ws_manager:
+                        ws_dep = WebSocketDependency(ws_manager)
+
+                        # Create standardized event using EventFactory
+                        event_data = EventFactory.project_mission_updated(
+                            project_id=project.id,
+                            tenant_key=project.tenant_key,
+                            mission=mission,
+                            token_estimate=len(mission) // 4,  # Rough estimate: 1 token ≈ 4 chars
+                            generated_by="orchestrator",
+                            user_config_applied=False,  # TODO: Will be True in Task 2.3
+                        )
+
+                        # Broadcast using production-grade method with multi-tenant isolation
+                        sent_count = await ws_dep.broadcast_to_tenant(
+                            tenant_key=project.tenant_key,
+                            event_type="project:mission_updated",
+                            data=event_data["data"],
+                        )
+
+                        logger.info(
+                            f"Mission update broadcasted to {sent_count} clients",
+                            extra={
+                                "project_id": str(project.id),
+                                "tenant_key": project.tenant_key,
+                                "sent_count": sent_count,
+                            },
+                        )
+                    else:
+                        logger.debug(
+                            "WebSocket manager not available for mission update broadcast",
+                            extra={
+                                "project_id": str(project.id),
+                                "tenant_key": project.tenant_key,
+                            },
+                        )
+
+                except Exception as e:
+                    # Log with full context but don't fail the mission update
+                    logger.error(
+                        f"Failed to broadcast mission update: {e}",
+                        extra={
+                            "project_id": str(project.id),
+                            "tenant_key": project.tenant_key,
+                            "error": str(e),
+                        },
+                        exc_info=True,
+                    )
 
                 logger.info(f"Updated mission for project '{project.name}'")
 
