@@ -398,9 +398,24 @@ Success Criteria:
         return {}
 
     async def _get_user_configuration(self, user_id: Optional[str]) -> dict:
-        """Fetch user configuration including field priorities."""
+        """
+        Fetch user configuration including field priorities and Serena integration toggle.
+
+        Handover 0086B Task 3.2: Added serena_enabled support
+
+        Returns:
+            {
+                "field_priority_config": dict or None,
+                "token_budget": int,
+                "serena_enabled": bool
+            }
+        """
         if not user_id:
-            return {"field_priority_config": None, "token_budget": 2000}
+            return {
+                "field_priority_config": None,
+                "token_budget": 2000,
+                "serena_enabled": False
+            }
 
         try:
             if self.db_manager.is_async:
@@ -414,14 +429,83 @@ Success Criteria:
                     user = session.query(User).filter_by(id=user_id).first()
 
             if user and user.field_priority_config:
+                # Extract serena_enabled from field_priority_config JSONB
+                serena_enabled = user.field_priority_config.get("serena_enabled", False)
+                token_budget = user.field_priority_config.get("token_budget", 2000)
+
                 return {
                     "field_priority_config": user.field_priority_config,
-                    "token_budget": user.field_priority_config.get("token_budget", 2000),
+                    "token_budget": token_budget,
+                    "serena_enabled": serena_enabled
                 }
         except Exception as e:
             logger.warning(f"Failed to fetch user configuration: {e}")
 
-        return {"field_priority_config": None, "token_budget": 2000}
+        return {
+            "field_priority_config": None,
+            "token_budget": 2000,
+            "serena_enabled": False
+        }
+
+
+    async def _fetch_serena_codebase_context(
+        self, project_id: str, tenant_key: str
+    ) -> str:
+        """
+        Fetch codebase context from Serena MCP tool.
+
+        Handover 0086B Task 3.2: Serena integration for mission generation
+
+        This method attempts to fetch codebase analysis from the Serena MCP tool
+        (if available). It provides graceful degradation - if Serena is unavailable
+        or returns an error, it returns an empty string.
+
+        Args:
+            project_id: Project UUID as string
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Serena codebase context string, or empty string if unavailable
+
+        Note:
+            This is a placeholder implementation. Full Serena integration requires:
+            1. MCP client infrastructure (mcp_client.py)
+            2. Serena tool registration
+            3. Project-to-codebase path mapping
+        """
+        try:
+            # TODO: Implement full Serena MCP integration
+            # For now, return empty string (graceful degradation)
+            logger.info(
+                "Serena integration requested but not yet implemented",
+                extra={
+                    "project_id": project_id,
+                    "tenant_key": tenant_key
+                }
+            )
+            return ""
+
+            # Future implementation:
+            # from src.giljo_mcp.mcp_client import MCPClient
+            #
+            # mcp_client = MCPClient()
+            # result = await mcp_client.call_tool(
+            #     tool_name="serena__get_symbols_overview",
+            #     arguments={"relative_path": "."}
+            # )
+            #
+            # return result.get("content", "")
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch Serena context: {e}",
+                extra={
+                    "project_id": project_id,
+                    "tenant_key": tenant_key
+                },
+                exc_info=True
+            )
+            return ""
 
     def _get_detail_level(self, priority: int) -> str:
         """Map priority (1-10) to detail level."""
@@ -920,9 +1004,12 @@ Success Criteria:
         project: Project,
         vision_chunks: list[str],
         user_id: Optional[str] = None,
+        serena_context: str = "",
     ) -> Mission:
         """
         Generate a condensed mission for a specific agent.
+
+        Handover 0086B Task 3.2: Added serena_context parameter
 
         Args:
             agent_config: Agent configuration
@@ -931,6 +1018,7 @@ Success Criteria:
             project: Project being worked on
             vision_chunks: Filtered vision document chunks
             user_id: User ID for field priority configuration (optional)
+            serena_context: Optional Serena codebase context (empty string if disabled)
 
         Returns:
             Mission object with condensed content (500-1500 tokens)
@@ -979,6 +1067,22 @@ Complexity: {analysis.complexity}
         else:
             logger.warning(
                 f"No token budget remaining for config_data section (base={base_tokens}, budget={token_budget})"
+            )
+
+        # Handover 0086B Task 3.2: Add Serena codebase context if available
+        if serena_context:
+            serena_tokens = self._count_tokens(serena_context)
+            # Add Serena section (with token budget consideration)
+            mission_content += f"
+## Codebase Context (Serena)
+{serena_context}
+"
+            logger.debug(
+                f"Added Serena context to {agent_config.role} mission: {serena_tokens} tokens",
+                extra={
+                    "agent_role": agent_config.role,
+                    "serena_tokens": serena_tokens
+                }
             )
 
         # Add success criteria
@@ -1084,10 +1188,50 @@ Complexity: {analysis.complexity}
         # Calculate original token count
         original_tokens = self._count_tokens(product.vision_document or "")
 
+        # Handover 0086B Task 3.2: Fetch user configuration including Serena toggle
+        user_config = await self._get_user_configuration(user_id)
+        serena_enabled = user_config.get("serena_enabled", False)
+
+        # Fetch Serena codebase context if enabled
+        serena_context = ""
+        if serena_enabled:
+            serena_context = await self._fetch_serena_codebase_context(
+                project_id=str(project.id),
+                tenant_key=product.tenant_key
+            )
+            if serena_context:
+                serena_tokens = self._count_tokens(serena_context)
+                logger.info(
+                    f"Serena codebase context fetched: {serena_tokens} tokens",
+                    extra={
+                        "project_id": str(project.id),
+                        "tenant_key": product.tenant_key,
+                        "user_id": user_id,
+                        "serena_tokens": serena_tokens
+                    }
+                )
+            else:
+                logger.info(
+                    "Serena enabled but no context returned (graceful degradation)",
+                    extra={
+                        "project_id": str(project.id),
+                        "tenant_key": product.tenant_key,
+                        "user_id": user_id
+                    }
+                )
+        else:
+            logger.debug(
+                "Serena integration disabled by user configuration",
+                extra={
+                    "project_id": str(project.id),
+                    "user_id": user_id
+                }
+            )
+
         # Generate mission for each agent (Handover 0048: pass user_id for field priority)
         for agent_config in selected_agents:
             mission = await self._generate_agent_mission(
-                agent_config, analysis, product, project, vision_chunks, user_id
+                agent_config, analysis, product, project, vision_chunks, user_id, serena_context
             )
             missions[agent_config.role] = mission
 

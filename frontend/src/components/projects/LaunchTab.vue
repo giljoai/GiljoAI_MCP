@@ -91,9 +91,27 @@
       <!-- Right Column: Orchestrator Mission Panel -->
       <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
         <v-card class="mission-panel d-flex flex-column" elevation="2" style="height: 100%;">
-          <!-- Header -->
+          <!-- Header with "Optimized for you" badge -->
           <v-card-title class="panel-header bg-primary text-white">
             <span>Orchestrator Created Mission</span>
+            <v-chip
+              v-if="userConfigApplied && missionText"
+              color="success"
+              size="small"
+              class="ml-2"
+              prepend-icon="mdi-check-circle"
+            >
+              Optimized for you
+            </v-chip>
+            <v-chip
+              v-if="tokenEstimate > 0 && missionText"
+              color="info"
+              size="small"
+              class="ml-2"
+              prepend-icon="mdi-counter"
+            >
+              {{ tokenEstimate }} tokens
+            </v-chip>
           </v-card-title>
 
           <v-divider />
@@ -102,12 +120,43 @@
           <v-card-text class="pa-4 d-flex flex-column flex-grow-1">
             <!-- Loading State -->
             <div
-              v-if="stagingInProgress"
+              v-if="isLoadingMission"
               class="flex-grow-1 d-flex flex-column align-center justify-center"
             >
-              <v-progress-circular indeterminate color="primary" size="48" />
-              <p class="text-subtitle-2 mt-4">Orchestrator generating mission...</p>
+              <v-progress-circular indeterminate color="primary" size="64" />
+              <p class="text-subtitle-1 mt-4 font-weight-bold">Generating mission...</p>
+              <p class="text-caption text-medium-emphasis mt-2">
+                Analyzing project vision and applying your preferences
+              </p>
             </div>
+
+            <!-- Error State -->
+            <v-alert
+              v-else-if="missionError"
+              type="error"
+              variant="tonal"
+              closable
+              @click:close="missionError = null"
+              class="mb-0"
+            >
+              <v-alert-title>
+                <v-icon start>mdi-alert-circle</v-icon>
+                Mission Generation Failed
+              </v-alert-title>
+              {{ missionError }}
+              <template #append>
+                <v-btn
+                  size="small"
+                  color="error"
+                  variant="elevated"
+                  @click="handleStageProject"
+                  class="mt-2"
+                >
+                  <v-icon start>mdi-refresh</v-icon>
+                  Retry
+                </v-btn>
+              </template>
+            </v-alert>
 
             <!-- Content State -->
             <div v-else-if="missionText" class="d-flex flex-column flex-grow-1">
@@ -325,6 +374,20 @@ const emit = defineEmits([
 ])
 
 /**
+ * Project ID from props
+ * PRODUCTION-GRADE: Direct access (Handover 0086B Task 4.3)
+ * Backend now consistently returns 'id' field via @hybrid_property
+ */
+const projectId = computed(() => {
+  const id = props.project?.id
+  if (!id) {
+    console.error('[LaunchTab] Project missing ID field')
+    throw new Error('Invalid project: missing ID')
+  }
+  return id
+})
+
+/**
  * WebSocket and Auth Setup (Handover 0086)
  */
 const { on, off } = useWebSocket()
@@ -335,6 +398,9 @@ const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
  * Component State
  */
 const missionText = ref('')
+
+// Track agent IDs to prevent duplicates (RACE CONDITION FIX - Task 4.2)
+const agentIds = ref(new Set())
 
 // Orchestrator agent from props (real data from API)
 const orchestratorAgent = computed(() => {
@@ -367,6 +433,14 @@ const readyToLaunch = ref(false) // Set to false to show "Stage Project" button
 const showCancelDialog = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
+
+// Loading states and error boundaries (PRODUCTION-GRADE - Task 4.4)
+const isLoadingMission = ref(false)
+const isLoadingAgents = ref(false)
+const missionError = ref(null)
+const agentError = ref(null)
+const userConfigApplied = ref(false)
+const tokenEstimate = ref(0)
 
 /**
  * Computed Properties
@@ -412,6 +486,8 @@ function getInstanceNumber(agent) {
 /**
  * Handle mission update from external orchestrator execution
  * Called when orchestrator calls update_project_mission() via MCP
+ *
+ * PRODUCTION-GRADE: Enhanced with loading states (Handover 0086B Task 4.4)
  */
 const handleMissionUpdate = (data) => {
   console.log('[LaunchTab] Received project:mission_updated event:', data)
@@ -423,7 +499,7 @@ const handleMissionUpdate = (data) => {
   }
 
   // Project isolation check
-  if (data.project_id !== props.project.id) {
+  if (data.project_id !== projectId.value) {
     console.log('[LaunchTab] Mission update ignored: different project')
     return
   }
@@ -431,12 +507,23 @@ const handleMissionUpdate = (data) => {
   // Update mission text reactively
   missionText.value = data.mission
 
-  // Update UI state
+  // Capture user config info for UI badges
+  userConfigApplied.value = data.user_config_applied || false
+  tokenEstimate.value = data.token_estimate || 0
+
+  // Clear loading state
+  isLoadingMission.value = false
   stagingInProgress.value = false
   readyToLaunch.value = true
+  missionError.value = null
 
-  // Show success notification
-  toastMessage.value = 'Mission Generated - Orchestrator has created the project mission'
+  // Show success notification with config info
+  let message = `Mission generated (${data.token_estimate || 0} tokens)`
+  if (data.user_config_applied) {
+    message += ' • Optimized for you'
+  }
+
+  toastMessage.value = message
   showToast.value = true
 
   console.log('[LaunchTab] Mission panel updated successfully')
@@ -445,6 +532,10 @@ const handleMissionUpdate = (data) => {
 /**
  * Handle agent creation from external orchestrator execution
  * Called when orchestrator calls create_agent_job_external() via MCP
+ *
+ * PRODUCTION-GRADE: Race condition fixed (Handover 0086B Task 4.2)
+ * - Uses Set for atomic duplicate check
+ * - Prevents duplicate agents in concurrent scenarios
  */
 const handleAgentCreated = (data) => {
   console.log('[LaunchTab] Received agent:created event:', data)
@@ -456,21 +547,33 @@ const handleAgentCreated = (data) => {
   }
 
   // Project isolation check
-  if (data.project_id !== props.project.id) {
+  if (data.project_id !== projectId.value) {
     console.log('[LaunchTab] Agent creation ignored: different project')
     return
   }
 
-  // Check if agent already exists (prevent duplicates)
+  // Extract agent ID
   const agentId = data.agent?.id || data.agent?.job_id
-  const exists = agents.value.some(a => (a.id || a.job_id) === agentId)
-  if (exists) {
+
+  if (!agentId) {
+    console.warn('[LaunchTab] Agent creation ignored: no ID')
+    return
+  }
+
+  // Use Set for atomic duplicate check (RACE CONDITION FIX)
+  if (agentIds.value.has(agentId)) {
     console.log('[LaunchTab] Agent already exists, skipping duplicate')
     return
   }
 
-  // Add agent to list reactively
-  agents.value.push(data.agent)
+  // Add to Set first (atomic operation)
+  agentIds.value.add(agentId)
+
+  // Then add to reactive array
+  agents.value.push({
+    ...data.agent,
+    id: agentId  // Normalize ID field
+  })
 
   // Show notification
   const agentType = data.agent?.agent_type || 'Unknown'
@@ -482,8 +585,15 @@ const handleAgentCreated = (data) => {
 
 /**
  * Handle Stage Project button click - Handover 0079
+ * PRODUCTION-GRADE: Enhanced error handling (Handover 0086B Task 4.4)
  */
 async function handleStageProject() {
+  // Reset errors
+  missionError.value = null
+  agentError.value = null
+
+  // Set loading state
+  isLoadingMission.value = true
   stagingInProgress.value = true
 
   try {
@@ -492,9 +602,13 @@ async function handleStageProject() {
     showToast.value = true
 
     // Call API to generate comprehensive staging prompt
-    const response = await api.prompts.staging(props.project.id, {
+    const response = await api.prompts.staging(projectId.value, {
       tool: 'claude-code'  // TODO: Make tool selectable in UI
     })
+
+    if (!response.data?.prompt) {
+      throw new Error('Invalid response from staging endpoint')
+    }
 
     const { prompt, token_estimate, budget_utilization, warnings, context_included } = response.data
 
@@ -559,11 +673,16 @@ async function handleStageProject() {
 
   } catch (err) {
     console.error('[STAGING] Failed to generate prompt:', err)
-    stagingInProgress.value = false
 
-    // Show error with details
-    const errorMsg = err.response?.data?.detail || err.message || 'Failed to generate orchestrator prompt'
-    toastMessage.value = `Error: ${errorMsg}`
+    // Set error state
+    missionError.value = err.response?.data?.detail || err.message || 'Failed to generate orchestrator prompt'
+
+    // Reset loading states
+    stagingInProgress.value = false
+    isLoadingMission.value = false
+
+    // Show error toast
+    toastMessage.value = `Staging failed: ${missionError.value}`
     showToast.value = true
   }
 }
@@ -577,6 +696,7 @@ function handleLaunchJobs() {
 
 /**
  * Handle Cancel button (with confirmation)
+ * PRODUCTION-GRADE: Reset all states including errors (Task 4.4)
  */
 function handleCancelStaging() {
   showCancelDialog.value = false
@@ -586,6 +706,17 @@ function handleCancelStaging() {
   agents.value = []
   stagingInProgress.value = false
   readyToLaunch.value = false
+
+  // Reset loading states and errors
+  isLoadingMission.value = false
+  isLoadingAgents.value = false
+  missionError.value = null
+  agentError.value = null
+  userConfigApplied.value = false
+  tokenEstimate.value = 0
+
+  // Clear agent tracking Set
+  agentIds.value.clear()
 
   emit('cancel-staging')
 }
@@ -621,7 +752,7 @@ onMounted(() => {
   on('project:mission_updated', handleMissionUpdate)
   on('agent:created', handleAgentCreated)
 
-  console.log('[LaunchTab] WebSocket listeners registered for project:', props.project.id)
+  console.log('[LaunchTab] WebSocket listeners registered for project:', projectId.value)
   console.log('[LaunchTab] Current tenant key:', currentTenantKey.value)
 })
 
@@ -630,7 +761,10 @@ onUnmounted(() => {
   off('project:mission_updated', handleMissionUpdate)
   off('agent:created', handleAgentCreated)
 
-  console.log('[LaunchTab] WebSocket listeners removed')
+  // Clear agent tracking Set (RACE CONDITION FIX - Task 4.2)
+  agentIds.value.clear()
+
+  console.log('[LaunchTab] Cleanup complete - WebSocket listeners removed, agent IDs cleared')
 })
 
 /**
@@ -652,24 +786,39 @@ watch(() => props.project.agents, (newAgents) => {
 
 /**
  * Expose methods for parent component
+ * PRODUCTION-GRADE: Complete state reset (Task 4.4)
  */
 defineExpose({
   setMission: (mission) => {
     missionText.value = mission
     stagingInProgress.value = false
     readyToLaunch.value = true
+    isLoadingMission.value = false
+    missionError.value = null
   },
   addAgent: (agent) => {
-    agents.value.push(agent)
+    const agentId = agent.id || agent.job_id
+    if (agentId && !agentIds.value.has(agentId)) {
+      agentIds.value.add(agentId)
+      agents.value.push({ ...agent, id: agentId })
+    }
   },
   clearAgents: () => {
     agents.value = []
+    agentIds.value.clear()
   },
   resetStaging: () => {
     missionText.value = ''
     agents.value = []
     stagingInProgress.value = false
     readyToLaunch.value = false
+    isLoadingMission.value = false
+    isLoadingAgents.value = false
+    missionError.value = null
+    agentError.value = null
+    userConfigApplied.value = false
+    tokenEstimate.value = 0
+    agentIds.value.clear()
   }
 })
 </script>
