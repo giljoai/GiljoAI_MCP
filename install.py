@@ -754,6 +754,10 @@ class UnifiedInstaller:
                 # This handles existing installations with mcp_agent_jobs table
                 await self._run_handover_0080_migration_async(db_manager)
 
+                # HANDOVER 0088: Run migration for thin client metadata column
+                # Adds metadata JSONB column for storing field priorities and tool info
+                await self._run_handover_0088_migration_async(db_manager)
+
                 # Create setup_state ONLY (no admin user - Handover 0034)
                 async with db_manager.get_session_async() as session:
                     from sqlalchemy import select
@@ -1647,6 +1651,102 @@ class UnifiedInstaller:
 
         except Exception as e:
             self._print_error(f"Handover 0080 migration failed: {e}")
+            # Don't fail installation - just log error
+            import traceback
+            traceback.print_exc()
+
+    async def _run_handover_0088_migration_async(self, db_manager) -> None:
+        """
+        Run Handover 0088 migration for thin client job_metadata column.
+
+        Adds job_metadata JSONB column to mcp_agent_jobs table for storing:
+        - field_priorities (dict)
+        - user_id (string)
+        - tool (string)
+        - created_via (string)
+        - Other thin client metadata
+
+        Migration strategy:
+        1. Add job_metadata column with default empty JSON object
+        2. Create GIN index for performance
+        3. Migrate existing data from handover_summary if present
+        4. Non-destructive: handover_summary kept for succession feature
+
+        Idempotent: Safe to run multiple times (skips if column exists)
+        """
+        try:
+            async with db_manager.get_session_async() as session:
+                from sqlalchemy import text
+
+                # Check if migration needed (check for job_metadata column)
+                check_query = text("""
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'mcp_agent_jobs'
+                    AND column_name = 'job_metadata'
+                """)
+
+                result = await session.execute(check_query)
+                column_exists = result.fetchone() is not None
+
+                if column_exists:
+                    self._print_info("Handover 0088 migration already applied (skipping)")
+                    return
+
+                self._print_info("Applying Handover 0088 migration (thin client job_metadata)...")
+
+                # Add job_metadata column with default empty JSON
+                add_column_query = text("""
+                    ALTER TABLE mcp_agent_jobs
+                    ADD COLUMN job_metadata JSONB DEFAULT '{}'::jsonb NOT NULL
+                """)
+
+                await session.execute(add_column_query)
+
+                # Create GIN index for efficient JSONB queries
+                create_index_query = text("""
+                    CREATE INDEX IF NOT EXISTS idx_mcp_agent_jobs_job_metadata
+                    ON mcp_agent_jobs USING gin(job_metadata)
+                """)
+
+                await session.execute(create_index_query)
+
+                # Migrate existing data from handover_summary to job_metadata
+                # Only migrate thin client-specific fields (field_priorities, user_id, tool, created_via)
+                # Keep succession-related data in handover_summary intact
+                migrate_data_query = text("""
+                    UPDATE mcp_agent_jobs
+                    SET job_metadata = jsonb_build_object(
+                        'field_priorities', COALESCE(handover_summary->'field_priorities', '{}'::jsonb),
+                        'user_id', handover_summary->>'user_id',
+                        'tool', handover_summary->>'tool',
+                        'created_via', handover_summary->>'created_via'
+                    )
+                    WHERE job_metadata = '{}'::jsonb
+                    AND handover_summary IS NOT NULL
+                    AND (
+                        handover_summary ? 'field_priorities'
+                        OR handover_summary ? 'user_id'
+                        OR handover_summary ? 'tool'
+                        OR handover_summary ? 'created_via'
+                    )
+                """)
+
+                migrate_result = await session.execute(migrate_data_query)
+                rows_migrated = migrate_result.rowcount
+
+                await session.commit()
+
+                self._print_success("Handover 0088 migration completed successfully")
+                self._print_info("  Added job_metadata JSONB column with default empty object")
+                self._print_info("  Created GIN index for efficient JSONB queries")
+                if rows_migrated > 0:
+                    self._print_info(f"  Migrated thin client metadata from {rows_migrated} rows")
+                else:
+                    self._print_info("  No existing data to migrate")
+
+        except Exception as e:
+            self._print_error(f"Handover 0088 migration failed: {e}")
             # Don't fail installation - just log error
             import traceback
             traceback.print_exc()

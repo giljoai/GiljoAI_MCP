@@ -140,3 +140,43 @@ class ProjectCompleteResponse(BaseModel):
     retired_agents: int = Field(..., description="Number of agents retired")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Thin Client Prompt Schemas (Handover 0088)
+
+
+class OrchestratorPromptRequest(BaseModel):
+    """
+    Schema for thin client orchestrator prompt request.
+    POST /api/prompts/orchestrator
+    """
+    project_id: str = Field(..., min_length=1, description="Project UUID")
+    tool: Literal["claude-code", "codex", "gemini"] = Field("claude-code", description="Target AI tool")
+    instance_number: Optional[int] = Field(1, ge=1, description="Orchestrator instance number (for succession)")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ThinPromptResponse(BaseModel):
+    """
+    Schema for thin client prompt response (Handover 0088).
+
+    This is the response for the NEW thin client architecture that
+    generates ~10 line prompts instead of 2000-3000 line fat prompts.
+
+    Key differences from OrchestratorPromptResponse:
+    - estimated_prompt_tokens: ~50 tokens (vs ~30,000)
+    - thin_client: Always True (indicates thin client architecture)
+    - instructions_stored: Mission stored in database, not embedded
+    - mcp_tool_name: The MCP tool orchestrator will call to fetch mission
+    """
+    prompt: str = Field(..., description="Thin client prompt (~10 lines)")
+    orchestrator_id: str = Field(..., description="Created orchestrator job ID")
+    project_id: str = Field(..., description="Project UUID")
+    project_name: str = Field(..., description="Project name")
+    estimated_prompt_tokens: int = Field(..., description="Token estimate for prompt (~50)")
+    mcp_tool_name: str = Field(..., description="MCP tool to fetch mission")
+    instructions_stored: bool = Field(..., description="Whether instructions are stored in database")
+    thin_client: bool = Field(True, description="Always True for thin client architecture")
+
+    model_config = ConfigDict(from_attributes=True)

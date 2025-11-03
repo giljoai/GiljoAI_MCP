@@ -2047,6 +2047,14 @@ class MCPAgentJob(Base):
     context_budget = Column(Integer, default=150000, nullable=False,
         comment="Maximum context window budget in tokens")
 
+    # Handover 0088: Thin client architecture metadata
+    job_metadata = Column(
+        JSON,
+        default=dict,
+        nullable=False,
+        comment="JSONB metadata for thin client architecture (Handover 0088). Stores field_priorities, user_id, tool, etc."
+    )
+
     # Relationships (Handover 0062)
     project = relationship("Project", back_populates="agent_jobs")
 

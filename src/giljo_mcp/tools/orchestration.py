@@ -135,72 +135,235 @@ def register_orchestration_tools(mcp: FastMCP, db_manager: DatabaseManager) -> N
 
     @mcp.tool()
     async def get_agent_mission(
-        agent_id: str,
+        agent_job_id: str,
         tenant_key: str
     ) -> dict[str, Any]:
         """
-        Retrieve mission for a specific agent.
+        Fetch agent-specific mission and context (Thin Client Architecture).
 
-        Returns the markdown-formatted mission that was generated for the agent
-        during orchestration. This mission contains the agent's specific objectives,
-        context, and instructions.
+        Agents call this to get their targeted mission (not entire project vision).
+        Part of Handover 0088 Amendment B - Agent Thin Client Implementation.
 
         Args:
-            agent_id: Agent database ID (UUID)
-            tenant_key: Tenant key for isolation
+            agent_job_id: Agent job UUID
+            tenant_key: Tenant isolation key
 
         Returns:
             Dictionary containing:
-            - mission: Markdown-formatted mission content
-            - agent_id: Agent ID
-            - agent_name: Agent name
-            - agent_type: Agent type/role
+            - agent_job_id: UUID
+            - agent_name: Human-readable name
+            - agent_type: Type (backend, frontend, etc.)
+            - mission: Agent-specific mission
+            - project_context: Relevant project context
+            - estimated_tokens: Token count
+            - thin_client: True (architecture flag)
 
         Example:
-            {
-                'mission': '# Mission: Implement Features\n\n...',
-                'agent_id': 'agent-123',
-                'agent_name': 'Feature Implementer',
-                'agent_type': 'implementer'
-            }
+            mission = await get_agent_mission(
+                agent_job_id='agent-123',
+                tenant_key='tenant-abc'
+            )
         """
         try:
-            # Validate inputs
-            if not agent_id or not agent_id.strip():
-                return {'error': 'Agent ID is required'}
-
-            if not tenant_key or not tenant_key.strip():
-                return {'error': 'Tenant key is required'}
-
-            # Get agent with tenant isolation
             async with db_manager.get_session_async() as session:
+                # Get agent job from MCPAgentJob table
                 result = await session.execute(
-                    select(Agent).where(
-                        Agent.id == agent_id,
-                        Agent.tenant_key == tenant_key
+                    select(MCPAgentJob).where(
+                        and_(
+                            MCPAgentJob.job_id == agent_job_id,
+                            MCPAgentJob.tenant_key == tenant_key
+                        )
                     )
                 )
-                agent = result.scalar_one_or_none()
+                agent_job = result.scalar_one_or_none()
 
-                if not agent:
-                    return {'error': f"Agent '{agent_id}' not found"}
+                if not agent_job:
+                    return {
+                        'error': 'NOT_FOUND',
+                        'message': f'Agent job {agent_job_id} not found',
+                        'troubleshooting': [
+                            'Verify agent was spawned successfully',
+                            'Check if project was deleted',
+                            'Ensure tenant_key matches',
+                            f'Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = \'{agent_job_id}\''
+                        ],
+                        'severity': 'ERROR'
+                    }
 
-                # Check if agent has mission
-                if not agent.mission:
-                    return {'error': f"Agent '{agent_id}' has no mission assigned"}
+                # Mission is stored in job.mission field (thin client pattern)
+                estimated_tokens = len(agent_job.mission or '') // 4
 
-                logger.info(f"Retrieved mission for agent {agent_id} ({agent.name})")
+                logger.info(
+                    f"[THIN CLIENT] Agent mission fetched: {agent_job.agent_type}",
+                    extra={'agent_job_id': agent_job_id, 'tokens': estimated_tokens}
+                )
 
                 return {
-                    'mission': agent.mission,
-                    'agent_id': agent.id,
-                    'agent_name': agent.name,
-                    'agent_type': getattr(agent, 'type', getattr(agent, 'role', 'unknown'))
+                    'success': True,
+                    'agent_job_id': agent_job_id,
+                    'agent_name': agent_job.agent_type,  # Use agent_type as name
+                    'agent_type': agent_job.agent_type,
+                    'mission': agent_job.mission or '',
+                    'project_id': str(agent_job.project_id),
+                    'parent_job_id': str(agent_job.spawned_by) if agent_job.spawned_by else None,
+                    'estimated_tokens': estimated_tokens,
+                    'status': agent_job.status,
+                    'thin_client': True
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get agent mission: {e}", exc_info=True)
-            return {'error': f"Failed to get agent mission: {str(e)}"}
+            logger.error(f"[ERROR] Failed to get agent mission: {e}", exc_info=True)
+            return {
+                'error': 'INTERNAL_ERROR',
+                'message': f'Unexpected error: {str(e)}',
+                'troubleshooting': [
+                    'Check MCP server logs',
+                    'Verify database connection',
+                    'Contact support if issue persists'
+                ],
+                'severity': 'ERROR'
+            }
+
+    @mcp.tool()
+    async def spawn_agent_job(
+        agent_type: str,
+        agent_name: str,
+        mission: str,
+        project_id: str,
+        tenant_key: str,
+        parent_job_id: Optional[str] = None
+    ) -> dict[str, Any]:
+        """
+        Spawn agent job with THIN CLIENT prompt (Handover 0088 Amendment B).
+
+        CRITICAL CHANGES:
+        - Mission stored in database (MCPAgentJob.mission field)
+        - Returned prompt is ~10 lines with identity only
+        - Agent calls get_agent_mission() to fetch full mission
+        - WebSocket broadcast for UI update (agent appears in grid)
+
+        Args:
+            agent_type: Type of agent (backend, frontend, orchestrator, etc.)
+            agent_name: Human-readable name
+            mission: Agent-specific mission (STORED, not embedded)
+            project_id: Project UUID
+            tenant_key: Tenant isolation key
+            parent_job_id: Optional parent orchestrator ID
+
+        Returns:
+            {
+                'success': True,
+                'agent_job_id': 'uuid',
+                'agent_prompt': '~10 line thin prompt',
+                'prompt_tokens': 50,
+                'mission_stored': True,
+                'mission_tokens': 2000,
+                'thin_client': True
+            }
+        """
+        try:
+            async with db_manager.get_session_async() as session:
+                # Get project for context
+                result = await session.execute(
+                    select(Project).where(
+                        and_(
+                            Project.id == project_id,
+                            Project.tenant_key == tenant_key
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {'error': 'NOT_FOUND', 'message': 'Project not found'}
+
+                # Create agent job with mission STORED in database
+                agent_job_id = str(uuid4())
+                agent_job = MCPAgentJob(
+                    job_id=agent_job_id,
+                    project_id=project_id,
+                    tenant_key=tenant_key,
+                    agent_type=agent_type,
+                    mission=mission,  # STORED HERE, not in prompt
+                    spawned_by=parent_job_id,
+                    status='pending',
+                    metadata={
+                        'created_via': 'thin_client_spawn',
+                        'created_at': datetime.now(timezone.utc).isoformat(),
+                        'thin_client': True
+                    }
+                )
+
+                session.add(agent_job)
+                await session.commit()
+                await session.refresh(agent_job)
+
+                # Generate THIN agent prompt (~10 lines)
+                thin_agent_prompt = f"""I am {agent_name} (Agent {agent_type}) for Project "{project.name}".
+
+IDENTITY:
+- Agent ID: {agent_job_id}
+- Agent Type: {agent_type}
+- Project ID: {project_id}
+- Parent Orchestrator: {parent_job_id or 'None'}
+
+INSTRUCTIONS:
+1. Fetch mission: get_agent_mission(agent_job_id='{agent_job_id}', tenant_key='{tenant_key}')
+2. Execute mission
+3. Report progress: update_job_progress('{agent_job_id}', percent, message)
+4. Coordinate via: send_message(to_agent_id, content)
+
+Begin by fetching your mission.
+"""
+
+                # Calculate token estimates
+                prompt_tokens = len(thin_agent_prompt) // 4  # ~50 tokens
+                mission_tokens = len(mission) // 4  # ~2000 tokens
+
+                # Broadcast WebSocket event for UI update
+                try:
+                    from api.app import state
+
+                    ws_manager = getattr(state, 'websocket_manager', None)
+
+                    if ws_manager:
+                        await ws_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="agent:created",
+                            data={
+                                'agent_id': agent_job_id,
+                                'agent_job_id': agent_job_id,
+                                'agent_type': agent_type,
+                                'agent_name': agent_name,
+                                'project_id': project_id,
+                                'status': 'pending',
+                                'thin_client': True,
+                                'prompt_tokens': prompt_tokens,
+                                'mission_tokens': mission_tokens
+                            }
+                        )
+                        logger.info(f"[WEBSOCKET] Agent spawned: {agent_name} ({agent_type})")
+                except Exception as ws_error:
+                    logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
+
+                return {
+                    'success': True,
+                    'agent_job_id': agent_job_id,
+                    'agent_prompt': thin_agent_prompt,  # ~10 lines
+                    'prompt_tokens': prompt_tokens,  # ~50
+                    'mission_stored': True,
+                    'mission_tokens': mission_tokens,  # ~2000
+                    'total_tokens': prompt_tokens + mission_tokens,
+                    'thin_client': True
+                }
+
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
+            return {
+                'error': 'INTERNAL_ERROR',
+                'message': f'Failed to spawn agent: {str(e)}',
+                'severity': 'ERROR'
+            }
 
     @mcp.tool()
     async def get_workflow_status(
@@ -818,11 +981,12 @@ The agent templates are now being updated...
                 # Use MissionPlanner to build condensed mission (70% token reduction)
                 from giljo_mcp.mission_planner import MissionPlanner
 
-                planner = MissionPlanner(session, tenant_key)
+                # MissionPlanner requires DatabaseManager (not AsyncSession)
+                planner = MissionPlanner(db_manager)
 
-                # Get field priorities from orchestrator handover_summary (temporary until metadata column added)
-                # TODO: Add dedicated metadata JSONB column to MCPAgentJob model
-                metadata = orchestrator.handover_summary or {}
+                # Get field priorities from orchestrator job_metadata (Handover 0088)
+                # Uses dedicated job_metadata JSONB column for thin client data
+                metadata = orchestrator.job_metadata or {}
                 field_priorities = metadata.get('field_priorities', {})
                 user_id = metadata.get('user_id')
 
@@ -859,17 +1023,34 @@ The agent templates are now being updated...
 
                 # Amendment A: Broadcast WebSocket event for real-time UI update
                 try:
-                    # TODO: Integrate with WebSocket manager from 0086A
-                    # For now, log the event that would be broadcast
-                    logger.info(
-                        f"[THIN CLIENT] Orchestrator instructions fetched: "
-                        f"orchestrator_id={orchestrator_id}, "
-                        f"estimated_tokens={estimated_tokens}, "
-                        f"tenant_key={tenant_key}"
-                    )
-                    # WebSocket broadcast will be added when we integrate with api.dependencies.websocket
+                    # Import WebSocket manager (avoid circular imports)
+                    from api.app import state
+
+                    ws_manager = getattr(state, 'websocket_manager', None)
+
+                    if ws_manager:
+                        await ws_manager.broadcast_to_tenant(
+                            tenant_key=tenant_key,
+                            event_type="orchestrator:instructions_fetched",
+                            data={
+                                'orchestrator_id': orchestrator_id,
+                                'project_id': str(project.id),
+                                'estimated_tokens': estimated_tokens,
+                                'status': 'active',
+                                'timestamp': datetime.now(timezone.utc).isoformat(),
+                                'thin_client': True
+                            }
+                        )
+                        logger.info(
+                            f"[WEBSOCKET] Broadcasted orchestrator:instructions_fetched to {tenant_key}",
+                            extra={'orchestrator_id': orchestrator_id}
+                        )
+                    else:
+                        logger.debug("[WEBSOCKET] WebSocket manager not available (non-critical)")
+
                 except Exception as ws_error:
-                    logger.warning(f"WebSocket broadcast failed (non-critical): {ws_error}")
+                    # Non-blocking - WebSocket failures shouldn't break MCP tool
+                    logger.warning(f"[WEBSOCKET] Failed to broadcast event: {ws_error}")
 
                 return {
                     'orchestrator_id': orchestrator_id,
