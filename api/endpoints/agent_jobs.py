@@ -33,6 +33,14 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Handover 0086B: Production-grade WebSocket dependency injection
+from api.dependencies.websocket import get_websocket_dependency, WebSocketDependency
+from api.events.schemas import EventFactory
+
+# Handover 0086B: Production-grade WebSocket dependency injection
+from api.dependencies.websocket import get_websocket_dependency, WebSocketDependency
+from api.events.schemas import EventFactory
+
 from api.schemas.agent_job import (
     ChildJobSpec,
     JobAcknowledgeResponse,
@@ -157,7 +165,8 @@ def job_to_response(job: MCPAgentJob) -> JobResponse:
 async def create_job(
     job_request: JobCreateRequest,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
 ) -> JobCreateResponse:
     """
     Create a new agent job.
@@ -201,43 +210,53 @@ async def create_job(
     await db.commit()
     await db.refresh(job)
 
-    # Emit WebSocket event for real-time UI update (Handover 0086)
+    # Emit WebSocket event for real-time UI update (Handover 0086B Task 3.1)
+    # Production-grade implementation with dependency injection
     try:
-        from api.app import state
+        # Serialize agent data
+        agent_data = {
+            "job_id": str(job.job_id),
+            "agent_type": job.agent_type,
+            "status": "waiting",
+            "priority": 5,  # Default priority
+            "created_at": job.created_at.isoformat() if job.created_at else datetime.now(timezone.utc).isoformat(),
+        }
 
-        websocket_manager = getattr(state, "websocket_manager", None)
-        if websocket_manager:
-            # Serialize agent data
-            agent_data = {
+        # Get project_id if it exists
+        project_id = getattr(job, "project_id", None)
+        if project_id:
+            project_id = str(project_id)
+
+        # Broadcast via dependency injection (multi-tenant isolation enforced)
+        sent_count = await ws_dep.broadcast_to_tenant(
+            tenant_key=current_user.tenant_key,
+            event_type="agent:created",
+            data={
+                "project_id": project_id,
+                "tenant_key": current_user.tenant_key,
+                "agent": agent_data,
+            }
+        )
+
+        logger.info(
+            f"Agent creation broadcasted to {sent_count} clients",
+            extra={
                 "job_id": str(job.job_id),
                 "agent_type": job.agent_type,
-                "status": "waiting",
-                "priority": 5,  # Default priority
-                "created_at": job.created_at.isoformat() if job.created_at else datetime.now(timezone.utc).isoformat(),
+                "tenant_key": current_user.tenant_key,
+                "sent_count": sent_count
             }
-
-            # Broadcast to tenant-specific clients only (multi-tenant isolation)
-            for client_id, ws in websocket_manager.active_connections.items():
-                auth_context = websocket_manager.auth_contexts.get(client_id, {})
-                if auth_context.get("tenant_key") == current_user.tenant_key:
-                    try:
-                        await ws.send_json(
-                            {
-                                "type": "agent:created",
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
-                                "schema_version": "1.0",
-                                "data": {
-                                    "project_id": getattr(job, "project_id", None),
-                                    "tenant_key": current_user.tenant_key,
-                                    "agent": agent_data,
-                                },
-                            }
-                        )
-                    except Exception:
-                        # Client disconnected or error sending - continue
-                        pass
-    except Exception as ws_error:
-        logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
+        )
+    except Exception as e:
+        logger.error(
+            f"Failed to broadcast agent creation: {e}",
+            extra={
+                "job_id": str(job.job_id),
+                "agent_type": job.agent_type,
+                "tenant_key": current_user.tenant_key
+            },
+            exc_info=True
+        )
         # Non-critical - continue without WebSocket broadcast
 
     logger.info(f"Created job {job.job_id} for tenant {current_user.tenant_key}")
