@@ -174,7 +174,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
       try {
         const response = await api.prompts.staging(
-          this.currentProject.project_id,
+          this.currentProject.id,
           { tool: 'claude-code' }
         )
 
@@ -210,7 +210,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
       try {
         const response = await api.orchestrator.launchProject(
-          this.currentProject.project_id
+          this.currentProject.id
         )
 
         this.isLaunched = true
@@ -219,7 +219,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
         // Subscribe to WebSocket updates
         const wsStore = useWebSocketStore()
-        wsStore.subscribeToProject(this.currentProject.project_id)
+        wsStore.subscribeToProject(this.currentProject.id)
       } catch (error) {
         console.error('Failed to launch jobs:', error)
         this.error = error.message || 'Failed to launch jobs'
@@ -238,7 +238,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       this.error = null
 
       try {
-        await api.orchestrator.cancelStaging(this.currentProject.project_id)
+        await api.orchestrator.cancelStaging(this.currentProject.id)
         this.resetStaging()
       } catch (error) {
         console.error('Failed to cancel staging:', error)
@@ -277,7 +277,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
       try {
         await api.orchestrator.updateMission(
-          this.currentProject.project_id,
+          this.currentProject.id,
           missionText
         )
         this.orchestratorMission = missionText
@@ -407,7 +407,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
 
       try {
         const message = {
-          project_id: this.currentProject.project_id,
+          project_id: this.currentProject.id,
           content,
           from: 'developer',
           to_agent: recipient === 'broadcast' ? null : recipient,
@@ -455,7 +455,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
       if (!this.currentProject) return
 
       try {
-        await api.projects.completeProject(this.currentProject.project_id)
+        await api.projects.completeProject(this.currentProject.id)
 
         // Update local project
         if (this.currentProject) {
@@ -501,7 +501,7 @@ export const useProjectTabsStore = defineStore('projectTabs', {
      * @param {Object} data - Project update data
      */
     handleProjectUpdate(data) {
-      if (this.currentProject && data.project_id === this.currentProject.project_id) {
+      if (this.currentProject && data.project_id === this.currentProject.id) {
         this.currentProject = { ...this.currentProject, ...data }
       }
     }
