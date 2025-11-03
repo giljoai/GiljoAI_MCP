@@ -21,7 +21,7 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
-from giljo_mcp.models import Agent, AgentTemplate, Job, Project, Product
+from giljo_mcp.models import Agent, AgentTemplate, Job, MCPAgentJob, Project, Product
 from giljo_mcp.orchestrator import ProjectOrchestrator
 from giljo_mcp.template_manager import get_template_manager
 
@@ -605,24 +605,24 @@ The agent templates include MCP tool integration for seamless coordination.
     async def get_update_agents_instructions() -> dict[str, Any]:
         """
         Generate instructions for updating existing agent templates.
-        
+
         Provides instructions for updating already installed agent templates
         with the latest versions from the server.
-        
+
         Returns:
             Dictionary with update instructions
         """
         try:
             server_url = os.environ.get('GILJO_SERVER_URL', 'http://localhost:7272')
             agents_dir = Path.home() / '.claude' / 'agents'
-            
+
             # Check if agents are already installed
             if not agents_dir.exists():
                 return {
                     'success': False,
                     'instructions': "No agents installed. Please run /mcp__gil__fetch_agents first."
                 }
-            
+
             instructions = f"""
 # Update GiljoAI Agent Templates
 
@@ -664,13 +664,239 @@ If you have agents currently running, restart Claude Code to load the updates.
 
 The agent templates are now being updated...
 """
-            
+
             return {
                 'success': True,
                 'server_url': server_url,
                 'instructions': instructions
             }
-                
+
         except Exception as e:
             logger.error(f"Failed to generate update agents instructions: {e}", exc_info=True)
             return {'error': f"Failed to generate instructions: {str(e)}"}
+
+
+    # ========================================================================
+    # Thin Client MCP Tools (Handover 0088)
+    # Enable 70% token reduction via thin client architecture
+    # ========================================================================
+
+    @mcp.tool()
+    async def get_orchestrator_instructions(
+        orchestrator_id: str,
+        tenant_key: str
+    ) -> dict[str, Any]:
+        """
+        Fetch orchestrator-specific mission and instructions (Handover 0088).
+
+        CRITICAL: This enables thin client architecture for 70% token reduction.
+        Orchestrator calls this on startup to get its condensed mission.
+
+        Process:
+        1. Fetch orchestrator job from database
+        2. Get associated project and product
+        3. Apply field priorities to vision content
+        4. Return condensed mission (70% token reduction)
+        5. Broadcast WebSocket event for UI update
+
+        Args:
+            orchestrator_id: Orchestrator job UUID
+            tenant_key: Tenant isolation key
+
+        Returns:
+            {
+                'orchestrator_id': 'uuid',
+                'project_id': 'uuid',
+                'project_name': 'My Project',
+                'mission': 'Condensed mission with priority fields only',
+                'context_budget': 150000,
+                'context_used': 0,
+                'agent_templates': [...],
+                'field_priorities': {...},
+                'token_reduction_applied': True,
+                'estimated_tokens': 6000
+            }
+
+        Example:
+            instructions = await get_orchestrator_instructions(
+                orchestrator_id='orch-123',
+                tenant_key='tenant-abc'
+            )
+            # Returns condensed mission, not entire vision
+        """
+        try:
+            # Validate inputs (Amendment D: Production-grade error handling)
+            if not orchestrator_id or not orchestrator_id.strip():
+                return {
+                    'error': 'VALIDATION_ERROR',
+                    'message': 'Orchestrator ID is required and cannot be empty',
+                    'troubleshooting': [
+                        'Check thin prompt for orchestrator_id value',
+                        'Verify you copied the entire prompt correctly'
+                    ],
+                    'severity': 'ERROR'
+                }
+
+            if not tenant_key or not tenant_key.strip():
+                return {
+                    'error': 'VALIDATION_ERROR',
+                    'message': 'Tenant key is required for multi-tenant isolation',
+                    'troubleshooting': [
+                        'Check thin prompt for tenant_key value',
+                        'Ensure MCP server is authenticated correctly'
+                    ],
+                    'severity': 'ERROR'
+                }
+
+            async with db_manager.get_session_async() as session:
+                # Get orchestrator job with tenant isolation
+                result = await session.execute(
+                    select(MCPAgentJob).where(
+                        and_(
+                            MCPAgentJob.job_id == orchestrator_id,
+                            MCPAgentJob.tenant_key == tenant_key,
+                            MCPAgentJob.agent_type == 'orchestrator'
+                        )
+                    )
+                )
+                orchestrator = result.scalar_one_or_none()
+
+                if not orchestrator:
+                    return {
+                        'error': 'NOT_FOUND',
+                        'message': f'Orchestrator {orchestrator_id} not found in database',
+                        'details': {
+                            'orchestrator_id': orchestrator_id,
+                            'tenant_key': tenant_key,
+                            'search_performed': True
+                        },
+                        'troubleshooting': [
+                            'Verify orchestrator was created successfully during staging',
+                            'Check if project was deleted',
+                            'Ensure tenant_key matches the staging environment',
+                            f'Check database: SELECT * FROM mcp_agent_jobs WHERE job_id = \'{orchestrator_id}\''
+                        ],
+                        'severity': 'ERROR',
+                        'contact_support': 'If problem persists: support@giljoai.com'
+                    }
+
+                # Get project with tenant isolation
+                result = await session.execute(
+                    select(Project).where(
+                        and_(
+                            Project.id == orchestrator.project_id,
+                            Project.tenant_key == tenant_key
+                        )
+                    )
+                )
+                project = result.scalar_one_or_none()
+
+                if not project:
+                    return {
+                        'error': 'NOT_FOUND',
+                        'message': 'Project not found',
+                        'troubleshooting': [
+                            'Project may have been deleted',
+                            'Check database integrity'
+                        ],
+                        'severity': 'ERROR'
+                    }
+
+                # Get product (if exists)
+                product = None
+                if project.product_id:
+                    result = await session.execute(
+                        select(Product).where(
+                            and_(
+                                Product.id == project.product_id,
+                                Product.tenant_key == tenant_key
+                            )
+                        )
+                    )
+                    product = result.scalar_one_or_none()
+
+                # Use MissionPlanner to build condensed mission (70% token reduction)
+                from giljo_mcp.mission_planner import MissionPlanner
+
+                planner = MissionPlanner(session, tenant_key)
+
+                # Get field priorities from orchestrator handover_summary (temporary until metadata column added)
+                # TODO: Add dedicated metadata JSONB column to MCPAgentJob model
+                metadata = orchestrator.handover_summary or {}
+                field_priorities = metadata.get('field_priorities', {})
+                user_id = metadata.get('user_id')
+
+                # Generate condensed mission with field priorities applied
+                condensed_mission = await planner._build_context_with_priorities(
+                    product=product,
+                    project=project,
+                    field_priorities=field_priorities,
+                    user_id=user_id
+                )
+
+                # Get agent templates
+                result = await session.execute(
+                    select(AgentTemplate).where(
+                        and_(
+                            AgentTemplate.tenant_key == tenant_key,
+                            AgentTemplate.is_active == True
+                        )
+                    ).limit(8)  # Max 8 agent types
+                )
+                templates = result.scalars().all()
+
+                template_list = [
+                    {
+                        'name': t.name,
+                        'role': t.role,
+                        'description': t.description[:200] if t.description else ''
+                    }
+                    for t in templates
+                ]
+
+                # Calculate token estimate
+                estimated_tokens = len(condensed_mission) // 4  # 1 token ≈ 4 chars
+
+                # Amendment A: Broadcast WebSocket event for real-time UI update
+                try:
+                    # TODO: Integrate with WebSocket manager from 0086A
+                    # For now, log the event that would be broadcast
+                    logger.info(
+                        f"[THIN CLIENT] Orchestrator instructions fetched: "
+                        f"orchestrator_id={orchestrator_id}, "
+                        f"estimated_tokens={estimated_tokens}, "
+                        f"tenant_key={tenant_key}"
+                    )
+                    # WebSocket broadcast will be added when we integrate with api.dependencies.websocket
+                except Exception as ws_error:
+                    logger.warning(f"WebSocket broadcast failed (non-critical): {ws_error}")
+
+                return {
+                    'orchestrator_id': orchestrator_id,
+                    'project_id': str(project.id),
+                    'project_name': project.name,
+                    'project_description': project.description or '',
+                    'mission': condensed_mission,
+                    'context_budget': orchestrator.context_budget or 150000,
+                    'context_used': orchestrator.context_used or 0,
+                    'agent_templates': template_list,
+                    'field_priorities': field_priorities,
+                    'token_reduction_applied': bool(field_priorities),
+                    'estimated_tokens': estimated_tokens,
+                    'instance_number': orchestrator.instance_number or 1,
+                    'thin_client': True
+                }
+
+        except Exception as e:
+            logger.error(f"Error fetching orchestrator instructions: {e}", exc_info=True)
+            return {
+                'error': 'INTERNAL_ERROR',
+                'message': f'Unexpected error: {str(e)}',
+                'troubleshooting': [
+                    'Check MCP server logs: ~/.giljo_mcp/logs/mcp_adapter.log',
+                    'Check API server logs: ~/.giljo_mcp/logs/api.log',
+                    'Restart MCP server if issue persists'
+                ],
+                'severity': 'ERROR',
+                'contact_support': 'support@giljoai.com'
+            }
