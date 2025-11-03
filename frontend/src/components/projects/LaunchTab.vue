@@ -878,13 +878,22 @@ function closePromptDialog() {
 async function copyPromptToClipboard() {
   let clipboardSuccess = false
 
+  // DEBUG: Log what we're trying to copy
+  console.log('[STAGING THIN] DEBUG - generatedPrompt.value length:', generatedPrompt.value?.length)
+  console.log('[STAGING THIN] DEBUG - generatedPrompt.value preview:', generatedPrompt.value?.substring(0, 100))
+
   try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      // Modern Clipboard API (HTTPS/localhost)
+    // Check if we're in a secure context (HTTPS or localhost)
+    const isSecureContext = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+
+    if (isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+      // Modern Clipboard API (HTTPS/localhost only)
       await navigator.clipboard.writeText(generatedPrompt.value)
       clipboardSuccess = true
+      console.log('[STAGING THIN] DEBUG - Used modern Clipboard API')
     } else {
-      // Legacy fallback for non-HTTPS (HTTP over LAN/WAN)
+      // Legacy fallback for HTTP over network (Chrome blocks modern API on HTTP)
+      console.log('[STAGING THIN] DEBUG - Using fallback method (HTTP or no clipboard API)')
       const textArea = document.createElement('textarea')
       textArea.value = generatedPrompt.value
       textArea.style.position = 'fixed'
@@ -893,9 +902,17 @@ async function copyPromptToClipboard() {
       document.body.appendChild(textArea)
       textArea.focus()
       textArea.select()
-      const success = document.execCommand('copy')
+
+      try {
+        const success = document.execCommand('copy')
+        clipboardSuccess = success
+        console.log('[STAGING THIN] DEBUG - execCommand result:', success)
+      } catch (execErr) {
+        console.error('[STAGING THIN] DEBUG - execCommand failed:', execErr)
+        clipboardSuccess = false
+      }
+
       document.body.removeChild(textArea)
-      clipboardSuccess = success
     }
   } catch (clipErr) {
     console.error('[STAGING THIN] Clipboard copy failed:', clipErr)
