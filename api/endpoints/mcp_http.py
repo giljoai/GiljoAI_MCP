@@ -1,6 +1,11 @@
 """
 MCP HTTP Endpoint - Pure JSON-RPC 2.0 Implementation
 
+CHANGELOG:
+- 2025-11-03: Fixed tool catalog mismatch - exposed all 30 orchestration tools
+              Previously only 6 tools were advertised in tools/list while 30 were
+              callable. Now all tools are properly exposed for MCP clients.
+
 Implements the MCP (Model Context Protocol) over HTTP using JSON-RPC 2.0.
 This endpoint enables Claude Code, Codex CLI, and other MCP clients to connect
 via HTTP transport with zero client dependencies.
@@ -132,8 +137,10 @@ async def handle_tools_list(
     if not session:
         raise HTTPException(status_code=401, detail="Session expired")
 
-    # Tool catalog (from existing tool_accessor methods)
+    # Complete tool catalog matching ALL methods in tool_map (handle_tools_call)
+    # This ensures MCP clients can discover and use all available orchestration tools
     tools = [
+        # Project Management Tools
         {
             "name": "create_project",
             "description": "Create a new project with mission and optional agent sequence",
@@ -188,6 +195,19 @@ async def handle_tools_list(
             }
         },
         {
+            "name": "close_project",
+            "description": "Close an active project",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project ID to close"}
+                },
+                "required": ["project_id"]
+            }
+        },
+        
+        # Orchestrator Tools
+        {
             "name": "get_orchestrator_instructions",
             "description": "Fetch orchestrator mission with 70% token reduction (thin client architecture)",
             "inputSchema": {
@@ -199,6 +219,278 @@ async def handle_tools_list(
                 "required": ["orchestrator_id", "tenant_key"]
             }
         },
+        
+        # Agent Management Tools
+        {
+            "name": "spawn_agent",
+            "description": "Spawn a new AI agent for the project",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_type": {"type": "string", "description": "Type of agent to spawn"},
+                    "project_id": {"type": "string", "description": "Project ID"},
+                    "configuration": {"type": "object", "description": "Agent configuration"}
+                },
+                "required": ["agent_type", "project_id"]
+            }
+        },
+        {
+            "name": "list_agents",
+            "description": "List all agents in the current project",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project ID"},
+                    "status": {"type": "string", "description": "Filter by agent status"}
+                }
+            }
+        },
+        {
+            "name": "get_agent_status",
+            "description": "Get status of a specific agent",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {"type": "string", "description": "Agent ID"}
+                },
+                "required": ["agent_id"]
+            }
+        },
+        {
+            "name": "update_agent",
+            "description": "Update agent configuration or status",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {"type": "string", "description": "Agent ID"},
+                    "status": {"type": "string", "description": "New status"},
+                    "configuration": {"type": "object", "description": "Configuration updates"}
+                },
+                "required": ["agent_id"]
+            }
+        },
+        {
+            "name": "retire_agent",
+            "description": "Retire an agent from active duty",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {"type": "string", "description": "Agent ID to retire"}
+                },
+                "required": ["agent_id"]
+            }
+        },
+        
+        # Message Communication Tools
+        {
+            "name": "send_message",
+            "description": "Send a message to another agent",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "to_agent": {"type": "string", "description": "Target agent ID"},
+                    "message": {"type": "string", "description": "Message content"},
+                    "priority": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high", "critical"],
+                        "description": "Message priority"
+                    }
+                },
+                "required": ["to_agent", "message"]
+            }
+        },
+        {
+            "name": "receive_messages",
+            "description": "Receive pending messages for current agent",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {"type": "string", "description": "Receiving agent ID"},
+                    "limit": {"type": "integer", "description": "Maximum messages to retrieve"}
+                }
+            }
+        },
+        {
+            "name": "acknowledge_message",
+            "description": "Acknowledge receipt of a message",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "message_id": {"type": "string", "description": "Message ID to acknowledge"}
+                },
+                "required": ["message_id"]
+            }
+        },
+        {
+            "name": "list_messages",
+            "description": "List messages with optional filters",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {"type": "string", "description": "Filter by agent"},
+                    "status": {"type": "string", "description": "Filter by message status"},
+                    "limit": {"type": "integer", "description": "Maximum messages to retrieve"}
+                }
+            }
+        },
+        
+        # Task Management Tools
+        {
+            "name": "create_task",
+            "description": "Create a new task",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Task title"},
+                    "description": {"type": "string", "description": "Task description"},
+                    "assigned_to": {"type": "string", "description": "Agent to assign task to"},
+                    "priority": {"type": "string", "description": "Task priority"}
+                },
+                "required": ["title"]
+            }
+        },
+        {
+            "name": "list_tasks",
+            "description": "List tasks with optional filters",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "description": "Filter by task status"},
+                    "assigned_to": {"type": "string", "description": "Filter by assignee"},
+                    "project_id": {"type": "string", "description": "Filter by project"}
+                }
+            }
+        },
+        {
+            "name": "update_task",
+            "description": "Update task details or status",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task ID"},
+                    "status": {"type": "string", "description": "New status"},
+                    "updates": {"type": "object", "description": "Updates to apply"}
+                },
+                "required": ["task_id"]
+            }
+        },
+        {
+            "name": "assign_task",
+            "description": "Assign task to an agent",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task ID"},
+                    "agent_id": {"type": "string", "description": "Agent to assign to"}
+                },
+                "required": ["task_id", "agent_id"]
+            }
+        },
+        {
+            "name": "complete_task",
+            "description": "Mark task as completed",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task ID to complete"},
+                    "result": {"type": "string", "description": "Completion result/notes"}
+                },
+                "required": ["task_id"]
+            }
+        },
+        
+        # Template Management Tools
+        {
+            "name": "list_templates",
+            "description": "List available agent templates",
+            "inputSchema": {
+                "type": "object",
+                "properties": {}
+            }
+        },
+        {
+            "name": "get_template",
+            "description": "Get a specific agent template",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "template_name": {"type": "string", "description": "Template name"}
+                },
+                "required": ["template_name"]
+            }
+        },
+        {
+            "name": "create_template",
+            "description": "Create a new agent template",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Template name"},
+                    "content": {"type": "object", "description": "Template content"}
+                },
+                "required": ["name", "content"]
+            }
+        },
+        {
+            "name": "update_template",
+            "description": "Update an existing template",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "template_name": {"type": "string", "description": "Template name"},
+                    "updates": {"type": "object", "description": "Updates to apply"}
+                },
+                "required": ["template_name", "updates"]
+            }
+        },
+        
+        # Context Discovery Tools
+        {
+            "name": "discover_context",
+            "description": "Discover available context in the project",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project ID"}
+                }
+            }
+        },
+        {
+            "name": "get_file_context",
+            "description": "Get context from a specific file",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "Path to file"}
+                },
+                "required": ["file_path"]
+            }
+        },
+        {
+            "name": "search_context",
+            "description": "Search through project context",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "project_id": {"type": "string", "description": "Project ID"},
+                    "limit": {"type": "integer", "description": "Maximum results"}
+                },
+                "required": ["query"]
+            }
+        },
+        {
+            "name": "get_context_summary",
+            "description": "Get summary of available context",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project ID"}
+                }
+            }
+        },
+        
+        # Health & Status Tools
         {
             "name": "health_check",
             "description": "Check MCP server health status",
