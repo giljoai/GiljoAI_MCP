@@ -10,6 +10,26 @@
 
 GiljoAI MCP v3.0 implements **AI-agnostic integration** that supports multiple AI development tools including Claude Code, CODEX CLI, and Gemini CLI. The system provides a **user-friendly configuration generator** that creates ready-to-use MCP configuration files for seamless integration across platforms.
 
+### Quick MCP Commands (0069)
+
+Use native CLI commands to register the Giljo MCP server over HTTP:
+
+```bash
+# Codex CLI
+codex mcp add --transport http giljoai http://localhost:7272/mcp --header "X-API-Key: <your_api_key>"
+
+# Gemini CLI
+gemini mcp add --transport http giljoai http://localhost:7272/mcp --header "X-API-Key: <your_api_key>"
+
+# Verify
+codex mcp list
+gemini mcp list
+```
+
+Notes:
+- Replace `http://localhost:7272` with your server URL.
+- API key is generated per tenant; see Settings → API & Integrations.
+
 ### Key Features
 
 - **Multi-AI Tool Support**: Claude Code, CODEX, Gemini CLI

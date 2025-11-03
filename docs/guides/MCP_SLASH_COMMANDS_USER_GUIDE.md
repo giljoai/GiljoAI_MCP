@@ -10,6 +10,8 @@
 
 GiljoAI MCP Slash Commands automate agent workflow setup, reducing manual steps from **12+ to just 3 commands**. This guide shows you how to use these commands to quickly set up and launch AI-powered development projects.
 
+Naming note: Newer commands use the `/gil_*` pattern (0083). Legacy aliases with `/mcp__gil__*` may still exist for backward compatibility.
+
 ### Benefits
 
 - ✅ **3 commands** instead of 12+ manual steps
@@ -82,6 +84,20 @@ After restart, use: /mcp__gil__activate_project <project-alias>
 - ⚠️ **Restart required** - Agents won't be available until you restart Claude Code
 - ⚠️ **One-time setup** - Only needs to be run once (unless updating agents)
 - ⚠️ **Internet required** - Needs connection to GiljoAI server
+
+#### Alternative: Import via /gil_* Commands (0084b)
+
+You can also install/update templates using the new import slash commands:
+
+```
+/gil_import_personalagents      # Import to ~/.claude/agents (recommended)
+/gil_import_productagents       # Import to your product's .claude/agents
+```
+
+Notes:
+- Creates timestamped backups before writing
+- Writes YAML-frontmatter `.md` templates
+- Manual export only — auto-export from orchestrator has been removed (0074)
 
 ---
 
@@ -165,7 +181,7 @@ The mission plan has been staged and is ready for execution.
 /mcp__gil__launch_project <ALIAS>
 ```
 
-**Purpose:** Launches the orchestration workflow, spawning agents and beginning coordinated development.
+**Purpose:** Launches the orchestration workflow and begins orchestrator-driven coordination.
 
 **Parameters:**
 - `<ALIAS>` - Your project's 6-character alias
@@ -176,7 +192,7 @@ The mission plan has been staged and is ready for execution.
 
 **What It Does:**
 1. Loads mission context and requirements
-2. Verifies all required agents are available
+2. Verifies all required agents are available (local templates must be installed; no auto-export)
 3. Generates detailed orchestration instructions
 4. Guides you through agent coordination workflow
 
@@ -226,8 +242,8 @@ Begin orchestration now.
 ```
 
 **What Happens Next:**
-- Claude Code follows orchestration instructions automatically
-- Agents are spawned as needed
+- Claude Code follows orchestration instructions
+- Orchestrator spawns agent jobs as needed (no template auto-export)
 - Progress tracked in real-time
 - You can monitor via GiljoAI web dashboard
 

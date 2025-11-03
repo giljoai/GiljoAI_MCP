@@ -1,5 +1,7 @@
 # Devlog: Handover 0062 - Project Launch Panel & Database Foundation
 
+> Superseded Notice (2025-10-29): Core “Active Jobs” UI concepts from 0062 were superseded by Handover 0073 (Static Agent Grid with Enhanced Messaging). This devlog remains for historical reference. See: `handovers/completed/0073_SUPERSEDES_0062_0066-C.md` and `docs/features/agent_grid_static_0073.md`.
+
 **Date**: 2025-10-28
 **Developer**: Claude (AI Agent)
 **Duration**: ~3 hours

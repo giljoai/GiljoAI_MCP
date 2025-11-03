@@ -186,7 +186,7 @@ All color combinations meet **WCAG 2.1 AA standards** for contrast:
 
 ## References
 
-- **Handover 0077**: Launch Jobs Dual Tab Interface (original agent colors)
+- **Handover 0077**: Launch/Jobs Dual‑Tab Interface (retired; colors referenced historically; superseded by 0073 grid)
 - **Handover 0041**: Agent Template Management System
 - **Frontend Styles**: `frontend/src/styles/agent-colors.scss`
 - **Color Config**: `frontend/src/config/agentColors.js`

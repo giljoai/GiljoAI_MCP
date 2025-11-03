@@ -186,6 +186,26 @@ async def handle_tools_list(
                 },
                 "required": ["project_id"]
             }
+        },
+        {
+            "name": "get_orchestrator_instructions",
+            "description": "Fetch orchestrator mission with 70% token reduction (thin client architecture)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "orchestrator_id": {"type": "string", "description": "Orchestrator job UUID"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"}
+                },
+                "required": ["orchestrator_id", "tenant_key"]
+            }
+        },
+        {
+            "name": "health_check",
+            "description": "Check MCP server health status",
+            "inputSchema": {
+                "type": "object",
+                "properties": {}
+            }
         }
     ]
 
@@ -232,6 +252,8 @@ async def handle_tools_call(
         "get_project": state.tool_accessor.get_project,
         "switch_project": state.tool_accessor.switch_project,
         "close_project": state.tool_accessor.close_project,
+        "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
+        "health_check": state.tool_accessor.health_check,
         "spawn_agent": state.tool_accessor.spawn_agent,
         "list_agents": state.tool_accessor.list_agents,
         "get_agent_status": state.tool_accessor.get_agent_status,
