@@ -427,13 +427,8 @@
 
       <!-- API Keys -->
       <v-window-item value="api-keys">
-        <v-card>
-          <v-card-title>API Keys</v-card-title>
-          <v-card-subtitle>Manage your API keys for external services</v-card-subtitle>
-          <v-card-text>
-            <ApiKeyManager />
-          </v-card-text>
-        </v-card>
+        <!-- Removed outer card title/subtitle - ApiKeyManager has its own -->
+        <ApiKeyManager />
       </v-window-item>
 
       <!-- Integrations -->
@@ -534,9 +529,10 @@
                         />
                       </div>
                       <v-btn
-                        color="secondary"
-                        variant="outlined"
+                        color="primary"
+                        variant="flat"
                         size="small"
+                        width="120"
                         @click="openSerenaAdvanced"
                         :disabled="toggling"
                       >

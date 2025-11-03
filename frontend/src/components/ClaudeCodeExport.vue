@@ -37,6 +37,7 @@
                 color="primary"
                 variant="flat"
                 size="small"
+                width="120"
                 @click="copyProductCommand"
               >
                 Copy Command
@@ -59,6 +60,7 @@
                 color="primary"
                 variant="flat"
                 size="small"
+                width="120"
                 @click="copyPersonalCommand"
               >
                 Copy Command

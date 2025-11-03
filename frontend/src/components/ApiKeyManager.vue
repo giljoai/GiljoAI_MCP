@@ -1,7 +1,6 @@
 <template>
   <v-card>
     <v-card-title class="d-flex align-center">
-      <v-icon class="mr-2">mdi-key-variant</v-icon>
       API Keys
       <v-spacer />
       <v-btn color="primary" @click="showWizard = true" :disabled="loading">

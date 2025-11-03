@@ -7,34 +7,32 @@ Handover 0086A: Production-Grade Stage Project Architecture
 Created: 2025-11-02
 """
 
-# Import legacy dependencies - using lazy import to avoid circular dependency
-import importlib
-
-def __getattr__(name):
-    """
-    Lazy import for legacy dependencies to avoid circular imports.
-
-    This allows code to import from api.dependencies while we transition
-    from the flat file (dependencies.py) to the module structure (dependencies/).
-    """
-    if name in ("get_tenant_key", "get_db"):
-        # Import the old dependencies.py module
-        legacy_module = importlib.import_module("..dependencies", __name__)
-        return getattr(legacy_module, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
+# Import WebSocket dependencies from this module
 from .websocket import (
     get_websocket_manager,
     get_websocket_dependency,
     WebSocketDependency
 )
 
+# Import legacy dependencies from the sibling dependencies.py file
+# Use importlib to load the .py file directly (avoiding package/module conflict)
+import importlib.util
+import os
+
+_deps_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dependencies.py')
+_spec = importlib.util.spec_from_file_location("_legacy_dependencies", _deps_file)
+_legacy_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_legacy_module)
+
+# Re-export legacy dependencies for backwards compatibility
+get_tenant_key = _legacy_module.get_tenant_key
+get_db = _legacy_module.get_db
+
 __all__ = [
-    # Legacy dependencies (backwards compatibility via __getattr__)
+    # Legacy dependencies (backwards compatibility)
     "get_tenant_key",
     "get_db",
-    # New WebSocket dependencies
+    # WebSocket dependencies
     "get_websocket_manager",
     "get_websocket_dependency",
     "WebSocketDependency"
