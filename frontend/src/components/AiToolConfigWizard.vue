@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-model="showWizard" max-width="720">
     <template #activator="{ props }">
-      <v-btn v-bind="props" color="primary" variant="flat" size="small">
+      <v-btn v-bind="props" color="primary" variant="flat" size="small" width="120">
         Configurator
       </v-btn>
     </template>
