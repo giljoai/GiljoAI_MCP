@@ -68,36 +68,42 @@ def get_claude_code_config(server_url: str, api_key: str) -> str:
 
 def get_codex_config(server_url: str, api_key: str) -> str:
     """
-    Generate Codex CLI MCP HTTP transport command (placeholder).
+    Generate Codex CLI MCP HTTP transport command.
+
+    Uses bearer token env var, because Codex URL transport does not
+    support arbitrary headers like X-API-Key.
 
     Args:
         server_url: GiljoAI server URL
         api_key: User's API key
 
     Returns:
-        Command string for HTTP transport (placeholder)
+        Command string(s) for HTTP transport (export + add)
     """
-    return f"""codex mcp add --transport http giljo-mcp {server_url}/mcp \\
-  --header "X-API-Key: {api_key}"
-
-Note: Codex CLI MCP integration is coming soon. This command syntax is a placeholder for future implementation."""
+    return (
+        f"export GILJO_API_KEY=\"{api_key}\"\n"
+        f"codex mcp add --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp"
+    )
 
 
 def get_gemini_config(server_url: str, api_key: str) -> str:
     """
-    Generate Gemini CLI MCP HTTP transport command (placeholder).
+    Generate Gemini CLI MCP HTTP transport command.
+
+    Mirrors Codex behavior: pass API key via Authorization: Bearer using
+    an environment variable.
 
     Args:
         server_url: GiljoAI server URL
         api_key: User's API key
 
     Returns:
-        Command string for HTTP transport (placeholder)
+        Command string(s) for HTTP transport (export + add)
     """
-    return f"""gemini mcp add --transport http giljo-mcp {server_url}/mcp \\
-  --header "X-API-Key: {api_key}"
-
-Note: Gemini CLI MCP integration is coming soon. This command syntax is a placeholder for future implementation."""
+    return (
+        f"export GILJO_API_KEY=\"{api_key}\"\n"
+        f"gemini mcp add --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp"
+    )
 
 
 def get_http_tool_instructions(tool_id: str) -> List[str]:
@@ -120,17 +126,19 @@ def get_http_tool_instructions(tool_id: str) -> List[str]:
         ]
     elif tool_id == "codex":
         return [
-            "Codex CLI MCP integration is coming soon",
-            "The command syntax shown is a placeholder",
-            "Once Codex CLI supports MCP, update this configuration",
-            "Check Codex CLI documentation for the latest MCP support status"
+            "Open your terminal or command prompt",
+            "Export your API key as GILJO_API_KEY (see command above)",
+            "Run the codex mcp add command shown above",
+            "Verify connection with: codex mcp list",
+            "Start using GiljoAI tools in Codex sessions"
         ]
     elif tool_id == "gemini":
         return [
-            "Gemini CLI MCP integration is coming soon",
-            "The command syntax shown is a placeholder",
-            "Once Gemini CLI supports MCP, update this configuration",
-            "Check Gemini CLI documentation for the latest MCP support status"
+            "Open your terminal or command prompt",
+            "Export your API key as GILJO_API_KEY (see command above)",
+            "Run the gemini mcp add command shown above",
+            "Verify connection with: gemini mcp list",
+            "Start using GiljoAI tools in Gemini sessions"
         ]
     else:
         return [
@@ -235,13 +243,13 @@ async def generate_ai_tool_config(
         "codex": {
             "generator": get_codex_config,
             "format": "command",
-            "file_location": "Terminal/PowerShell (Coming Soon)",
+            "file_location": "Terminal/PowerShell",
             "filename": "giljo-codex-setup.md"
         },
         "gemini": {
             "generator": get_gemini_config,
             "format": "command",
-            "file_location": "Terminal/PowerShell (Coming Soon)",
+            "file_location": "Terminal/PowerShell",
             "filename": "giljo-gemini-setup.md"
         }
     }

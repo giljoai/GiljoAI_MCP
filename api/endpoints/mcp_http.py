@@ -623,6 +623,7 @@ async def mcp_endpoint(
     rpc_request: JSONRPCRequest,
     request: Request,
     x_api_key: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -640,13 +641,29 @@ async def mcp_endpoint(
     Returns:
         JSON-RPC 2.0 response (success or error)
     """
-    # Validate API key header
-    if not x_api_key:
+    # Resolve API key from supported headers
+    api_key_value: Optional[str] = None
+
+    # Preferred header for this server (backward compatible)
+    if x_api_key:
+        api_key_value = x_api_key
+
+    # Fallback: Authorization: Bearer <token> (for Codex/Gemini URL transports)
+    if not api_key_value and authorization:
+        try:
+            scheme, _, token = authorization.partition(" ")
+            if scheme.lower() == "bearer" and token:
+                api_key_value = token
+        except Exception:
+            api_key_value = None
+
+    # Validate API key presence
+    if not api_key_value:
         return JSONRPCErrorResponse(
             error=JSONRPCError(
                 code=-32600,
-                message="X-API-Key header required",
-                data={"header": "X-API-Key"}
+                message="Authentication required (X-API-Key or Authorization: Bearer)",
+                data={"headers": ["X-API-Key", "Authorization: Bearer <token>"]}
             ),
             id=rpc_request.id
         )
@@ -655,7 +672,7 @@ async def mcp_endpoint(
     session_manager = MCPSessionManager(db)
 
     # Get or create session
-    session = await session_manager.get_or_create_session(x_api_key)
+    session = await session_manager.get_or_create_session(api_key_value)
     if not session:
         return JSONRPCErrorResponse(
             error=JSONRPCError(
