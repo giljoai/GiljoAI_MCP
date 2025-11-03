@@ -59,8 +59,9 @@ export const useTaskStore = defineStore('tasks', () => {
 
   // Actions
   async function fetchTasks(params = {}) {
-    // Add current product filter if available
-    if (productStore.currentProductId && !params.product_id) {
+    // Don't auto-add product_id if filter_type is explicitly set (e.g., 'all_tasks')
+    // Only add product_id when no filter_type is specified
+    if (productStore.currentProductId && !params.product_id && !params.filter_type) {
       params.product_id = productStore.currentProductId
     }
 

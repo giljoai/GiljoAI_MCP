@@ -117,9 +117,11 @@ const jobsIcon = computed(() => {
   const isDark = theme.global.current.value.dark
   
   if (isJobsRoute) {
+    // Active state: Yellow/White for dark theme, Blue/Yellow for light theme
     return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
   }
-  return '/icons/Giljo_Inactive_Face.svg'
+  // Inactive state: Light gray for dark theme, Dark gray for light theme
+  return isDark ? '/icons/Giljo_Inactive_Dark.svg' : '/icons/Giljo_Inactive_Light.svg'
 })
 
 // Navigation items

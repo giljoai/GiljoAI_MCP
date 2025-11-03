@@ -171,10 +171,7 @@
       <v-card-title class="d-flex align-center py-3">
         <span class="text-h6">Tasks</span>
         <v-spacer />
-        <v-btn-toggle v-model="showHierarchy" size="small" density="compact">
-          <v-btn :value="false" icon="mdi-format-list-bulleted" aria-label="List view" />
-          <v-btn :value="true" icon="mdi-file-tree" aria-label="Hierarchy view" />
-        </v-btn-toggle>
+        <!-- Hierarchy toggle removed - feature not used -->
       </v-card-title>
 
       <v-data-table
@@ -224,60 +221,14 @@
         <template v-slot:item.title="{ item }">
           <div
             class="task-row-content"
-            :class="{
-              'hierarchy-item': showHierarchy && item.parent_task_id,
-              'parent-item': showHierarchy && hasChildren(item.id),
-            }"
             :data-test="`task-row-${item.id}`"
           >
-            <!-- Hierarchy Indicators -->
-            <div v-if="showHierarchy" class="hierarchy-indicators">
-              <div
-                v-if="item.parent_task_id"
-                class="hierarchy-line"
-                :style="{ marginLeft: getTaskDepth(item.id) * 20 + 'px' }"
-              >
-                <v-icon size="small" color="grey">mdi-subdirectory-arrow-right</v-icon>
-              </div>
-              <v-icon
-                v-if="hasChildren(item.id)"
-                size="small"
-                color="primary"
-                class="parent-indicator"
-              >
-                mdi-folder
-              </v-icon>
-            </div>
-
             <!-- Task Content -->
             <div class="task-content flex-grow-1" @click="editTask(item)" style="cursor: pointer;">
               <div class="d-flex align-center">
                 <span class="font-weight-medium">{{ item.title }}</span>
               </div>
               <div class="text-caption text-medium-emphasis description-truncate">{{ item.description }}</div>
-
-              <!-- Parent/Child Indicators -->
-              <div v-if="showHierarchy" class="hierarchy-info mt-1">
-                <v-chip
-                  v-if="item.parent_task_id"
-                  size="x-small"
-                  color="info"
-                  variant="outlined"
-                  class="mr-1"
-                >
-                  <v-icon start size="x-small">mdi-arrow-up</v-icon>
-                  Child of {{ getTaskTitle(item.parent_task_id) }}
-                </v-chip>
-                <v-chip
-                  v-if="hasChildren(item.id)"
-                  size="x-small"
-                  color="primary"
-                  variant="outlined"
-                >
-                  <v-icon start size="x-small">mdi-arrow-down</v-icon>
-                  {{ getChildCount(item.id) }} child{{ getChildCount(item.id) > 1 ? 'ren' : '' }}
-                </v-chip>
-              </div>
             </div>
           </div>
         </template>
@@ -533,7 +484,7 @@ const selectedTasks = ref([])
 const selectAll = ref(false)
 const showConversionDialog = ref(false)
 
-// Hierarchy state
+// Hierarchy state (feature disabled - not used)
 const showHierarchy = ref(false)
 const showConversionHistory = ref(false)
 
@@ -616,29 +567,9 @@ const filteredTasks = computed(() => {
   return filteredList
 })
 
+// Hierarchy feature disabled - return filtered tasks directly
 const hierarchicalTasks = computed(() => {
-  if (!showHierarchy.value) {
-    return filteredTasks.value
-  }
-
-  // Sort tasks to show parents before children
-  const sorted = [...filteredTasks.value].sort((a, b) => {
-    // Root tasks (no parent) come first
-    if (!a.parent_task_id && b.parent_task_id) return -1
-    if (a.parent_task_id && !b.parent_task_id) return 1
-
-    // If both have parents, sort by parent first, then by creation date
-    if (a.parent_task_id && b.parent_task_id) {
-      if (a.parent_task_id !== b.parent_task_id) {
-        return a.parent_task_id.localeCompare(b.parent_task_id)
-      }
-    }
-
-    // Sort by creation date as fallback
-    return new Date(a.created_at || 0) - new Date(b.created_at || 0)
-  })
-
-  return sorted
+  return filteredTasks.value
 })
 
 const totalTasks = computed(() => tasks.value.length)
@@ -788,34 +719,9 @@ function onTasksConverted(convertedProjects) {
   )
 }
 
-// Hierarchy management methods
-function hasChildren(taskId) {
-  return filteredTasks.value.some((task) => task.parent_task_id === taskId)
-}
+// Hierarchy methods removed - feature not used
 
-function getChildCount(taskId) {
-  return filteredTasks.value.filter((task) => task.parent_task_id === taskId).length
-}
-
-function getTaskDepth(taskId, depth = 0) {
-  const task = filteredTasks.value.find((t) => t.id === taskId)
-  if (!task || !task.parent_task_id || depth > 10) return depth
-  return getTaskDepth(task.parent_task_id, depth + 1)
-}
-
-function getTaskTitle(taskId) {
-  const task = filteredTasks.value.find((t) => t.id === taskId)
-  return task ? task.title : 'Unknown Task'
-}
-
-// Hierarchy helper methods
-function isDescendant(ancestorId, descendantId) {
-  const descendant = filteredTasks.value.find((t) => t.id === descendantId)
-  if (!descendant || !descendant.parent_task_id) return false
-
-  if (descendant.parent_task_id === ancestorId) return true
-  return isDescendant(ancestorId, descendant.parent_task_id)
-}
+// Hierarchy helper methods removed - feature not used
 
 // Conversion history handlers
 function handleProjectSelected(projectId) {
@@ -837,14 +743,18 @@ async function saveTask() {
   saving.value = true
   try {
     if (editingTask.value) {
-      await taskStore.updateTask(editingTask.value.id, currentTask.value)
+      // Exclude parent_task_id from updates (feature not used)
+      const { parent_task_id, ...taskData } = currentTask.value
+      await taskStore.updateTask(editingTask.value.id, taskData)
     } else {
       // Add current product_id to new task
       const productId = productStore.effectiveProductId
       if (productId) {
         currentTask.value.product_id = productId
       }
-      await taskStore.createTask(currentTask.value)
+      // Exclude parent_task_id from creation (feature not used)
+      const { parent_task_id, ...taskData } = currentTask.value
+      await taskStore.createTask(taskData)
     }
     cancelTask()
     // Phase 4: Refresh tasks to show updates
@@ -916,37 +826,7 @@ onMounted(async () => {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
-.hierarchy-indicators {
-  display: flex;
-  align-items: center;
-  margin-right: 8px;
-}
-
-.hierarchy-line {
-  display: flex;
-  align-items: center;
-  height: 20px;
-}
-
-.parent-indicator {
-  margin-left: 4px;
-}
-
-.hierarchy-item {
-  border-left: 2px solid #e0e0e0;
-  margin-left: 8px;
-}
-
-.parent-item {
-  font-weight: 500;
-  background-color: rgba(25, 118, 210, 0.05);
-}
-
-.hierarchy-info {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
+/* Hierarchy CSS removed - feature not used */
 
 .stats-card {
   transition: transform 0.2s ease;

@@ -1073,10 +1073,10 @@ Complexity: {analysis.complexity}
         if serena_context:
             serena_tokens = self._count_tokens(serena_context)
             # Add Serena section (with token budget consideration)
-            mission_content += f"
+            mission_content += f"""
 ## Codebase Context (Serena)
 {serena_context}
-"
+"""
             logger.debug(
                 f"Added Serena context to {agent_config.role} mission: {serena_tokens} tokens",
                 extra={
