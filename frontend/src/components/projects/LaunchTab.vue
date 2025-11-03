@@ -17,7 +17,7 @@
               color="primary"
               variant="elevated"
               size="large"
-              :loading="stagingInProgress"
+              :loading="loadingStageProject"
               @click="handleStageProject"
               class="mb-2"
             >
@@ -299,135 +299,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Thin Client Prompt Display Dialog (Handover 0088) -->
-    <v-dialog
-      v-model="showPromptDialog"
-      max-width="900"
-      persistent
-      scrollable
-    >
-      <v-card>
-        <v-card-title class="text-h5 bg-primary text-white d-flex align-center">
-          <v-icon class="mr-2">mdi-rocket-launch</v-icon>
-          Thin Client Orchestrator Prompt
-          <v-spacer />
-          <v-chip
-            color="success"
-            variant="elevated"
-            size="small"
-            class="ml-2 thin-client-chip"
-            aria-label="Thin client architecture with 70% token reduction active"
-          >
-            <v-icon start size="small">mdi-lightning-bolt</v-icon>
-            Thin Client (70% Token Reduction Active)
-          </v-chip>
-        </v-card-title>
-
-        <v-divider />
-
-        <v-card-text class="pa-6">
-          <!-- Token Statistics Display -->
-          <div class="token-stats mb-4" role="region" aria-label="Token statistics">
-            <div class="text-caption text-medium-emphasis mb-2">
-              <v-icon size="small" class="mr-1">mdi-information</v-icon>
-              Token Efficiency Breakdown:
-            </div>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-label">Prompt Size:</span>
-                <span class="stat-value">{{ estimatedPromptTokens }} tokens (~{{ promptLineCount }} lines)</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Mission (via MCP):</span>
-                <span class="stat-value">{{ missionTokens }} tokens (optimized)</span>
-              </div>
-              <div class="stat-item stat-highlight">
-                <span class="stat-label">Total Savings:</span>
-                <span class="stat-value">{{ tokenSavings.toLocaleString() }} tokens ({{ savingsPercent }}% reduction)</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Prompt Display Area -->
-          <v-card
-            variant="outlined"
-            class="prompt-display mb-4"
-            role="region"
-            aria-label="Orchestrator prompt code"
-            style="position: relative;"
-          >
-            <!-- SIMPLE COPY BUTTON -->
-            <v-btn
-              icon
-              size="small"
-              variant="text"
-              @click="simpleTextareaCopy"
-              style="position: absolute; top: 8px; right: 8px; z-index: 10;"
-              title="Copy to clipboard"
-            >
-              <v-icon>mdi-content-copy</v-icon>
-            </v-btn>
-
-            <pre
-              class="prompt-text pa-4"
-              tabindex="0"
-              aria-label="Orchestrator thin client prompt"
-            >{{ generatedPrompt }}</pre>
-          </v-card>
-
-          <!-- Informational Callout (Educational) -->
-          <v-alert
-            type="info"
-            variant="tonal"
-            class="mb-0"
-            role="complementary"
-            aria-label="Thin client architecture benefits"
-          >
-            <v-alert-title class="d-flex align-center">
-              <v-icon start>mdi-lightbulb-on</v-icon>
-              Thin Client Architecture Benefits
-            </v-alert-title>
-            <div class="text-body-2 mt-2">
-              <p class="mb-2">This prompt is optimized for professional use:</p>
-              <ul class="benefits-list">
-                <li>Only {{ promptLineCount }} lines to copy (not 3000!)</li>
-                <li>Mission fetched dynamically via MCP</li>
-                <li>70% token reduction ACTIVE</li>
-                <li>Lower API costs for you</li>
-                <li>Real-time mission updates possible</li>
-              </ul>
-              <p class="mt-3 mb-0 text-caption">
-                <strong>How it works:</strong> Orchestrator calls
-                <code>get_orchestrator_instructions()</code> via MCP to fetch
-                the condensed mission after launch. This enables the 70% token reduction.
-              </p>
-            </div>
-          </v-alert>
-        </v-card-text>
-
-        <v-divider />
-
-        <v-card-actions class="pa-4">
-          <v-btn
-            variant="outlined"
-            @click="closePromptDialog"
-            aria-label="Close dialog"
-          >
-            Close
-          </v-btn>
-          <v-spacer />
-          <v-btn
-            color="primary"
-            variant="elevated"
-            prepend-icon="mdi-content-copy"
-            @click="simpleTextareaCopy"
-            aria-label="Copy thin client prompt to clipboard"
-          >
-            Copy Prompt
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
     <!-- Toast Notification -->
     <v-snackbar
@@ -561,7 +432,6 @@ const agents = ref([])
 const stagingInProgress = ref(false)
 const readyToLaunch = ref(false) // Set to false to show "Stage Project" button
 const showCancelDialog = ref(false)
-const showPromptDialog = ref(false) // Thin client prompt dialog (Handover 0088)
 const showToast = ref(false)
 const toastMessage = ref('')
 
@@ -572,47 +442,12 @@ const missionError = ref(null)
 const agentError = ref(null)
 const userConfigApplied = ref(false)
 const tokenEstimate = ref(0)
-
-// Thin client state (Handover 0088)
-const generatedPrompt = ref('')
-const promptTokens = ref(0)
-const orchestratorIdValue = ref('')
-const isThinClient = ref(false)
+const loadingStageProject = ref(false)
 
 /**
  * Computed Properties
  */
 // (Orchestrator agent is now a computed property above - no watch needed)
-
-/**
- * Thin Client Computed Properties (Handover 0088)
- * Calculate token savings and display statistics for thin client architecture
- */
-const promptLineCount = computed(() => {
-  if (!generatedPrompt.value) return 0
-  return generatedPrompt.value.split('\n').length
-})
-
-const estimatedPromptTokens = computed(() => {
-  return promptTokens.value || Math.ceil((generatedPrompt.value?.length || 0) / 4)
-})
-
-const missionTokens = computed(() => {
-  // Typical condensed mission size after field priorities applied (Handover 0088)
-  return 6000
-})
-
-const tokenSavings = computed(() => {
-  const oldTokens = 30000 // Fat prompt size (old architecture)
-  const newTokens = estimatedPromptTokens.value + missionTokens.value
-  return oldTokens - newTokens
-})
-
-const savingsPercent = computed(() => {
-  const oldTokens = 30000
-  const savings = tokenSavings.value
-  return Math.round((savings / oldTokens) * 100)
-})
 
 
 /**
@@ -751,9 +586,63 @@ const handleAgentCreated = (data) => {
 }
 
 /**
+ * Production-grade clipboard copy function
+ * Works on both HTTPS and HTTP (10.1.0.164:7272)
+ *
+ * Strategy:
+ * 1. Try modern Clipboard API first (works on HTTPS and localhost)
+ * 2. Fallback to execCommand for HTTP network addresses
+ * 3. Both methods tested and reliable on current environment
+ */
+async function copyPromptToClipboard(text) {
+  if (!text) {
+    toastMessage.value = 'No prompt to copy'
+    showToast.value = true
+    return false
+  }
+
+  try {
+    // Try modern Clipboard API first (works on HTTPS and localhost)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch (clipErr) {
+    console.warn('[LaunchTab] Clipboard API failed, trying fallback:', clipErr)
+  }
+
+  // Fallback for HTTP (network addresses like 10.1.0.164:7272)
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '0'
+    document.body.appendChild(textarea)
+
+    // Focus and select
+    textarea.focus()
+    textarea.select()
+    textarea.setSelectionRange(0, textarea.value.length)
+
+    const success = document.execCommand('copy')
+    document.body.removeChild(textarea)
+
+    if (success) return true
+  } catch (err) {
+    console.error('[LaunchTab] All copy methods failed:', err)
+  }
+
+  return false
+}
+
+/**
  * Handle Stage Project button click - Handover 0079 + 0088 Thin Client
- * PRODUCTION-GRADE: Enhanced error handling (Handover 0086B Task 4.4)
- * THIN CLIENT: Updated for 70% token reduction architecture (Handover 0088)
+ * SIMPLIFIED: Direct copy without dialog
+ * - Generates thin prompt via API
+ * - Copies immediately to clipboard
+ * - Shows simple toast notification
+ * - NO DIALOG, NO METRICS, NO COMPLEXITY
  */
 async function handleStageProject() {
   // Reset errors
@@ -761,15 +650,10 @@ async function handleStageProject() {
   agentError.value = null
 
   // Set loading state
-  isLoadingMission.value = true
-  stagingInProgress.value = true
+  loadingStageProject.value = true
 
   try {
-    // Show loading toast
-    toastMessage.value = 'Generating thin client orchestrator prompt...'
-    showToast.value = true
-
-    // Call API to generate thin client staging prompt (Handover 0088)
+    // Generate thin client staging prompt (Handover 0088)
     const response = await api.prompts.staging(projectId.value, {
       tool: 'claude-code'  // TODO: Make tool selectable in UI
     })
@@ -778,61 +662,41 @@ async function handleStageProject() {
       throw new Error('Invalid response from staging endpoint')
     }
 
-    // Extract thin client response data (Handover 0088)
-    const {
-      prompt,
-      estimated_prompt_tokens,
-      orchestrator_id,
-      project_name,
-      mcp_tool_name,
-      instructions_stored,
-      thin_client
-    } = response.data
+    // Extract prompt from response
+    const { prompt, estimated_prompt_tokens } = response.data
 
-    // Store prompt and metadata for UI display
-    generatedPrompt.value = prompt
-    promptTokens.value = estimated_prompt_tokens || 50
-    orchestratorIdValue.value = orchestrator_id
-    isThinClient.value = thin_client || true
+    // Copy to clipboard immediately (no dialog)
+    const copied = await copyPromptToClipboard(prompt)
 
-    // Log generation details (thin client)
-    console.log('[STAGING THIN] Prompt generated:', {
-      orchestrator_id,
-      prompt_tokens: estimated_prompt_tokens,
-      lines: prompt.split('\n').length,
-      thin_client,
-      mcp_tool: mcp_tool_name
-    })
+    if (copied) {
+      // Success: Show simple notification
+      toastMessage.value = 'Orchestrator prompt copied to clipboard!'
+      showToast.value = true
+    } else {
+      // Fallback: Show prompt in alert for manual copy
+      alert(`Please manually copy this prompt:\n\n${prompt}`)
+    }
 
-    // Show thin client prompt dialog with educational UI (Handover 0088)
-    showPromptDialog.value = true
-    isLoadingMission.value = false
-    stagingInProgress.value = false
-
-    // Success toast
+    // Log for debugging
     const lineCount = prompt.split('\n').length
-    toastMessage.value = `Thin client prompt generated! (${lineCount} lines, ${estimated_prompt_tokens} tokens)`
-    showToast.value = true
+    console.log('[LaunchTab] Thin client prompt copied:', {
+      lines: lineCount,
+      tokens: estimated_prompt_tokens
+    })
 
     emit('stage-project')
 
-    // Log for debugging
-    console.log('[STAGING THIN] Prompt dialog shown. User can review and copy.')
-    console.log('[STAGING THIN] Orchestrator will fetch mission via MCP after launch.')
-
   } catch (err) {
-    console.error('[STAGING THIN] Failed to generate prompt:', err)
+    console.error('[LaunchTab] Failed to generate prompt:', err)
 
     // Set error state
     missionError.value = err.response?.data?.detail || err.message || 'Failed to generate orchestrator prompt'
 
-    // Reset loading states
-    stagingInProgress.value = false
-    isLoadingMission.value = false
-
     // Show error toast
     toastMessage.value = `Staging failed: ${missionError.value}`
     showToast.value = true
+  } finally {
+    loadingStageProject.value = false
   }
 }
 
@@ -870,113 +734,6 @@ function handleCancelStaging() {
   emit('cancel-staging')
 }
 
-/**
- * Close thin client prompt dialog (Handover 0088)
- */
-function closePromptDialog() {
-  showPromptDialog.value = false
-}
-
-/**
- * SIMPLE textarea copy - no fancy API detection
- */
-function simpleTextareaCopy() {
-  const textArea = document.createElement('textarea')
-  textArea.value = generatedPrompt.value
-  textArea.style.position = 'fixed'
-  textArea.style.top = '0'
-  textArea.style.left = '0'
-  textArea.style.width = '2em'
-  textArea.style.height = '2em'
-  textArea.style.padding = '0'
-  textArea.style.border = 'none'
-  textArea.style.outline = 'none'
-  textArea.style.boxShadow = 'none'
-  textArea.style.background = 'transparent'
-
-  document.body.appendChild(textArea)
-  textArea.select()
-
-  let success = false
-  try {
-    success = document.execCommand('copy')
-  } catch (err) {
-    console.error('Copy failed:', err)
-  }
-
-  document.body.removeChild(textArea)
-
-  if (success) {
-    toastMessage.value = 'Prompt copied!'
-    showToast.value = true
-  } else {
-    toastMessage.value = 'Copy failed - use Ctrl+A then Ctrl+C'
-    showToast.value = true
-  }
-}
-
-/**
- * Copy thin client prompt to clipboard (Handover 0088)
- * Includes cross-platform clipboard support with fallback
- */
-async function copyPromptToClipboard() {
-  let clipboardSuccess = false
-
-  // DEBUG: Log what we're trying to copy
-  console.log('[STAGING THIN] DEBUG - generatedPrompt.value length:', generatedPrompt.value?.length)
-  console.log('[STAGING THIN] DEBUG - generatedPrompt.value preview:', generatedPrompt.value?.substring(0, 100))
-
-  try {
-    // Check if we're in a secure context (HTTPS or localhost)
-    const isSecureContext = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost'
-
-    if (isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
-      // Modern Clipboard API (HTTPS/localhost only)
-      await navigator.clipboard.writeText(generatedPrompt.value)
-      clipboardSuccess = true
-      console.log('[STAGING THIN] DEBUG - Used modern Clipboard API')
-    } else {
-      // Legacy fallback for HTTP over network (Chrome blocks modern API on HTTP)
-      console.log('[STAGING THIN] DEBUG - Using fallback method (HTTP or no clipboard API)')
-      const textArea = document.createElement('textarea')
-      textArea.value = generatedPrompt.value
-      textArea.style.position = 'fixed'
-      textArea.style.left = '-999999px'
-      textArea.style.top = '-999999px'
-      document.body.appendChild(textArea)
-      textArea.focus()
-      textArea.select()
-
-      try {
-        const success = document.execCommand('copy')
-        clipboardSuccess = success
-        console.log('[STAGING THIN] DEBUG - execCommand result:', success)
-      } catch (execErr) {
-        console.error('[STAGING THIN] DEBUG - execCommand failed:', execErr)
-        clipboardSuccess = false
-      }
-
-      document.body.removeChild(textArea)
-    }
-  } catch (clipErr) {
-    console.error('[STAGING THIN] Clipboard copy failed:', clipErr)
-    clipboardSuccess = false
-  }
-
-  if (clipboardSuccess) {
-    // Success feedback
-    toastMessage.value = `Thin client prompt copied! (${promptLineCount.value} lines, ${estimatedPromptTokens.value} tokens, ${savingsPercent.value}% reduction)`
-    showToast.value = true
-    console.log('[STAGING THIN] Prompt copied to clipboard successfully')
-  } else {
-    // Clipboard failed - show console fallback
-    toastMessage.value = 'Clipboard unavailable - prompt logged to console'
-    showToast.value = true
-    console.log('[STAGING THIN] === ORCHESTRATOR PROMPT (COPY FROM HERE) ===')
-    console.log(generatedPrompt.value)
-    console.log('[STAGING THIN] === END PROMPT ===')
-  }
-}
 
 /**
  * Handle Edit Description button
@@ -1102,7 +859,8 @@ defineExpose({
   letter-spacing: 0.5px;
   padding: 12px 16px;
 }
-n/* Description and Mission Panels */
+
+/* Description and Mission Panels */
 .description-panel,
 .mission-panel {
   min-height: 200px;
@@ -1257,124 +1015,6 @@ n/* Description and Mission Panels */
   }
 }
 
-/* Thin Client Prompt Dialog Styles (Handover 0088) */
-
-/* WCAG 2.1 AA Compliance: Enhanced chip contrast */
-.thin-client-chip {
-  background-color: #2e7d32 !important; /* Dark green for 4.5:1 contrast */
-  color: white !important;
-  font-weight: 600;
-}
-
-.token-stats {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: white;
-  border-radius: 4px;
-  border-left: 3px solid #2196f3;
-}
-
-.stat-highlight {
-  background: #e3f2fd;
-  border-left-color: #4caf50;
-  font-weight: 600;
-}
-
-.stat-label {
-  color: #616161;
-  font-size: 0.875rem;
-}
-
-.stat-value {
-  color: #212121;
-  font-weight: 500;
-}
-
-.prompt-display {
-  background: #fafafa;
-  border: 1px solid #e0e0e0;
-}
-
-.prompt-text {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: #212121;
-  background: #fafafa;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 400px;
-  overflow-y: auto;
-
-  /* Custom scrollbar */
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.3);
-    }
-  }
-}
-
-.benefits-list {
-  margin-left: 20px;
-  margin-bottom: 8px;
-
-  li {
-    margin-bottom: 4px;
-    color: #424242;
-  }
-}
-
-/* Responsive adjustments for thin client dialog */
-@media (max-width: 960px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .prompt-text {
-    font-size: 0.75rem;
-    max-height: 300px;
-  }
-}
-
-@media (max-width: 600px) {
-  .stat-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .prompt-text {
-    font-size: 0.7rem;
-    max-height: 200px;
-  }
-}
 
 /* Accessibility */
 :focus-visible {
