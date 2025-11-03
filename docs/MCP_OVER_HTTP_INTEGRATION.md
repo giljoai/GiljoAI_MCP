@@ -358,15 +358,17 @@ claude mcp add --transport http giljo-mcp http://10.1.0.164:7272/mcp \
 
 ## Security
 
-### Authentication via X-API-Key
+### Authentication Headers
 
-**Header Format:**
+The MCP endpoint accepts either header (both map to the same API key validation):
+
 ```
 X-API-Key: gk_YOUR_API_KEY_HERE
+Authorization: Bearer gk_YOUR_API_KEY_HERE
 ```
 
 **Authentication Flow:**
-1. Client sends request with X-API-Key header
+1. Client sends request with X-API-Key or Authorization: Bearer
 2. Server looks up API key in database (hashed comparison)
 3. Server validates API key is active
 4. Server retrieves associated User record
@@ -374,8 +376,8 @@ X-API-Key: gk_YOUR_API_KEY_HERE
 6. Server creates/retrieves session with tenant context
 
 **Code Reference:**
-- `api/endpoints/mcp_session.py:43-70` - `authenticate_api_key()`
-- `api/endpoints/mcp_http.py:329-354` - API key validation
+- `api/endpoints/mcp_session.py` - `authenticate_api_key()`
+- `api/endpoints/mcp_http.py` - API key resolution (X-API-Key or Bearer)
 
 ### Tenant Isolation Guarantees
 
@@ -412,7 +414,7 @@ X-API-Key: gk_YOUR_API_KEY_HERE
 ### Public Endpoint Security Model
 
 **Why /mcp is Public:**
-- MCP endpoint requires X-API-Key authentication
+- MCP endpoint requires API key authentication (X-API-Key or Bearer)
 - Standard authentication middleware bypassed
 - Custom authentication in endpoint handler
 - Prevents double-authentication issues
