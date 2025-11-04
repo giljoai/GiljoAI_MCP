@@ -766,12 +766,18 @@ async def setup_slash_commands_rest(
     Returns natural language installation instructions with download token.
     """
     try:
+        import os
         from src.giljo_mcp.database import DatabaseManager
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
+        # Get database URL from environment
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise ValueError("DATABASE_URL environment variable is required")
+
         # Initialize dependencies
-        db_manager = DatabaseManager()
+        db_manager = DatabaseManager(database_url=db_url, is_async=True)
         tenant_manager = TenantManager()
         tenant_manager.set_tenant(current_user.tenant_key)
 
@@ -806,12 +812,18 @@ async def import_personal_agents_rest(
     Returns natural language installation instructions with download token.
     """
     try:
+        import os
         from src.giljo_mcp.database import DatabaseManager
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
+        # Get database URL from environment
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise ValueError("DATABASE_URL environment variable is required")
+
         # Initialize dependencies
-        db_manager = DatabaseManager()
+        db_manager = DatabaseManager(database_url=db_url, is_async=True)
         tenant_manager = TenantManager()
         tenant_manager.set_tenant(current_user.tenant_key)
 
