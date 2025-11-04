@@ -10,11 +10,12 @@
           </template>
           <div>
             <strong>Three slash commands:</strong>
-            <ul class="mt-2 mb-0 pl-4">
+            <ul class="mt-2 mb-2 pl-4">
               <li>/gil_import_productagents - Import agents to product folder</li>
               <li>/gil_import_personalagents - Import agents to ~/.claude/agents</li>
               <li>/gil_handover - Trigger orchestrator succession</li>
             </ul>
+            <p class="text-caption mb-0"><em>*Only supported slash commands will be imported</em></p>
           </div>
         </v-tooltip>
       </div>
