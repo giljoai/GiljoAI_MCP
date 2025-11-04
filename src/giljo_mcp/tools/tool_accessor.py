@@ -2071,7 +2071,7 @@ Begin by fetching your mission.
         """
         try:
             from giljo_mcp.config_manager import get_config
-            from giljo_mcp.download_tokens import TokenManager
+            from giljo_mcp.downloads.token_manager import TokenManager
             from giljo_mcp.file_staging import FileStaging
 
             # 1. Verify API key (injected by MCP HTTP handler)
@@ -2100,9 +2100,8 @@ Begin by fetching your mission.
             logger.info(f"Staged slash commands ZIP for download: {zip_path}")
 
             # 4. Generate download token AFTER file is staged
-            token_manager = TokenManager()
             async with self.db_manager.get_session_async() as session:
-                token_manager.db_session = session
+                token_manager = TokenManager(db_session=session)
                 download_token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="slash_commands",
@@ -2158,7 +2157,7 @@ Begin by fetching your mission.
         """
         try:
             from giljo_mcp.config_manager import get_config
-            from giljo_mcp.download_tokens import TokenManager
+            from giljo_mcp.downloads.token_manager import TokenManager
             from giljo_mcp.file_staging import FileStaging
 
             # 1. Verify API key (injected by MCP HTTP handler)
@@ -2178,9 +2177,8 @@ Begin by fetching your mission.
                 return {"success": False, "error": "No active tenant"}
 
             # 3. Generate one-time download token
-            token_manager = TokenManager()
             async with self.db_manager.get_session_async() as session:
-                token_manager.db_session = session
+                token_manager = TokenManager(db_session=session)
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
@@ -2241,7 +2239,7 @@ Begin by fetching your mission.
         """
         try:
             from giljo_mcp.config_manager import get_config
-            from giljo_mcp.download_tokens import TokenManager
+            from giljo_mcp.downloads.token_manager import TokenManager
             from giljo_mcp.file_staging import FileStaging
 
             # 1. Verify API key (injected by MCP HTTP handler)
@@ -2261,9 +2259,8 @@ Begin by fetching your mission.
                 return {"success": False, "error": "No active tenant"}
 
             # 3. Generate one-time download token
-            token_manager = TokenManager()
             async with self.db_manager.get_session_async() as session:
-                token_manager.db_session = session
+                token_manager = TokenManager(db_session=session)
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",

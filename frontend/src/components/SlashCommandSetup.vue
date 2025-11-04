@@ -58,6 +58,8 @@
               variant="flat"
               size="small"
               width="120"
+              :loading="generatingInstructions"
+              :disabled="generatingInstructions"
               @click="copySlashCommandSetup"
             >
               Copy Command
@@ -81,11 +83,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import api from '@/services/api'
 
 // State
-const setupCommand = '/setup_slash_commands'
 const copied = ref(false)
 const downloading = ref(false)
+const generatingInstructions = ref(false)
 const showCopyFeedback = ref(false)
 const copyFeedbackMessage = ref('')
 
@@ -123,20 +126,74 @@ function fallbackCopyToClipboard(text) {
   }
 }
 
+/**
+ * Generate natural language installation instructions with download token
+ * and copy to clipboard.
+ */
 async function copySlashCommandSetup() {
-  // Try Clipboard API first, fallback to execCommand
+  try {
+    generatingInstructions.value = true
+    console.log('[SLASH COMMAND SETUP] Generating download instructions...')
+
+    // Call backend to generate token and get download URL
+    const response = await api.downloads.generateSlashCommandsInstructions()
+    const { download_url, expires_at } = response.data
+
+    // Generate natural language instructions
+    const instructions = `Download the slash commands from ${download_url}
+
+Once downloaded:
+1. Extract the ZIP file
+2. For macOS/Linux: Copy to ~/.claude/commands/
+3. For Windows: Copy to %USERPROFILE%\\.claude\\commands\\
+4. Create the commands folder if it doesn't exist
+5. Restart your AI coding tool
+
+This download link expires in 15 minutes but can be used multiple times.`
+
+    // Copy instructions to clipboard
+    await copyToClipboard(instructions)
+
+    copied.value = true
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = 'Installation instructions copied to clipboard!'
+    console.log('[SLASH COMMAND SETUP] Instructions copied successfully')
+
+    // Reset copied state after 2 seconds
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
+
+  } catch (error) {
+    console.error('[SLASH COMMAND SETUP] Failed to generate instructions:', error)
+
+    let errorMessage = 'Failed to generate installation instructions. '
+    if (error.response?.status === 401) {
+      errorMessage += 'Please log in and try again.'
+    } else if (error.response?.status === 500) {
+      errorMessage += 'Server error - please contact administrator.'
+    } else if (!error.response) {
+      errorMessage += 'Network error - please check your connection.'
+    } else {
+      errorMessage += 'Please try again or use the Download button below.'
+    }
+
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = errorMessage
+  } finally {
+    generatingInstructions.value = false
+  }
+}
+
+/**
+ * Production-grade clipboard copy with fallback support
+ */
+async function copyToClipboard(text) {
+  // Try Clipboard API first
   if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
     try {
-      await navigator.clipboard.writeText(setupCommand)
-      copied.value = true
-      showCopyFeedback.value = true
-      copyFeedbackMessage.value = 'Slash command setup copied! Paste in Claude Code/Codex/Gemini.'
-      console.log('[SLASH COMMAND SETUP] Command copied via Clipboard API')
-
-      // Reset copied state after 2 seconds
-      setTimeout(() => {
-        copied.value = false
-      }, 2000)
+      await navigator.clipboard.writeText(text)
+      console.log('[SLASH COMMAND SETUP] Text copied via Clipboard API')
       return
     } catch (error) {
       console.warn('[SLASH COMMAND SETUP] Clipboard API failed, using fallback:', error)
@@ -144,22 +201,11 @@ async function copySlashCommandSetup() {
   }
 
   // Fallback method
-  const success = fallbackCopyToClipboard(setupCommand)
-  if (success) {
-    copied.value = true
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Slash command setup copied! Paste in Claude Code/Codex/Gemini.'
-    console.log('[SLASH COMMAND SETUP] Command copied via fallback')
-
-    // Reset copied state after 2 seconds
-    setTimeout(() => {
-      copied.value = false
-    }, 2000)
-  } else {
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Failed to copy. Please copy manually.'
-    console.error('[SLASH COMMAND SETUP] All copy methods failed')
+  const success = fallbackCopyToClipboard(text)
+  if (!success) {
+    throw new Error('All copy methods failed')
   }
+  console.log('[SLASH COMMAND SETUP] Text copied via fallback')
 }
 
 async function downloadSlashCommands() {
