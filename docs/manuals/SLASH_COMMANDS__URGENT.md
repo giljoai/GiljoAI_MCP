@@ -116,6 +116,15 @@ Show example usage
 
 ### 1. `/gil-quick-task` - Simple Task Creation
 
+## Setup (0093)
+
+Before using commands, ensure your environment is configured:
+
+- Confirm GiljoAI server URL and authentication (Settings → API & Integrations)
+- Install slash commands via Integrations UI (download ZIP) or run the install script
+- Optionally, install via MCP tool: `/gil_import_personalagents` and `/gil_import_productagents`
+- Verify commands appear in your CLI help list
+
 **Purpose**: Fast task capture without context analysis.
 
 **Usage**:
