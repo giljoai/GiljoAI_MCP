@@ -70,27 +70,22 @@
         </v-card>
 
         <!-- Agent Templates Download -->
-        <div class="mt-4">
-          <p class="text-body-2 text-medium-emphasis mb-2">
-            Or download templates for manual installation:
-          </p>
+        <div class="d-flex align-center mt-4">
           <v-btn
             variant="text"
-            color="primary"
-            class="pl-0"
+            size="small"
+            color="light-blue"
             @click="downloadProductAgents"
             :loading="downloadingProduct"
           >
-            <v-avatar size="24" rounded="0" class="mr-2">
-              <v-img src="/giljo-monochrome.svg" alt="GiljoAI" />
+            <v-avatar size="20" rounded="0" class="mr-2">
+              <v-img src="/giljo_face.svg" alt="GiljoAI" />
             </v-avatar>
-            <div class="text-left">
-              <div class="text-subtitle-2 font-weight-medium">Manual Agent installation</div>
-              <div class="text-caption text-medium-emphasis">
-                Dynamic zip file from Agent Template Manager with installation scripts
-              </div>
-            </div>
+            Manual Agent installation
           </v-btn>
+          <span class="text-caption text-medium-emphasis ml-3">
+            Dynamic zip file from Agent Template Manager with installation scripts
+          </span>
         </div>
       </div>
 
