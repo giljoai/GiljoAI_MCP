@@ -1852,3 +1852,11 @@ print(f"Pool overflow: {engine.pool.overflow()}")
 ---
 
 *This document provides comprehensive technical details of GiljoAI MCP's server architecture and technology stack as the single source of truth for the October 13, 2025 documentation harmonization.*
+#### Task ↔ Agent Job Linking (Handover 0072)
+
+Defines explicit linkage between user tasks and `MCPAgentJob` records to ground assignments and enable status propagation.
+
+Key points:
+- Tasks reference the owning project and (optionally) the agent job handling it
+- Agent jobs can advertise linked task IDs for traceability
+- API responses include linkage fields to avoid client-side inference

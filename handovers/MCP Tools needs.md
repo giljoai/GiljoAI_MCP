@@ -24,34 +24,36 @@ These tools are accessible via REST API endpoints for external agents:
 
 **Source**: `api/endpoints/mcp_tools.py` (lines 59-98)
 
+
+##### MUST KEEP ORCHESTRATOR TOOLS
 #### Project Management (5 tools)
-- create_project ✅
-- list_projects ✅
-- get_project ✅
-- switch_project ✅
-- close_project ✅
+- create_project ✅Only needed if user specifically asks orchestrator to create a new project to extend on someting
+- list_projects ✅ Only needed if orchestrator it need to reference a prior project for context? 
+- get_project ✅Needed during startup and [staging prompt] creation, should link to [Context discovery tools below]
+- switch_project ✅ not needed, we work on one project at a time
+- close_project ✅Needed when project is finished, should instruction closeout procedures
 
 #### Agent Orchestration (5 tools)
-- spawn_agent ✅
-- list_agents ✅
-- get_agent_status ✅
-- update_agent ✅
-- retire_agent ✅
+- spawn_agent ✅Needed  to spawn a new agent
+- list_agents ✅Needed to see what agents are available
+- get_agent_status ✅Check in on agent status
+- update_agent ✅Unsure, needs discussion
+- retire_agent ✅Needed when an agent gets closed out and also for project closeout procedures
 
 #### Message Queue (4 tools)
-- send_message ✅
-- receive_messages ✅
-- acknowledge_message ✅
-- list_messages ✅
+- send_message ✅Needed for agents to communciate
+- receive_messages ✅Needed to read messages (need help with purpose)
+- acknowledge_message ✅Needed to ack they have read the message
+- list_messages ✅See what messages are waiting, queued
 
 #### Task Management (5 tools)
-- create_task ✅
+- create_task ✅should be a slash command for user in CLI terminal, not for agents.
 - list_tasks ✅ - depreciate
 - update_task ✅ - depreciate
 - assign_task ✅ - depreciate
 - complete_task ✅ - depreciate
 
-#### Template Management (4 tools)
+#### Template Management (4 tools) Dev question: What are templates
 - list_templates ✅
 - get_template ✅
 - create_template ✅

@@ -111,7 +111,13 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
             })
 
             # Append MCP coordination section to template content
-            enhanced_content = content + "\n\n" + mcp_section
+            # Orchestrators get special orchestrator tools section
+            if role == "orchestrator":
+                mcp_section_to_use = _get_orchestrator_mcp_section()
+            else:
+                mcp_section_to_use = mcp_section
+
+            enhanced_content = content + "\n\n" + mcp_section_to_use
 
             # Create template instance
             template = AgentTemplate(
@@ -313,6 +319,7 @@ def _get_mcp_coordination_section() -> str:
     This section provides comprehensive instructions for using MCP tools at
     proper checkpoints during agent execution. Added in Phase 7 (Handover 0045).
     Enhanced in Handover 0066 with Kanban status update instructions.
+    Enhanced in Handover 0090 with comprehensive tool catalog.
 
     Returns:
         str - MCP coordination section in markdown format
@@ -321,7 +328,26 @@ def _get_mcp_coordination_section() -> str:
         Uses placeholders (<AGENT_TYPE>, <TENANT_KEY>) that the orchestrator
         will fill in during mission generation.
     """
-    return """## MCP COMMUNICATION PROTOCOL
+    return """## MCP COMMUNICATION PROTOCOL (Handover 0090)
+
+You have access to comprehensive MCP tools for agent coordination. Use these tools at the proper checkpoints:
+
+### Available MCP Tools
+
+**Startup Tools:**
+- `mcp__giljo-mcp__get_agent_mission(agent_job_id, tenant_key)` - Get your mission
+- `mcp__giljo-mcp__acknowledge_job(job_id, agent_id)` - Mark yourself active
+
+**Working Tools:**
+- `mcp__giljo-mcp__report_progress(job_id, progress)` - Report incremental progress
+- `mcp__giljo-mcp__get_next_instruction(job_id, agent_type, tenant_key)` - Check for instructions
+- `mcp__giljo-mcp__send_message(to_agent, message, priority)` - Message orchestrator
+
+**Completion Tools:**
+- `mcp__giljo-mcp__complete_job(job_id, result)` - Mark work complete
+- `mcp__giljo-mcp__report_error(job_id, error)` - Report blocking errors
+
+### CRITICAL CHECKPOINTS
 
 You MUST use MCP tools at these checkpoints:
 
@@ -405,4 +431,108 @@ mcp.call_tool("mcp__giljo_mcp__update_job_status", {
 - Developer CANNOT drag your card - you must update status yourself
 - Always update status at proper checkpoints (start, blocked, completed)
 - Status updates provide real-time visibility to developer and orchestrator
+"""
+
+
+def _get_orchestrator_mcp_section() -> str:
+    """
+    Generate orchestrator-specific MCP tools section (Handover 0090).
+
+    Orchestrators have access to additional tools for project orchestration,
+    agent spawning, and succession management.
+
+    Returns:
+        str - Orchestrator MCP tools section in markdown format
+    """
+    return """## ORCHESTRATOR MCP TOOLS (Handover 0090)
+
+As an orchestrator, you have access to comprehensive MCP tools for project orchestration.
+
+### Phase 1: DISCOVERY & CONTEXT GATHERING
+
+**Essential startup tools** (use these first):
+
+1. `mcp__giljo-mcp__health_check()` - Verify MCP connection
+2. `mcp__giljo-mcp__get_orchestrator_instructions(orchestrator_id, tenant_key)` - Get your mission
+3. `mcp__giljo-mcp__discover_context(project_id)` - Analyze product documentation
+4. `mcp__giljo-mcp__get_context_summary(project_id)` - Get high-level overview
+
+### Phase 2: MISSION PLANNING
+
+5. `mcp__giljo-mcp__list_templates()` - See available agent types
+6. `mcp__giljo-mcp__get_template(template_name)` - Get template details
+
+### Phase 3: AGENT SPAWNING
+
+7. `mcp__giljo-mcp__spawn_agent_job(agent_type, agent_name, mission, project_id, tenant_key)` - Spawn agent
+
+### Phase 4: COORDINATION & MONITORING
+
+**Track progress** (poll every 30-60 seconds):
+
+8. `mcp__giljo-mcp__check_orchestrator_messages()` - Check for agent updates
+9. `mcp__giljo-mcp__get_workflow_status(project_id, tenant_key)` - Get all agent statuses
+10. `mcp__giljo-mcp__list_agents(project_id)` - List project agents
+
+**Direct communication**:
+
+11. `mcp__giljo-mcp__send_message(to_agent, message, priority)` - Message specific agent
+12. `mcp__giljo-mcp__broadcast_message(message, priority)` - Message all agents
+
+### Phase 5: CONTEXT MANAGEMENT
+
+**Monitor context usage** (check periodically):
+
+13. `mcp__giljo-mcp__check_succession_status(job_id, tenant_key)` - Check if succession needed
+
+**Trigger succession** (when context reaches 90%+):
+
+14. `mcp__giljo-mcp__create_successor_orchestrator(current_job_id, tenant_key, reason)` - Spawn successor
+
+### Phase 6: PROJECT CLOSEOUT
+
+15. `mcp__giljo-mcp__complete_orchestrator_job(job_id, closeout_report)` - Mark complete
+16. `mcp__giljo-mcp__retire_agent(agent_id)` - Decommission agents
+
+### Orchestrator Workflow
+
+```
+1. health_check() → Verify connection
+2. get_orchestrator_instructions() → Get mission
+3. discover_context() → Gather context
+4. list_templates() → See agent types
+5. spawn_agent_job() × N → Create agents
+6. Loop:
+   - check_orchestrator_messages()
+   - get_workflow_status()
+   - send_message() (as needed)
+   - check_succession_status()
+7. If context > 90%:
+   - create_successor_orchestrator()
+8. When complete:
+   - complete_orchestrator_job()
+   - retire_agent() × N
+```
+
+### Critical Rules for Orchestrators
+
+1. **Always check health** first to verify MCP connection
+2. **Get full context** before planning missions
+3. **Poll for updates** regularly (30-60 second intervals)
+4. **Monitor context** proactively (check at 70%, 80%, 85%, 90%)
+5. **Use succession** at 90%+ to avoid context overflow
+6. **Communicate clearly** with agents using send_message
+7. **Complete cleanly** by retiring all agents when done
+
+### Context Budget Management
+
+| Usage % | Action |
+|---------|--------|
+| < 70%   | Normal operation |
+| 70-85%  | Begin planning succession |
+| 85-90%  | Prepare successor |
+| 90%+    | **Trigger succession immediately** |
+
+**Critical**: At 90%+ context usage, call `create_successor_orchestrator()` to avoid overflow.
+Successor will receive compressed handover summary (<10K tokens).
 """

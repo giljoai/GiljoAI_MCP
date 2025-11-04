@@ -498,6 +498,175 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {}
             }
+        },
+
+        # Agent Coordination Tools (Handover 0045)
+        {
+            "name": "get_pending_jobs",
+            "description": "Get pending jobs for agent type with multi-tenant isolation",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_type": {"type": "string", "description": "Agent type (implementer, tester, etc.)"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"}
+                },
+                "required": ["agent_type", "tenant_key"]
+            }
+        },
+        {
+            "name": "acknowledge_job",
+            "description": "Claim a job (pending → active)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job ID to acknowledge"},
+                    "agent_id": {"type": "string", "description": "Agent identifier"}
+                },
+                "required": ["job_id", "agent_id"]
+            }
+        },
+        {
+            "name": "report_progress",
+            "description": "Report incremental progress on active job",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job ID being worked on"},
+                    "progress": {"type": "object", "description": "Progress details"}
+                },
+                "required": ["job_id", "progress"]
+            }
+        },
+        {
+            "name": "get_next_instruction",
+            "description": "Check for new instructions from orchestrator",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job ID to check messages for"},
+                    "agent_type": {"type": "string", "description": "Agent type"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                },
+                "required": ["job_id", "agent_type", "tenant_key"]
+            }
+        },
+        {
+            "name": "complete_job",
+            "description": "Mark job as completed with results",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job ID to complete"},
+                    "result": {"type": "object", "description": "Completion result/notes"}
+                },
+                "required": ["job_id", "result"]
+            }
+        },
+        {
+            "name": "report_error",
+            "description": "Report error and pause job for orchestrator review",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job ID encountering error"},
+                    "error": {"type": "string", "description": "Error message"}
+                },
+                "required": ["job_id", "error"]
+            }
+        },
+
+        # Orchestration Tools (Handover 0088)
+        {
+            "name": "orchestrate_project",
+            "description": "Complete project orchestration workflow with 70% token reduction",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project ID"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                },
+                "required": ["project_id", "tenant_key"]
+            }
+        },
+        {
+            "name": "get_agent_mission",
+            "description": "Get thin-client mission for spawned agent",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_job_id": {"type": "string", "description": "Agent job UUID"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                },
+                "required": ["agent_job_id", "tenant_key"]
+            }
+        },
+        {
+            "name": "spawn_agent_job",
+            "description": "Spawn agent job with thin client prompt",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent_type": {"type": "string", "description": "Type of agent"},
+                    "agent_name": {"type": "string", "description": "Agent name"},
+                    "mission": {"type": "string", "description": "Agent mission"},
+                    "project_id": {"type": "string", "description": "Project ID"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                },
+                "required": ["agent_type", "agent_name", "mission", "project_id", "tenant_key"]
+            }
+        },
+        {
+            "name": "get_workflow_status",
+            "description": "Get status of all agents in project workflow",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project ID"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                },
+                "required": ["project_id", "tenant_key"]
+            }
+        },
+
+        # Orchestrator Succession Tools (Handover 0080)
+        {
+            "name": "create_successor_orchestrator",
+            "description": "Create successor orchestrator for context handover",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "current_job_id": {"type": "string", "description": "Current orchestrator job UUID"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
+                    "reason": {
+                        "type": "string",
+                        "enum": ["context_limit", "manual", "phase_transition"],
+                        "description": "Succession reason"
+                    }
+                },
+                "required": ["current_job_id", "tenant_key"]
+            }
+        },
+        {
+            "name": "check_succession_status",
+            "description": "Check if orchestrator should trigger succession",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Orchestrator job UUID"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"}
+                },
+                "required": ["job_id", "tenant_key"]
+            }
+        },
+
+        # Slash Command Setup Tool (Handover 0093)
+        {
+            "name": "setup_slash_commands",
+            "description": "Install GiljoAI slash commands to local CLI. Creates .md files in ~/.claude/commands/ for /gil_import_productagents, /gil_import_personalagents, and /gil_handover.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {}
+            }
         }
     ]
 
@@ -539,35 +708,69 @@ async def handle_tools_call(
 
     # Route to appropriate tool method
     tool_map = {
+        # Project Management
         "create_project": state.tool_accessor.create_project,
         "list_projects": state.tool_accessor.list_projects,
         "get_project": state.tool_accessor.get_project,
         "switch_project": state.tool_accessor.switch_project,
         "close_project": state.tool_accessor.close_project,
+
+        # Orchestrator Tools
         "get_orchestrator_instructions": state.tool_accessor.get_orchestrator_instructions,
         "health_check": state.tool_accessor.health_check,
+
+        # Agent Management
         "spawn_agent": state.tool_accessor.spawn_agent,
         "list_agents": state.tool_accessor.list_agents,
         "get_agent_status": state.tool_accessor.get_agent_status,
         "update_agent": state.tool_accessor.update_agent,
         "retire_agent": state.tool_accessor.retire_agent,
+
+        # Message Communication
         "send_message": state.tool_accessor.send_message,
         "receive_messages": state.tool_accessor.receive_messages,
         "acknowledge_message": state.tool_accessor.acknowledge_message,
         "list_messages": state.tool_accessor.list_messages,
+
+        # Task Management
         "create_task": state.tool_accessor.create_task,
         "list_tasks": state.tool_accessor.list_tasks,
         "update_task": state.tool_accessor.update_task,
         "assign_task": state.tool_accessor.assign_task,
         "complete_task": state.tool_accessor.complete_task,
+
+        # Template Management
         "list_templates": state.tool_accessor.list_templates,
         "get_template": state.tool_accessor.get_template,
         "create_template": state.tool_accessor.create_template,
         "update_template": state.tool_accessor.update_template,
+
+        # Context Discovery
         "discover_context": state.tool_accessor.discover_context,
         "get_file_context": state.tool_accessor.get_file_context,
         "search_context": state.tool_accessor.search_context,
         "get_context_summary": state.tool_accessor.get_context_summary,
+
+        # Agent Coordination (Handover 0045)
+        "get_pending_jobs": state.tool_accessor.get_pending_jobs,
+        "acknowledge_job": state.tool_accessor.acknowledge_job,
+        "report_progress": state.tool_accessor.report_progress,
+        "get_next_instruction": state.tool_accessor.get_next_instruction,
+        "complete_job": state.tool_accessor.complete_job,
+        "report_error": state.tool_accessor.report_error,
+
+        # Orchestration Tools (Handover 0088)
+        "orchestrate_project": state.tool_accessor.orchestrate_project,
+        "get_agent_mission": state.tool_accessor.get_agent_mission,
+        "spawn_agent_job": state.tool_accessor.spawn_agent_job,
+        "get_workflow_status": state.tool_accessor.get_workflow_status,
+
+        # Succession Tools (Handover 0080)
+        "create_successor_orchestrator": state.tool_accessor.create_successor_orchestrator,
+        "check_succession_status": state.tool_accessor.check_succession_status,
+
+        # Slash Command Setup Tool (Handover 0093)
+        "setup_slash_commands": state.tool_accessor.setup_slash_commands,
     }
 
     if tool_name not in tool_map:
