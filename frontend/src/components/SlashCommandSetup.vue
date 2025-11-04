@@ -48,7 +48,7 @@
         <v-card-text class="pa-3">
           <div class="d-flex align-center justify-between">
             <div class="flex-grow-1">
-              <div class="text-subtitle-2 font-weight-medium">MCP installation</div>
+              <div class="text-subtitle-2 font-weight-medium">MCP installation for slash commands</div>
               <div class="text-body-2 text-medium-emphasis">
                 Installs slash commands in your CLI Agent tool with MCP
               </div>
