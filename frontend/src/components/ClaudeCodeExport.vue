@@ -77,8 +77,11 @@
             color="light-blue"
             @click="downloadProductAgents"
             :loading="downloadingProduct"
+            class="d-flex align-center"
           >
-            <v-icon start size="small">mdi-robot</v-icon>
+            <v-avatar size="20" rounded="0" class="mr-2">
+              <v-img src="/giljo_face_lightblue.svg" alt="GiljoAI" />
+            </v-avatar>
             Manual Agent installation
           </v-btn>
           <span class="text-caption text-medium-emphasis ml-3">
