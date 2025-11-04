@@ -109,10 +109,9 @@ class FileStaging:
         """
         Stage slash commands as a ZIP file.
 
-        Creates a ZIP file containing all three slash command templates:
-        - gil_import_productagents.md
-        - gil_import_personalagents.md
-        - gil_handover.md
+        Creates a ZIP file containing only the gil_handover.md slash command.
+        Import commands (gil_import_productagents, gil_import_personalagents)
+        are no longer included per Handover 0096 refactoring.
 
         Args:
             tenant_key: Tenant identifier
@@ -129,17 +128,18 @@ class FileStaging:
             staging_dir = await self.create_staging_directory(tenant_key, token)
             zip_path = staging_dir / "slash_commands.zip"
 
-            # Get slash command templates
-            templates = get_all_templates()
+            # Get only gil_handover template
+            all_templates = get_all_templates()
+            templates = {"gil_handover.md": all_templates["gil_handover.md"]}
 
-            # Create ZIP file
+            # Create ZIP file with single command
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for filename, content in templates.items():
                     zf.writestr(filename, content)
 
             logger.info(
                 f"Created slash commands ZIP: {zip_path} "
-                f"({len(templates)} files)"
+                f"(1 file: gil_handover.md only)"
             )
 
             return zip_path

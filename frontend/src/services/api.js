@@ -396,6 +396,25 @@ export const api = {
     estimateTokens: (data) => apiClient.post('/api/prompts/estimate-tokens', data),
     staging: (projectId, params) => apiClient.get(`/api/prompts/staging/${projectId}`, { params }),
   },
+
+  // Downloads (Handover 0094 - Token-Efficient Downloads)
+  downloads: {
+    // Slash commands
+    generateSlashCommandsToken: () =>
+      apiClient.post('/api/download/generate-token', {}, { params: { content_type: 'slash_commands' } }),
+    downloadSlashCommandsDirect: () =>
+      apiClient.get('/api/download/slash-commands.zip', { responseType: 'blob' }),
+
+    // Agent templates
+    generateAgentTemplatesToken: () =>
+      apiClient.post('/api/download/generate-token', {}, { params: { content_type: 'agent_templates' } }),
+    downloadAgentTemplatesDirect: () =>
+      apiClient.get('/api/download/agent-templates.zip', { responseType: 'blob' }),
+
+    // Generic temp download with token
+    downloadViaToken: (token, filename) =>
+      apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),
+  },
 }
 
 export default api

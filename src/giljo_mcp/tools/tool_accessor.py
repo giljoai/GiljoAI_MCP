@@ -2090,22 +2090,25 @@ Begin by fetching your mission.
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            # 3. Generate one-time download token
-            token_manager = TokenManager()
-            async with self.db_manager.get_session_async() as session:
-                token_manager.db_session = session
-                token = await token_manager.generate_token(
-                    tenant_key=tenant_key,
-                    download_type="slash_commands",
-                    metadata={"download_type": "slash_commands", "files": 3}
-                )
-
-            # 4. Stage files in temp directory
+            # 3. Stage files in temp directory FIRST (before generating token)
+            from uuid import uuid4
+            token = str(uuid4())
             file_staging = FileStaging()
             await file_staging.create_staging_directory(tenant_key, token)
             zip_path = await file_staging.stage_slash_commands(tenant_key, token)
 
             logger.info(f"Staged slash commands ZIP for download: {zip_path}")
+
+            # 4. Generate download token AFTER file is staged
+            token_manager = TokenManager()
+            async with self.db_manager.get_session_async() as session:
+                token_manager.db_session = session
+                download_token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type="slash_commands",
+                    file_path=str(zip_path),
+                    metadata={"filename": "slash_commands.zip", "file_count": 1}
+                )
 
             # 5. Build download URL (use dynamically detected server URL)
             if not _server_url:
@@ -2116,19 +2119,20 @@ Begin by fetching your mission.
                 _server_url = f"http://{api_host}:{api_port}"
                 logger.warning(f"Server URL not provided, using fallback: {_server_url}")
 
-            download_url = f"{_server_url}/api/download/temp/{token}/slash_commands.zip"
+            download_url = f"{_server_url}/api/download/temp/{download_token}/slash_commands.zip"
 
+            # 6. Return natural language instructions for AI agents
             return {
                 "success": True,
+                "instructions": f"Download the slash commands from {download_url}, extract the zip file, and install the contents to your ~/.claude/commands/ folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window.",
                 "download_url": download_url,
-                "message": "Download and extract to ~/.claude/commands/ (or %USERPROFILE%\\.claude\\commands\\ on Windows)",
                 "expires_minutes": 15,
-                "one_time_use": True,
-                "instructions": [
-                    f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" "{download_url}" -o slash-commands.zip',
-                    '2. Extract: unzip -o slash-commands.zip -d ~/.claude/commands/ (Linux/macOS) or 7z x slash-commands.zip -o"%USERPROFILE%\\.claude\\commands\\" (Windows)',
-                    "Restart your CLI to load the new commands"
-                ]
+                "unlimited_downloads": True,
+                "technical_details": {
+                    "filename": "slash_commands.zip",
+                    "install_location": "~/.claude/commands/",
+                    "windows_location": "%USERPROFILE%\\.claude\\commands\\"
+                }
             }
 
         except Exception as e:
