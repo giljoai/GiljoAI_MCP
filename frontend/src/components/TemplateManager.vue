@@ -1156,12 +1156,9 @@ const viewDiff = async (template) => {
 async function copyPersonalAgentsInstructions() {
   exportLoading.value = true
   try {
-    // Generate token for one-time download URL
-    const response = await api.downloads.generateAgentTemplatesToken()
-    const downloadUrl = response.data.download_url
-
-    // Generate natural language instructions for personal agents
-    const instructions = generatePersonalAgentsInstructions(downloadUrl)
+    // Call MCP tool - returns natural language instructions directly
+    const response = await api.downloads.generatePersonalAgentsInstructions()
+    const instructions = response.data.instructions || response.data.message || 'Download link generated successfully'
 
     // Copy to clipboard
     copyToClipboardSafe(
@@ -1186,12 +1183,9 @@ async function copyPersonalAgentsInstructions() {
 async function copyProductAgentsInstructions() {
   exportLoading.value = true
   try {
-    // Generate token for one-time download URL
-    const response = await api.downloads.generateAgentTemplatesToken()
-    const downloadUrl = response.data.download_url
-
-    // Generate natural language instructions for product agents
-    const instructions = generateProductAgentsInstructions(downloadUrl)
+    // Call MCP tool - returns natural language instructions directly
+    const response = await api.downloads.generateProductAgentsInstructions()
+    const instructions = response.data.instructions || response.data.message || 'Download link generated successfully'
 
     // Copy to clipboard
     copyToClipboardSafe(

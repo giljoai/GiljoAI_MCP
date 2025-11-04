@@ -397,20 +397,19 @@ export const api = {
     staging: (projectId, params) => apiClient.get(`/api/prompts/staging/${projectId}`, { params }),
   },
 
-  // Downloads (Handover 0094 - Token-Efficient Downloads)
+  // Downloads (Natural Language Instructions via MCP Tools)
   downloads: {
-    // Slash commands - Generate token with natural language instructions
+    // Slash commands - Generate token with natural language instructions (via MCP tool)
     generateSlashCommandsInstructions: () =>
-      apiClient.post('/api/download/generate-token', {}, { params: { content_type: 'slash_commands' } }),
-    // Slash commands - Direct download (no token)
-    downloadSlashCommandsDirect: () =>
-      apiClient.get('/api/download/slash-commands.zip', { responseType: 'blob' }),
+      apiClient.post('/api/mcp/setup_slash_commands'),
 
-    // Agent templates
-    generateAgentTemplatesToken: () =>
-      apiClient.post('/api/download/generate-token', {}, { params: { content_type: 'agent_templates' } }),
-    downloadAgentTemplatesDirect: () =>
-      apiClient.get('/api/download/agent-templates.zip', { responseType: 'blob' }),
+    // Personal agents - Generate token with natural language instructions (via MCP tool)
+    generatePersonalAgentsInstructions: () =>
+      apiClient.post('/api/mcp/gil_import_personalagents'),
+
+    // Product agents - Generate token with natural language instructions (via MCP tool)
+    generateProductAgentsInstructions: () =>
+      apiClient.post('/api/mcp/gil_import_productagents'),
 
     // Generic temp download with token
     downloadViaToken: (token, filename) =>
