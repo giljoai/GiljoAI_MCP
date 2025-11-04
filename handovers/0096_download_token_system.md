@@ -957,6 +957,170 @@ find temp/ -type d -name "*-*-*-*-*" | wc -l
 
 ---
 
+## Implementation Issues Resolved (2025-11-04)
+
+During user testing with a remote laptop connecting to the server, several implementation issues were discovered and resolved. These fixes ensure the download token system works correctly in production environments.
+
+### Issues Found During User Testing
+
+#### 1. Config Attribute Access Errors
+
+**Problem**: Code attempted to access `config.api.*` attributes that don't exist in the configuration structure.
+
+**Root Cause**: Configuration was accessed using dot notation (`config.api.api_host`) but the actual structure uses nested dictionaries under `config.server.*`.
+
+**Fix**: Updated all config access to use correct paths:
+```python
+# Before (Wrong)
+api_host = config.api.api_host
+api_port = config.api.api_port
+
+# After (Correct)
+api_host = config.get("server.api_host")
+api_port = config.get("server.api_port")
+```
+
+**Files Modified**: `api/endpoints/downloads.py`
+
+#### 2. Server URL Generation Using Bind Address
+
+**Problem**: Download URLs showed `http://0.0.0.0:7272` instead of the server's actual public IP address, making downloads fail from remote clients.
+
+**Root Cause**: Code used `config.server.api_host` which returns the bind address (0.0.0.0) rather than the external IP configured during installation.
+
+**Fix**: Enhanced URL generation to read `services.external_host` from config.yaml:
+```python
+# Dynamic external host detection
+external_host = config.get("services.external_host")
+if not external_host or external_host == "0.0.0.0":
+    external_host = "localhost"
+
+server_url = f"http://{external_host}:{api_port}"
+download_url = f"{server_url}/api/download/temp/{token}/slash_commands.zip"
+```
+
+**Files Modified**:
+- `api/endpoints/downloads.py`
+- `src/giljo_mcp/tools/tool_accessor.py`
+
+#### 3. ToolAccessor Initialization Missing Dependencies
+
+**Problem**: The `gil_import_productagents` endpoint initialized `ToolAccessor` without required `DatabaseManager` and `TenantManager` dependencies.
+
+**Root Cause**: ToolAccessor constructor requires these dependencies but endpoint was passing `None`.
+
+**Fix**: Properly initialized dependencies before creating ToolAccessor:
+```python
+# Initialize required dependencies
+db_manager = DatabaseManager(db_url=db_url)
+tenant_manager = TenantManager(db_manager.Session)
+
+# Create ToolAccessor with dependencies
+tool_accessor = ToolAccessor(
+    api_key=user_api_key,
+    db_manager=db_manager,
+    tenant_manager=tenant_manager
+)
+```
+
+**Files Modified**: `api/endpoints/downloads.py` (line 863)
+
+#### 4. ConfigManager.get() Dictionary Traversal
+
+**Problem**: `ConfigManager.get("services.external_host")` failed because the method couldn't traverse nested dictionary structures.
+
+**Root Cause**: The `get()` method only checked for direct attributes, not nested dictionaries with dot notation paths.
+
+**Fix**: Enhanced `ConfigManager.get()` to support dictionary traversal:
+```python
+def get(self, key: str, default=None):
+    """Get config value by key with dot notation support for nested dicts"""
+    # Try attribute access first
+    if hasattr(self, key):
+        return getattr(self, key, default)
+
+    # Try dictionary traversal for nested keys (e.g., "services.external_host")
+    if '.' in key:
+        parts = key.split('.')
+        value = self.__dict__
+        for part in parts:
+            if isinstance(value, dict) and part in value:
+                value = value[part]
+            else:
+                return default
+        return value
+
+    return default
+```
+
+**Files Modified**: `src/giljo_mcp/config_manager.py`
+
+#### 5. Missing Background Cleanup Job
+
+**Problem**: Token cleanup task was documented in the handover but never implemented in `startup.py`.
+
+**Root Cause**: Cleanup task code was included in handover documentation but not actually added to the startup file.
+
+**Fix**: Added cleanup task to startup.py:
+```python
+@app.on_event("startup")
+async def schedule_token_cleanup():
+    """Background task to cleanup expired tokens every 15 minutes"""
+    from src.giljo_mcp.download_tokens import DownloadTokenManager
+
+    token_manager = DownloadTokenManager()
+
+    async def cleanup_task():
+        while True:
+            await asyncio.sleep(900)  # 15 minutes
+            async with get_db_session() as session:
+                try:
+                    count = await token_manager.cleanup_expired_tokens(session)
+                    logger.info(f"Token cleanup: {count} expired tokens removed")
+                except Exception as e:
+                    logger.error(f"Token cleanup failed: {e}")
+
+    asyncio.create_task(cleanup_task())
+```
+
+**Files Modified**: `startup.py`
+
+### Files Modified (Final)
+
+```
+api/endpoints/
+└── downloads.py                    # Config access, URL generation, ToolAccessor init
+
+src/giljo_mcp/
+├── config_manager.py               # Enhanced get() method for dict traversal
+└── tools/
+    └── tool_accessor.py            # Server URL generation with external_host
+
+startup.py                          # Added cleanup_task() for token expiry
+```
+
+### Testing Status
+
+**Backend Fixes**: ✅ Complete
+- All config access errors resolved
+- Server URL generation working correctly
+- ToolAccessor initialization fixed
+- ConfigManager dictionary traversal working
+- Background cleanup job running
+
+**Ready for End-to-End Testing**: ✅ Yes
+- Backend server ready for remote laptop testing
+- Download URLs now use correct external IP
+- All MCP tools should work from remote clients
+
+**Next Steps**:
+1. Test from remote laptop (Claude Code via MCP)
+2. Verify `/setup_slash_commands` works end-to-end
+3. Verify download URLs are accessible
+4. Confirm files download to client machine (not server)
+
+---
+
 ## Conclusion
 
 ### Success Metrics

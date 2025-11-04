@@ -951,14 +951,19 @@ class ConfigManager:
 
     def get(self, key: str, default: Any = None) -> Any:
         """
-        Get configuration value by dotted key path
+        Get a configuration value by dot-separated key path.
+        Supports both attribute access and dictionary traversal.
 
         Args:
-            key: Dotted path to config value (e.g. 'database.url', 'server.port')
+            key: Dot-separated path (e.g., "server.api_port" or "services.external_host")
             default: Default value if key not found
 
         Returns:
             Configuration value or default
+
+        Examples:
+            config.get("server.api_port")  # Attribute access
+            config.get("services.external_host")  # Dictionary traversal
         """
         parts = key.split(".")
         value = self
@@ -966,11 +971,17 @@ class ConfigManager:
         try:
             for part in parts:
                 if hasattr(value, part):
+                    # Attribute access (existing behavior)
                     value = getattr(value, part)
+                elif isinstance(value, dict):
+                    # Dictionary traversal (new behavior)
+                    value = value.get(part)
+                    if value is None:
+                        return default
                 else:
                     return default
             return value
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError, KeyError):
             return default
 
 
