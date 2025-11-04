@@ -348,8 +348,58 @@
                   <v-icon start>mdi-account-cog</v-icon>
                   <strong>User Configuration:</strong> Each user enables Serena under User Settings → Integrations
                 </v-alert>
-              </v-card-text>
-            </v-card>
+              </v-card-text>$1</v-card>
+
+            <!-- Download Resources Section -->
+            <v-divider class="my-6"></v-divider>
+
+            <h2 class="text-h5 mb-4">Download Resources</h2>
+            <p class="text-body-2 mb-4">
+              Download pre-configured slash commands and agent templates for quick setup with AI coding tools.
+            </p>
+
+            <div class="d-flex flex-wrap gap-3 mb-6">
+              <v-btn
+                color="primary"
+                :loading="downloadingSlashCommands"
+                @click="generateSlashCommandsDownload"
+              >
+                <v-icon start>mdi-download</v-icon>
+                Download Slash Commands
+              </v-btn>
+
+              <v-btn
+                color="primary"
+                :loading="downloadingAgentTemplates"
+                @click="generateAgentTemplatesDownload"
+              >
+                <v-icon start>mdi-download</v-icon>
+                Download Agent Templates
+              </v-btn>
+            </div>
+
+            <!-- Download Feedback Alerts -->
+            <v-alert
+              v-if="slashCommandsDownloadFeedback"
+              :type="slashCommandsDownloadFeedback.type"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="slashCommandsDownloadFeedback = null"
+            >
+              {{ slashCommandsDownloadFeedback.message }}
+            </v-alert>
+
+            <v-alert
+              v-if="agentTemplatesDownloadFeedback"
+              :type="agentTemplatesDownloadFeedback.type"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="agentTemplatesDownloadFeedback = null"
+            >
+              {{ agentTemplatesDownloadFeedback.message }}
+            </v-alert>
 
             <!-- More Coming Soon -->
             <v-card variant="outlined" color="surface-variant">
@@ -776,6 +826,12 @@ const cookieDomains = ref([])
 const newDomain = ref('')
 const domainError = ref('')
 const cookieDomainFeedback = ref(null)
+
+// Download state
+const downloadingSlashCommands = ref(false)
+const downloadingAgentTemplates = ref(false)
+const slashCommandsDownloadFeedback = ref(null)
+const agentTemplatesDownloadFeedback = ref(null)
 
 // Network Settings Methods
 async function loadNetworkSettings() {
@@ -1228,6 +1284,63 @@ async function removeCookieDomain(domain) {
       type: 'error',
       message: error.response?.data?.detail || 'Failed to remove domain. Please try again.'
     }
+  }
+}
+
+// Download Methods
+async function generateSlashCommandsDownload() {
+  downloadingSlashCommands.value = true
+  slashCommandsDownloadFeedback.value = null
+
+  try {
+    const response = await api.post('/api/download/generate-token', {
+      content_type: 'slash_commands'
+    })
+
+    // Open download URL in new tab
+    window.open(response.data.download_url, '_blank')
+
+    slashCommandsDownloadFeedback.value = {
+      type: 'success',
+      message: 'Download started! Link expires in 15 minutes and can only be used once.'
+    }
+    console.log('[INTEGRATIONS] Slash commands download started')
+  } catch (error) {
+    console.error('[INTEGRATIONS] Failed to generate slash commands download:', error)
+    slashCommandsDownloadFeedback.value = {
+      type: 'error',
+      message: error.response?.data?.detail || 'Failed to generate download link. Please try again.'
+    }
+  } finally {
+    downloadingSlashCommands.value = false
+  }
+}
+
+async function generateAgentTemplatesDownload() {
+  downloadingAgentTemplates.value = true
+  agentTemplatesDownloadFeedback.value = null
+
+  try {
+    const response = await api.post('/api/download/generate-token', {
+      content_type: 'agent_templates'
+    })
+
+    // Open download URL in new tab
+    window.open(response.data.download_url, '_blank')
+
+    agentTemplatesDownloadFeedback.value = {
+      type: 'success',
+      message: 'Download started! Link expires in 15 minutes and can only be used once.'
+    }
+    console.log('[INTEGRATIONS] Agent templates download started')
+  } catch (error) {
+    console.error('[INTEGRATIONS] Failed to generate agent templates download:', error)
+    agentTemplatesDownloadFeedback.value = {
+      type: 'error',
+      message: error.response?.data?.detail || 'Failed to generate download link. Please try again.'
+    }
+  } finally {
+    downloadingAgentTemplates.value = false
   }
 }
 
