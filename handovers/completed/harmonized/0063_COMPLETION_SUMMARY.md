@@ -4,6 +4,7 @@ Date: 2025-10-30
 Status: SUPERSEDED BY PROJECT 0073
 Priority: High → Implemented
 Type: Feature Supersession
+<!-- Harmonized on 2025-11-04; superseded by Project 0073 -->
 ---
 
 # Project 0063: Per-Agent Tool Selection UI - SUPERSEDED

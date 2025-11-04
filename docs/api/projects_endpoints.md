@@ -33,8 +33,9 @@ See also: features/project_state_management.md and SERVER_ARCHITECTURE_TECH_STAC
 2. [PATCH /projects/{project_id}](#patch-projectsproject_id)
 3. [GET /projects/deleted](#get-projectsdeleted)
 4. [POST /projects/{project_id}/restore](#post-projectsproject_idrestore)
-5. [Common Error Responses](#common-error-responses)
-6. [WebSocket Events](#websocket-events)
+5. [GET /products/active/token-estimate](#get-productsactivetoken-estimate)
+6. [Common Error Responses](#common-error-responses)
+7. [WebSocket Events](#websocket-events)
 
 ---
 
@@ -775,6 +776,44 @@ X-RateLimit-Reset: 1698505200
   "detail": "Rate limit exceeded. Try again in 30 seconds."
 }
 ```
+
+---
+
+## GET /products/active/token-estimate
+
+Return an estimated token footprint for the active product's configuration. Useful for thin‑client and staging flows when previewing mission cost.
+
+### Authentication
+
+Bearer token required. Supports both `Authorization: Bearer` and `X-API-Key` per 0092.
+
+### Request
+
+Endpoint: `GET /api/v1/products/active/token-estimate`
+
+Headers:
+```http
+Authorization: Bearer {your_token}
+Content-Type: application/json
+```
+
+Query Params: none
+
+### Response
+
+Success (200 OK):
+```json
+{
+  "product_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "estimate_tokens": 2650,
+  "fields_considered": ["vision.docs", "features", "tech_stack"],
+  "method": "_get_nested_value"
+}
+```
+
+Notes:
+- Implementation verifies nested fields via `_get_nested_value` (see handover 0087)
+- Frontend calls this from User Settings to display contextual estimate
 
 ---
 

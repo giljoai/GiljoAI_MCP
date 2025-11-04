@@ -27,7 +27,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import Session, declarative_base, relationship
+from sqlalchemy.orm import Session, declarative_base, relationship, synonym
 from sqlalchemy.sql import func
 
 
@@ -2097,3 +2097,75 @@ class MCPAgentJob(Base):
 
     def __repr__(self):
         return f"<MCPAgentJob(id={self.id}, job_id={self.job_id}, agent_type={self.agent_type}, status={self.status}, progress={self.progress}%, instance={self.instance_number})>"
+
+
+class DownloadToken(Base):
+    """
+    Download Token model - one-time download tokens for secure file downloads.
+
+    Handover 0100: One-time download token system for slash commands and agent templates.
+    Enables secure, time-limited downloads without authentication for MCP tools.
+
+    Security Features:
+    - UUID v4 tokens (cryptographically random)
+    - 15-minute expiry window
+    - One-time use enforcement (is_used flag)
+    - Multi-tenant isolation (tenant_key)
+    - Automatic cleanup of expired tokens
+
+    Use Cases:
+    - Slash command download (gil_import_productagents, gil_import_personalagents)
+    - Agent template download from UI
+    - MCP tool file retrieval
+
+    Multi-tenant isolation: All queries filter by tenant_key.
+    """
+
+    __tablename__ = 'download_tokens'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token = Column(String(36), unique=True, nullable=False, default=generate_uuid, index=True,
+        comment="UUID v4 token used in download URL")
+    tenant_key = Column(String(36), nullable=False, index=True,
+        comment="Tenant key for multi-tenant isolation")
+
+    # Download metadata
+    download_type = Column(String(50), nullable=False,
+        comment="Type of download: 'slash_commands', 'agent_templates'")
+    meta_data = Column(JSONB, default=dict, nullable=False,
+        comment="Additional metadata (filename, file_count, file_size, etc.)")
+
+    # One-time use enforcement
+    is_used = Column(Boolean, default=False, nullable=False,
+        comment="Tracks if token has been used (one-time download)")
+    downloaded_at = Column(DateTime(timezone=True), nullable=True,
+        comment="Timestamp when download occurred")
+
+    # Expiry management
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False,
+        comment="Token expiry timestamp (15 minutes after creation)")
+
+    __table_args__ = (
+        Index("idx_download_token_token", "token"),
+        Index("idx_download_token_tenant", "tenant_key"),
+        Index("idx_download_token_expires", "expires_at"),
+        Index("idx_download_token_tenant_type", "tenant_key", "download_type"),
+        CheckConstraint(
+            "download_type IN ('slash_commands', 'agent_templates')",
+            name="ck_download_token_type"
+        ),
+    )
+
+    def __repr__(self):
+        return f"<DownloadToken(id={self.id}, token={self.token}, type={self.download_type}, used={self.is_used})>"
+
+    @property
+    def is_expired(self) -> bool:
+        """Check if token has expired"""
+        return datetime.now(timezone.utc) > self.expires_at
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if token is valid (not used and not expired)"""
+        return not self.is_used and not self.is_expired

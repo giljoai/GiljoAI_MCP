@@ -1,4 +1,5 @@
 # Handover 0090: MCP Comprehensive Tool Exposure Implementation (COMPLETED)
+<!-- Harmonized on 2025-11-04; prompts added under docs/prompts/, AI tool exposure reflected in API -->
 
 **Date**: November 3, 2025
 **Author**: Claude Code Session
