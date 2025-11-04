@@ -70,7 +70,7 @@
         </v-card>
 
         <!-- Product Agent Templates (Download) -->
-        <v-card variant="tonal" class="mb-3 ml-4">
+        <v-card variant="tonal" class="mb-3">
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
