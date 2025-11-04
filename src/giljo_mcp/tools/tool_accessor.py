@@ -2108,8 +2108,8 @@ Begin by fetching your mission.
 
             # 5. Build download URL
             config = get_config()
-            api_host = config.api.host if hasattr(config.api, "host") else "localhost"
-            api_port = config.api.port if hasattr(config.api, "port") else 8000
+            api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
+            api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
             server_url = f"http://{api_host}:{api_port}"
             download_url = f"{server_url}/api/download/temp/{token}/slash_commands.zip"
 
@@ -2188,8 +2188,8 @@ Begin by fetching your mission.
 
             # 5. Build download URL
             config = get_config()
-            api_host = config.api.host if hasattr(config.api, "host") else "localhost"
-            api_port = config.api.port if hasattr(config.api, "port") else 8000
+            api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
+            api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
             server_url = f"http://{api_host}:{api_port}"
             download_url = f"{server_url}/api/download/temp/{token}/agent_templates.zip"
 
@@ -2266,8 +2266,8 @@ Begin by fetching your mission.
 
             # 5. Build download URL
             config = get_config()
-            api_host = config.api.host if hasattr(config.api, "host") else "localhost"
-            api_port = config.api.port if hasattr(config.api, "port") else 8000
+            api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
+            api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
             server_url = f"http://{api_host}:{api_port}"
             download_url = f"{server_url}/api/download/temp/{token}/agent_templates.zip"
 
