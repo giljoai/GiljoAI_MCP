@@ -240,7 +240,7 @@ async def test_token_tenant_isolation(
         # Generate token for tenant A
         token_a = await token_manager.generate_token(
             tenant_key=tenant_a,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(test_file),
             metadata={"filename": "test.zip"},
         )
@@ -274,7 +274,7 @@ async def test_token_expiry_15_minutes(token_manager: TokenManager, tenant_key: 
         # Generate token
         token = await token_manager.generate_token(
             tenant_key=tenant_key,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(test_file),
             metadata={"filename": "test.zip"},
         )
@@ -425,7 +425,7 @@ async def test_token_security_no_cross_tenant_leak(
         # Tenant A generates token
         token = await token_manager.generate_token(
             tenant_key=tenant_a,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(test_file),
             metadata={"filename": "test.zip"},
         )
@@ -461,7 +461,7 @@ async def test_full_download_flow_multiple_times(
         # Generate token
         download_token = await token_manager.generate_token(
             tenant_key=tenant_key,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(zip_path),
             metadata={"filename": "slash_commands.zip"},
         )
