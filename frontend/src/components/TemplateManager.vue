@@ -88,6 +88,51 @@
         </v-col>
       </v-row>
 
+      <!-- Agent Templates Export Section -->
+      <v-card class="mb-6" variant="outlined">
+        <v-card-title class="text-subtitle-1">
+          <v-icon start small>mdi-package-down</v-icon>
+          Export Agent Templates
+        </v-card-title>
+        <v-card-text>
+          <p class="text-body-2 mb-4">
+            Export your active agent templates as a downloadable package. Choose between personal agents (global to all projects) or product agents (project-specific).
+          </p>
+          <div class="d-flex gap-3 flex-wrap">
+            <v-btn
+              color="primary"
+              size="small"
+              variant="flat"
+              :loading="exportLoading"
+              :prepend-icon="personalAgentsCopied ? 'mdi-check' : 'mdi-content-copy'"
+              @click="copyPersonalAgentsInstructions"
+            >
+              {{ personalAgentsCopied ? 'Copied!' : 'Personal Agents' }}
+            </v-btn>
+            <v-btn
+              color="primary"
+              size="small"
+              variant="flat"
+              :loading="exportLoading"
+              :prepend-icon="productAgentsCopied ? 'mdi-check' : 'mdi-content-copy'"
+              @click="copyProductAgentsInstructions"
+            >
+              {{ productAgentsCopied ? 'Copied!' : 'Product Agents' }}
+            </v-btn>
+            <v-btn
+              color="secondary"
+              size="small"
+              variant="outlined"
+              :loading="exportLoading"
+              prepend-icon="mdi-download"
+              @click="downloadAgentTemplates"
+            >
+              Manual Download
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
+
       <!-- Templates Table -->
       <v-data-table
         :headers="headers"
@@ -612,6 +657,12 @@ import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api'
 import TemplateArchive from './TemplateArchive.vue'
 import { format } from 'date-fns'
+import {
+  generatePersonalAgentsInstructions,
+  generateProductAgentsInstructions,
+  copyToClipboardSafe,
+  downloadBlob,
+} from '@/utils/downloadInstructions'
 
 // Reactive data
 const templates = ref([])
@@ -620,6 +671,11 @@ const saving = ref(false)
 const deleting = ref(false)
 const generating = ref(false)
 const activeCount = ref(null) // Handover 0075: Track active agent count
+
+// Export state
+const exportLoading = ref(false)
+const personalAgentsCopied = ref(false)
+const productAgentsCopied = ref(false)
 
 // Search and filters
 const search = ref('')
@@ -1042,6 +1098,80 @@ const viewDiff = async (template) => {
   } catch (error) {
     console.error('Failed to load template diff:', error)
     // Show error notification
+  }
+}
+
+// Agent Templates Export Methods
+
+async function copyPersonalAgentsInstructions() {
+  exportLoading.value = true
+  try {
+    // Generate token for one-time download URL
+    const response = await api.downloads.generateAgentTemplatesToken()
+    const downloadUrl = response.data.download_url
+
+    // Generate natural language instructions for personal agents
+    const instructions = generatePersonalAgentsInstructions(downloadUrl)
+
+    // Copy to clipboard
+    copyToClipboardSafe(
+      instructions,
+      () => {
+        personalAgentsCopied.value = true
+        setTimeout(() => {
+          personalAgentsCopied.value = false
+        }, 2000)
+      },
+      (error) => {
+        console.error('Failed to copy personal agents instructions:', error)
+      }
+    )
+  } catch (err) {
+    console.error('[TemplateManager] Failed to copy personal agents instructions:', err)
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+async function copyProductAgentsInstructions() {
+  exportLoading.value = true
+  try {
+    // Generate token for one-time download URL
+    const response = await api.downloads.generateAgentTemplatesToken()
+    const downloadUrl = response.data.download_url
+
+    // Generate natural language instructions for product agents
+    const instructions = generateProductAgentsInstructions(downloadUrl)
+
+    // Copy to clipboard
+    copyToClipboardSafe(
+      instructions,
+      () => {
+        productAgentsCopied.value = true
+        setTimeout(() => {
+          productAgentsCopied.value = false
+        }, 2000)
+      },
+      (error) => {
+        console.error('Failed to copy product agents instructions:', error)
+      }
+    )
+  } catch (err) {
+    console.error('[TemplateManager] Failed to copy product agents instructions:', err)
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+async function downloadAgentTemplates() {
+  exportLoading.value = true
+  try {
+    const response = await api.downloads.downloadAgentTemplatesDirect()
+    downloadBlob(response, 'agent-templates.zip')
+  } catch (err) {
+    console.error('[TemplateManager] Failed to download agent templates:', err)
+  } finally {
+    exportLoading.value = false
   }
 }
 
