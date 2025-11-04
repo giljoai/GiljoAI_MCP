@@ -23,6 +23,53 @@
           Copy and paste agent import command into your AI coding tool (Claude Code, Codex CLI, or Gemini).
         </p>
 
+        <!-- Personal Agents Command -->
+        <v-card variant="tonal" class="mb-3">
+          <v-card-text class="pa-3">
+            <div class="d-flex align-center justify-between">
+              <div class="flex-grow-1">
+                <div class="text-subtitle-2 font-weight-medium">Personal Agents</div>
+                <div class="text-body-2 text-medium-emphasis">
+                  Install agents in your user profile (~/.claude/agents)
+                </div>
+              </div>
+              <v-btn
+                color="primary"
+                variant="flat"
+                size="small"
+                width="120"
+                @click="copyPersonalCommand"
+              >
+                Copy Command
+              </v-btn>
+            </div>
+          </v-card-text>
+        </v-card>
+
+        <!-- Personal Agent Templates (Download) -->
+        <v-card variant="tonal" class="mb-3 ml-4">
+          <v-card-text class="pa-3">
+            <div class="d-flex align-center justify-between">
+              <div class="flex-grow-1">
+                <div class="text-subtitle-2 font-weight-medium">Personal Agent Templates</div>
+                <div class="text-body-2 text-medium-emphasis">
+                  Install templates in your user profile (~/.claude/agents)
+                </div>
+              </div>
+              <v-btn
+                color="primary"
+                variant="flat"
+                size="small"
+                width="120"
+                @click="downloadPersonalAgents"
+                :loading="downloadingPersonal"
+              >
+                Download
+              </v-btn>
+            </div>
+          </v-card-text>
+        </v-card>
+
         <!-- Product Agents Command -->
         <v-card variant="tonal" class="mb-3">
           <v-card-text class="pa-3">
@@ -46,14 +93,14 @@
           </v-card-text>
         </v-card>
 
-        <!-- Personal Agents Command -->
-        <v-card variant="tonal" class="mb-3">
+        <!-- Product Agent Templates (Download) -->
+        <v-card variant="tonal" class="mb-3 ml-4">
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Personal Agents</div>
+                <div class="text-subtitle-2 font-weight-medium">Product Agent Templates</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  Install agents in your user profile (~/.claude/agents)
+                  Install templates in product folder (.claude/agents)
                 </div>
               </div>
               <v-btn
@@ -61,9 +108,10 @@
                 variant="flat"
                 size="small"
                 width="120"
-                @click="copyPersonalCommand"
+                @click="downloadProductAgents"
+                :loading="downloadingProduct"
               >
-                Copy Command
+                Download
               </v-btn>
             </div>
           </v-card-text>
@@ -88,6 +136,8 @@ const activeTemplates = ref([])
 const loading = ref(false)
 const showCopyFeedback = ref(false)
 const copyFeedbackMessage = ref('')
+const downloadingPersonal = ref(false)
+const downloadingProduct = ref(false)
 
 // Template role icon mapping
 const roleIcons = {
@@ -215,6 +265,75 @@ async function loadActiveTemplates() {
   } finally {
     loading.value = false
   }
+}
+
+// Download methods for agent templates
+async function downloadPersonalAgents() {
+  try {
+    downloadingPersonal.value = true
+    const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    triggerFileDownload(blob, 'agent-templates.zip')
+
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = 'Downloaded personal agent templates'
+    console.log('[CLAUDE EXPORT] Personal agent templates downloaded')
+  } catch (error) {
+    console.error('[CLAUDE EXPORT] Failed to download personal agents:', error)
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = `Download failed: ${error.message}`
+  } finally {
+    downloadingPersonal.value = false
+  }
+}
+
+async function downloadProductAgents() {
+  try {
+    downloadingProduct.value = true
+    const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    triggerFileDownload(blob, 'agent-templates.zip')
+
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = 'Downloaded product agent templates'
+    console.log('[CLAUDE EXPORT] Product agent templates downloaded')
+  } catch (error) {
+    console.error('[CLAUDE EXPORT] Failed to download product agents:', error)
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = `Download failed: ${error.message}`
+  } finally {
+    downloadingProduct.value = false
+  }
+}
+
+// Helper function to trigger file download
+function triggerFileDownload(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }
 
 // Lifecycle

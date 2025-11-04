@@ -470,67 +470,8 @@
             <!-- Slash Command Setup -->
             <SlashCommandSetup />
 
-            <!-- Agent Templates Export -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-icon size="40" class="mr-2" color="primary">mdi-account-group</v-icon>
-                  <h3 class="text-h6 mb-0">Agent Templates</h3>
-                </div>
-
-                <p class="text-body-2 text-medium-emphasis mb-4">
-                  Download your enabled agent templates with installation scripts
-                </p>
-
-                <!-- Personal Agent Templates Badge -->
-                <v-card variant="tonal" class="mb-3">
-                  <v-card-text class="pa-3">
-                    <div class="d-flex align-center justify-between">
-                      <div class="flex-grow-1">
-                        <div class="text-subtitle-2 font-weight-medium">Personal Agent Templates</div>
-                        <div class="text-body-2 text-medium-emphasis">
-                          Install templates in your user profile (~/.claude/agents)
-                        </div>
-                      </div>
-                      <v-btn
-                        color="primary"
-                        variant="flat"
-                        size="small"
-                        width="120"
-                        @click="downloadPersonalAgents"
-                        :loading="downloadingPersonal"
-                      >
-                        Download
-                      </v-btn>
-                    </div>
-                  </v-card-text>
-                </v-card>
-
-                <!-- Product Agent Templates Badge -->
-                <v-card variant="tonal" class="mb-3">
-                  <v-card-text class="pa-3">
-                    <div class="d-flex align-center justify-between">
-                      <div class="flex-grow-1">
-                        <div class="text-subtitle-2 font-weight-medium">Product Agent Templates</div>
-                        <div class="text-body-2 text-medium-emphasis">
-                          Install templates in product folder (.claude/agents)
-                        </div>
-                      </div>
-                      <v-btn
-                        color="primary"
-                        variant="flat"
-                        size="small"
-                        width="120"
-                        @click="downloadProductAgents"
-                        :loading="downloadingProduct"
-                      >
-                        Download
-                      </v-btn>
-                    </div>
-                  </v-card-text>
-                </v-card>
-              </v-card-text>
-            </v-card>
+            <!-- Claude Code Agent Export -->
+            <ClaudeCodeExport />
 
             <!-- Serena MCP Integration -->
             <v-card variant="outlined" class="mb-4">
@@ -608,9 +549,6 @@
                 </v-card>
               </v-card-text>
             </v-card>
-
-            <!-- Claude Code Agent Export -->
-            <ClaudeCodeExport />
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -653,8 +591,6 @@ const integrationsSubTab = ref('mcp-config')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
-const downloadingPersonal = ref(false)
-const downloadingProduct = ref(false)
 
 const showSerenaAdvanced = ref(false)
 const serenaConfig = ref({
@@ -1107,83 +1043,6 @@ async function saveSerenaConfig(payload, done) {
   } finally {
     if (typeof done === 'function') done()
   }
-}
-
-// Download methods for agent templates
-async function downloadPersonalAgents() {
-  try {
-    downloadingPersonal.value = true
-    const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Download failed with status ${response.status}`)
-    }
-
-    const blob = await response.blob()
-    triggerFileDownload(blob, 'agent-templates.zip')
-
-    // Show success message
-    settingsStore.showNotification({
-      message: 'Downloaded personal agent templates',
-      color: 'success'
-    })
-  } catch (error) {
-    console.error('[USER SETTINGS] Failed to download personal agents:', error)
-    settingsStore.showNotification({
-      message: `Download failed: ${error.message}`,
-      color: 'error'
-    })
-  } finally {
-    downloadingPersonal.value = false
-  }
-}
-
-async function downloadProductAgents() {
-  try {
-    downloadingProduct.value = true
-    const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Download failed with status ${response.status}`)
-    }
-
-    const blob = await response.blob()
-    triggerFileDownload(blob, 'agent-templates.zip')
-
-    // Show success message
-    settingsStore.showNotification({
-      message: 'Downloaded product agent templates',
-      color: 'success'
-    })
-  } catch (error) {
-    console.error('[USER SETTINGS] Failed to download product agents:', error)
-    settingsStore.showNotification({
-      message: `Download failed: ${error.message}`,
-      color: 'error'
-    })
-  } finally {
-    downloadingProduct.value = false
-  }
-}
-
-// Helper function to trigger file download
-function triggerFileDownload(blob, filename) {
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(url)
 }
 </script>
 
