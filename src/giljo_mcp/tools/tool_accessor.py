@@ -1228,9 +1228,10 @@ class ToolAccessor:
         # Delegate to orchestration module but use our db_manager
         try:
             async with self.db_manager.get_session_async() as session:
-                from giljo_mcp.models import MCPAgentJob, Project, Product, AgentTemplate
-                from giljo_mcp.mission_planner import MissionPlanner
                 from sqlalchemy import and_
+
+                from giljo_mcp.mission_planner import MissionPlanner
+                from giljo_mcp.models import AgentTemplate, MCPAgentJob, Product, Project
 
                 # Validate inputs
                 if not orchestrator_id or not orchestrator_id.strip():
@@ -1344,7 +1345,7 @@ class ToolAccessor:
             logger.exception(f"Failed to get orchestrator instructions: {e}")
             return {
                 "error": "INTERNAL_ERROR",
-                "message": f"Unexpected error: {str(e)}"
+                "message": f"Unexpected error: {e!s}"
             }
 
     async def spawn_agent_job(
@@ -1359,9 +1360,11 @@ class ToolAccessor:
         """Create an agent job with thin client architecture"""
         try:
             async with self.db_manager.get_session_async() as session:
-                from giljo_mcp.models import MCPAgentJob, Project
-                from sqlalchemy import and_
                 from datetime import datetime, timezone
+
+                from sqlalchemy import and_
+
+                from giljo_mcp.models import MCPAgentJob, Project
 
                 # Get project for context
                 result = await session.execute(
@@ -1435,7 +1438,7 @@ Begin by fetching your mission.
             logger.exception(f"Failed to spawn agent job: {e}")
             return {
                 "error": "INTERNAL_ERROR",
-                "message": f"Failed to spawn agent: {str(e)}",
+                "message": f"Failed to spawn agent: {e!s}",
                 "severity": "ERROR"
             }
 
@@ -1443,8 +1446,9 @@ Begin by fetching your mission.
         """Get agent-specific mission"""
         try:
             async with self.db_manager.get_session_async() as session:
-                from giljo_mcp.models import MCPAgentJob
                 from sqlalchemy import and_
+
+                from giljo_mcp.models import MCPAgentJob
 
                 result = await session.execute(
                     select(MCPAgentJob).where(
@@ -1481,7 +1485,7 @@ Begin by fetching your mission.
             logger.exception(f"Failed to get agent mission: {e}")
             return {
                 "error": "INTERNAL_ERROR",
-                "message": f"Unexpected error: {str(e)}"
+                "message": f"Unexpected error: {e!s}"
             }
 
     async def orchestrate_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
@@ -1519,13 +1523,13 @@ Begin by fetching your mission.
 
         except Exception as e:
             logger.exception(f"Failed to orchestrate project: {e}")
-            return {"error": f"Orchestration failed: {str(e)}"}
+            return {"error": f"Orchestration failed: {e!s}"}
 
     async def get_workflow_status(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """Get workflow status for a project"""
         try:
             async with self.db_manager.get_session_async() as session:
-                from giljo_mcp.models import Project, Job
+                from giljo_mcp.models import Job, Project
 
                 # Verify project exists
                 result = await session.execute(
@@ -1546,10 +1550,10 @@ Begin by fetching your mission.
                 jobs = jobs_result.scalars().all()
 
                 # Count by status
-                active_count = sum(1 for job in jobs if job.status == 'active')
-                completed_count = sum(1 for job in jobs if job.status == 'completed')
-                failed_count = sum(1 for job in jobs if job.status == 'failed')
-                pending_count = sum(1 for job in jobs if job.status == 'pending')
+                active_count = sum(1 for job in jobs if job.status == "active")
+                completed_count = sum(1 for job in jobs if job.status == "completed")
+                failed_count = sum(1 for job in jobs if job.status == "failed")
+                pending_count = sum(1 for job in jobs if job.status == "pending")
                 total_count = len(jobs)
 
                 # Calculate progress
@@ -1581,7 +1585,7 @@ Begin by fetching your mission.
 
         except Exception as e:
             logger.exception(f"Failed to get workflow status: {e}")
-            return {"error": f"Failed to get workflow status: {str(e)}"}
+            return {"error": f"Failed to get workflow status: {e!s}"}
 
     # Agent Coordination Tools
 
@@ -2052,260 +2056,237 @@ Begin by fetching your mission.
 
     async def setup_slash_commands(self, platform: str = None, _api_key: str = None) -> dict[str, Any]:
         """
-        Install GiljoAI slash commands via token-efficient HTTP download.
+        Generate one-time download link for slash commands installation.
 
-        Token-efficient approach: Downloads ZIP via HTTP (~500 tokens) instead of
-        writing file content directly (~3000 tokens). 83% token reduction.
+        Returns download URL instead of executing file operations on server.
+        Client downloads and extracts files locally for proper installation.
 
         Args:
             platform: Optional platform hint (ignored, kept for compatibility)
             _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
 
         Returns:
-            dict with success, message, location, files, error (optional)
+            dict with success, download_url, message, expires_minutes, one_time_use, error (optional)
         """
-        import os
-        from pathlib import Path
-        from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
-
         try:
+            from giljo_mcp.config_manager import get_config
+            from giljo_mcp.download_tokens import TokenManager
+            from giljo_mcp.file_staging import FileStaging
+
             # 1. Verify API key (injected by MCP HTTP handler)
             if not _api_key:
                 return {
-                    'success': False,
-                    'error': 'API key not provided',
-                    'instructions': [
-                        'This tool is called via MCP HTTP and requires authentication',
-                        'Ensure you are connected to GiljoAI MCP server with valid API key'
+                    "success": False,
+                    "error": "API key not provided",
+                    "instructions": [
+                        "This tool is called via MCP HTTP and requires authentication",
+                        "Ensure you are connected to GiljoAI MCP server with valid API key"
                     ]
                 }
 
-            api_key = _api_key
+            # 2. Get tenant context
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
 
-            # 2. Get server URL from environment or config
-            server_url = get_server_url_from_config()
+            # 3. Generate one-time download token
+            token_manager = TokenManager()
+            async with self.db_manager.get_session_async() as session:
+                token_manager.db_session = session
+                token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type="slash_commands",
+                    metadata={"download_type": "slash_commands", "files": 3}
+                )
 
-            # 3. Download URL for slash commands
-            download_url = f"{server_url}/api/download/slash-commands.zip"
-            install_script_url = f"{server_url}/api/download/install-script.sh?type=slash-commands"
+            # 4. Stage files in temp directory
+            file_staging = FileStaging()
+            await file_staging.create_staging_directory(tenant_key, token)
+            zip_path = await file_staging.stage_slash_commands(tenant_key, token)
 
-            # 4. Determine target directory (home directory)
-            target_dir = Path.home() / ".claude" / "commands"
+            logger.info(f"Staged slash commands ZIP for download: {zip_path}")
 
-            # 5. Download ZIP file
-            logger.info(f"Downloading slash commands from: {download_url}")
-            zip_bytes = await download_file(download_url, api_key)
-
-            # 6. Extract to target directory
-            target_dir.mkdir(parents=True, exist_ok=True)
-            files = extract_zip_to_directory(zip_bytes, target_dir)
-
-            # Filter to only .md files (exclude install scripts)
-            md_files = [f for f in files if f.endswith('.md')]
-
-            logger.info(
-                f"Successfully installed {len(md_files)} slash commands to {target_dir}"
-            )
+            # 5. Build download URL
+            config = get_config()
+            api_host = config.api.host if hasattr(config.api, "host") else "localhost"
+            api_port = config.api.port if hasattr(config.api, "port") else 8000
+            server_url = f"http://{api_host}:{api_port}"
+            download_url = f"{server_url}/api/download/temp/{token}/slash_commands.zip"
 
             return {
-                'success': True,
-                'message': f'Installed {len(md_files)} slash command(s) to {target_dir}',
-                'location': str(target_dir),
-                'files': md_files,
-                'restart_required': True,
-                'instructions': [
-                    'Restart your CLI to load the new commands',
-                    'Available commands: /gil_import_productagents, /gil_import_personalagents, /gil_handover'
+                "success": True,
+                "download_url": download_url,
+                "message": "Download and extract to ~/.claude/commands/ (or %USERPROFILE%\\.claude\\commands\\ on Windows)",
+                "expires_minutes": 15,
+                "one_time_use": True,
+                "instructions": [
+                    f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" "{download_url}" -o slash-commands.zip',
+                    '2. Extract: unzip -o slash-commands.zip -d ~/.claude/commands/ (Linux/macOS) or 7z x slash-commands.zip -o"%USERPROFILE%\\.claude\\commands\\" (Windows)',
+                    "Restart your CLI to load the new commands"
                 ]
             }
 
         except Exception as e:
-            # Fallback to manual instructions
-            logger.exception(f"Failed to setup slash commands: {e}")
-
-            server_url = get_server_url_from_config()
-            download_url = f"{server_url}/api/download/slash-commands.zip"
-            install_script_url = f"{server_url}/api/download/install-script.sh?type=slash-commands"
-
-            return {
-                'success': False,
-                'error': str(e),
-                'manual_fallback': {
-                    'download_url': download_url,
-                    'install_script_url': install_script_url,
-                    'instructions': [
-                        f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" {download_url} -o slash-commands.zip',
-                        f'2. Extract: unzip -o slash-commands.zip -d ~/.claude/commands/',
-                        f'3. Or run install script: curl {install_script_url} | bash'
-                    ]
-                }
-            }
+            logger.exception(f"Failed to generate slash commands download: {e}")
+            return {"success": False, "error": str(e)}
 
     # Slash Command Handler Wrappers (Handover 0084b)
 
     async def gil_import_productagents(self, project_id: str = None, _api_key: str = None) -> dict[str, Any]:
         """
-        Import agent templates to current product's .claude/agents folder.
+        Generate one-time download link for product agent templates.
 
-        Token-efficient approach: Downloads ZIP via HTTP (~500 tokens) instead of
-        writing file content directly (~15,000 tokens). 97% token reduction.
+        Returns download URL instead of executing file operations on server.
+        Client downloads and extracts files locally to .claude/agents directory.
 
         Args:
             project_id: Optional project ID
             _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
 
         Returns:
-            dict with success, message, location, files, error (optional)
+            dict with success, download_url, message, expires_minutes, one_time_use, error (optional)
         """
-        import os
-        from pathlib import Path
-        from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
-
         try:
+            from giljo_mcp.config_manager import get_config
+            from giljo_mcp.download_tokens import TokenManager
+            from giljo_mcp.file_staging import FileStaging
+
             # 1. Verify API key (injected by MCP HTTP handler)
             if not _api_key:
                 return {
-                    'success': False,
-                    'error': 'API key not provided',
-                    'instructions': [
-                        'This tool is called via MCP HTTP and requires authentication',
-                        'Ensure you are connected to GiljoAI MCP server with valid API key'
+                    "success": False,
+                    "error": "API key not provided",
+                    "instructions": [
+                        "This tool is called via MCP HTTP and requires authentication",
+                        "Ensure you are connected to GiljoAI MCP server with valid API key"
                     ]
                 }
 
-            api_key = _api_key
+            # 2. Get tenant context
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
 
-            # 2. Get server URL from environment or config
-            server_url = get_server_url_from_config()
+            # 3. Generate one-time download token
+            token_manager = TokenManager()
+            async with self.db_manager.get_session_async() as session:
+                token_manager.db_session = session
+                token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type="agent_templates",
+                    metadata={"download_type": "agent_templates", "scope": "product"}
+                )
 
-            # 3. Download URL
-            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
+            # 4. Stage files in temp directory
+            file_staging = FileStaging(db_session=None)
+            async with self.db_manager.get_session_async() as session:
+                file_staging.db_session = session
+                await file_staging.create_staging_directory(tenant_key, token)
+                zip_path = await file_staging.stage_agent_templates(tenant_key, token)
 
-            # 4. Determine target directory (current working directory)
-            target_dir = Path.cwd() / ".claude" / "agents"
+            logger.info(f"Staged agent templates ZIP for product download: {zip_path}")
 
-            # 5. Download ZIP file
-            logger.info(f"Downloading agent templates from: {download_url}")
-            zip_bytes = await download_file(download_url, api_key)
-
-            # 6. Extract to target directory
-            target_dir.mkdir(parents=True, exist_ok=True)
-            files = extract_zip_to_directory(zip_bytes, target_dir)
-
-            logger.info(
-                f"Successfully imported {len(files)} agent templates to {target_dir}"
-            )
+            # 5. Build download URL
+            config = get_config()
+            api_host = config.api.host if hasattr(config.api, "host") else "localhost"
+            api_port = config.api.port if hasattr(config.api, "port") else 8000
+            server_url = f"http://{api_host}:{api_port}"
+            download_url = f"{server_url}/api/download/temp/{token}/agent_templates.zip"
 
             return {
-                'success': True,
-                'message': f'Installed {len(files)} agent template(s)',
-                'location': str(target_dir),
-                'files': files
+                "success": True,
+                "download_url": download_url,
+                "message": "Download and extract to .claude/agents/ in your project directory",
+                "expires_minutes": 15,
+                "one_time_use": True,
+                "instructions": [
+                    f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" "{download_url}" -o templates.zip',
+                    '2. Extract: unzip -o templates.zip -d .claude/agents/ (Linux/macOS) or 7z x templates.zip -o".\\claude\\agents\\" (Windows)',
+                    "Templates will be available in your project's .claude/agents directory"
+                ]
             }
 
         except Exception as e:
-            # Fallback to manual instructions
-            logger.exception(f"Failed to import product agents: {e}")
-
-            server_url = get_server_url_from_config()
-            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
-            install_script_url = f"{server_url}/api/download/install-script.sh?type=agent-templates"
-
-            return {
-                'success': False,
-                'error': str(e),
-                'manual_fallback': {
-                    'download_url': download_url,
-                    'install_script_url': install_script_url,
-                    'instructions': [
-                        f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" {download_url} -o templates.zip',
-                        f'2. Extract: unzip -o templates.zip -d .claude/agents/',
-                        f'3. Or run install script: curl {install_script_url} | bash'
-                    ]
-                }
-            }
+            logger.exception(f"Failed to generate product agent templates download: {e}")
+            return {"success": False, "error": str(e)}
 
     async def gil_import_personalagents(self, project_id: str = None, _api_key: str = None) -> dict[str, Any]:
         """
-        Import agent templates to personal ~/.claude/agents folder.
+        Generate one-time download link for personal agent templates.
 
-        Token-efficient approach: Downloads ZIP via HTTP (~500 tokens) instead of
-        writing file content directly (~15,000 tokens). 97% token reduction.
+        Returns download URL instead of executing file operations on server.
+        Client downloads and extracts files locally to ~/.claude/agents directory.
 
         Args:
             project_id: Optional project ID (not used for personal agents)
             _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
 
         Returns:
-            dict with success, message, location, files, error (optional)
+            dict with success, download_url, message, expires_minutes, one_time_use, error (optional)
         """
-        import os
-        from pathlib import Path
-        from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
-
         try:
+            from giljo_mcp.config_manager import get_config
+            from giljo_mcp.download_tokens import TokenManager
+            from giljo_mcp.file_staging import FileStaging
+
             # 1. Verify API key (injected by MCP HTTP handler)
             if not _api_key:
                 return {
-                    'success': False,
-                    'error': 'API key not provided',
-                    'instructions': [
-                        'This tool is called via MCP HTTP and requires authentication',
-                        'Ensure you are connected to GiljoAI MCP server with valid API key'
+                    "success": False,
+                    "error": "API key not provided",
+                    "instructions": [
+                        "This tool is called via MCP HTTP and requires authentication",
+                        "Ensure you are connected to GiljoAI MCP server with valid API key"
                     ]
                 }
 
-            api_key = _api_key
+            # 2. Get tenant context
+            tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                return {"success": False, "error": "No active tenant"}
 
-            # 2. Get server URL from environment or config
-            server_url = get_server_url_from_config()
+            # 3. Generate one-time download token
+            token_manager = TokenManager()
+            async with self.db_manager.get_session_async() as session:
+                token_manager.db_session = session
+                token = await token_manager.generate_token(
+                    tenant_key=tenant_key,
+                    download_type="agent_templates",
+                    metadata={"download_type": "agent_templates", "scope": "personal"}
+                )
 
-            # 3. Download URL
-            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
+            # 4. Stage files in temp directory
+            file_staging = FileStaging(db_session=None)
+            async with self.db_manager.get_session_async() as session:
+                file_staging.db_session = session
+                await file_staging.create_staging_directory(tenant_key, token)
+                zip_path = await file_staging.stage_agent_templates(tenant_key, token)
 
-            # 4. Determine target directory (home directory)
-            target_dir = Path.home() / ".claude" / "agents"
+            logger.info(f"Staged agent templates ZIP for personal download: {zip_path}")
 
-            # 5. Download ZIP file
-            logger.info(f"Downloading agent templates from: {download_url}")
-            zip_bytes = await download_file(download_url, api_key)
-
-            # 6. Extract to target directory
-            target_dir.mkdir(parents=True, exist_ok=True)
-            files = extract_zip_to_directory(zip_bytes, target_dir)
-
-            logger.info(
-                f"Successfully imported {len(files)} agent templates to {target_dir}"
-            )
+            # 5. Build download URL
+            config = get_config()
+            api_host = config.api.host if hasattr(config.api, "host") else "localhost"
+            api_port = config.api.port if hasattr(config.api, "port") else 8000
+            server_url = f"http://{api_host}:{api_port}"
+            download_url = f"{server_url}/api/download/temp/{token}/agent_templates.zip"
 
             return {
-                'success': True,
-                'message': f'Installed {len(files)} agent template(s) to personal folder',
-                'location': str(target_dir),
-                'files': files
+                "success": True,
+                "download_url": download_url,
+                "message": "Download and extract to ~/.claude/agents/ (or %USERPROFILE%\\.claude\\agents\\ on Windows)",
+                "expires_minutes": 15,
+                "one_time_use": True,
+                "instructions": [
+                    f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" "{download_url}" -o templates.zip',
+                    '2. Extract: unzip -o templates.zip -d ~/.claude/agents/ (Linux/macOS) or 7z x templates.zip -o"%USERPROFILE%\\.claude\\agents\\" (Windows)',
+                    "Templates will be available across all your projects"
+                ]
             }
 
         except Exception as e:
-            # Fallback to manual instructions
-            logger.exception(f"Failed to import personal agents: {e}")
-
-            server_url = get_server_url_from_config()
-            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
-            install_script_url = f"{server_url}/api/download/install-script.sh?type=agent-templates"
-
-            return {
-                'success': False,
-                'error': str(e),
-                'manual_fallback': {
-                    'download_url': download_url,
-                    'install_script_url': install_script_url,
-                    'instructions': [
-                        f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" {download_url} -o templates.zip',
-                        f'2. Extract: unzip -o templates.zip -d ~/.claude/agents/',
-                        f'3. Or run install script: curl {install_script_url} | bash personal'
-                    ]
-                }
-            }
+            logger.exception(f"Failed to generate personal agent templates download: {e}")
+            return {"success": False, "error": str(e)}
 
     async def gil_handover(self, current_job_id: str = None, reason: str = "manual") -> dict[str, Any]:
         """
@@ -2347,6 +2328,6 @@ Begin by fetching your mission.
             logger.exception(f"Failed to trigger handover: {e}")
             return {
                 "success": False,
-                "message": f"Failed to trigger handover: {str(e)}",
+                "message": f"Failed to trigger handover: {e!s}",
                 "error": "UNEXPECTED_ERROR"
             }
