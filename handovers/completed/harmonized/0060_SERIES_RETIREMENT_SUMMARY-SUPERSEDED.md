@@ -5,6 +5,8 @@ Status: SUPERSEDED BY PROJECT 0073
 Type: Architecture Consolidation
 ---
 
+<!-- Harmonized on 2025-11-04; see docs/archive/0060_SERIES_RETIREMENT_SUMMARY.md for the concise archive summary. -->
+
 # 0060-Series Handovers - Complete Retirement
 
 ## Executive Summary

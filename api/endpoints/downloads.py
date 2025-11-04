@@ -10,6 +10,8 @@ Handover 0094: Token-Efficient MCP Downloads
 
 import io
 import logging
+import os
+import yaml
 import zipfile
 from pathlib import Path
 from typing import Optional
@@ -33,22 +35,27 @@ router = APIRouter(prefix="/api/download", tags=["downloads"])
 
 def get_server_url(request=None) -> str:
     """
-    Get server URL from configuration or request headers.
+    Get server URL from configuration, using external_host for public access.
 
     Args:
         request: Optional request object to detect HTTPS
 
     Returns:
-        Server URL (e.g., "http://localhost:7272" or "https://example.com:7272")
+        Server URL (e.g., "http://10.1.0.164:7272")
     """
     try:
-        config = get_config()
-        host = config.api.host if hasattr(config, "api") else "localhost"
-        port = config.api.port if hasattr(config, "api") else 7272
+        from pathlib import Path
 
-        # Use localhost if host is 0.0.0.0 (not accessible from external)
-        if host == "0.0.0.0":
-            host = "localhost"
+        config = get_config()
+
+        # Read external_host directly from config.yaml
+        # (ConfigManager.get() can't traverse nested dicts)
+        config_path = Path.cwd() / "config.yaml"
+        with open(config_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+
+        host = config_data.get("services", {}).get("external_host", "localhost")
+        port = config.server.api_port
 
         # Detect HTTPS from request headers if available
         scheme = "https" if (request and request.headers.get("x-forwarded-proto") == "https") else "http"
@@ -779,16 +786,16 @@ async def setup_slash_commands_rest(
         # Initialize dependencies
         db_manager = DatabaseManager(database_url=db_url, is_async=True)
         tenant_manager = TenantManager()
-        tenant_manager.set_tenant(current_user.tenant_key)
+        tenant_manager.set_current_tenant(current_user.tenant_key)
 
         tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
         # Extract server URL from request
         server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
 
-        # Call MCP tool
+        # Call MCP tool (user already authenticated via JWT)
         result = await tool_accessor.setup_slash_commands(
-            _api_key=current_user.api_key,
+            _api_key="jwt_authenticated",  # Placeholder - auth already done at REST level
             _server_url=server_url
         )
 
@@ -825,16 +832,16 @@ async def import_personal_agents_rest(
         # Initialize dependencies
         db_manager = DatabaseManager(database_url=db_url, is_async=True)
         tenant_manager = TenantManager()
-        tenant_manager.set_tenant(current_user.tenant_key)
+        tenant_manager.set_current_tenant(current_user.tenant_key)
 
         tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
         # Extract server URL from request
         server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
 
-        # Call MCP tool
+        # Call MCP tool (user already authenticated via JWT)
         result = await tool_accessor.gil_import_personalagents(
-            _api_key=current_user.api_key,
+            _api_key="jwt_authenticated",  # Placeholder - auth already done at REST level
             _server_url=server_url
         )
 
@@ -858,16 +865,29 @@ async def import_product_agents_rest(
     Returns natural language installation instructions with download token.
     """
     try:
+        import os
+        from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
-        tool_accessor = ToolAccessor()
+        # Get database URL from environment
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise ValueError("DATABASE_URL environment variable is required")
+
+        # Initialize dependencies
+        db_manager = DatabaseManager(database_url=db_url, is_async=True)
+        tenant_manager = TenantManager()
+        tenant_manager.set_current_tenant(current_user.tenant_key)
+
+        tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
         # Extract server URL from request
         server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
 
-        # Call MCP tool
+        # Call MCP tool (user already authenticated via JWT)
         result = await tool_accessor.gil_import_productagents(
-            _api_key=current_user.api_key,
+            _api_key="jwt_authenticated",  # Placeholder - auth already done at REST level
             _server_url=server_url
         )
 
