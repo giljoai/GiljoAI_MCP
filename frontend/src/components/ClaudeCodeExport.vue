@@ -28,9 +28,9 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Personal Agents</div>
+                <div class="text-subtitle-2 font-weight-medium">MCP Installation command for Personal Agents</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  Install agents in your user profile (~/.claude/agents)
+                  Uses MCP tools to install agents in your user profile (~/.claude/agents)
                 </div>
               </div>
               <v-btn
@@ -51,9 +51,9 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Personal Agent Templates</div>
+                <div class="text-subtitle-2 font-weight-medium">Manual Template installation</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  Install templates in your user profile (~/.claude/agents)
+                  Creates a dynamic zip file based on your active agents from the Agent Template Manager and installation scripts
                 </div>
               </div>
               <v-btn
@@ -75,9 +75,9 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Product Agents</div>
+                <div class="text-subtitle-2 font-weight-medium">MCP Installation command for Product Agents</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  Install agents in your product's .claude/agents folder
+                  Uses MCP tools to install agents in your product folder (.claude/agents)
                 </div>
               </div>
               <v-btn
@@ -98,9 +98,9 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Product Agent Templates</div>
+                <div class="text-subtitle-2 font-weight-medium">Manual Template installation</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  Install templates in product folder (.claude/agents)
+                  Creates a dynamic zip file based on your active agents from the Agent Template Manager and installation scripts
                 </div>
               </div>
               <v-btn
