@@ -667,6 +667,43 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {}
             }
+        },
+
+        # Slash Command Handlers (Handover 0084b)
+        {
+            "name": "gil_import_productagents",
+            "description": "Import GiljoAI agent templates to current product's .claude/agents folder. Requires active product with project_path configured.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Optional project ID"}
+                }
+            }
+        },
+        {
+            "name": "gil_import_personalagents",
+            "description": "Import GiljoAI agent templates to personal ~/.claude/agents folder (available across all projects).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Optional project ID"}
+                }
+            }
+        },
+        {
+            "name": "gil_handover",
+            "description": "Trigger orchestrator succession for context handover. Creates successor orchestrator instance.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "current_job_id": {"type": "string", "description": "Current orchestrator job UUID"},
+                    "reason": {
+                        "type": "string",
+                        "enum": ["context_limit", "manual", "phase_transition"],
+                        "description": "Succession reason"
+                    }
+                }
+            }
         }
     ]
 
@@ -771,6 +808,11 @@ async def handle_tools_call(
 
         # Slash Command Setup Tool (Handover 0093)
         "setup_slash_commands": state.tool_accessor.setup_slash_commands,
+
+        # Slash Command Handlers (Handover 0084b)
+        "gil_import_productagents": state.tool_accessor.gil_import_productagents,
+        "gil_import_personalagents": state.tool_accessor.gil_import_personalagents,
+        "gil_handover": state.tool_accessor.gil_handover,
     }
 
     if tool_name not in tool_map:

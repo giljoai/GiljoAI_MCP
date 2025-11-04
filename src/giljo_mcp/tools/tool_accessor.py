@@ -2050,7 +2050,7 @@ Begin by fetching your mission.
 
     # Slash Command Setup Tool (Handover 0093)
 
-    async def setup_slash_commands(self) -> dict[str, Any]:
+    async def setup_slash_commands(self, platform: str = None) -> dict[str, Any]:
         """
         Return slash command file contents for local installation (Handover 0093)
 
@@ -2058,13 +2058,16 @@ Begin by fetching your mission.
         installed to ~/.claude/commands/ directory. The agentic CLI (Claude Code,
         Codex, Gemini) will use its Write tool to create the files locally.
 
+        Args:
+            platform: Optional platform hint ("windows", "linux", "darwin", "git-bash")
+
         Returns:
             dict containing:
                 - success: bool
                 - message: str
-                - files: dict[str, str] - filename -> markdown content
-                - target_directory: str - "~/.claude/commands/"
-                - instructions: list[str] - installation steps
+                - files: dict[str, str] - filename -> markdown content with Unix paths
+                - target_directory: str - Always uses forward slashes
+                - instructions: list[str] - Detailed cross-platform instructions
                 - restart_required: bool - True (CLI restart needed)
         """
         try:
@@ -2073,15 +2076,35 @@ Begin by fetching your mission.
             # Get all slash command templates
             templates = get_all_templates()
 
+            # Create files dict with explicit Unix-style relative paths
+            # This works in all environments: Windows CMD, PowerShell, Git Bash, Unix shells
+            files_with_paths = {
+                ".claude/commands/gil_import_productagents.md": templates["gil_import_productagents.md"],
+                ".claude/commands/gil_import_personalagents.md": templates["gil_import_personalagents.md"],
+                ".claude/commands/gil_handover.md": templates["gil_handover.md"]
+            }
+
             return {
                 "success": True,
-                "message": "Installing 3 GiljoAI slash commands to ~/.claude/commands/",
-                "files": templates,
-                "target_directory": "~/.claude/commands/",
+                "message": "Installing 3 GiljoAI slash commands. Use your Write tool to create these files relative to your home directory.",
+                "files": files_with_paths,
+                "target_directory": ".claude/commands/",
                 "instructions": [
-                    "Creating ~/.claude/commands/ directory if it doesn't exist",
-                    "Writing 3 slash command files",
-                    "Files will be available after CLI restart"
+                    "CROSS-PLATFORM INSTALLATION INSTRUCTIONS:",
+                    "1. Determine your home directory path",
+                    "2. Create directory: <home>/.claude/commands/ (with recursive flag)",
+                    "3. Write 3 files to that directory using forward slashes:",
+                    "   - <home>/.claude/commands/gil_import_productagents.md",
+                    "   - <home>/.claude/commands/gil_import_personalagents.md",
+                    "   - <home>/.claude/commands/gil_handover.md",
+                    "4. IMPORTANT: Always use forward slashes (/), even on Windows",
+                    "5. Restart your CLI after installation to load commands"
+                ],
+                "notes": [
+                    "Git Bash users: Use /c/Users/YourName/.claude/commands/ format",
+                    "Windows CMD/PowerShell: Use C:/Users/YourName/.claude/commands/",
+                    "Linux/Mac: Use /home/username/.claude/commands/ or ~/. claude/commands/",
+                    "All paths should use forward slashes for cross-platform compatibility"
                 ],
                 "restart_required": True
             }
@@ -2092,4 +2115,132 @@ Begin by fetching your mission.
                 "success": False,
                 "error": str(e),
                 "message": f"Failed to setup slash commands: {str(e)}"
+            }
+
+    # Slash Command Handler Wrappers (Handover 0084b)
+
+    async def gil_import_productagents(self, project_id: str = None) -> dict[str, Any]:
+        """
+        Import agent templates to current product's .claude/agents folder
+
+        Wrapper for slash command handler that executes via MCP tool call.
+
+        Args:
+            project_id: Optional project ID
+
+        Returns:
+            dict with success, message, exported_count, files, error (optional)
+        """
+        try:
+            from ..slash_commands import get_slash_command
+
+            handler = get_slash_command("gil_import_productagents")
+            if not handler:
+                return {
+                    "success": False,
+                    "message": "Slash command handler not found",
+                    "error": "HANDLER_NOT_FOUND"
+                }
+
+            # Get database session
+            async with self.db_manager.get_session() as session:
+                result = await handler(
+                    db_session=session,
+                    tenant_key=self.tenant_manager.get_current_tenant(),
+                    project_id=project_id
+                )
+
+            return result
+
+        except Exception as e:
+            logger.exception(f"Failed to import product agents: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to import agents: {str(e)}",
+                "error": "UNEXPECTED_ERROR"
+            }
+
+    async def gil_import_personalagents(self, project_id: str = None) -> dict[str, Any]:
+        """
+        Import agent templates to personal ~/.claude/agents folder
+
+        Wrapper for slash command handler that executes via MCP tool call.
+
+        Args:
+            project_id: Optional project ID
+
+        Returns:
+            dict with success, message, exported_count, files, error (optional)
+        """
+        try:
+            from ..slash_commands import get_slash_command
+
+            handler = get_slash_command("gil_import_personalagents")
+            if not handler:
+                return {
+                    "success": False,
+                    "message": "Slash command handler not found",
+                    "error": "HANDLER_NOT_FOUND"
+                }
+
+            # Get database session
+            async with self.db_manager.get_session() as session:
+                result = await handler(
+                    db_session=session,
+                    tenant_key=self.tenant_manager.get_current_tenant(),
+                    project_id=project_id
+                )
+
+            return result
+
+        except Exception as e:
+            logger.exception(f"Failed to import personal agents: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to import agents: {str(e)}",
+                "error": "UNEXPECTED_ERROR"
+            }
+
+    async def gil_handover(self, current_job_id: str = None, reason: str = "manual") -> dict[str, Any]:
+        """
+        Trigger orchestrator succession for context handover
+
+        Wrapper for slash command handler that executes via MCP tool call.
+
+        Args:
+            current_job_id: Current orchestrator job UUID
+            reason: Succession reason (context_limit, manual, phase_transition)
+
+        Returns:
+            dict with success, message, successor_id, launch_prompt, error (optional)
+        """
+        try:
+            from ..slash_commands import get_slash_command
+
+            handler = get_slash_command("gil_handover")
+            if not handler:
+                return {
+                    "success": False,
+                    "message": "Slash command handler not found",
+                    "error": "HANDLER_NOT_FOUND"
+                }
+
+            # Get database session
+            async with self.db_manager.get_session() as session:
+                result = await handler(
+                    db_session=session,
+                    tenant_key=self.tenant_manager.get_current_tenant(),
+                    project_id=None,  # Not used by handover
+                    job_id=current_job_id,
+                    reason=reason
+                )
+
+            return result
+
+        except Exception as e:
+            logger.exception(f"Failed to trigger handover: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to trigger handover: {str(e)}",
+                "error": "UNEXPECTED_ERROR"
             }

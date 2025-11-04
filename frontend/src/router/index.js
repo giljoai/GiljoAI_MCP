@@ -182,17 +182,6 @@ const routes = [
     },
   },
   {
-    path: '/settings/integrations',
-    name: 'IntegrationsSettings',
-    component: () => import('@/views/Settings/IntegrationsView.vue'),
-    meta: {
-      layout: 'default',
-      title: 'API & Integrations',
-      showInNav: false,
-      requiresAuth: true,
-    },
-  },
-  {
     path: '/server-down',
     name: 'ServerDown',
     component: () => import('@/views/ServerDownView.vue'),
