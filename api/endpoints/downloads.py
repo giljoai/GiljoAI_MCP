@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,12 +31,15 @@ router = APIRouter(prefix="/api/download", tags=["downloads"])
 # Helper Functions
 
 
-def get_server_url() -> str:
+def get_server_url(request=None) -> str:
     """
-    Get server URL from configuration.
+    Get server URL from configuration or request headers.
+
+    Args:
+        request: Optional request object to detect HTTPS
 
     Returns:
-        Server URL (e.g., "http://localhost:7272")
+        Server URL (e.g., "http://localhost:7272" or "https://example.com:7272")
     """
     try:
         config = get_config()
@@ -47,7 +50,10 @@ def get_server_url() -> str:
         if host == "0.0.0.0":
             host = "localhost"
 
-        return f"http://{host}:{port}"
+        # Detect HTTPS from request headers if available
+        scheme = "https" if (request and request.headers.get("x-forwarded-proto") == "https") else "http"
+
+        return f"{scheme}://{host}:{port}"
     except Exception as e:
         logger.warning(f"Failed to get server URL from config: {e}")
         return "http://localhost:7272"
@@ -157,6 +163,7 @@ def render_install_script(
 
 @router.get("/slash-commands.zip")
 async def download_slash_commands(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ):
     """
@@ -198,7 +205,7 @@ async def download_slash_commands(
     templates = get_all_templates()
 
     # Add install scripts with server URL rendered
-    server_url = get_server_url()
+    server_url = get_server_url(request)
 
     # Read install scripts from templates
     sh_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_slash_commands.sh"
@@ -234,6 +241,7 @@ async def download_slash_commands(
 
 @router.get("/agent-templates.zip")
 async def download_agent_templates(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
     active_only: bool = Query(True, description="Only include active templates"),
@@ -344,7 +352,7 @@ async def download_agent_templates(
         files[filename] = "".join(content_parts)
 
     # Add install scripts with server URL rendered
-    server_url = get_server_url()
+    server_url = get_server_url(request)
 
     # Read install scripts from templates
     sh_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_agent_templates.sh"
@@ -380,6 +388,7 @@ async def download_agent_templates(
 
 @router.get("/install-script.{extension}")
 async def download_install_script(
+    request: Request,
     extension: str,
     script_type: str = Query(..., description="Script type: slash-commands or agent-templates"),
     current_user: User = Depends(get_current_active_user),
@@ -443,7 +452,7 @@ async def download_install_script(
     )
 
     # Get server URL
-    server_url = get_server_url()
+    server_url = get_server_url(request)
 
     # Get template path
     template_dir = Path(__file__).parent.parent.parent / "installer" / "templates"
