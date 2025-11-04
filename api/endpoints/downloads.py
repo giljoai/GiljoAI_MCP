@@ -18,7 +18,7 @@ from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_db_session
+from src.giljo_mcp.auth.dependencies import get_db_session, require_auth
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
