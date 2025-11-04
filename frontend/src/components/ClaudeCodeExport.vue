@@ -49,7 +49,7 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">MCP Installation command for Personal Agents</div>
+                <div class="text-subtitle-2 font-weight-medium">MCP Installation for Personal Agents</div>
                 <div class="text-body-2 text-medium-emphasis">
                   Uses MCP tools to install agents in your user profile (~/.claude/agents)
                 </div>
@@ -72,7 +72,7 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">MCP Installation command for Product Agents</div>
+                <div class="text-subtitle-2 font-weight-medium">MCP Installation for Product Agents</div>
                 <div class="text-body-2 text-medium-emphasis">
                   Uses MCP tools to install agents in your product folder (.claude/agents)
                 </div>
