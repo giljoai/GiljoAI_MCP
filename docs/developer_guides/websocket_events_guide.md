@@ -82,6 +82,8 @@ async def your_endpoint(
 - `agent:created` - New agent job created
 - `agent:status_changed` - Agent status transitions
 - `orchestrator:prompt_generated` - Thin prompt generated (0088 migration)
+- `job:succession_triggered` - Orchestrator succession started (0080)
+- `job:successor_created` - Successor orchestrator created (0080)
 
 **Create New Event** (if needed):
 

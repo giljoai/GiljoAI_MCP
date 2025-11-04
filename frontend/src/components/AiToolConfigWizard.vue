@@ -217,9 +217,8 @@ codex mcp add --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY giljo-
 }
 
 function geminiPrompt(serverUrl, apiKey) {
-  // Bearer token via env var
-  return `export GILJO_API_KEY="${apiKey}"
-gemini mcp add --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp`
+  // HTTP transport with explicit header; order is <name> <url>
+  return `gemini mcp add -t http -H "X-API-Key: ${apiKey}" giljo-mcp ${serverUrl}/mcp`
 }
 
 function cursorPrompt(serverUrl, apiKey) {

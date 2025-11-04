@@ -470,6 +470,98 @@
             <!-- Slash Command Setup -->
             <SlashCommandSetup />
 
+            <!-- Personal Agent Templates Download -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-icon size="40" class="mr-2" color="primary">mdi-account-circle</v-icon>
+                  <h3 class="text-h6 mb-0">Personal Agent Templates</h3>
+                </div>
+
+                <p class="text-body-2 text-medium-emphasis mb-4">
+                  Download your enabled agent templates for personal use (~/.claude/agents/)
+                </p>
+
+                <v-alert
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-4"
+                  :icon="false"
+                >
+                  <div class="d-flex align-center">
+                    <v-icon start size="small">mdi-information</v-icon>
+                    <div class="text-body-2">
+                      Includes all active templates from your Template Manager plus install scripts
+                    </div>
+                  </div>
+                </v-alert>
+
+                <!-- Download Button -->
+                <div class="d-flex align-center gap-2 mb-3">
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    size="default"
+                    @click="downloadPersonalAgents"
+                    :loading="downloadingPersonal"
+                    prepend-icon="mdi-download"
+                  >
+                    {{ downloadingPersonal ? 'Downloading...' : 'Download Templates ZIP' }}
+                  </v-btn>
+                  <span class="text-caption text-medium-emphasis">
+                    Includes install.sh &amp; install.ps1
+                  </span>
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Product Agent Templates Download -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center mb-3">
+                  <v-icon size="40" class="mr-2" color="primary">mdi-folder-multiple</v-icon>
+                  <h3 class="text-h6 mb-0">Product Agent Templates</h3>
+                </div>
+
+                <p class="text-body-2 text-medium-emphasis mb-4">
+                  Download your enabled agent templates for product use (current directory .claude/agents/)
+                </p>
+
+                <v-alert
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-4"
+                  :icon="false"
+                >
+                  <div class="d-flex align-center">
+                    <v-icon start size="small">mdi-information</v-icon>
+                    <div class="text-body-2">
+                      Includes all active templates from your Template Manager plus install scripts
+                    </div>
+                  </div>
+                </v-alert>
+
+                <!-- Download Button -->
+                <div class="d-flex align-center gap-2 mb-3">
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    size="default"
+                    @click="downloadProductAgents"
+                    :loading="downloadingProduct"
+                    prepend-icon="mdi-download"
+                  >
+                    {{ downloadingProduct ? 'Downloading...' : 'Download Templates ZIP' }}
+                  </v-btn>
+                  <span class="text-caption text-medium-emphasis">
+                    Includes install.sh &amp; install.ps1
+                  </span>
+                </div>
+              </v-card-text>
+            </v-card>
+
             <!-- Serena MCP Integration -->
             <v-card variant="outlined" class="mb-4">
               <v-card-text>
@@ -591,6 +683,8 @@ const integrationsSubTab = ref('mcp-config')
 const generalForm = ref(null)
 const serenaEnabled = ref(false)
 const toggling = ref(false)
+const downloadingPersonal = ref(false)
+const downloadingProduct = ref(false)
 
 const showSerenaAdvanced = ref(false)
 const serenaConfig = ref({
@@ -1043,6 +1137,83 @@ async function saveSerenaConfig(payload, done) {
   } finally {
     if (typeof done === 'function') done()
   }
+}
+
+// Download methods for agent templates
+async function downloadPersonalAgents() {
+  try {
+    downloadingPersonal.value = true
+    const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    triggerFileDownload(blob, 'agent-templates.zip')
+
+    // Show success message
+    settingsStore.showNotification({
+      message: 'Downloaded personal agent templates',
+      color: 'success'
+    })
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to download personal agents:', error)
+    settingsStore.showNotification({
+      message: `Download failed: ${error.message}`,
+      color: 'error'
+    })
+  } finally {
+    downloadingPersonal.value = false
+  }
+}
+
+async function downloadProductAgents() {
+  try {
+    downloadingProduct.value = true
+    const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    triggerFileDownload(blob, 'agent-templates.zip')
+
+    // Show success message
+    settingsStore.showNotification({
+      message: 'Downloaded product agent templates',
+      color: 'success'
+    })
+  } catch (error) {
+    console.error('[USER SETTINGS] Failed to download product agents:', error)
+    settingsStore.showNotification({
+      message: `Download failed: ${error.message}`,
+      color: 'error'
+    })
+  } finally {
+    downloadingProduct.value = false
+  }
+}
+
+// Helper function to trigger file download
+function triggerFileDownload(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }
 </script>
 

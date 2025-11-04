@@ -10,30 +10,13 @@ name: gil_import_productagents
 description: Import GiljoAI agent templates to current product folder
 ---
 
-# Import Product Agents
+Import agent templates to your active product's .claude/agents folder by calling the gil_import_productagents MCP tool.
 
-Imports active agent templates to your current product's `.claude/agents` folder.
-
-**Requirements:**
+Requirements:
 - Active product configured in GiljoAI dashboard
-- Product must have `project_path` set
+- Product must have project_path set
 
-**What it does:**
-1. Fetches active agent templates from GiljoAI server
-2. Creates backup of existing agents (if any)
-3. Exports templates to `<project_path>/.claude/agents/`
-4. Generates YAML frontmatter for each template
-
-**Usage:**
-```
-/gil_import_productagents
-```
-
-**Output:**
-- Backup created: `<project_path>/.claude/agents.backup.<timestamp>.zip`
-- Templates written: `<project_path>/.claude/agents/*.md`
-
-Call the MCP tool: `mcp__giljo-mcp__gil_import_productagents`
+The tool will fetch active agent templates from GiljoAI server, create backup of existing agents (if any), and export templates to your product's .claude/agents directory with YAML frontmatter.
 """
 
 GIL_IMPORT_PERSONALAGENTS_MD = """---
@@ -41,28 +24,9 @@ name: gil_import_personalagents
 description: Import GiljoAI agent templates to personal agents folder
 ---
 
-# Import Personal Agents
+Import agent templates to your personal ~/.claude/agents folder (available across all projects) by calling the gil_import_personalagents MCP tool.
 
-Imports active agent templates to your global personal agents folder.
-
-**Target:** `~/.claude/agents/` (available across all projects)
-
-**What it does:**
-1. Fetches active agent templates from GiljoAI server
-2. Creates backup of existing agents (if any)
-3. Exports templates to `~/.claude/agents/`
-4. Generates YAML frontmatter for each template
-
-**Usage:**
-```
-/gil_import_personalagents
-```
-
-**Output:**
-- Backup created: `~/.claude/agents.backup.<timestamp>.zip`
-- Templates written: `~/.claude/agents/*.md`
-
-Call the MCP tool: `mcp__giljo-mcp__gil_import_personalagents`
+The tool will fetch active agent templates from GiljoAI server, create backup of existing agents (if any), and export templates to ~/.claude/agents with YAML frontmatter.
 """
 
 GIL_HANDOVER_MD = """---
@@ -70,32 +34,13 @@ name: gil_handover
 description: Trigger orchestrator succession (context handover)
 ---
 
-# Orchestrator Handover
+Trigger orchestrator succession when context window reaches capacity by calling the gil_handover MCP tool.
 
-Triggers orchestrator succession when context window reaches capacity.
+Use when context window is approaching 90% capacity, at natural phase transitions in the project, or when manual succession is requested.
 
-**Purpose:** Create successor orchestrator instance for context handover
+The tool will generate a handover summary, create a successor orchestrator job, return a launch prompt for the new instance, and update lineage tracking.
 
-**When to use:**
-- Context window approaching 90% capacity
-- Natural phase transition in project
-- Manual succession requested
-
-**What it does:**
-1. Generates handover summary (<10K tokens)
-2. Creates successor orchestrator job
-3. Returns launch prompt for new instance
-4. Updates lineage tracking (spawned_by chain)
-
-**Usage:**
-```
-/gil_handover
-```
-
-**Arguments:**
-- `reason` (optional): "context_limit" | "manual" | "phase_transition"
-
-Call the MCP tool: `mcp__giljo-mcp__create_successor_orchestrator`
+Optional arguments: reason can be "context_limit", "manual", or "phase_transition"
 """
 
 

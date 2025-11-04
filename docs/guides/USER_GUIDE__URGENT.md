@@ -279,6 +279,17 @@ The orchestration UI uses a static agent grid for clarity and throughput. It sho
 
 See: features/agent_grid_static_0073.md for details.
 
+### Orchestrator Succession
+
+When an orchestrator nears its context budget or you’re transitioning phases, create a successor orchestrator and hand over state.
+
+- Trigger: In your CLI, run `/gil_handover` (optionally `/gil_handover <ORCHESTRATOR_JOB_ID>`)
+- Result: A successor orchestrator (instance +1) is created in “waiting”; a compressed handover summary is returned
+- UI: The grid marks the predecessor as complete and shows the successor with a NEW badge
+- Events: `job:succession_triggered`, `job:successor_created`
+
+See: developer_guides/orchestrator_succession_developer_guide.md
+
 ### Agent Lifecycle
 
 ```python

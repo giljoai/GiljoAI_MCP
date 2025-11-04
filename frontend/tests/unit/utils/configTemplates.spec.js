@@ -52,34 +52,25 @@ describe('generateClaudeCodeConfig - HTTP Transport', () => {
 })
 
 describe('generateCodexConfig - HTTP Transport', () => {
-  it('should generate valid Codex CLI command with --url and name last', () => {
+  it('should generate valid Codex CLI command with bearer env var and --url', () => {
     const command = generateCodexConfig('test-key-123', 'http://localhost:7272')
 
     expect(command).toContain('Codex CLI MCP Integration')
+    expect(command).toContain('export GILJO_API_KEY="test-key-123"')
     expect(command).toContain('codex mcp add')
     expect(command).toContain('--url http://localhost:7272/mcp')
-    // Ensure header present and name at the end
-    expect(command).toMatch(/--header \"X-API-Key: test-key-123\".*giljo-mcp/) 
-  })
-
-  it('should include API key in header', () => {
-    const command = generateCodexConfig('codex-key-456', 'https://example.com:7272')
-    expect(command).toContain('X-API-Key: codex-key-456')
+    expect(command).toContain('--bearer-token-env-var GILJO_API_KEY')
   })
 })
 
 describe('generateGeminiConfig - HTTP Transport', () => {
-  it('should generate valid Gemini CLI command with --url and name last', () => {
+  it('should generate valid Gemini CLI command with -t http, header, name then URL', () => {
     const command = generateGeminiConfig('test-key-123', 'http://localhost:7272')
 
     expect(command).toContain('Gemini CLI MCP Integration')
     expect(command).toContain('gemini mcp add')
-    expect(command).toContain('--url http://localhost:7272/mcp')
-    expect(command).toMatch(/--header \"X-API-Key: test-key-123\".*giljo-mcp/)
-  })
-
-  it('should include API key in header', () => {
-    const command = generateGeminiConfig('gemini-key-789', 'https://example.com:7272')
-    expect(command).toContain('X-API-Key: gemini-key-789')
+    expect(command).toContain('-t http')
+    expect(command).toContain('-H "X-API-Key: test-key-123"')
+    expect(command).toMatch(/gemini mcp add.*giljo-mcp http:\/\/localhost:7272\/mcp/)
   })
 })

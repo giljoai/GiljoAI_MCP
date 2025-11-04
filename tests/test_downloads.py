@@ -79,9 +79,9 @@ class TestDownloadSlashCommands:
     """Test /api/download/slash-commands.zip endpoint"""
 
     @pytest.mark.asyncio
-    async def test_download_slash_commands_authenticated(self, test_client, auth_headers):
+    async def test_download_slash_commands_authenticated(self, api_client, auth_headers):
         """Test slash commands download with authentication"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/slash-commands.zip",
             headers=auth_headers
         )
@@ -99,16 +99,16 @@ class TestDownloadSlashCommands:
             assert "gil_handover.md" in namelist
 
     @pytest.mark.asyncio
-    async def test_download_slash_commands_unauthenticated(self, test_client):
+    async def test_download_slash_commands_unauthenticated(self, api_client):
         """Test slash commands download without authentication"""
-        response = test_client.get("/api/download/slash-commands.zip")
+        response = api_client.get("/api/download/slash-commands.zip")
 
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_download_slash_commands_content_verification(self, test_client, auth_headers):
+    async def test_download_slash_commands_content_verification(self, api_client, auth_headers):
         """Test slash commands ZIP contains correct content"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/slash-commands.zip",
             headers=auth_headers
         )
@@ -127,7 +127,7 @@ class TestDownloadAgentTemplates:
 
     @pytest.mark.asyncio
     async def test_download_agent_templates_authenticated(
-        self, test_client, auth_headers, test_db_session, test_user
+        self, api_client, auth_headers, test_db_session, test_user
     ):
         """Test agent templates download with authentication"""
         # Create test templates
@@ -152,7 +152,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add_all(templates)
         await test_db_session.commit()
 
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/agent-templates.zip",
             headers=auth_headers
         )
@@ -169,7 +169,7 @@ class TestDownloadAgentTemplates:
 
     @pytest.mark.asyncio
     async def test_download_agent_templates_active_only(
-        self, test_client, auth_headers, test_db_session, test_user
+        self, api_client, auth_headers, test_db_session, test_user
     ):
         """Test agent templates download filters inactive templates"""
         # Create active and inactive templates
@@ -194,7 +194,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add_all(templates)
         await test_db_session.commit()
 
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/agent-templates.zip?active_only=true",
             headers=auth_headers
         )
@@ -207,7 +207,7 @@ class TestDownloadAgentTemplates:
 
     @pytest.mark.asyncio
     async def test_download_agent_templates_with_frontmatter(
-        self, test_client, auth_headers, test_db_session, test_user
+        self, api_client, auth_headers, test_db_session, test_user
     ):
         """Test agent templates ZIP includes YAML frontmatter"""
         template = AgentTemplate(
@@ -222,7 +222,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add(template)
         await test_db_session.commit()
 
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/agent-templates.zip",
             headers=auth_headers
         )
@@ -239,7 +239,7 @@ class TestDownloadAgentTemplates:
 
     @pytest.mark.asyncio
     async def test_download_agent_templates_multi_tenant_isolation(
-        self, test_client, auth_headers, test_db_session, test_user
+        self, api_client, auth_headers, test_db_session, test_user
     ):
         """Test agent templates download respects multi-tenant isolation"""
         # Create templates for different tenants
@@ -265,7 +265,7 @@ class TestDownloadAgentTemplates:
         test_db_session.add_all(templates)
         await test_db_session.commit()
 
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/agent-templates.zip",
             headers=auth_headers
         )
@@ -277,9 +277,9 @@ class TestDownloadAgentTemplates:
             assert "other_template.md" not in namelist
 
     @pytest.mark.asyncio
-    async def test_download_agent_templates_unauthenticated(self, test_client):
+    async def test_download_agent_templates_unauthenticated(self, api_client):
         """Test agent templates download without authentication"""
-        response = test_client.get("/api/download/agent-templates.zip")
+        response = api_client.get("/api/download/agent-templates.zip")
 
         assert response.status_code == 401
 
@@ -288,9 +288,9 @@ class TestDownloadInstallScript:
     """Test /api/download/install-script.{extension} endpoint"""
 
     @pytest.mark.asyncio
-    async def test_download_install_script_sh(self, test_client, auth_headers):
+    async def test_download_install_script_sh(self, api_client, auth_headers):
         """Test Unix install script download"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/install-script.sh?type=slash-commands",
             headers=auth_headers
         )
@@ -306,9 +306,9 @@ class TestDownloadInstallScript:
         assert "/api/download/slash-commands.zip" in content
 
     @pytest.mark.asyncio
-    async def test_download_install_script_ps1(self, test_client, auth_headers):
+    async def test_download_install_script_ps1(self, api_client, auth_headers):
         """Test PowerShell install script download"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/install-script.ps1?type=agent-templates",
             headers=auth_headers
         )
@@ -323,9 +323,9 @@ class TestDownloadInstallScript:
         assert "/api/download/agent-templates.zip" in content
 
     @pytest.mark.asyncio
-    async def test_download_install_script_invalid_extension(self, test_client, auth_headers):
+    async def test_download_install_script_invalid_extension(self, api_client, auth_headers):
         """Test install script download with invalid extension"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/install-script.bat?type=slash-commands",
             headers=auth_headers
         )
@@ -333,9 +333,9 @@ class TestDownloadInstallScript:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_download_install_script_invalid_type(self, test_client, auth_headers):
+    async def test_download_install_script_invalid_type(self, api_client, auth_headers):
         """Test install script download with invalid type"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/install-script.sh?type=invalid",
             headers=auth_headers
         )
@@ -344,10 +344,10 @@ class TestDownloadInstallScript:
 
     @pytest.mark.asyncio
     async def test_download_install_script_server_url_templating(
-        self, test_client, auth_headers
+        self, api_client, auth_headers
     ):
         """Test install script includes correct server URL"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/install-script.sh?type=slash-commands",
             headers=auth_headers
         )
@@ -363,12 +363,12 @@ class TestAPIKeyAuthentication:
     """Test API key authentication for download endpoints"""
 
     @pytest.mark.asyncio
-    async def test_download_with_api_key_header(self, test_client, test_user):
+    async def test_download_with_api_key_header(self, api_client, test_user):
         """Test download endpoint with X-API-Key header"""
         # Assume user has api_key attribute
         api_key = f"gk_{test_user.username}_test"
 
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/slash-commands.zip",
             headers={"X-API-Key": api_key}
         )
@@ -377,9 +377,9 @@ class TestAPIKeyAuthentication:
         assert response.status_code in [200, 401]  # Depends on API key validation
 
     @pytest.mark.asyncio
-    async def test_download_with_bearer_token(self, test_client, auth_headers):
+    async def test_download_with_bearer_token(self, api_client, auth_headers):
         """Test download endpoint with Bearer token"""
-        response = test_client.get(
+        response = api_client.get(
             "/api/download/slash-commands.zip",
             headers=auth_headers
         )
@@ -387,9 +387,9 @@ class TestAPIKeyAuthentication:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_download_without_authentication(self, test_client):
+    async def test_download_without_authentication(self, api_client):
         """Test download endpoint without any authentication"""
-        response = test_client.get("/api/download/slash-commands.zip")
+        response = api_client.get("/api/download/slash-commands.zip")
 
         assert response.status_code == 401
 

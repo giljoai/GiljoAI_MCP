@@ -28,6 +28,12 @@
 | `/mcp__gil__launch_project <alias>` | Begin orchestration | After activation | ❌ No |
 | `/mcp__gil__update_agents` | Update templates | Periodically (monthly) | ✅ Yes |
 
+Optional (Succession):
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `/gil_handover [<job_id>]` | Create successor orchestrator | Context high or phase change |
+
 ---
 
 ## Command Details

@@ -160,10 +160,12 @@ async def download_slash_commands(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Download slash command templates as ZIP file.
+    Download slash command templates as complete ZIP file.
 
-    This endpoint generates a ZIP file containing all slash command markdown files
-    with YAML frontmatter. Commands can be installed to ~/.claude/commands/ directory.
+    This endpoint generates a ZIP file containing:
+    - All slash command markdown files with YAML frontmatter
+    - install.sh (Unix/macOS/Linux installer)
+    - install.ps1 (Windows PowerShell installer)
 
     Supported commands:
     - gil_import_productagents.md
@@ -174,7 +176,7 @@ async def download_slash_commands(
         current_user: Authenticated user (from JWT or API key)
 
     Returns:
-        Response with ZIP file download
+        Response with complete ZIP file download
 
     Raises:
         HTTPException: 401 if not authenticated
@@ -182,7 +184,7 @@ async def download_slash_commands(
     Example:
         curl -H "Authorization: Bearer $TOKEN" \\
              http://localhost:7272/api/download/slash-commands.zip \\
-             -o commands.zip
+             -o slash-commands.zip
     """
     if current_user is None:
         raise HTTPException(
@@ -190,16 +192,34 @@ async def download_slash_commands(
             detail="Authentication required for slash commands download",
         )
 
-    logger.info(f"Generating slash commands ZIP for user: {current_user.username}")
+    logger.info(f"Generating complete slash commands ZIP for user: {current_user.username}")
 
     # Get all slash command templates
     templates = get_all_templates()
+
+    # Add install scripts with server URL rendered
+    server_url = get_server_url()
+
+    # Read install scripts from templates
+    sh_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_slash_commands.sh"
+    ps1_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_slash_commands.ps1"
+
+    # Read and render scripts
+    if sh_script_path.exists():
+        with open(sh_script_path, "r") as f:
+            sh_content = render_install_script(f.read(), server_url)
+            templates["install.sh"] = sh_content
+
+    if ps1_script_path.exists():
+        with open(ps1_script_path, "r") as f:
+            ps1_content = render_install_script(f.read(), server_url)
+            templates["install.ps1"] = ps1_content
 
     # Create ZIP archive
     zip_bytes = create_zip_archive(templates)
 
     logger.info(
-        f"Slash commands ZIP generated successfully for: {current_user.username} "
+        f"Complete slash commands ZIP generated for: {current_user.username} "
         f"({len(templates)} files, {len(zip_bytes)} bytes)"
     )
 
@@ -219,11 +239,15 @@ async def download_agent_templates(
     active_only: bool = Query(True, description="Only include active templates"),
 ):
     """
-    Download agent templates as ZIP file (dynamic content from database).
+    Download agent templates as complete ZIP file (dynamic content from database).
 
-    This endpoint generates a ZIP file containing agent template markdown files
-    with YAML frontmatter. Templates are fetched from the database and filtered
-    by the current user's tenant key (multi-tenant isolation).
+    This endpoint generates a ZIP file containing:
+    - All active agent template markdown files with YAML frontmatter
+    - install.sh (Unix/macOS/Linux installer for product/personal)
+    - install.ps1 (Windows PowerShell installer for product/personal)
+
+    Templates are fetched from the database and filtered by the current user's
+    tenant key (multi-tenant isolation). Up to 8 enabled templates included.
 
     Each template file includes:
     - YAML frontmatter (name, description, tools, model)
@@ -237,16 +261,16 @@ async def download_agent_templates(
         active_only: Only include active templates (default: True)
 
     Returns:
-        Response with ZIP file download
+        Response with complete ZIP file download
 
     Raises:
         HTTPException: 401 if not authenticated
-        HTTPException: 500 if no templates found
+        HTTPException: 404 if no templates found
 
     Example:
         curl -H "Authorization: Bearer $TOKEN" \\
              http://localhost:7272/api/download/agent-templates.zip?active_only=true \\
-             -o templates.zip
+             -o agent-templates.zip
     """
     if current_user is None:
         raise HTTPException(
@@ -319,12 +343,30 @@ async def download_agent_templates(
 
         files[filename] = "".join(content_parts)
 
+    # Add install scripts with server URL rendered
+    server_url = get_server_url()
+
+    # Read install scripts from templates
+    sh_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_agent_templates.sh"
+    ps1_script_path = Path(__file__).parent.parent.parent / "installer" / "templates" / "install_agent_templates.ps1"
+
+    # Read and render scripts
+    if sh_script_path.exists():
+        with open(sh_script_path, "r") as f:
+            sh_content = render_install_script(f.read(), server_url)
+            files["install.sh"] = sh_content
+
+    if ps1_script_path.exists():
+        with open(ps1_script_path, "r") as f:
+            ps1_content = render_install_script(f.read(), server_url)
+            files["install.ps1"] = ps1_content
+
     # Create ZIP archive
     zip_bytes = create_zip_archive(files)
 
     logger.info(
-        f"Agent templates ZIP generated successfully for: {current_user.username} "
-        f"({len(files)} files, {len(zip_bytes)} bytes)"
+        f"Complete agent templates ZIP generated for: {current_user.username} "
+        f"({len(files)} files including install scripts, {len(zip_bytes)} bytes)"
     )
 
     return Response(
