@@ -657,12 +657,62 @@ import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api'
 import TemplateArchive from './TemplateArchive.vue'
 import { format } from 'date-fns'
-import {
-  generatePersonalAgentsInstructions,
-  generateProductAgentsInstructions,
-  copyToClipboardSafe,
-  downloadBlob,
-} from '@/utils/downloadInstructions'
+// Utility functions (inline to avoid external dependency)
+function generatePersonalAgentsInstructions(downloadUrl) {
+  return `Download from: ${downloadUrl}
+
+Once downloaded:
+1. Extract the ZIP file
+2. For macOS/Linux: Extract to ~/.claude/agents/
+3. For Windows: Extract to %USERPROFILE%\\.claude\\agents\\
+4. Restart your AI coding tool
+
+This download link expires in 15 minutes but can be used multiple times.`
+}
+
+function generateProductAgentsInstructions(downloadUrl) {
+  return `Download from: ${downloadUrl}
+
+Once downloaded:
+1. Extract the ZIP file
+2. Extract to .claude/agents/ in your current project root
+3. Restart your AI coding tool
+
+This download link expires in 15 minutes but can be used multiple times.`
+}
+
+async function copyToClipboardSafe(text, onSuccess, onError) {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text)
+      if (onSuccess) onSuccess()
+    } else {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      if (onSuccess) onSuccess()
+    }
+  } catch (error) {
+    if (onError) onError(error)
+  }
+}
+
+function downloadBlob(response, filename) {
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
 
 // Reactive data
 const templates = ref([])
