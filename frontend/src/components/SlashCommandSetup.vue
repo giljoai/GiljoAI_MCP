@@ -47,29 +47,24 @@
         </v-card-text>
       </v-card>
 
-      <!-- Download Installation Badge -->
-      <v-card variant="tonal" class="mb-3">
-        <v-card-text class="pa-3">
-          <div class="d-flex align-center justify-between">
-            <div class="flex-grow-1">
-              <div class="text-subtitle-2 font-weight-medium">Download Installation</div>
-              <div class="text-body-2 text-medium-emphasis">
-                Download slash command files (includes install scripts)
-              </div>
-            </div>
-            <v-btn
-              color="primary"
-              variant="flat"
-              size="small"
-              width="120"
-              @click="downloadSlashCommands"
-              :loading="downloading"
-            >
-              Download
-            </v-btn>
-          </div>
-        </v-card-text>
-      </v-card>
+      <!-- Download Installation -->
+      <div class="d-flex align-center mt-3">
+        <v-btn
+          variant="text"
+          size="small"
+          color="light-blue"
+          @click="downloadSlashCommands"
+          :loading="downloading"
+          class="d-flex align-center"
+          style="margin-left: -5px"
+        >
+          <v-icon size="20" class="mr-2">mdi-slash-forward-box</v-icon>
+          Download slash commands
+        </v-btn>
+        <span class="text-caption text-medium-emphasis ml-3">
+          Download slash command files (includes install scripts)
+        </span>
+      </div>
 
     </v-card-text>
 
