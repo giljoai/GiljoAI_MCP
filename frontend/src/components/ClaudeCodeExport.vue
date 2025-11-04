@@ -51,7 +51,7 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Manual Template installation</div>
+                <div class="text-subtitle-2 font-weight-medium">Manual Template installation of <strong>Personal Agents</strong></div>
                 <div class="text-body-2 text-medium-emphasis">
                   Dynamic zip file from Agent Template Manager with installation scripts
                 </div>
@@ -98,7 +98,7 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Manual Template installation</div>
+                <div class="text-subtitle-2 font-weight-medium">Manual Template installation of <strong>Product Agents</strong></div>
                 <div class="text-body-2 text-medium-emphasis">
                   Dynamic zip file from Agent Template Manager with installation scripts
                 </div>
