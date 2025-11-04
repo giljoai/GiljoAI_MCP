@@ -397,3 +397,241 @@ class TestToolAccessor:
         assert result["success"] is True
         assert result["recovered"] is True
         assert failure_count == 3  # Failed twice, succeeded on third try
+
+    # Slash Command Download Tests (Handover 0100)
+
+    @pytest.mark.asyncio
+    async def test_setup_slash_commands_success(self):
+        """Test setup_slash_commands returns download URL"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
+             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
+             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
+
+            # Setup mocks
+            mock_token_manager = AsyncMock()
+            mock_token_manager.generate_token = AsyncMock(return_value="test-token-uuid")
+            mock_token_manager_class.return_value = mock_token_manager
+
+            mock_file_staging = AsyncMock()
+            mock_file_staging.create_staging_directory = AsyncMock(return_value="/tmp/staging")
+            mock_file_staging.stage_slash_commands = AsyncMock(return_value="/tmp/staging/slash_commands.zip")
+            mock_file_staging_class.return_value = mock_file_staging
+
+            mock_config = AsyncMock()
+            mock_config.api.host = "localhost"
+            mock_config.api.port = 8000
+            mock_get_config.return_value = mock_config
+
+            # Call method
+            result = await accessor.setup_slash_commands(_api_key="test-api-key")
+
+            # Assertions
+            assert result["success"] is True
+            assert "download_url" in result
+            assert "/api/download/temp/test-token-uuid/slash_commands.zip" in result["download_url"]
+            assert result["expires_minutes"] == 15
+            assert result["one_time_use"] is True
+            assert "instructions" in result
+
+    @pytest.mark.asyncio
+    async def test_setup_slash_commands_no_api_key(self):
+        """Test setup_slash_commands fails without API key"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.setup_slash_commands(_api_key=None)
+
+        assert result["success"] is False
+        assert "API key not provided" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_setup_slash_commands_no_tenant(self):
+        """Test setup_slash_commands fails without tenant context"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        # Mock get_current_tenant to return None
+        with patch.object(self.tenant_manager, "get_current_tenant", return_value=None):
+            result = await accessor.setup_slash_commands(_api_key="test-api-key")
+
+            assert result["success"] is False
+            assert "No active tenant" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_setup_slash_commands_exception_handling(self):
+        """Test setup_slash_commands handles exceptions gracefully"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class:
+            # Make token generation fail
+            mock_token_manager_class.side_effect = Exception("Token generation failed")
+
+            result = await accessor.setup_slash_commands(_api_key="test-api-key")
+
+            assert result["success"] is False
+            assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_gil_import_productagents_success(self):
+        """Test gil_import_productagents returns download URL"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
+             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
+             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
+
+            # Setup mocks
+            mock_token_manager = AsyncMock()
+            mock_token_manager.generate_token = AsyncMock(return_value="test-token-uuid")
+            mock_token_manager_class.return_value = mock_token_manager
+
+            mock_file_staging = AsyncMock()
+            mock_file_staging.create_staging_directory = AsyncMock(return_value="/tmp/staging")
+            mock_file_staging.stage_agent_templates = AsyncMock(return_value="/tmp/staging/agent_templates.zip")
+            mock_file_staging_class.return_value = mock_file_staging
+
+            mock_config = AsyncMock()
+            mock_config.api.host = "localhost"
+            mock_config.api.port = 8000
+            mock_get_config.return_value = mock_config
+
+            # Call method
+            result = await accessor.gil_import_productagents(_api_key="test-api-key")
+
+            # Assertions
+            assert result["success"] is True
+            assert "download_url" in result
+            assert "/api/download/temp/test-token-uuid/agent_templates.zip" in result["download_url"]
+            assert result["expires_minutes"] == 15
+            assert result["one_time_use"] is True
+            assert "product" not in result["message"].lower() or "project" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_gil_import_productagents_no_api_key(self):
+        """Test gil_import_productagents fails without API key"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.gil_import_productagents(_api_key=None)
+
+        assert result["success"] is False
+        assert "API key not provided" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_gil_import_productagents_exception_handling(self):
+        """Test gil_import_productagents handles exceptions gracefully"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class:
+            # Make token generation fail
+            mock_token_manager_class.side_effect = Exception("Token generation failed")
+
+            result = await accessor.gil_import_productagents(_api_key="test-api-key")
+
+            assert result["success"] is False
+            assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_gil_import_personalagents_success(self):
+        """Test gil_import_personalagents returns download URL"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
+             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
+             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
+
+            # Setup mocks
+            mock_token_manager = AsyncMock()
+            mock_token_manager.generate_token = AsyncMock(return_value="test-token-uuid")
+            mock_token_manager_class.return_value = mock_token_manager
+
+            mock_file_staging = AsyncMock()
+            mock_file_staging.create_staging_directory = AsyncMock(return_value="/tmp/staging")
+            mock_file_staging.stage_agent_templates = AsyncMock(return_value="/tmp/staging/agent_templates.zip")
+            mock_file_staging_class.return_value = mock_file_staging
+
+            mock_config = AsyncMock()
+            mock_config.api.host = "localhost"
+            mock_config.api.port = 8000
+            mock_get_config.return_value = mock_config
+
+            # Call method
+            result = await accessor.gil_import_personalagents(_api_key="test-api-key")
+
+            # Assertions
+            assert result["success"] is True
+            assert "download_url" in result
+            assert "/api/download/temp/test-token-uuid/agent_templates.zip" in result["download_url"]
+            assert result["expires_minutes"] == 15
+            assert result["one_time_use"] is True
+            # Message should mention agent templates and directory location
+            assert "agent" in result["message"].lower() or ".claude/agents" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_gil_import_personalagents_no_api_key(self):
+        """Test gil_import_personalagents fails without API key"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        result = await accessor.gil_import_personalagents(_api_key=None)
+
+        assert result["success"] is False
+        assert "API key not provided" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_gil_import_personalagents_exception_handling(self):
+        """Test gil_import_personalagents handles exceptions gracefully"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class:
+            # Make token generation fail
+            mock_token_manager_class.side_effect = Exception("Token generation failed")
+
+            result = await accessor.gil_import_personalagents(_api_key="test-api-key")
+
+            assert result["success"] is False
+            assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_download_urls_have_correct_format(self):
+        """Test that all download methods generate correctly formatted URLs"""
+        accessor = ToolAccessor(self.db_manager, self.tenant_manager)
+
+        with patch("giljo_mcp.download_tokens.TokenManager") as mock_token_manager_class, \
+             patch("giljo_mcp.file_staging.FileStaging") as mock_file_staging_class, \
+             patch("giljo_mcp.config_manager.get_config") as mock_get_config:
+
+            # Setup mocks
+            mock_token_manager = AsyncMock()
+            mock_token_manager.generate_token = AsyncMock(return_value="abc123def456")
+            mock_token_manager_class.return_value = mock_token_manager
+
+            mock_file_staging = AsyncMock()
+            mock_file_staging.create_staging_directory = AsyncMock(return_value="/tmp/staging")
+            mock_file_staging.stage_slash_commands = AsyncMock(return_value="/tmp/staging/slash_commands.zip")
+            mock_file_staging.stage_agent_templates = AsyncMock(return_value="/tmp/staging/agent_templates.zip")
+            mock_file_staging_class.return_value = mock_file_staging
+
+            mock_config = AsyncMock()
+            mock_config.api.host = "192.168.1.100"
+            mock_config.api.port = 9000
+            mock_get_config.return_value = mock_config
+
+            # Test setup_slash_commands URL format
+            result1 = await accessor.setup_slash_commands(_api_key="test-api-key")
+            assert result1["success"] is True
+            assert result1["download_url"] == "http://192.168.1.100:9000/api/download/temp/abc123def456/slash_commands.zip"
+
+            # Reset mock
+            mock_token_manager.generate_token = AsyncMock(return_value="xyz789uvw123")
+
+            # Test gil_import_productagents URL format
+            result2 = await accessor.gil_import_productagents(_api_key="test-api-key")
+            assert result2["success"] is True
+            assert result2["download_url"] == "http://192.168.1.100:9000/api/download/temp/xyz789uvw123/agent_templates.zip"
+
+            # Reset mock
+            mock_token_manager.generate_token = AsyncMock(return_value="pqr456stu789")
+
+            # Test gil_import_personalagents URL format
+            result3 = await accessor.gil_import_personalagents(_api_key="test-api-key")
+            assert result3["success"] is True
+            assert result3["download_url"] == "http://192.168.1.100:9000/api/download/temp/pqr456stu789/agent_templates.zip"
