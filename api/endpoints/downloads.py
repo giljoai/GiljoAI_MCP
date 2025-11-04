@@ -753,3 +753,103 @@ async def download_temp_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
         )
+
+
+# REST endpoints for MCP tool calls (natural language instructions)
+@router.post("/mcp/setup_slash_commands", tags=["MCP Tools"])
+async def setup_slash_commands_rest(
+    request: Request,
+    current_user: dict = Depends(require_auth),
+) -> dict:
+    """
+    REST endpoint wrapper for setup_slash_commands MCP tool.
+    Returns natural language installation instructions with download token.
+    """
+    try:
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tool_accessor = ToolAccessor()
+
+        # Extract server URL from request
+        server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
+
+        # Call MCP tool
+        result = await tool_accessor.setup_slash_commands(
+            _api_key=current_user.get("api_key"),
+            _server_url=server_url
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to generate slash commands instructions: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/mcp/gil_import_personalagents", tags=["MCP Tools"])
+async def import_personal_agents_rest(
+    request: Request,
+    current_user: dict = Depends(require_auth),
+) -> dict:
+    """
+    REST endpoint wrapper for gil_import_personalagents MCP tool.
+    Returns natural language installation instructions with download token.
+    """
+    try:
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tool_accessor = ToolAccessor()
+
+        # Extract server URL from request
+        server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
+
+        # Call MCP tool
+        result = await tool_accessor.gil_import_personalagents(
+            _api_key=current_user.get("api_key"),
+            _server_url=server_url
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to generate personal agents instructions: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/mcp/gil_import_productagents", tags=["MCP Tools"])
+async def import_product_agents_rest(
+    request: Request,
+    current_user: dict = Depends(require_auth),
+) -> dict:
+    """
+    REST endpoint wrapper for gil_import_productagents MCP tool.
+    Returns natural language installation instructions with download token.
+    """
+    try:
+        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+
+        tool_accessor = ToolAccessor()
+
+        # Extract server URL from request
+        server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
+
+        # Call MCP tool
+        result = await tool_accessor.gil_import_productagents(
+            _api_key=current_user.get("api_key"),
+            _server_url=server_url
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to generate product agents instructions: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
