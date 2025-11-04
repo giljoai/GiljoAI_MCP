@@ -53,7 +53,7 @@
               <div class="flex-grow-1">
                 <div class="text-subtitle-2 font-weight-medium">Manual Template installation</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  Creates a dynamic zip file based on your active agents from the Agent Template Manager and installation scripts
+                  Dynamic zip file from Agent Template Manager with installation scripts
                 </div>
               </div>
               <v-btn
@@ -100,7 +100,7 @@
               <div class="flex-grow-1">
                 <div class="text-subtitle-2 font-weight-medium">Manual Template installation</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  Creates a dynamic zip file based on your active agents from the Agent Template Manager and installation scripts
+                  Dynamic zip file from Agent Template Manager with installation scripts
                 </div>
               </div>
               <v-btn
