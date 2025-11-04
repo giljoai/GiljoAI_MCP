@@ -1838,3 +1838,258 @@ Begin by fetching your mission.
         except Exception as e:
             logger.exception(f"Failed to report error: {e}")
             return {"status": "error", "error": str(e)}
+
+    async def get_next_instruction(self, job_id: str, agent_type: str, tenant_key: str) -> dict[str, Any]:
+        """Get next instructions for agent from message queue"""
+        from giljo_mcp.agent_communication_queue import AgentCommunicationQueue
+
+        try:
+            # Validate inputs
+            if not job_id or not job_id.strip():
+                return {"status": "error", "error": "job_id cannot be empty"}
+
+            if not agent_type or not agent_type.strip():
+                return {"status": "error", "error": "agent_type cannot be empty"}
+
+            if not tenant_key or not tenant_key.strip():
+                return {"status": "error", "error": "tenant_key cannot be empty"}
+
+            comm_queue = AgentCommunicationQueue(self.db_manager)
+
+            # Get unread messages for this job
+            async with self.db_manager.get_session_async() as session:
+                result = comm_queue.get_messages(
+                    session=session,
+                    job_id=job_id,
+                    tenant_key=tenant_key,
+                    to_agent=agent_type,
+                    unread_only=True
+                )
+
+                if result.get("status") != "success":
+                    return result
+
+                messages = result.get("messages", [])
+                has_updates = len(messages) > 0
+
+                # Extract and categorize instructions
+                instructions = []
+                handoff_requested = False
+                context_warning = False
+
+                for msg in messages:
+                    msg_type = msg.get("type")
+                    content = msg.get("content")
+
+                    if msg_type == "user_feedback":
+                        instructions.append(f"USER FEEDBACK: {content}")
+                    elif msg_type == "orchestrator_instruction":
+                        instructions.append(f"ORCHESTRATOR: {content}")
+                    elif msg_type == "handoff_request":
+                        handoff_requested = True
+                        instructions.append("HANDOFF REQUESTED: Prepare comprehensive summary and context handoff")
+                    elif msg_type == "context_warning":
+                        context_warning = True
+                        instructions.append(f"CONTEXT WARNING: {content} - Plan completion or handoff")
+                    elif msg_type == "error_recovery":
+                        instructions.append(f"ERROR RECOVERY GUIDANCE: {content}")
+
+                return {
+                    "status": "success",
+                    "has_updates": has_updates,
+                    "instructions": instructions,
+                    "handoff_requested": handoff_requested,
+                    "context_warning": context_warning,
+                    "message_count": len(messages)
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to get next instruction: {e}")
+            return {"status": "error", "error": str(e)}
+
+    # Succession Tools (Handover 0080)
+
+    async def create_successor_orchestrator(
+        self,
+        current_job_id: str,
+        tenant_key: str,
+        reason: str = "context_limit"
+    ) -> dict[str, Any]:
+        """Create successor orchestrator for context handover (Handover 0080)"""
+        try:
+            from giljo_mcp.models import MCPAgentJob
+            from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
+
+            async with self.db_manager.get_session_async() as session:
+                # Retrieve current orchestrator job
+                result = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.job_id == current_job_id,
+                        MCPAgentJob.tenant_key == tenant_key
+                    )
+                )
+                orchestrator = result.scalar_one_or_none()
+
+                if not orchestrator:
+                    return {
+                        "success": False,
+                        "error": f"Orchestrator job {current_job_id} not found for tenant {tenant_key}"
+                    }
+
+                # Verify agent type is orchestrator
+                if orchestrator.agent_type != "orchestrator":
+                    return {
+                        "success": False,
+                        "error": f"Job {current_job_id} is not an orchestrator (type: {orchestrator.agent_type})"
+                    }
+
+                # Verify orchestrator is not already complete
+                if orchestrator.status == "complete":
+                    return {
+                        "success": False,
+                        "error": f"Orchestrator {current_job_id} is already complete"
+                    }
+
+                # Initialize succession manager
+                manager = OrchestratorSuccessionManager(session, tenant_key)
+
+                # Create successor
+                successor = manager.create_successor(orchestrator, reason=reason)
+
+                # Generate handover summary
+                handover_summary = manager.generate_handover_summary(orchestrator)
+
+                # Complete handover
+                manager.complete_handover(orchestrator, successor, handover_summary, reason)
+
+                # Commit changes
+                await session.commit()
+
+                # Refresh objects
+                await session.refresh(orchestrator)
+                await session.refresh(successor)
+
+                logger.info(
+                    f"Succession completed: {orchestrator.job_id} → {successor.job_id}, "
+                    f"instance {orchestrator.instance_number} → {successor.instance_number}, "
+                    f"reason: {reason}"
+                )
+
+                return {
+                    "success": True,
+                    "successor_id": successor.job_id,
+                    "instance_number": successor.instance_number,
+                    "status": successor.status,
+                    "handover_summary": handover_summary,
+                    "message": (
+                        f"Successor orchestrator created (instance {successor.instance_number}). "
+                        f"Original orchestrator marked complete. "
+                        f"Launch successor manually from dashboard."
+                    )
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to create successor orchestrator: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def check_succession_status(
+        self,
+        job_id: str,
+        tenant_key: str
+    ) -> dict[str, Any]:
+        """Check if orchestrator should trigger succession (Handover 0080)"""
+        try:
+            from giljo_mcp.models import MCPAgentJob
+
+            async with self.db_manager.get_session_async() as session:
+                # Retrieve orchestrator job
+                result = await session.execute(
+                    select(MCPAgentJob).where(
+                        MCPAgentJob.job_id == job_id,
+                        MCPAgentJob.tenant_key == tenant_key
+                    )
+                )
+                orchestrator = result.scalar_one_or_none()
+
+                if not orchestrator:
+                    return {
+                        "should_trigger": False,
+                        "error": f"Job {job_id} not found"
+                    }
+
+                # Calculate context usage percentage
+                context_used = orchestrator.context_used or 0
+                context_budget = orchestrator.context_budget or 200000
+                usage_percentage = (context_used / context_budget) * 100 if context_budget > 0 else 0
+
+                # Determine if succession should be triggered (90% threshold)
+                should_trigger = usage_percentage >= 90.0
+
+                recommendation = ""
+                if usage_percentage < 70:
+                    recommendation = "Context usage healthy. Continue normal operation."
+                elif usage_percentage < 85:
+                    recommendation = "Monitor context usage. Begin planning for potential succession."
+                elif usage_percentage < 90:
+                    recommendation = "Context usage high. Prepare for succession soon."
+                else:
+                    recommendation = "Trigger succession now to avoid context overflow."
+
+                return {
+                    "should_trigger": should_trigger,
+                    "context_used": context_used,
+                    "context_budget": context_budget,
+                    "usage_percentage": round(usage_percentage, 2),
+                    "threshold_reached": should_trigger,
+                    "recommendation": recommendation
+                }
+
+        except Exception as e:
+            logger.exception(f"Failed to check succession status: {e}")
+            return {"should_trigger": False, "error": str(e)}
+
+    # Slash Command Setup Tool (Handover 0093)
+
+    async def setup_slash_commands(self) -> dict[str, Any]:
+        """
+        Return slash command file contents for local installation (Handover 0093)
+
+        This tool returns the markdown content for 3 slash commands that can be
+        installed to ~/.claude/commands/ directory. The agentic CLI (Claude Code,
+        Codex, Gemini) will use its Write tool to create the files locally.
+
+        Returns:
+            dict containing:
+                - success: bool
+                - message: str
+                - files: dict[str, str] - filename -> markdown content
+                - target_directory: str - "~/.claude/commands/"
+                - instructions: list[str] - installation steps
+                - restart_required: bool - True (CLI restart needed)
+        """
+        try:
+            from .slash_command_templates import get_all_templates
+
+            # Get all slash command templates
+            templates = get_all_templates()
+
+            return {
+                "success": True,
+                "message": "Installing 3 GiljoAI slash commands to ~/.claude/commands/",
+                "files": templates,
+                "target_directory": "~/.claude/commands/",
+                "instructions": [
+                    "Creating ~/.claude/commands/ directory if it doesn't exist",
+                    "Writing 3 slash command files",
+                    "Files will be available after CLI restart"
+                ],
+                "restart_required": True
+            }
+
+        except Exception as e:
+            logger.exception(f"Failed to setup slash commands: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Failed to setup slash commands: {str(e)}"
+            }

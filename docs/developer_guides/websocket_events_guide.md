@@ -81,6 +81,7 @@ async def your_endpoint(
 - `project:mission_updated` - Mission generated/regenerated
 - `agent:created` - New agent job created
 - `agent:status_changed` - Agent status transitions
+- `orchestrator:prompt_generated` - Thin prompt generated (0088 migration)
 
 **Create New Event** (if needed):
 

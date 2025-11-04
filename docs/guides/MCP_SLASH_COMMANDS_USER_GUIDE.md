@@ -42,7 +42,7 @@ Before using slash commands, ensure you have:
 
 ## Command Reference
 
-### 1. Install Agents (One-Time Setup)
+### 1. Install/Import Agent Templates (Setup)
 
 **Command:**
 ```
@@ -115,7 +115,7 @@ Notes:
 
 **When to Use:**
 - Before launching a new project mission
-- To re-activate a paused project
+- To re-activate an inactive project
 
 **What It Does:**
 1. Fetches project details by alias
