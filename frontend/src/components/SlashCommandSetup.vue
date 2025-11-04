@@ -20,9 +20,28 @@
         </v-tooltip>
       </div>
 
-      <p class="text-body-2 text-medium-emphasis mb-4">
+      <p class="text-body-2 text-medium-emphasis mb-3">
         Install slash commands to your CLI tool for agent import and orchestrator succession
       </p>
+
+      <!-- Download Installation -->
+      <div class="d-flex align-center mb-4">
+        <v-btn
+          variant="text"
+          size="small"
+          color="light-blue"
+          @click="downloadSlashCommands"
+          :loading="downloading"
+          class="d-flex align-center"
+          style="margin-left: -5px"
+        >
+          <v-icon size="20" class="mr-2">mdi-slash-forward-box</v-icon>
+          Download slash commands
+        </v-btn>
+        <span class="text-caption text-medium-emphasis ml-3">
+          Download slash command files (includes install scripts)
+        </span>
+      </div>
 
       <!-- Manual Installation Badge -->
       <v-card variant="tonal" class="mb-3">
@@ -46,25 +65,6 @@
           </div>
         </v-card-text>
       </v-card>
-
-      <!-- Download Installation -->
-      <div class="d-flex align-center mt-3">
-        <v-btn
-          variant="text"
-          size="small"
-          color="light-blue"
-          @click="downloadSlashCommands"
-          :loading="downloading"
-          class="d-flex align-center"
-          style="margin-left: -5px"
-        >
-          <v-icon size="20" class="mr-2">mdi-slash-forward-box</v-icon>
-          Download slash commands
-        </v-btn>
-        <span class="text-caption text-medium-emphasis ml-3">
-          Download slash command files (includes install scripts)
-        </span>
-      </div>
 
     </v-card-text>
 
