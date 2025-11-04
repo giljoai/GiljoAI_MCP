@@ -1,4 +1,5 @@
 # Handover 0075: Eight-Agent Active Limit Enforcement
+<!-- Harmonized on 2025-11-04; archived spec. See docs/archive/0075_EIGHT_AGENT_LIMIT_SPEC.md -->
 
 **Status**: Specification (ARCHIVED)
 **Priority**: High

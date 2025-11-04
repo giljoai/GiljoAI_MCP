@@ -4,6 +4,7 @@ Provides direct access to MCP tool functions for API endpoints
 """
 
 import logging
+import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -2111,11 +2112,15 @@ Begin by fetching your mission.
 
             # 5. Build download URL (use dynamically detected server URL)
             if not _server_url:
-                # Fallback to config if not provided (shouldn't happen in HTTP mode)
                 config = get_config()
-                api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
-                api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
-                _server_url = f"http://{api_host}:{api_port}"
+
+                # Read external_host from config.yaml for public IP
+                config_path = Path.cwd() / "config.yaml"
+                with open(config_path, 'r') as f:
+                    config_data = yaml.safe_load(f)
+
+                host = config_data.get("services", {}).get("external_host", "localhost")
+                _server_url = f"http://{host}:{config.server.api_port}"
                 logger.warning(f"Server URL not provided, using fallback: {_server_url}")
 
             download_url = f"{_server_url}/api/download/temp/{download_token}/slash_commands.zip"
@@ -2196,11 +2201,15 @@ Begin by fetching your mission.
 
             # 5. Build download URL (use dynamically detected server URL)
             if not _server_url:
-                # Fallback to config if not provided (shouldn't happen in HTTP mode)
                 config = get_config()
-                api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
-                api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
-                _server_url = f"http://{api_host}:{api_port}"
+
+                # Read external_host from config.yaml for public IP
+                config_path = Path.cwd() / "config.yaml"
+                with open(config_path, 'r') as f:
+                    config_data = yaml.safe_load(f)
+
+                host = config_data.get("services", {}).get("external_host", "localhost")
+                _server_url = f"http://{host}:{config.server.api_port}"
                 logger.warning(f"Server URL not provided, using fallback: {_server_url}")
 
             download_url = f"{_server_url}/api/download/temp/{token}/agent_templates.zip"
@@ -2278,11 +2287,15 @@ Begin by fetching your mission.
 
             # 5. Build download URL (use dynamically detected server URL)
             if not _server_url:
-                # Fallback to config if not provided (shouldn't happen in HTTP mode)
                 config = get_config()
-                api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
-                api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
-                _server_url = f"http://{api_host}:{api_port}"
+
+                # Read external_host from config.yaml for public IP
+                config_path = Path.cwd() / "config.yaml"
+                with open(config_path, 'r') as f:
+                    config_data = yaml.safe_load(f)
+
+                host = config_data.get("services", {}).get("external_host", "localhost")
+                _server_url = f"http://{host}:{config.server.api_port}"
                 logger.warning(f"Server URL not provided, using fallback: {_server_url}")
 
             download_url = f"{_server_url}/api/download/temp/{token}/agent_templates.zip"
