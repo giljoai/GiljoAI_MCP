@@ -171,7 +171,7 @@ Key Cross-Cutting Themes:
 - Introduces: MCP tools `get_orchestrator_instructions`, `get_agent_mission`; `ThinClientPromptGenerator`
 - Docs impact: Stage Project flow, API schema, events, migration guide
 - Action: Integrated; docs updated, legacy fat‑prompt marked
-- Location: handovers/completed/0088_thin_client_stage_project_fix-C.md
+- Location: handovers/completed/harmonized/0088_thin_client_stage_project_fix-C.md
 
 ---
 

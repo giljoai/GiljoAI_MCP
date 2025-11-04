@@ -31,6 +31,37 @@ Notes:
 - Replace `http://localhost:7272` with your server URL.
 - API key is generated per tenant; see Settings → API & Integrations.
 
+### Token‑Efficient Downloads (0101)
+
+Download ZIPs instead of writing large files via MCP to reduce tokens by ~97%:
+
+```
+GET /api/download/slash-commands.zip
+GET /api/download/agent-templates.zip
+GET /api/download/install-script.{sh|ps1}?type=slash-commands|agent-templates
+```
+
+- MCP tools `/gil_import_*` use these endpoints automatically when available.
+- Integrations UI exposes one‑click download buttons for ZIPs and install scripts.
+
+### Bearer Auth Support for Codex & Gemini (0092)
+
+Where CLI supports it, you may use Bearer tokens instead of `X-API-Key` headers. Example requests:
+
+```bash
+# Using Bearer token
+curl -H "Authorization: Bearer $GILJO_BEARER_TOKEN" \
+  http://localhost:7272/api/download/slash-commands.zip -o slash-commands.zip
+
+# Codex/Gemini CLI may accept header flags; otherwise use API key header:
+curl -H "X-API-Key: $GILJO_API_KEY" \
+  http://localhost:7272/api/download/agent-templates.zip -o agent-templates.zip
+```
+
+Notes:
+- Bearer tokens are project/user scoped; API keys are tenant scoped.
+- The server accepts either `Authorization: Bearer …` or `X-API-Key: …` depending on your deployment pattern.
+
 ### Key Features
 
 - **Multi-AI Tool Support**: Claude Code, CODEX, Gemini CLI

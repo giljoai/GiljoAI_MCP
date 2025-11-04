@@ -291,7 +291,7 @@ pytest tests/test_agent_coordination_external.py -v
 ## Handover Status
 
 **Original Handover**: `handovers/0060_mcp_agent_coordination_tool_exposure.md`
-**Archived To**: `handovers/completed/0060_mcp_agent_coordination_tool_exposure-C.md`
+**Archived To**: `handovers/completed/harmonized/0060_mcp_agent_coordination_tool_exposure-C.md`
 **Completion Summary**: Appended to archived handover document
 
 **Status**: ✅ COMPLETE - Ready for production deployment

@@ -113,6 +113,14 @@ Current status: Legacy behavior documented for continuity; migration guide docum
 
 See: guides/thin_client_migration_guide.md
 
+### 0089 Production Fixes (Completed)
+
+Production hardening for the thin‑client flow:
+- Improved error handling and fallbacks (missing tenant key, invalid IDs)
+- Telemetry and logging for prompt generation events
+- UI feedback for download/launch steps
+- Minor performance and stability improvements
+
 ## The 70% Token Reduction Mechanism
 
 ### How It Works

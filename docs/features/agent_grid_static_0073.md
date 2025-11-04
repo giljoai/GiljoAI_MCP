@@ -35,7 +35,7 @@ Handover 0073 introduces the Static Agent Grid as the canonical orchestration UI
 
 - 0062 (Project Launch Panel) — Grid supersedes the “Active Jobs” tab concept
 - 0066 (Agent Kanban Dashboard) — Grid supersedes Kanban board visualization
-- Reference: handovers/completed/0073_SUPERSEDES_0062_0066-C.md
+- Reference: handovers/completed/harmonized/0073_SUPERSEDES_0062_0066-C.md
 
 ## Related Documentation
 
