@@ -2050,84 +2050,16 @@ Begin by fetching your mission.
 
     # Slash Command Setup Tool (Handover 0093)
 
-    async def setup_slash_commands(self, platform: str = None) -> dict[str, Any]:
+    async def setup_slash_commands(self, platform: str = None, _api_key: str = None) -> dict[str, Any]:
         """
-        Return slash command file contents for local installation (Handover 0093)
-
-        This tool returns the markdown content for 3 slash commands that can be
-        installed to ~/.claude/commands/ directory. The agentic CLI (Claude Code,
-        Codex, Gemini) will use its Write tool to create the files locally.
-
-        Args:
-            platform: Optional platform hint ("windows", "linux", "darwin", "git-bash")
-
-        Returns:
-            dict containing:
-                - success: bool
-                - message: str
-                - files: dict[str, str] - filename -> markdown content with Unix paths
-                - target_directory: str - Always uses forward slashes
-                - instructions: list[str] - Detailed cross-platform instructions
-                - restart_required: bool - True (CLI restart needed)
-        """
-        try:
-            from .slash_command_templates import get_all_templates
-
-            # Get all slash command templates
-            templates = get_all_templates()
-
-            # Create files dict with explicit Unix-style relative paths
-            # This works in all environments: Windows CMD, PowerShell, Git Bash, Unix shells
-            files_with_paths = {
-                ".claude/commands/gil_import_productagents.md": templates["gil_import_productagents.md"],
-                ".claude/commands/gil_import_personalagents.md": templates["gil_import_personalagents.md"],
-                ".claude/commands/gil_handover.md": templates["gil_handover.md"]
-            }
-
-            return {
-                "success": True,
-                "message": "Installing 3 GiljoAI slash commands. Use your Write tool to create these files relative to your home directory.",
-                "files": files_with_paths,
-                "target_directory": ".claude/commands/",
-                "instructions": [
-                    "CROSS-PLATFORM INSTALLATION INSTRUCTIONS:",
-                    "1. Determine your home directory path",
-                    "2. Create directory: <home>/.claude/commands/ (with recursive flag)",
-                    "3. Write 3 files to that directory using forward slashes:",
-                    "   - <home>/.claude/commands/gil_import_productagents.md",
-                    "   - <home>/.claude/commands/gil_import_personalagents.md",
-                    "   - <home>/.claude/commands/gil_handover.md",
-                    "4. IMPORTANT: Always use forward slashes (/), even on Windows",
-                    "5. Restart your CLI after installation to load commands"
-                ],
-                "notes": [
-                    "Git Bash users: Use /c/Users/YourName/.claude/commands/ format",
-                    "Windows CMD/PowerShell: Use C:/Users/YourName/.claude/commands/",
-                    "Linux/Mac: Use /home/username/.claude/commands/ or ~/. claude/commands/",
-                    "All paths should use forward slashes for cross-platform compatibility"
-                ],
-                "restart_required": True
-            }
-
-        except Exception as e:
-            logger.exception(f"Failed to setup slash commands: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "message": f"Failed to setup slash commands: {str(e)}"
-            }
-
-    # Slash Command Handler Wrappers (Handover 0084b)
-
-    async def gil_import_productagents(self, project_id: str = None) -> dict[str, Any]:
-        """
-        Import agent templates to current product's .claude/agents folder.
+        Install GiljoAI slash commands via token-efficient HTTP download.
 
         Token-efficient approach: Downloads ZIP via HTTP (~500 tokens) instead of
-        writing file content directly (~15,000 tokens). 97% token reduction.
+        writing file content directly (~3000 tokens). 83% token reduction.
 
         Args:
-            project_id: Optional project ID
+            platform: Optional platform hint (ignored, kept for compatibility)
+            _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
 
         Returns:
             dict with success, message, location, files, error (optional)
@@ -2137,17 +2069,111 @@ Begin by fetching your mission.
         from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
 
         try:
-            # 1. Verify API key in environment
-            api_key = os.environ.get('GILJO_API_KEY')
-            if not api_key:
+            # 1. Verify API key (injected by MCP HTTP handler)
+            if not _api_key:
                 return {
                     'success': False,
-                    'error': 'GILJO_API_KEY environment variable not set',
+                    'error': 'API key not provided',
                     'instructions': [
-                        'Configure GiljoAI MCP first from Settings → Integrations',
-                        'This sets up the required environment variable'
+                        'This tool is called via MCP HTTP and requires authentication',
+                        'Ensure you are connected to GiljoAI MCP server with valid API key'
                     ]
                 }
+
+            api_key = _api_key
+
+            # 2. Get server URL from environment or config
+            server_url = get_server_url_from_config()
+
+            # 3. Download URL for slash commands
+            download_url = f"{server_url}/api/download/slash-commands.zip"
+            install_script_url = f"{server_url}/api/download/install-script.sh?type=slash-commands"
+
+            # 4. Determine target directory (home directory)
+            target_dir = Path.home() / ".claude" / "commands"
+
+            # 5. Download ZIP file
+            logger.info(f"Downloading slash commands from: {download_url}")
+            zip_bytes = await download_file(download_url, api_key)
+
+            # 6. Extract to target directory
+            target_dir.mkdir(parents=True, exist_ok=True)
+            files = extract_zip_to_directory(zip_bytes, target_dir)
+
+            # Filter to only .md files (exclude install scripts)
+            md_files = [f for f in files if f.endswith('.md')]
+
+            logger.info(
+                f"Successfully installed {len(md_files)} slash commands to {target_dir}"
+            )
+
+            return {
+                'success': True,
+                'message': f'Installed {len(md_files)} slash command(s) to {target_dir}',
+                'location': str(target_dir),
+                'files': md_files,
+                'restart_required': True,
+                'instructions': [
+                    'Restart your CLI to load the new commands',
+                    'Available commands: /gil_import_productagents, /gil_import_personalagents, /gil_handover'
+                ]
+            }
+
+        except Exception as e:
+            # Fallback to manual instructions
+            logger.exception(f"Failed to setup slash commands: {e}")
+
+            server_url = get_server_url_from_config()
+            download_url = f"{server_url}/api/download/slash-commands.zip"
+            install_script_url = f"{server_url}/api/download/install-script.sh?type=slash-commands"
+
+            return {
+                'success': False,
+                'error': str(e),
+                'manual_fallback': {
+                    'download_url': download_url,
+                    'install_script_url': install_script_url,
+                    'instructions': [
+                        f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" {download_url} -o slash-commands.zip',
+                        f'2. Extract: unzip -o slash-commands.zip -d ~/.claude/commands/',
+                        f'3. Or run install script: curl {install_script_url} | bash'
+                    ]
+                }
+            }
+
+    # Slash Command Handler Wrappers (Handover 0084b)
+
+    async def gil_import_productagents(self, project_id: str = None, _api_key: str = None) -> dict[str, Any]:
+        """
+        Import agent templates to current product's .claude/agents folder.
+
+        Token-efficient approach: Downloads ZIP via HTTP (~500 tokens) instead of
+        writing file content directly (~15,000 tokens). 97% token reduction.
+
+        Args:
+            project_id: Optional project ID
+            _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
+
+        Returns:
+            dict with success, message, location, files, error (optional)
+        """
+        import os
+        from pathlib import Path
+        from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
+
+        try:
+            # 1. Verify API key (injected by MCP HTTP handler)
+            if not _api_key:
+                return {
+                    'success': False,
+                    'error': 'API key not provided',
+                    'instructions': [
+                        'This tool is called via MCP HTTP and requires authentication',
+                        'Ensure you are connected to GiljoAI MCP server with valid API key'
+                    ]
+                }
+
+            api_key = _api_key
 
             # 2. Get server URL from environment or config
             server_url = get_server_url_from_config()
@@ -2199,7 +2225,7 @@ Begin by fetching your mission.
                 }
             }
 
-    async def gil_import_personalagents(self, project_id: str = None) -> dict[str, Any]:
+    async def gil_import_personalagents(self, project_id: str = None, _api_key: str = None) -> dict[str, Any]:
         """
         Import agent templates to personal ~/.claude/agents folder.
 
@@ -2208,6 +2234,7 @@ Begin by fetching your mission.
 
         Args:
             project_id: Optional project ID (not used for personal agents)
+            _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
 
         Returns:
             dict with success, message, location, files, error (optional)
@@ -2217,17 +2244,18 @@ Begin by fetching your mission.
         from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
 
         try:
-            # 1. Verify API key in environment
-            api_key = os.environ.get('GILJO_API_KEY')
-            if not api_key:
+            # 1. Verify API key (injected by MCP HTTP handler)
+            if not _api_key:
                 return {
                     'success': False,
-                    'error': 'GILJO_API_KEY environment variable not set',
+                    'error': 'API key not provided',
                     'instructions': [
-                        'Configure GiljoAI MCP first from Settings → Integrations',
-                        'This sets up the required environment variable'
+                        'This tool is called via MCP HTTP and requires authentication',
+                        'Ensure you are connected to GiljoAI MCP server with valid API key'
                     ]
                 }
+
+            api_key = _api_key
 
             # 2. Get server URL from environment or config
             server_url = get_server_url_from_config()
