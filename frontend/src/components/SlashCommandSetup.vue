@@ -30,7 +30,7 @@
             <div class="flex-grow-1">
               <div class="text-subtitle-2 font-weight-medium">MCP based installation</div>
               <div class="text-body-2 text-medium-emphasis">
-                Copy slash command to install in your CLI (one-time setup)
+                Installs slash commands in your CLI Agent tool with MCP commands
               </div>
             </div>
             <v-btn
