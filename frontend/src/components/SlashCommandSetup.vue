@@ -3,7 +3,7 @@
     <v-card-text>
       <div class="d-flex align-center mb-3">
         <v-icon size="40" class="mr-2" color="primary">mdi-slash-forward-box</v-icon>
-        <h3 class="text-h6 mb-0">Slash Commands</h3>
+        <h3 class="text-h6 mb-0 mr-3">Slash Commands</h3>
         <v-tooltip location="top" max-width="400" class="ml-2">
           <template #activator="{ props }">
             <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
