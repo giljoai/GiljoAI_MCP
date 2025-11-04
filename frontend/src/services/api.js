@@ -399,9 +399,10 @@ export const api = {
 
   // Downloads (Handover 0094 - Token-Efficient Downloads)
   downloads: {
-    // Slash commands
-    generateSlashCommandsToken: () =>
+    // Slash commands - Generate token with natural language instructions
+    generateSlashCommandsInstructions: () =>
       apiClient.post('/api/download/generate-token', {}, { params: { content_type: 'slash_commands' } }),
+    // Slash commands - Direct download (no token)
     downloadSlashCommandsDirect: () =>
       apiClient.get('/api/download/slash-commands.zip', { responseType: 'blob' }),
 
