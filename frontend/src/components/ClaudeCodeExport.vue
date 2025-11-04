@@ -46,30 +46,6 @@
           </v-card-text>
         </v-card>
 
-        <!-- Personal Agent Templates (Download) -->
-        <v-card variant="tonal" class="mb-3 ml-4">
-          <v-card-text class="pa-3">
-            <div class="d-flex align-center justify-between">
-              <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Manual Template installation of <strong>Personal Agents</strong></div>
-                <div class="text-body-2 text-medium-emphasis">
-                  Dynamic zip file from Agent Template Manager with installation scripts
-                </div>
-              </div>
-              <v-btn
-                color="primary"
-                variant="flat"
-                size="small"
-                width="120"
-                @click="downloadPersonalAgents"
-                :loading="downloadingPersonal"
-              >
-                Download
-              </v-btn>
-            </div>
-          </v-card-text>
-        </v-card>
-
         <!-- Product Agents Command -->
         <v-card variant="tonal" class="mb-3">
           <v-card-text class="pa-3">
@@ -98,7 +74,7 @@
           <v-card-text class="pa-3">
             <div class="d-flex align-center justify-between">
               <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Manual Template installation of <strong>Product Agents</strong></div>
+                <div class="text-subtitle-2 font-weight-medium">Manual Template installation of Agents</div>
                 <div class="text-body-2 text-medium-emphasis">
                   Dynamic zip file from Agent Template Manager with installation scripts
                 </div>
