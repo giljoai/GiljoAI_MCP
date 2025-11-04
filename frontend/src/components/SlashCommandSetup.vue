@@ -4,6 +4,19 @@
       <div class="d-flex align-center mb-3">
         <v-icon size="40" class="mr-2" color="primary">mdi-slash-forward</v-icon>
         <h3 class="text-h6 mb-0">Slash Commands</h3>
+        <v-tooltip location="top" max-width="400" class="ml-2">
+          <template #activator="{ props }">
+            <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+          </template>
+          <div>
+            <strong>Three slash commands:</strong>
+            <ul class="mt-2 mb-0 pl-4">
+              <li>/gil_import_productagents - Import agents to product folder</li>
+              <li>/gil_import_personalagents - Import agents to ~/.claude/agents</li>
+              <li>/gil_handover - Trigger orchestrator succession</li>
+            </ul>
+          </div>
+        </v-tooltip>
       </div>
 
       <p class="text-body-2 text-medium-emphasis mb-4">
@@ -57,70 +70,6 @@
         </v-card-text>
       </v-card>
 
-      <!-- Expansion Panel - What does this install? -->
-      <v-expansion-panels variant="accordion">
-        <v-expansion-panel>
-          <v-expansion-panel-title class="text-subtitle-2">
-            <v-icon start size="small">mdi-information-outline</v-icon>
-            What does this install?
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-list density="compact" class="pa-0">
-              <v-list-item class="px-0">
-                <template v-slot:prepend>
-                  <v-icon size="small" color="primary">mdi-slash-forward</v-icon>
-                </template>
-                <v-list-item-title>
-                  <code class="command-code">/gil_import_productagents</code>
-                </v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  Import agents to product folder
-                </v-list-item-subtitle>
-              </v-list-item>
-
-              <v-list-item class="px-0">
-                <template v-slot:prepend>
-                  <v-icon size="small" color="primary">mdi-slash-forward</v-icon>
-                </template>
-                <v-list-item-title>
-                  <code class="command-code">/gil_import_personalagents</code>
-                </v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  Import agents to ~/.claude/agents
-                </v-list-item-subtitle>
-              </v-list-item>
-
-              <v-list-item class="px-0">
-                <template v-slot:prepend>
-                  <v-icon size="small" color="primary">mdi-slash-forward</v-icon>
-                </template>
-                <v-list-item-title>
-                  <code class="command-code">/gil_handover</code>
-                </v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  Trigger orchestrator succession
-                </v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-
-            <!-- Restart Warning -->
-            <v-alert
-              type="warning"
-              variant="text"
-              density="compact"
-              class="mt-3"
-              :icon="false"
-            >
-              <div class="d-flex align-center">
-                <v-icon start size="small">mdi-restart</v-icon>
-                <div class="text-body-2">
-                  <strong>Restart required:</strong> Restart your CLI after installation.
-                </div>
-              </div>
-            </v-alert>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
     </v-card-text>
 
     <!-- Copy Feedback Snackbar -->
