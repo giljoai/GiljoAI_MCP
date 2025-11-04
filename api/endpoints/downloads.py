@@ -766,9 +766,16 @@ async def setup_slash_commands_rest(
     Returns natural language installation instructions with download token.
     """
     try:
+        from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.tenant_manager import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
-        tool_accessor = ToolAccessor()
+        # Initialize dependencies
+        db_manager = DatabaseManager()
+        tenant_manager = TenantManager()
+        tenant_manager.set_tenant(current_user.tenant_key)
+
+        tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
         # Extract server URL from request
         server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
@@ -799,9 +806,16 @@ async def import_personal_agents_rest(
     Returns natural language installation instructions with download token.
     """
     try:
+        from src.giljo_mcp.database import DatabaseManager
+        from src.giljo_mcp.tenant_manager import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
-        tool_accessor = ToolAccessor()
+        # Initialize dependencies
+        db_manager = DatabaseManager()
+        tenant_manager = TenantManager()
+        tenant_manager.set_tenant(current_user.tenant_key)
+
+        tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=tenant_manager)
 
         # Extract server URL from request
         server_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost')}"
