@@ -2,7 +2,7 @@
   <v-card variant="outlined" class="mb-4">
     <v-card-text>
       <div class="d-flex align-center mb-3">
-        <v-icon size="40" class="mr-2" color="primary">pi-minus-circle</v-icon>
+        <v-icon size="40" class="mr-2" color="primary">mdi-minus-circle</v-icon>
         <h3 class="text-h6 mb-0">Slash Commands</h3>
         <v-tooltip location="top" max-width="400" class="ml-2">
           <template #activator="{ props }">
