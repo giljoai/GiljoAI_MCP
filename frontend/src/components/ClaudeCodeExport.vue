@@ -23,6 +23,26 @@
           Copy and paste agent import command into your AI coding tool (Claude Code, Codex CLI, or Gemini).
         </p>
 
+        <!-- Agent Templates Download -->
+        <div class="d-flex align-center mb-4">
+          <v-btn
+            variant="text"
+            size="small"
+            color="light-blue"
+            @click="downloadProductAgents"
+            :loading="downloadingProduct"
+            class="d-flex align-center"
+          >
+            <v-avatar size="20" rounded="0" class="mr-2">
+              <v-img src="/giljo_face_lightblue.svg" alt="GiljoAI" />
+            </v-avatar>
+            Manual Agent installation
+          </v-btn>
+          <span class="text-caption text-medium-emphasis ml-3">
+            Dynamic zip file from Agent Template Manager with installation scripts
+          </span>
+        </div>
+
         <!-- Personal Agents Command -->
         <v-card variant="tonal" class="mb-3">
           <v-card-text class="pa-3">
@@ -68,26 +88,6 @@
             </div>
           </v-card-text>
         </v-card>
-
-        <!-- Agent Templates Download -->
-        <div class="d-flex align-center mt-4">
-          <v-btn
-            variant="text"
-            size="small"
-            color="light-blue"
-            @click="downloadProductAgents"
-            :loading="downloadingProduct"
-            class="d-flex align-center"
-          >
-            <v-avatar size="20" rounded="0" class="mr-2">
-              <v-img src="/giljo_face_lightblue.svg" alt="GiljoAI" />
-            </v-avatar>
-            Manual Agent installation
-          </v-btn>
-          <span class="text-caption text-medium-emphasis ml-3">
-            Dynamic zip file from Agent Template Manager with installation scripts
-          </span>
-        </div>
       </div>
 
       <!-- Copy Feedback -->
