@@ -282,8 +282,8 @@ Recognizing that developers have different preferences:
 
 
 - **Claude**: First integration, uses your own Claude Code CLI tool we provide MCP server injection instructions.
-- **CODEX**: coming soon
-- **Gemini CLI**: coming soon
+- **CODEX**: supported (native MCP commands)
+- **Gemini CLI**: supported (native MCP commands)
 - **Universal Protocol**: Any AI that speaks MCP
 
 ### Innovation Drivers
@@ -356,5 +356,4 @@ CLI slash "/" commands to quickly communicate fron from the AI agent tool CLI in
 - **Direct Download**: ZIP/TAR packages from website
 - **Package Managers**: pip, brew, winget, apt
 - **Developer Platforms**: GitHub Releases, GitLab
-
 

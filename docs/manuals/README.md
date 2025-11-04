@@ -23,32 +23,17 @@ Comprehensive test suite documentation for Mission Templates:
 - Edge cases and validation
 - Test execution guidelines
 
-### 3. Setup & Installation Guide (Coming Soon)
+### 3. Setup & Installation Guide
 
-Step-by-step guide for setting up GiljoAI MCP:
+See: `/docs/INSTALLATION_FLOW_PROCESS.md` for full, cross‑platform setup.
 
-- Prerequisites and requirements
-- Installation procedures
-- Configuration options
-- Database setup (PostgreSQL/PostgreSQL)
+### 4. Architecture Reference
 
-### 4. Architecture Reference (Coming Soon)
+See: `/docs/SERVER_ARCHITECTURE_TECH_STACK.md` and `/docs/GILJOAI_MCP_PURPOSE.md`.
 
-Technical architecture documentation:
+### 5. Agent Orchestration Guide
 
-- System components
-- Database schema
-- API endpoints
-- Multi-tenant design
-
-### 5. Agent Orchestration Guide (Coming Soon)
-
-How to orchestrate multi-agent workflows:
-
-- Agent roles and responsibilities
-- Message coordination patterns
-- Handoff procedures
-- Context management
+See: `/docs/features/agent_grid_static_0073.md` (UI), `/docs/developer_guides/orchestrator_succession_developer_guide.md` (succession), and `/docs/developer_guides/websocket_events_guide.md` (events).
 
 ## Quick Links
 
@@ -69,4 +54,4 @@ When adding new manuals:
 
 ---
 
-_Last Updated: 2025-09-10_
+_Last Updated: 2025-11-03_

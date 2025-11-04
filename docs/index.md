@@ -6,6 +6,7 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 
 - `adr/003_template_consolidation__FRAGMENTED.md` — 003 template consolidation documentation for GiljoAI MCP (adr) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `AGENT_INSTRUCTIONS__FRAGMENTED.md` — AGENT INSTRUCTIONS documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
+- `api/prompts_endpoints.md` — Prompts API (Thin Client 0088): POST /prompts/orchestrator, legacy fat‑prompt reference. — Tag: CURRENT
 - `agent_templates/accessibility_specialist__FRAGMENTED.md` — accessibility specialist documentation for GiljoAI MCP (agent_templates) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `agent_templates/backend_validator__FRAGMENTED.md` — backend validator documentation for GiljoAI MCP (agent_templates) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `agent_templates/compliance_privacy__FRAGMENTED.md` — compliance privacy documentation for GiljoAI MCP (agent_templates) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED

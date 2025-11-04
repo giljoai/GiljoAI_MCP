@@ -19,9 +19,8 @@ Use native CLI commands to register the Giljo MCP server over HTTP:
 export GILJO_API_KEY="<your_api_key>"
 codex mcp add --url http://localhost:7272/mcp --bearer-token-env-var GILJO_API_KEY giljoai
 
-# Gemini CLI (Bearer token)
-export GILJO_API_KEY="<your_api_key>"
-gemini mcp add --url http://localhost:7272/mcp --bearer-token-env-var GILJO_API_KEY giljoai
+# Gemini CLI (HTTP + header)
+gemini mcp add -t http -H "X-API-Key: <your_api_key>" giljoai http://localhost:7272/mcp
 
 # Verify
 codex mcp list
@@ -51,14 +50,14 @@ Notes:
 **Configuration**: Automatic MCP server setup
 
 ### CODEX CLI (OpenAI)
-**Status**: Community integration  
-**Capabilities**: Manual orchestration, copy-paste workflows  
-**Configuration**: Generated MCP config files
+**Status**: Supported  
+**Capabilities**: MCP over HTTP, native CLI registration  
+**Configuration**: `codex mcp add --transport http ...` (see Quick MCP Commands)
 
 ### Gemini CLI (Google)
-**Status**: Experimental support  
-**Capabilities**: Manual orchestration, configuration templates  
-**Configuration**: Generated setup guides
+**Status**: Supported  
+**Capabilities**: MCP over HTTP, native CLI registration  
+**Configuration**: `gemini mcp add --transport http ...` (see Quick MCP Commands)
 
 ---
 

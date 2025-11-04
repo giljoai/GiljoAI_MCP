@@ -33,19 +33,20 @@ This change enables remote/laptop clients to integrate via Codex/Gemini with one
   - Reuses existing session/auth logic; no DB changes.
 
 - api/endpoints/ai_tools.py:1
-  - Codex/Gemini config generators now output:
-    - `export GILJO_API_KEY="gk_..."`
-    - `codex|gemini mcp add --url ... --bearer-token-env-var GILJO_API_KEY giljo-mcp`
-  - Instructions updated to mention exporting the env var.
+  - Codex config generator outputs bearer env var + `--bearer-token-env-var`.
+  - Gemini config generator outputs HTTP + header: `gemini mcp add -t http -H "X-API-Key: ..." <name> <url>`.
+  - Instructions updated accordingly.
 
 - frontend/src/utils/configTemplates.js:1
-  - Codex/Gemini templates switched to bearer env var.
+  - Codex template uses bearer env var.
+  - Gemini template uses HTTP + header.
 
 - frontend/src/components/AiToolConfigWizard.vue:198
-  - Codex/Gemini prompts switched to bearer env var.
+  - Codex prompt uses bearer env var.
+  - Gemini prompt uses HTTP + header.
 
 - docs/AI_TOOL_CONFIGURATION_MANAGEMENT.md:1
-  - Quick commands for Codex/Gemini changed to bearer env var.
+  - Codex uses bearer env var; Gemini uses HTTP + header.
 
 - docs/MCP_OVER_HTTP_INTEGRATION.md:361
   - “Authentication Headers” now documents both `X-API-Key` and `Authorization: Bearer`.
@@ -72,8 +73,7 @@ This change enables remote/laptop clients to integrate via Codex/Gemini with one
   - `codex mcp add --url http://<server>:7272/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp`
 
 - Gemini CLI:
-  - `export GILJO_API_KEY="gk_..."`
-  - `gemini mcp add --url http://<server>:7272/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp`
+  - `gemini mcp add -t http -H "X-API-Key: gk_..." giljo-mcp http://<server>:7272/mcp`
 
 Verification:
 - `codex mcp list` / `gemini mcp list`
@@ -109,4 +109,3 @@ Verification:
 ---
 
 End of Project 0092
-

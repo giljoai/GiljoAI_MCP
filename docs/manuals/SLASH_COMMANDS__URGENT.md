@@ -890,3 +890,27 @@ To add new slash commands:
 ---
 
 **End of Slash Commands Documentation**
+### X. `/gil_handover` (alias: `/gil-handover`) — Orchestrator Succession
+
+Purpose: Trigger orchestrator handover to a successor when context is high or during phase changes.
+
+Usage:
+```
+/gil_handover
+/gil_handover <ORCHESTRATOR_JOB_ID>
+```
+
+What it does:
+- Validates current/target orchestrator job
+- Generates compressed handover summary
+- Creates successor orchestrator (instance_number + 1) in “waiting”
+- Marks predecessor complete with handover_to reference
+- Returns a CLI launch snippet for the successor
+
+Events:
+- `job:succession_triggered` (start)
+- `job:successor_created` (successor ready)
+
+See also:
+- `docs/developer_guides/orchestrator_succession_developer_guide.md`
+- `docs/features/agent_grid_static_0073.md`

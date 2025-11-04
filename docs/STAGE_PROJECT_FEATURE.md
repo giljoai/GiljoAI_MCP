@@ -3,7 +3,7 @@
 **Status**: Production-Grade Implementation Complete
 **Version**: 3.0+
 **Handovers**: 0086A (Phases 1-2), 0086B (Phases 3-6)
-**Migration Notice (0088)**: The Stage Project prompt flow is migrating to a thin‑client design that returns a ~10‑line identity prompt and fetches missions via MCP tools. This page reflects the 0086 baseline; 0088 callouts indicate pending changes. See guides/thin_client_migration_guide.md.
+**Migration Notice (0088 – Completed)**: Stage Project now uses a thin‑client design that returns a ~10‑line identity prompt and fetches missions via MCP tools. This page reflects the 0086 baseline with 0088 changes noted. See guides/thin_client_migration_guide.md.
 **Business Impact**: Enables commercial product launch with 70% token reduction
 
 ---
@@ -61,9 +61,9 @@ graph TB
     style EventFactory fill:#9C27B0
 ```
 
-### 0088 Thin Client Callouts (Pending)
+### 0088 Thin Client Changes (Completed)
 
-- Prompt Generation: Replace fat, fully embedded prompts with a thin identity prompt that instructs the orchestrator to fetch its mission via MCP.
+- Prompt Generation: Replaced fat, fully embedded prompts with a thin identity prompt that instructs the orchestrator to fetch its mission via MCP.
 - New MCP Tools: `get_orchestrator_instructions(orchestrator_id, tenant_key)` and `get_agent_mission(agent_job_id, tenant_key)` supply condensed missions and scoped context on demand.
 - New Generator: `ThinClientPromptGenerator` creates the identity prompt and records the orchestrator job; it replaces `OrchestratorPromptGenerator` (legacy) for staging prompts.
 - Event: Broadcast `orchestrator:prompt_generated` for UI updates after thin prompt creation.
@@ -398,7 +398,7 @@ async def _fetch_serena_codebase_context(
         return ""
 ```
 
-**Status**: Infrastructure ready, full integration pending.
+**Status**: UI and backend configuration complete (0085); full codebase context integration pending.
 
 ---
 

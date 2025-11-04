@@ -304,7 +304,7 @@ if (!token || !validate_token(token)) {
 
 **Role-Based Access Control (RBAC)**:
 - Admin: Full system access
-- User: Project-level access (coming soon)
+- User: Project-level access
 
 ### Multi-Tenancy
 
@@ -976,7 +976,7 @@ database:
 ### Active Product Token Visualization (October 2025)
 
 **Handover 0049 - Active Product Token Visualization** (✅ COMPLETE):
-- **[Implementation](../handovers/completed/0049_IMPLEMENTATION_SUMMARY.md)**
+- **[Implementation](../handovers/completed/harmonized/0049_IMPLEMENTATION_SUMMARY.md)**
 - **Completion Date**: October 2025
 - **Status**: Foundation complete
 - **Problem Solved**: No visibility into active product context or token consumption
@@ -1096,6 +1096,14 @@ See also:
   - Supersedes 0062 (Active Jobs tab) and 0066 (Kanban dashboard)
   - See handovers/completed/0073_SUPERSEDES_0062_0066-C.md for ADR context
 
+### Orchestrator Succession (October 2025)
+
+**Handovers 0080/0080a - Succession Architecture + Slash Command** (✅ COMPLETE):
+- **Dev Guide**: developer_guides/orchestrator_succession_developer_guide.md
+- **Slash Command**: `/gil_handover [<job_id>]` — creates successor orchestrator and returns launch prompt
+- **Events**: `job:succession_triggered`, `job:successor_created` (UI updates grid and dialog)
+- **Use Cases**: Context approaching budget, phase transitions, long-running missions
+
 ### Installation Experience Validation (October 2025)
 
 **Handover 0014 - Installation Experience Validation** (✅ COMPLETE - ARCHIVED):
@@ -1125,6 +1133,7 @@ See also:
 - **Interactive docs**: `http://localhost:7272/docs` (Swagger UI)
 - **ReDoc**: `http://localhost:7272/redoc`
 - **OpenAPI spec**: `http://localhost:7272/openapi.json`
+- **Prompts API**: See `docs/api/prompts_endpoints.md` (Thin Client endpoint)
 
 ---
 
@@ -1225,4 +1234,4 @@ As of October 13, 2025, GiljoAI MCP documentation has been **harmonized** into s
 ---
 
 **Last Updated**: October 27, 2025 (v3.0.0 - Handovers 0042-0052 & Testing Documentation Added)
-- 0088 Thin Client Migration (in progress): Stage Project prompts are migrating from large, embedded prompts to thin identity prompts that fetch missions via MCP tools. See `guides/thin_client_migration_guide.md` and `STAGE_PROJECT_FEATURE.md` for callouts.
+- 0088 Thin Client Migration (Completed): Stage Project prompts now use thin identity prompts that fetch missions via MCP tools. See `guides/thin_client_migration_guide.md` and `STAGE_PROJECT_FEATURE.md`.

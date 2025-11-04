@@ -166,11 +166,12 @@ Key Cross-Cutting Themes:
 - Docs impact: minor; ensure link behavior reflected where relevant
 - Action: Archive note
 
-0088 – Thin Client Stage Project Architecture Fix (Pending)
+0088 – Thin Client Stage Project Architecture Fix (Completed)
 - Supersedes: legacy fat‑prompt pattern (affects 0079 and any fat‑prompt text)
 - Introduces: MCP tools `get_orchestrator_instructions`, `get_agent_mission`; `ThinClientPromptGenerator`
 - Docs impact: Stage Project flow, API schema, events, migration guide
-- Action: Defer implementation; pre‑wire documentation plan
+- Action: Integrated; docs updated, legacy fat‑prompt marked
+- Location: handovers/completed/0088_thin_client_stage_project_fix-C.md
 
 ---
 
@@ -245,4 +246,3 @@ Start with 0049 harmonization:
 - Outcome: clearer token flow narrative, consistent terminology, cross‑links to Stage Project.
 
 Once approved, we will patch these docs, then move to 0050/0050b.
-
