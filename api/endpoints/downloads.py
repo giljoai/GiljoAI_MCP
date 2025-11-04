@@ -495,3 +495,275 @@ async def download_install_script(
             "Content-Disposition": f"attachment; filename=install.{extension}"
         },
     )
+
+
+# ============================================================================
+# ONE-TIME TOKEN DOWNLOAD ENDPOINTS
+# ============================================================================
+
+
+@router.post("/generate-token", status_code=status.HTTP_201_CREATED)
+async def generate_download_token(
+    request: Request,
+    content_type: str = Query(..., regex="^(slash_commands|agent_templates)$"),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """
+    Generate one-time download token (requires authentication).
+
+    This endpoint creates a temporary download token that can be used once
+    to download the requested content type. Token expires after 15 minutes.
+
+    **Authentication**: Required - JWT cookie or API key header
+    **Rate Limiting**: Standard rate limits apply
+
+    Args:
+        request: FastAPI request object
+        content_type: Type of content to download ('slash_commands' or 'agent_templates')
+        db: Database session
+
+    Returns:
+        {
+            "download_url": "http://server:7272/api/download/temp/{token}/file.zip",
+            "expires_at": "2025-11-04T10:45:00Z",
+            "content_type": "slash_commands",
+            "one_time_use": true
+        }
+
+    Raises:
+        HTTPException 400: Invalid content_type
+        HTTPException 401: Not authenticated
+        HTTPException 500: Token generation failed
+
+    Example:
+        curl -X POST http://localhost:7272/api/download/generate-token \\
+             -H "X-API-Key: $GILJO_API_KEY" \\
+             -H "Content-Type: application/json" \\
+             -d '{"content_type": "slash_commands"}'
+    """
+    from src.giljo_mcp.auth.dependencies import get_current_user
+
+    # Get current user (enforces authentication)
+    try:
+        access_token = request.cookies.get("access_token")
+        x_api_key = request.headers.get("x-api-key")
+        current_user = await get_current_user(request, access_token, x_api_key, db)
+    except HTTPException as e:
+        logger.warning(f"Token generation failed: Authentication required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to generate download token",
+        )
+
+    # Validate content_type
+    if content_type not in ["slash_commands", "agent_templates"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid content_type. Must be 'slash_commands' or 'agent_templates'",
+        )
+
+    logger.info(
+        f"Generating download token for user: {current_user.username} "
+        f"(tenant: {current_user.tenant_key}, content_type: {content_type})"
+    )
+
+    try:
+        # Import TokenManager and ContentGenerator
+        from src.giljo_mcp.downloads.token_manager import TokenManager
+        from src.giljo_mcp.downloads.content_generator import ContentGenerator
+
+        # Generate ZIP file
+        content_gen = ContentGenerator(db_session=db)
+        zip_path, metadata = await content_gen.generate_content(
+            tenant_key=current_user.tenant_key,
+            content_type=content_type,
+        )
+
+        # Generate token
+        token_manager = TokenManager(db_session=db)
+        token = await token_manager.generate_token(
+            tenant_key=current_user.tenant_key,
+            content_type=content_type,
+            file_path=zip_path,
+            metadata=metadata,
+        )
+
+        # Build download URL
+        server_url = get_server_url(request)
+        filename = f"{content_type}.zip"
+        download_url = f"{server_url}/api/download/temp/{token}/{filename}"
+
+        # Get expiration time
+        token_data = await token_manager.get_token_data(token, current_user.tenant_key)
+        expires_at = token_data["expires_at"]
+
+        logger.info(
+            f"Download token generated successfully: {token} "
+            f"(expires: {expires_at}, content: {content_type})"
+        )
+
+        return {
+            "download_url": download_url,
+            "expires_at": expires_at,
+            "content_type": content_type,
+            "one_time_use": True,
+        }
+
+    except ImportError as e:
+        logger.error(f"TokenManager or ContentGenerator not found: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Download token system not available. Please contact administrator.",
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate download token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate download token: {str(e)}",
+        )
+
+
+@router.get("/temp/{token}/{filename}")
+async def download_temp_file(
+    token: str,
+    filename: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    """
+    Download file using one-time token (public, no auth required).
+
+    This endpoint validates the token and serves the requested file.
+    Token validation includes:
+    - Token exists and is valid
+    - Token not expired (15 minute lifetime)
+    - Token not already used (one-time use)
+    - Filename matches token metadata
+
+    **Authentication**: NOT required - token IS the authentication
+    **Security**: Multi-tenant isolation via token validation
+
+    Args:
+        token: One-time download token (UUID)
+        filename: Expected filename (must match token metadata)
+        request: FastAPI request object
+        db: Database session
+
+    Returns:
+        File download response with ZIP content
+
+    Raises:
+        HTTPException 404: Token invalid, expired, or already used
+        HTTPException 410: Token already downloaded (one-time use)
+        HTTPException 500: File not found or internal error
+
+    Security Notes:
+        - Directory traversal attacks prevented
+        - Cross-tenant access denied (returns 404, not 403)
+        - No-cache headers prevent stale links
+        - File cleanup after download
+
+    Example:
+        curl -O http://localhost:7272/api/download/temp/{token}/slash_commands.zip
+    """
+    logger.info(f"Download request: token={token}, filename={filename}")
+
+    try:
+        # Import TokenManager
+        from src.giljo_mcp.downloads.token_manager import TokenManager
+
+        token_manager = TokenManager(db_session=db)
+
+        # Validate token (no tenant_key needed - extracted from token)
+        validation_result = await token_manager.validate_token(token, filename)
+
+        if not validation_result["valid"]:
+            reason = validation_result.get("reason", "unknown")
+            logger.warning(f"Token validation failed: {reason} (token={token})")
+
+            # Return appropriate status code
+            if reason in ["expired", "used"]:
+                raise HTTPException(
+                    status_code=status.HTTP_410_GONE,
+                    detail=f"Download token is {reason}",
+                )
+            else:
+                # not_found, filename_mismatch, cross_tenant
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Download token is invalid, expired, or already used",
+                )
+
+        # Token is valid - get file path and metadata
+        token_data = validation_result["token_data"]
+        file_path = Path(token_data["file_path"])
+        content_type = token_data["content_type"]
+
+        # Verify file exists
+        if not file_path.exists():
+            logger.error(f"File not found: {file_path} (token={token})")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error",
+            )
+
+        # Mark token as downloaded (atomic operation)
+        marked = await token_manager.mark_downloaded(token)
+        if not marked:
+            # Race condition: another request used the token
+            logger.warning(f"Token already used in concurrent request: {token}")
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail="Download already completed",
+            )
+
+        # Read file
+        try:
+            file_content = file_path.read_bytes()
+        except Exception as e:
+            logger.error(f"Failed to read file {file_path}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error",
+            )
+
+        # Trigger cleanup (async background task)
+        import asyncio
+
+        async def cleanup_task():
+            try:
+                await token_manager.cleanup_token_files(token)
+            except Exception as e:
+                logger.error(f"Cleanup failed for token {token}: {e}")
+
+        asyncio.create_task(cleanup_task())
+
+        logger.info(
+            f"Download successful: {filename} ({len(file_content)} bytes, token={token})"
+        )
+
+        # Return file with no-cache headers
+        return Response(
+            content=file_content,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+            },
+        )
+
+    except ImportError as e:
+        logger.error(f"TokenManager not found: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Download token system not available. Please contact administrator.",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during download: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
