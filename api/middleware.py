@@ -110,6 +110,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/slash-commands.zip",  # Public slash command downloads
             "/api/download/install-script",  # Public install scripts
             "/api/download/agent-templates.zip",  # Optional-auth downloads (handles own auth logic)
+            "/api/download/temp",  # Public download with token auth (one-time tokens)
         ]
         return any(path.startswith(p) for p in PUBLIC_PATHS)
 
