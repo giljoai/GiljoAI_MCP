@@ -78,9 +78,7 @@
             @click="downloadProductAgents"
             :loading="downloadingProduct"
           >
-            <v-avatar size="20" rounded="0" class="mr-2">
-              <v-img src="/giljo_face.svg" alt="GiljoAI" />
-            </v-avatar>
+            <v-icon start size="small">mdi-robot</v-icon>
             Manual Agent installation
           </v-btn>
           <span class="text-caption text-medium-emphasis ml-3">
