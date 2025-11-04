@@ -135,21 +135,9 @@ async function copySlashCommandSetup() {
     generatingInstructions.value = true
     console.log('[SLASH COMMAND SETUP] Generating download instructions...')
 
-    // Call backend to generate token and get download URL
+    // Call backend MCP tool - returns natural language instructions directly
     const response = await api.downloads.generateSlashCommandsInstructions()
-    const { download_url, expires_at } = response.data
-
-    // Generate natural language instructions
-    const instructions = `Download the slash commands from ${download_url}
-
-Once downloaded:
-1. Extract the ZIP file
-2. For macOS/Linux: Copy to ~/.claude/commands/
-3. For Windows: Copy to %USERPROFILE%\\.claude\\commands\\
-4. Create the commands folder if it doesn't exist
-5. Restart your AI coding tool
-
-This download link expires in 15 minutes but can be used multiple times.`
+    const instructions = response.data.instructions || response.data.message || 'Download link generated successfully'
 
     // Copy instructions to clipboard
     await copyToClipboard(instructions)
