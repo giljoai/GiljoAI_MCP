@@ -767,7 +767,7 @@ async def setup_slash_commands_rest(
     """
     try:
         from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.tenant_manager import TenantManager
+        from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         # Initialize dependencies
@@ -807,7 +807,7 @@ async def import_personal_agents_rest(
     """
     try:
         from src.giljo_mcp.database import DatabaseManager
-        from src.giljo_mcp.tenant_manager import TenantManager
+        from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
 
         # Initialize dependencies
