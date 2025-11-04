@@ -1,11 +1,19 @@
 ---
 Handover 0064: Project-Product Association UI
 Date: 2025-10-27
-Status: Ready for Implementation
+Status: SUPERSEDED (see Superseded Notice)
 Priority: HIGH
 Complexity: LOW
 Duration: 3-4 hours
 ---
+
+Superseded Notice
+
+This handover is superseded by the current Projects View flow which uses Active Product gating instead of an explicit product selector in the project form.
+
+- Current behavior: project creation implicitly associates to the active product; no selector in dialog.
+- Rationale: simplifies UX and aligns with Single Active Product and Projects View v2 patterns.
+- See: docs/features/projects_view_v2.md and docs/api/projects_endpoints.md.
 
 # Executive Summary
 

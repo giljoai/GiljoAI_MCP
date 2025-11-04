@@ -1,13 +1,19 @@
 ---
 Handover 0063: Per-Agent Tool Selection UI
 Date: 2025-10-27
-Status: Ready for Implementation
+Status: SUPERSEDED (by Project 0073)
 Priority: HIGH
 Complexity: LOW
 Duration: 6-8 hours
 ---
 
 # Executive Summary
+
+Superseded Notice
+
+This specification is superseded by Project 0073 (Static Agent Grid) which delivers database-backed per-agent tool assignment and integrated grid display. The metadata-based UI selector proposed here is no longer the product direction.
+
+See: docs/features/agent_grid_static_0073.md and 0060-series retirement summary in docs/archive/0060_SERIES_RETIREMENT_SUMMARY.md.
 
 The GiljoAI MCP Server supports multiple external agent tools (Claude Code, Codex, Gemini CLI) via Integrations settings (Handover 0027), but currently lacks per-agent tool selection. This handover adds UI controls to assign a specific tool (Claude/Codex/Gemini) to each agent, with backend storage and validation.
 

@@ -1,4 +1,5 @@
 # Handover 0065 Completion Summary
+<!-- Harmonized: moved to handovers/completed/harmonized on 2025-11-04 -->
 
 **Title**: Mission Launch Token Counter & Cancel Button (SCOPED)
 **Date Completed**: 2025-10-31
