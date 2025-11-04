@@ -2,7 +2,7 @@
   <v-card variant="outlined" class="mb-4">
     <v-card-text>
       <div class="d-flex align-center mb-3">
-        <v-icon size="40" class="mr-2" color="primary">mdi-slash-forward</v-icon>
+        <v-icon size="40" class="mr-2 icon-rotated" color="primary">pi-minus-circle</v-icon>
         <h3 class="text-h6 mb-0">Slash Commands</h3>
         <v-tooltip location="top" max-width="400" class="ml-2">
           <template #activator="{ props }">
@@ -230,5 +230,9 @@ async function downloadSlashCommands() {
 /* Ensure expansion panel text has proper spacing */
 :deep(.v-expansion-panel-text__wrapper) {
   padding: 12px 16px;
+}
+
+.icon-rotated {
+  transform: rotate(45deg);
 }
 </style>
