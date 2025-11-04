@@ -8,7 +8,7 @@ that can be installed to ~/.claude/commands/ directory.
 GIL_IMPORT_PRODUCTAGENTS_MD = """---
 name: gil_import_productagents
 description: Import GiljoAI agent templates to current product folder
-allowed-tools: mcp__giljo-mcp
+allowed-tools: ["mcp__giljo-mcp__*"]
 ---
 
 Use the mcp__giljo-mcp__gil_import_productagents tool to import agent templates to your active product's .claude/agents folder.
@@ -29,7 +29,7 @@ Call the tool now to begin the import process.
 GIL_IMPORT_PERSONALAGENTS_MD = """---
 name: gil_import_personalagents
 description: Import GiljoAI agent templates to personal agents folder
-allowed-tools: mcp__giljo-mcp
+allowed-tools: ["mcp__giljo-mcp__*"]
 ---
 
 Use the mcp__giljo-mcp__gil_import_personalagents tool to import agent templates to your personal ~/.claude/agents folder (available across all projects).
@@ -48,7 +48,7 @@ Call the tool now to begin the import process.
 GIL_HANDOVER_MD = """---
 name: gil_handover
 description: Trigger orchestrator succession (context handover)
-allowed-tools: mcp__giljo-mcp
+allowed-tools: ["mcp__giljo-mcp__*"]
 ---
 
 Use the mcp__giljo-mcp__gil_handover tool to trigger orchestrator succession when context window reaches capacity.

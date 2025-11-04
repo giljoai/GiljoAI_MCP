@@ -819,6 +819,14 @@ async def handle_tools_call(
         raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
 
     try:
+        # Inject API key for download tools (HTTP mode support)
+        # These tools need API key to download from server endpoints
+        download_tools = {"setup_slash_commands", "gil_import_productagents", "gil_import_personalagents"}
+        if tool_name in download_tools:
+            # Get API key from request headers
+            api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace("Bearer ", "")
+            arguments["_api_key"] = api_key_value
+
         # Execute tool
         tool_func = tool_map[tool_name]
         result = await tool_func(**arguments)
