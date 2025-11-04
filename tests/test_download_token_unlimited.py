@@ -63,7 +63,7 @@ async def test_generate_token_slash_commands(
     try:
         token = await token_manager.generate_token(
             tenant_key=tenant_key,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(test_file),
             metadata={"filename": "slash_commands.zip", "file_count": 1},
         )
@@ -79,9 +79,9 @@ async def test_generate_token_slash_commands(
 
         assert token_record is not None
         assert token_record.tenant_key == tenant_key
-        assert token_record.content_type == "slash_commands"
-        assert token_record.file_path == str(test_file)
-        assert token_record.is_downloaded is False
+        assert token_record.download_type == "slash_commands"
+        assert token_record.meta_data["file_path"] == str(test_file)
+        assert token_record.is_used is False
         assert token_record.downloaded_at is None
 
     finally:
@@ -91,14 +91,14 @@ async def test_generate_token_slash_commands(
 
 
 @pytest.mark.asyncio
-async def test_generate_token_invalid_content_type(
+async def test_generate_token_invalid_download_type(
     token_manager: TokenManager, tenant_key: str
 ):
-    """Test token generation with invalid content type."""
-    with pytest.raises(ValueError, match="Invalid content_type"):
+    """Test token generation with invalid download type."""
+    with pytest.raises(ValueError, match="Invalid download_type"):
         await token_manager.generate_token(
             tenant_key=tenant_key,
-            content_type="invalid_type",
+            download_type="invalid_type",
             file_path="/tmp/test.zip",
             metadata={},
         )
@@ -121,7 +121,7 @@ async def test_validate_token_multiple_times_within_window(
         # Generate token
         token = await token_manager.generate_token(
             tenant_key=tenant_key,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(test_file),
             metadata={"filename": "slash_commands.zip"},
         )
@@ -158,7 +158,7 @@ async def test_validate_token_expired(token_manager: TokenManager, tenant_key: s
         # Generate token
         token = await token_manager.generate_token(
             tenant_key=tenant_key,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(test_file),
             metadata={"filename": "slash_commands.zip"},
         )
@@ -205,7 +205,7 @@ async def test_validate_token_filename_mismatch(
         # Generate token
         token = await token_manager.generate_token(
             tenant_key=tenant_key,
-            content_type="slash_commands",
+            download_type="slash_commands",
             file_path=str(test_file),
             metadata={"filename": "slash_commands.zip"},
         )
@@ -319,7 +319,7 @@ async def test_cleanup_expired_tokens(
         for i, test_file in enumerate(test_files):
             token = await token_manager.generate_token(
                 tenant_key=tenant_key,
-                content_type="slash_commands",
+                download_type="slash_commands",
                 file_path=str(test_file),
                 metadata={"filename": f"test_{i}.zip"},
             )
