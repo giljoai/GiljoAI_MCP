@@ -8,39 +8,65 @@ that can be installed to ~/.claude/commands/ directory.
 GIL_IMPORT_PRODUCTAGENTS_MD = """---
 name: gil_import_productagents
 description: Import GiljoAI agent templates to current product folder
+allowed-tools: mcp__giljo-mcp
 ---
 
-Import agent templates to your active product's .claude/agents folder by calling the gil_import_productagents MCP tool.
+Use the mcp__giljo-mcp__gil_import_productagents tool to import agent templates to your active product's .claude/agents folder.
+
+This will:
+1. Download active agent templates from GiljoAI server
+2. Create automatic backup of existing agents (if any)
+3. Install templates to your product's .claude/agents directory with YAML frontmatter
 
 Requirements:
 - Active product configured in GiljoAI dashboard
 - Product must have project_path set
+- GILJO_API_KEY environment variable configured
 
-The tool will fetch active agent templates from GiljoAI server, create backup of existing agents (if any), and export templates to your product's .claude/agents directory with YAML frontmatter.
+Call the tool now to begin the import process.
 """
 
 GIL_IMPORT_PERSONALAGENTS_MD = """---
 name: gil_import_personalagents
 description: Import GiljoAI agent templates to personal agents folder
+allowed-tools: mcp__giljo-mcp
 ---
 
-Import agent templates to your personal ~/.claude/agents folder (available across all projects) by calling the gil_import_personalagents MCP tool.
+Use the mcp__giljo-mcp__gil_import_personalagents tool to import agent templates to your personal ~/.claude/agents folder (available across all projects).
 
-The tool will fetch active agent templates from GiljoAI server, create backup of existing agents (if any), and export templates to ~/.claude/agents with YAML frontmatter.
+This will:
+1. Download active agent templates from GiljoAI server
+2. Create automatic backup of existing agents (if any)
+3. Install templates to ~/.claude/agents with YAML frontmatter
+
+Requirements:
+- GILJO_API_KEY environment variable configured
+
+Call the tool now to begin the import process.
 """
 
 GIL_HANDOVER_MD = """---
 name: gil_handover
 description: Trigger orchestrator succession (context handover)
+allowed-tools: mcp__giljo-mcp
 ---
 
-Trigger orchestrator succession when context window reaches capacity by calling the gil_handover MCP tool.
+Use the mcp__giljo-mcp__gil_handover tool to trigger orchestrator succession when context window reaches capacity.
 
-Use when context window is approaching 90% capacity, at natural phase transitions in the project, or when manual succession is requested.
+This will:
+1. Generate handover summary from current orchestrator
+2. Create successor orchestrator job
+3. Return launch prompt for new instance
+4. Update lineage tracking
 
-The tool will generate a handover summary, create a successor orchestrator job, return a launch prompt for the new instance, and update lineage tracking.
+Use when:
+- Context window approaching 90% capacity
+- Natural phase transitions in the project
+- Manual succession requested
 
 Optional arguments: reason can be "context_limit", "manual", or "phase_transition"
+
+Call the tool now to begin succession process.
 """
 
 
