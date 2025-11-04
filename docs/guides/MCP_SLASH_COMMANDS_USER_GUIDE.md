@@ -287,6 +287,37 @@ After restart, updated agents will be available for use.
 
 ---
 
+### 5. Orchestrator Succession (Optional)
+
+Trigger orchestrator handover when context usage is high or at a phase change.
+
+**Command:**
+```
+/gil_handover [<ORCHESTRATOR_JOB_ID>]
+```
+
+**Purpose:** Creates a successor orchestrator (instance_number + 1) and returns a launch prompt plus a handover summary.
+
+**When to Use:**
+- Approaching context limits (e.g., ~90% of budget)
+- Major phase transitions (e.g., discovery → implementation)
+- Manual “fresh start” for long-running missions
+
+**What It Does:**
+1. Validates current/target orchestrator job
+2. Generates a compressed handover summary
+3. Creates a successor orchestrator in “waiting” status
+4. Marks predecessor “complete” with `handover_to` reference
+5. Returns a CLI-ready launch snippet for the successor
+
+**Events Emitted:**
+- `job:succession_triggered` — Succession started
+- `job:successor_created` — Successor created and ready to launch
+
+See also:
+- developer_guides/orchestrator_succession_developer_guide.md
+- features/agent_grid_static_0073.md (UI reacts to these events)
+
 ## Complete Workflow Example
 
 Here's a complete walkthrough from start to finish:

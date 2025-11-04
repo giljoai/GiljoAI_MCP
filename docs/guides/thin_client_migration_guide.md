@@ -4,12 +4,13 @@
 **Date**: 2025-11-02
 **Version**: v3.1
 **Handover**: 0088 - Thin Client Stage Project Architecture Fix
+**Status**: Completed — Thin client is the default
 
 ---
 
 ## Overview
 
-Handover 0088 replaces 3000-line "fat prompts" with 10-line "thin prompts" that fetch missions via MCP tools. This guide explains how to migrate from the deprecated `OrchestratorPromptGenerator` to the new `ThinClientPromptGenerator`.
+Handover 0088 replaces 3000-line "fat prompts" with 10-line "thin prompts" that fetch missions via MCP tools. This guide explains how to migrate from the deprecated `OrchestratorPromptGenerator` to the new `ThinClientPromptGenerator`. New development must use the thin client generator and `POST /api/prompts/orchestrator`.
 
 ---
 

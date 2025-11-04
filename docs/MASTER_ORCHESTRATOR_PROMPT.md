@@ -27,7 +27,13 @@
 
 ## Overview
 
-> Legacy Notice (0088 Thin Client Migration): This document describes the legacy “fat prompt” staging approach from Handover 0079. The system is migrating to a thin‑client prompt design that returns a short identity prompt and fetches missions via MCP tools. For the current direction and migration steps, see `docs/guides/thin_client_migration_guide.md` and `docs/STAGE_PROJECT_FEATURE.md` (0088 callouts).
+> Legacy Notice (0088 Thin Client Migration): This document describes the legacy “fat prompt” staging approach from Handover 0079. The system has migrated to a thin‑client prompt design that returns a short identity prompt and fetches missions via MCP tools. For current behavior, see `docs/guides/thin_client_migration_guide.md`, `docs/STAGE_PROJECT_FEATURE.md`, and `docs/api/prompts_endpoints.md`.
+
+### Thin Client Endpoint Summary (0088)
+
+- Use `POST /api/prompts/orchestrator` to generate a thin prompt (see `docs/api/prompts_endpoints.md`).
+- Orchestrator then calls MCP tools to fetch mission: `get_orchestrator_instructions`, `get_agent_mission`.
+- Legacy `GET /api/prompts/staging/{project_id}` is deprecated.
 
 ### What Is It?
 

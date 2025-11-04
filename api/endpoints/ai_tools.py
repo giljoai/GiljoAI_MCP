@@ -90,20 +90,17 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
     """
     Generate Gemini CLI MCP HTTP transport command.
 
-    Mirrors Codex behavior: pass API key via Authorization: Bearer using
-    an environment variable.
+    Gemini CLI supports custom headers directly; pass X-API-Key and set
+    transport to HTTP. Order is: <name> <url>.
 
     Args:
         server_url: GiljoAI server URL
         api_key: User's API key
 
     Returns:
-        Command string(s) for HTTP transport (export + add)
+        Command string for HTTP transport (single line)
     """
-    return (
-        f"export GILJO_API_KEY=\"{api_key}\"\n"
-        f"gemini mcp add --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp"
-    )
+    return f"gemini mcp add -t http -H \"X-API-Key: {api_key}\" giljo-mcp {server_url}/mcp"
 
 
 def get_http_tool_instructions(tool_id: str) -> List[str]:
@@ -135,8 +132,7 @@ def get_http_tool_instructions(tool_id: str) -> List[str]:
     elif tool_id == "gemini":
         return [
             "Open your terminal or command prompt",
-            "Export your API key as GILJO_API_KEY (see command above)",
-            "Run the gemini mcp add command shown above",
+            "Run the gemini mcp add command shown above (note: order is <name> <url>)",
             "Verify connection with: gemini mcp list",
             "Start using GiljoAI tools in Gemini sessions"
         ]

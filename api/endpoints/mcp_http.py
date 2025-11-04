@@ -838,11 +838,15 @@ async def handle_tools_call(
         logger.info(f"Tool executed successfully: {tool_name} (session: {session_id})")
 
         # Return result in MCP format
+        # Convert result to JSON string for proper formatting
+        import json
+        result_text = json.dumps(result, indent=2, ensure_ascii=False)
+
         return {
             "content": [
                 {
                     "type": "text",
-                    "text": str(result)
+                    "text": result_text
                 }
             ],
             "isError": False

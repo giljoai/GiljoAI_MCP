@@ -54,9 +54,8 @@ export function generateGeminiConfig(apiKey, serverUrl = null) {
   const defaultServerUrl = serverUrl || `${window.location.protocol}//${window.location.hostname}:7272`
 
   // Native MCP integration via command-line
-  const command = `# Gemini CLI MCP Integration (Bearer token)
-export GILJO_API_KEY="${apiKey}"
-gemini mcp add --url ${defaultServerUrl}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp
+  const command = `# Gemini CLI MCP Integration (HTTP + header)
+gemini mcp add -t http -H "X-API-Key: ${apiKey}" giljo-mcp ${defaultServerUrl}/mcp
 
 # Verify installation:
 # gemini mcp list`
