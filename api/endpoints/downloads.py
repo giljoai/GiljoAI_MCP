@@ -18,7 +18,7 @@ from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_db_session, require_auth
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
@@ -759,7 +759,7 @@ async def download_temp_file(
 @router.post("/mcp/setup_slash_commands", tags=["MCP Tools"])
 async def setup_slash_commands_rest(
     request: Request,
-    current_user: dict = Depends(require_auth),
+    current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """
     REST endpoint wrapper for setup_slash_commands MCP tool.
@@ -775,7 +775,7 @@ async def setup_slash_commands_rest(
 
         # Call MCP tool
         result = await tool_accessor.setup_slash_commands(
-            _api_key=current_user.get("api_key"),
+            _api_key=current_user.api_key,
             _server_url=server_url
         )
 
@@ -792,7 +792,7 @@ async def setup_slash_commands_rest(
 @router.post("/mcp/gil_import_personalagents", tags=["MCP Tools"])
 async def import_personal_agents_rest(
     request: Request,
-    current_user: dict = Depends(require_auth),
+    current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """
     REST endpoint wrapper for gil_import_personalagents MCP tool.
@@ -808,7 +808,7 @@ async def import_personal_agents_rest(
 
         # Call MCP tool
         result = await tool_accessor.gil_import_personalagents(
-            _api_key=current_user.get("api_key"),
+            _api_key=current_user.api_key,
             _server_url=server_url
         )
 
@@ -825,7 +825,7 @@ async def import_personal_agents_rest(
 @router.post("/mcp/gil_import_productagents", tags=["MCP Tools"])
 async def import_product_agents_rest(
     request: Request,
-    current_user: dict = Depends(require_auth),
+    current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """
     REST endpoint wrapper for gil_import_productagents MCP tool.
@@ -841,7 +841,7 @@ async def import_product_agents_rest(
 
         # Call MCP tool
         result = await tool_accessor.gil_import_productagents(
-            _api_key=current_user.get("api_key"),
+            _api_key=current_user.api_key,
             _server_url=server_url
         )
 
