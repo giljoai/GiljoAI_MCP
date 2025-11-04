@@ -467,6 +467,9 @@
               </v-card-text>
             </v-card>
 
+            <!-- Slash Command Setup -->
+            <SlashCommandSetup />
+
             <!-- Serena MCP Integration -->
             <v-card variant="outlined" class="mb-4">
               <v-card-text>
@@ -571,6 +574,7 @@ import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
+import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import SerenaAdvancedSettingsDialog from '@/components/SerenaAdvancedSettingsDialog.vue'
 import draggable from 'vuedraggable'
 import setupService from '@/services/setupService'

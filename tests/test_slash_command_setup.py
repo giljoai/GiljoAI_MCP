@@ -170,9 +170,10 @@ class TestSetupSlashCommandsTool:
 
         assert "files" in result
         assert len(result["files"]) == 3
-        assert "gil_import_productagents.md" in result["files"]
-        assert "gil_import_personalagents.md" in result["files"]
-        assert "gil_handover.md" in result["files"]
+        # Files now have path prefixes (.claude/commands/)
+        assert any("gil_import_productagents.md" in key for key in result["files"].keys())
+        assert any("gil_import_personalagents.md" in key for key in result["files"].keys())
+        assert any("gil_handover.md" in key for key in result["files"].keys())
 
     @pytest.mark.asyncio
     async def test_setup_slash_commands_file_contents(self, tool_accessor):
@@ -192,7 +193,7 @@ class TestSetupSlashCommandsTool:
         result = await tool_accessor.setup_slash_commands()
 
         assert "target_directory" in result
-        assert result["target_directory"] == "~/.claude/commands/"
+        assert result["target_directory"] == ".claude/commands/"
 
     @pytest.mark.asyncio
     async def test_setup_slash_commands_returns_instructions(self, tool_accessor):
