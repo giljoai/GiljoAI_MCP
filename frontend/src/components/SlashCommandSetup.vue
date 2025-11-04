@@ -3,50 +3,59 @@
     <v-card-text>
       <div class="d-flex align-center mb-3">
         <v-icon size="40" class="mr-2" color="primary">mdi-slash-forward</v-icon>
-        <h3 class="text-h6 mb-0">Slash Command Setup</h3>
+        <h3 class="text-h6 mb-0">Slash Commands</h3>
       </div>
 
       <p class="text-body-2 text-medium-emphasis mb-4">
-        Install slash commands to your CLI tool (one-time setup)
+        Install slash commands to your CLI tool for agent import and orchestrator succession
       </p>
 
-      <!-- Info Alert -->
-      <v-alert
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-        :icon="false"
-      >
-        <div class="d-flex align-center">
-          <v-icon start size="small">mdi-information</v-icon>
-          <div class="text-body-2">
-            Run this command after adding the MCP server above.
-            It installs 3 slash commands to your local CLI.
+      <!-- Manual Installation Badge -->
+      <v-card variant="tonal" class="mb-3">
+        <v-card-text class="pa-3">
+          <div class="d-flex align-center justify-between">
+            <div class="flex-grow-1">
+              <div class="text-subtitle-2 font-weight-medium">Manual Installation</div>
+              <div class="text-body-2 text-medium-emphasis">
+                Copy slash command to install in your CLI (one-time setup)
+              </div>
+            </div>
+            <v-btn
+              color="primary"
+              variant="flat"
+              size="small"
+              width="120"
+              @click="copySlashCommandSetup"
+            >
+              Copy Command
+            </v-btn>
           </div>
-        </div>
-      </v-alert>
+        </v-card-text>
+      </v-card>
 
-      <!-- Command Display -->
-      <div class="d-flex align-center gap-2 mb-4">
-        <v-text-field
-          :model-value="setupCommand"
-          readonly
-          variant="outlined"
-          density="compact"
-          hide-details
-          class="command-field"
-        />
-        <v-btn
-          color="primary"
-          variant="flat"
-          size="default"
-          @click="copySlashCommandSetup"
-          :prepend-icon="copied ? 'mdi-check' : 'mdi-content-copy'"
-        >
-          {{ copied ? 'Copied!' : 'Copy Command' }}
-        </v-btn>
-      </div>
+      <!-- Download Installation Badge -->
+      <v-card variant="tonal" class="mb-3">
+        <v-card-text class="pa-3">
+          <div class="d-flex align-center justify-between">
+            <div class="flex-grow-1">
+              <div class="text-subtitle-2 font-weight-medium">Download Installation</div>
+              <div class="text-body-2 text-medium-emphasis">
+                Download slash command files (includes install scripts)
+              </div>
+            </div>
+            <v-btn
+              color="primary"
+              variant="flat"
+              size="small"
+              width="120"
+              @click="downloadSlashCommands"
+              :loading="downloading"
+            >
+              Download
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
 
       <!-- Expansion Panel - What does this install? -->
       <v-expansion-panels variant="accordion">
@@ -131,6 +140,7 @@ import { ref } from 'vue'
 // State
 const setupCommand = '/setup_slash_commands'
 const copied = ref(false)
+const downloading = ref(false)
 const showCopyFeedback = ref(false)
 const copyFeedbackMessage = ref('')
 
@@ -204,6 +214,41 @@ async function copySlashCommandSetup() {
     showCopyFeedback.value = true
     copyFeedbackMessage.value = 'Failed to copy. Please copy manually.'
     console.error('[SLASH COMMAND SETUP] All copy methods failed')
+  }
+}
+
+async function downloadSlashCommands() {
+  try {
+    downloading.value = true
+    const response = await fetch('/api/download/slash-commands.zip', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'slash-commands.zip'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = 'Slash commands downloaded successfully!'
+    console.log('[SLASH COMMAND SETUP] Download successful')
+  } catch (error) {
+    console.error('[SLASH COMMAND SETUP] Failed to download slash commands:', error)
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = `Download failed: ${error.message}`
+  } finally {
+    downloading.value = false
   }
 }
 </script>

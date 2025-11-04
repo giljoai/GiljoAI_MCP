@@ -470,95 +470,65 @@
             <!-- Slash Command Setup -->
             <SlashCommandSetup />
 
-            <!-- Personal Agent Templates Download -->
+            <!-- Agent Templates Export -->
             <v-card variant="outlined" class="mb-4">
               <v-card-text>
                 <div class="d-flex align-center mb-3">
-                  <v-icon size="40" class="mr-2" color="primary">mdi-account-circle</v-icon>
-                  <h3 class="text-h6 mb-0">Personal Agent Templates</h3>
+                  <v-icon size="40" class="mr-2" color="primary">mdi-account-group</v-icon>
+                  <h3 class="text-h6 mb-0">Agent Templates</h3>
                 </div>
 
                 <p class="text-body-2 text-medium-emphasis mb-4">
-                  Download your enabled agent templates for personal use (~/.claude/agents/)
+                  Download your enabled agent templates with installation scripts
                 </p>
 
-                <v-alert
-                  type="info"
-                  variant="tonal"
-                  density="compact"
-                  class="mb-4"
-                  :icon="false"
-                >
-                  <div class="d-flex align-center">
-                    <v-icon start size="small">mdi-information</v-icon>
-                    <div class="text-body-2">
-                      Includes all active templates from your Template Manager plus install scripts
+                <!-- Personal Agent Templates Badge -->
+                <v-card variant="tonal" class="mb-3">
+                  <v-card-text class="pa-3">
+                    <div class="d-flex align-center justify-between">
+                      <div class="flex-grow-1">
+                        <div class="text-subtitle-2 font-weight-medium">Personal Agent Templates</div>
+                        <div class="text-body-2 text-medium-emphasis">
+                          Install templates in your user profile (~/.claude/agents)
+                        </div>
+                      </div>
+                      <v-btn
+                        color="primary"
+                        variant="flat"
+                        size="small"
+                        width="120"
+                        @click="downloadPersonalAgents"
+                        :loading="downloadingPersonal"
+                      >
+                        Download
+                      </v-btn>
                     </div>
-                  </div>
-                </v-alert>
+                  </v-card-text>
+                </v-card>
 
-                <!-- Download Button -->
-                <div class="d-flex align-center gap-2 mb-3">
-                  <v-btn
-                    color="primary"
-                    variant="flat"
-                    size="default"
-                    @click="downloadPersonalAgents"
-                    :loading="downloadingPersonal"
-                    prepend-icon="mdi-download"
-                  >
-                    {{ downloadingPersonal ? 'Downloading...' : 'Download Templates ZIP' }}
-                  </v-btn>
-                  <span class="text-caption text-medium-emphasis">
-                    Includes install.sh &amp; install.ps1
-                  </span>
-                </div>
-              </v-card-text>
-            </v-card>
-
-            <!-- Product Agent Templates Download -->
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-3">
-                  <v-icon size="40" class="mr-2" color="primary">mdi-folder-multiple</v-icon>
-                  <h3 class="text-h6 mb-0">Product Agent Templates</h3>
-                </div>
-
-                <p class="text-body-2 text-medium-emphasis mb-4">
-                  Download your enabled agent templates for product use (current directory .claude/agents/)
-                </p>
-
-                <v-alert
-                  type="info"
-                  variant="tonal"
-                  density="compact"
-                  class="mb-4"
-                  :icon="false"
-                >
-                  <div class="d-flex align-center">
-                    <v-icon start size="small">mdi-information</v-icon>
-                    <div class="text-body-2">
-                      Includes all active templates from your Template Manager plus install scripts
+                <!-- Product Agent Templates Badge -->
+                <v-card variant="tonal" class="mb-3">
+                  <v-card-text class="pa-3">
+                    <div class="d-flex align-center justify-between">
+                      <div class="flex-grow-1">
+                        <div class="text-subtitle-2 font-weight-medium">Product Agent Templates</div>
+                        <div class="text-body-2 text-medium-emphasis">
+                          Install templates in product folder (.claude/agents)
+                        </div>
+                      </div>
+                      <v-btn
+                        color="primary"
+                        variant="flat"
+                        size="small"
+                        width="120"
+                        @click="downloadProductAgents"
+                        :loading="downloadingProduct"
+                      >
+                        Download
+                      </v-btn>
                     </div>
-                  </div>
-                </v-alert>
-
-                <!-- Download Button -->
-                <div class="d-flex align-center gap-2 mb-3">
-                  <v-btn
-                    color="primary"
-                    variant="flat"
-                    size="default"
-                    @click="downloadProductAgents"
-                    :loading="downloadingProduct"
-                    prepend-icon="mdi-download"
-                  >
-                    {{ downloadingProduct ? 'Downloading...' : 'Download Templates ZIP' }}
-                  </v-btn>
-                  <span class="text-caption text-medium-emphasis">
-                    Includes install.sh &amp; install.ps1
-                  </span>
-                </div>
+                  </v-card-text>
+                </v-card>
               </v-card-text>
             </v-card>
 
