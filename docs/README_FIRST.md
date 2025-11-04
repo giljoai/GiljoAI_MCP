@@ -1094,7 +1094,7 @@ See also:
   - Multi-tenant filtering and project-scoped broadcasts
 - **Supersession**:
   - Supersedes 0062 (Active Jobs tab) and 0066 (Kanban dashboard)
-  - See handovers/completed/0073_SUPERSEDES_0062_0066-C.md for ADR context
+  - See handovers/completed/harmonized/0073_SUPERSEDES_0062_0066-C.md for ADR context
 
 ### Orchestrator Succession (October 2025)
 
@@ -1103,6 +1103,13 @@ See also:
 - **Slash Command**: `/gil_handover [<job_id>]` — creates successor orchestrator and returns launch prompt
 - **Events**: `job:succession_triggered`, `job:successor_created` (UI updates grid and dialog)
 - **Use Cases**: Context approaching budget, phase transitions, long-running missions
+
+### Hybrid Launch Route Architecture (October 2025)
+
+**Handover 0081 - Hybrid Launch Route Architecture** (✅ COMPLETE):
+- Clarifies routing and separation of concerns between staging, orchestration, and agent job APIs
+- Improves consistency of launch flows across UI and CLI
+- Developer impact: cleaner FastAPI router layout and predictable request/response schemas
 
 ### Installation Experience Validation (October 2025)
 
