@@ -21,9 +21,11 @@ This will:
 Requirements:
 - Active product configured in GiljoAI dashboard
 - Product must have project_path set
-- GILJO_API_KEY environment variable configured
+- Connected to GiljoAI MCP server
 
-Call the tool now to begin the import process.
+This tool will generate a secure one-time download link. The AI assistant will automatically download and install the files to the appropriate location on your system.
+
+Call the tool now to begin.
 """
 
 GIL_IMPORT_PERSONALAGENTS_MD = """---
@@ -40,9 +42,11 @@ This will:
 3. Install templates to ~/.claude/agents with YAML frontmatter
 
 Requirements:
-- GILJO_API_KEY environment variable configured
+- Connected to GiljoAI MCP server
 
-Call the tool now to begin the import process.
+This tool will generate a secure one-time download link. The AI assistant will automatically download and install the files to the appropriate location on your system.
+
+Call the tool now to begin.
 """
 
 GIL_HANDOVER_MD = """---
@@ -66,7 +70,7 @@ Use when:
 
 Optional arguments: reason can be "context_limit", "manual", or "phase_transition"
 
-Call the tool now to begin succession process.
+Call the tool now to begin.
 """
 
 
