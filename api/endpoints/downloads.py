@@ -14,11 +14,11 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.auth.dependencies import get_db_session
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
@@ -164,10 +164,12 @@ def render_install_script(
 @router.get("/slash-commands.zip")
 async def download_slash_commands(
     request: Request,
-    current_user: User = Depends(get_current_active_user),
 ):
     """
     Download slash command templates as complete ZIP file.
+
+    **Public endpoint** - No authentication required.
+    Slash commands contain no sensitive data, only markdown instructions.
 
     This endpoint generates a ZIP file containing:
     - All slash command markdown files with YAML frontmatter
@@ -179,27 +181,13 @@ async def download_slash_commands(
     - gil_import_personalagents.md
     - gil_handover.md
 
-    Args:
-        current_user: Authenticated user (from JWT or API key)
-
     Returns:
         Response with complete ZIP file download
 
-    Raises:
-        HTTPException: 401 if not authenticated
-
     Example:
-        curl -H "Authorization: Bearer $TOKEN" \\
-             http://localhost:7272/api/download/slash-commands.zip \\
-             -o slash-commands.zip
+        curl http://localhost:7272/api/download/slash-commands.zip -o slash-commands.zip
     """
-    if current_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for slash commands download",
-        )
-
-    logger.info(f"Generating complete slash commands ZIP for user: {current_user.username}")
+    logger.info("Generating slash commands ZIP (public download)")
 
     # Get all slash command templates
     templates = get_all_templates()
@@ -226,8 +214,7 @@ async def download_slash_commands(
     zip_bytes = create_zip_archive(templates)
 
     logger.info(
-        f"Complete slash commands ZIP generated for: {current_user.username} "
-        f"({len(templates)} files, {len(zip_bytes)} bytes)"
+        f"Slash commands ZIP generated: {len(templates)} files, {len(zip_bytes)} bytes"
     )
 
     return Response(
@@ -242,20 +229,22 @@ async def download_slash_commands(
 @router.get("/agent-templates.zip")
 async def download_agent_templates(
     request: Request,
-    current_user: User = Depends(get_current_active_user),
+    access_token: Optional[str] = Cookie(None),
+    x_api_key: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session),
     active_only: bool = Query(True, description="Only include active templates"),
 ):
     """
     Download agent templates as complete ZIP file (dynamic content from database).
 
+    **Authentication**: Optional - supports JWT cookie (browser) or API key header (MCP tools).
+    - If authenticated: Returns user's tenant-specific customized templates
+    - If unauthenticated: Returns system default templates (no sensitive data)
+
     This endpoint generates a ZIP file containing:
     - All active agent template markdown files with YAML frontmatter
     - install.sh (Unix/macOS/Linux installer for product/personal)
     - install.ps1 (Windows PowerShell installer for product/personal)
-
-    Templates are fetched from the database and filtered by the current user's
-    tenant key (multi-tenant isolation). Up to 8 enabled templates included.
 
     Each template file includes:
     - YAML frontmatter (name, description, tools, model)
@@ -264,55 +253,84 @@ async def download_agent_templates(
     - Success criteria (if defined)
 
     Args:
-        current_user: Authenticated user (from JWT or API key)
+        request: FastAPI request
+        access_token: Optional JWT cookie (browser session)
+        x_api_key: Optional API key header (MCP tools)
         db: Database session
         active_only: Only include active templates (default: True)
 
     Returns:
         Response with complete ZIP file download
 
-    Raises:
-        HTTPException: 401 if not authenticated
-        HTTPException: 404 if no templates found
-
     Example:
-        curl -H "Authorization: Bearer $TOKEN" \\
-             http://localhost:7272/api/download/agent-templates.zip?active_only=true \\
-             -o agent-templates.zip
+        # Authenticated (with browser cookie or API key)
+        curl -H "X-API-Key: $KEY" http://localhost:7272/api/download/agent-templates.zip -o templates.zip
+
+        # Unauthenticated (system defaults)
+        curl http://localhost:7272/api/download/agent-templates.zip -o templates.zip
     """
-    if current_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for agent templates download",
+    # Try to authenticate (JWT cookie or API key)
+    current_user = None
+    try:
+        from src.giljo_mcp.auth.dependencies import get_current_user
+        current_user = await get_current_user(request, access_token, x_api_key, db)
+    except HTTPException:
+        # No auth provided or invalid - will use system defaults
+        pass
+
+    # Determine template source
+    if current_user:
+        # Authenticated: Use tenant-specific templates
+        logger.info(
+            f"Generating agent templates ZIP for user: {current_user.username} "
+            f"(tenant: {current_user.tenant_key}, active_only: {active_only})"
         )
 
-    logger.info(
-        f"Generating agent templates ZIP for user: {current_user.username} "
-        f"(tenant: {current_user.tenant_key}, active_only: {active_only})"
-    )
-
-    # Query templates with multi-tenant isolation
-    stmt = (
-        select(AgentTemplate)
-        .where(AgentTemplate.tenant_key == current_user.tenant_key)
-        .order_by(AgentTemplate.name)
-    )
-
-    if active_only:
-        stmt = stmt.where(AgentTemplate.is_active == True)
-
-    result = await db.execute(stmt)
-    templates = result.scalars().all()
-
-    if not templates:
-        logger.warning(
-            f"No templates found for tenant: {current_user.tenant_key} "
-            f"(active_only: {active_only})"
+        # Query templates with multi-tenant isolation
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == current_user.tenant_key)
+            .order_by(AgentTemplate.name)
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No agent templates found. Please create templates first.",
+
+        if active_only:
+            stmt = stmt.where(AgentTemplate.is_active == True)
+
+        result = await db.execute(stmt)
+        templates = result.scalars().all()
+
+        if not templates:
+            logger.warning(
+                f"No templates found for tenant: {current_user.tenant_key} "
+                f"(active_only: {active_only})"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No agent templates found. Please create templates first.",
+            )
+    else:
+        # Unauthenticated: Use system default templates (tenant_key IS NULL)
+        logger.info("Generating agent templates ZIP (unauthenticated - system defaults)")
+
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == None)
+            .order_by(AgentTemplate.name)
         )
+
+        if active_only:
+            stmt = stmt.where(AgentTemplate.is_active == True)
+
+        result = await db.execute(stmt)
+        templates = result.scalars().all()
+
+        if not templates:
+            # Fallback: Use hardcoded default template names if no system defaults exist
+            logger.warning("No system default templates found in database")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No system default templates available. Please authenticate to access your custom templates.",
+            )
 
     # Build file dictionary
     files = {}
@@ -372,9 +390,10 @@ async def download_agent_templates(
     # Create ZIP archive
     zip_bytes = create_zip_archive(files)
 
+    user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
     logger.info(
-        f"Complete agent templates ZIP generated for: {current_user.username} "
-        f"({len(files)} files including install scripts, {len(zip_bytes)} bytes)"
+        f"Agent templates ZIP generated ({user_info}): "
+        f"{len(files)} files, {len(zip_bytes)} bytes"
     )
 
     return Response(
@@ -391,7 +410,6 @@ async def download_install_script(
     request: Request,
     extension: str,
     script_type: str = Query(..., description="Script type: slash-commands or agent-templates"),
-    current_user: User = Depends(get_current_active_user),
 ):
     """
     Download cross-platform install script.
@@ -408,30 +426,23 @@ async def download_install_script(
     - slash-commands
     - agent-templates
 
+    **Public endpoint** - No authentication required.
+    Install scripts are public utilities that download from public/optional-auth endpoints.
+
     Args:
         extension: Script extension (sh or ps1)
         script_type: Type of script (slash-commands or agent-templates)
-        current_user: Authenticated user (from JWT or API key)
 
     Returns:
         Response with script file download
 
     Raises:
         HTTPException: 400 if invalid extension or type
-        HTTPException: 401 if not authenticated
         HTTPException: 500 if template not found
 
     Example:
-        curl -H "Authorization: Bearer $TOKEN" \\
-             http://localhost:7272/api/download/install-script.sh?type=slash-commands \\
-             -o install.sh
+        curl http://localhost:7272/api/download/install-script.sh?script_type=slash-commands -o install.sh
     """
-    if current_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for install script download",
-        )
-
     # Validate extension
     if extension not in ["sh", "ps1"]:
         raise HTTPException(
@@ -447,8 +458,7 @@ async def download_install_script(
         )
 
     logger.info(
-        f"Generating install script for user: {current_user.username} "
-        f"(extension: {extension}, type: {script_type})"
+        f"Generating install script (public): extension={extension}, type={script_type}"
     )
 
     # Get server URL
@@ -475,8 +485,7 @@ async def download_install_script(
     media_type = "application/x-sh" if extension == "sh" else "application/x-powershell"
 
     logger.info(
-        f"Install script generated successfully for: {current_user.username} "
-        f"({len(script_content)} bytes)"
+        f"Install script generated successfully: {len(script_content)} bytes"
     )
 
     return Response(
