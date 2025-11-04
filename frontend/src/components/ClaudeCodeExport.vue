@@ -69,29 +69,29 @@
           </v-card-text>
         </v-card>
 
-        <!-- Product Agent Templates (Download) -->
-        <v-card variant="tonal" class="mb-3">
-          <v-card-text class="pa-3">
-            <div class="d-flex align-center justify-between">
-              <div class="flex-grow-1">
-                <div class="text-subtitle-2 font-weight-medium">Manual Template installation of Agents</div>
-                <div class="text-body-2 text-medium-emphasis">
-                  Dynamic zip file from Agent Template Manager with installation scripts
-                </div>
+        <!-- Agent Templates Download -->
+        <div class="mt-4">
+          <p class="text-body-2 text-medium-emphasis mb-2">
+            Or download templates for manual installation:
+          </p>
+          <v-btn
+            variant="text"
+            color="primary"
+            class="pl-0"
+            @click="downloadProductAgents"
+            :loading="downloadingProduct"
+          >
+            <v-avatar size="24" rounded="0" class="mr-2">
+              <v-img src="/giljo-monochrome.svg" alt="GiljoAI" />
+            </v-avatar>
+            <div class="text-left">
+              <div class="text-subtitle-2 font-weight-medium">Manual Agent installation</div>
+              <div class="text-caption text-medium-emphasis">
+                Dynamic zip file from Agent Template Manager with installation scripts
               </div>
-              <v-btn
-                color="primary"
-                variant="flat"
-                size="small"
-                width="120"
-                @click="downloadProductAgents"
-                :loading="downloadingProduct"
-              >
-                Download
-              </v-btn>
             </div>
-          </v-card-text>
-        </v-card>
+          </v-btn>
+        </div>
       </div>
 
       <!-- Copy Feedback -->
