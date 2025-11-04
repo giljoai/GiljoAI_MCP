@@ -2121,84 +2121,162 @@ Begin by fetching your mission.
 
     async def gil_import_productagents(self, project_id: str = None) -> dict[str, Any]:
         """
-        Import agent templates to current product's .claude/agents folder
+        Import agent templates to current product's .claude/agents folder.
 
-        Wrapper for slash command handler that executes via MCP tool call.
+        Token-efficient approach: Downloads ZIP via HTTP (~500 tokens) instead of
+        writing file content directly (~15,000 tokens). 97% token reduction.
 
         Args:
             project_id: Optional project ID
 
         Returns:
-            dict with success, message, exported_count, files, error (optional)
+            dict with success, message, location, files, error (optional)
         """
-        try:
-            from ..slash_commands import get_slash_command
+        import os
+        from pathlib import Path
+        from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
 
-            handler = get_slash_command("gil_import_productagents")
-            if not handler:
+        try:
+            # 1. Verify API key in environment
+            api_key = os.environ.get('GILJO_API_KEY')
+            if not api_key:
                 return {
-                    "success": False,
-                    "message": "Slash command handler not found",
-                    "error": "HANDLER_NOT_FOUND"
+                    'success': False,
+                    'error': 'GILJO_API_KEY environment variable not set',
+                    'instructions': [
+                        'Configure GiljoAI MCP first from Settings → Integrations',
+                        'This sets up the required environment variable'
+                    ]
                 }
 
-            # Get database session
-            async with self.db_manager.get_session() as session:
-                result = await handler(
-                    db_session=session,
-                    tenant_key=self.tenant_manager.get_current_tenant(),
-                    project_id=project_id
-                )
+            # 2. Get server URL from environment or config
+            server_url = get_server_url_from_config()
 
-            return result
+            # 3. Download URL
+            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
+
+            # 4. Determine target directory (current working directory)
+            target_dir = Path.cwd() / ".claude" / "agents"
+
+            # 5. Download ZIP file
+            logger.info(f"Downloading agent templates from: {download_url}")
+            zip_bytes = await download_file(download_url, api_key)
+
+            # 6. Extract to target directory
+            target_dir.mkdir(parents=True, exist_ok=True)
+            files = extract_zip_to_directory(zip_bytes, target_dir)
+
+            logger.info(
+                f"Successfully imported {len(files)} agent templates to {target_dir}"
+            )
+
+            return {
+                'success': True,
+                'message': f'Installed {len(files)} agent template(s)',
+                'location': str(target_dir),
+                'files': files
+            }
 
         except Exception as e:
+            # Fallback to manual instructions
             logger.exception(f"Failed to import product agents: {e}")
+
+            server_url = get_server_url_from_config()
+            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
+            install_script_url = f"{server_url}/api/download/install-script.sh?type=agent-templates"
+
             return {
-                "success": False,
-                "message": f"Failed to import agents: {str(e)}",
-                "error": "UNEXPECTED_ERROR"
+                'success': False,
+                'error': str(e),
+                'manual_fallback': {
+                    'download_url': download_url,
+                    'install_script_url': install_script_url,
+                    'instructions': [
+                        f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" {download_url} -o templates.zip',
+                        f'2. Extract: unzip -o templates.zip -d .claude/agents/',
+                        f'3. Or run install script: curl {install_script_url} | bash'
+                    ]
+                }
             }
 
     async def gil_import_personalagents(self, project_id: str = None) -> dict[str, Any]:
         """
-        Import agent templates to personal ~/.claude/agents folder
+        Import agent templates to personal ~/.claude/agents folder.
 
-        Wrapper for slash command handler that executes via MCP tool call.
+        Token-efficient approach: Downloads ZIP via HTTP (~500 tokens) instead of
+        writing file content directly (~15,000 tokens). 97% token reduction.
 
         Args:
-            project_id: Optional project ID
+            project_id: Optional project ID (not used for personal agents)
 
         Returns:
-            dict with success, message, exported_count, files, error (optional)
+            dict with success, message, location, files, error (optional)
         """
-        try:
-            from ..slash_commands import get_slash_command
+        import os
+        from pathlib import Path
+        from .download_utils import download_file, extract_zip_to_directory, get_server_url_from_config
 
-            handler = get_slash_command("gil_import_personalagents")
-            if not handler:
+        try:
+            # 1. Verify API key in environment
+            api_key = os.environ.get('GILJO_API_KEY')
+            if not api_key:
                 return {
-                    "success": False,
-                    "message": "Slash command handler not found",
-                    "error": "HANDLER_NOT_FOUND"
+                    'success': False,
+                    'error': 'GILJO_API_KEY environment variable not set',
+                    'instructions': [
+                        'Configure GiljoAI MCP first from Settings → Integrations',
+                        'This sets up the required environment variable'
+                    ]
                 }
 
-            # Get database session
-            async with self.db_manager.get_session() as session:
-                result = await handler(
-                    db_session=session,
-                    tenant_key=self.tenant_manager.get_current_tenant(),
-                    project_id=project_id
-                )
+            # 2. Get server URL from environment or config
+            server_url = get_server_url_from_config()
 
-            return result
+            # 3. Download URL
+            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
+
+            # 4. Determine target directory (home directory)
+            target_dir = Path.home() / ".claude" / "agents"
+
+            # 5. Download ZIP file
+            logger.info(f"Downloading agent templates from: {download_url}")
+            zip_bytes = await download_file(download_url, api_key)
+
+            # 6. Extract to target directory
+            target_dir.mkdir(parents=True, exist_ok=True)
+            files = extract_zip_to_directory(zip_bytes, target_dir)
+
+            logger.info(
+                f"Successfully imported {len(files)} agent templates to {target_dir}"
+            )
+
+            return {
+                'success': True,
+                'message': f'Installed {len(files)} agent template(s) to personal folder',
+                'location': str(target_dir),
+                'files': files
+            }
 
         except Exception as e:
+            # Fallback to manual instructions
             logger.exception(f"Failed to import personal agents: {e}")
+
+            server_url = get_server_url_from_config()
+            download_url = f"{server_url}/api/download/agent-templates.zip?active_only=true"
+            install_script_url = f"{server_url}/api/download/install-script.sh?type=agent-templates"
+
             return {
-                "success": False,
-                "message": f"Failed to import agents: {str(e)}",
-                "error": "UNEXPECTED_ERROR"
+                'success': False,
+                'error': str(e),
+                'manual_fallback': {
+                    'download_url': download_url,
+                    'install_script_url': install_script_url,
+                    'instructions': [
+                        f'1. Download: curl -H "X-API-Key: $GILJO_API_KEY" {download_url} -o templates.zip',
+                        f'2. Extract: unzip -o templates.zip -d ~/.claude/agents/',
+                        f'3. Or run install script: curl {install_script_url} | bash personal'
+                    ]
+                }
             }
 
     async def gil_handover(self, current_job_id: str = None, reason: str = "manual") -> dict[str, Any]:
@@ -2225,8 +2303,8 @@ Begin by fetching your mission.
                     "error": "HANDLER_NOT_FOUND"
                 }
 
-            # Get database session
-            async with self.db_manager.get_session() as session:
+            # Get database session (synchronous context manager)
+            with self.db_manager.get_session() as session:
                 result = await handler(
                     db_session=session,
                     tenant_key=self.tenant_manager.get_current_tenant(),
