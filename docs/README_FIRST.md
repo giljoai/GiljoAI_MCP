@@ -1072,6 +1072,14 @@ See also:
   - Aligns with state simplification (0071) — Deactivate replaces Pause
   - Integrates with soft delete + recovery (0070)
 
+### Task Management Integration Map (October 2025)
+
+**Handover 0072 - Task Management Integration Map** (✅ COMPLETE):
+- Links user tasks to MCP agent jobs for grounded assignments
+- Clarifies task data model and product/project scoping
+- Establishes conventions for task-to-job references and status propagation
+- Developer impact: APIs and models reflect explicit linkage (no ad‑hoc joins)
+
 ### Static Agent Grid with Enhanced Messaging (October 2025)
 
 **Handover 0073 - Static Agent Grid (Canonical)** (✅ COMPLETE):
@@ -1217,3 +1225,4 @@ As of October 13, 2025, GiljoAI MCP documentation has been **harmonized** into s
 ---
 
 **Last Updated**: October 27, 2025 (v3.0.0 - Handovers 0042-0052 & Testing Documentation Added)
+- 0088 Thin Client Migration (in progress): Stage Project prompts are migrating from large, embedded prompts to thin identity prompts that fetch missions via MCP tools. See `guides/thin_client_migration_guide.md` and `STAGE_PROJECT_FEATURE.md` for callouts.

@@ -3,6 +3,7 @@
 **Status**: Production-Grade Implementation Complete
 **Version**: 3.0+
 **Handovers**: 0086A (Phases 1-2), 0086B (Phases 3-6)
+**Migration Notice (0088)**: The Stage Project prompt flow is migrating to a thin‑client design that returns a ~10‑line identity prompt and fetches missions via MCP tools. This page reflects the 0086 baseline; 0088 callouts indicate pending changes. See guides/thin_client_migration_guide.md.
 **Business Impact**: Enables commercial product launch with 70% token reduction
 
 ---
@@ -60,6 +61,15 @@ graph TB
     style EventFactory fill:#9C27B0
 ```
 
+### 0088 Thin Client Callouts (Pending)
+
+- Prompt Generation: Replace fat, fully embedded prompts with a thin identity prompt that instructs the orchestrator to fetch its mission via MCP.
+- New MCP Tools: `get_orchestrator_instructions(orchestrator_id, tenant_key)` and `get_agent_mission(agent_job_id, tenant_key)` supply condensed missions and scoped context on demand.
+- New Generator: `ThinClientPromptGenerator` creates the identity prompt and records the orchestrator job; it replaces `OrchestratorPromptGenerator` (legacy) for staging prompts.
+- Event: Broadcast `orchestrator:prompt_generated` for UI updates after thin prompt creation.
+
+See: guides/thin_client_migration_guide.md
+
 ### Key Components
 
 1. **MissionPlanner** (`src/giljo_mcp/mission_planner.py`, 1304 lines)
@@ -93,6 +103,15 @@ graph TB
    - Memory leak prevention (Fixed in Phase 4)
 
 ---
+
+## Legacy vs Thin Client (0079 → 0088)
+
+- 0079 (legacy): Generated large, self‑contained staging prompts (“fat prompts”).
+- 0088 (pending): Uses thin prompts that fetch missions via MCP tools; supports dynamic updates and upholds token reduction.
+
+Current status: Legacy behavior documented for continuity; migration guide documents the thin client approach and API changes.
+
+See: guides/thin_client_migration_guide.md
 
 ## The 70% Token Reduction Mechanism
 

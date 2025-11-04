@@ -4,7 +4,7 @@
 
 **Handover**: 0079
 **Date**: 2025-10-31
-**Status**: Production Ready
+**Status**: Production Ready (Legacy)
 **Priority**: MISSION CRITICAL
 
 ---
@@ -26,6 +26,8 @@
 ---
 
 ## Overview
+
+> Legacy Notice (0088 Thin Client Migration): This document describes the legacy “fat prompt” staging approach from Handover 0079. The system is migrating to a thin‑client prompt design that returns a short identity prompt and fetches missions via MCP tools. For the current direction and migration steps, see `docs/guides/thin_client_migration_guide.md` and `docs/STAGE_PROJECT_FEATURE.md` (0088 callouts).
 
 ### What Is It?
 

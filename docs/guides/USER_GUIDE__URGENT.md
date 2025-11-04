@@ -113,7 +113,7 @@ A project is the top-level container for an orchestration session. Each project 
 - **Name**: Human-readable identifier
 - **Mission**: The goal to accomplish
 - **Tenant Key**: For multi-tenant isolation
-- **Status**: active, completed, or archived
+- **Status**: active, inactive, completed, cancelled, or deleted
 
 ### Agents
 
@@ -784,7 +784,7 @@ When editing a product:
 Products use a **single-active-product architecture** - only one product can be active at a time:
 
 - **Active products** are available for mission creation and appear in agent context
-- **Inactive products** are archived but can be reactivated anytime
+- **Inactive products** can be reactivated anytime
 - Click **"Activate"** button on a product card to set it as active
 - The previously active product automatically becomes inactive
 - Active product is visually indicated with a highlighted border or badge

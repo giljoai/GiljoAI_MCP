@@ -7,9 +7,17 @@
 
     <!-- MCP Configuration Component -->
     <McpConfigComponent />
+
+    <!-- Slash Command Setup -->
+    <SlashCommandSetup />
+
+    <!-- Claude Code Agent Export -->
+    <ClaudeCodeExport />
   </v-container>
 </template>
 
 <script setup>
 import McpConfigComponent from '@/components/McpConfigComponent.vue'
+import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
+import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
 </script>
