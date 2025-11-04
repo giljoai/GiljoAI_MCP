@@ -78,6 +78,7 @@ try:
         configuration,
         context,
         database_setup,
+        downloads,
         mcp_http,
         mcp_installer,
         messages,
@@ -529,6 +530,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_management.router, tags=["Agent Management"])
     app.include_router(agent_templates.router, prefix="/api/v1/agents/templates", tags=["agent-templates"])
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
+    app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
     app.include_router(agent_jobs.router, prefix="/api/agent-jobs", tags=["agent-jobs"])
