@@ -827,6 +827,15 @@ async def handle_tools_call(
             api_key_value = request.headers.get("x-api-key") or request.headers.get("authorization", "").replace("Bearer ", "")
             arguments["_api_key"] = api_key_value
 
+            # Inject server URL from request (fix for 0.0.0.0 bind address issue)
+            # Extract scheme (http/https) and host from incoming request
+            scheme = request.url.scheme  # 'http' or 'https'
+            host = request.headers.get("host")  # e.g., '10.1.0.164:7272'
+            server_url = f"{scheme}://{host}"
+            arguments["_server_url"] = server_url
+
+            logger.debug(f"Injected server URL for download tool: {server_url}")
+
         # Execute tool
         tool_func = tool_map[tool_name]
         result = await tool_func(**arguments)

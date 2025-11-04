@@ -2054,7 +2054,7 @@ Begin by fetching your mission.
 
     # Slash Command Setup Tool (Handover 0093)
 
-    async def setup_slash_commands(self, platform: str = None, _api_key: str = None) -> dict[str, Any]:
+    async def setup_slash_commands(self, platform: str = None, _api_key: str = None, _server_url: str = None) -> dict[str, Any]:
         """
         Generate one-time download link for slash commands installation.
 
@@ -2064,6 +2064,7 @@ Begin by fetching your mission.
         Args:
             platform: Optional platform hint (ignored, kept for compatibility)
             _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
+            _server_url: Server URL from HTTP request (injected by MCP HTTP handler)
 
         Returns:
             dict with success, download_url, message, expires_minutes, one_time_use, error (optional)
@@ -2106,12 +2107,16 @@ Begin by fetching your mission.
 
             logger.info(f"Staged slash commands ZIP for download: {zip_path}")
 
-            # 5. Build download URL
-            config = get_config()
-            api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
-            api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
-            server_url = f"http://{api_host}:{api_port}"
-            download_url = f"{server_url}/api/download/temp/{token}/slash_commands.zip"
+            # 5. Build download URL (use dynamically detected server URL)
+            if not _server_url:
+                # Fallback to config if not provided (shouldn't happen in HTTP mode)
+                config = get_config()
+                api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
+                api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
+                _server_url = f"http://{api_host}:{api_port}"
+                logger.warning(f"Server URL not provided, using fallback: {_server_url}")
+
+            download_url = f"{_server_url}/api/download/temp/{token}/slash_commands.zip"
 
             return {
                 "success": True,
@@ -2132,7 +2137,7 @@ Begin by fetching your mission.
 
     # Slash Command Handler Wrappers (Handover 0084b)
 
-    async def gil_import_productagents(self, project_id: str = None, _api_key: str = None) -> dict[str, Any]:
+    async def gil_import_productagents(self, project_id: str = None, _api_key: str = None, _server_url: str = None) -> dict[str, Any]:
         """
         Generate one-time download link for product agent templates.
 
@@ -2142,6 +2147,7 @@ Begin by fetching your mission.
         Args:
             project_id: Optional project ID
             _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
+            _server_url: Server URL from HTTP request (injected by MCP HTTP handler)
 
         Returns:
             dict with success, download_url, message, expires_minutes, one_time_use, error (optional)
@@ -2186,12 +2192,16 @@ Begin by fetching your mission.
 
             logger.info(f"Staged agent templates ZIP for product download: {zip_path}")
 
-            # 5. Build download URL
-            config = get_config()
-            api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
-            api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
-            server_url = f"http://{api_host}:{api_port}"
-            download_url = f"{server_url}/api/download/temp/{token}/agent_templates.zip"
+            # 5. Build download URL (use dynamically detected server URL)
+            if not _server_url:
+                # Fallback to config if not provided (shouldn't happen in HTTP mode)
+                config = get_config()
+                api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
+                api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
+                _server_url = f"http://{api_host}:{api_port}"
+                logger.warning(f"Server URL not provided, using fallback: {_server_url}")
+
+            download_url = f"{_server_url}/api/download/temp/{token}/agent_templates.zip"
 
             return {
                 "success": True,
@@ -2210,7 +2220,7 @@ Begin by fetching your mission.
             logger.exception(f"Failed to generate product agent templates download: {e}")
             return {"success": False, "error": str(e)}
 
-    async def gil_import_personalagents(self, project_id: str = None, _api_key: str = None) -> dict[str, Any]:
+    async def gil_import_personalagents(self, project_id: str = None, _api_key: str = None, _server_url: str = None) -> dict[str, Any]:
         """
         Generate one-time download link for personal agent templates.
 
@@ -2220,6 +2230,7 @@ Begin by fetching your mission.
         Args:
             project_id: Optional project ID (not used for personal agents)
             _api_key: API key for HTTP authentication (injected by MCP HTTP handler)
+            _server_url: Server URL from HTTP request (injected by MCP HTTP handler)
 
         Returns:
             dict with success, download_url, message, expires_minutes, one_time_use, error (optional)
@@ -2264,12 +2275,16 @@ Begin by fetching your mission.
 
             logger.info(f"Staged agent templates ZIP for personal download: {zip_path}")
 
-            # 5. Build download URL
-            config = get_config()
-            api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
-            api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
-            server_url = f"http://{api_host}:{api_port}"
-            download_url = f"{server_url}/api/download/temp/{token}/agent_templates.zip"
+            # 5. Build download URL (use dynamically detected server URL)
+            if not _server_url:
+                # Fallback to config if not provided (shouldn't happen in HTTP mode)
+                config = get_config()
+                api_host = config.server.api_host if hasattr(config.server, "api_host") else "localhost"
+                api_port = config.server.api_port if hasattr(config.server, "api_port") else 8000
+                _server_url = f"http://{api_host}:{api_port}"
+                logger.warning(f"Server URL not provided, using fallback: {_server_url}")
+
+            download_url = f"{_server_url}/api/download/temp/{token}/agent_templates.zip"
 
             return {
                 "success": True,
