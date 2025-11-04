@@ -7,6 +7,55 @@
     </v-card-title>
 
     <v-card-text class="pt-6">
+      <!-- Slash Commands Download Section -->
+      <v-card class="mb-6">
+        <v-card-title>
+          <v-icon start>mdi-lightning-bolt</v-icon>
+          Slash Commands Quick Setup
+        </v-card-title>
+        <v-card-text>
+          <p class="text-body-2 mb-4">
+            Download and install GiljoAI slash commands for Claude Code, Codex CLI, and other MCP-compatible tools.
+            These commands enable AI agent orchestration directly from your coding environment.
+          </p>
+
+          <div class="d-flex gap-3 flex-wrap">
+            <v-btn
+              color="primary"
+              variant="flat"
+              size="large"
+              :loading="slashCommandsLoading"
+              :prepend-icon="slashCommandsCopied ? 'mdi-check' : 'mdi-content-copy'"
+              @click="copySlashCommandsInstructions"
+            >
+              {{ slashCommandsCopied ? 'Copied!' : 'Copy Command' }}
+            </v-btn>
+
+            <v-btn
+              color="secondary"
+              variant="outlined"
+              size="large"
+              :loading="slashCommandsLoading"
+              prepend-icon="mdi-download"
+              @click="downloadSlashCommandsDirect"
+            >
+              Manual Download
+            </v-btn>
+          </div>
+
+          <v-alert type="info" variant="tonal" class="mt-4" :icon="false">
+            <v-icon start>mdi-information</v-icon>
+            <div>
+              <strong>How it works:</strong>
+              <ul class="text-body-2 mt-2 mb-0">
+                <li><strong>Copy Command:</strong> Generates natural language setup instructions. Paste them into your AI coding tool.</li>
+                <li><strong>Manual Download:</strong> Downloads the ZIP file directly. Extract to ~/.claude/commands/ manually.</li>
+              </ul>
+            </div>
+          </v-alert>
+        </v-card-text>
+      </v-card>
+
       <!-- Manual Configuration Section (fallback) -->
       <v-card class="mb-6">
         <v-card-title>
@@ -213,8 +262,13 @@ import {
   generateGeminiConfig,
   generateGenericConfig,
 } from '@/utils/configTemplates'
+import {
+  generateSlashCommandsInstructions,
+  copyToClipboardSafe,
+  downloadBlob,
+} from '@/utils/downloadInstructions'
 
-// State
+// State - Manual Configuration
 const selectedTool = ref(null)
 const supportedTools = ref([])
 const configData = ref(null)
@@ -223,6 +277,10 @@ const error = ref(null)
 const copied = ref(false)
 const generatedApiKey = ref(null)
 const showApiKeyWarning = ref(false)
+
+// State - Slash Commands Downloads
+const slashCommandsLoading = ref(false)
+const slashCommandsCopied = ref(false)
 
 // Snackbar state
 const snackbar = ref({
@@ -469,6 +527,54 @@ function getToolIcon(toolId) {
     gemini: 'mdi-diamond-stone'
   }
   return icons[toolId] || 'mdi-robot'
+}
+
+// Slash Commands Download Methods
+
+async function copySlashCommandsInstructions() {
+  slashCommandsLoading.value = true
+  try {
+    // Generate token for one-time download URL
+    const response = await api.downloads.generateSlashCommandsToken()
+    const downloadUrl = response.data.download_url
+
+    // Generate natural language instructions
+    const instructions = generateSlashCommandsInstructions(downloadUrl)
+
+    // Copy to clipboard
+    copyToClipboardSafe(
+      instructions,
+      () => {
+        slashCommandsCopied.value = true
+        showSnackbar('Instructions copied! Paste in your AI coding tool.', 'success')
+        setTimeout(() => {
+          slashCommandsCopied.value = false
+        }, 2000)
+      },
+      (error) => {
+        showSnackbar(`Failed to copy: ${error}`, 'error')
+      }
+    )
+  } catch (err) {
+    console.error('[McpConfig] Failed to copy slash commands instructions:', err)
+    showSnackbar('Failed to generate download link. Please try again.', 'error')
+  } finally {
+    slashCommandsLoading.value = false
+  }
+}
+
+async function downloadSlashCommandsDirect() {
+  slashCommandsLoading.value = true
+  try {
+    const response = await api.downloads.downloadSlashCommandsDirect()
+    downloadBlob(response, 'slash-commands.zip')
+    showSnackbar('Download started. Extract to ~/.claude/commands/', 'success')
+  } catch (err) {
+    console.error('[McpConfig] Failed to download slash commands:', err)
+    showSnackbar('Failed to download slash commands. Please try again.', 'error')
+  } finally {
+    slashCommandsLoading.value = false
+  }
 }
 
 // Agent-driven configuration methods removed

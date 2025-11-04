@@ -697,7 +697,7 @@ async def download_temp_file(
         # Token is valid - get file path and metadata
         token_data = validation_result["token_data"]
         file_path = Path(token_data["file_path"])
-        content_type = token_data["content_type"]
+        download_type = token_data["download_type"]
 
         # Verify file exists
         if not file_path.exists():
@@ -707,15 +707,8 @@ async def download_temp_file(
                 detail="Internal server error",
             )
 
-        # Mark token as downloaded (atomic operation)
-        marked = await token_manager.mark_downloaded(token)
-        if not marked:
-            # Race condition: another request used the token
-            logger.warning(f"Token already used in concurrent request: {token}")
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="Download already completed",
-            )
+        # NOTE: No mark_downloaded call - tokens support unlimited downloads
+        # within the 15-minute expiry window per Handover 0096 refactoring
 
         # Read file
         try:
@@ -727,16 +720,9 @@ async def download_temp_file(
                 detail="Internal server error",
             )
 
-        # Trigger cleanup (async background task)
-        import asyncio
-
-        async def cleanup_task():
-            try:
-                await token_manager.cleanup_token_files(token)
-            except Exception as e:
-                logger.error(f"Cleanup failed for token {token}: {e}")
-
-        asyncio.create_task(cleanup_task())
+        # NOTE: No immediate cleanup - files are cleaned up when token expires
+        # via cleanup_expired_tokens background task. This allows unlimited
+        # downloads within the 15-minute window per Handover 0096 refactoring.
 
         logger.info(
             f"Download successful: {filename} ({len(file_content)} bytes, token={token})"
