@@ -401,15 +401,15 @@ export const api = {
   downloads: {
     // Slash commands - Generate token with natural language instructions (via MCP tool)
     generateSlashCommandsInstructions: () =>
-      apiClient.post('/api/mcp/setup_slash_commands'),
+      apiClient.post('/api/download/mcp/setup_slash_commands'),
 
     // Personal agents - Generate token with natural language instructions (via MCP tool)
     generatePersonalAgentsInstructions: () =>
-      apiClient.post('/api/mcp/gil_import_personalagents'),
+      apiClient.post('/api/download/mcp/gil_import_personalagents'),
 
     // Product agents - Generate token with natural language instructions (via MCP tool)
     generateProductAgentsInstructions: () =>
-      apiClient.post('/api/mcp/gil_import_productagents'),
+      apiClient.post('/api/download/mcp/gil_import_productagents'),
 
     // Generic temp download with token
     downloadViaToken: (token, filename) =>
