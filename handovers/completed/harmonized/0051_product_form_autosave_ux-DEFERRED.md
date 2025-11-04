@@ -1,13 +1,17 @@
 ---
 Handover 0051: Product Form Auto-Save & UX Polish
 Date: 2025-01-27
-Status: Ready for Implementation
+Status: DEFERRED (not implemented; archived for reference)
 Priority: CRITICAL
 Complexity: MEDIUM
 Duration: 2-3 days
 ---
 
 # Executive Summary
+
+Deferral Notice
+
+This handover specifies a frontend-only autosave and UX polish for the multi‑tab product form. It remains unimplemented and is archived for reference. No API or schema changes are required. Reassess priority when product authoring UX becomes active scope.
 
 Users are experiencing complete data loss when creating or editing products due to the absence of auto-save functionality in the multi-tab product form. The current implementation only persists data when the user explicitly clicks "Save" - if the save fails or the user closes the dialog, all work across 5 tabs is permanently lost. This critical UX issue blocks product adoption and destroys user confidence.
 

@@ -1,4 +1,5 @@
 # Handover 0089: Thin Client Production Fixes
+<!-- Harmonized on 2025-11-04; see docs/devlog/2025-11-03_thin_client_production_fixes.md -->
 
 **Date**: 2025-11-03
 **Type**: Critical Bug Fixes

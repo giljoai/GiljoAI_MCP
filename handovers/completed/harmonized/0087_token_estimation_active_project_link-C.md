@@ -1,4 +1,5 @@
 # Handover 0087: Token Estimation Active Product Link (Completed/Retired)
+<!-- Harmonized on 2025-11-04; API doc added: docs/api/projects_endpoints.md → GET /products/active/token-estimate -->
 
 Status: Completed (retired)
 Date: 2025-11-02
@@ -14,4 +15,3 @@ Verification
 
 Notes
 - Further recommendations from 0087 about user-specific field priority in mission generation are addressed in later handovers (0086A/0086B). User ID propagation exists in the orchestrator and MissionPlanner wrappers.
-

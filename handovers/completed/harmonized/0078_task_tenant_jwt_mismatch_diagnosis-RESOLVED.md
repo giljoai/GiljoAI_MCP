@@ -1,4 +1,5 @@
 # Handover 0078: Task Tenant & JWT Mismatch Diagnosis
+<!-- Harmonized on 2025-11-04; postmortem captured in docs/devlog/2025-10-31_tenant_jwt_mismatch_postmortem.md -->
 
 **Status**: 🔴 In Progress (ARCHIVED)
 **Priority**: Critical

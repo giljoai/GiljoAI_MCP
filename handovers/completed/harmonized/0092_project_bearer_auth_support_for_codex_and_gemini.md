@@ -1,4 +1,5 @@
 # Project 0092 — Bearer Auth Support for Codex/Gemini (MCP-over-HTTP)
+<!-- Harmonized on 2025-11-04; docs updated: AI_TOOL_CONFIGURATION_MANAGEMENT.md and MCP_OVER_HTTP_INTEGRATION.md -->
 
 Document version: 1.0.0
 Date: 2025-11-03
