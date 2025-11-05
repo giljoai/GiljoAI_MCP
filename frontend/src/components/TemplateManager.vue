@@ -119,7 +119,7 @@
         <template v-slot:item.preferred_tool="{ item }">
           <v-chip size="small" variant="outlined">
             <template v-slot:prepend>
-              <v-avatar size="18" class="mr-1">
+              <v-avatar size="18" class="mr-1" :class="{ 'codex-icon': item.preferred_tool === 'codex' }">
                 <v-img
                   :src="getToolLogo(item.preferred_tool || 'claude')"
                   :alt="getToolName(item.preferred_tool || 'claude')"
@@ -252,134 +252,197 @@
         <v-card-text>
           <v-container>
             <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="editingTemplate.name"
-                  label="Template Name"
-                  :rules="[(v) => !!v || 'Name is required']"
+              <!-- CLI Tool Selector (FIRST FIELD) -->
+              <v-col cols="12">
+                <div class="text-subtitle-2 mb-2">
+                  CLI Tool
+                  <v-tooltip location="right">
+                    <template v-slot:activator="{ props }">
+                      <v-icon v-bind="props" size="small" color="primary" class="ml-1">mdi-help-circle</v-icon>
+                    </template>
+                    <span>Select the AI coding tool for this agent template</span>
+                  </v-tooltip>
+                </div>
+                <v-radio-group
+                  v-model="editingTemplate.cli_tool"
+                  inline
                   density="compact"
+                  @update:model-value="onCliToolChange"
+                  aria-label="Select CLI tool"
+                >
+                  <v-radio
+                    v-for="tool in cliToolOptions"
+                    :key="tool.value"
+                    :value="tool.value"
+                    :label="tool.title"
+                  >
+                    <template v-slot:label>
+                      <div class="d-flex align-center">
+                        <v-avatar v-if="tool.logo" size="20" class="mr-2" :class="{ 'codex-icon': tool.value === 'codex' }">
+                          <v-img :src="tool.logo" :alt="tool.title" />
+                        </v-avatar>
+                        <span>{{ tool.title }}</span>
+                      </div>
+                    </template>
+                  </v-radio>
+                </v-radio-group>
+              </v-col>
+
+              <!-- Role Selector -->
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="editingTemplate.role"
+                  :items="roleOptions"
+                  label="Role"
+                  :rules="[(v) => !!v || 'Role is required']"
+                  density="compact"
+                  @update:model-value="onRoleChange"
+                  aria-label="Select agent role"
                 >
                   <template v-slot:append-inner>
                     <v-tooltip location="top">
                       <template v-slot:activator="{ props }">
                         <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
                       </template>
-                      <span>Required field - Enter a unique name for this agent template</span>
+                      <span>Required field - Select the agent role</span>
+                    </v-tooltip>
+                  </template>
+                </v-select>
+              </v-col>
+
+              <!-- Custom Suffix with Live Name Preview -->
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="editingTemplate.custom_suffix"
+                  label="Custom Suffix (optional)"
+                  density="compact"
+                  hint="Letters, numbers, and hyphens only"
+                  persistent-hint
+                  aria-label="Custom agent name suffix"
+                >
+                  <template v-slot:append-inner>
+                    <v-tooltip location="top">
+                      <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
+                      </template>
+                      <span>Add a suffix to customize the agent name (e.g., 'implementer-fastapi')</span>
                     </v-tooltip>
                   </template>
                 </v-text-field>
+                <div v-if="generatedName" class="text-caption text-primary mt-1">
+                  Agent Name: <strong>{{ generatedName }}</strong>
+                </div>
               </v-col>
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="editingTemplate.category"
-                  :items="categories"
-                  label="Category"
-                  :rules="[(v) => !!v || 'Category is required']"
-                  density="compact"
-                >
-                  <template v-slot:append-inner>
-                    <v-tooltip location="top">
-                      <template v-slot:activator="{ props }">
-                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
-                      </template>
-                      <span>Required field - Select the agent type/category</span>
-                    </v-tooltip>
-                  </template>
-                </v-select>
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="editingTemplate.preferred_tool"
-                  :items="toolOptions"
-                  label="Preferred Tool"
-                  :rules="[(v) => !!v || 'Tool is required']"
-                  density="compact"
-                >
-                  <template v-slot:item="{ item, props }">
-                    <v-list-item v-bind="props">
-                      <template v-slot:prepend>
-                        <v-avatar size="24">
-                          <v-img :src="item.raw.logo" :alt="item.raw.title" />
-                        </v-avatar>
-                      </template>
-                    </v-list-item>
-                  </template>
-                  <template v-slot:selection="{ item }">
-                    <v-avatar size="20" class="mr-2">
-                      <v-img :src="item.raw.logo" :alt="item.raw.title" />
-                    </v-avatar>
-                    {{ item.raw.title }}
-                  </template>
-                </v-select>
-                <v-tooltip location="top">
-                  <template v-slot:activator="{ props }">
-                    <v-icon v-bind="props" size="small" color="primary" class="ml-2"
-                      >mdi-help-circle</v-icon
-                    >
-                  </template>
-                  <span
-                    >Required field - Select the AI tool for this template</span
-                  >
-                </v-tooltip>
-              </v-col>
-              <v-col cols="12" md="6">
+
+              <!-- Description (Conditional - Claude only) -->
+              <v-col v-if="showDescription" cols="12">
                 <v-text-field
                   v-model="editingTemplate.description"
                   label="Description"
                   density="compact"
-                />
+                  hint="Short description of agent responsibilities (required for Claude)"
+                  persistent-hint
+                  aria-label="Agent description"
+                >
+                  <template v-slot:append-inner>
+                    <v-tooltip location="top">
+                      <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
+                      </template>
+                      <span>Required for Claude - Brief description of what this agent does</span>
+                    </v-tooltip>
+                  </template>
+                </v-text-field>
               </v-col>
+
+              <!-- Model (Conditional - Claude dropdown, others read-only) -->
+              <v-col cols="12" md="6">
+                <v-select
+                  v-if="modelOptions.length > 0"
+                  v-model="editingTemplate.model"
+                  :items="modelOptions"
+                  label="Model"
+                  density="compact"
+                  aria-label="Select Claude model"
+                >
+                  <template v-slot:append-inner>
+                    <v-tooltip location="top">
+                      <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
+                      </template>
+                      <span>Select Claude model (sonnet, opus, haiku)</span>
+                    </v-tooltip>
+                  </template>
+                </v-select>
+                <v-text-field
+                  v-else
+                  :model-value="editingTemplate.cli_tool === 'claude' ? 'sonnet' : 'Default'"
+                  label="Model"
+                  density="compact"
+                  readonly
+                  aria-label="Model name"
+                >
+                  <template v-slot:append-inner>
+                    <v-tooltip location="top">
+                      <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" size="small" color="info">mdi-information-outline</v-icon>
+                      </template>
+                      <span>Model determined by {{ editingTemplate.cli_tool }} CLI configuration</span>
+                    </v-tooltip>
+                  </template>
+                </v-text-field>
+              </v-col>
+
+              <!-- System Prompt -->
               <v-col cols="12">
                 <div class="d-flex align-center mb-2">
-                  <span class="text-subtitle-2">Template Content</span>
+                  <span class="text-subtitle-2">System Prompt</span>
                   <v-tooltip location="top">
                     <template v-slot:activator="{ props }">
-                      <v-icon v-bind="props" size="small" color="primary" class="ml-2"
-                        >mdi-help-circle</v-icon
-                      >
+                      <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-help-circle</v-icon>
                     </template>
-                    <span
-                      >Required field - Enter the template content with {variable}
-                      placeholders</span
-                    >
+                    <span>Required field - Enter the agent's system prompt (minimum 20 characters)</span>
                   </v-tooltip>
                 </div>
                 <v-textarea
                   v-model="editingTemplate.template"
-                  label="Template (supports {variable} placeholders)"
-                  :rules="[(v) => !!v || 'Template content is required']"
-                  rows="10"
+                  label="System Prompt"
+                  :rules="[(v) => !!v || 'System prompt is required', (v) => v && v.length >= 20 || 'Minimum 20 characters required']"
+                  rows="12"
                   variant="outlined"
                   density="compact"
                   class="template-editor"
+                  aria-label="Agent system prompt"
                 />
               </v-col>
-              <v-col cols="12" md="6">
-                <div class="text-subtitle-2 mb-2">Variables</div>
-                <v-chip
-                  v-for="variable in detectedVariables"
-                  :key="variable"
-                  class="mr-2 mb-2"
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                >
-                  {{ variable }}
-                </v-chip>
-                <div v-if="detectedVariables.length === 0" class="text-caption text-grey">
-                  No variables detected. Use {variableName} syntax.
-                </div>
-              </v-col>
-              <v-col cols="12" md="6">
-                <div class="text-subtitle-2 mb-2">Augmentation Slots</div>
-                <v-textarea
-                  v-model="editingTemplate.augmentation_slots"
-                  label="Define augmentation points"
-                  rows="3"
-                  variant="outlined"
-                  density="compact"
-                  hint="Specify where dynamic augmentations can be inserted"
-                />
+
+              <!-- Preview Window (Collapsible) -->
+              <v-col v-if="previewContent" cols="12">
+                <v-expansion-panels>
+                  <v-expansion-panel>
+                    <v-expansion-panel-title>
+                      <div class="d-flex align-center">
+                        <v-icon class="mr-2" color="primary">mdi-eye</v-icon>
+                        <span>Preview</span>
+                      </div>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <div class="preview-container">
+                        <v-btn
+                          size="small"
+                          prepend-icon="mdi-content-copy"
+                          variant="outlined"
+                          @click="copyPreview"
+                          class="mb-2"
+                          aria-label="Copy preview to clipboard"
+                        >
+                          Copy to Clipboard
+                        </v-btn>
+                        <pre class="preview-content">{{ previewContent }}</pre>
+                      </div>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
               </v-col>
             </v-row>
           </v-container>
@@ -388,8 +451,8 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="closeEditDialog"> Cancel </v-btn>
-          <v-btn color="primary" variant="flat" @click="saveTemplate" :loading="saving">
-            {{ editingTemplate.id ? 'Update' : 'Create' }}
+          <v-btn color="primary" variant="flat" @click="saveTemplateAndPreview" :loading="saving">
+            Save and Generate Preview
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -676,6 +739,7 @@ const saving = ref(false)
 const deleting = ref(false)
 const generating = ref(false)
 const activeCount = ref(null) // Handover 0075: Track active agent count
+const previewContent = ref('') // Handover 0103: Preview window content
 
 // Export state
 
@@ -696,12 +760,17 @@ const diffDialog = ref(false)
 const editingTemplate = ref({
   id: null,
   name: '',
-  category: '',
+  role: '',
+  cli_tool: 'claude',        // NEW
+  custom_suffix: '',         // NEW
+  background_color: '',      // NEW
   description: '',
   template: '',
+  model: 'sonnet',           // NEW
+  tools: null,               // NEW
   variables: [],
   augmentation_slots: '',
-  preferred_tool: 'claude',
+  preferred_tool: 'claude',  // KEEP for legacy
 })
 
 // Template being previewed
@@ -737,6 +806,13 @@ const headers = [
 
 // Categories
 const categories = [
+  'role',
+  'project_type',
+  'custom',
+]
+
+// Role options (for category = 'role')
+const roleOptions = [
   'orchestrator',
   'analyzer',
   'designer',
@@ -746,7 +822,6 @@ const categories = [
   'tester',
   'reviewer',
   'documenter',
-  'custom',
 ]
 
 const statusOptions = [
@@ -776,6 +851,14 @@ const toolOptions = [
   },
 ]
 
+// CLI tool options for create/edit modal (Handover 0103)
+const cliToolOptions = [
+  { title: 'Claude Code', value: 'claude', logo: '/claude_pix.svg' },
+  { title: 'Codex CLI', value: 'codex', logo: '/icons/codex_mark.svg' },
+  { title: 'Gemini CLI', value: 'gemini', logo: '/gemini-icon.svg' },
+  { title: 'Generic', value: 'generic', logo: null },
+]
+
 // Computed
 const filteredTemplates = computed(() => {
   let filtered = templates.value
@@ -803,6 +886,28 @@ const detectedVariables = computed(() => {
   }
 
   return matches
+})
+
+// Computed properties for Handover 0103 modal
+const generatedName = computed(() => {
+  const role = editingTemplate.value.role
+  const suffix = editingTemplate.value.custom_suffix
+  if (!role) return ''
+  if (!suffix) return role
+  // Slugify: lowercase, hyphens only
+  const cleanSuffix = suffix.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-')
+  return `${role}-${cleanSuffix}`
+})
+
+const showDescription = computed(() => {
+  return editingTemplate.value.cli_tool === 'claude'
+})
+
+const modelOptions = computed(() => {
+  if (editingTemplate.value.cli_tool === 'claude') {
+    return ['sonnet', 'opus', 'haiku']
+  }
+  return [] // Read-only for non-Claude
 })
 
 // Methods
@@ -881,13 +986,19 @@ const openCreateDialog = () => {
   editingTemplate.value = {
     id: null,
     name: '',
-    category: '',
+    role: '',
+    cli_tool: 'claude',
+    custom_suffix: '',
+    background_color: '',
     description: '',
     template: '',
+    model: 'sonnet',
+    tools: null,
     variables: [],
     augmentation_slots: '',
     preferred_tool: 'claude',
   }
+  previewContent.value = ''
   editDialog.value = true
 }
 
@@ -895,7 +1006,13 @@ const editTemplate = (template) => {
   editingTemplate.value = {
     ...template,
     template: template.template_content || template.template, // Ensure template field is set
+    cli_tool: template.cli_tool || 'claude',
+    custom_suffix: '',
+    background_color: template.background_color || '',
+    model: template.model || 'sonnet',
+    tools: template.tools || null,
   }
+  previewContent.value = ''
   editDialog.value = true
 }
 
@@ -905,22 +1022,126 @@ const duplicateTemplate = (template) => {
     id: null,
     name: `${template.name} (Copy)`,
     template: template.template_content || template.template, // Ensure template field is set
+    cli_tool: template.cli_tool || 'claude',
+    custom_suffix: '-copy',
+    background_color: template.background_color || '',
+    model: template.model || 'sonnet',
+    tools: template.tools || null,
   }
+  previewContent.value = ''
   editDialog.value = true
 }
 
 const closeEditDialog = () => {
   editDialog.value = false
+  previewContent.value = ''
   editingTemplate.value = {
     id: null,
     name: '',
-    category: '',
+    role: '',
+    cli_tool: 'claude',
+    custom_suffix: '',
+    background_color: '',
     description: '',
     template: '',
+    model: 'sonnet',
+    tools: null,
     variables: [],
     augmentation_slots: '',
     preferred_tool: 'claude',
   }
+}
+
+// Handover 0103: Handle role change (auto-set background_color)
+const onRoleChange = (newRole) => {
+  editingTemplate.value.background_color = getCategoryColor(newRole)
+}
+
+// Handover 0103: Handle CLI tool change (clear preview)
+const onCliToolChange = () => {
+  previewContent.value = ''
+  // Set default model for Claude
+  if (editingTemplate.value.cli_tool === 'claude') {
+    editingTemplate.value.model = 'sonnet'
+  }
+}
+
+// Handover 0103: Save template and generate preview
+const saveTemplateAndPreview = async () => {
+  saving.value = true
+  try {
+    const data = {
+      name: generatedName.value || editingTemplate.value.role,
+      category: 'role', // Automatically set to 'role' for all templates
+      role: editingTemplate.value.role || null,
+      cli_tool: editingTemplate.value.cli_tool,
+      custom_suffix: editingTemplate.value.custom_suffix || null,
+      background_color: editingTemplate.value.background_color,
+      description: editingTemplate.value.description,
+      template_content: editingTemplate.value.template,
+      model: editingTemplate.value.cli_tool === 'claude' ? editingTemplate.value.model : null,
+      tools: editingTemplate.value.tools,
+      preferred_tool: editingTemplate.value.cli_tool, // Sync with cli_tool
+      behavioral_rules: editingTemplate.value.behavioral_rules || [],
+      success_criteria: editingTemplate.value.success_criteria || [],
+      tags: editingTemplate.value.tags || [],
+      is_default: editingTemplate.value.is_default || false,
+    }
+
+    let templateId = editingTemplate.value.id
+
+    if (editingTemplate.value.id) {
+      await api.templates.update(editingTemplate.value.id, {
+        name: data.name,
+        role: data.role,
+        cli_tool: data.cli_tool,
+        background_color: data.background_color,
+        template_content: data.template_content,
+        description: data.description,
+        model: data.model,
+        tools: data.tools,
+        preferred_tool: data.preferred_tool,
+        behavioral_rules: data.behavioral_rules,
+        success_criteria: data.success_criteria,
+        tags: data.tags,
+        is_default: data.is_default,
+      })
+    } else {
+      const response = await api.templates.create(data)
+      templateId = response.data.id
+    }
+
+    // Generate preview
+    const previewResponse = await api.templates.preview(templateId, {})
+    previewContent.value = previewResponse.data.preview
+
+    await loadTemplates()
+    // Don't close dialog - show preview instead
+  } catch (error) {
+    console.error('Failed to save template:', error)
+    previewContent.value = ''
+    // Show error notification to user
+    alert(error.response?.data?.detail || 'Failed to save template')
+  } finally {
+    saving.value = false
+  }
+}
+
+// Handover 0103: Copy preview to clipboard
+const copyPreview = async () => {
+  await copyToClipboardSafe(
+    previewContent.value,
+    () => {
+      // Success - show toast notification
+      console.log('Preview copied to clipboard')
+      // TODO: Add toast notification when composable is available
+    },
+    (error) => {
+      // Error - show error toast
+      console.error('Failed to copy preview:', error)
+      alert('Failed to copy to clipboard')
+    }
+  )
 }
 
 const saveTemplate = async () => {
@@ -928,7 +1149,8 @@ const saveTemplate = async () => {
   try {
     const data = {
       name: editingTemplate.value.name,
-      category: editingTemplate.value.category,
+      category: 'role', // Automatically set to 'role' for all templates
+      role: editingTemplate.value.role || null,
       description: editingTemplate.value.description,
       template_content: editingTemplate.value.template,
       preferred_tool: editingTemplate.value.preferred_tool,
@@ -1162,6 +1384,27 @@ watch(
     }
   }
 
+  // Handover 0103: Preview content styling
+  .preview-container {
+    background: var(--v-theme-background);
+    border-radius: 4px;
+
+    .preview-content {
+      background: var(--v-theme-surface);
+      color: var(--v-theme-on-surface);
+      font-family: 'Roboto Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre;
+      margin: 0;
+    }
+  }
+
   .diff-viewer {
     background: var(--v-theme-background);
     color: var(--v-theme-on-surface);
@@ -1242,9 +1485,25 @@ watch(
 // Inactive template row styling
 :deep(.inactive-template) {
   opacity: 0.5;
-  
+
   td {
     color: var(--v-theme-on-surface) !important;
+  }
+}
+
+// Codex icon theme-aware coloring
+.codex-icon {
+  :deep(img) {
+    filter: brightness(0) invert(1); // White in dark mode
+  }
+}
+
+// Light theme override
+:deep(.v-theme--light) {
+  .codex-icon {
+    :deep(img) {
+      filter: brightness(0); // Black in light mode
+    }
   }
 }
 </style>

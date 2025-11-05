@@ -21,6 +21,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
+from src.giljo_mcp.template_renderer import render_template
+from src.giljo_mcp.template_validation import (
+    get_role_color,
+    slugify_name,
+    validate_system_prompt,
+)
 
 
 router = APIRouter()
@@ -32,16 +38,23 @@ MAX_TEMPLATE_SIZE = 100 * 1024  # 100KB in bytes
 # Pydantic models for request/response
 class TemplateCreate(BaseModel):
     name: str = Field(..., description="Template name")
-    category: str = Field(..., description="Template category (role, project_type, custom)")
-    template_content: str = Field(..., description="Template content with {variable} placeholders")
-    role: Optional[str] = Field(None, description="Agent role if category is 'role'")
-    project_type: Optional[str] = Field(None, description="Project type if category is 'project_type'")
-    description: Optional[str] = Field(None, description="Template description")
+    role: str = Field(..., description="Agent role")
+    cli_tool: str = Field("claude", description="CLI tool: claude, codex, gemini, generic")
+    custom_suffix: Optional[str] = Field(None, description="Custom suffix for name generation")
+    background_color: Optional[str] = Field(None, description="Background color (hex)")
+    description: Optional[str] = Field(None, description="Template description (required for Claude)")
+    template_content: str = Field(..., description="System prompt content")
+    model: Optional[str] = Field("sonnet", description="Model: sonnet, opus, haiku, inherit")
+    tools: Optional[str] = Field(None, description="Tool selection (null = inherit all)")
     behavioral_rules: Optional[list[str]] = Field(default_factory=list, description="Behavioral rules")
     success_criteria: Optional[list[str]] = Field(default_factory=list, description="Success criteria")
     tags: Optional[list[str]] = Field(default_factory=list, description="Tags for categorization")
     is_default: bool = Field(False, description="Set as default for this role")
-    preferred_tool: str = Field("claude", description="Preferred AI tool (claude, codex, gemini)")
+    is_active: bool = Field(False, description="Set template as active")
+    # Legacy fields (kept for compatibility)
+    category: Optional[str] = Field(None, description="Template category (deprecated)")
+    project_type: Optional[str] = Field(None, description="Project type (deprecated)")
+    preferred_tool: Optional[str] = Field(None, description="Preferred AI tool (deprecated)")
 
     @field_validator("template_content")
     @classmethod
@@ -54,13 +67,18 @@ class TemplateCreate(BaseModel):
 
 class TemplateUpdate(BaseModel):
     name: Optional[str] = None
-    template_content: Optional[str] = None
+    role: Optional[str] = None
+    cli_tool: Optional[str] = None
+    background_color: Optional[str] = None
     description: Optional[str] = None
+    template_content: Optional[str] = None
+    model: Optional[str] = None
     behavioral_rules: Optional[list[str]] = None
     success_criteria: Optional[list[str]] = None
     tags: Optional[list[str]] = None
-    is_active: Optional[bool] = None
     is_default: Optional[bool] = None
+    is_active: Optional[bool] = None
+    # Legacy fields
     preferred_tool: Optional[str] = None
 
     @field_validator("template_content")
@@ -77,23 +95,28 @@ class TemplateResponse(BaseModel):
     tenant_key: str
     product_id: Optional[str]
     name: str
-    category: str
-    role: Optional[str]
-    project_type: Optional[str]
+    role: str
+    cli_tool: str
+    background_color: Optional[str]
+    description: Optional[str]
     template_content: str
-    variables: list[str]
+    model: Optional[str]
+    tools: Optional[str]
     behavioral_rules: list[str]
     success_criteria: list[str]
-    description: Optional[str]
-    version: str
-    is_active: bool
-    is_default: bool
     tags: list[str]
-    usage_count: int
-    avg_generation_ms: Optional[float]
+    is_default: bool
+    is_active: bool
     created_at: datetime
     updated_at: Optional[datetime]
-    created_by: Optional[str]
+    # Legacy fields (for compatibility)
+    category: Optional[str] = None
+    project_type: Optional[str] = None
+    variables: list[str] = []
+    version: str = "1.0.0"
+    usage_count: int = 0
+    avg_generation_ms: Optional[float] = None
+    created_by: Optional[str] = None
     preferred_tool: str = "claude"
 
 
@@ -137,7 +160,10 @@ class TemplatePreviewResponse(BaseModel):
     """Response model for template preview"""
 
     template_id: str
-    mission: str = Field(..., description="Rendered mission content")
+    cli_tool: str = Field(..., description="CLI tool type")
+    preview: str = Field(..., description="Rendered template content (YAML for Claude, plaintext for others)")
+    # Legacy fields for backward compatibility
+    mission: Optional[str] = Field(None, description="Rendered mission content (deprecated)")
     variables_used: list[str] = Field(default_factory=list, description="Variables found in template")
 
 
@@ -159,11 +185,12 @@ async def validate_active_agent_limit(
     tenant_key: str,
     template_id: str,
     new_is_active: bool,
+    role: Optional[str] = None,
 ) -> tuple[bool, str]:
     """
-    Validate 8-agent active limit before toggling (Handover 0075).
+    Validate 8-role active limit before toggling (Handover 0103).
 
-    Claude Code context budget constraint: Maximum 8 active agent templates
+    Claude Code context budget constraint: Maximum 8 distinct active roles
     to ensure optimal performance and sufficient tokens for code analysis.
 
     Args:
@@ -171,6 +198,7 @@ async def validate_active_agent_limit(
         tenant_key: Tenant key for isolation
         template_id: Template being toggled
         new_is_active: Desired active state
+        role: Role of the template being toggled
 
     Returns:
         (is_valid, error_message) tuple
@@ -178,9 +206,9 @@ async def validate_active_agent_limit(
         - (False, error_msg) if validation fails
 
     Example:
-        >>> valid, msg = await validate_active_agent_limit(db, "tenant-1", "tpl-123", True)
+        >>> valid, msg = await validate_active_agent_limit(db, "tenant-1", "tpl-123", True, "orchestrator")
         >>> if not valid:
-        ...     raise HTTPException(400, msg)
+        ...     raise HTTPException(409, msg)
     """
     from src.giljo_mcp.models import AgentTemplate
 
@@ -188,23 +216,31 @@ async def validate_active_agent_limit(
     if not new_is_active:
         return True, ""
 
-    # Count currently active templates (excluding the one being toggled)
-    stmt = select(func.count(AgentTemplate.id)).where(
+    # Get current template to fetch its role if not provided
+    if role is None:
+        stmt = select(AgentTemplate.role).where(AgentTemplate.id == template_id)
+        result = await db.execute(stmt)
+        role = result.scalar_one_or_none()
+        if not role:
+            return False, "Template not found"
+
+    # Count currently active distinct roles (excluding the one being toggled)
+    stmt = select(AgentTemplate.role).where(
         AgentTemplate.tenant_key == tenant_key,
         AgentTemplate.is_active == True,  # noqa: E712
         AgentTemplate.id != template_id,
-    )
+    ).distinct()
 
     result = await db.execute(stmt)
-    active_count = result.scalar_one()
+    active_roles = {row[0] for row in result.all()}
 
-    # Check limit (8 max)
-    if active_count >= 8:
-        return False, (
-            f"Maximum 8 active agents allowed (currently {active_count} active). "
-            f"Deactivate another agent before enabling this one. "
-            f"Reason: Claude Code context budget limit (6-8 agents recommended)."
-        )
+    # If this role is already active elsewhere, allow toggle
+    if role in active_roles:
+        return True, ""
+
+    # If we have 8 distinct active roles, block new role activation
+    if len(active_roles) >= 8:
+        return False, f"Maximum 8 active agent roles allowed (currently {len(active_roles)}). Deactivate another role first."
 
     return True, ""
 
@@ -213,7 +249,9 @@ async def validate_active_agent_limit(
 async def get_templates(
     category: Optional[str] = Query(None, description="Filter by category"),
     role: Optional[str] = Query(None, description="Filter by role"),
-    is_active: Optional[bool] = Query(None, description="Filter by active status (None=all, True=active only, False=inactive only)"),
+    is_active: Optional[bool] = Query(
+        None, description="Filter by active status (None=all, True=active only, False=inactive only)"
+    ),
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -236,7 +274,7 @@ async def get_templates(
         filters = [
             AgentTemplate.tenant_key == context["tenant_key"],
         ]
-        
+
         # Optional is_active filter (None = all templates)
         if is_active is not None:
             filters.append(AgentTemplate.is_active == is_active)
@@ -362,10 +400,48 @@ async def create_template(
     """
     try:
         import re
+        from uuid import uuid4
 
         from src.giljo_mcp.models import AgentTemplate
 
         context = get_tenant_and_product_from_user(current_user)
+
+        # Generate name from role + suffix
+        if template.custom_suffix:
+            generated_name = slugify_name(template.role, template.custom_suffix)
+        else:
+            generated_name = template.name or template.role
+
+        # Validate name format
+        if not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", generated_name):
+            raise HTTPException(status_code=400, detail="Name must use lowercase letters, numbers, and hyphens only")
+        if len(generated_name) > 100:
+            raise HTTPException(status_code=400, detail="Name must be 100 characters or less")
+
+        # Check uniqueness within tenant (async query)
+        stmt = select(AgentTemplate).where(
+            and_(
+                AgentTemplate.tenant_key == context["tenant_key"],
+                AgentTemplate.name == generated_name
+            )
+        )
+        result = await session.execute(stmt)
+        existing = result.scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Agent name '{generated_name}' already exists")
+
+        # Validate system prompt
+        is_valid, error_msg = validate_system_prompt(template.template_content)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
+
+        # Auto-assign background color if not provided
+        background_color = template.background_color or get_role_color(template.role)
+
+        # Set default description if not provided (Claude only)
+        description = template.description
+        if not description and template.cli_tool == "claude":
+            description = f"Subagent for {template.role}"
 
         # Extract variables from template content
         variables = re.findall(r"\{(\w+)\}", template.template_content)
@@ -388,22 +464,26 @@ async def create_template(
 
         # Create new template
         new_template = AgentTemplate(
+            id=str(uuid4()),
             tenant_key=context["tenant_key"],
             product_id=context["product_id"],
-            name=template.name,
-            category=template.category,
+            name=generated_name,
+            category=template.category or "role",
             role=template.role,
-            project_type=template.project_type,
+            cli_tool=template.cli_tool,
+            background_color=background_color,
+            description=description,
             template_content=template.template_content,
+            model=template.model or "sonnet",
+            tools=None,  # Always inherit all
             variables=variables,
             behavioral_rules=template.behavioral_rules or [],
             success_criteria=template.success_criteria or [],
-            description=template.description,
             version="1.0.0",
-            is_active=True,
+            is_active=template.is_active,
             is_default=template.is_default,
             tags=template.tags or [],
-            preferred_tool=template.tool,
+            tool=template.cli_tool,  # Set legacy field too
             created_by=current_user.username,
         )
 
@@ -447,7 +527,7 @@ async def create_template(
             created_at=new_template.created_at,
             updated_at=new_template.updated_at,
             created_by=new_template.created_by,
-            preferred_tool=getattr(new_template, 'tool', 'claude'),
+            preferred_tool=getattr(new_template, "tool", "claude"),
         )
 
     except Exception as e:
@@ -493,17 +573,18 @@ async def update_template(
         if template.tenant_key == "system":
             raise HTTPException(status_code=403, detail="System templates are read-only")  # noqa: TRY301
 
-        # Validate 8-agent active limit if toggling active status (Handover 0075)
+        # Validate 8-role active limit if toggling active status (Handover 0103)
         if update.is_active is not None and update.is_active != template.is_active:
             valid, error_msg = await validate_active_agent_limit(
                 db=session,
                 tenant_key=context["tenant_key"],
                 template_id=template_id,
                 new_is_active=update.is_active,
+                role=template.role,
             )
 
             if not valid:
-                raise HTTPException(status_code=400, detail=error_msg)  # noqa: TRY301
+                raise HTTPException(status_code=409, detail=error_msg)  # noqa: TRY301
 
         # Archive current version before updating
         archive = TemplateArchive(
@@ -529,12 +610,26 @@ async def update_template(
         # Update template fields
         if update.name is not None:
             template.name = update.name
+        if update.role is not None:
+            template.role = update.role
+            # Auto-update background_color when role changes
+            template.background_color = get_role_color(update.role)
+        if update.cli_tool is not None:
+            template.cli_tool = update.cli_tool
+            template.tool = update.cli_tool  # Update legacy field
+        if update.background_color is not None:
+            template.background_color = update.background_color
+        if update.description is not None:
+            template.description = update.description
         if update.template_content is not None:
+            is_valid, error_msg = validate_system_prompt(update.template_content)
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=error_msg)
             template.template_content = update.template_content
             # Re-extract variables
             template.variables = re.findall(r"\{(\w+)\}", update.template_content)
-        if update.description is not None:
-            template.description = update.description
+        if update.model is not None:
+            template.model = update.model
         if update.behavioral_rules is not None:
             template.behavioral_rules = update.behavioral_rules
         if update.success_criteria is not None:
@@ -545,6 +640,7 @@ async def update_template(
             template.is_active = update.is_active
         if update.preferred_tool is not None:
             template.tool = update.preferred_tool
+            template.cli_tool = update.preferred_tool  # Update new field
 
         # Handle default flag
         if update.is_default is not None and update.is_default and template.role:
@@ -568,7 +664,7 @@ async def update_template(
 
         # Increment version
         major, minor, _patch = template.version.split(".")
-        template.version = f"{major}.{int(minor)+1}.0"
+        template.version = f"{major}.{int(minor) + 1}.0"
         template.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
@@ -852,7 +948,7 @@ async def restore_template_version(
 
         # Increment version for restored template
         major, minor, _patch = archive.version.split(".")
-        template.version = f"{major}.{int(minor)+1}.0-restored"
+        template.version = f"{major}.{int(minor) + 1}.0-restored"
         template.updated_at = datetime.now(timezone.utc)
         template.is_active = True
 
@@ -950,9 +1046,7 @@ async def reset_template_to_system_default(
         system_template = system_result.scalar_one_or_none()
 
         if not system_template:
-            raise HTTPException(
-                status_code=404, detail=f"No system template found for role '{tenant_template.role}'"
-            )
+            raise HTTPException(status_code=404, detail=f"No system template found for role '{tenant_template.role}'")
 
         # Archive current version before resetting
         archive = TemplateArchive(
@@ -1148,22 +1242,21 @@ async def get_template_diff(
 @router.post("/{template_id}/preview", response_model=TemplatePreviewResponse)
 async def preview_template(
     template_id: str = Path(..., description="Template ID"),
-    preview_request: TemplatePreviewRequest = ...,
+    preview_request: Optional[TemplatePreviewRequest] = None,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     """
-    Generate a preview of the template with variable substitution.
+    Generate preview of template in CLI tool format (0103).
 
-    Useful for testing template content before deploying it to agents.
-    Supports variable substitution and optional augmentation content.
+    Returns rendered YAML (Claude) or plaintext (others).
 
     Security:
     - Tenant ownership validation
     - Preview only (does not modify template)
 
     Returns:
-        Rendered mission content with variables substituted
+        Rendered template content with CLI tool-specific formatting
     """
     try:
         from src.giljo_mcp.models import AgentTemplate
@@ -1183,26 +1276,18 @@ async def preview_template(
         if not template:
             raise HTTPException(status_code=404, detail="Template not found or access denied")
 
-        # Start with template content
-        mission = template.template_content
+        # Render template using CLI tool-specific formatter
+        rendered = render_template(template)
 
-        # Substitute variables
-        for var_name, var_value in preview_request.variables.items():
-            placeholder = "{" + var_name + "}"
-            mission = mission.replace(placeholder, var_value)
-
-        # Append augmentation if provided
-        if preview_request.augmentations:
-            mission += "\n\n## Additional Context\n\n" + preview_request.augmentations
-
-        # Extract variables that were used
+        # Extract variables for backward compatibility
         import re
-
         variables_used = re.findall(r"\{(\w+)\}", template.template_content)
 
         return TemplatePreviewResponse(
             template_id=template_id,
-            mission=mission,
+            cli_tool=template.cli_tool,
+            preview=rendered,
+            mission=rendered,  # Legacy field
             variables_used=variables_used,
         )
 

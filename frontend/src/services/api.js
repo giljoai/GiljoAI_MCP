@@ -298,12 +298,12 @@ export const api = {
     get: (id) => apiClient.get(`/api/v1/templates/${id}/`),
     create: (data) => apiClient.post('/api/v1/templates/', data),
     update: (id, data) => apiClient.put(`/api/v1/templates/${id}/`, data),
-    delete: (id) => apiClient.delete(`/api/v1/templates/${id}/`),
+    delete: (id, archive = false) => apiClient.delete(`/api/v1/templates/${id}/`, { params: { archive } }),
     history: (id, limit = 10) =>
       apiClient.get(`/api/v1/templates/${id}/history/`, { params: { limit } }),
     restore: (templateId, archiveId) =>
       apiClient.post(`/api/v1/templates/${templateId}/restore/${archiveId}/`),
-    preview: (id, data) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
+    preview: (id, data = {}) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     diff: (id) => apiClient.get(`/api/v1/templates/${id}/diff/`),
     exportClaudeCode: (data) => apiClient.post('/api/export/claude-code', data),
