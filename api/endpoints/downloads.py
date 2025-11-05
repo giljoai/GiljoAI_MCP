@@ -575,40 +575,48 @@ async def generate_download_token(
     )
 
     try:
-        # Import TokenManager and ContentGenerator
         from src.giljo_mcp.downloads.token_manager import TokenManager
-        from src.giljo_mcp.downloads.content_generator import ContentGenerator
+        from src.giljo_mcp.file_staging import FileStaging
 
-        # Generate ZIP file
-        content_gen = ContentGenerator(db_session=db)
-        zip_path, metadata = await content_gen.generate_content(
-            tenant_key=current_user.tenant_key,
-            content_type=content_type,
-        )
-
-        # Generate token
+        tenant_key = current_user.tenant_key
         token_manager = TokenManager(db_session=db)
+
+        # 1) Generate token first (pending)
+        filename = "slash_commands.zip" if content_type == "slash_commands" else "agent_templates.zip"
         token = await token_manager.generate_token(
-            tenant_key=current_user.tenant_key,
-            content_type=content_type,
-            file_path=zip_path,
-            metadata=metadata,
+            tenant_key=tenant_key,
+            download_type=content_type,
+            filename=filename,
+            metadata={"requested_by": current_user.username},
         )
 
-        # Build download URL
+        # 2) Stage files at temp/{tenant_key}/{token}/
+        staging = FileStaging(db_session=db)
+        staging_path = await staging.create_staging_directory(tenant_key, token)
+        if content_type == "slash_commands":
+            zip_path, message = await staging.stage_slash_commands(staging_path)
+        else:
+            zip_path, message = await staging.stage_agent_templates(staging_path, tenant_key, db_session=db)
+
+        if not zip_path:
+            # Mark failed and return error
+            await token_manager.mark_failed(token, message)
+            logger.error(f"Failed to stage content for token {token}: {message}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
+
+        # 3) Mark ready
+        await token_manager.mark_ready(token)
+
+        # 4) Build download URL and return
         server_url = get_server_url(request)
-        filename = f"{content_type}.zip"
         download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
-        # Get expiration time
-        token_data = await token_manager.get_token_data(token, current_user.tenant_key)
-        expires_at = token_data["expires_at"]
+        token_data = await token_manager.get_token_data(token, tenant_key)
+        expires_at = token_data["expires_at"] if token_data else None
 
         logger.info(
-            f"Download token generated successfully: {token} "
-            f"(expires: {expires_at}, content: {content_type})"
+            f"Token generated and staged successfully: token={token}, type={content_type}, file={zip_path}"
         )
-
         return {
             "download_url": download_url,
             "expires_at": expires_at,
@@ -616,12 +624,6 @@ async def generate_download_token(
             "one_time_use": True,
         }
 
-    except ImportError as e:
-        logger.error(f"TokenManager or ContentGenerator not found: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Download token system not available. Please contact administrator.",
-        )
     except Exception as e:
         logger.error(f"Failed to generate download token: {e}")
         raise HTTPException(
@@ -676,90 +678,57 @@ async def download_temp_file(
     logger.info(f"Download request: token={token}, filename={filename}")
 
     try:
-        # Import TokenManager
         from src.giljo_mcp.downloads.token_manager import TokenManager
+        from src.giljo_mcp.file_staging import FileStaging
+
+        # Validate filename for security
+        if not FileStaging.validate_filename(filename):
+            logger.warning(f"Invalid filename requested: {filename}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token or file")
 
         token_manager = TokenManager(db_session=db)
+        validation = await token_manager.validate_token(token, filename)
+        if not validation.get("valid"):
+            reason = validation.get("reason", "invalid")
+            logger.warning(f"Token validation failed: token={token}, reason={reason}")
+            if reason in ("expired",):
+                raise HTTPException(status_code=status.HTTP_410_GONE, detail="Download token expired")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 
-        # Validate token (no tenant_key needed - extracted from token)
-        validation_result = await token_manager.validate_token(token, filename)
+        data = validation["token_data"]
+        tenant_key = data["tenant_key"]
+        # Compute path from token components
+        file_path = Path.cwd() / "temp" / tenant_key / token / filename
 
-        if not validation_result["valid"]:
-            reason = validation_result.get("reason", "unknown")
-            logger.warning(f"Token validation failed: {reason} (token={token})")
-
-            # Return appropriate status code
-            if reason in ["expired", "used"]:
-                raise HTTPException(
-                    status_code=status.HTTP_410_GONE,
-                    detail=f"Download token is {reason}",
-                )
-            else:
-                # not_found, filename_mismatch, cross_tenant
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Download token is invalid, expired, or already used",
-                )
-
-        # Token is valid - get file path and metadata
-        token_data = validation_result["token_data"]
-        file_path = Path(token_data["file_path"])
-        download_type = token_data["download_type"]
-
-        # Verify file exists
         if not file_path.exists():
-            logger.error(f"File not found: {file_path} (token={token})")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error",
-            )
+            logger.error(f"File not found for valid token: {file_path}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
-        # NOTE: No mark_downloaded call - tokens support unlimited downloads
-        # within the 15-minute expiry window per Handover 0096 refactoring
-
-        # Read file
         try:
-            file_content = file_path.read_bytes()
+            content = file_path.read_bytes()
         except Exception as e:
-            logger.error(f"Failed to read file {file_path}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error",
-            )
+            logger.error(f"Failed reading file {file_path}: {e}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error")
 
-        # NOTE: No immediate cleanup - files are cleaned up when token expires
-        # via cleanup_expired_tokens background task. This allows unlimited
-        # downloads within the 15-minute window per Handover 0096 refactoring.
+        # Increment download metrics
+        await token_manager.increment_download_count(token)
 
-        logger.info(
-            f"Download successful: {filename} ({len(file_content)} bytes, token={token})"
-        )
-
-        # Return file with no-cache headers
+        logger.info(f"Download served: {filename} ({len(content)} bytes) token={token}")
         return Response(
-            content=file_content,
+            content=content,
             media_type="application/zip",
             headers={
                 "Content-Disposition": f"attachment; filename={filename}",
-                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",
+                "Expires": "0",
             },
-        )
-
-    except ImportError as e:
-        logger.error(f"TokenManager not found: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Download token system not available. Please contact administrator.",
         )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error during download: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 # REST endpoints for MCP tool calls (natural language instructions)

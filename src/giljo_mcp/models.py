@@ -2101,17 +2101,15 @@ class MCPAgentJob(Base):
 
 class DownloadToken(Base):
     """
-    Download Token model - one-time download tokens for secure file downloads.
+    Download Token model for secure file downloads.
 
-    Handover 0100: One-time download token system for slash commands and agent templates.
-    Enables secure, time-limited downloads without authentication for MCP tools.
-
-    Security Features:
+    Implements a production-grade token system with lifecycle tracking:
     - UUID v4 tokens (cryptographically random)
     - 15-minute expiry window
-    - One-time use enforcement (is_used flag)
     - Multi-tenant isolation (tenant_key)
-    - Automatic cleanup of expired tokens
+    - Staging lifecycle (pending → ready | failed)
+    - Download metrics (count + last_downloaded_at)
+    - Background cleanup of expired/failed/abandoned tokens
 
     Use Cases:
     - Slash command download (gil_import_productagents, gil_import_personalagents)
@@ -2135,11 +2133,21 @@ class DownloadToken(Base):
     meta_data = Column(JSONB, default=dict, nullable=False,
         comment="Additional metadata (filename, file_count, file_size, etc.)")
 
-    # One-time use enforcement
+    # Historical compatibility (kept for backward compatibility only)
     is_used = Column(Boolean, default=False, nullable=False,
-        comment="Tracks if token has been used (one-time download)")
+        comment="Deprecated: legacy one-time download flag (not enforced)")
     downloaded_at = Column(DateTime(timezone=True), nullable=True,
-        comment="Timestamp when download occurred")
+        comment="Deprecated: legacy single-use timestamp (not enforced)")
+
+    # Staging lifecycle and metrics (Handover 0102)
+    staging_status = Column(String(20), default='pending', nullable=False,
+        comment="Staging lifecycle status: pending|ready|failed")
+    staging_error = Column(Text, nullable=True,
+        comment="Staging error details when status=failed")
+    download_count = Column(Integer, default=0, nullable=False,
+        comment="Number of successful downloads for this token")
+    last_downloaded_at = Column(DateTime(timezone=True), nullable=True,
+        comment="Timestamp of most recent successful download")
 
     # Expiry management
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -2155,6 +2163,10 @@ class DownloadToken(Base):
             "download_type IN ('slash_commands', 'agent_templates')",
             name="ck_download_token_type"
         ),
+        CheckConstraint(
+            "staging_status IN ('pending', 'ready', 'failed')",
+            name="ck_download_token_staging_status"
+        ),
     )
 
     def __repr__(self):
@@ -2167,5 +2179,5 @@ class DownloadToken(Base):
 
     @property
     def is_valid(self) -> bool:
-        """Check if token is valid (not used and not expired)"""
-        return not self.is_used and not self.is_expired
+        """Check if token is valid (not expired and staging ready)."""
+        return (not self.is_expired) and (self.staging_status == 'ready')
