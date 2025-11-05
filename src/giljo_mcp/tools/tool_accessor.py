@@ -2091,24 +2091,24 @@ Begin by fetching your mission.
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            # 3. Stage files in temp directory FIRST (before generating token)
-            from uuid import uuid4
-            token = str(uuid4())
-            file_staging = FileStaging()
-            await file_staging.create_staging_directory(tenant_key, token)
-            zip_path = await file_staging.stage_slash_commands(tenant_key, token)
-
-            logger.info(f"Staged slash commands ZIP for download: {zip_path}")
-
-            # 4. Generate download token AFTER file is staged
+            # 3. Generate token FIRST and stage with SAME token (single-token flow)
             async with self.db_manager.get_session_async() as session:
                 token_manager = TokenManager(db_session=session)
                 download_token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="slash_commands",
-                    file_path=str(zip_path),
-                    metadata={"filename": "slash_commands.zip", "file_count": 1}
+                    filename="slash_commands.zip",
                 )
+                file_staging = FileStaging()
+                staging_path = await file_staging.create_staging_directory(tenant_key, download_token)
+                zip_path, message = await file_staging.stage_slash_commands(staging_path)
+                if not zip_path:
+                    await token_manager.mark_failed(download_token, message)
+                    await file_staging.cleanup(tenant_key, download_token)
+                    logger.error(f"Staging failed for token {download_token}: {message}")
+                    return {"success": False, "error": f"File staging failed: {message}"}
+                await token_manager.mark_ready(download_token)
+                logger.info(f"Staged slash commands ZIP for token {download_token}: {zip_path}")
 
             # 5. Build download URL (use dynamically detected server URL)
             if not _server_url:
@@ -2181,21 +2181,28 @@ Begin by fetching your mission.
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            # 3. Generate one-time download token
+            # 3. Generate token FIRST and stage with SAME token
             async with self.db_manager.get_session_async() as session:
                 token_manager = TokenManager(db_session=session)
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    metadata={"download_type": "agent_templates", "scope": "product"}
+                    filename="agent_templates.zip",
                 )
 
             # 4. Stage files in temp directory
             file_staging = FileStaging(db_session=None)
             async with self.db_manager.get_session_async() as session:
                 file_staging.db_session = session
-                await file_staging.create_staging_directory(tenant_key, token)
-                zip_path = await file_staging.stage_agent_templates(tenant_key, token)
+                staging_path = await file_staging.create_staging_directory(tenant_key, token)
+                zip_path, message = await file_staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
+
+                if not zip_path:
+                    await token_manager.mark_failed(token, message)
+                    await file_staging.cleanup(tenant_key, token)
+                    return {"success": False, "error": f"File staging failed: {message}"}
+
+                await token_manager.mark_ready(token)
 
             logger.info(f"Staged agent templates ZIP for product download: {zip_path}")
 
@@ -2267,21 +2274,28 @@ Begin by fetching your mission.
             if not tenant_key:
                 return {"success": False, "error": "No active tenant"}
 
-            # 3. Generate one-time download token
+            # 3. Generate token FIRST and stage with SAME token
             async with self.db_manager.get_session_async() as session:
                 token_manager = TokenManager(db_session=session)
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type="agent_templates",
-                    metadata={"download_type": "agent_templates", "scope": "personal"}
+                    filename="agent_templates.zip",
                 )
 
             # 4. Stage files in temp directory
             file_staging = FileStaging(db_session=None)
             async with self.db_manager.get_session_async() as session:
                 file_staging.db_session = session
-                await file_staging.create_staging_directory(tenant_key, token)
-                zip_path = await file_staging.stage_agent_templates(tenant_key, token)
+                staging_path = await file_staging.create_staging_directory(tenant_key, token)
+                zip_path, message = await file_staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
+
+                if not zip_path:
+                    await token_manager.mark_failed(token, message)
+                    await file_staging.cleanup(tenant_key, token)
+                    return {"success": False, "error": f"File staging failed: {message}"}
+
+                await token_manager.mark_ready(token)
 
             logger.info(f"Staged agent templates ZIP for personal download: {zip_path}")
 

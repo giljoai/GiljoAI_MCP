@@ -358,3 +358,29 @@ We need to determine what type of notifications we need in the notifications bar
 
 Password recovery is implemented via a 4-digit PIN system (Handover 0023). Users can generate recovery PINs with rate limiting and lockout protection (5 failed attempts = 15 minute lockout). The system includes PIN hash storage, expiration tracking, and secure validation. Email-based recovery could be a future enhancement for additional security options.
 
+### clarification on slash commands and agent tempalte imports
+we have in our frontend allready one "copy command" button for slash commands, this is the one working now, it gives the a working token folder (even if 102 proposes cleaning up the code) and it properly installs the slash commands. we also in the front end have an existing "copy command" for what we call product agents (claude terminlolgy is project agents) these agents reside in %projectfolder%/.cladue/agents folder. we also have a "copy command" button that is for personal agents, these are global agent profiles residing in %userprofile%/.claude/agents  we need to reuse these buttons as I want the user to use our applicationinterface to simply copy the commands, paste them into the CLI agentic coding tool of choice, and it should know for all three scenarios to go to a token based URL, fetch zip, install files in right folder. with agent back up, but slash commands files can be overwritten.  we also have in each section a "manual downlaod link" both for slash commands and one aggregated one for the agents.  This file for slash commands downloads the zip (tempalted as nothing changes dynamically here and slash_instructions.md) , for agents the click first compiles a ZIP of the active agents, and attaches agent_instructions.md and the dev can self install. one enhancement that can be made is, that as a user interfaces with the agent template manager and toggles agents on and off, we can allready then payload the zip file.  likewise if an agent is updated via edit tools in the agent template manager we can also payload when the uer clicks save, but perhaps its easier done at time of
+link click for eother "copy command" or "manual download" as a trigger.  what are your thoughts based on all   you ave red and this input
+
+
+## A simplified work flow description and relationships
+
+BTW (our heigharcy is tennant user -> products -> projets and tasks) under Projects you have orhcestrator (team lead, comms lead, architect and project mannager ) -> Subagents (Spawned by orchestrator to do work in a project) , we also have "Project Description" a human written defined scope / instent and "misson" mission is a orchestrator created summary after analyzing all context, product documentation attached to the product what we call (vision), reviewing users context priority configurator in "My settings" context [TAB].  This mission gets then divided into work for the subagetns to deliver on, and if they need more context or information, they go to the orchestrator and it will fetch it.
+
+## The integration interface
+
+MCP integration
+MCP configurator is a button [CONFIGURATOR] that launches a wizard which creates a copiable MCP installation command for CLI, unique for claude code , codex and Gemeni
+
+Slash commands
+Slash commands will grow in the server as exposed meny items inside the CLI tool.  The intent for this is to downlaod the slash command files and install them in a proper folder.  We acheive this through two paths.  [COPY COMMAND] Button, this button copies an MCP and natural language instruction to the CLI tool (of choice) to fetch from a URL pointing at a token time limited folder (as of the press of the button) the ZIP file witht he commands and instructs the CLI agent to install them.  Finally it tells the end user to reboot the application.  As an option we also have manual download link which direclty downlaods the zip + slash_instructions.md
+
+Agent Export
+Agent export is where we simplify agent export and import into claude code (only supported at time of writing).  There are two ways to installa gents.  One is per project folder (we call it product agents becuase a project folder is for a product in our narrative), the other is personal, These go to the users profile folder on the OS and work globally accross all their project folder.  The user choses how to do it.
+
+[COPY COMMAND] is a button in line for personal
+[COPY COMMAND] is a button inline for produt (project folder on PC)
+
+Both upon click, create a token time limited folder, then fetches the agents which are toggled as active in the "Agent Template Manager", adds their individual files into a zip and places it in the tokenized folder.  Also when clicked the button copies to clip board the URL and natural langage instructions for the agent files.  Instructions say to backup existing agents into a folder MMDDYY_Agent_backup, and then extracts the newly downloaded agents from the zip.  Finally it tells the end user to reboot the application.  As an option we also have manual download link which triggers the server to add active agents to a zip file and add agent_instructions.md a static file on how to installe them in personal or product folder.
+
+Finally we have a resolved Serena integration that is customizable and tells the user to install Serena MCP first.

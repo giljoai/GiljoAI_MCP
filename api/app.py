@@ -262,11 +262,13 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                 if state.db_manager:
                     async with state.db_manager.get_session_async() as session:
                         token_manager = TokenManager(session)
-                        count = await token_manager.cleanup_expired_tokens()
-                        if count > 0:
-                            logger.info(f"Download token cleanup: {count} expired tokens removed")
+                        result = await token_manager.cleanup_expired_tokens()
+                        # Backward-compatible handling: support int or dict
+                        deleted_total = result.get('total', 0) if isinstance(result, dict) else int(result or 0)
+                        if deleted_total > 0:
+                            logger.info(f"Download token cleanup: {deleted_total} tokens removed")
                         else:
-                            logger.debug("Download token cleanup: no expired tokens found")
+                            logger.debug("Download token cleanup: no tokens removed")
             except Exception as e:
                 logger.error(f"Error during download token cleanup: {e}", exc_info=True)
 

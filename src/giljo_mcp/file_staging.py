@@ -13,11 +13,14 @@ Features:
 Usage:
     staging = FileStaging(base_path=Path("temp"), db_session=db_session)
 
+    # Create staging path
+    staging_path = await staging.create_staging_directory(tenant_key, token)
+
     # Stage slash commands
-    zip_path = await staging.stage_slash_commands(tenant_key, token)
+    zip_path, msg = await staging.stage_slash_commands(staging_path)
 
     # Stage agent templates
-    zip_path = await staging.stage_agent_templates(tenant_key, token)
+    zip_path, msg = await staging.stage_agent_templates(staging_path, tenant_key, db_session)
 
     # Cleanup
     await staging.cleanup(tenant_key, token)
@@ -28,7 +31,8 @@ import logging
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
+import re
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -103,9 +107,8 @@ class FileStaging:
 
     async def stage_slash_commands(
         self,
-        tenant_key: str,
-        token: str
-    ) -> Path:
+        staging_path: Path,
+    ) -> Tuple[Optional[Path], str]:
         """
         Stage slash commands as a ZIP file.
 
@@ -114,22 +117,24 @@ class FileStaging:
         are no longer included per Handover 0096 refactoring.
 
         Args:
-            tenant_key: Tenant identifier
-            token: UUID token string
+            staging_path: Pre-created staging directory (temp/{tenant_key}/{token}/)
 
         Returns:
-            Path: Path to generated ZIP file
+            Tuple (zip_path|None, message)
 
         Raises:
-            HTTPException: If ZIP creation fails
+            None - returns (None, message) on error
         """
         try:
-            # Create staging directory
-            staging_dir = await self.create_staging_directory(tenant_key, token)
-            zip_path = staging_dir / "slash_commands.zip"
+            staging_path.mkdir(parents=True, exist_ok=True)
+            zip_path = staging_path / "slash_commands.zip"
 
             # Get only gil_handover template
             all_templates = get_all_templates()
+            if "gil_handover.md" not in all_templates:
+                msg = "Missing slash command template: gil_handover.md"
+                logger.error(msg)
+                return (None, msg)
             templates = {"gil_handover.md": all_templates["gil_handover.md"]}
 
             # Create ZIP file with single command
@@ -138,30 +143,24 @@ class FileStaging:
                     zf.writestr(filename, content)
 
             logger.info(
-                f"Created slash commands ZIP: {zip_path} "
-                f"(1 file: gil_handover.md only)"
+                f"Staged slash commands ZIP: {zip_path} (1 file)"
             )
-
-            return zip_path
-
+            return (zip_path, "Successfully staged 1 slash command")
         except OSError as e:
-            logger.error(f"Disk error creating slash commands ZIP: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
-                detail="Failed to create download file (disk error)"
-            )
+            msg = f"Disk error creating slash commands ZIP: {e}"
+            logger.error(msg)
+            return (None, msg)
         except Exception as e:
-            logger.error(f"Error creating slash commands ZIP: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create download file"
-            )
+            msg = f"Unexpected error creating slash commands ZIP: {e}"
+            logger.error(msg)
+            return (None, msg)
 
     async def stage_agent_templates(
         self,
+        staging_path: Path,
         tenant_key: str,
-        token: str
-    ) -> Path:
+        db_session: Optional[AsyncSession] = None,
+    ) -> Tuple[Optional[Path], str]:
         """
         Stage agent templates as a ZIP file.
 
@@ -169,25 +168,23 @@ class FileStaging:
         tenant and creates a ZIP file with .md files.
 
         Args:
+            staging_path: Pre-created staging directory (temp/{tenant_key}/{token}/)
             tenant_key: Tenant identifier
-            token: UUID token string
+            db_session: Optional DB session override
 
         Returns:
-            Path: Path to generated ZIP file
+            Tuple (zip_path|None, message)
 
         Raises:
-            HTTPException: If ZIP creation fails or no templates found
+            None - returns (None, message) on error
         """
-        if not self.db_session:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database session not configured for template staging"
-            )
+        session = db_session or self.db_session
+        if not session:
+            return (None, "Database session not configured for template staging")
 
         try:
-            # Create staging directory
-            staging_dir = await self.create_staging_directory(tenant_key, token)
-            zip_path = staging_dir / "agent_templates.zip"
+            staging_path.mkdir(parents=True, exist_ok=True)
+            zip_path = staging_path / "agent_templates.zip"
 
             # Query active templates for tenant
             stmt = select(AgentTemplate).where(
@@ -195,15 +192,13 @@ class FileStaging:
                 AgentTemplate.is_active == True
             ).order_by(AgentTemplate.name)
 
-            result = await self.db_session.execute(stmt)
+            result = await session.execute(stmt)
             templates = result.scalars().all()
 
             if not templates:
-                logger.warning(f"No active templates found for tenant: {tenant_key}")
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No active agent templates found"
-                )
+                msg = f"No active templates found for tenant: {tenant_key}"
+                logger.warning(msg)
+                return (None, msg)
 
             # Create ZIP file
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -214,26 +209,17 @@ class FileStaging:
                     zf.writestr(filename, content)
 
             logger.info(
-                f"Created agent templates ZIP: {zip_path} "
-                f"({len(templates)} files)"
+                f"Staged agent templates ZIP: {zip_path} ({len(templates)} files)"
             )
-
-            return zip_path
-
-        except HTTPException:
-            raise
+            return (zip_path, f"Successfully staged {len(templates)} agent templates")
         except OSError as e:
-            logger.error(f"Disk error creating agent templates ZIP: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
-                detail="Failed to create download file (disk error)"
-            )
+            msg = f"Disk error staging agent templates: {e}"
+            logger.error(msg)
+            return (None, msg)
         except Exception as e:
-            logger.error(f"Error creating agent templates ZIP: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create download file: {str(e)}"
-            )
+            msg = f"Unexpected error staging agent templates: {e}"
+            logger.error(msg)
+            return (None, msg)
 
     async def save_metadata(
         self,
@@ -319,3 +305,10 @@ class FileStaging:
             Path: Staging directory path (may not exist)
         """
         return self.base_path / tenant_key / token
+
+    @staticmethod
+    def validate_filename(filename: str) -> bool:
+        """Validate filename to prevent directory traversal and invalid characters."""
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return False
+        return re.match(r'^[a-zA-Z0-9._-]+$', filename) is not None
