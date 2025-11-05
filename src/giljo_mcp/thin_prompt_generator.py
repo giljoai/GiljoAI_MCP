@@ -132,8 +132,8 @@ class ThinClientPromptGenerator:
             instance_result = await self.db.execute(instance_stmt)
             instance_number = instance_result.scalar() + 1
 
-        # Generate orchestrator_id
-        orchestrator_id = f"orch-{uuid4().hex[:12]}"
+        # Generate orchestrator_id (full UUID for consistency)
+        orchestrator_id = str(uuid4())
 
         # Create orchestrator job with metadata (Handover 0088)
         orchestrator = MCPAgentJob(
