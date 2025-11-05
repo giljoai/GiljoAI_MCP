@@ -440,7 +440,7 @@ const cardAriaLabel = computed(() => {
 }
   
   .agent-id-value {
-    font-size: 7.5px !important;
+    font-size: 10px !important;
     font-family: 'Courier New', monospace;
     white-space: nowrap;
     line-height: 1.4;
