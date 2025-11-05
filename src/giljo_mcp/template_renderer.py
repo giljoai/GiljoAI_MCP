@@ -1,0 +1,177 @@
+"""
+Template rendering utilities for packaging/export (Claude Code, generic, etc.).
+
+Implements 0102a/0103 rules for Claude Code agent templates:
+- YAML frontmatter with: name, description, model
+- Omit tools to inherit all by default
+- Body: template_content + optional Behavioral Rules / Success Criteria sections
+- Packaging cap: max 8 distinct active roles with precedence
+  1) is_default first
+  2) updated_at descending
+  3) name ascending
+"""
+
+from __future__ import annotations
+
+import re
+from typing import TYPE_CHECKING
+
+import yaml
+
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from .models import AgentTemplate
+
+
+def _slugify_filename(name: str) -> str:
+    """Return a safe slug filename (keeps existing slug if already valid)."""
+    slug = name.strip().lower().replace(" ", "-")
+    slug = re.sub(r"[^a-z0-9._-]", "-", slug)
+    # collapse multiple dashes
+    slug = re.sub(r"-+", "-", slug).strip("-")
+    return slug or "agent"
+
+
+def render_claude_agent(template: AgentTemplate) -> str:
+    """Render a single AgentTemplate to Claude Code-compatible Markdown.
+
+    Rules per 0102a:
+    - Frontmatter includes name, description, model (omit tools to inherit all)
+    - Description fallback: "Subagent for <role>"
+    - Model default: 'sonnet' if blank; allow 'inherit' if explicitly set
+    - Body: template_content; optionally append sections for rules/criteria
+    """
+    description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
+    # Respect explicit 'inherit'; otherwise default to sonnet when blank
+    model_value = (template.model or "sonnet").strip()
+
+    frontmatter = {
+        "name": template.name,
+        "description": description,
+        "model": model_value,
+    }
+
+    yaml_header = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False).strip()
+
+    parts: list[str] = []
+    # Main system prompt/body
+    body = (template.template_content or "").strip()
+    if body:
+        parts.append(body)
+
+    # Behavioral Rules section
+    rules = template.behavioral_rules or []
+    if isinstance(rules, list) and rules:
+        parts.append("\n## Behavioral Rules")
+        parts.extend(f"- {r}" for r in rules)
+
+    # Success Criteria section
+    criteria = template.success_criteria or []
+    if isinstance(criteria, list) and criteria:
+        parts.append("\n## Success Criteria")
+        parts.extend(f"- {c}" for c in criteria)
+
+    body_text = "\n".join(parts).rstrip() + "\n"
+    return f"---\n{yaml_header}\n---\n\n{body_text}"
+
+
+def select_templates_for_packaging(templates: Iterable[AgentTemplate], max_roles: int = 8) -> list[AgentTemplate]:
+    """Select up to max_roles distinct roles using precedence rules.
+
+    Precedence order:
+      1) is_default templates first
+      2) updated_at descending (most recent first)
+      3) name ascending (stable fallback)
+    """
+
+    # Sort templates by precedence
+    def sort_key(t: AgentTemplate):
+        # For updated_at, None should be older than anything
+        updated_ts = t.updated_at.isoformat() if getattr(t, "updated_at", None) else ""
+        # We want updated_at desc, so invert by using reverse in sort later
+        return (
+            bool(getattr(t, "is_default", False)),  # True > False when reversed
+            updated_ts,
+            (t.name or ""),
+        )
+
+    sorted_list = sorted(templates, key=sort_key, reverse=True)
+
+    selected: list[AgentTemplate] = []
+    seen_roles = set()
+    for t in sorted_list:
+        role = t.role or t.name  # fallback to name if role missing
+        if role in seen_roles:
+            continue
+        selected.append(t)
+        seen_roles.add(role)
+        if len(seen_roles) >= max_roles:
+            break
+    return selected
+
+
+def render_generic_agent(template: AgentTemplate) -> str:
+    """Render agent template to generic plaintext format.
+
+    Used for Codex, Gemini, and other generic CLI tools.
+
+    Args:
+        template: AgentTemplate model instance
+
+    Returns:
+        Plaintext prompt without YAML frontmatter
+    """
+    parts = [
+        f"# {template.name}",
+        f"\nRole: {template.role}",
+        f"\n{template.template_content or ''}",
+    ]
+
+    # Add behavioral rules section if present
+    rules = template.behavioral_rules or []
+    if isinstance(rules, list) and rules:
+        parts.append("\n## Behavioral Rules")
+        parts.extend(f"- {r}" for r in rules)
+
+    # Add success criteria section if present
+    criteria = template.success_criteria or []
+    if isinstance(criteria, list) and criteria:
+        parts.append("\n## Success Criteria")
+        parts.extend(f"- {c}" for c in criteria)
+
+    return "\n".join(parts)
+
+
+def render_template(template: AgentTemplate) -> str:
+    """Render template based on cli_tool field.
+
+    Dispatcher function that routes to appropriate renderer:
+    - 'claude' → render_claude_agent() (YAML format)
+    - 'codex', 'gemini', 'generic' → render_generic_agent() (plaintext)
+    - None or unknown → fallback to render_claude_agent()
+
+    Args:
+        template: AgentTemplate model instance
+
+    Returns:
+        Rendered content in appropriate format
+    """
+    cli_tool = (template.cli_tool or "").lower()
+
+    if cli_tool == "claude":
+        return render_claude_agent(template)
+    if cli_tool in ("codex", "gemini", "generic"):
+        return render_generic_agent(template)
+    # Fallback to Claude format for backwards compatibility
+    return render_claude_agent(template)
+
+
+__all__ = [
+    "_slugify_filename",
+    "render_claude_agent",
+    "render_generic_agent",
+    "render_template",
+    "select_templates_for_packaging",
+]
