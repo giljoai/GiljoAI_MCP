@@ -59,6 +59,8 @@
                 variant="flat"
                 size="small"
                 width="120"
+                :loading="loadingPersonal"
+                :disabled="loadingPersonal"
                 @click="copyPersonalCommand"
               >
                 Copy Command
@@ -82,6 +84,8 @@
                 variant="flat"
                 size="small"
                 width="120"
+                :loading="loadingProduct"
+                :disabled="loadingProduct"
                 @click="copyProductCommand"
               >
                 Copy Command
@@ -111,6 +115,8 @@ const showCopyFeedback = ref(false)
 const copyFeedbackMessage = ref('')
 const downloadingPersonal = ref(false)
 const downloadingProduct = ref(false)
+const loadingProduct = ref(false)
+const loadingPersonal = ref(false)
 
 // Template role icon mapping
 const roleIcons = {
@@ -128,12 +134,41 @@ function getTemplateIcon(role) {
   return roleIcons[role?.toLowerCase()] || roleIcons.default
 }
 
-function generateProductCommand() {
-  return '/gil_import_productagents'
-}
+// Generate natural language instructions with download token
+async function generateAgentTemplateInstructions(installType = 'product') {
+  try {
+    // Generate download token
+    const response = await fetch('/api/download/generate-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify({
+        content_type: 'agent_templates'
+      })
+    })
 
-function generatePersonalCommand() {
-  return '/gil_import_personalagents'
+    if (!response.ok) {
+      throw new Error(`Token generation failed: ${response.status}`)
+    }
+
+    const data = await response.json()
+    const downloadUrl = data.download_url
+
+    // Determine target folder based on install type
+    const targetFolder = installType === 'personal'
+      ? '~/.claude/agents'
+      : '.claude/agents (in your current project folder)'
+
+    // Generate natural language instructions (matching slash commands format)
+    const instructions = `Download the agent templates from ${downloadUrl}, extract the zip file, and install the contents to your ${targetFolder} folder (create the folder if it doesn't exist). The download link expires in 15 minutes but can be used multiple times within that window.`
+
+    return instructions
+  } catch (error) {
+    console.error('[CLAUDE EXPORT] Failed to generate agent template instructions:', error)
+    throw error
+  }
 }
 
 // Production-grade cross-platform clipboard copy
@@ -171,58 +206,48 @@ function fallbackCopyToClipboard(text) {
 }
 
 async function copyProductCommand() {
-  const command = generateProductCommand()
+  try {
+    loadingProduct.value = true
+    const instructions = await generateAgentTemplateInstructions('product')
 
-  // Try Clipboard API first, fallback to execCommand
-  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-    try {
-      await navigator.clipboard.writeText(command)
+    const success = fallbackCopyToClipboard(instructions)
+
+    if (success) {
       showCopyFeedback.value = true
-      copyFeedbackMessage.value = 'Product slash command copied to clipboard!'
-      console.log('[CLAUDE EXPORT] Product slash command copied via Clipboard API')
-      return
-    } catch (error) {
-      console.warn('[CLAUDE EXPORT] Clipboard API failed, using fallback:', error)
+      copyFeedbackMessage.value = 'Product agent install instructions copied to clipboard'
+      console.log('[CLAUDE EXPORT] Product agent instructions copied')
+    } else {
+      throw new Error('Clipboard copy failed')
     }
-  }
-
-  // Fallback method
-  const success = fallbackCopyToClipboard(command)
-  showCopyFeedback.value = true
-  if (success) {
-    copyFeedbackMessage.value = 'Product slash command copied to clipboard!'
-    console.log('[CLAUDE EXPORT] Product slash command copied via fallback')
-  } else {
-    copyFeedbackMessage.value = 'Failed to copy. Please copy manually.'
-    console.error('[CLAUDE EXPORT] All copy methods failed')
+  } catch (error) {
+    console.error('[CLAUDE EXPORT] Failed to copy product command:', error)
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = `Copy failed: ${error.message}`
+  } finally {
+    loadingProduct.value = false
   }
 }
 
 async function copyPersonalCommand() {
-  const command = generatePersonalCommand()
+  try {
+    loadingPersonal.value = true
+    const instructions = await generateAgentTemplateInstructions('personal')
 
-  // Try Clipboard API first, fallback to execCommand
-  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-    try {
-      await navigator.clipboard.writeText(command)
+    const success = fallbackCopyToClipboard(instructions)
+
+    if (success) {
       showCopyFeedback.value = true
-      copyFeedbackMessage.value = 'Personal slash command copied to clipboard!'
-      console.log('[CLAUDE EXPORT] Personal slash command copied via Clipboard API')
-      return
-    } catch (error) {
-      console.warn('[CLAUDE EXPORT] Clipboard API failed, using fallback:', error)
+      copyFeedbackMessage.value = 'Personal agent install instructions copied to clipboard'
+      console.log('[CLAUDE EXPORT] Personal agent instructions copied')
+    } else {
+      throw new Error('Clipboard copy failed')
     }
-  }
-
-  // Fallback method
-  const success = fallbackCopyToClipboard(command)
-  showCopyFeedback.value = true
-  if (success) {
-    copyFeedbackMessage.value = 'Personal slash command copied to clipboard!'
-    console.log('[CLAUDE EXPORT] Personal slash command copied via fallback')
-  } else {
-    copyFeedbackMessage.value = 'Failed to copy. Please copy manually.'
-    console.error('[CLAUDE EXPORT] All copy methods failed')
+  } catch (error) {
+    console.error('[CLAUDE EXPORT] Failed to copy personal command:', error)
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = `Copy failed: ${error.message}`
+  } finally {
+    loadingPersonal.value = false
   }
 }
 
