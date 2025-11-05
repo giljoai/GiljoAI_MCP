@@ -21,15 +21,15 @@ Usage:
 
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import Any, Dict
 from uuid import uuid4
-from typing import Dict, List, Any
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_manager import UnifiedTemplateManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +73,12 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     try:
         # Idempotency check - skip if tenant already has templates
         existing_count_result = await session.execute(
-            select(func.count(AgentTemplate.id)).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant_key)
         )
         existing_count = existing_count_result.scalar()
 
         if existing_count > 0:
-            logger.info(
-                f"Tenant '{tenant_key}' already has {existing_count} templates, skipping seed"
-            )
+            logger.info(f"Tenant '{tenant_key}' already has {existing_count} templates, skipping seed")
             return 0
 
         # Load legacy templates from template_manager
@@ -97,58 +93,47 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         # Get MCP coordination section to append to all templates
         mcp_section = _get_mcp_coordination_section()
 
+        # Use new comprehensive templates (Handover 0103)
+        default_templates = _get_default_templates_v103()
+
         # Seed each template
         seeded_count = 0
         current_time = datetime.now(timezone.utc)
 
-        for role, content in legacy_templates.items():
-            # Get metadata for this role (with defaults for any missing roles)
-            metadata = template_metadata.get(role, {
-                "category": "role",
-                "behavioral_rules": ["Follow mission requirements"],
-                "success_criteria": ["Mission objectives met"],
-                "variables": ["project_name", "mission"]
-            })
-
-            # Append MCP coordination section to template content
-            # Orchestrators get special orchestrator tools section
-            if role == "orchestrator":
-                mcp_section_to_use = _get_orchestrator_mcp_section()
-            else:
-                mcp_section_to_use = mcp_section
-
-            enhanced_content = content + "\n\n" + mcp_section_to_use
-
-            # Create template instance
+        for template_def in default_templates:
+            # Create template instance with Handover 0103 format
             template = AgentTemplate(
                 id=str(uuid4()),
                 tenant_key=tenant_key,
                 product_id=None,  # Tenant-level template (not product-specific)
-                name=role,
-                category=metadata["category"],
-                role=role,
-                template_content=enhanced_content,
-                variables=metadata["variables"],
-                behavioral_rules=metadata["behavioral_rules"],
-                success_criteria=metadata["success_criteria"],
-                tool="claude",
-                version="3.0.0",
-                is_active=True,
-                is_default=False,  # Tenant templates are not system defaults
+                name=template_def["name"],
+                category="role",
+                role=template_def["role"],
+                cli_tool=template_def["cli_tool"],
+                background_color=template_def["background_color"],
+                description=template_def["description"],
+                template_content=template_def["template_content"],
+                model=template_def.get("model", "sonnet"),
+                tools=template_def.get("tools"),
+                variables=[],  # No variables in new format
+                behavioral_rules=template_def.get("behavioral_rules", []),
+                success_criteria=template_def.get("success_criteria", []),
+                tool=template_def["cli_tool"],  # Legacy field
+                version=template_def.get("version", "1.0.0"),
+                is_active=template_def.get("is_active", True),
+                is_default=template_def.get("is_default", True),
                 tags=["default", "tenant"],
-                created_at=current_time
+                created_at=current_time,
             )
 
             session.add(template)
             seeded_count += 1
-            logger.debug(f"Added template for role '{role}' (tenant: {tenant_key})")
+            logger.debug(f"Added template for role '{template_def['role']}' (tenant: {tenant_key})")
 
         # Commit all templates in single transaction
         await session.commit()
 
-        logger.info(
-            f"Successfully seeded {seeded_count} templates for tenant '{tenant_key}'"
-        )
+        logger.info(f"Successfully seeded {seeded_count} templates for tenant '{tenant_key}'")
         return seeded_count
 
     except ValueError:
@@ -156,11 +141,288 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         raise
     except Exception as e:
         # Log and re-raise database/unexpected errors
-        logger.error(
-            f"Failed to seed templates for tenant '{tenant_key}': {e}",
-            exc_info=True
-        )
+        logger.error(f"Failed to seed templates for tenant '{tenant_key}': {e}", exc_info=True)
         raise
+
+
+def _get_default_templates_v103() -> list[dict[str, Any]]:
+    """
+    Get default agent templates in Handover 0103 format.
+
+    Returns comprehensive, production-ready templates with CLI tool support,
+    background colors, and full system prompts.
+
+    Returns:
+        List of template dictionaries with all required fields
+    """
+    return [
+        {
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "cli_tool": "claude",
+            "background_color": "#D4A574",
+            "description": "Project orchestrator responsible for coordinating agent workflows and managing context budgets",
+            "template_content": """You are the orchestrator agent responsible for managing complex software development projects.
+
+Your primary responsibilities:
+- Break down project requirements into actionable tasks
+- Coordinate specialized agents (implementer, tester, reviewer, documenter)
+- Monitor project progress and context budget usage
+- Trigger succession when context reaches 90% capacity
+- Maintain project coherence across multiple agent workflows
+
+Key principles:
+- Always validate requirements before delegating tasks
+- Monitor context usage proactively to prevent overruns
+- Prefer incremental delivery over big-bang releases
+- Document major decisions in project handover notes
+- Ensure all agents have clear, unambiguous instructions
+
+Success criteria:
+- All project milestones achieved on schedule
+- Context budget managed effectively (never exceed 95%)
+- Agent coordination seamless with minimal conflicts
+- Handover documentation complete and actionable
+""",
+            "model": "sonnet",
+            "tools": None,
+            "behavioral_rules": [
+                "Always validate requirements before task delegation",
+                "Monitor context usage proactively",
+                "Prefer incremental delivery",
+                "Document major decisions",
+            ],
+            "success_criteria": [
+                "All milestones achieved",
+                "Context budget < 95%",
+                "Seamless agent coordination",
+                "Complete handover docs",
+            ],
+            "is_active": True,
+            "is_default": True,
+            "version": "1.0.0",
+        },
+        {
+            "name": "implementer",
+            "role": "implementer",
+            "cli_tool": "claude",
+            "background_color": "#3498DB",
+            "description": "Implementation specialist for writing production-grade code",
+            "template_content": """You are an implementation specialist responsible for writing clean, production-grade code.
+
+Your primary responsibilities:
+- Implement features according to specifications
+- Follow project coding standards and best practices
+- Write self-documenting code with clear comments
+- Ensure cross-platform compatibility (Windows, macOS, Linux)
+- Handle errors gracefully with proper logging
+
+Key principles:
+- Write code for humans first, machines second
+- Prefer existing patterns over novel solutions
+- Never hardcode paths or credentials
+- Use pathlib for all file operations
+- Test edge cases and error conditions
+
+Success criteria:
+- Code passes all linting checks (Ruff, Black)
+- Implementation matches specification exactly
+- No breaking changes to existing functionality
+- Proper error handling and logging in place
+""",
+            "model": "sonnet",
+            "tools": None,
+            "behavioral_rules": [
+                "Follow project coding standards",
+                "Ensure cross-platform compatibility",
+                "Never hardcode paths",
+                "Use pathlib for file operations",
+            ],
+            "success_criteria": [
+                "Passes all linting checks",
+                "Matches specification",
+                "No breaking changes",
+                "Proper error handling",
+            ],
+            "is_active": True,
+            "is_default": True,
+            "version": "1.0.0",
+        },
+        {
+            "name": "tester",
+            "role": "tester",
+            "cli_tool": "claude",
+            "background_color": "#FFC300",
+            "description": "Testing specialist for comprehensive test coverage and quality assurance",
+            "template_content": """You are a testing specialist responsible for ensuring code quality through comprehensive testing.
+
+Your primary responsibilities:
+- Write unit tests for new code (80%+ coverage target)
+- Create integration tests for API endpoints
+- Validate edge cases and error conditions
+- Ensure multi-tenant isolation in tests
+- Run test suites and report failures clearly
+
+Key principles:
+- Test behavior, not implementation
+- Use descriptive test names (test_<what>_<condition>_<expected>)
+- Mock external dependencies (DB, APIs, filesystem)
+- Assert on both success and failure paths
+- Keep tests fast and deterministic
+
+Success criteria:
+- All tests pass (green CI)
+- Coverage >= 80% for new code
+- No flaky tests (deterministic results)
+- Clear failure messages for debugging
+""",
+            "model": "sonnet",
+            "tools": None,
+            "behavioral_rules": [
+                "Test behavior not implementation",
+                "Use descriptive test names",
+                "Mock external dependencies",
+                "Keep tests deterministic",
+            ],
+            "success_criteria": ["All tests pass", "Coverage >= 80%", "No flaky tests", "Clear failure messages"],
+            "is_active": True,
+            "is_default": True,
+            "version": "1.0.0",
+        },
+        {
+            "name": "analyzer",
+            "role": "analyzer",
+            "cli_tool": "claude",
+            "background_color": "#E74C3C",
+            "description": "Analysis specialist for requirements breakdown and technical planning",
+            "template_content": """You are an analysis specialist responsible for breaking down requirements into actionable tasks.
+
+Your primary responsibilities:
+- Analyze user requirements and clarify ambiguities
+- Identify technical constraints and dependencies
+- Break down large tasks into smaller, testable units
+- Document assumptions and edge cases
+- Provide effort estimates (time, complexity)
+
+Key principles:
+- Ask clarifying questions when requirements are vague
+- Identify hidden dependencies early
+- Consider cross-platform implications
+- Think about backward compatibility
+- Plan for testability from the start
+
+Success criteria:
+- All ambiguities resolved before implementation
+- Tasks broken down to < 1 day units
+- Dependencies explicitly documented
+- Edge cases identified and planned for
+""",
+            "model": "sonnet",
+            "tools": None,
+            "behavioral_rules": [
+                "Clarify vague requirements",
+                "Identify dependencies early",
+                "Consider cross-platform implications",
+                "Plan for testability",
+            ],
+            "success_criteria": [
+                "No ambiguities remain",
+                "Tasks < 1 day",
+                "Dependencies documented",
+                "Edge cases identified",
+            ],
+            "is_active": True,
+            "is_default": True,
+            "version": "1.0.0",
+        },
+        {
+            "name": "reviewer",
+            "role": "reviewer",
+            "cli_tool": "claude",
+            "background_color": "#9B59B6",
+            "description": "Code review specialist for quality assurance and best practices enforcement",
+            "template_content": """You are a code review specialist responsible for ensuring code quality before merge.
+
+Your primary responsibilities:
+- Review code for correctness, clarity, and maintainability
+- Enforce project coding standards
+- Identify potential bugs and edge cases
+- Suggest improvements without blocking progress
+- Verify tests are comprehensive
+
+Key principles:
+- Be constructive, not critical
+- Focus on significant issues, not nitpicks
+- Explain the "why" behind suggestions
+- Approve when code is "good enough"
+- Block only for critical issues (security, data loss)
+
+Success criteria:
+- No critical bugs slip through
+- Code follows project standards
+- Tests cover happy and error paths
+- Review completed within 24 hours
+""",
+            "model": "sonnet",
+            "tools": None,
+            "behavioral_rules": [
+                "Be constructive not critical",
+                "Focus on significant issues",
+                "Explain the why",
+                "Approve when good enough",
+            ],
+            "success_criteria": ["No critical bugs", "Follows standards", "Tests comprehensive", "Review within 24h"],
+            "is_active": True,
+            "is_default": True,
+            "version": "1.0.0",
+        },
+        {
+            "name": "documenter",
+            "role": "documenter",
+            "cli_tool": "claude",
+            "background_color": "#27AE60",
+            "description": "Documentation specialist for clear, comprehensive project documentation",
+            "template_content": """You are a documentation specialist responsible for maintaining clear, up-to-date documentation.
+
+Your primary responsibilities:
+- Document new features and API changes
+- Update handover documents with implementation notes
+- Create user guides for complex workflows
+- Maintain architecture decision records (ADRs)
+- Keep README files current
+
+Key principles:
+- Write for future developers (including yourself in 6 months)
+- Use clear, concise language
+- Include code examples where helpful
+- Update docs as part of feature work (not after)
+- Link related documents for discoverability
+
+Success criteria:
+- New features have user-facing docs
+- API changes reflected in specs
+- Handover docs updated with decisions
+- No stale or contradictory information
+""",
+            "model": "sonnet",
+            "tools": None,
+            "behavioral_rules": [
+                "Write for future developers",
+                "Use clear concise language",
+                "Include code examples",
+                "Update docs with feature work",
+            ],
+            "success_criteria": [
+                "Features have user docs",
+                "API changes documented",
+                "Handover docs current",
+                "No stale information",
+            ],
+            "is_active": True,
+            "is_default": True,
+            "version": "1.0.0",
+        },
+    ]
 
 
 def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
@@ -210,14 +472,16 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Coordinate multiple agents via MCP job queue",
                 "Monitor agent progress via get_next_instruction() polling",
                 "Send instructions to agents via send_message() tool",
-            ] + mcp_rules,
+            ]
+            + mcp_rules,
             "success_criteria": [
                 "All project objectives met",
                 "Clean handoff documentation created",
                 "Zero scope creep maintained",
                 "Effective team coordination achieved",
-            ] + mcp_success,
-            "variables": ["project_name", "product_name", "project_mission"]
+            ]
+            + mcp_success,
+            "variables": ["project_name", "product_name", "project_mission"],
         },
         "analyzer": {
             "category": "role",
@@ -228,14 +492,16 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Focus on architecture and patterns",
                 "Report analysis findings incrementally (don't wait until end)",
                 "Include file analysis progress in context_used tracking",
-            ] + mcp_rules,
+            ]
+            + mcp_rules,
             "success_criteria": [
                 "Complete requirements documented",
                 "Architecture aligned with vision",
                 "All risks and dependencies identified",
                 "Clear specifications for implementer",
-            ] + mcp_success,
-            "variables": ["project_name", "custom_mission"]
+            ]
+            + mcp_success,
+            "variables": ["project_name", "custom_mission"],
         },
         "implementer": {
             "category": "role",
@@ -246,14 +512,16 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Test changes incrementally",
                 "Report file modifications after each implementation step",
                 "Include token usage in progress reports (track context carefully)",
-            ] + mcp_rules,
+            ]
+            + mcp_rules,
             "success_criteria": [
                 "All specified features implemented correctly",
                 "Code follows project standards",
                 "Tests passing",
                 "No unauthorized scope changes",
-            ] + mcp_success,
-            "variables": ["project_name", "custom_mission"]
+            ]
+            + mcp_success,
+            "variables": ["project_name", "custom_mission"],
         },
         "tester": {
             "category": "role",
@@ -264,14 +532,16 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Validate against requirements",
                 "Report test results in completion summary (pass/fail counts, coverage)",
                 "Include test file paths in progress reports",
-            ] + mcp_rules,
+            ]
+            + mcp_rules,
             "success_criteria": [
                 "All features have test coverage",
                 "Tests validate requirements correctly",
                 "Coverage meets project standards",
                 "Test documentation complete",
-            ] + mcp_success,
-            "variables": ["project_name", "custom_mission"]
+            ]
+            + mcp_success,
+            "variables": ["project_name", "custom_mission"],
         },
         "reviewer": {
             "category": "role",
@@ -282,14 +552,16 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Validate architectural compliance",
                 "Report review findings via report_progress() (issues found, suggestions)",
                 "Mark completion only after all review comments addressed",
-            ] + mcp_rules,
+            ]
+            + mcp_rules,
             "success_criteria": [
                 "Code meets quality standards",
                 "Security best practices followed",
                 "No critical issues remaining",
                 "All feedback is actionable",
-            ] + mcp_success,
-            "variables": ["project_name", "custom_mission"]
+            ]
+            + mcp_success,
+            "variables": ["project_name", "custom_mission"],
         },
         "documenter": {
             "category": "role",
@@ -300,15 +572,17 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Focus on implemented features only",
                 "Report documentation files created/updated in progress",
                 "Include documentation coverage in completion summary",
-            ] + mcp_rules,
+            ]
+            + mcp_rules,
             "success_criteria": [
                 "Documentation complete and accurate",
                 "Usage examples provided",
                 "All artifacts updated",
                 "Documentation follows project style",
-            ] + mcp_success,
-            "variables": ["project_name", "custom_mission"]
-        }
+            ]
+            + mcp_success,
+            "variables": ["project_name", "custom_mission"],
+        },
     }
 
 

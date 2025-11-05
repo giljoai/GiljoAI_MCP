@@ -27,7 +27,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import Session, declarative_base, relationship, synonym
+from sqlalchemy.orm import Session, declarative_base, relationship
 from sqlalchemy.sql import func
 
 
@@ -51,11 +51,11 @@ def generate_project_alias():
     Returns:
         str: 6-character alphanumeric alias
     """
-    import string
     import random
+    import string
 
     chars = string.ascii_uppercase + string.digits
-    return ''.join(random.choices(chars, k=6))
+    return "".join(random.choices(chars, k=6))
 
 
 class Product(Base):
@@ -79,31 +79,40 @@ class Product(Base):
 
     # Handover 0084: Project path for agent export (required for copy-command interface)
     project_path = Column(
-        String(500),
-        nullable=True,
-        comment="File system path to product folder (required for agent export)"
+        String(500), nullable=True, comment="File system path to product folder (required for agent export)"
     )
 
     # DEPRECATED (Handover 0043): Legacy single-vision fields - Use vision_documents relationship instead
     # These fields remain for backward compatibility but new code should use VisionDocument model
-    vision_path = Column(String(500), nullable=True,
-        comment="DEPRECATED: File path to vision document (use vision_documents relationship)")
-    vision_document = Column(Text, nullable=True,
-        comment="DEPRECATED: Inline vision text (use vision_documents relationship)")
-    vision_type = Column(String(20), default="none",
-        comment="DEPRECATED: Vision source (use vision_documents relationship)")
-    chunked = Column(Boolean, default=False,
-        comment="DEPRECATED: Chunking status (use vision_documents.chunked)")
+    vision_path = Column(
+        String(500),
+        nullable=True,
+        comment="DEPRECATED: File path to vision document (use vision_documents relationship)",
+    )
+    vision_document = Column(
+        Text, nullable=True, comment="DEPRECATED: Inline vision text (use vision_documents relationship)"
+    )
+    vision_type = Column(
+        String(20), default="none", comment="DEPRECATED: Vision source (use vision_documents relationship)"
+    )
+    chunked = Column(Boolean, default=False, comment="DEPRECATED: Chunking status (use vision_documents.chunked)")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True,
-                       comment="Timestamp when product was soft deleted (NULL for active products)")
+    deleted_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when product was soft deleted (NULL for active products)",
+    )
     meta_data = Column(JSON, default=dict)
 
     # Product status (Handover 0049)
-    is_active = Column(Boolean, default=False, nullable=False,
-        comment="Active product for token estimation and mission planning (one per tenant)")
+    is_active = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        comment="Active product for token estimation and mission planning (one per tenant)",
+    )
 
     # Rich configuration data (JSONB for PostgreSQL performance)
     config_data = Column(
@@ -118,25 +127,24 @@ class Product(Base):
     tasks = relationship("Task", back_populates="product", cascade="all, delete-orphan")
 
     # Handover 0043: Multi-Vision Document Support
-    vision_documents = relationship("VisionDocument", back_populates="product",
-                                   cascade="all, delete-orphan",
-                                   order_by="VisionDocument.display_order")
+    vision_documents = relationship(
+        "VisionDocument",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="VisionDocument.display_order",
+    )
 
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
-        Index("idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")),  # Soft delete support
-        CheckConstraint(
-            "vision_type IN ('file', 'inline', 'none')",
-            name="ck_product_vision_type"
-        ),
+        Index(
+            "idx_products_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")
+        ),  # Soft delete support
+        CheckConstraint("vision_type IN ('file', 'inline', 'none')", name="ck_product_vision_type"),
         # Handover 0050: Enforce single active product per tenant (defense in depth)
         Index(
-            "idx_product_single_active_per_tenant",
-            "tenant_key",
-            unique=True,
-            postgresql_where=text("is_active = true")
+            "idx_product_single_active_per_tenant", "tenant_key", unique=True, postgresql_where=text("is_active = true")
         ),
     )
 
@@ -174,7 +182,7 @@ class Product(Base):
     @property
     def has_vision_documents(self) -> bool:
         """Check if product has any active vision documents"""
-        if not hasattr(self, 'vision_documents') or not self.vision_documents:
+        if not hasattr(self, "vision_documents") or not self.vision_documents:
             return False
         return any(doc.is_active for doc in self.vision_documents)
 
@@ -223,98 +231,94 @@ class VisionDocument(Base):
     product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
 
     # Document identification
-    document_name = Column(String(255), nullable=False,
-        comment="User-friendly document name (e.g., 'Product Architecture', 'API Design')")
-    document_type = Column(String(50), nullable=False, default="vision",
-        comment="Document category: vision, architecture, features, setup, api, testing, deployment, custom")
+    document_name = Column(
+        String(255), nullable=False, comment="User-friendly document name (e.g., 'Product Architecture', 'API Design')"
+    )
+    document_type = Column(
+        String(50),
+        nullable=False,
+        default="vision",
+        comment="Document category: vision, architecture, features, setup, api, testing, deployment, custom",
+    )
 
     # Storage configuration (flexible: file, inline, or hybrid)
-    vision_path = Column(String(500), nullable=True,
-        comment="File path to vision document (file-based or hybrid storage)")
-    vision_document = Column(Text, nullable=True,
-        comment="Inline vision text (inline or hybrid storage)")
-    storage_type = Column(String(20), nullable=False, default="file",
-        comment="Storage mode: 'file', 'inline', or 'hybrid'")
+    vision_path = Column(
+        String(500), nullable=True, comment="File path to vision document (file-based or hybrid storage)"
+    )
+    vision_document = Column(Text, nullable=True, comment="Inline vision text (inline or hybrid storage)")
+    storage_type = Column(
+        String(20), nullable=False, default="file", comment="Storage mode: 'file', 'inline', or 'hybrid'"
+    )
 
     # Chunking state
-    chunked = Column(Boolean, default=False, nullable=False,
-        comment="Has document been chunked into mcp_context_index for RAG")
-    chunk_count = Column(Integer, default=0, nullable=False,
-        comment="Number of chunks created for this document")
-    total_tokens = Column(Integer, nullable=True,
-        comment="Estimated total tokens in document")
-    file_size = Column(BigInteger, nullable=True,
-        comment="Original file size in bytes (NULL for inline content without file)")
+    chunked = Column(
+        Boolean, default=False, nullable=False, comment="Has document been chunked into mcp_context_index for RAG"
+    )
+    chunk_count = Column(Integer, default=0, nullable=False, comment="Number of chunks created for this document")
+    total_tokens = Column(Integer, nullable=True, comment="Estimated total tokens in document")
+    file_size = Column(
+        BigInteger, nullable=True, comment="Original file size in bytes (NULL for inline content without file)"
+    )
 
     # Versioning and integrity
-    version = Column(String(50), default="1.0.0", nullable=False,
-        comment="Document version using semantic versioning")
-    content_hash = Column(String(64), nullable=True,
-        comment="SHA-256 hash of document content for change detection")
+    version = Column(String(50), default="1.0.0", nullable=False, comment="Document version using semantic versioning")
+    content_hash = Column(String(64), nullable=True, comment="SHA-256 hash of document content for change detection")
 
     # Status and display
-    is_active = Column(Boolean, default=True, nullable=False,
-        comment="Active documents are used for context; inactive are archived")
-    display_order = Column(Integer, default=0, nullable=False,
-        comment="Display order in UI (lower numbers first)")
+    is_active = Column(
+        Boolean, default=True, nullable=False, comment="Active documents are used for context; inactive are archived"
+    )
+    display_order = Column(Integer, default=0, nullable=False, comment="Display order in UI (lower numbers first)")
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Additional metadata
-    meta_data = Column(JSON, default=dict,
-        comment="Additional metadata: author, tags, source_url, etc.")
+    meta_data = Column(JSON, default=dict, comment="Additional metadata: author, tags, source_url, etc.")
 
     # Relationships
     product = relationship("Product", back_populates="vision_documents")
-    chunks = relationship("MCPContextIndex", back_populates="vision_document",
-                         cascade="all, delete-orphan",
-                         foreign_keys="MCPContextIndex.vision_document_id")
+    chunks = relationship(
+        "MCPContextIndex",
+        back_populates="vision_document",
+        cascade="all, delete-orphan",
+        foreign_keys="MCPContextIndex.vision_document_id",
+    )
 
     __table_args__ = (
         # Unique constraint: one document name per product
         UniqueConstraint("product_id", "document_name", name="uq_vision_doc_product_name"),
-
         # Multi-tenant isolation index (PRIMARY)
         Index("idx_vision_doc_tenant", "tenant_key"),
         Index("idx_vision_doc_product", "product_id"),
-
         # Query optimization indexes
         Index("idx_vision_doc_type", "document_type"),
         Index("idx_vision_doc_active", "is_active"),
         Index("idx_vision_doc_chunked", "chunked"),
-
         # Composite indexes for common queries
         Index("idx_vision_doc_tenant_product", "tenant_key", "product_id"),
         Index("idx_vision_doc_product_type", "product_id", "document_type"),
         Index("idx_vision_doc_product_active", "product_id", "is_active", "display_order"),
-
         # Storage type constraint
-        CheckConstraint(
-            "storage_type IN ('file', 'inline', 'hybrid')",
-            name="ck_vision_doc_storage_type"
-        ),
-
+        CheckConstraint("storage_type IN ('file', 'inline', 'hybrid')", name="ck_vision_doc_storage_type"),
         # Document type constraint
         CheckConstraint(
             "document_type IN ('vision', 'architecture', 'features', 'setup', 'api', 'testing', 'deployment', 'custom')",
-            name="ck_vision_doc_document_type"
+            name="ck_vision_doc_document_type",
         ),
-
         # Storage consistency constraints
         CheckConstraint(
             "(storage_type = 'file' AND vision_path IS NOT NULL) OR "
             "(storage_type = 'inline' AND vision_document IS NOT NULL) OR "
             "(storage_type = 'hybrid' AND vision_path IS NOT NULL AND vision_document IS NOT NULL)",
-            name="ck_vision_doc_storage_consistency"
+            name="ck_vision_doc_storage_consistency",
         ),
-
         # Chunk count consistency
         CheckConstraint("chunk_count >= 0", name="ck_vision_doc_chunk_count"),
         CheckConstraint(
             "(chunked = false AND chunk_count = 0) OR (chunked = true AND chunk_count > 0)",
-            name="ck_vision_doc_chunked_consistency"
+            name="ck_vision_doc_chunked_consistency",
         ),
     )
 
@@ -334,14 +338,16 @@ class VisionDocument(Base):
 
         # Calculate current content hash
         import hashlib
+
         content = ""
 
         if self.storage_type == "file" and self.vision_path:
             try:
                 from pathlib import Path
+
                 path = Path(self.vision_path)
                 if path.exists():
-                    content = path.read_text(encoding='utf-8')
+                    content = path.read_text(encoding="utf-8")
             except Exception:
                 return True
         elif self.storage_type == "inline" and self.vision_document:
@@ -351,15 +357,16 @@ class VisionDocument(Base):
             if self.vision_path:
                 try:
                     from pathlib import Path
+
                     path = Path(self.vision_path)
                     if path.exists():
-                        content += path.read_text(encoding='utf-8')
+                        content += path.read_text(encoding="utf-8")
                 except Exception:
                     pass
             if self.vision_document:
                 content += self.vision_document
 
-        current_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        current_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         return current_hash != self.content_hash
 
     def update_content_hash(self) -> str:
@@ -370,14 +377,16 @@ class VisionDocument(Base):
             The new content hash (SHA-256)
         """
         import hashlib
+
         content = ""
 
         if self.storage_type == "file" and self.vision_path:
             try:
                 from pathlib import Path
+
                 path = Path(self.vision_path)
                 if path.exists():
-                    content = path.read_text(encoding='utf-8')
+                    content = path.read_text(encoding="utf-8")
             except Exception:
                 pass
         elif self.storage_type == "inline" and self.vision_document:
@@ -387,15 +396,16 @@ class VisionDocument(Base):
             if self.vision_path:
                 try:
                     from pathlib import Path
+
                     path = Path(self.vision_path)
                     if path.exists():
-                        content += path.read_text(encoding='utf-8')
+                        content += path.read_text(encoding="utf-8")
                 except Exception:
                     pass
             if self.vision_document:
                 content += self.vision_document
 
-        self.content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        self.content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         return self.content_hash
 
     def __repr__(self):
@@ -414,35 +424,56 @@ class Project(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False, default=generate_uuid)
-    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)  # Projects belong to Products
+    product_id = Column(
+        String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True
+    )  # Projects belong to Products
     name = Column(String(255), nullable=False)
-    alias = Column(String(6), nullable=False, unique=True, index=True, default=generate_project_alias,
-                   comment="6-character alphanumeric project identifier (e.g., A1B2C3)")
+    alias = Column(
+        String(6),
+        nullable=False,
+        unique=True,
+        index=True,
+        default=generate_project_alias,
+        comment="6-character alphanumeric project identifier (e.g., A1B2C3)",
+    )
 
     # Human-written project description (Handover 0062)
     description = Column(Text, nullable=False)
 
     # Mission statement (AI-generated by orchestrator)
     mission = Column(Text, nullable=False)
-    status = Column(String(50), default="inactive")  # inactive, active, completed, cancelled, deleted (Handover 0071: removed paused/archived)
+    status = Column(
+        String(50), default="inactive"
+    )  # inactive, active, completed, cancelled, deleted (Handover 0071: removed paused/archived)
     context_budget = Column(Integer, default=150000)
     context_used = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True,
-                       comment="Timestamp when project was soft deleted (NULL for active projects)")
+    deleted_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when project was soft deleted (NULL for active projects)",
+    )
     meta_data = Column(JSON, default=dict)
 
     # Handover 0073: Orchestrator closeout support
-    orchestrator_summary = Column(Text, nullable=True,
-        comment="AI-generated final summary of project outcomes and deliverables")
-    closeout_prompt = Column(Text, nullable=True,
-        comment="Prompt template used by orchestrator for closeout generation")
-    closeout_executed_at = Column(DateTime(timezone=True), nullable=True,
-        comment="Timestamp when closeout workflow was executed")
-    closeout_checklist = Column(JSONB, default=list, nullable=False, server_default=text("'[]'::jsonb"),
-        comment="Structured checklist of closeout tasks (JSONB array)")
+    orchestrator_summary = Column(
+        Text, nullable=True, comment="AI-generated final summary of project outcomes and deliverables"
+    )
+    closeout_prompt = Column(
+        Text, nullable=True, comment="Prompt template used by orchestrator for closeout generation"
+    )
+    closeout_executed_at = Column(
+        DateTime(timezone=True), nullable=True, comment="Timestamp when closeout workflow was executed"
+    )
+    closeout_checklist = Column(
+        JSONB,
+        default=list,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+        comment="Structured checklist of closeout tasks (JSONB array)",
+    )
 
     # Backwards compatibility alias for 'id' field (Handover 0086A)
     # DEPRECATED: Will be removed in v4.0
@@ -459,10 +490,9 @@ class Project(Base):
         while we transition to the standardized 'id' field across all models.
         """
         import warnings
+
         warnings.warn(
-            "project_id is deprecated, use 'id' instead. Will be removed in v4.0.",
-            DeprecationWarning,
-            stacklevel=2
+            "project_id is deprecated, use 'id' instead. Will be removed in v4.0.", DeprecationWarning, stacklevel=2
         )
         return self.id
 
@@ -474,10 +504,11 @@ class Project(Base):
         DEPRECATED: Set 'id' directly instead of 'project_id'.
         """
         import warnings
+
         warnings.warn(
             "Setting project_id is deprecated, set 'id' instead. Will be removed in v4.0.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         self.id = value
 
@@ -486,7 +517,9 @@ class Project(Base):
     agents = relationship("Agent", back_populates="project", cascade="all, delete-orphan")
     agent_jobs = relationship("MCPAgentJob", back_populates="project", cascade="all, delete-orphan")  # Handover 0062
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
-    tasks = relationship("Task", foreign_keys="Task.project_id", back_populates="project", cascade="all, delete-orphan")  # Specify FK to avoid ambiguity
+    tasks = relationship(
+        "Task", foreign_keys="Task.project_id", back_populates="project", cascade="all, delete-orphan"
+    )  # Specify FK to avoid ambiguity
     sessions = relationship("Session", back_populates="project", cascade="all, delete-orphan")
     visions = relationship("Vision", back_populates="project", cascade="all, delete-orphan")
     context_indexes = relationship("ContextIndex", back_populates="project", cascade="all, delete-orphan")
@@ -498,14 +531,18 @@ class Project(Base):
         # Handover 0070: Soft delete support
         Index("idx_projects_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")),
         # Handover 0073: Closeout support
-        Index("idx_projects_closeout_executed", "closeout_executed_at", postgresql_where=text("closeout_executed_at IS NOT NULL")),
+        Index(
+            "idx_projects_closeout_executed",
+            "closeout_executed_at",
+            postgresql_where=text("closeout_executed_at IS NOT NULL"),
+        ),
         # Single active project per product constraint (Handover 0050b)
         # Ensures only ONE project can be active per product at any time
         Index(
             "idx_project_single_active_per_product",
             "product_id",
             unique=True,
-            postgresql_where=text("status = 'active'")
+            postgresql_where=text("status = 'active'"),
         ),
     )
 
@@ -621,8 +658,12 @@ class Task(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
-    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)  # Product-level scope for task isolation
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)  # Handover 0072: Nullable for unassigned tasks
+    product_id = Column(
+        String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True
+    )  # Product-level scope for task isolation
+    project_id = Column(
+        String(36), ForeignKey("projects.id"), nullable=True
+    )  # Handover 0072: Nullable for unassigned tasks
     parent_task_id = Column(String(36), ForeignKey("tasks.id"), nullable=True)
     # Handover 0076: Removed assigned_agent_id field
 
@@ -650,7 +691,9 @@ class Task(Base):
 
     # Relationships
     product = relationship("Product", back_populates="tasks", foreign_keys=[product_id])
-    project = relationship("Project", back_populates="tasks", foreign_keys=[project_id])  # Specify FK to avoid ambiguity with converted_to_project_id
+    project = relationship(
+        "Project", back_populates="tasks", foreign_keys=[project_id]
+    )  # Specify FK to avoid ambiguity with converted_to_project_id
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
     parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])
 
@@ -962,6 +1005,12 @@ class AgentTemplate(Base):
 
     # Tool assignment (Handover 0045 - Multi-Tool Agent Orchestration)
     tool = Column(String(50), nullable=False, default="claude", index=True)  # AI tool: claude, codex, gemini
+
+    # Multi-CLI Tool Support (Handover 0103)
+    cli_tool = Column(String(20), default="claude", nullable=False)  # CLI tool: claude, codex, gemini, generic
+    background_color = Column(String(7))  # Hex color code for role visualization
+    model = Column(String(20))  # Model selection: sonnet, opus, haiku, inherit
+    tools = Column(String(50))  # Tool selection (null = inherit all)
 
     # Usage tracking
     usage_count = Column(Integer, default=0)
@@ -1316,12 +1365,10 @@ class SetupState(Base):
         default=False,
         nullable=False,
         index=True,
-        comment="True after first admin account created - prevents duplicate admin creation attacks"
+        comment="True after first admin account created - prevents duplicate admin creation attacks",
     )
     first_admin_created_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Timestamp when first admin account was created"
+        DateTime(timezone=True), nullable=True, comment="Timestamp when first admin account was created"
     )
 
     # Feature and tool configuration (JSONB for performance)
@@ -1372,12 +1419,12 @@ class SetupState(Base):
         # Database initialized timestamp must be set when database_initialized=true
         CheckConstraint(
             "(database_initialized = false) OR (database_initialized = true AND database_initialized_at IS NOT NULL)",
-            name="ck_database_initialized_at_required"
+            name="ck_database_initialized_at_required",
         ),
         # First admin created timestamp must be set when first_admin_created=true
         CheckConstraint(
             "(first_admin_created = false) OR (first_admin_created = true AND first_admin_created_at IS NOT NULL)",
-            name="ck_first_admin_created_at_required"
+            name="ck_first_admin_created_at_required",
         ),
         # Regular indexes
         Index("idx_setup_tenant", "tenant_key"),  # Primary lookup index
@@ -1387,9 +1434,19 @@ class SetupState(Base):
         Index("idx_setup_features_gin", "features_configured", postgresql_using="gin"),
         Index("idx_setup_tools_gin", "tools_enabled", postgresql_using="gin"),
         # Partial index for incomplete database initialization (frequently queried)
-        Index("idx_setup_database_incomplete", "tenant_key", "database_initialized", postgresql_where="database_initialized = false"),
+        Index(
+            "idx_setup_database_incomplete",
+            "tenant_key",
+            "database_initialized",
+            postgresql_where="database_initialized = false",
+        ),
         # Partial index for fresh installs (no admin created yet) - used by security checks
-        Index("idx_setup_fresh_install", "tenant_key", "first_admin_created", postgresql_where="first_admin_created = false"),
+        Index(
+            "idx_setup_fresh_install",
+            "tenant_key",
+            "first_admin_created",
+            postgresql_where="first_admin_created = false",
+        ),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1403,7 +1460,9 @@ class SetupState(Base):
             "id": self.id,
             "tenant_key": self.tenant_key,
             "database_initialized": self.database_initialized,
-            "database_initialized_at": self.database_initialized_at.isoformat() if self.database_initialized_at else None,
+            "database_initialized_at": self.database_initialized_at.isoformat()
+            if self.database_initialized_at
+            else None,
             "setup_version": self.setup_version,
             "database_version": self.database_version,
             "python_version": self.python_version,
@@ -1590,32 +1649,24 @@ class User(Base):
 
     # Recovery PIN for password reset (Handover 0023)
     recovery_pin_hash = Column(
-        String(255),
-        nullable=True,
-        comment="Bcrypt hash of 4-digit recovery PIN for password reset"
+        String(255), nullable=True, comment="Bcrypt hash of 4-digit recovery PIN for password reset"
     )
     failed_pin_attempts = Column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Number of failed PIN verification attempts (rate limiting)"
+        Integer, default=0, nullable=False, comment="Number of failed PIN verification attempts (rate limiting)"
     )
     pin_lockout_until = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Timestamp when PIN lockout expires (15 minutes after 5 failed attempts)"
+        comment="Timestamp when PIN lockout expires (15 minutes after 5 failed attempts)",
     )
     must_change_password = Column(
         Boolean,
         default=False,
         nullable=False,
-        comment="Force user to change password on next login (new users, admin reset)"
+        comment="Force user to change password on next login (new users, admin reset)",
     )
     must_set_pin = Column(
-        Boolean,
-        default=False,
-        nullable=False,
-        comment="Force user to set recovery PIN on next login (new users)"
+        Boolean, default=False, nullable=False, comment="Force user to set recovery PIN on next login (new users)"
     )
 
     # System user flag (for auto-login localhost user)
@@ -1636,7 +1687,9 @@ class User(Base):
     last_login = Column(DateTime(timezone=True), nullable=True)
 
     # User Preferences (Handover 0048)
-    field_priority_config = Column(JSONB, nullable=True, default=None, comment="User-customizable field priority for agent mission generation")
+    field_priority_config = Column(
+        JSONB, nullable=True, default=None, comment="User-customizable field priority for agent mission generation"
+    )
 
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
@@ -1748,10 +1801,7 @@ class MCPSession(Base):
 
     # Session data (JSONB for performance)
     session_data = Column(
-        JSONB,
-        nullable=False,
-        default=dict,
-        comment="MCP protocol state: client_info, capabilities, tool_call_history"
+        JSONB, nullable=False, default=dict, comment="MCP protocol state: client_info, capabilities, tool_call_history"
     )
 
     # Timestamps
@@ -1824,7 +1874,7 @@ class OptimizationRule(Base):
         Index("idx_optimization_rule_active", "is_active"),
         CheckConstraint(
             "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
-            name="ck_optimization_rule_operation_type"
+            name="ck_optimization_rule_operation_type",
         ),
         CheckConstraint("max_answer_chars > 0", name="ck_optimization_rule_max_chars"),
         CheckConstraint("priority >= 0", name="ck_optimization_rule_priority"),
@@ -1876,7 +1926,7 @@ class OptimizationMetric(Base):
         Index("idx_optimization_metric_optimized", "optimized"),
         CheckConstraint(
             "operation_type IN ('file_read', 'symbol_search', 'symbol_replace', 'pattern_search', 'directory_list')",
-            name="ck_optimization_metric_operation_type"
+            name="ck_optimization_metric_operation_type",
         ),
         CheckConstraint("params_size >= 0", name="ck_optimization_metric_params_size"),
         CheckConstraint("result_size >= 0", name="ck_optimization_metric_result_size"),
@@ -1897,7 +1947,7 @@ class MCPContextIndex(Base):
     Multi-tenant isolation: All queries filter by tenant_key.
     """
 
-    __tablename__ = 'mcp_context_index'
+    __tablename__ = "mcp_context_index"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)
@@ -1905,26 +1955,25 @@ class MCPContextIndex(Base):
     product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)
 
     # Handover 0043: Multi-Vision Document Support
-    vision_document_id = Column(String(36), ForeignKey("vision_documents.id", ondelete="CASCADE"), nullable=True,
-        comment="Link to specific vision document (NULL for legacy product-level chunks)")
+    vision_document_id = Column(
+        String(36),
+        ForeignKey("vision_documents.id", ondelete="CASCADE"),
+        nullable=True,
+        comment="Link to specific vision document (NULL for legacy product-level chunks)",
+    )
     content = Column(Text, nullable=False)
-    summary = Column(Text, nullable=True,
-        comment="Optional LLM-generated summary (NULL for Phase 1 non-LLM chunking)")
-    keywords = Column(JSON, default=list,
-        comment="Array of keyword strings extracted via regex or LLM")
+    summary = Column(Text, nullable=True, comment="Optional LLM-generated summary (NULL for Phase 1 non-LLM chunking)")
+    keywords = Column(JSON, default=list, comment="Array of keyword strings extracted via regex or LLM")
     token_count = Column(Integer, nullable=True)
-    chunk_order = Column(Integer, nullable=True,
-        comment="Sequential chunk number for maintaining document order")
+    chunk_order = Column(Integer, nullable=True, comment="Sequential chunk number for maintaining document order")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # PostgreSQL full-text search (requires pg_trgm extension)
-    searchable_vector = Column(TSVECTOR, nullable=True,
-        comment="Full-text search vector for fast keyword lookup")
+    searchable_vector = Column(TSVECTOR, nullable=True, comment="Full-text search vector for fast keyword lookup")
 
     # Relationships
     product = relationship("Product", backref="context_chunks")
-    vision_document = relationship("VisionDocument", back_populates="chunks",
-                                   foreign_keys=[vision_document_id])
+    vision_document = relationship("VisionDocument", back_populates="chunks", foreign_keys=[vision_document_id])
 
     __table_args__ = (
         Index("idx_mcp_context_tenant_product", "tenant_key", "product_id"),
@@ -1949,20 +1998,17 @@ class MCPContextSummary(Base):
     Multi-tenant isolation: All queries filter by tenant_key.
     """
 
-    __tablename__ = 'mcp_context_summary'
+    __tablename__ = "mcp_context_summary"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)
     context_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
     product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True)
-    full_content = Column(Text, nullable=False,
-        comment="Original full context before condensation")
-    condensed_mission = Column(Text, nullable=False,
-        comment="Orchestrator-generated condensed mission")
+    full_content = Column(Text, nullable=False, comment="Original full context before condensation")
+    condensed_mission = Column(Text, nullable=False, comment="Orchestrator-generated condensed mission")
     full_token_count = Column(Integer, nullable=True)
     condensed_token_count = Column(Integer, nullable=True)
-    reduction_percent = Column(Float, nullable=True,
-        comment="Token reduction percentage achieved")
+    reduction_percent = Column(Float, nullable=True, comment="Token reduction percentage achieved")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -1989,70 +2035,75 @@ class MCPAgentJob(Base):
     Multi-tenant isolation: All queries filter by tenant_key.
     """
 
-    __tablename__ = 'mcp_agent_jobs'
+    __tablename__ = "mcp_agent_jobs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_key = Column(String(36), nullable=False, index=True)
-    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True, index=True,
-        comment="Project ID this job belongs to (Handover 0062)")  # nullable=True for backward compat
+    project_id = Column(
+        String(36),
+        ForeignKey("projects.id"),
+        nullable=True,
+        index=True,
+        comment="Project ID this job belongs to (Handover 0062)",
+    )  # nullable=True for backward compat
     job_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
-    agent_type = Column(String(100), nullable=False,
-        comment="Agent type: orchestrator, analyzer, implementer, tester, etc.")
-    mission = Column(Text, nullable=False,
-        comment="Agent mission/instructions")
+    agent_type = Column(
+        String(100), nullable=False, comment="Agent type: orchestrator, analyzer, implementer, tester, etc."
+    )
+    mission = Column(Text, nullable=False, comment="Agent mission/instructions")
 
     # Handover 0073: Expanded status states (waiting, preparing, working, review, complete, failed, blocked)
     status = Column(String(50), default="waiting", nullable=False)
 
-    spawned_by = Column(String(36), nullable=True,
-        comment="Agent ID that spawned this job")
-    context_chunks = Column(JSON, default=list,
-        comment="Array of chunk_ids from mcp_context_index for context loading")
-    messages = Column(JSONB, default=list,
-        comment="Array of message objects for agent communication")
+    spawned_by = Column(String(36), nullable=True, comment="Agent ID that spawned this job")
+    context_chunks = Column(JSON, default=list, comment="Array of chunk_ids from mcp_context_index for context loading")
+    messages = Column(JSONB, default=list, comment="Array of message objects for agent communication")
     acknowledged = Column(Boolean, default=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Handover 0073: Progress tracking columns
-    progress = Column(Integer, default=0, nullable=False,
-        comment="Job completion progress (0-100%)")
-    block_reason = Column(Text, nullable=True,
-        comment="Explanation of why job is blocked (NULL if not blocked)")
-    current_task = Column(Text, nullable=True,
-        comment="Description of current task being executed")
-    estimated_completion = Column(DateTime(timezone=True), nullable=True,
-        comment="Estimated completion timestamp")
+    progress = Column(Integer, default=0, nullable=False, comment="Job completion progress (0-100%)")
+    block_reason = Column(Text, nullable=True, comment="Explanation of why job is blocked (NULL if not blocked)")
+    current_task = Column(Text, nullable=True, comment="Description of current task being executed")
+    estimated_completion = Column(DateTime(timezone=True), nullable=True, comment="Estimated completion timestamp")
 
     # Handover 0073: Tool assignment columns
-    tool_type = Column(String(20), default="universal", nullable=False,
-        comment="AI coding tool assigned to this agent job (claude-code, codex, gemini, universal)")
-    agent_name = Column(String(255), nullable=True,
-        comment="Human-readable agent display name (e.g., Backend Agent, Database Agent)")
+    tool_type = Column(
+        String(20),
+        default="universal",
+        nullable=False,
+        comment="AI coding tool assigned to this agent job (claude-code, codex, gemini, universal)",
+    )
+    agent_name = Column(
+        String(255), nullable=True, comment="Human-readable agent display name (e.g., Backend Agent, Database Agent)"
+    )
 
     # Handover 0080: Orchestrator succession architecture
-    instance_number = Column(Integer, default=1, nullable=False,
-        comment="Sequential instance number for orchestrator succession (1, 2, 3, ...)")
-    handover_to = Column(String(36), nullable=True,
-        comment="UUID of successor orchestrator job (NULL if no handover)")
-    handover_summary = Column(JSONB, nullable=True,
-        comment="Compressed state transfer for successor orchestrator")
-    handover_context_refs = Column(JSON, default=list,
-        comment="Array of context chunk IDs referenced in handover summary")
-    succession_reason = Column(String(100), nullable=True,
-        comment="Reason for succession: 'context_limit', 'manual', 'phase_transition'")
-    context_used = Column(Integer, default=0, nullable=False,
-        comment="Current context window usage in tokens")
-    context_budget = Column(Integer, default=150000, nullable=False,
-        comment="Maximum context window budget in tokens")
+    instance_number = Column(
+        Integer,
+        default=1,
+        nullable=False,
+        comment="Sequential instance number for orchestrator succession (1, 2, 3, ...)",
+    )
+    handover_to = Column(String(36), nullable=True, comment="UUID of successor orchestrator job (NULL if no handover)")
+    handover_summary = Column(JSONB, nullable=True, comment="Compressed state transfer for successor orchestrator")
+    handover_context_refs = Column(
+        JSON, default=list, comment="Array of context chunk IDs referenced in handover summary"
+    )
+    succession_reason = Column(
+        String(100), nullable=True, comment="Reason for succession: 'context_limit', 'manual', 'phase_transition'"
+    )
+    context_used = Column(Integer, default=0, nullable=False, comment="Current context window usage in tokens")
+    context_budget = Column(Integer, default=150000, nullable=False, comment="Maximum context window budget in tokens")
 
     # Handover 0088: Thin client architecture metadata
     job_metadata = Column(
         JSON,
         default=dict,
         nullable=False,
-        comment="JSONB metadata for thin client architecture (Handover 0088). Stores field_priorities, user_id, tool, etc."
+        comment="JSONB metadata for thin client architecture (Handover 0088). Stores field_priorities, user_id, tool, etc.",
     )
 
     # Relationships (Handover 0062)
@@ -2070,29 +2121,19 @@ class MCPAgentJob(Base):
         Index("idx_agent_jobs_handover", "handover_to"),
         CheckConstraint(
             "status IN ('waiting', 'preparing', 'working', 'review', 'complete', 'failed', 'blocked')",
-            name="ck_mcp_agent_job_status"
+            name="ck_mcp_agent_job_status",
         ),
+        CheckConstraint("progress >= 0 AND progress <= 100", name="ck_mcp_agent_job_progress_range"),
         CheckConstraint(
-            "progress >= 0 AND progress <= 100",
-            name="ck_mcp_agent_job_progress_range"
-        ),
-        CheckConstraint(
-            "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')",
-            name="ck_mcp_agent_job_tool_type"
+            "tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name="ck_mcp_agent_job_tool_type"
         ),
         # Handover 0080: Succession constraints
-        CheckConstraint(
-            "instance_number >= 1",
-            name="ck_mcp_agent_job_instance_positive"
-        ),
+        CheckConstraint("instance_number >= 1", name="ck_mcp_agent_job_instance_positive"),
         CheckConstraint(
             "succession_reason IS NULL OR succession_reason IN ('context_limit', 'manual', 'phase_transition')",
-            name="ck_mcp_agent_job_succession_reason"
+            name="ck_mcp_agent_job_succession_reason",
         ),
-        CheckConstraint(
-            "context_used >= 0 AND context_used <= context_budget",
-            name="ck_mcp_agent_job_context_usage"
-        ),
+        CheckConstraint("context_used >= 0 AND context_used <= context_budget", name="ck_mcp_agent_job_context_usage"),
     )
 
     def __repr__(self):
@@ -2119,54 +2160,56 @@ class DownloadToken(Base):
     Multi-tenant isolation: All queries filter by tenant_key.
     """
 
-    __tablename__ = 'download_tokens'
+    __tablename__ = "download_tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    token = Column(String(36), unique=True, nullable=False, default=generate_uuid, index=True,
-        comment="UUID v4 token used in download URL")
-    tenant_key = Column(String(36), nullable=False, index=True,
-        comment="Tenant key for multi-tenant isolation")
+    token = Column(
+        String(36),
+        unique=True,
+        nullable=False,
+        default=generate_uuid,
+        index=True,
+        comment="UUID v4 token used in download URL",
+    )
+    tenant_key = Column(String(36), nullable=False, index=True, comment="Tenant key for multi-tenant isolation")
 
     # Download metadata
-    download_type = Column(String(50), nullable=False,
-        comment="Type of download: 'slash_commands', 'agent_templates'")
-    meta_data = Column(JSONB, default=dict, nullable=False,
-        comment="Additional metadata (filename, file_count, file_size, etc.)")
+    download_type = Column(String(50), nullable=False, comment="Type of download: 'slash_commands', 'agent_templates'")
+    meta_data = Column(
+        JSONB, default=dict, nullable=False, comment="Additional metadata (filename, file_count, file_size, etc.)"
+    )
 
     # Historical compatibility (kept for backward compatibility only)
-    is_used = Column(Boolean, default=False, nullable=False,
-        comment="Deprecated: legacy one-time download flag (not enforced)")
-    downloaded_at = Column(DateTime(timezone=True), nullable=True,
-        comment="Deprecated: legacy single-use timestamp (not enforced)")
+    is_used = Column(
+        Boolean, default=False, nullable=False, comment="Deprecated: legacy one-time download flag (not enforced)"
+    )
+    downloaded_at = Column(
+        DateTime(timezone=True), nullable=True, comment="Deprecated: legacy single-use timestamp (not enforced)"
+    )
 
     # Staging lifecycle and metrics (Handover 0102)
-    staging_status = Column(String(20), default='pending', nullable=False,
-        comment="Staging lifecycle status: pending|ready|failed")
-    staging_error = Column(Text, nullable=True,
-        comment="Staging error details when status=failed")
-    download_count = Column(Integer, default=0, nullable=False,
-        comment="Number of successful downloads for this token")
-    last_downloaded_at = Column(DateTime(timezone=True), nullable=True,
-        comment="Timestamp of most recent successful download")
+    staging_status = Column(
+        String(20), default="pending", nullable=False, comment="Staging lifecycle status: pending|ready|failed"
+    )
+    staging_error = Column(Text, nullable=True, comment="Staging error details when status=failed")
+    download_count = Column(Integer, default=0, nullable=False, comment="Number of successful downloads for this token")
+    last_downloaded_at = Column(
+        DateTime(timezone=True), nullable=True, comment="Timestamp of most recent successful download"
+    )
 
     # Expiry management
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False,
-        comment="Token expiry timestamp (15 minutes after creation)")
+    expires_at = Column(
+        DateTime(timezone=True), nullable=False, comment="Token expiry timestamp (15 minutes after creation)"
+    )
 
     __table_args__ = (
         Index("idx_download_token_token", "token"),
         Index("idx_download_token_tenant", "tenant_key"),
         Index("idx_download_token_expires", "expires_at"),
         Index("idx_download_token_tenant_type", "tenant_key", "download_type"),
-        CheckConstraint(
-            "download_type IN ('slash_commands', 'agent_templates')",
-            name="ck_download_token_type"
-        ),
-        CheckConstraint(
-            "staging_status IN ('pending', 'ready', 'failed')",
-            name="ck_download_token_staging_status"
-        ),
+        CheckConstraint("download_type IN ('slash_commands', 'agent_templates')", name="ck_download_token_type"),
+        CheckConstraint("staging_status IN ('pending', 'ready', 'failed')", name="ck_download_token_staging_status"),
     )
 
     def __repr__(self):
@@ -2180,4 +2223,4 @@ class DownloadToken(Base):
     @property
     def is_valid(self) -> bool:
         """Check if token is valid (not expired and staging ready)."""
-        return (not self.is_expired) and (self.staging_status == 'ready')
+        return (not self.is_expired) and (self.staging_status == "ready")
