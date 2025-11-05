@@ -309,6 +309,10 @@ async def get_templates(
                     name=template.name,
                     category=template.category,
                     role=template.role,
+                    cli_tool=template.cli_tool,
+                    background_color=template.background_color,
+                    model=template.model,
+                    tools=template.tools,
                     project_type=template.project_type,
                     template_content=template.template_content,
                     variables=template.variables or [],
@@ -491,6 +495,23 @@ async def create_template(
         await session.commit()
         await session.refresh(new_template)
 
+        # Optional: materialize Claude files to exports/ for operator visibility (0102a)
+        try:
+            from src.giljo_mcp.template_materializer import (
+                get_materialize_on_save_flag,
+                materialize_claude_templates_for_tenant,
+            )
+
+            if get_materialize_on_save_flag():
+                await materialize_claude_templates_for_tenant(
+                    session=session,
+                    tenant_key=context["tenant_key"],
+                    include_inactive=False,
+                )
+        except Exception:
+            # Do not fail creation if materialization fails
+            pass
+
         # Broadcast template creation via WebSocket
         from api.app import state
 
@@ -669,6 +690,23 @@ async def update_template(
 
         await session.commit()
         await session.refresh(template)
+
+        # Optional: materialize Claude files to exports/ for operator visibility (0102a)
+        try:
+            from src.giljo_mcp.template_materializer import (
+                get_materialize_on_save_flag,
+                materialize_claude_templates_for_tenant,
+            )
+
+            if get_materialize_on_save_flag():
+                await materialize_claude_templates_for_tenant(
+                    session=session,
+                    tenant_key=context["tenant_key"],
+                    include_inactive=False,
+                )
+        except Exception:
+            # Do not fail update if materialization fails
+            pass
 
         # Broadcast update via WebSocket
         from api.app import state
