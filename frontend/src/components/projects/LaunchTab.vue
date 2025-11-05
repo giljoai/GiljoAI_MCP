@@ -21,7 +21,6 @@
               @click="handleStageProject"
               class="mb-2"
             >
-              <v-icon start>mdi-rocket-launch-outline</v-icon>
               Stage Project
             </v-btn>
 
@@ -59,7 +58,7 @@
       <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
         <v-card class="description-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header -->
-          <v-card-title class="panel-header bg-primary text-white">
+          <v-card-title class="panel-header bg-primary text-white text-center">
             <span>Project Description</span>
           </v-card-title>
 
@@ -92,7 +91,7 @@
       <v-col cols="12" md="4" class="mb-4 mb-md-0 d-flex">
         <v-card class="mission-panel d-flex flex-column" elevation="2" style="height: 100%;">
           <!-- Header with "Optimized for you" badge -->
-          <v-card-title class="panel-header bg-primary text-white">
+          <v-card-title class="panel-header bg-primary text-white d-flex justify-center">
             <span>Orchestrator Created Mission</span>
             <v-chip
               v-if="userConfigApplied && missionText"

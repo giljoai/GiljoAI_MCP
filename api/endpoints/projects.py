@@ -5,14 +5,15 @@ Project management API endpoints
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
+
 
 # Logger
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ from api.schemas.prompt import (
     ProjectCompleteResponse,
 )
 
+
 router = APIRouter()
 
 
@@ -31,7 +33,9 @@ router = APIRouter()
 class ProjectCreate(BaseModel):
     name: str = Field(..., description="Project name")
     description: str = Field(..., description="Human-written project description (what you want to accomplish)")
-    mission: str = Field(default="", description="AI-generated mission statement (initially empty, filled by orchestrator)")
+    mission: str = Field(
+        default="", description="AI-generated mission statement (initially empty, filled by orchestrator)"
+    )
     product_id: Optional[str] = Field(None, description="Product ID to associate with")
     status: str = Field(default="inactive", description="Project status (Handover 0050b: defaults to inactive)")
     context_budget: int = Field(default=150000, description="Token budget for the project")
@@ -64,6 +68,7 @@ class ProjectResponse(BaseModel):
 # Handover 0062: Project Summary Response Models
 class AgentSummary(BaseModel):
     """Summary of an agent used in the project."""
+
     id: str
     name: str
     type: str
@@ -74,6 +79,7 @@ class AgentSummary(BaseModel):
 
 class MessageSummary(BaseModel):
     """Summary of a message in the project."""
+
     id: str
     from_agent: str
     to_agents: List[str]
@@ -83,6 +89,7 @@ class MessageSummary(BaseModel):
 
 class ProjectSummaryResponse(BaseModel):
     """Comprehensive project summary for after-action review."""
+
     project_id: str
     project_name: str
     description: str
@@ -107,7 +114,6 @@ async def create_project(
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
-
         # Create project in database
         str(uuid.uuid4())
 
@@ -126,8 +132,9 @@ async def create_project(
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to create project"))  # noqa: TRY301
 
         # Fetch the created project to get the alias
-        from src.giljo_mcp.models import Project
         from sqlalchemy import select
+
+        from src.giljo_mcp.models import Project
 
         async with state.db_manager.get_session_async() as session:
             stmt = select(Project).where(Project.id == result["project_id"])
@@ -138,8 +145,8 @@ async def create_project(
             id=result["project_id"],
             alias=created_project.alias if created_project else "UNKNWN",
             name=project.name,
-                description=project.description,
-                mission=project.mission,
+            description=project.description,
+            mission=project.mission,
             status="inactive",
             product_id=project.product_id,
             created_at=datetime.now(timezone.utc),
@@ -185,10 +192,12 @@ async def list_projects(
     Handover 0070: Excludes deleted projects (status='deleted' OR deleted_at IS NOT NULL).
     Use GET /deleted to see deleted projects.
     """
+    import logging
+
+    from sqlalchemy import or_, select
+
     from api.app import state
     from src.giljo_mcp.models import Project
-    from sqlalchemy import select, or_
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -272,9 +281,10 @@ async def get_active_project(
     - Only ONE project can be active per product at any time
     - Database enforces this via partial unique index
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, Agent, Message
     from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import Agent, Message, Project
 
     logger.info(f"[GET ACTIVE PROJECT] User: {current_user.username}, Tenant: {current_user.tenant_key}")
 
@@ -284,10 +294,11 @@ async def get_active_project(
     try:
         async with state.db_manager.get_session_async() as session:
             # Query for active project (tenant-isolated)
-            stmt = select(Project).where(
-                Project.tenant_key == current_user.tenant_key,
-                Project.status == "active"
-            ).limit(1)
+            stmt = (
+                select(Project)
+                .where(Project.tenant_key == current_user.tenant_key, Project.status == "active")
+                .limit(1)
+            )
 
             result = await session.execute(stmt)
             project = result.scalar_one_or_none()
@@ -336,9 +347,10 @@ async def get_project_by_alias(alias: str):
 
     Handover 0070: Excludes deleted projects.
     """
+    from sqlalchemy import or_, select
+
     from api.app import state
     from src.giljo_mcp.models import Project
-    from sqlalchemy import select, or_
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -417,11 +429,13 @@ async def list_deleted_projects(
     Returns:
         List of deleted projects from active product with 10-day recovery window
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, Product
-    from sqlalchemy import select
-    from datetime import timedelta
     import logging
+    from datetime import timedelta
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import Product, Project
 
     logger = logging.getLogger(__name__)
 
@@ -498,13 +512,12 @@ async def list_deleted_projects(
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """Get project details by ID"""
-    from sqlalchemy import select, or_
-    from src.giljo_mcp.models import Project, Agent, Message
+    from sqlalchemy import or_, select
+
+    from src.giljo_mcp.models import Agent, Message, Project
 
     try:
         # Query project directly from database (like get_project_by_alias)
@@ -553,12 +566,19 @@ async def get_project(
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
-async def update_project(project_id: str, update: ProjectUpdate):
+async def update_project(
+    project_id: str,
+    update: ProjectUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session)
+):
     """Update project details"""
-    from api.app import state
-    from sqlalchemy import select
-    from giljo_mcp.models import Project
     import logging
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from giljo_mcp.models import Project
 
     logger = logging.getLogger(__name__)
 
@@ -586,9 +606,13 @@ async def update_project(project_id: str, update: ProjectUpdate):
                 project.name = update.name
                 logger.info(f"Updated name to: {project.name}")
 
+            if update.description is not None:
+                project.description = update.description
+                logger.info(f"Updated description")
+
             if update.mission is not None:
                 project.mission = update.mission
-                logger.info(f"Updated mission")
+                logger.info("Updated mission")
 
             if update.status is not None:
                 logger.info(f"Updating status from '{project.status}' to '{update.status}'")
@@ -642,7 +666,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
                             ),
                         )
 
-                    logger.info(f"[Handover 0071] Single active project validation passed")
+                    logger.info("[Handover 0071] Single active project validation passed")
 
                 project.status = update.status
                 logger.info(f"Project status after assignment: {project.status}")
@@ -666,7 +690,7 @@ async def update_project(project_id: str, update: ProjectUpdate):
                 )
 
         # Get updated project
-        updated_project = await get_project(project_id)
+        updated_project = await get_project(project_id, current_user, db)
         logger.info(f"Project after retrieval: name={updated_project.name}, status={updated_project.status}")
         return updated_project
 
@@ -674,11 +698,10 @@ async def update_project(project_id: str, update: ProjectUpdate):
         logger.error(f"Failed to update project: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/{project_id}/activate", response_model=ProjectResponse)
 async def activate_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Activate a project (enables launch button).
@@ -687,25 +710,20 @@ async def activate_project(
     Changes status from inactive to active.
     """
     from sqlalchemy import select
-    from src.giljo_mcp.models import Project, Product
-    
+
+    from src.giljo_mcp.models import Product, Project
+
     # Fetch project
-    stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     project = result.scalar_one_or_none()
-    
+
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     # Validate current status
     if project.status != "inactive":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Project cannot be activated from status '{project.status}'"
-        )
+        raise HTTPException(status_code=400, detail=f"Project cannot be activated from status '{project.status}'")
 
     # Validate parent product exists and is active
     if project.product_id:
@@ -713,7 +731,7 @@ async def activate_project(
         parent_product = product_result.scalar_one_or_none()
         if not parent_product:
             raise HTTPException(status_code=400, detail="Cannot activate project - parent product not found")
-        if not getattr(parent_product, 'is_active', False):
+        if not getattr(parent_product, "is_active", False):
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot activate project - parent product '{parent_product.name}' is not active. Please activate the product first.",
@@ -740,22 +758,22 @@ async def activate_project(
     # Update status
     project.status = "active"
     project.updated_at = datetime.utcnow()
-    
+
     await db.commit()
     await db.refresh(project)
 
     # Create orchestrator job for this project (Handover 0080)
     from src.giljo_mcp.models import MCPAgentJob
-    
+
     # Check if orchestrator already exists
     existing_orch_stmt = select(MCPAgentJob).where(
         MCPAgentJob.project_id == project_id,
         MCPAgentJob.agent_type == "orchestrator",
-        MCPAgentJob.tenant_key == current_user.tenant_key
+        MCPAgentJob.tenant_key == current_user.tenant_key,
     )
     existing_orch_result = await db.execute(existing_orch_stmt)
     existing_orchestrator = existing_orch_result.scalar_one_or_none()
-    
+
     if not existing_orchestrator:
         # Create orchestrator job
         orchestrator_job = MCPAgentJob(
@@ -772,13 +790,13 @@ async def activate_project(
             progress=0,
             acknowledged=False,
             context_chunks=[],
-            messages=[]
+            messages=[],
         )
-        
+
         db.add(orchestrator_job)
         await db.commit()
         await db.refresh(orchestrator_job)
-        
+
         logger.info(
             f"Created orchestrator job {orchestrator_job.job_id} for project {project_id} "
             f"(user: {current_user.username})"
@@ -788,17 +806,19 @@ async def activate_project(
 
     # Broadcast activation to subscribers (standard schema)
     try:
-      from api.app import state
-      if state.websocket_manager:
-          await state.websocket_manager.broadcast_project_update(
-              project_id=project.id,
-              update_type="activated",
-              project_data={"status": "active"},
-          )
+        from api.app import state
+
+        if state.websocket_manager:
+            await state.websocket_manager.broadcast_project_update(
+                project_id=project.id,
+                update_type="activated",
+                project_data={"status": "active"},
+            )
     except Exception:
-      # Non-fatal: log and continue
-      import logging as _logging
-      _logging.getLogger(__name__).warning("Failed to broadcast project activation", exc_info=True)
+        # Non-fatal: log and continue
+        import logging as _logging
+
+        _logging.getLogger(__name__).warning("Failed to broadcast project activation", exc_info=True)
 
     # Return unified response via helper to include counts
     return await get_project(project_id, current_user, db)
@@ -806,55 +826,56 @@ async def activate_project(
 
 @router.get("/{project_id}/orchestrator")
 async def get_project_orchestrator(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get the orchestrator job for a project.
-    
+
     Returns the orchestrator MCPAgentJob assigned to this project.
     If no orchestrator exists, creates one automatically.
-    
+
     Args:
         project_id: Project UUID
         current_user: Authenticated user
         db: Database session
-        
+
     Returns:
         Orchestrator job data with full job_id/agent_id
-        
+
     Raises:
         404: Project not found
         403: User not authorized
     """
-    from sqlalchemy import select
-    from src.giljo_mcp.models import Project, MCPAgentJob
     import logging
-    
+
+    from sqlalchemy import select
+
+    from src.giljo_mcp.models import MCPAgentJob, Project
+
     logger = logging.getLogger(__name__)
-    
+
     # Verify project exists and user has access
-    project_stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     project_result = await db.execute(project_stmt)
     project = project_result.scalar_one_or_none()
-    
+
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     # Find or create orchestrator job
     # Support orchestrator succession (Handover 0080) - get latest by instance_number
-    orch_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_id,
-        MCPAgentJob.agent_type == "orchestrator",
-        MCPAgentJob.tenant_key == current_user.tenant_key
-    ).order_by(MCPAgentJob.instance_number.desc())
+    orch_stmt = (
+        select(MCPAgentJob)
+        .where(
+            MCPAgentJob.project_id == project_id,
+            MCPAgentJob.agent_type == "orchestrator",
+            MCPAgentJob.tenant_key == current_user.tenant_key,
+        )
+        .order_by(MCPAgentJob.instance_number.desc())
+    )
     orch_result = await db.execute(orch_stmt)
     orchestrator = orch_result.scalars().first()
-    
+
     if not orchestrator:
         # Create orchestrator if it doesn't exist
         orchestrator = MCPAgentJob(
@@ -871,18 +892,18 @@ async def get_project_orchestrator(
             progress=0,
             acknowledged=False,
             context_chunks=[],
-            messages=[]
+            messages=[],
         )
-        
+
         db.add(orchestrator)
         await db.commit()
         await db.refresh(orchestrator)
-        
+
         logger.info(
             f"Auto-created orchestrator job {orchestrator.job_id} for project {project_id} "
             f"(user: {current_user.username})"
         )
-    
+
     # Return orchestrator data
     return {
         "success": True,
@@ -899,8 +920,8 @@ async def get_project_orchestrator(
             "acknowledged": orchestrator.acknowledged,
             "created_at": orchestrator.created_at.isoformat() if orchestrator.created_at else None,
             "started_at": orchestrator.started_at.isoformat() if orchestrator.started_at else None,
-            "completed_at": orchestrator.completed_at.isoformat() if orchestrator.completed_at else None
-        }
+            "completed_at": orchestrator.completed_at.isoformat() if orchestrator.completed_at else None,
+        },
     }
 
 
@@ -930,10 +951,12 @@ async def deactivate_project(project_id: str, current_user: User = Depends(get_c
         400: Project not in 'active' status
         500: Database error
     """
+    import logging
+
+    from sqlalchemy import select
+
     from api.app import state
     from src.giljo_mcp.models import Project
-    from sqlalchemy import select
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -994,10 +1017,12 @@ async def complete_project(
     Sets status='completed' and completed_at=NOW().
     Completed projects can be restored via the restore endpoint.
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, Agent, Message
-    from sqlalchemy import select
     import logging
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import Agent, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1049,8 +1074,8 @@ async def complete_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-                description=project.description,
-                mission=project.mission,
+            description=project.description,
+            mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,
@@ -1079,10 +1104,12 @@ async def cancel_project(
     Sets status='cancelled' and completed_at=NOW().
     Cancelled projects can be restored via the restore endpoint.
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, Agent, Message
-    from sqlalchemy import select
     import logging
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import Agent, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1134,8 +1161,8 @@ async def cancel_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-                description=project.description,
-                mission=project.mission,
+            description=project.description,
+            mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,
@@ -1164,10 +1191,12 @@ async def restore_completed_project(
     Sets status='inactive' (safe default) and clears completed_at.
     User must manually activate project after restoration.
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, Agent, Message
-    from sqlalchemy import select
     import logging
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import Agent, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1223,8 +1252,8 @@ async def restore_completed_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-                description=project.description,
-                mission=project.mission,
+            description=project.description,
+            mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,
@@ -1253,10 +1282,12 @@ async def delete_project(
     Sets status='deleted' and deleted_at=NOW(). Project will be purged after 10 days.
     Recovery available via: Settings -> Database -> Deleted Projects
     """
+    import logging
+
+    from sqlalchemy import select
+
     from api.app import state
     from src.giljo_mcp.models import Project
-    from sqlalchemy import select
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -1323,10 +1354,12 @@ async def restore_project(
     Sets status='inactive' (safe default) and clears deleted_at.
     User must manually activate project after restoration.
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, Agent, Message
-    from sqlalchemy import select
     import logging
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import Agent, Message, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1380,8 +1413,8 @@ async def restore_project(
             id=project.id,
             alias=project.alias,
             name=project.name,
-                description=project.description,
-                mission=project.mission,
+            description=project.description,
+            mission=project.mission,
             status=project.status,
             product_id=project.product_id,
             created_at=project.created_at,
@@ -1418,10 +1451,12 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
     Returns:
         dict: Purge results with count and details
     """
-    from src.giljo_mcp.models import Project, Agent, Task, Message
-    from sqlalchemy import select
-    from datetime import timedelta
     import logging
+    from datetime import timedelta
+
+    from sqlalchemy import select
+
+    from src.giljo_mcp.models import Agent, Message, Project, Task
 
     logger = logging.getLogger(__name__)
 
@@ -1494,11 +1529,10 @@ async def purge_expired_deleted_projects(db_manager) -> dict:
         logger.error(f"[Handover 0070] Failed to purge expired deleted projects: {e}", exc_info=True)
         return {"success": False, "error": str(e), "purged_count": 0}
 
+
 @router.get("/{project_id}/summary", response_model=ProjectSummaryResponse)
 async def get_project_summary(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session)
+    project_id: str, current_user: User = Depends(get_current_active_user), db: AsyncSession = Depends(get_db_session)
 ):
     """
     Get comprehensive project summary for after-action review.
@@ -1507,88 +1541,88 @@ async def get_project_summary(
     Includes project details, agents used, and message history.
     """
     from sqlalchemy import select
-    from src.giljo_mcp.models import Project, Agent, MCPAgentJob, Message
-    
+
+    from src.giljo_mcp.models import Agent, MCPAgentJob, Message, Project
+
     # Fetch project
-    project_stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     project_result = await db.execute(project_stmt)
     project = project_result.scalar_one_or_none()
-    
+
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     # Fetch agents
-    agents_stmt = select(Agent).where(
-        Agent.project_id == project_id,
-        Agent.tenant_key == current_user.tenant_key
-    )
+    agents_stmt = select(Agent).where(Agent.project_id == project_id, Agent.tenant_key == current_user.tenant_key)
     agents_result = await db.execute(agents_stmt)
     agents = agents_result.scalars().all()
-    
+
     # Fetch agent jobs (if project_id exists)
     jobs = []
     try:
         jobs_stmt = select(MCPAgentJob).where(
-            MCPAgentJob.project_id == project_id,
-            MCPAgentJob.tenant_key == current_user.tenant_key
+            MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key
         )
         jobs_result = await db.execute(jobs_stmt)
         jobs = jobs_result.scalars().all()
     except Exception as e:
         logger.warning(f"Could not fetch jobs for project {project_id}: {e}")
-    
+
     # Fetch messages
-    messages_stmt = select(Message).where(
-        Message.project_id == project_id,
-        Message.tenant_key == current_user.tenant_key
-    ).order_by(Message.created_at)
+    messages_stmt = (
+        select(Message)
+        .where(Message.project_id == project_id, Message.tenant_key == current_user.tenant_key)
+        .order_by(Message.created_at)
+    )
     messages_result = await db.execute(messages_stmt)
     messages = messages_result.scalars().all()
-    
+
     # Build agent summaries
     agent_summaries = []
     job_map = {job.job_id: job for job in jobs}
-    
+
     for agent in agents:
         job = job_map.get(agent.job_id) if agent.job_id else None
-        agent_summaries.append(AgentSummary(
-            id=agent.id,
-            name=agent.name,
-            type=agent.type,
-            status=agent.status,
-            job_mission=job.mission if job else None,
-            job_id=agent.job_id
-        ))
-    
+        agent_summaries.append(
+            AgentSummary(
+                id=agent.id,
+                name=agent.name,
+                type=agent.type,
+                status=agent.status,
+                job_mission=job.mission if job else None,
+                job_id=agent.job_id,
+            )
+        )
+
     # Build message summaries
     message_summaries = []
     for msg in messages:
-        message_summaries.append(MessageSummary(
-            id=msg.id,
-            from_agent=msg.from_agent,
-            to_agents=msg.to_agents or [],
-            content=msg.content,
-            timestamp=msg.created_at.isoformat() if msg.created_at else ""
-        ))
-    
+        message_summaries.append(
+            MessageSummary(
+                id=msg.id,
+                from_agent=msg.from_agent,
+                to_agents=msg.to_agents or [],
+                content=msg.content,
+                timestamp=msg.created_at.isoformat() if msg.created_at else "",
+            )
+        )
+
     # Build summary response
     return ProjectSummaryResponse(
         project_id=project.id,
         project_name=project.name,
-        description=getattr(project, 'description', project.mission),  # Backward compat
+        description=getattr(project, "description", project.mission),  # Backward compat
         mission=project.mission,
         status=project.status,
         agents=agent_summaries,
         messages=message_summaries,
         created_at=project.created_at.isoformat() if project.created_at else "",
-        completed_at=project.completed_at.isoformat() if project.completed_at else None
+        completed_at=project.completed_at.isoformat() if project.completed_at else None,
     )
 
 
 # Handover 0073: Project Closeout Endpoints
+
 
 @router.get("/{project_id}/can-close", response_model=ProjectCanCloseResponse)
 async def check_project_can_close(
@@ -1614,10 +1648,12 @@ async def check_project_can_close(
         404: Project not found or not accessible
         403: User not authorized to access project
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, MCPAgentJob
-    from sqlalchemy import select, func
     import logging
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import MCPAgentJob, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1625,24 +1661,17 @@ async def check_project_can_close(
         raise HTTPException(status_code=503, detail="Database not available")
 
     # Get project with tenant isolation
-    stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     project = result.scalar_one_or_none()
 
     if not project:
         logger.warning(f"Project {project_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found or not accessible"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found or not accessible")
 
     # Get agent status breakdown
     agents_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
+        MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key
     )
     agents_result = await db.execute(agents_stmt)
     agents = agents_result.scalars().all()
@@ -1654,10 +1683,7 @@ async def check_project_can_close(
     blocked_count = sum(1 for a in agents if a.status == "blocked")
 
     agent_statuses = AgentStatusSummary(
-        complete=complete_count,
-        failed=failed_count,
-        active=active_count,
-        blocked=blocked_count
+        complete=complete_count, failed=failed_count, active=active_count, blocked=blocked_count
     )
 
     # Check if all agents finished
@@ -1695,10 +1721,7 @@ async def check_project_can_close(
     logger.info(f"Project {project_id} closeout check: can_close={can_close}, agents={len(agents)}")
 
     return ProjectCanCloseResponse(
-        can_close=can_close,
-        summary=summary,
-        agent_statuses=agent_statuses,
-        all_agents_finished=all_agents_finished
+        can_close=can_close, summary=summary, agent_statuses=agent_statuses, all_agents_finished=all_agents_finished
     )
 
 
@@ -1727,11 +1750,13 @@ async def generate_project_closeout_prompt(
         400: Project not ready for closeout
         403: User not authorized to access project
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, MCPAgentJob
-    from sqlalchemy import select
-    from datetime import datetime, timezone
     import logging
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import MCPAgentJob, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1739,24 +1764,17 @@ async def generate_project_closeout_prompt(
         raise HTTPException(status_code=503, detail="Database not available")
 
     # Get project with tenant isolation
-    stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     project = result.scalar_one_or_none()
 
     if not project:
         logger.warning(f"Project {project_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found or not accessible"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found or not accessible")
 
     # Get agent counts
     agents_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
+        MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key
     )
     agents_result = await db.execute(agents_stmt)
     agents = agents_result.scalars().all()
@@ -1842,7 +1860,7 @@ echo "Summary saved to PROJECT_SUMMARY.md"
         "Update project documentation",
         "Close agent terminals and cleanup",
         "Archive project artifacts",
-        "Notify stakeholders of completion"
+        "Notify stakeholders of completion",
     ]
 
     # Store closeout prompt in project
@@ -1852,10 +1870,7 @@ echo "Summary saved to PROJECT_SUMMARY.md"
     logger.info(f"Generated closeout prompt for project {project_id}")
 
     return ProjectCloseoutPromptResponse(
-        prompt=prompt,
-        checklist=checklist,
-        project_name=project.name,
-        agent_summary=agent_summary
+        prompt=prompt, checklist=checklist, project_name=project.name, agent_summary=agent_summary
     )
 
 
@@ -1886,11 +1901,13 @@ async def complete_project_closeout(
         400: Confirmation not provided or invalid
         403: User not authorized to access project
     """
-    from api.app import state
-    from src.giljo_mcp.models import Project, MCPAgentJob
-    from sqlalchemy import select
-    from datetime import datetime, timezone
     import logging
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from api.app import state
+    from src.giljo_mcp.models import MCPAgentJob, Project
 
     logger = logging.getLogger(__name__)
 
@@ -1900,24 +1917,17 @@ async def complete_project_closeout(
     # Validate confirmation
     if not complete_request.confirm_closeout:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Must confirm closeout by setting confirm_closeout=true"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Must confirm closeout by setting confirm_closeout=true"
         )
 
     # Get project with tenant isolation
-    stmt = select(Project).where(
-        Project.id == project_id,
-        Project.tenant_key == current_user.tenant_key
-    )
+    stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
     result = await db.execute(stmt)
     project = result.scalar_one_or_none()
 
     if not project:
         logger.warning(f"Project {project_id} not found for tenant {current_user.tenant_key}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found or not accessible"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found or not accessible")
 
     # Set project as completed
     project.status = "completed"
@@ -1927,8 +1937,7 @@ async def complete_project_closeout(
 
     # Retire all agents in project
     agents_stmt = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == project_id,
-        MCPAgentJob.tenant_key == current_user.tenant_key
+        MCPAgentJob.project_id == project_id, MCPAgentJob.tenant_key == current_user.tenant_key
     )
     agents_result = await db.execute(agents_stmt)
     agents = agents_result.scalars().all()
@@ -1954,14 +1963,12 @@ async def complete_project_closeout(
                     "type": "project:completed",
                     "project_id": project_id,
                     "completed_at": project.completed_at.isoformat(),
-                    "retired_agents": retired_count
-                }
+                    "retired_agents": retired_count,
+                },
             )
     except Exception as e:
         logger.warning(f"Failed to broadcast project completion: {e}")
 
     return ProjectCompleteResponse(
-        success=True,
-        completed_at=project.completed_at.isoformat(),
-        retired_agents=retired_count
+        success=True, completed_at=project.completed_at.isoformat(), retired_agents=retired_count
     )
