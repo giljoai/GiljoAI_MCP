@@ -4,28 +4,42 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-PYTHON_CMD="${PYTHON:-}"
-if [[ -z "$PYTHON_CMD" ]]; then
+PYTHON_BOOT="${PYTHON:-}"
+if [[ -z "$PYTHON_BOOT" ]]; then
   if command -v python3 >/dev/null 2>&1; then
-    PYTHON_CMD=python3
+    PYTHON_BOOT=python3
   elif command -v python >/dev/null 2>&1; then
-    PYTHON_CMD=python
+    PYTHON_BOOT=python
   else
     echo "[DevPanel] Python interpreter not found. Install Python 3." >&2
     exit 1
   fi
 fi
 
+VENV_DIR="$REPO_ROOT/dev_tools/devpanel/.venv"
+VENV_PY="$VENV_DIR/bin/python"
+
+if [[ ! -x "$VENV_PY" ]]; then
+  echo "[DevPanel] Creating isolated virtual environment..."
+  "$PYTHON_BOOT" -m venv "$VENV_DIR" || {
+    echo "[DevPanel] Failed to create virtual environment." >&2
+    exit 1
+  }
+  echo "[DevPanel] Installing project dependencies into isolated venv..."
+  "$VENV_PY" -m pip install --upgrade pip
+  "$VENV_PY" -m pip install -e .[dev]
+fi
+
 cd "$REPO_ROOT"
 
 echo "[DevPanel] Generating inventories (Phase 1001)..."
-"$PYTHON_CMD" dev_tools/devpanel/scripts/devpanel_index.py --out temp/devpanel/index || {
+"$VENV_PY" dev_tools/devpanel/scripts/devpanel_index.py --out temp/devpanel/index || {
   echo "[DevPanel] Inventory generation failed." >&2
   exit 1
 }
 
 echo "[DevPanel] Launching backend on http://127.0.0.1:8283 ..."
-ENABLE_DEVPANEL=true "$PYTHON_CMD" dev_tools/devpanel/run_backend.py &
+ENABLE_DEVPANEL=true "$VENV_PY" dev_tools/devpanel/run_backend.py &
 BACKEND_PID=$!
 
 cleanup() {
